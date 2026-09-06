@@ -57,8 +57,8 @@ def claim_rows(events: list[dict]) -> list[ClaimRow]:
                 cat = "(b)" if ev["author"] == "MAIN" else "(a)"
                 r.sources.append(f"{cat} {ev['author']}: {ev['evidence_type']} {ev['evidence_ref']}"
                                  + (f" [{ev['framing']}]" if ev.get("framing") else ""))
-            elif ev["event"] == "check_executed":
-                r.sources.append(f"(c) {ev['command']} expected={ev['expected']} observed={ev['observed']}"
+            elif ev["event"] == "check_executed" and ev.get("falsifies") == r.claim_id:
+                r.sources.append(f"(c) [{ev['mechanism']}] {ev['command']} expected={ev['expected']} observed={ev['observed']}"
                                  + (" pre_fix=FAIL" if ev.get("pre_fix_result") == "FAIL" else ""))
     return rows
 
@@ -82,7 +82,7 @@ def render_trace(events: list[dict], title: str = "Run trace") -> str:
     out += ["## Consumer checks", "| ref | answer | command_or_reasoning |", "|---|---|---|"]
     for ev in events:
         if ev.get("event") == "consumer_check":
-            out.append(f"| `{ev['ref']}` | {ev['answer']} | {ev['command_or_reasoning']} |")
+            out.append(f"| `{', '.join(ev['ref'])}` | {ev['answer']} | {ev['command_or_reasoning']} |")
     out.append("")
     dispatches = [ev for ev in events if ev.get("event") == "dispatch"]
     out += [f"## Dispatches ({len(dispatches)} agents)", "| agent | role | framing | output |", "|---|---|---|---|"]
@@ -93,4 +93,4 @@ def render_trace(events: list[dict], title: str = "Run trace") -> str:
 
 
 def consumer_check_refs(events: list[dict]) -> set[str]:
-    return {ev["ref"] for ev in events if ev.get("event") == "consumer_check"}
+    return {r for ev in events if ev.get("event") == "consumer_check" for r in ev["ref"]}

@@ -9,10 +9,10 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 
 from .schema import TEMPLATE_TRAILING
-from .stages import CapState, Claim, Plan, REMEDY_TEXT, count_sources
+from .stages import CapState, Claim, Plan, count_sources, remedy_text
 
 EVIDENCE_TYPES = ("command", "file:line", "URL", "(opinion)")
-DISPOSITION_RE = re.compile(r"^(fixed|new-task|dismissed:\S.*)$")
+DISPOSITION_RE = re.compile(r"^(fixed|new-task|dismissed:\S.*|escalated:\S+)$")  # V3.5 §4 E·3 four-value enum
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ def lint_claims_without_evidence(claims: Iterable[dict[str, Any]]) -> list[Findi
 
 # 2 ------------------------------------------------------------------------
 def lint_follow_on_without_disposition(follow_on: Iterable[Any]) -> list[Finding]:
-    """any FOLLOW_ON entry not tagged fixed | new-task | dismissed:reason."""
+    """any FOLLOW_ON entry not tagged fixed | new-task | dismissed:reason | escalated:owner."""
     out = []
     for i, entry in enumerate(follow_on):
         if isinstance(entry, dict):
@@ -46,7 +46,7 @@ def lint_follow_on_without_disposition(follow_on: Iterable[Any]) -> list[Finding
             finding, disp = entry[0], entry[1]
         if not DISPOSITION_RE.match(str(disp or "")):
             out.append(Finding("follow-on-without-disposition", str(finding),
-                               f"follow-on {finding!r} has disposition {disp!r}, not fixed|new-task|dismissed:reason"))
+                               f"follow-on {finding!r} has disposition {disp!r}, not fixed|new-task|dismissed:reason|escalated:owner"))
     return out
 
 
@@ -115,7 +115,7 @@ def lint_corroboration_capped(plan: Plan, events: list[dict]) -> list[Finding]:
                 n, _ = count_sources(claim, events, CapState(e.dispatched_total), [])
                 if n < cap.mandated:
                     out.append(Finding("corroboration-capped", cap.claim_id,
-                                       "RETURN_TO_PLANNER: " + REMEDY_TEXT[cap.remedy].format(claim=cap.claim_id)))
+                                       "RETURN_TO_PLANNER: " + remedy_text(cap.remedy, cap.claim_id, cap.detail)))
             else:
                 disclosed = ("corroboration-capped" in plan.exit_line and cap.claim_id in plan.exit_line)
                 if not disclosed:
@@ -125,22 +125,31 @@ def lint_corroboration_capped(plan: Plan, events: list[dict]) -> list[Finding]:
 
 
 # 7 ------------------------------------------------------------------------
-def lint_hub_touched_without_tripwire(plan: Plan) -> list[Finding]:
+def lint_hub_touched_without_tripwire(plan: Plan, events: list[dict] | None = None) -> list[Finding]:
+    """any entry whose hub ≠ [] has no tripwire recorded for each hub element:
+    D·4 must have named a tripwire command for it, and (when the journal is
+    given) a `check_executed` event running that command must exist — AA3′:
+    that event may double as a (c) source for an executable claim it falsifies."""
+    ran = {ev["command"] for ev in (events or []) if ev.get("event") == "check_executed"}
     out = []
     for e in plan.entries:
         for h in e.hub:
-            if not e.tripwires.get(h):
+            cmd = e.tripwires.get(h)
+            if not cmd:
                 out.append(Finding("hub-touched-without-tripwire", e.name, f"{e.name}: hub element {h} has no tripwire"))
+            elif events is not None and cmd not in ran:
+                out.append(Finding("hub-touched-without-tripwire", e.name,
+                                   f"{e.name}: no check_executed event ran the tripwire for {h} ({cmd})"))
     return out
 
 
 # 8 ------------------------------------------------------------------------
 def lint_downstream_consumer_check_unrecorded(plan: Plan, events: list[dict]) -> list[Finding]:
     """a stakes=1 ∧ hub=[] entry with no consumer_check event for its ref."""
-    refs = {ev["ref"] for ev in events if ev.get("event") == "consumer_check"}
+    refs = [set(ev["ref"]) for ev in events if ev.get("event") == "consumer_check"]
     out = []
     for e in plan.entries:
-        if e.stakes == 1 and not e.hub and e.ref not in refs:
+        if e.stakes == 1 and not e.hub and not any(set(e.ref) <= r for r in refs):
             out.append(Finding("downstream-consumer-check-unrecorded", e.name,
                                f"{e.name}: no consumer_check event for ref {e.ref!r}"))
     return out
@@ -171,6 +180,6 @@ def run_all_on_plan(plan: Plan, events: list[dict]) -> list[Finding]:
     out += lint_schema_field_without_escape_value(FIELDS)
     out += lint_return_field_without_escape_value(RETURN_CONTRACT)
     out += lint_corroboration_capped(plan, events)
-    out += lint_hub_touched_without_tripwire(plan)
+    out += lint_hub_touched_without_tripwire(plan, events)
     out += lint_downstream_consumer_check_unrecorded(plan, events)
     return out

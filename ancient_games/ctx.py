@@ -28,6 +28,8 @@ GATE_REASONS = (
     "corroboration-capped",
 )
 MODES = ("read", "invoke", "mutate")
+DIFFICULTIES = ("LOW", "MED", "HIGH", "UNKNOWN")  # AA2′; UNKNOWN is the escape value
+MECHANISMS = ("interpreter-import", "pytest-fail-first", "suite-count", "git-diff-scope", "hash-compare", "adversarial-case")
 
 
 @dataclass(frozen=True)
@@ -73,6 +75,7 @@ class CappedClaim:
     mandated: int
     delivered: int
     remedy: str
+    detail: str | None = None  # the framing (judgment) or mechanism (executable) the remedy names (DECISIONS.md #21)
 
     def __post_init__(self) -> None:
         if self.kind not in CLAIM_KINDS:
@@ -89,8 +92,10 @@ class Ctx:
     execution_status: str | None = None
     stop_criterion: str | None = None
     time_box: str | None = None
-    difficulty: str | None = None
-    capability: list[str] = field(default_factory=list)
+    difficulty: str = "UNKNOWN"  # AA2′: LOW | MED | HIGH, escape UNKNOWN
+    capability: list[str] = field(default_factory=list)  # AA2′: escape []
+    actor: dict[str, str] = field(default_factory=dict)  # action_id -> agent-id | MAIN | none (Z3′)
+    dispatch_count: int = 0  # plan-wide category-(a) dispatches so far (Z1′); cap_state = (dispatch_count, CAP=3)
     governance_gated: str = "none"
     known_facts: list[tuple[str, str, str, str]] = field(default_factory=list)
     stale_claims: list[tuple[str, str]] = field(default_factory=list)
@@ -138,6 +143,10 @@ class Ctx:
         for name in CTX_META:
             if name not in names:
                 raise ValueError(f"CTX_META names {name!r}, which is not a ctx property")
+        if self.difficulty not in DIFFICULTIES:
+            raise ValueError(f"difficulty {self.difficulty!r} not in {DIFFICULTIES}")
+        if self.dispatch_count < 0:
+            raise ValueError("dispatch_count must be non-negative")
         if self.role not in ROLES:
             raise ValueError(f"role {self.role!r} not in {ROLES}")
         if self.execution_status is not None and self.execution_status not in EXECUTION_STATUSES:
@@ -174,8 +183,7 @@ class Ctx:
 
 
 # property -> (set by, consumed by), from V3_1_SPEC §2 with the V3.2/V3.3 rows.
-# `difficulty` and `capability` are not rows in §2 but C·2 states them and C·3's
-# F1 tree / C's exit line consume them (DECISIONS.md #1).
+# `difficulty` and `capability` are AA2′'s two rows (V3.6); `actor`/`dispatch_count` are V3.5 §2.
 CTX_META: dict[str, tuple[str, str]] = {
     "role": ("C·2", "schema DISPATCH"),
     "count": ("C·3 / C·4", "schema (payload gate)"),
@@ -183,7 +191,9 @@ CTX_META: dict[str, tuple[str, str]] = {
     "stop_criterion": ("C·5", "schema STOP"),
     "time_box": ("C·5", "schema STOP"),
     "difficulty": ("C·2", "C·3 (F1 decision tree), C exit line"),
-    "capability": ("C·2", "C·3 (F1 decision tree)"),
+    "capability": ("C·2", "C·3 (F1 decision tree), schema role selection, D·4 tool grants"),
+    "actor": ("C·3/C·4, or D at execution_status=main_executes", "B·1 self-exclusion, journal claim_recorded.actor"),
+    "dispatch_count": ("C·3/C·4; B·1 on RETURN_TO_PLANNER-triggered dispatch", "B·1 cap_state"),
     "artifact_refs": ("C·1, D·1", "C·1 routing, D·2, registry, lints"),
     "governance_gated": ("C·2", "B·1, E·5, A"),
     "reversibility": ("D·3", "schema HUB_INTEGRITY/fallback shape"),

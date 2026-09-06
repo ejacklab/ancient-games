@@ -33,6 +33,14 @@ def test_enum_values_are_checked():
     c.execution_status = "paused"
     with pytest.raises(ValueError, match="execution_status"):
         c.validate()
+    c = Ctx()
+    assert c.difficulty == "UNKNOWN" and c.capability == []  # AA2′ escape values
+    c.difficulty = "EASY"
+    with pytest.raises(ValueError, match="difficulty"):
+        c.validate()
+    c = Ctx(dispatch_count=-1)
+    with pytest.raises(ValueError, match="dispatch_count"):
+        c.validate()
     with pytest.raises(ValueError, match="remedy"):
         CappedClaim("x", "judgment", 3, 3, 2, "ask-nicely")
     with pytest.raises(ValueError, match="reason"):

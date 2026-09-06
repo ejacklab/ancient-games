@@ -12,6 +12,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, TypedDict
 
+from .ctx import MECHANISMS
+
 
 class ExitEvent(TypedDict):
     ts: str
@@ -58,6 +60,8 @@ class CheckExecutedEvent(TypedDict):
     run_id: str
     event: str
     claim_id: str
+    falsifies: str
+    mechanism: str
     command: str
     expected: str | int | float
     observed: str | int | float
@@ -70,6 +74,7 @@ class ClaimRecordedEvent(TypedDict):
     event: str
     claim_id: str
     author: str
+    actor: str  # "MAIN" | agent id | "none" (Z3′)
     kind: str
     text: str
     evidence_type: str
@@ -81,7 +86,7 @@ class ConsumerCheckEvent(TypedDict):
     ts: str
     run_id: str
     event: str
-    ref: str
+    ref: list[str]
     answer: str
     command_or_reasoning: str
 
@@ -96,14 +101,14 @@ SHAPES: dict[str, dict[str, Any]] = {
     "return": {"agent_id": str, "fields": dict},
     "rule_fire": {"rule_id": str, "algorithm_step": str, "field": str, "ctx_value": _ANY},
     "check_executed": {
-        "claim_id": str, "command": str, "expected": _NUM_OR_STR, "observed": _NUM_OR_STR,
-        "pre_fix_result": (str, type(None)),
+        "claim_id": str, "falsifies": str, "mechanism": str, "command": str, "expected": _NUM_OR_STR,
+        "observed": _NUM_OR_STR, "pre_fix_result": (str, type(None)),
     },
     "claim_recorded": {
-        "claim_id": str, "author": str, "kind": str, "text": str, "evidence_type": str,
+        "claim_id": str, "author": str, "actor": str, "kind": str, "text": str, "evidence_type": str,
         "evidence_ref": str, "framing": (str, type(None)),
     },
-    "consumer_check": {"ref": str, "answer": str, "command_or_reasoning": str},
+    "consumer_check": {"ref": list, "answer": str, "command_or_reasoning": str},
 }
 _ENUMS: dict[tuple[str, str], tuple[Any, ...]] = {
     ("check_executed", "pre_fix_result"): ("FAIL", None),
@@ -132,10 +137,26 @@ def validate_event(event: dict) -> dict:
         enum = _ENUMS.get((event["event"], name))
         if enum is not None and event[name] not in enum:
             raise ValueError(f"{event['event']}.{name} must be one of {enum}, got {event[name]!r}")
+    if event["event"] == "check_executed":
+        m = event["mechanism"]
+        if m not in MECHANISMS and not (m.startswith("other:") and len(m) > 6):
+            raise ValueError(f"check_executed.mechanism must be one of {MECHANISMS} or other:<name>, got {m!r}")
+    if event["event"] == "consumer_check" and not all(isinstance(r, str) for r in event["ref"]):
+        raise ValueError("consumer_check.ref must be a list of str")
     extra = set(event) - set(shape) - {"ts", "run_id", "event"}
     if extra:
         raise ValueError(f"{event['event']} event carries undeclared fields {sorted(extra)}")
     return event
+
+
+def classify_event(evidence: dict) -> str:
+    """§7 (Z2′): a piece of evidence is a `check_executed` event iff it names an
+    explicit expected value or falsifying condition the observed result could
+    have failed to match; a bare citation of a command's output is a
+    `claim_recorded` event even when MAIN ran the command."""
+    expected = evidence.get("expected")
+    stated = expected not in (None, "") or evidence.get("pre_fix_result") == "FAIL" or bool(evidence.get("falsifies"))
+    return "check_executed" if stated else "claim_recorded"
 
 
 def _check_absolute(path: str) -> str:
@@ -178,32 +199,34 @@ class Journal:
         return self.append({"event": "dispatch", "agent_id": agent_id, "role": role, "framing": framing,
                             "payload_fields": list(payload_fields), "output_path": output_path})
 
-    def check_executed(self, claim_id: str, command: str, expected, observed, pre_fix_result: str | None = None) -> dict:
-        return self.append({"event": "check_executed", "claim_id": claim_id, "command": command,
-                            "expected": expected, "observed": observed, "pre_fix_result": pre_fix_result})
+    def check_executed(self, claim_id: str, mechanism: str, command: str, expected, observed,
+                       pre_fix_result: str | None = None, falsifies: str | None = None) -> dict:
+        return self.append({"event": "check_executed", "claim_id": claim_id, "falsifies": falsifies or claim_id,
+                            "mechanism": mechanism, "command": command, "expected": expected, "observed": observed,
+                            "pre_fix_result": pre_fix_result})
 
-    def claim_recorded(self, claim_id: str, author: str, kind: str, text: str, evidence_type: str,
+    def claim_recorded(self, claim_id: str, author: str, actor: str, kind: str, text: str, evidence_type: str,
                        evidence_ref: str, framing: str | None = None) -> dict:
-        return self.append({"event": "claim_recorded", "claim_id": claim_id, "author": author, "kind": kind,
-                            "text": text, "evidence_type": evidence_type, "evidence_ref": evidence_ref,
+        return self.append({"event": "claim_recorded", "claim_id": claim_id, "author": author, "actor": actor,
+                            "kind": kind, "text": text, "evidence_type": evidence_type, "evidence_ref": evidence_ref,
                             "framing": framing})
 
-    def consumer_check(self, ref: str, answer: str, command_or_reasoning: str) -> dict:
-        return self.append({"event": "consumer_check", "ref": ref, "answer": answer,
+    def consumer_check(self, ref: list[str], answer: str, command_or_reasoning: str) -> dict:
+        return self.append({"event": "consumer_check", "ref": list(ref), "answer": answer,
                             "command_or_reasoning": command_or_reasoning})
 
-    def ingest_return(self, agent_id: str, fields: dict, framing: str | None = None) -> list[dict]:
-        """§6: record the `return` event and mirror each CLAIMS entry into a
-        `claim_recorded` ((a)/(b)-type) or `check_executed` ((c)-type,
-        carrying `falsifies`) event."""
+    def ingest_return(self, agent_id: str, fields: dict, actor: str, framing: str | None = None) -> list[dict]:
+        """§6: record the `return` event and mirror each CLAIMS entry into the
+        event `classify_event` (§7, Z2′) picks — classification happens here,
+        at write time, so B·1 only ever reads already-classified events."""
         out = [self.append({"event": "return", "agent_id": agent_id, "fields": fields})]
         for c in fields.get("CLAIMS", []) or []:
-            if c.get("falsifies"):
-                out.append(self.check_executed(c["falsifies"], c.get("command", c.get("evidence_ref", "")),
-                                               c.get("expected", ""), c.get("observed", ""),
-                                               c.get("pre_fix_result")))
+            if classify_event(c) == "check_executed":
+                out.append(self.check_executed(c.get("falsifies") or c["claim_id"], c.get("mechanism", "other:unlabelled"),
+                                               c.get("command", c.get("evidence_ref", "")), c.get("expected", ""),
+                                               c.get("observed", ""), c.get("pre_fix_result"), c.get("falsifies")))
             elif c.get("evidence_type") in ("command", "file:line"):
-                out.append(self.claim_recorded(c["claim_id"], agent_id, c["kind"], c.get("text", c["claim_id"]),
+                out.append(self.claim_recorded(c["claim_id"], agent_id, actor, c["kind"], c.get("text", c["claim_id"]),
                                                c["evidence_type"], c.get("evidence_ref", ""),
                                                c.get("framing", framing)))
         return out

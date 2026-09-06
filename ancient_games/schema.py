@@ -200,7 +200,7 @@ RETURN_CONTRACT: list[ReturnField] = [
                 "A, B", "N/A — required, always present (an empty list only when the agent made literally no claims, itself an explicit [], never omitted)"),
     ReturnField("SCOPE_DELTA", _scope_present, "always when SCOPE was present; else N/A", "added/dropped, explicit even if empty",
                 "E", "N/A (SCOPE absent from the dispatch)"),
-    ReturnField("FOLLOW_ON", _always, "always", "finding → fixed | new-task | dismissed:reason", "E",
+    ReturnField("FOLLOW_ON", _always, "always", "finding → fixed | new-task | dismissed:reason | escalated:owner", "E",
                 "N/A — required; an explicit empty list when there is nothing to report, never omitted"),
     ReturnField("NOT_DONE", _always, "always", "step → why → command for MAIN", "E, D",
                 "N/A — required; an explicit empty list when nothing is left undone"),

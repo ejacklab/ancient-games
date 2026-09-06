@@ -1,11 +1,12 @@
-"""§4 — the five algorithms, spine parts only.
+"""§4 — the five algorithms, spine parts only (V3_5_SPEC + V3.6 AA1′–AA3′).
 
 Each function takes `ctx` plus the `[LLM]`-cell inputs as explicit
 parameters (never computed here), mutates and returns `ctx`, emits its exit
 line via the journal, and early-exits exactly as §4 specifies.
 
-All source-counting for B lives in one pure function, `count_sources`, so a
-later dispatch (V3.4's self-exclusion rule) replaces that function only.
+All source-counting for B lives in one pure function, `count_sources`,
+released in V3.5 as the complete rule (Y2′ + Z1′–Z6′). Every branch cites
+the spec sentence it implements.
 """
 from __future__ import annotations
 
@@ -26,11 +27,12 @@ from .registry import CAP, Lookup, Row, REGISTRY
 @dataclass
 class TaskInput:
     """C's inputs. The `[LLM]` cells (difficulty, capability, stop criterion,
-    whether cheap means answered) arrive here as values."""
+    whether cheap means answered, which agent is the actor of which action)
+    arrive here as values."""
 
     name: str
     stop_criterion: str
-    difficulty: str  # LOW | MED | HIGH (F1)
+    difficulty: str  # LOW | MED | HIGH (F1; AA2′)
     capability: list[str] = field(default_factory=list)  # one entry per independent angle/agent needed
     role: str = "MAIN"
     probe: ArtifactRef | None = None  # C·1's cheap-means probe target
@@ -38,6 +40,7 @@ class TaskInput:
     resolved_by: str | None = None  # C·1 answered the task by this means
     known_facts: list[tuple[str, str, str, str]] = field(default_factory=list)
     governance_gated: str = "none"  # registry row id, only when stop_criterion IS a decision on an owner-gated row
+    actors: dict[str, str] = field(default_factory=dict)  # C·3: drafted action -> agent-id | MAIN | none (Z3′)
     time_box: str = "one drafting pass"
     tools_required: list[str] = field(default_factory=list)
     standing_clauses: str = ""
@@ -61,12 +64,8 @@ class GateExit:
 
 def decision_tree(difficulty: str, capability: Iterable[str]) -> int:
     """F1: MAIN only / +1 / +2 / +3 — one agent per independent angle or
-    capability MAIN lacks; a LOW task with none needed is MAIN only.
-    (May exceed 3 here; C·4 splits, never raises the cap.)"""
-    needs = list(capability)
-    if difficulty == "LOW" and not needs:
-        return 0
-    return len(needs)
+    capability MAIN lacks. (May exceed 3 here; C·4 splits, never raises the cap.)"""
+    return len(list(capability))
 
 
 def gate(ctx: Ctx, task: TaskInput, journal: Journal, registry: list[Row] = REGISTRY) -> GateExit:
@@ -118,6 +117,10 @@ def gate(ctx: Ctx, task: TaskInput, journal: Journal, registry: list[Row] = REGI
         pass  # D·5's override stands (Case 2)
     else:
         ctx.execution_status = "dispatched" if count >= 1 else "main_executes"
+    # C·3: "set ctx.actor for each drafted action ...; increment ctx.dispatch_count
+    # once per category-(a) agent this plan dispatches"
+    ctx.actor.update(task.actors)
+    ctx.dispatch_count += count
     # C·5
     fired.append("C·5")
     ctx.stop_criterion = task.stop_criterion
@@ -162,7 +165,7 @@ class GuardExit:
     backup: str = "none"
     fallback: str | None = None
     permissions: str | None = None
-    ref: str = ""
+    refs: list[str] = field(default_factory=list)
     lookup: Lookup | None = None
     steps_fired: list[str] = field(default_factory=list)
 
@@ -171,21 +174,24 @@ class GuardExit:
         return f"owner({self.owner})" if self.gate == "owner" else self.gate
 
 
-def _ref_key(refs: Iterable[ArtifactRef]) -> str:
-    return "+".join(r.path for r in refs if r.mode != "read")
+def _ref_paths(refs: Iterable[ArtifactRef]) -> list[str]:
+    return [r.path for r in refs if r.mode != "read"]
 
 
 def guard(ctx: Ctx, action: ActionInput, journal: Journal, registry: list[Row] = REGISTRY) -> GuardExit:
     fired = ["D·1", "D·2"]
     # D·1 refs
     ctx.artifact_refs = list(action.refs)
+    # §2 actor: "or D at execution_status=main_executes"
+    if ctx.execution_status == "main_executes":
+        ctx.actor.setdefault(action.name, "MAIN")
     # D·2 registry — runs on every action, no exit before it
     hit = reg.lookup(action.refs, registry)
     ctx.hub = list(hit.hubs)
     ctx.stakes = hit.stakes
     ctx.write_boundary = list(hit.hubs)
-    ref_key = _ref_key(action.refs)
-    journal.consumer_check(ref_key, hit.consumer_answer, action.consumer_reasoning)
+    paths = _ref_paths(action.refs)
+    journal.consumer_check(paths, hit.consumer_answer, action.consumer_reasoning)
     # D·3 reversibility — shape of the fallback only, never whether the action gates
     fired.append("D·3")
     if action.irreversible_clause in ("a", "b"):
@@ -198,7 +204,7 @@ def guard(ctx: Ctx, action: ActionInput, journal: Journal, registry: list[Row] =
     if hit.stakes == 1:
         line = f"Guard: {action.name} stakes=1, no hub."
         journal.exit("D", fired, "NO_GATE", line, ctx.keys_set())
-        return GuardExit("NO_GATE", line, action.name, 1, list(hit.hubs), rev, "none", ref=ref_key, lookup=hit,
+        return GuardExit("NO_GATE", line, action.name, 1, list(hit.hubs), rev, "none", refs=paths, lookup=hit,
                          steps_fired=fired)
     # D·4 fallback/tripwire — one tripwire per hub element
     fired.append("D·4")
@@ -220,104 +226,138 @@ def guard(ctx: Ctx, action: ActionInput, journal: Journal, registry: list[Row] =
     line = f"Guard: {action.name} stakes={hit.stakes}, hub={','.join(hit.hubs) if hit.hubs else '[]'}, gate={label}."
     journal.exit("D", fired, "GATED", line, ctx.keys_set())
     return GuardExit("GATED", line, action.name, hit.stakes, list(hit.hubs), rev, hit.gate, hit.owner,
-                     dict(ctx.tripwire), backup, action.fallback, action.permissions, ref_key, hit, fired)
+                     dict(ctx.tripwire), backup, action.fallback, action.permissions, paths, hit, fired)
 
 
 # ---------------------------------------------------------------------------
 # B — Corroborate(claims, stakes)
 # ---------------------------------------------------------------------------
 
-REMEDY_TEXT = {
-    "add-claim-specific-check": "add a claim-specific check for {claim}",
-    "add-differently-framed-source": "add a differently-framed source for {claim}",
-    "gate-checkpoint": "disclose at the checkpoint gate: {claim}",
-    "gate-owner": "disclose at the owner gate: {claim}",
-}
+
+def remedy_text(remedy: str, claim_id: str, detail: str | None = None) -> str:
+    """The RETURN_TO_PLANNER / disclosure text a remedy carries (V3.5 §10's forms)."""
+    if remedy == "add-claim-specific-check":
+        return (f"add a claim-specific check with mechanism {detail} for {claim_id}" if detail
+                else f"add a claim-specific check for {claim_id}")
+    if remedy == "add-differently-framed-source":
+        return (f"add source with framing {detail} for {claim_id}" if detail
+                else f"add a differently-framed source for {claim_id}")
+    if remedy == "gate-checkpoint":
+        return f"disclose at the checkpoint gate: {claim_id}"
+    return f"disclose at the owner gate: {claim_id}"
 
 
 @dataclass(frozen=True)
 class Claim:
     claim_id: str
     kind: str  # executable | judgment (§2 X3 test — an [LLM] classification, passed in)
+    action: str | None = None  # the action this claim is about; actor(X) = ctx.actor[action]
     has_command: bool = True  # B·4: a claim lacking a cited command is dropped (UNVERIFIED)
+    remedy_mechanism: str | None = None  # [LLM]: the mechanism an add-claim-specific-check remedy names
     n_required: int | None = None  # filled by corroborate()
     stakes: int | None = None  # the action's own stakes (D·2), filled by corroborate()
+    actor: str | None = None  # agent-id | MAIN | none, filled by corroborate() from ctx.actor
 
 
 @dataclass
 class CapState:
-    """CAP=3 bounds category-(a) dispatched-agent fan-out cumulatively across the plan."""
+    """cap_state = (ctx.dispatch_count, CAP=3) — §2 Z1′; a slot remains iff dispatch_count < 3."""
 
-    dispatched_so_far: int = 0
+    dispatch_count: int = 0
     cap: int = CAP
 
     @property
-    def room(self) -> int:
-        return max(0, self.cap - self.dispatched_so_far)
+    def slot_remains(self) -> bool:
+        return self.dispatch_count < self.cap
 
 
-def _qualifying_check(ev: dict) -> bool:
-    """D9′ item 5: a recorded pre-fix FAIL, or a constructed case with a stated expected value."""
-    return ev.get("pre_fix_result") == "FAIL" or ev.get("expected") not in (None, "")
+def _a_events(claim: Claim, events: list[dict]) -> list[dict]:
+    recorded = [e for e in events if e.get("event") == "claim_recorded" and e.get("claim_id") == claim.claim_id]
+    # B·1 (a): "each claim_recorded event on X whose author ≠ actor(X) — vacuously
+    # true for every author when actor(X)=none (Z3′)"
+    if claim.actor == "none":
+        return list(recorded)
+    return [e for e in recorded if e["author"] != claim.actor]
+
+
+def unused_framing(claim: Claim, events: list[dict], framings: list[str]) -> str | None:
+    """B·2's framing enumeration for this task, minus every framing already used
+    on X by a counted (a) source — the first unused entry, or None."""
+    used = {e.get("framing") for e in _a_events(claim, events)}
+    for f in framings:
+        if f not in used:
+            return f
+    return None
 
 
 def count_sources(claim: Claim, events: list[dict], cap_state: CapState, framings: list[str]) -> tuple[int, str | None]:
-    """§4 B·1 as written in V3_3_SPEC — the single owner of the source-counting rule.
+    """V3_5_SPEC §4 B·1 — the complete source-counting rule, as a pure function.
 
-    (a) one source per distinct non-MAIN author whose `claim_recorded` framing
-        differs from every other (a) source already counted on this claim;
-    (b) MAIN's own `claim_recorded` on this claim, only with
-        evidence_type∈{command,file:line} and a non-empty evidence_ref, and —
-        judgment claims only — a framing distinct from every (a) framing;
-    (c) executable claims only: an executed check (`check_executed` with a
-        pre-fix FAIL or a stated expected value); repeats of the same command
-        count once (DECISIONS.md #6).
-    Then new category-(a) dispatches for the shortfall, bounded by CAP room and
-    by the distinct framings B·2 can assign. Remedy by kind (X1′).
-
+    Reads already-classified events: classification (§7, Z2′) happens at
+    journal-write time (`journal.classify_event`, called by `ingest_return`),
+    never here — the reviewer's AA4 reading.
     Returns (n_available, remedy); remedy is None when not capped.
-    NOTE: the actor/producer self-exclusion (V3.4, Y2) is deliberately absent —
-    this implements V3.3 literally.
     """
-    if claim.n_required is None:
-        raise ValueError("claim.n_required must be set before counting")
-    recs = [e for e in events if e.get("event") == "claim_recorded" and e.get("claim_id") == claim.claim_id]
-    a_framings: list[str | None] = []
-    for e in recs:
-        if e["author"] == "MAIN":
-            continue
-        if e.get("framing") in a_framings:
-            continue
-        a_framings.append(e.get("framing"))
-    a = len(a_framings)
-    b = 0
-    for e in recs:
-        if e["author"] != "MAIN":
-            continue
-        if e.get("evidence_type") not in ("command", "file:line") or not e.get("evidence_ref"):
-            continue
-        if claim.kind == "judgment" and e.get("framing") in a_framings:
-            continue
-        b = 1
-        break
-    c = 0
+    if claim.n_required is None or claim.actor is None:
+        raise ValueError("claim.n_required and claim.actor must be set before counting")
+    X = claim.claim_id
+    # B·1: "if n_required(X)=1: exit trivially, SINGLE_SOURCE"
+    if claim.n_required == 1:
+        return 1, None
+    recorded = [e for e in events if e.get("event") == "claim_recorded" and e.get("claim_id") == X]
+    # B·1: "check_executed{claim_id=X, falsifies=X}"
+    executed = [e for e in events if e.get("event") == "check_executed" and e.get("claim_id") == X
+                and e.get("falsifies") == X]
+
+    # (a) "each claim_recorded event on X whose author ≠ actor(X) ... counted once
+    #     per distinct framing among these"
+    a_events = _a_events(claim, events)
+    n_a = len({e.get("framing") for e in a_events})
+
+    # (b) "MAIN's own claim_recorded event on X, counted only when actor(X) ≠ MAIN and
+    #     it carries evidence_type ∈ {command, file:line} with a non-empty evidence_ref
+    #     — at most once per claim" (Z6′)
+    n_b = 0
+    if claim.actor != "MAIN":
+        main_events = [e for e in recorded if e["author"] == "MAIN"
+                       and e.get("evidence_type") in ("command", "file:line") and e.get("evidence_ref")]
+        if main_events:
+            n_b = 1
+
+    # (c) "only when kind(X) = executable, each check_executed{claim_id=X, falsifies=X}
+    #     event, counted once per distinct mechanism ... regardless of who ran it — but
+    #     two check_executed events on X whose command strings are identical count once
+    #     regardless of their mechanism labels" (Z5′ item 2). Identical-command dedup
+    #     runs first, then distinct-mechanism (the reviewer's AA5 ordering).
+    #     AA3′: a D·4 tripwire recorded as check_executed{falsifies=X} is counted here
+    #     like any other — one event, two roles.
+    n_c = 0
     if claim.kind == "executable":
-        cmds = {e["command"] for e in events
-                if e.get("event") == "check_executed" and e.get("claim_id") == claim.claim_id and _qualifying_check(e)}
-        c = len(cmds)
-    existing = a + b + c
-    shortfall = max(0, claim.n_required - existing)
-    new_framings = [f for f in framings if f not in a_framings]
-    new = min(shortfall, cap_state.room, len(new_framings))
-    n_available = existing + new
+        seen_commands: set[str] = set()
+        deduped: list[dict] = []
+        for e in executed:
+            if e["command"] in seen_commands:
+                continue
+            seen_commands.add(e["command"])
+            deduped.append(e)
+        n_c = len({e["mechanism"] for e in deduped})
+    # "a judgment claim's originating evidence can never pass that test ... the
+    # self-exclusion": a judgment claim gets nothing from (c), and its actor's own
+    # claim_recorded already failed (a) and (b) above.
+
+    n_available = n_a + n_b + n_c
     if n_available >= claim.n_required:
         return n_available, None
+    # "kind=executable ⇒ remedy=add-claim-specific-check"
     if claim.kind == "executable":
         return n_available, "add-claim-specific-check"
-    if cap_state.dispatched_so_far + new < cap_state.cap:
+    # "kind=judgment ⇒ remedy=add-differently-framed-source only if cap_state's
+    #  dispatch_count < 3 (a slot remains) and B·2's framing enumeration for this
+    #  task names a framing not yet used on X"
+    if cap_state.slot_remains and unused_framing(claim, events, framings) is not None:
         return n_available, "add-differently-framed-source"
-    tier = claim.n_required
-    return n_available, ("gate-owner" if tier == 3 else "gate-checkpoint")
+    # "otherwise remedy=gate-checkpoint (stakes≤2) or remedy=gate-owner (stakes=3)"
+    return n_available, ("gate-owner" if claim.n_required == 3 else "gate-checkpoint")
 
 
 @dataclass
@@ -327,7 +367,6 @@ class ClaimResult:
     n_available: int
     n_required: int
     remedy: str | None = None
-    new_dispatches: list[str] = field(default_factory=list)  # agent ids dispatched by B·3
     capped: CappedClaim | None = None
 
     @property
@@ -364,48 +403,43 @@ def n_required_for(ctx: Ctx, registry: list[Row] = REGISTRY) -> int:
     return stakes
 
 
-def corroborate(ctx: Ctx, claims: list[Claim], journal: Journal, cap_state: CapState,
+def corroborate(ctx: Ctx, claims: list[Claim], journal: Journal, action: str,
                 framings: dict[str, list[str]] | None = None, reconciliation: str | None = "agree",
-                dominance: str | None = None, registry: list[Row] = REGISTRY,
-                output_dir: str = "/corroboration") -> CorroborateExit:
+                dominance: str | None = None, registry: list[Row] = REGISTRY) -> CorroborateExit:
+    """B. `action` names the action the claims are about; actor(X) = ctx.actor[action]."""
     framings = framings or {}
     events = journal.read()
     fired = ["B·1"]
     results: list[ClaimResult] = []
     n_req = n_required_for(ctx, registry)
+    if action not in ctx.actor:
+        raise ValueError(f"ctx.actor has no entry for action {action!r} (set at C·3/C·4 or by D)")
+    cap_state = CapState(ctx.dispatch_count)
     for c in claims:
-        c = replace(c, n_required=n_req, stakes=ctx.stakes or 1)
+        c = replace(c, n_required=n_req, stakes=ctx.stakes or 1, actor=ctx.actor[action], action=c.action or action)
         ctx.claim_kind[c.claim_id] = c.kind
         if n_req == 1:
             ctx.n_sources[c.claim_id] = 1
             results.append(ClaimResult(c, "SINGLE_SOURCE", 1, 1))
             continue
         fr = list(framings.get(c.claim_id, []))
+        if fr and "B·2" not in fired:
+            fired.append("B·2")
         n_avail, remedy = count_sources(c, events, cap_state, fr)
-        n_existing, _ = count_sources(c, events, CapState(cap_state.cap, cap_state.cap), [])
-        new = n_avail - n_existing
-        # B·2 framings (given) + B·3 dispatch in parallel, each to its own file
-        agent_ids: list[str] = []
-        if new:
-            fired.extend(s for s in ("B·2", "B·3") if s not in fired)
-            used = {e.get("framing") for e in events
-                    if e.get("event") == "claim_recorded" and e.get("claim_id") == c.claim_id and e["author"] != "MAIN"}
-            for i, f in enumerate([f for f in fr if f not in used][:new], start=1):
-                aid = f"{c.claim_id}-corroborator-{cap_state.dispatched_so_far + 1}"
-                journal.dispatch(aid, "researcher", f, ["INTENT", "STOP", "FRAMING", "OUTPUT"], f"{output_dir}/{aid}.md")
-                agent_ids.append(aid)
-                cap_state.dispatched_so_far += 1
-                ctx.framing = f
-            ctx.siblings = [f"{output_dir}/{a}.md" for a in agent_ids]
         ctx.n_sources[c.claim_id] = n_avail
         capped = None
         if remedy is not None:
-            capped = CappedClaim(c.claim_id, c.kind, n_req, n_req, n_avail, remedy)
+            detail = None
+            if remedy == "add-differently-framed-source":
+                detail = unused_framing(c, events, fr)
+            elif remedy == "add-claim-specific-check":
+                detail = c.remedy_mechanism
+            capped = CappedClaim(c.claim_id, c.kind, n_req, n_req, n_avail, remedy, detail)
             ctx.corroboration_capped = [x for x in ctx.corroboration_capped if x.claim_id != c.claim_id] + [capped]
             if remedy in ("gate-checkpoint", "gate-owner"):
                 who = f"owner({_owner_for(ctx, registry)})" if remedy == "gate-owner" else "human(checkpoint)"
                 ctx.gate_reason.append(GateReason(who, "corroboration-capped", c.claim_id))
-        results.append(ClaimResult(c, "CAPPED" if capped else "SOURCES", n_avail, n_req, remedy, agent_ids, capped))
+        results.append(ClaimResult(c, "CAPPED" if capped else "SOURCES", n_avail, n_req, remedy, capped))
     # B·4 drop UNVERIFIED
     fired.append("B·4")
     for r in results:
@@ -434,6 +468,17 @@ def corroborate(ctx: Ctx, claims: list[Claim], journal: Journal, cap_state: CapS
         exit_type = "UNVERIFIED"
     journal.exit("B", fired, exit_type, line, ctx.keys_set())
     return CorroborateExit(exit_type, line, results, reconciliation, dominance, fired)
+
+
+def dispatch_source(ctx: Ctx, journal: Journal, agent_id: str, framing: str, role: str = "researcher",
+                    output_dir: str = "/corroboration") -> dict:
+    """B·3 for a RETURN_TO_PLANNER-triggered category-(a) dispatch: its own file,
+    and `ctx.dispatch_count` incremented (B·1's last sentence)."""
+    ev = journal.dispatch(agent_id, role, framing, ["INTENT", "STOP", "FRAMING", "OUTPUT"], f"{output_dir}/{agent_id}.md")
+    ctx.dispatch_count += 1
+    ctx.framing = framing
+    ctx.siblings = ctx.siblings + [f"{output_dir}/{agent_id}.md"]
+    return ev
 
 
 def _owner_for(ctx: Ctx, registry: list[Row]) -> str:
@@ -525,7 +570,6 @@ def filter_candidates(ctx: Ctx, candidates: list[Candidate], decisions: FilterDe
             terminal.append((c.name, owner))
             if not any(g.reason == "governance-gated" for g in ctx.gate_reason):
                 ctx.gate_reason.append(GateReason(f"owner({owner})", "governance-gated"))
-    # corroboration_capped entries (with remedy) carry forward on ctx for A to read — nothing to do here
     # E·6 size bound
     fired.append("E·6")
     trims = [(c.name, c.payload_size, c.size_limit) for c in surviving if c.size_limit and c.payload_size > c.size_limit]
@@ -549,13 +593,13 @@ class PlanEntry:
     """One KEEP/MERGED entry with its D/B annotations attached."""
 
     name: str
-    ref: str = ""
+    ref: list[str] = field(default_factory=list)  # the action's invoke/mutate paths (consumer_check.ref)
     stakes: int = 1
     hub: list[str] = field(default_factory=list)
     tripwires: dict[str, str] = field(default_factory=dict)
     claims: list[Claim] = field(default_factory=list)
     capped: list[CappedClaim] = field(default_factory=list)
-    dispatched_total: int = 0  # the plan's category-(a) dispatched agents, structurally
+    dispatched_total: int = 0  # ctx.dispatch_count at plan time (the plan's category-(a) agents, structurally)
     has_failable_check: bool = True  # A·2 ([LLM])
     metrics_named: bool = True  # A·3 ([LLM])
 
@@ -564,7 +608,7 @@ class PlanEntry:
                     has_failable_check: bool = True, metrics_named: bool = True) -> "PlanEntry":
         claims = [replace(r.claim) for r in b.results] if b else []
         capped = [r.capped for r in b.results if r.capped] if b else []
-        return cls(name, g.ref if g else "", g.stakes if g else 1, list(g.hub) if g else [],
+        return cls(name, list(g.refs) if g else [], g.stakes if g else 1, list(g.hub) if g else [],
                    dict(g.tripwire) if g else {}, claims, capped, dispatched_total, has_failable_check, metrics_named)
 
 
@@ -609,7 +653,6 @@ def prove(ctx: Ctx, plan: Plan, journal: Journal, registry: list[Row] = REGISTRY
             findings.append(f"action {e.name} names a metric without its true quantity")
     # compose the exit line (with disclosure) before the lints, which read it
     all_capped = [c for e in plan.entries for c in e.capped]
-    gate_part = plan.gate
     if plan.governance_gated != "none":
         owner = reg.row_by_id(plan.governance_gated, registry).owner or "ej"
         gate_part = f"terminal gate=owner({owner}) [governance-gated]"
