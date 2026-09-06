@@ -1,5 +1,5 @@
 """§12's self-lint scorecard — the nine lints run against the spec's own
-content: V3_5_SPEC.md's §10 (copied to tests/fixtures/) for the trace-borne
+content: V3_6_SPEC.md's §10 (copied to tests/fixtures/) for the trace-borne
 lints, V3_3_SPEC.md's §6 table (V3.5 carries it by reference, unchanged)
 for the return-contract lint, and this package's data rows for §5.
 """
@@ -16,7 +16,7 @@ from ancient_games.journal import Journal
 from ancient_games.schema import FIELDS, RETURN_CONTRACT
 from ancient_games.stages import Plan, PlanEntry
 
-SPEC = (Path(__file__).parent / "fixtures" / "V3_5_SPEC.md").read_text()
+SPEC = (Path(__file__).parent / "fixtures" / "V3_6_SPEC.md").read_text()
 SPEC_V33 = (Path(__file__).parent / "fixtures" / "V3_3_SPEC.md").read_text()  # carries the §6 table V3.5 references
 
 
@@ -43,7 +43,7 @@ def _table_rows(text: str, first_col: str) -> list[dict[str, str]]:
 
 
 def test_return_field_without_escape_value_passes_on_spec_section_6():
-    assert "Unchanged from `V3_4_SPEC.md` §6 (12 rows" in _section(r"6\. Return contract")
+    assert "Unchanged from `V3_5_SPEC.md` §6" in _section(r"6\. Return contract")
     rows = _table_rows(_section(r"6\. Return contract", SPEC_V33), "field")
     assert len(rows) == 12  # 12 rows, 12 filled cells
     assert lints.lint_return_field_without_escape_value(rows) == []
