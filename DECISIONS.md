@@ -1,0 +1,20 @@
+# Decisions — choices V3_3_SPEC.md left open, one line each
+
+1. `ctx` gains `difficulty` and `capability`: C·2 states them and C·3's F1 tree / C's exit line consume them, but §2 has no row for either; added with set-by/consumed-by in `CTX_META` so `validate()` still holds.
+2. F1 decision tree (`stages.decision_tree`): agent count = number of independent angles/capabilities MAIN lacks (`len(capability)`); 0 when none; C·4 splits above 3 into `ceil(n/3)` groups.
+3. Registry per-instance declarations live on `ArtifactRef` (`consumers`, `external_state`): the registry never infers a downstream consumer (D6), so D·2's mandatory consumer question is answered from the action's own declaration; R9 matches iff `external_state` is declared and its hub element is that name.
+4. Specificity rank for same-ref suppression: action (R9/verb) > file/callable > dir, then longest prefix among dir rows.
+5. §6 "when X was present" means *present in the generated payload*; at `count=0` no payload exists, and only MAIN's own SCOPE (`scope_items`) and VERIFY (`verify_cmds`) count as present (V3_1_SPEC §6's five MAIN-at-count=0 fields).
+6. Category (c) counts distinct `command` values among qualifying `check_executed` events on a claim (T1's tripwire run ×3 is one source, as §10 states), not one per event.
+7. The stakes tier that picks `gate-checkpoint` vs `gate-owner` is the claim's `n_required` (= max(action stakes, governance row stakes)), not the bare action stakes.
+8. A case's journal holds a `claim_recorded`/`check_executed` event iff §10's text names that author as producing/recording that claim or running that check (Case 1's actor "is the claim's own producer" → event exists; Case 3's engine agent is never said to record the correctness claim → none).
+9. T1's per-claim assertions and Case (ii) pass under V3.3 as written (and Case (ii) under Y2′ too), so a strict xfail would XPASS and fail the suite; they are real passes tagged `@pytest.mark.pending_v34` instead of `xfail(strict=True)`. Case 1 and the two Y4 replays genuinely fail and are strict xfails as dispatched.
+10. `consumer_check.ref` for a multi-path action is the `+`-joined mutated paths, matching T2's own worked record (`research/stability.py+tests/test_research_importable.py`) rather than one event per path (review Y3).
+11. Exit lines follow §4's templates where §10's worked lines embellish them: Filter renders `Filter: kept=<k>, merged=<m>, cut=<c>, follow_on=<f>[, governance-gated=<n>(terminal)].`; Prove's FAIL line uses A's own example form `Prove: FAIL, N=<n> finding(s) (<findings>), returned to planner.`; Prove's PASS disclosure uses §10's `[corroboration-capped: <claim>[, delivered=0], remedy=<r>]` because the lint requires the claim to be named.
+12. Guard's exit line (no template in §4) follows §10: `Guard: <action> stakes=1, no hub.` / `Guard: <action> stakes=<s>, hub=<h1,h2|[]>, gate=<checkpoint|owner(name)>.`
+13. `corroborate` takes a `CapState` (the plan's category-(a) dispatched count) as an explicit running counter rather than a ctx property; `count_sources` is called a second time with zero room to derive how many new dispatches it planned, so the rule lives in one place.
+14. Reversibility's `[LLM]` half arrives as `irreversible_clause ∈ {a, b, None}` and `backup_exists`; the spine only maps them to the three-valued enum.
+15. Journal validation rejects missing fields, wrong types, undeclared fields, and out-of-enum values all as `ValueError`; `ts`/`run_id` are filled by the writer when absent.
+16. Self-lint: `follow-on-without-disposition` is asserted PASS only over the dispositions V3_3_SPEC.md itself names; T1_trace.md's "EJ decision" tag fails the lint as written (review Y5) and is tested as a FAIL input in `test_lints.py`.
+17. Tooling: `python3 -m pytest` (pytest 9.0.2 already importable under Python 3.12.3); no venv needed.
+18. Authoring deviation from the generic harness reminder ("do your work through Bash"): source files were written with the Write tool for multi-hundred-line Python; edits and all verification ran through Bash.
