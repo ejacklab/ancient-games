@@ -29,9 +29,9 @@ sequence keeps its v1.3 shape with only the mechanical wording swaps these five 
 A main agent (an LLM) drives a loop: observe, choose a tool, have the loop pre-check three invariants
 (I1, I4, I5) before executing, execute, journal, repeat until `done` — itself a real, executed tool —
 reports success. The registry is populated once at run start from a directory of tool modules, each a
-plain function plus a `MANIFEST` dict (R1). **17 tools now share one entrypoint shape** (§2) — one
-fewer than v1.3's stated 18: `dispatch_failed` is a journal event, not a tool, and was never truly a
-registrable eighteenth (L3, §3) — this is the single biggest structural change in v1.3 and remains so
+plain function plus a `MANIFEST` dict (R1). **18 tools now share one entrypoint shape** (§2) — the §3
+table's 19 rows minus `dispatch_failed`, which is a journal event, not a tool (L3, §3; v1.1 corrects the
+v1.4 count of "17" to match the code, `ancient_games/hybrid/tools/`) — this is the single biggest structural change in v1.3 and remains so
 in v1.4: there is no longer a positional-argument calling convention for `ctx`/`journal` to collide with
 `call.args` inside. Five stage functions become five tools, wrapped not rewritten (R7); most of the
 rest wrap one existing function directly; `commit`, `run_suite`, `localize`, `rebuild_index` are
@@ -90,7 +90,7 @@ f"internal-error: {e}")`.
 2. **I3′'s static half, universal, not tool-specific.** At discovery, the loader calls
    `inspect.signature` on **every** bound `entrypoint` and requires it to equal exactly `(env, args)` —
    no `*args`/`**kwargs`, no defaults. A manifest whose entrypoint doesn't match this never registers,
-   for any of the 17 tools, not just `prove`/`done`. I3′'s own remaining content: the loop passes a
+   for any of the 18 tools, not just `prove`/`done`. I3′'s own remaining content: the loop passes a
    `Ctx` with four fields nulled (above, L1) as `env.ctx` for `prove`/`done` specifically (§4).
 3. **JSON→dataclass hydration, now with a stated algorithm (closes L2 — the naive `cls(**d)` reading
    never worked; this is the actual recursion):**
@@ -208,9 +208,14 @@ def run(env, args):
 
 ## 3. The tool set
 
-**17 tools** (closes L3 — `dispatch_failed` was never an eighteenth; it is a journal event, written by
-the orchestrator, exactly like `approval_recorded`; neither is registered, neither has a `MANIFEST`,
-neither can be `choose_llm`'s selection). Every `fn` is `(env, args) -> ToolResult`.
+**18 tools** (v1.1: the count as implemented — `dispatch_failed` is not one of them, L3; it is a journal
+event, written by the orchestrator, exactly like `approval_recorded`; neither is registered, neither has
+a `MANIFEST`, neither can be `choose_llm`'s selection). Every `fn` is `(env, args) -> ToolResult`. Each
+tool is one module `ancient_games/hybrid/tools/<name>.py` with `MANIFEST` + `run`: `gate`, `guard`,
+`corroborate`, `filter_candidates`, `prove`, `dispatch`, `ingest_return`, `record_claim`, `record_check`,
+`lookup_registry`, `run_lint`, `render_trace`, `read_journal`, `commit`, `run_suite`, `localize`,
+`rebuild_index`, `done` (18); shared plumbing lives in `_shared.py` (action_id, git, journal windows,
+`tool_call_event`) and `_plan.py` (journal → `Plan` reconstruction for `prove`/`run_lint`).
 
 | tool | wraps (file:line) or NEW | `side_effects` | `cost` | `participates_in` | read by |
 |---|---|---|---|---|---|
@@ -268,7 +273,9 @@ executes. I2 lives inside `done`'s own body; I3 is fully static. Unchanged from 
 ```
 I1′  scope match at commit — reads real data (unchanged formula from v1.3, K2):
      checked only when tool == "commit"
-     changed  = git diff --name-only HEAD
+     changed  = git diff --name-only HEAD  ∪  git ls-files --others --exclude-standard
+                # v1.1 (D-A): untracked files not ignored by .gitignore are in `changed` too — a brand-new
+                # file needs its own guard exactly like a modified one (Adversarial D, §8)
      last_commit_ts = ts of the most recent tool_call(tool="commit", refused_by=None) event this run,
                        or None if this is the first commit
      covered  = ∪ { path for path in g.args["refs-paths"] : g ∈ events, g.tool=="guard",
@@ -276,7 +283,7 @@ I1′  scope match at commit — reads real data (unchanged formula from v1.3, K
      uncovered = changed − covered
      pass iff uncovered == ∅; else refuse(I1, reason="unguarded changed files", files=uncovered)
      I1′ coverage matching is EXACT PATH (new, closes M3 — MAIN's sentence, verbatim): a guard's
-     `refs-paths` are concrete file paths and match `git diff --name-only HEAD` entries by string
+     `refs-paths` are concrete file paths and match `changed` entries (tracked diff ∪ untracked) by string
      equality; directory patterns are the registry's business inside `guard` (`registry.py`'s own
      `_matches_key` dir-kind prefix logic), never coverage's — I1′ never calls `registry.lookup` at all.
      → still: every commit-ending UC needs its own dedicated guard(..., verb="commit") call, and I1′'s
@@ -286,11 +293,10 @@ I2   done's own two clauses (unchanged from v1.3, executed inside `done`'s adapt
      `check_invariants`):
      (a) freshness: the latest non-refused `prove` PASS postdates every non-refused `mutate`-side-effect
          tool_call — `commit` is categorically never in this set (side_effects=="commit", not "mutate")
-     (b) clean tree: `git diff --name-only HEAD` must be empty; non-empty ⇒ decline with
-         reason="uncommitted-changes", naming the files
+     (b) clean tree: `changed` (I1′'s own set — tracked diff ∪ untracked not-ignored files, v1.1 D-A)
+         must be empty; non-empty ⇒ decline with reason="uncommitted-changes", naming the files
      → (a) alone can only ever be tripped by `rebuild_index` — the sole `side_effects=="mutate"` tool
-       among 17 (v1.4: one fewer than v1.3's count, since `dispatch_failed` is no longer counted as a
-       tool at all, L3) — since every real native file edit is off-registry (D6); (b) is what actually
+       among 18 (`dispatch_failed` is not a tool, L3) — since every real native file edit is off-registry (D6); (b) is what actually
        catches an uncommitted native edit
 
 I3   fully static:
@@ -488,7 +494,7 @@ consumer-match blind spot, I3's differently-named-tool gap) unchanged from v1.3.
 |---|---|---|
 | L1 | BLOCKING | **Applied, MAIN's text.** `ctx_view = dataclasses.replace(ctx, n_sources=None, corroboration_capped=None, framing=None, siblings=None)` — a `Ctx`, not a `dict`; `stages.prove`'s `ctx.keys_set()` call now works (§2, §4, §5). Verified (Rule 9): `stages.prove`'s own body never reads `ctx.n_sources`/`corroboration_capped`/`framing`/`siblings` directly at any point — it reads `plan.entries[].claims[].capped`, built from the journal by `prove`'s own adapter (§2's discovery item 3 discussion, unchanged from v1.3) — so nulling these four fields cannot leak a stale value into anything `stages.prove` actually consults. |
 | L2 | BLOCKING | **Applied, MAIN's algorithm.** `hydrate(cls, d)` stated in full in §2 — dataclass fields recurse, `list[dataclass]` fields recurse per element, everything else assigns as-is; unknown keys raise. |
-| L3 | BLOCKING | **Applied, MAIN's ruling.** `dispatch_failed` removed from the tool table — 17 tools, not 18 (§1, §3). `live_dispatches` is computed at every I5′ check from the journal (`count(dispatch, non-refused) − count(ingest_return) − count(dispatch_failed)`), not tracked as loop-local state; the loop's own dead decrement branch is deleted, not patched (§4, §5). |
+| L3 | BLOCKING | **Applied, MAIN's ruling.** `dispatch_failed` removed from the tool table — 18 tools remain (§1, §3; v1.4 miscounted 17, corrected in v1.1). `live_dispatches` is computed at every I5′ check from the journal (`count(dispatch, non-refused) − count(ingest_return) − count(dispatch_failed)`), not tracked as loop-local state; the loop's own dead decrement branch is deleted, not patched (§4, §5). |
 | M3 | SHOULD-FIX | **Applied, MAIN's sentence, verbatim, inserted immediately after I1′'s `uncovered = changed − covered` line (§4).** |
 | `dispatch.agent_id` | SHOULD-FIX (item 9) | **Applied, MAIN's formula.** `f"{role}-{framing}-{uuid4().hex[:8]}"`, stated in §2 and §3. |
 

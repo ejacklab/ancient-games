@@ -1,0 +1,33 @@
+{
+  "case_id": "ADV-D-untracked-file",
+  "task": "I1' covers untracked files (v1.1 D-A): a brand-new file with no guard refuses the commit naming it; a guard covering it passes",
+  "mode": "scripted",
+  "ceiling": 20,
+  "fixture": {"files": {"a.py": "x = 1\n", ".gitignore": "*.log\n"}},
+  "native_edits": [{"after_step": 0, "path": "research/new_module.py", "content": "NEW = True\n"},
+                   {"after_step": 0, "path": "scratch.log", "content": "ignored by .gitignore\n"}],
+  "tool_calls": [
+    {"tool": "gate", "args": {"name": "add a new module", "stop_criterion": "landed", "difficulty": "LOW"}},
+    {"tool": "guard", "args": {"action": {"name": "commit-to-master", "refs": [{"path": "master", "mode": "mutate", "verb": "commit"}],
+      "tripwires": {"default-branch-history": "git diff --stat"}}}},
+    {"tool": "commit", "args": {"message": "add research/new_module.py"}},
+    {"tool": "guard", "args": {"action": {"name": "add-new-module", "refs": [{"path": "research/new_module.py", "mode": "mutate"}]}}},
+    {"tool": "commit", "args": {"message": "add research/new_module.py"}}
+  ],
+  "injected_events": [
+    {"after_step": 1, "event": {"event": "approval_recorded", "action_id": "commit:['master']",
+      "gate": "checkpoint", "approver": "ej", "note": "checkpoint cleared"}}
+  ],
+  "expected_exit_lines": [
+    "Gate: plan needed, N=0, execution_status=main_executes, stop=landed.",
+    "Guard: commit-to-master stakes=2, hub=default-branch-history, gate=checkpoint.",
+    "Guard: add-new-module stakes=1, no hub."
+  ],
+  "expected_invariant_events": [
+    {"invariant": "I1", "tool": "commit", "refused": true},
+    {"invariant": "I1", "tool": "commit", "refused": false},
+    {"invariant": "I4", "tool": "commit", "refused": false}
+  ],
+  "expected_final": {"agents": 0, "live_dispatches_end": 0, "status": "NO_CHOICE",
+    "tool_outcomes": [{"tool": "commit", "ok": true, "reason": null}]}
+}

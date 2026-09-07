@@ -145,7 +145,10 @@ Z1′. B runs once per distinct claim.
    `evidence_type ∈ {command, file:line}` with a non-empty `evidence_ref`
    — **at most once per claim, regardless of how many qualifying
    `MAIN`-authored events exist for it** (Z6′, closes Z6: (b) has no
-   framing-style multiplicity the way (a) does); **(c)**, only when
+   framing-style multiplicity the way (a) does), **and not at all when
+   `MAIN`'s event was already counted under (a) — one author contributes
+   at most one source per claim across (a) and (b) (hybrid v1.1, D-B)**;
+   **(c)**, only when
    `kind(X) = executable`, each `check_executed{claim_id=X, falsifies=X}`
    event, counted once per distinct `mechanism ∈ {interpreter-import,
    pytest-fail-first, suite-count, git-diff-scope, hash-compare,

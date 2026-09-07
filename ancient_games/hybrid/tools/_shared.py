@@ -133,6 +133,19 @@ def diff_name_only_head(cwd: str) -> list[str]:
     return [ln for ln in p.stdout.splitlines() if ln]
 
 
+def untracked_files(cwd: str) -> list[str]:
+    p = git(cwd, "ls-files", "--others", "--exclude-standard")
+    if p.returncode != 0:
+        raise RuntimeError(p.stderr.strip() or "git ls-files failed")
+    return [ln for ln in p.stdout.splitlines() if ln]
+
+
+def changed_files(cwd: str) -> list[str]:
+    """I1′/I2′'s `changed` (v1.1, D-A): `git diff --name-only HEAD` ∪ untracked files not ignored."""
+    seen = diff_name_only_head(cwd)
+    return seen + [f for f in untracked_files(cwd) if f not in seen]
+
+
 def refs_from(dicts: list[dict]) -> list[ArtifactRef]:
     return [hydrate(ArtifactRef, d) for d in dicts]
 

@@ -6,7 +6,7 @@ stderr is the reason on failure."""
 from ancient_games.journal import Journal
 
 from ..types import ToolResult
-from ._shared import (COMMIT_ACTION_ID_ARGS, action_id, approvals_after, diff_name_only_head, git, internal_error,
+from ._shared import (COMMIT_ACTION_ID_ARGS, action_id, approvals_after, changed_files, git, internal_error,
                       last_commit_index)
 
 MANIFEST = {
@@ -21,7 +21,7 @@ def run(env, args):
         aid = action_id(*COMMIT_ACTION_ID_ARGS)
         if not approvals_after(events, "checkpoint", aid, last_commit_index(events)):
             return ToolResult(ok=False, reason="checkpoint-not-cleared")
-        changed = diff_name_only_head(env.cwd)
+        changed = changed_files(env.cwd)
         if changed:
             p = git(env.cwd, "add", "--", *changed)
             if p.returncode != 0:

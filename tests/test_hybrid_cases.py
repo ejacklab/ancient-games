@@ -30,7 +30,7 @@ def _run(case_path: Path, tmp_path: Path, journal_path: str | None = None) -> ru
 
 
 def test_twelve_cases_present():
-    assert IDS == ["ADV_A", "ADV_B", "ADV_C", "UC1", "UC2", "UC3", "UC4", "UC5", "UC6", "UC7", "UC8", "UC9"]
+    assert IDS == ["ADV_A", "ADV_B", "ADV_C", "ADV_D", "UC1", "UC2", "UC3", "UC4", "UC5", "UC6", "UC7", "UC8", "UC9"]
 
 
 @pytest.mark.parametrize("case_path", CASE_FILES, ids=IDS)
@@ -96,6 +96,15 @@ def test_adv_c_refusal_names_the_unguarded_file(tmp_path):
     report = _run(CASES / "ADV_C.json", tmp_path)
     refused = [e for e in report.events if e["event"] == "tool_call" and e["refused_by"]]
     assert [(e["tool"], e["refused_by"], e["reason"]) for e in refused] == [("commit", "I1", "unguarded changed files: ['a.py']")]
+
+
+def test_adv_d_untracked_file_refused_then_covered(tmp_path):
+    """v1.1 D-A: an untracked file is in I1′'s `changed`; an ignored one is not."""
+    report = _run(CASES / "ADV_D.json", tmp_path)
+    refused = [e for e in report.events if e["event"] == "tool_call" and e["refused_by"]]
+    assert [(e["tool"], e["refused_by"], e["reason"]) for e in refused] == [("commit", "I1", "unguarded changed files: ['research/new_module.py']")]
+    assert os.popen(f"git -C {tmp_path / 'repo-ADV_D'} show --stat --format= HEAD").read().count("research/new_module.py") == 1
+    assert os.path.exists(tmp_path / "repo-ADV_D" / "scratch.log")  # still present, never staged
 
 
 def test_ceiling_bounds_the_loop(tmp_path):

@@ -317,8 +317,10 @@ def count_sources(claim: Claim, events: list[dict], cap_state: CapState, framing
     # (b) "MAIN's own claim_recorded event on X, counted only when actor(X) ≠ MAIN and
     #     it carries evidence_type ∈ {command, file:line} with a non-empty evidence_ref
     #     — at most once per claim" (Z6′)
+    #     v1.1 (D-B, one author one source): an author contributes at most ONE source per claim
+    #     across (a)/(b) — MAIN's event already counted under (a) is not counted again here.
     n_b = 0
-    if claim.actor != "MAIN":
+    if claim.actor != "MAIN" and not any(e["author"] == "MAIN" for e in a_events):
         main_events = [e for e in recorded if e["author"] == "MAIN"
                        and e.get("evidence_type") in ("command", "file:line") and e.get("evidence_ref")]
         if main_events:

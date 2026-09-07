@@ -14,7 +14,7 @@ from ancient_games import registry as reg
 from ancient_games.ctx import ArtifactRef
 from ancient_games.registry import CAP, REGISTRY, Row
 
-from .tools._shared import (approvals_after, diff_name_only_head, event_ok, guard_action, guard_action_id,
+from .tools._shared import (approvals_after, changed_files, event_ok, guard_action, guard_action_id,
                             last_commit_index, live_dispatches)
 from .types import Call
 
@@ -42,7 +42,7 @@ def check_invariants(call: Call, ctx, events: list[dict], tools: dict, registry:
         if r:
             out.append(r)
     if call.tool == "commit":
-        changed = diff_name_only_head(cwd)
+        changed = changed_files(cwd)
         out += i4_at_commit(changed, events, registry)
         r = i1(changed, events)
         if r:

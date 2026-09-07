@@ -119,6 +119,24 @@ def test_i1_exact_path_not_prefix(journal, repo):
     assert check(COMMIT, journal, repo) == [Refusal("I1", "unguarded changed files: ['eval/protocol.json']")]
 
 
+def test_i1_untracked_file_is_in_changed_and_ignored_file_is_not(journal, repo):
+    """v1.1 D-A: changed = diff ∪ untracked (respecting .gitignore)."""
+    _write(repo, ".gitignore", "*.log\n")
+    subprocess.run(["git", "add", ".gitignore"], cwd=repo, check=True); subprocess.run(["git", "commit", "-q", "-m", "ignore"], cwd=repo, check=True)
+    _write(repo, "new.py", "n = 1\n")
+    _write(repo, "x.log", "ignored\n")
+    assert shared.changed_files(repo) == ["new.py"]
+    assert check(COMMIT, journal, repo) == [Refusal("I1", "unguarded changed files: ['new.py']")]
+    ok(journal, Call("guard", {"action": {"name": "add-new", "refs": [{"path": "new.py", "mode": "mutate"}]}}))
+    assert check(COMMIT, journal, repo) == []
+
+
+def test_i2_untracked_file_is_uncommitted_changes(journal, repo):
+    ok(journal, Call("prove", {}), exit_type="PASS")
+    _write(repo, "new.py", "n = 1\n")
+    assert done_tool.run(env_for(journal, repo), {}) == ToolResult(False, None, "uncommitted-changes: ['new.py']")
+
+
 # I2 (inside done) ------------------------------------------------------------------
 def test_i2_pass_mutate_prove_commit_done(journal, repo):
     ok(journal, Call("rebuild_index", {}))

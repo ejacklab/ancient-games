@@ -148,8 +148,10 @@ replace(ctx, ...)` (a `Ctx`, L1), the only wording change; no `env.ctx`-stripped
 this walk to begin with in v1.3's own text, so nothing else here changes.
 
 ```
- 1. gate(env, args={difficulty:"LOW", capability:["python-repl","pytest"], stop_criterion:"suite-green"})
+ 1. gate(env, args={difficulty:"LOW", capability:[], tools_required:["python-repl","pytest"], stop_criterion:"suite-green"})
       → ToolResult(ok=True, value=GateExit(PLAN_NEEDED count=0))
+      — v1.1: `capability` is C·3's agent count (`decision_tree` = len(capability)); the tools MAIN
+        needs go in `tools_required`, else N=2 and execution_status=dispatched, not the N=0 shown
  2. run_suite(env, args={"command":"pytest tests/test_research_importable.py -q"})
       → ToolResult(ok=True, value={"passed":N-1,"failed":1,"output":"...ImportError: cannot import name
         '_WF_GRID' from 'research.sweep'..."})
@@ -175,9 +177,15 @@ this walk to begin with in v1.3's own text, so nothing else here changes.
       → ToolResult(ok=True, value={"passed":274,"failed":0,"output":"274 passed"})
 11. record_check(env, args={claim_id:"no-regression", mechanism:"suite-count", expected:274, observed:274})
 12. guard(env, args={"action":{"name":"commit-to-master",
-    "refs":[{"path":"master","mode":"mutate","verb":"commit"}]}})
+    "refs":[{"path":"master","mode":"mutate","verb":"commit"}],
+    "tripwires":{"default-branch-history":"git diff --stat"}}})
       → ToolResult(ok=True, value=GuardExit(GATED stakes=2, checkpoint))
       action_id = action_id("commit", ["master"])
+      — v1.1: the tripwire is required — `prove` rebuilds the plan from every guard, and the
+        hub-touched-without-tripwire lint fails a hub entry with no tripwire named and run
+12b. record_check(env, args={claim_id:"no-regression", mechanism:"git-diff-scope", command:"git diff --stat",
+     expected:"exactly research/stability.py, no other files", observed:"1 file, matches"})
+      — the tripwire run (AA3′: one event, two roles — also no-regression's second (c) source)
 13. corroborate(env, args={"action":"commit-to-master", "claims":[import-succeeds, no-regression]})
       → ToolResult(ok=True, value=CorroborateExit(SOURCES 2/2, 2/2))
 14. prove(env, args={})  — env.ctx = dataclasses.replace(ctx, ...), a Ctx (L1)
@@ -194,7 +202,10 @@ this walk to begin with in v1.3's own text, so nothing else here changes.
       → ToolResult(ok=True, value="DONE")
 ```
 
-**17 steps**, same count as v1.3. Three `run_suite` calls (steps 2, 7, 10), well inside `ceiling`.
+**18 steps** (v1.1: +12b). Three `run_suite` calls (steps 2, 7, 10), well inside `ceiling`. This is
+exactly what `tests/cases/hybrid/UC7.json` executes: a fixture git repo whose `research/stability.py`
+imports `_WF_GRID` from the wrong module, real pytest runs (`(passed=1, failed=1)` → `(2, 0)` → `(2, 0)`),
+real `localize` output, a real commit.
 `live_dispatches` end = 0 trivially (zero dispatches).
 
 ---
@@ -210,6 +221,10 @@ nulled" instead; no outcome, exit line, or `live_dispatches` value changes in an
 - **UC3, UC4, UC5, UC6** each call `filter_candidates` — unrestricted (K3): real `ctx`, real `args`.
 - **UC3, UC4, UC5, UC6, UC7** each call `prove` and `done`, genuinely executed (K8); clause (a) and (b)
   both pass in every one of them, unchanged reasoning from v1.3.
+- **UC5 round 2 (v1.1, D-B):** after the fix, the second reviewer (framing `adversarial-review-2`) and
+  MAIN's own command-backed claim are two distinct framings under (a); (b) no longer counts MAIN a second
+  time (one author, one source). The round-2 line is `Corroborate: spec-accepted: n=2/2; reconciled=agree.`
+  — under v1.0's rule it read `n=3/2`.
 - **UC4's own `SINGLE_SOURCE` line (closing J15) is unaffected** by anything in v1.4 — `corroborate`
   itself has never been in any restricted set at any point across v1.1–v1.4.
 - **UC8 (replay)** — unchanged: `mode="replay"` never calls `run()`/`choose_llm`/`check_invariants`;
@@ -354,6 +369,30 @@ prefix matches.
 
 ---
 
+## Adversarial case D — I1′ over untracked files (v1.1, D-A)
+
+```
+1. gate(env, args={count:0})
+   *(native edit creates research/new_module.py — untracked; and scratch.log — ignored by .gitignore)*
+2. guard(env, args={"action":{"name":"commit-to-master","refs":[{"path":"master","mode":"mutate","verb":"commit"}],
+   "tripwires":{...}}})   → GATED checkpoint; args["refs-paths"]=["master"]
+3. ★ approval_recorded{gate="checkpoint", action_id="commit:['master']"}
+4. commit(env, args={"message":"add research/new_module.py"})
+     I1′: changed = ∅ (tracked diff) ∪ {research/new_module.py} (untracked, not ignored) — scratch.log is
+          excluded by `--exclude-standard`; covered = {"master"} → uncovered = {research/new_module.py}
+          → **REFUSED**, reason="unguarded changed files: ['research/new_module.py']"
+5. guard(env, args={"action":{"name":"add-new-module","refs":[{"path":"research/new_module.py","mode":"mutate"}]}})
+     → NO_GATE stakes=1; args["refs-paths"]=["research/new_module.py"]
+6. commit(env, args={same})   — retried; the approval from step 3 is still in-window (no commit landed)
+     I1′: covered = {"master","research/new_module.py"} ⊇ changed → PASS → git add -- research/new_module.py;
+     git commit → {"hash": ...}; scratch.log is never staged
+```
+
+`tests/cases/hybrid/ADV_D.json`. Consequence worth knowing: pytest's `__pycache__/`/`.pytest_cache/`
+are untracked files too — a repo that runs suites needs them in `.gitignore` or every commit is refused.
+
+---
+
 ## Full case files — T2 and UC7
 
 Unchanged from v1.3 — neither file's JSON shape depends on `env.ctx`'s type (L1, an implementation
@@ -433,7 +472,7 @@ shapes UC1's step 1/2 above now show hydrating correctly), or `dispatch_failed`'
   "ceiling": 44,
   "tool_calls": [
     {"tool": "gate", "args": {"name": "fix research.stability import", "stop_criterion": "suite-green",
-      "difficulty": "LOW", "capability": ["python-repl", "pytest"],
+      "difficulty": "LOW", "capability": [], "tools_required": ["python-repl", "pytest"],
       "probe": {"path": "research/stability.py", "mode": "read"}}},
     {"tool": "run_suite", "args": {"command": "pytest tests/test_research_importable.py -q"}},
     {"tool": "localize", "args": {"suite_output": "<run_suite's stdout from the prior call>"}},
@@ -452,7 +491,10 @@ shapes UC1's step 1/2 above now show hydrating correctly), or `dispatch_failed`'
     {"tool": "record_check", "args": {"claim_id": "no-regression", "mechanism": "suite-count",
       "command": "make test", "expected": 274, "observed": 274}},
     {"tool": "guard", "args": {"action": {"name": "commit-to-master",
-      "refs": [{"path": "master", "mode": "mutate", "verb": "commit"}]}}},
+      "refs": [{"path": "master", "mode": "mutate", "verb": "commit"}],
+      "tripwires": {"default-branch-history": "git diff --stat"}}}},
+    {"tool": "record_check", "args": {"claim_id": "no-regression", "mechanism": "git-diff-scope",
+      "command": "git diff --stat", "expected": "exactly research/stability.py, no other files", "observed": "1 file, matches"}},
     {"tool": "corroborate", "args": {"action": "commit-to-master",
       "claims": [{"claim_id": "import-succeeds", "kind": "executable"},
                  {"claim_id": "no-regression", "kind": "executable"}], "reconciliation": "agree"}},
@@ -461,7 +503,7 @@ shapes UC1's step 1/2 above now show hydrating correctly), or `dispatch_failed`'
     {"tool": "done", "args": {}}
   ],
   "injected_events": [
-    {"after_step": 12, "event": {"event": "approval_recorded", "action_id": "commit:['master']",
+    {"after_step": 13, "event": {"event": "approval_recorded", "action_id": "commit:['master']",
       "gate": "checkpoint", "approver": "ej", "note": "checkpoint cleared"}}
   ],
   "expected_exit_lines": [

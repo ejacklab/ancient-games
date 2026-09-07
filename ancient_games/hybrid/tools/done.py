@@ -7,7 +7,7 @@ and continues — `refused_by` is never populated by I2."""
 from ancient_games.journal import Journal
 
 from ..types import ToolResult
-from ._shared import diff_name_only_head, internal_error
+from ._shared import changed_files, internal_error
 
 MANIFEST = {
     "name": "done", "inputs": {}, "outputs": "DONE", "side_effects": "none", "cost": "cheap",
@@ -28,7 +28,7 @@ def run(env, args):
                    and env.tools[e["tool"]].manifest["side_effects"] == "mutate"]
         if staling:
             return ToolResult(ok=False, reason=f"prove-stale: {staling[-1]['tool']}")
-        changed = diff_name_only_head(env.cwd)
+        changed = changed_files(env.cwd)
         if changed:
             return ToolResult(ok=False, reason=f"uncommitted-changes: {changed}")
         return ToolResult(ok=True, value="DONE")
