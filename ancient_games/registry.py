@@ -155,6 +155,15 @@ class Lookup:
         cons = [m.row.id for m in self.matched if m.via == "consumer"]
         return ",".join(cons) if cons else "no"
 
+    def tripwire_keys(self, hub: str) -> list[str]:
+        """H6 (ABLATION_1): the keys a declared tripwire for `hub` may carry — the hub element's
+        own name first, then the path of every ref that matched into it."""
+        keys = [hub]
+        for m in self.matched:
+            if m.hub_element == hub and m.ref not in keys:
+                keys.append(m.ref)
+        return keys
+
 
 def lookup(refs: Iterable[ArtifactRef], registry: Iterable[Row] = REGISTRY) -> Lookup:
     """D·2: look up every invoke/mutate ref; stakes = max over all matched rows

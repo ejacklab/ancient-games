@@ -1,5 +1,5 @@
 """HYBRID_SPEC §9 — the ablation harness: the CLI is the loop's own `step`, one process per
-call; the scorer answers Q1–Q3 from the journal alone. Every assertion reads real return values
+call; the scorer answers Q1–Q4 from the journal alone. Every assertion reads real return values
 (exit codes, printed JSON, the journal on disk, git HEAD) — nothing is re-derived."""
 from __future__ import annotations
 
@@ -166,24 +166,24 @@ def _scripted_journal(uc: str, tmp_path) -> tuple[str, str]:
 def test_scorer_on_uc1_scripted_journal_answers_q2_yes(tmp_path):
     journal, repo = _scripted_journal("UC1", tmp_path)
     r = score.score(journal, str(CASES / "UC1.json"), repo)
-    assert r["primary"] == ["Q2"] and r["Q2"] == {"answer": True, "dispatches": 0}
-    assert r["Q1"]["answer"] is True and r["Q1"]["committed_files"] == ["research/stability.py", "tests/test_research_importable.py"]
-    assert r["Q1"]["uncovered"] == [] and r["Q3"]["answer"] is True and r["Q3"]["self_count_attempts"] == []
+    assert r["primary"] == [score.Q2] and r[score.Q2] == {"answer": True, "dispatches": 0}
+    assert r[score.Q1]["answer"] is True and r[score.Q1]["committed_files"] == ["research/stability.py", "tests/test_research_importable.py"]
+    assert r[score.Q1]["uncovered"] == [] and r[score.Q3]["answer"] is True and r[score.Q3]["self_count_attempts"] == []
     assert r["refusals_by_invariant"] == {} and r["total_tool_calls"] == 12 and r["done_ok"] is True
     assert r["sequence"]["missing"] == 0 and r["sequence"]["extra"] == 0 and r["sequence"]["common"] == 12
     md = score.render_md(r)
     assert "| Q2 zero executed dispatches | yes | yes |" in md and "```diff" in md
     # without --repo the committed set falls back to the case's fixture.modified keys — same answer
-    assert score.score(journal, str(CASES / "UC1.json"))["Q1"]["committed_files"] == r["Q1"]["committed_files"]
+    assert score.score(journal, str(CASES / "UC1.json"))[score.Q1]["committed_files"] == r[score.Q1]["committed_files"]
 
 
 def test_scorer_on_uc2_scripted_journal(tmp_path):
     journal, repo = _scripted_journal("UC2", tmp_path)
     r = score.score(journal, str(CASES / "UC2.json"), repo)
-    assert r["primary"] == ["Q1", "Q3"]
-    assert r["Q1"]["answer"] is True and r["Q1"]["committed_files"] == ["loop/program_db.py"]
-    assert r["Q2"] == {"answer": False, "dispatches": 2}
-    assert r["Q3"]["answer"] is True and r["Q3"]["corroborate_line_before_prove"].startswith("Corroborate: six-are-dead: n=2/2")
+    assert r["primary"] == [score.Q1, score.Q3]
+    assert r[score.Q1]["answer"] is True and r[score.Q1]["committed_files"] == ["loop/program_db.py"]
+    assert r[score.Q2] == {"answer": False, "dispatches": 2}
+    assert r[score.Q3]["answer"] is True and r[score.Q3]["corroborate_line_before_prove"].startswith("Corroborate: six-are-dead: n=2/2")
     assert r["live_dispatches_end"] == 0 and r["sequence"]["missing"] == 0
 
 
@@ -205,7 +205,7 @@ def test_scorer_q1_no_when_guard_missing(tmp_path):
     journal = _hand_journal(str(tmp_path / "h.jsonl"), [
         _tc("gate"), _tc("commit", {"message": "m"}, summary='ok: {"hash": "abc"}'), _tc("done", summary="ok: DONE")])
     r = score.score(journal, str(CASES / "UC2.json"))
-    assert r["Q1"] == {"answer": False, "committed_files": ["loop/program_db.py"], "guard_refs_before_commit": [],
+    assert r[score.Q1] == {"answer": False, "committed_files": ["loop/program_db.py"], "guard_refs_before_commit": [],
                        "uncovered": ["loop/program_db.py"], "detail": None}
     assert r["done_ok"] is True and r["sequence"]["missing"] == 18 and r["sequence"]["extra"] == 0
     # a guard that names a different file, or one refused, or one after the commit, does not count
@@ -213,12 +213,12 @@ def test_scorer_q1_no_when_guard_missing(tmp_path):
         _tc("guard", {"refs-paths": ["loop/other.py"]}), _tc("guard", {"refs-paths": ["loop/program_db.py"]}, "I4", "hard_blocked"),
         _tc("commit", {"message": "m"}, summary='ok: {"hash": "abc"}'), _tc("guard", {"refs-paths": ["loop/program_db.py"]})])
     r2 = score.score(journal2, str(CASES / "UC2.json"))
-    assert r2["Q1"]["answer"] is False and r2["Q1"]["guard_refs_before_commit"] == ["loop/other.py"]
+    assert r2[score.Q1]["answer"] is False and r2[score.Q1]["guard_refs_before_commit"] == ["loop/other.py"]
     assert r2["refusals_by_invariant"] == {"I4": 1}
     journal3 = _hand_journal(str(tmp_path / "h3.jsonl"), [_tc("guard", {"refs-paths": ["loop/program_db.py"]}),
                                                           _tc("commit", {"message": "m"}, summary='ok: {"hash": "abc"}')])
-    assert score.score(journal3, str(CASES / "UC2.json"))["Q1"]["answer"] is True
-    assert score.score(_hand_journal(str(tmp_path / "h4.jsonl"), [_tc("gate")]), str(CASES / "UC2.json"))["Q1"]["answer"] is None
+    assert score.score(journal3, str(CASES / "UC2.json"))[score.Q1]["answer"] is True
+    assert score.score(_hand_journal(str(tmp_path / "h4.jsonl"), [_tc("gate")]), str(CASES / "UC2.json"))[score.Q1]["answer"] is None
 
 
 def test_scorer_q3_no_when_n_available_is_smuggled(tmp_path):
@@ -226,22 +226,22 @@ def test_scorer_q3_no_when_n_available_is_smuggled(tmp_path):
                  "exit_line": "Corroborate: six-are-dead: n=2/2; reconciled=agree.", "ctx_keys_set": []}
     base = [_tc("gate"), _tc("guard"), _tc("corroborate", {"action": "a", "claims": []}), good_line,
             _tc("prove", {"gate": "checkpoint"}, exit_type="PASS", summary="ok: PASS"), _tc("done", summary="ok: DONE")]
-    assert score.score(_hand_journal(str(tmp_path / "ok.jsonl"), base), str(CASES / "UC2.json"))["Q3"]["answer"] is True
+    assert score.score(_hand_journal(str(tmp_path / "ok.jsonl"), base), str(CASES / "UC2.json"))[score.Q3]["answer"] is True
     smug = list(base)
     smug[2] = _tc("corroborate", {"action": "a", "claims": [{"claim_id": "six-are-dead", "kind": "judgment", "n_available": 2}]})
     r = score.score(_hand_journal(str(tmp_path / "smug.jsonl"), smug), str(CASES / "UC2.json"))
-    assert r["Q3"]["answer"] is False
-    assert r["Q3"]["self_count_attempts"] == [{"step": 2, "tool": "corroborate", "keys": ["claims[0].n_available"]}]
+    assert r[score.Q3]["answer"] is False
+    assert r[score.Q3]["self_count_attempts"] == [{"step": 2, "tool": "corroborate", "keys": ["claims[0].n_available"]}]
     smug2 = list(base); smug2[4] = _tc("prove", {"gate": "checkpoint", "n_sources": {"six-are-dead": 2}}, exit_type="PASS", summary="ok: PASS")
-    assert score.score(_hand_journal(str(tmp_path / "smug2.jsonl"), smug2), str(CASES / "UC2.json"))["Q3"]["self_count_attempts"] == \
+    assert score.score(_hand_journal(str(tmp_path / "smug2.jsonl"), smug2), str(CASES / "UC2.json"))[score.Q3]["self_count_attempts"] == \
         [{"step": 3, "tool": "prove", "keys": ["n_sources"]}]
     # a PASS after a capped Corroborate line is inconsistent with the journaled count
     capped = list(base); capped[3] = dict(good_line, exit_line="Corroborate: six-are-dead: n=1/2, capped, remedy=add-differently-framed-source; reconciled=agree, corroboration-capped=true.")
     r = score.score(_hand_journal(str(tmp_path / "capped.jsonl"), capped), str(CASES / "UC2.json"))
-    assert r["Q3"]["answer"] is False and r["Q3"]["prove_pass_consistent_with_corroborate"] is False
+    assert r[score.Q3]["answer"] is False and r[score.Q3]["prove_pass_consistent_with_corroborate"] is False
     # no corroborate at all → no
     nocorr = [base[0], base[1], base[4], base[5]]
-    assert score.score(_hand_journal(str(tmp_path / "nocorr.jsonl"), nocorr), str(CASES / "UC2.json"))["Q3"]["answer"] is False
+    assert score.score(_hand_journal(str(tmp_path / "nocorr.jsonl"), nocorr), str(CASES / "UC2.json"))[score.Q3]["answer"] is False
 
 
 def test_lcs_diff():
@@ -256,4 +256,4 @@ def test_score_cli_prints_markdown_and_json(tmp_path):
     assert p.returncode == 0 and p.stdout.startswith("# Ablation score — UC1-T2") and "| done succeeded | yes |" in p.stdout
     p = subprocess.run([sys.executable, "-m", "ablation.score", journal, str(CASES / "UC1.json"), "--json"],
                        cwd=ROOT, capture_output=True, text=True)
-    assert json.loads(p.stdout)["Q2"]["answer"] is True
+    assert json.loads(p.stdout)[score.Q2]["answer"] is True

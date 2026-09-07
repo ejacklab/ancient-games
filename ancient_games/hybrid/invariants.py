@@ -74,23 +74,33 @@ def i1(changed: list[str], events: list[dict]) -> Refusal | None:
 
 
 # I4′ ---------------------------------------------------------------------------
+I4_MODES = frozenset({"invoke", "mutate"})  # H1 (ABLATION_1): reads are exempt (S2)
+
+
 def i4_declared(call: Call, events: list[dict], registry: list[Row]) -> Refusal | None:
-    """(a) a declared action whose refs match a gate=owner row needs an in-window owner approval."""
+    """(a) a declared action whose invoke/mutate refs match a gate=owner row needs an in-window
+    owner approval. Refs with mode=read are never looked up (S2; H1) — the registry already
+    returns nothing for them, and the invariant states it too. A consumer declared on a
+    mutate ref counts (D2′ hub union); the reason names which row matched and how."""
     try:
         action = guard_action(call.args)
     except Exception:
-        return None  # malformed args: the adapter reports internal-error itself
-    hit = reg.lookup(action.refs, registry)
+        return None  # malformed args: the adapter reports invalid-args itself
+    refs = [r for r in action.refs if r.mode in I4_MODES]
+    if not refs:
+        return None
+    hit = reg.lookup(refs, registry)
     if hit.gate != "owner":
         return None
     aid = guard_action_id(action)
     after = last_commit_index(events)
     if approvals_after(events, "owner", aid, after):
         return None
+    rows = ", ".join(f"{m.row.id} via {m.via} {m.ref}" for m in hit.matched if m.row.gate == "owner")
     stale = approvals_after(events, "owner", aid, -1)
     if stale:
-        return Refusal("I4", f"hard_blocked: approval stale (predates last commit) for {aid}")
-    return Refusal("I4", f"hard_blocked: no owner approval on record for {aid}")
+        return Refusal("I4", f"hard_blocked: approval stale (predates last commit) for {aid} [owner rows: {rows}]")
+    return Refusal("I4", f"hard_blocked: no owner approval on record for {aid} [owner rows: {rows}]")
 
 
 def i4_at_commit(changed: list[str], events: list[dict], registry: list[Row]) -> list[Refusal]:
@@ -116,4 +126,4 @@ def i5(events: list[dict]) -> Refusal | None:
 
 
 __all__ = ["Refusal", "check_invariants", "pick_by_priority", "invariants_for", "PRIORITY", "RESTRICTED",
-           "live_dispatches", "event_ok"]
+           "I4_MODES", "live_dispatches", "event_ok"]

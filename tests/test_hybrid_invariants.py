@@ -24,6 +24,7 @@ GUARD_COMMIT = Call("guard", {"action": {"name": "commit-to-master", "refs": [{"
 COMMIT = Call("commit", {"message": "m"})
 PROBE = Call("guard", {"action": {"name": "run-load_holdout-probe", "refs": [{"path": "eval.partitions.load_holdout", "mode": "invoke"}]}})
 OWNER_AID = "invoke:['eval.partitions.load_holdout']"
+OWNER_ROWS = " [owner rows: R3 via direct eval.partitions.load_holdout]"  # H1: the reason names the matched row
 
 
 @pytest.fixture
@@ -197,14 +198,14 @@ def test_i3_pass_prove_sees_no_corroboration_counts(journal, repo):
 
 # I4′ ---------------------------------------------------------------------------------
 def test_i4a_fail_owner_gated_invoke_without_approval(journal, repo):
-    assert check(PROBE, journal, repo) == [Refusal("I4", f"hard_blocked: no owner approval on record for {OWNER_AID}")]
+    assert check(PROBE, journal, repo) == [Refusal("I4", f"hard_blocked: no owner approval on record for {OWNER_AID}{OWNER_ROWS}")]
 
 
 def test_i4a_pass_with_approval_then_spent_by_a_commit(journal, repo):
     approve(journal, "owner", OWNER_AID)
     assert check(PROBE, journal, repo) == []
     ok(journal, COMMIT, {"hash": "h"})  # an unrelated landing
-    assert check(PROBE, journal, repo) == [Refusal("I4", f"hard_blocked: approval stale (predates last commit) for {OWNER_AID}")]
+    assert check(PROBE, journal, repo) == [Refusal("I4", f"hard_blocked: approval stale (predates last commit) for {OWNER_AID}{OWNER_ROWS}")]
     approve(journal, "owner", OWNER_AID)
     assert check(PROBE, journal, repo) == []
 

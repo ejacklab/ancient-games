@@ -12,7 +12,7 @@ from __future__ import annotations
 from ancient_games import registry as reg
 from ancient_games.ctx import CappedClaim
 from ancient_games.registry import REGISTRY, Row
-from ancient_games.stages import Claim, Plan, PlanEntry, unused_framing
+from ancient_games.stages import Claim, Plan, PlanEntry, tripwires_for, unused_framing
 from ancient_games.trace import parse_corroborate_line
 
 from ._shared import guard_action
@@ -30,7 +30,7 @@ def plan_from_journal(events: list[dict], ctx, args: dict, registry: list[Row] =
         hit = reg.lookup(action.refs, registry)
         claims, capped = _claims_for(action.name, corroborates, b_exits, ctx, events)
         entries.append(PlanEntry(action.name, g["args"].get("refs-paths", []), hit.stakes, list(hit.hubs),
-                                 {h: action.tripwires[h] for h in hit.hubs if h in action.tripwires}, claims, capped,
+                                 tripwires_for(hit, action.tripwires), claims, capped,
                                  getattr(ctx, "dispatch_count", 0), args.get("has_failable_check", True),
                                  args.get("metrics_named", True)))
     return Plan(entries, args.get("gate", "checkpoint"), getattr(ctx, "governance_gated", "none"), args.get("gate_at"))

@@ -38,7 +38,7 @@ corroborate        read          cheap  I3               B — wraps `stages.cor
 dispatch           invoke        agent  I5               Dispatch an agent: `stages.dispatch_source` when it counts toward CAP (B·3, increments            {"agent_id": "str", "counts_toward_cap": "bool", "framing": "str", "payload": "dict", "role": "str"}
 done               none          cheap  I2,I3            NEW — `done`, a real executed tool running I2′'s two clauses (K8):                                {}
 filter_candidates  read          cheap  -                E — wraps `stages.filter_candidates` (R7); real ctx, real args (K3).                              {"candidates": "list[Candidate|str]", "cut": "dict", "follow_on": "list", "intents": "dict", "merged": "dict"}
-gate               none          cheap  -                C — wraps `stages.gate` (R7).                                                                     {"task": "TaskInput"}
+gate               none          cheap  -                C — wraps `stages.gate` (R7). Inputs are validated before the stage runs (H2/H7, ABLATION_1).     {"task": "TaskInput"}
 guard              read          cheap  I1,I4            D — wraps `stages.guard` (R7). `action_id` and `refs-paths` are journaled by the loop (§6).       {"action": "ActionInput"}
 ingest_return      none          cheap  I5               Wraps `journal.ingest_return` (journal.py:218): the `return` event plus its classified CLAIMS.    {"actor": "str", "agent_id": "str", "fields": "dict", "framing": "str"}
 localize           none          cheap  -                NEW — `localize(suite_output) -> {test_id, file, line, error_type}` by regex over pytest output.  {"suite_output": "str"}
@@ -46,7 +46,7 @@ lookup_registry    read          cheap  -                Wraps `registry.lookup`
 prove              read          cheap  I2,I3            A — wraps `stages.prove` (R7). `env.ctx` is the stripped view (I3′): the plan is                  {"gate": "str", "gate_at": "str", "has_failable_check": "bool", "metrics_named": "bool"}
 read_journal       read          cheap  -                Wraps `journal.read` (journal.py:189) — every UC's observe step.                                  {}
 rebuild_index      mutate        cheap  -                NEW — wraps `ancient_games.index.rebuild(journal_path, db_path)`, decided-not-yet-built           {"db_path": "str"}
-record_check       none          cheap  -                Wraps `journal.check_executed` (journal.py:202).                                                  {"claim_id": "str", "command": "str", "expected": "str|int", "falsifies": "str", "mechanism": "str", "observed": "str|int", "pre_fix_result": "str"}
+record_check       none          cheap  -                Wraps `journal.check_executed` (journal.py:202). `falsifies` is a claim id (H3, ABLATION_1).      {"claim_id": "str", "command": "str", "expected": "str|int", "falsifies": "str", "mechanism": "str", "observed": "str|int", "pre_fix_result": "str"}
 record_claim       none          cheap  -                Wraps `journal.claim_recorded` (journal.py:208).                                                  {"actor": "str", "author": "str", "claim_id": "str", "evidence_ref": "str", "evidence_type": "str", "framing": "str", "kind": "str", "text": "str"}
 render_trace       none          cheap  -                Wraps `trace.render_trace` (trace.py:70).                                                         {"title": "str"}
 run_lint           read          cheap  -                Wraps `lints.run_all_on_plan` over the journal-reconstructed plan.                                {"gate": "str", "gate_at": "str"}
@@ -63,6 +63,171 @@ Nested arg shapes (all plain JSON):
 - `ArtifactRef`: `path`, `mode` (`read|mutate|invoke`), `verb` (e.g. `commit`), `consumers: [path]`.
 - `corroborate` args: `action`, `claims: [{claim_id, kind: executable|judgment}]`, `framings`, `reconciliation`, `dominance`.
 - The dataclasses are in `ancient_games/stages.py` and `ancient_games/ctx.py` if you need more.
+
+## Tool schema
+
+`python3 -m ancient_games.hybrid tools --schema` prints every tool's arg names, types, defaults,
+enum values and notes (`(required)` = no default; `one of:` = the accepted values; `#` = a note); it is
+reproduced verbatim:
+
+```
+commit  side_effects=commit  cost=cheap  -> {hash}
+  message: str
+
+corroborate  side_effects=read  cost=cheap  -> CorroborateExit
+  action: str
+  claims: list[Claim]
+    claim_id: str  (required)
+    kind: str  (required)  one of: executable | judgment
+    action: str | None = None
+    has_command: bool = True
+    remedy_mechanism: str | None = None
+    n_required: int | None = None  # set by corroborate — never passed by the caller
+    stakes: int | None = None  # set by corroborate — never passed by the caller
+    actor: str | None = None  # set by corroborate from ctx.actor — never passed by the caller
+  dominance: str
+  framings: dict
+  reconciliation: str
+
+dispatch  side_effects=invoke  cost=agent  -> agent_id
+  agent_id: str
+  counts_toward_cap: bool
+  framing: str
+  payload: dict
+  role: str  one of: coder | researcher | tester | MAIN
+
+done  side_effects=none  cost=cheap  -> DONE
+  (no args)
+
+filter_candidates  side_effects=read  cost=cheap  -> FilterExit
+  candidates: list[Candidate|str]
+    name: str  (required)
+    scores: dict[str, float] | None = None
+    guard: GuardExit | None = None
+    corroboration: CorroborateExit | None = None
+    governance_gated: str = 'none'  one of: none | R1 | R2 | R3 | R9  # a registry row id whose gate=owner, or "none" — never a bool
+    payload_size: int = 0
+    size_limit: int = 0
+    labels: dict[str, str] = {}
+  cut: dict
+  follow_on: list
+  intents: dict
+  merged: dict
+
+gate  side_effects=none  cost=cheap  -> GateExit
+  task: TaskInput
+    name: str  (required)
+    stop_criterion: str  (required)
+    difficulty: str  (required)  one of: LOW | MED | HIGH | UNKNOWN
+    capability: list[str] = []
+    role: str = 'MAIN'  one of: coder | researcher | tester | MAIN
+    probe: ArtifactRef | None = None
+      path: str  (required)
+      mode: str  (required)  one of: read | invoke | mutate
+      verb: str | None = None
+      consumers: tuple[str, ...] = ()  # downstream paths that READ the mutated artifact (D2′) — not the files this action reads; naming an owner-gated file here owner-gates the action
+      external_state: str | None = None
+    probe_action: ActionInput | None = None
+      name: str  (required)
+      refs: list[ArtifactRef]  (required)
+        path: str  (required)
+        mode: str  (required)  one of: read | invoke | mutate
+        verb: str | None = None
+        consumers: tuple[str, ...] = ()  # downstream paths that READ the mutated artifact (D2′) — not the files this action reads; naming an owner-gated file here owner-gates the action
+        external_state: str | None = None
+      irreversible_clause: str | None = None  one of: a | b | null
+      backup_exists: bool = False
+      tripwires: dict[str, str] = {}  # {hub-name-or-matched-ref-path: command}; declare the command in the form it will be run at prove time (a pre-commit `git diff HEAD` is wrong post-commit) — re-call guard to correct it
+      fallback: str = 'retry, then revert'
+      permissions: str = 'explicit tool grants scaled to terrain'
+      consumer_reasoning: str = 'no registered stakes≥2 consumer declared'
+      approval_on_record: bool = False
+      only_candidate_for_count0: bool = False
+    resolved_by: str | None = None
+    known_facts: list[tuple[str, str, str, str]] = []  # list of [fact, method, result, date]
+    governance_gated: str = 'none'  one of: none | R1 | R2 | R3 | R9  # a registry row id whose gate=owner, or "none" — never a bool
+    actors: dict[str, str] = {}  # {action-name: MAIN | <agent-id> | none}
+    time_box: str = 'one drafting pass'
+    tools_required: list[str] = []
+    standing_clauses: str = ''
+    env_policy: str = ''
+
+guard  side_effects=read  cost=cheap  -> GuardExit
+  action: ActionInput
+    name: str  (required)
+    refs: list[ArtifactRef]  (required)
+      path: str  (required)
+      mode: str  (required)  one of: read | invoke | mutate
+      verb: str | None = None
+      consumers: tuple[str, ...] = ()  # downstream paths that READ the mutated artifact (D2′) — not the files this action reads; naming an owner-gated file here owner-gates the action
+      external_state: str | None = None
+    irreversible_clause: str | None = None  one of: a | b | null
+    backup_exists: bool = False
+    tripwires: dict[str, str] = {}  # {hub-name-or-matched-ref-path: command}; declare the command in the form it will be run at prove time (a pre-commit `git diff HEAD` is wrong post-commit) — re-call guard to correct it
+    fallback: str = 'retry, then revert'
+    permissions: str = 'explicit tool grants scaled to terrain'
+    consumer_reasoning: str = 'no registered stakes≥2 consumer declared'
+    approval_on_record: bool = False
+    only_candidate_for_count0: bool = False
+
+ingest_return  side_effects=none  cost=cheap  -> list[event]
+  actor: str  # set by corroborate from ctx.actor — never passed by the caller
+  agent_id: str
+  fields: dict
+  framing: str
+
+localize  side_effects=none  cost=cheap  -> {test_id, file, line, error_type}
+  suite_output: str
+
+lookup_registry  side_effects=read  cost=cheap  -> Lookup
+  refs: list[ArtifactRef]
+    path: str  (required)
+    mode: str  (required)  one of: read | invoke | mutate
+    verb: str | None = None
+    consumers: tuple[str, ...] = ()  # downstream paths that READ the mutated artifact (D2′) — not the files this action reads; naming an owner-gated file here owner-gates the action
+    external_state: str | None = None
+
+prove  side_effects=read  cost=cheap  -> ProveExit
+  gate: str
+  gate_at: str  # the action the gate sits at, e.g. "commit"
+  has_failable_check: bool
+  metrics_named: bool
+
+read_journal  side_effects=read  cost=cheap  -> list[event]
+  (no args)
+
+rebuild_index  side_effects=mutate  cost=cheap  -> {rows}
+  db_path: str
+
+record_check  side_effects=none  cost=cheap  -> check_executed event
+  claim_id: str
+  command: str
+  expected: str|int
+  falsifies: str  # a claim_id (this call's, or one recorded in this run); the condition goes in `expected`
+  mechanism: str  one of: interpreter-import | pytest-fail-first | suite-count | git-diff-scope | hash-compare | adversarial-case | other:<name>
+  observed: str|int
+  pre_fix_result: str  one of: FAIL | null
+
+record_claim  side_effects=none  cost=cheap  -> claim_recorded event
+  actor: str  # set by corroborate from ctx.actor — never passed by the caller
+  author: str
+  claim_id: str
+  evidence_ref: str
+  evidence_type: str  one of: command | file:line
+  framing: str
+  kind: str  one of: executable | judgment
+  text: str
+
+render_trace  side_effects=none  cost=cheap  -> markdown str
+  title: str
+
+run_lint  side_effects=read  cost=cheap  -> list[Finding]
+  gate: str
+  gate_at: str  # the action the gate sits at, e.g. "commit"
+
+run_suite  side_effects=none  cost=suite  -> {passed, failed, output, returncode}
+  command: str
+```
 
 ## Hard rules
 

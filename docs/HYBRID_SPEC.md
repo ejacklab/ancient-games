@@ -312,10 +312,13 @@ I3   fully static:
      trust boundary (§11): nothing in the loader validates that a differently-named tool computing a
          corroboration-shaped number must adopt this pattern — an [LLM] judgment call at tool-add time
 
-I4′  reads approval_recorded, windowed (unchanged from v1.3):
-     (a) read/invoke: refuse (hard_blocked) iff declared refs match a gate=="owner" row AND no
-         approval_recorded{gate="owner", action_id=<computed>} event postdating the last executed
-         commit exists
+I4′  reads approval_recorded, windowed (v1.2 states the read exemption; the formula is otherwise v1.3's):
+     (a) at guard, over the declared refs with mode ∈ {invoke, mutate} ONLY — a ref with mode=read is
+         never looked up (S2: reads are never gated; H1, ABLATION_1): refuse (hard_blocked) iff those
+         refs match a gate=="owner" row AND no approval_recorded{gate="owner", action_id=<computed>}
+         event postdating the last executed commit exists. A consumer declared on an invoke/mutate ref
+         counts as a match (D2′ hub union) — declaring an owner-gated file as a consumer owner-gates the
+         action; the refusal reason names each owner row and whether it matched direct or via consumer.
      (b) at commit: for every f in I1′'s own `changed` set: row = registry.lookup([f, mutate]); if
          row.gate=="owner": refuse iff no approval_recorded{gate="owner", action_id=row.id} postdating
          the last executed commit exists
@@ -342,6 +345,14 @@ it to read).
 
 **Ceiling: five, unchanged.** I4′(a)'s alias-declaration trust boundary and I3's differently-named-tool
 trust boundary remain open, both documented in §11, neither closed by a sixth invariant.
+
+**D·4 tripwires (H5, ABLATION_1).** `prove` accepts a hub's tripwire as run only when a `check_executed`
+event's `command` string-matches the command `guard` declared for that hub, exactly. So declare the
+tripwire in the form it will be run at prove time: a scope check declared pre-commit as
+`git diff --stat HEAD` is wrong once the commit has landed (the tree is clean); the post-commit form
+is `git diff --stat HEAD~1 HEAD`. `guard` may be re-called to correct a mis-declared tripwire — the
+later non-refused guard's declaration is the one the journal-rebuilt plan carries. A tripwire may be
+keyed by the hub element's name or by the path of a ref that matched into it (H6).
 
 ---
 

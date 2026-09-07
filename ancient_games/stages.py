@@ -178,6 +178,18 @@ def _ref_paths(refs: Iterable[ArtifactRef]) -> list[str]:
     return [r.path for r in refs if r.mode != "read"]
 
 
+def tripwires_for(hit: Lookup, declared: dict[str, str]) -> dict[str, str]:
+    """D·4, keyed on the hub element: a declared tripwire may be keyed by the hub's name or by
+    the path of a ref that matched into it (H6, ABLATION_1); the first key present wins."""
+    out: dict[str, str] = {}
+    for h in hit.hubs:
+        for k in hit.tripwire_keys(h):
+            if k in declared:
+                out[h] = declared[k]
+                break
+    return out
+
+
 def guard(ctx: Ctx, action: ActionInput, journal: Journal, registry: list[Row] = REGISTRY) -> GuardExit:
     fired = ["D·1", "D·2"]
     # D·1 refs
@@ -208,7 +220,7 @@ def guard(ctx: Ctx, action: ActionInput, journal: Journal, registry: list[Row] =
                          steps_fired=fired)
     # D·4 fallback/tripwire — one tripwire per hub element
     fired.append("D·4")
-    ctx.tripwire = {h: action.tripwires[h] for h in hit.hubs if h in action.tripwires}
+    ctx.tripwire = tripwires_for(hit, action.tripwires)
     backup = "exists" if action.backup_exists else "none"
     # D·5 gate
     fired.append("D·5")

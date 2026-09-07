@@ -3,7 +3,7 @@
 A subagent acting as the main agent calls tools one process at a time:
 
     python3 -m ancient_games.hybrid init --run-id R --journal /abs/j.jsonl --cwd /abs/repo
-    python3 -m ancient_games.hybrid tools
+    python3 -m ancient_games.hybrid tools [--inputs | --schema]
     python3 -m ancient_games.hybrid call gate '{"name": ...}'
     python3 -m ancient_games.hybrid approve --gate checkpoint --action-id "commit:['master']" --approver ej
     python3 -m ancient_games.hybrid fail-dispatch --agent-id X --reason "..."
@@ -29,11 +29,15 @@ import argparse
 import dataclasses
 import json
 import os
+import re
 import sys
+import typing
 from typing import Any
 
-from ancient_games.ctx import Ctx
-from ancient_games.journal import Journal
+from ancient_games import registry as reg
+from ancient_games.ctx import CLAIM_KINDS, DIFFICULTIES, MECHANISMS, MODES, ROLES, ArtifactRef, Ctx
+from ancient_games.journal import _ENUMS, Journal
+from ancient_games.stages import ActionInput, Candidate, Claim, TaskInput
 
 from . import loop
 from .registry import RegisteredTool, load_tools
@@ -112,6 +116,86 @@ def tools_table(tools: dict[str, RegisteredTool], inputs: bool = False) -> str:
     return "\n".join(lines)
 
 
+# --- schema (H4, ABLATION_1) -----------------------------------------------------------------
+DATACLASSES: dict[str, type] = {"TaskInput": TaskInput, "ActionInput": ActionInput, "ArtifactRef": ArtifactRef,
+                                "Claim": Claim, "Candidate": Candidate}
+ENUMS: dict[str, tuple] = {
+    "mode": MODES, "difficulty": DIFFICULTIES, "role": ROLES, "kind": CLAIM_KINDS,
+    "mechanism": MECHANISMS + ("other:<name>",),
+    "evidence_type": _ENUMS[("claim_recorded", "evidence_type")],
+    "pre_fix_result": _ENUMS[("check_executed", "pre_fix_result")],
+    "irreversible_clause": ("a", "b", None),
+    "governance_gated": ("none",) + tuple(r.id for r in reg.REGISTRY if r.gate == "owner"),
+}
+NOTES: dict[str, str] = {
+    "governance_gated": "a registry row id whose gate=owner, or \"none\" — never a bool",
+    "consumers": "downstream paths that READ the mutated artifact (D2′) — not the files this action reads; "
+                 "naming an owner-gated file here owner-gates the action",
+    "tripwires": "{hub-name-or-matched-ref-path: command}; declare the command in the form it will be run at prove "
+                 "time (a pre-commit `git diff HEAD` is wrong post-commit) — re-call guard to correct it",
+    "falsifies": "a claim_id (this call's, or one recorded in this run); the condition goes in `expected`",
+    "n_required": "set by corroborate — never passed by the caller",
+    "stakes": "set by corroborate — never passed by the caller",
+    "actor": "set by corroborate from ctx.actor — never passed by the caller",
+    "known_facts": "list of [fact, method, result, date]",
+    "actors": "{action-name: MAIN | <agent-id> | none}",
+    "gate_at": "the action the gate sits at, e.g. \"commit\"",
+}
+_NAME_RE = re.compile(r"\b(" + "|".join(DATACLASSES) + r")\b")
+
+
+def _type_str(hint: Any) -> str:
+    s = str(hint) if not isinstance(hint, type) else hint.__name__
+    s = s.replace("typing.", "")
+    return re.sub(r"\b(?:[a-z_]+\.)+(?=[A-Za-z])", "", s)
+
+
+def _field_lines(cls: type, indent: int, seen: tuple[str, ...]) -> list[str]:
+    pad = "  " * indent
+    hints = typing.get_type_hints(cls)
+    out: list[str] = []
+    for f in dataclasses.fields(cls):
+        t = _type_str(hints.get(f.name, Any))
+        if f.default is not dataclasses.MISSING:
+            req = f" = {f.default!r}"
+        elif f.default_factory is not dataclasses.MISSING:  # type: ignore[misc]
+            req = f" = {f.default_factory()!r}"  # type: ignore[misc]
+        else:
+            req = "  (required)"
+        line = f"{pad}{f.name}: {t}{req}"
+        if f.name in ENUMS:
+            line += "  one of: " + " | ".join("null" if v is None else str(v) for v in ENUMS[f.name])
+        if f.name in NOTES:
+            line += f"  # {NOTES[f.name]}"
+        out.append(line)
+        for name in _NAME_RE.findall(t):
+            if name not in seen:
+                out += _field_lines(DATACLASSES[name], indent + 1, seen + (name,))
+    return out
+
+
+def tools_schema(tools: dict[str, RegisteredTool]) -> str:
+    """Per tool: each arg's name and type from the manifest, dataclass-typed args expanded field by
+    field (type, default or required, enum values, notes) — what a caller needs to form valid args."""
+    lines: list[str] = []
+    for name in sorted(tools):
+        m = tools[name].manifest
+        lines.append(f"{name}  side_effects={m['side_effects']}  cost={m['cost']}  -> {m['outputs']}")
+        if not m["inputs"]:
+            lines.append("  (no args)")
+        for arg, t in sorted(m["inputs"].items()):
+            line = f"  {arg}: {t}"
+            if arg in ENUMS:
+                line += "  one of: " + " | ".join("null" if v is None else str(v) for v in ENUMS[arg])
+            if arg in NOTES:
+                line += f"  # {NOTES[arg]}"
+            lines.append(line)
+            for dc in _NAME_RE.findall(t):
+                lines += _field_lines(DATACLASSES[dc], 2, (dc,))
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 # --- subcommands ------------------------------------------------------------------------
 def cmd_init(a: argparse.Namespace) -> int:
     path = write_manifest(a.run_id, a.journal, a.cwd, a.tool_dir, a.ceiling, a.manifest)
@@ -126,7 +210,8 @@ def cmd_tools(a: argparse.Namespace) -> int:
             dirs = read_manifest(a.manifest).get("tool_dirs", [])
         except FileNotFoundError:
             dirs = []
-    print(tools_table(load_tools(*dirs), inputs=a.inputs))
+    tools = load_tools(*dirs)
+    print(tools_schema(tools) if a.schema else tools_table(tools, inputs=a.inputs))
     return EXIT_EXECUTED
 
 
@@ -191,6 +276,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("tools", help="list the registered tools")
     s.add_argument("--inputs", action="store_true", help="also print each manifest's inputs")
+    s.add_argument("--schema", action="store_true", help="print each tool's arg names, types, enum values and notes")
     s.set_defaults(fn=cmd_tools)
 
     s = sub.add_parser("call", help="call one tool through the loop's check → execute → journal step")

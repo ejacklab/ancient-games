@@ -8,6 +8,8 @@ order it actually guarantees; `ts` has microsecond resolution and can tie.
 """
 from __future__ import annotations
 
+import copy
+import dataclasses
 import hashlib
 import json
 import subprocess
@@ -152,6 +154,24 @@ def refs_from(dicts: list[dict]) -> list[ArtifactRef]:
 
 def internal_error(e: Exception) -> ToolResult:
     return ToolResult(ok=False, value=None, reason=f"internal-error: {e}")
+
+
+def invalid_args(field: str, accepted: str, got: Any) -> ToolResult:
+    """H2 (ABLATION_1): a bad input is the caller's error, named by field and accepted values —
+    never an `internal-error`."""
+    return ToolResult(ok=False, value=None,
+                      reason=f"invalid-args: {field} must be {accepted}, got {got!r} ({type(got).__name__})")
+
+
+def ctx_snapshot(ctx: Any) -> Any:
+    return copy.deepcopy(ctx)
+
+
+def ctx_restore(ctx: Any, snapshot: Any) -> None:
+    """H7 (ABLATION_1): a stage that raised half-way must leave no partial ctx write behind —
+    the loop and the CLI hold `ctx` by reference, so restore it field by field."""
+    for f in dataclasses.fields(ctx):
+        setattr(ctx, f.name, getattr(snapshot, f.name))
 
 
 def json_safe(v: Any) -> Any:
