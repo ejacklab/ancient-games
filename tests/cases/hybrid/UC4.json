@@ -1,0 +1,42 @@
+{
+  "case_id": "UC4-research-wave",
+  "task": "research wave: three framings -> merged findings under a dominance rule (stakes=1: SINGLE_SOURCE)",
+  "mode": "scripted",
+  "ceiling": 44,
+  "fixture": {"files": {"research/principles_findings.md": "# findings\n"}},
+  "tool_calls": [
+    {"tool": "gate", "args": {"name": "principles research wave", "stop_criterion": "merged-findings-doc",
+      "difficulty": "HIGH", "capability": ["wave-1: first-principles", "wave-2: prior-art", "wave-3: failure-modes"],
+      "role": "researcher", "actors": {"merge-findings": "MAIN"}}},
+    {"tool": "dispatch", "args": {"role": "researcher", "framing": "first-principles", "agent_id": "wave-1", "counts_toward_cap": false}},
+    {"tool": "dispatch", "args": {"role": "researcher", "framing": "prior-art", "agent_id": "wave-2", "counts_toward_cap": false}},
+    {"tool": "dispatch", "args": {"role": "researcher", "framing": "failure-modes", "agent_id": "wave-3", "counts_toward_cap": false}},
+    {"tool": "ingest_return", "args": {"agent_id": "wave-1", "actor": "MAIN", "framing": "first-principles",
+      "fields": {"CLAIMS": [{"claim_id": "principle-holds", "kind": "judgment", "evidence_type": "file:line",
+                             "evidence_ref": "/agents/wave-1.md:1", "text": "holds from first principles"}], "FOLLOW_ON": []}}},
+    {"tool": "ingest_return", "args": {"agent_id": "wave-2", "actor": "MAIN", "framing": "prior-art",
+      "fields": {"CLAIMS": [{"claim_id": "principle-holds", "kind": "judgment", "evidence_type": "file:line",
+                             "evidence_ref": "/agents/wave-2.md:1", "text": "prior art agrees"}], "FOLLOW_ON": []}}},
+    {"tool": "ingest_return", "args": {"agent_id": "wave-3", "actor": "MAIN", "framing": "failure-modes",
+      "fields": {"CLAIMS": [{"claim_id": "principle-holds", "kind": "judgment", "evidence_type": "file:line",
+                             "evidence_ref": "/agents/wave-3.md:1", "text": "no failure mode found"}], "FOLLOW_ON": []}}},
+    {"tool": "guard", "args": {"action": {"name": "merge-findings",
+      "refs": [{"path": "research/principles_findings.md", "mode": "mutate"}],
+      "consumer_reasoning": "a research doc; nothing registered consumes it"}}},
+    {"tool": "corroborate", "args": {"action": "merge-findings", "claims": [{"claim_id": "principle-holds", "kind": "judgment"}],
+      "reconciliation": "disagree", "dominance": "evidence-count"}},
+    {"tool": "filter_candidates", "args": {"candidates": ["merged findings doc"]}},
+    {"tool": "prove", "args": {"gate": "checkpoint"}},
+    {"tool": "done", "args": {}}
+  ],
+  "expected_exit_lines": [
+    "Gate: plan needed, N=3, execution_status=dispatched, stop=merged-findings-doc.",
+    "Guard: merge-findings stakes=1, no hub.",
+    "Corroborate: principle-holds: n=1 (single source).",
+    "Filter: kept=1, merged=0, cut=0, follow_on=0.",
+    "Prove: PASS, plan cleared to checkpoint gate."
+  ],
+  "expected_invariant_events": [{"invariant": "I5", "tool": "dispatch", "refused": false}],
+  "expected_final": {"agents": 3, "live_dispatches_end": 0, "prove_exit_type": "PASS", "status": "DONE",
+    "tool_outcomes": [{"tool": "done", "ok": true, "reason": null}]}
+}

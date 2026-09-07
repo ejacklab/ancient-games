@@ -1,0 +1,40 @@
+{
+  "case_id": "ADV-C-coverage-window",
+  "task": "I1' coverage window: a guard that predates the last commit no longer covers a silent re-edit; a fresh guard does",
+  "mode": "scripted",
+  "ceiling": 20,
+  "fixture": {"files": {"a.py": "x = 1\n"}, "modified": {"a.py": "x = 2\n"}},
+  "native_edits": [{"after_step": 3, "path": "a.py", "content": "x = 3  # typo fix, silently re-edited\n"}],
+  "tool_calls": [
+    {"tool": "gate", "args": {"name": "edit a.py", "stop_criterion": "landed", "difficulty": "LOW"}},
+    {"tool": "guard", "args": {"action": {"name": "edit-a", "refs": [{"path": "a.py", "mode": "mutate"}]}}},
+    {"tool": "guard", "args": {"action": {"name": "commit-to-master", "refs": [{"path": "master", "mode": "mutate", "verb": "commit"}],
+      "tripwires": {"default-branch-history": "git diff --stat"}}}},
+    {"tool": "commit", "args": {"message": "edit a.py"}},
+    {"tool": "guard", "args": {"action": {"name": "commit-to-master", "refs": [{"path": "master", "mode": "mutate", "verb": "commit"}],
+      "tripwires": {"default-branch-history": "git diff --stat"}}}},
+    {"tool": "commit", "args": {"message": "typo fix"}},
+    {"tool": "guard", "args": {"action": {"name": "edit-a-again", "refs": [{"path": "a.py", "mode": "mutate"}]}}},
+    {"tool": "commit", "args": {"message": "typo fix"}}
+  ],
+  "injected_events": [
+    {"after_step": 2, "event": {"event": "approval_recorded", "action_id": "commit:['master']",
+      "gate": "checkpoint", "approver": "ej", "note": "checkpoint cleared"}},
+    {"after_step": 4, "event": {"event": "approval_recorded", "action_id": "commit:['master']",
+      "gate": "checkpoint", "approver": "ej", "note": "checkpoint cleared"}}
+  ],
+  "expected_exit_lines": [
+    "Gate: plan needed, N=0, execution_status=main_executes, stop=landed.",
+    "Guard: edit-a stakes=1, no hub.",
+    "Guard: commit-to-master stakes=2, hub=default-branch-history, gate=checkpoint.",
+    "Guard: commit-to-master stakes=2, hub=default-branch-history, gate=checkpoint.",
+    "Guard: edit-a-again stakes=1, no hub."
+  ],
+  "expected_invariant_events": [
+    {"invariant": "I1", "tool": "commit", "refused": true},
+    {"invariant": "I1", "tool": "commit", "refused": false},
+    {"invariant": "I4", "tool": "commit", "refused": false}
+  ],
+  "expected_final": {"agents": 0, "live_dispatches_end": 0, "status": "NO_CHOICE",
+    "tool_outcomes": [{"tool": "commit", "ok": true, "reason": null}, {"tool": "commit", "ok": true, "reason": null}]}
+}

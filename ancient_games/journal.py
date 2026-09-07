@@ -109,11 +109,21 @@ SHAPES: dict[str, dict[str, Any]] = {
         "evidence_ref": str, "framing": (str, type(None)),
     },
     "consumer_check": {"ref": list, "answer": str, "command_or_reasoning": str},
+    # hybrid tool layer (HYBRID_SPEC §6): one event per tool call, plus the two orchestrator-written events
+    "tool_call": {
+        "tool": str, "action_id": (str, type(None)), "args": dict, "args_hash": str, "result_summary": str,
+        "exit_type": (str, type(None)), "invariants_checked": list, "refused_by": (str, type(None)),
+        "reason": (str, type(None)),
+    },
+    "approval_recorded": {"action_id": str, "gate": str, "approver": str, "note": str},
+    "dispatch_failed": {"agent_id": str, "reason": str},
 }
 _ENUMS: dict[tuple[str, str], tuple[Any, ...]] = {
     ("check_executed", "pre_fix_result"): ("FAIL", None),
     ("claim_recorded", "kind"): ("executable", "judgment"),
     ("claim_recorded", "evidence_type"): ("command", "file:line"),
+    ("tool_call", "refused_by"): ("I1", "I4", "I5", None),  # I2/I3 never populate this (HYBRID_SPEC §4)
+    ("approval_recorded", "gate"): ("checkpoint", "owner"),
 }
 
 

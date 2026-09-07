@@ -1,0 +1,67 @@
+{
+  "case_id": "UC7-wf-grid",
+  "task": "make research.stability importable again after a wrong-module import regresses (suite red -> localize -> fix -> green)",
+  "mode": "scripted",
+  "ceiling": 44,
+  "fixture": {
+    "files": {
+      "research/__init__.py": "",
+      "research/sweep.py": "GRID = None\n",
+      "research/walkforward.py": "_WF_GRID = [1, 2, 3]\n",
+      "research/stability.py": "from research.sweep import _WF_GRID\n",
+      "tests/test_research_importable.py": "import importlib\n\nimport pytest\n\n\n@pytest.mark.parametrize('mod', ['walkforward', 'stability'])\ndef test_research_module_imports(mod):\n    importlib.import_module(f'research.{mod}')\n"
+    }
+  },
+  "native_edits": [{"after_step": 3, "path": "research/stability.py", "content": "from research.walkforward import _WF_GRID\n"}],
+  "tool_calls": [
+    {"tool": "gate", "args": {"name": "fix research.stability import", "stop_criterion": "suite-green",
+      "difficulty": "LOW", "capability": [], "tools_required": ["python-repl", "pytest"],
+      "probe": {"path": "research/stability.py", "mode": "read"}}},
+    {"tool": "run_suite", "args": {"command": "python3 -m pytest -q tests/test_research_importable.py"}},
+    {"tool": "localize", "args": {"suite_output": {"$from": "run_suite", "field": "output"}}},
+    {"tool": "record_check", "args": {"claim_id": "import-succeeds", "mechanism": "pytest-fail-first",
+      "command": "python3 -m pytest -q tests/test_research_importable.py", "expected": "0 failed", "observed": "1 failed",
+      "pre_fix_result": "FAIL"}},
+    {"tool": "guard", "args": {"action": {"name": "fix-stability-import",
+      "refs": [{"path": "research/stability.py", "mode": "mutate"}],
+      "consumer_reasoning": "nothing registered consumes research/stability.py"}}},
+    {"tool": "run_suite", "args": {"command": "python3 -m pytest -q tests/test_research_importable.py"}},
+    {"tool": "record_check", "args": {"claim_id": "import-succeeds", "mechanism": "interpreter-import",
+      "command": "python3 -c \"import research.stability\"", "expected": "exits 0, no ImportError", "observed": "exit 0"}},
+    {"tool": "record_check", "args": {"claim_id": "import-succeeds", "mechanism": "pytest-fail-first",
+      "command": "python3 -m pytest -q tests/test_research_importable.py",
+      "expected": "1 failed pre-fix, 2 passed post-fix", "observed": "2 passed", "pre_fix_result": "FAIL"}},
+    {"tool": "run_suite", "args": {"command": "python3 -m pytest -q"}},
+    {"tool": "record_check", "args": {"claim_id": "no-regression", "mechanism": "suite-count",
+      "command": "python3 -m pytest -q", "expected": 2, "observed": 2}},
+    {"tool": "guard", "args": {"action": {"name": "commit-to-master",
+      "refs": [{"path": "master", "mode": "mutate", "verb": "commit"}],
+      "tripwires": {"default-branch-history": "git diff --stat"}}}},
+    {"tool": "record_check", "args": {"claim_id": "no-regression", "mechanism": "git-diff-scope",
+      "command": "git diff --stat", "expected": "exactly research/stability.py, no other files", "observed": "1 file, matches"}},
+    {"tool": "corroborate", "args": {"action": "commit-to-master",
+      "claims": [{"claim_id": "import-succeeds", "kind": "executable"},
+                 {"claim_id": "no-regression", "kind": "executable"}], "reconciliation": "agree"}},
+    {"tool": "prove", "args": {"gate": "checkpoint"}},
+    {"tool": "commit", "args": {"message": "fix research.stability import"}},
+    {"tool": "done", "args": {}}
+  ],
+  "injected_events": [
+    {"after_step": 13, "event": {"event": "approval_recorded", "action_id": "commit:['master']",
+      "gate": "checkpoint", "approver": "ej", "note": "checkpoint cleared"}}
+  ],
+  "expected_exit_lines": [
+    "Gate: plan needed, N=0, execution_status=main_executes, stop=suite-green.",
+    "Guard: fix-stability-import stakes=1, no hub.",
+    "Guard: commit-to-master stakes=2, hub=default-branch-history, gate=checkpoint.",
+    "Corroborate: import-succeeds: n=2/2; no-regression: n=2/2; reconciled=agree.",
+    "Prove: PASS, plan cleared to checkpoint gate."
+  ],
+  "expected_invariant_events": [
+    {"invariant": "I1", "tool": "commit", "refused": false}
+  ],
+  "expected_final": {"agents": 0, "live_dispatches_end": 0, "prove_exit_type": "PASS", "status": "DONE",
+    "tool_outcomes": [{"tool": "run_suite", "ok": true, "reason": null}, {"tool": "localize", "ok": true, "reason": null},
+                      {"tool": "run_suite", "ok": true, "reason": null}, {"tool": "run_suite", "ok": true, "reason": null},
+                      {"tool": "commit", "ok": true, "reason": null}, {"tool": "done", "ok": true, "reason": null}]}
+}

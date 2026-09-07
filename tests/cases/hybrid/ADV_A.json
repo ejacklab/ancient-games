@@ -1,0 +1,29 @@
+{
+  "case_id": "ADV-A-dispatch-cap",
+  "task": "I5' boundary: three live dispatches fill CAP, the fourth is refused, dispatch_failed frees a slot, retry succeeds, all drain",
+  "mode": "scripted",
+  "ceiling": 20,
+  "tool_calls": [
+    {"tool": "gate", "args": {"name": "parallel research", "stop_criterion": "all-returned", "difficulty": "MED", "capability": ["x"]}},
+    {"tool": "dispatch", "args": {"role": "x", "framing": "a", "agent_id": "A", "counts_toward_cap": false}},
+    {"tool": "dispatch", "args": {"role": "x", "framing": "b", "agent_id": "B", "counts_toward_cap": false}},
+    {"tool": "dispatch", "args": {"role": "x", "framing": "c", "agent_id": "C", "counts_toward_cap": false}},
+    {"tool": "dispatch", "args": {"role": "x", "framing": "d", "agent_id": "D", "counts_toward_cap": false}},
+    {"tool": "dispatch", "args": {"role": "x", "framing": "d", "agent_id": "D", "counts_toward_cap": false}},
+    {"tool": "ingest_return", "args": {"agent_id": "A", "fields": {}}},
+    {"tool": "ingest_return", "args": {"agent_id": "C", "fields": {}}},
+    {"tool": "ingest_return", "args": {"agent_id": "D", "fields": {}}}
+  ],
+  "injected_events": [
+    {"after_step": 4, "event": {"event": "dispatch_failed", "agent_id": "B", "reason": "agent B timed out"}}
+  ],
+  "expected_exit_lines": ["Gate: plan needed, N=1, execution_status=dispatched, stop=all-returned."],
+  "expected_invariant_events": [
+    {"invariant": "I5", "tool": "dispatch", "refused": true},
+    {"invariant": "I5", "tool": "dispatch", "refused": false},
+    {"invariant": "I5", "tool": "ingest_return", "refused": false}
+  ],
+  "expected_final": {"agents": 4, "live_dispatches_end": 0, "status": "NO_CHOICE",
+    "tool_outcomes": [{"tool": "dispatch", "ok": true, "reason": null}, {"tool": "dispatch", "ok": true, "reason": null},
+                      {"tool": "dispatch", "ok": true, "reason": null}, {"tool": "dispatch", "ok": true, "reason": null}]}
+}

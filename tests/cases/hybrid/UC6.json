@@ -1,0 +1,60 @@
+{
+  "case_id": "UC6-implement-from-spec",
+  "task": "implement engine/liquidity.py + research docstrings from an accepted spec (closure floor, acceptance gate, commit)",
+  "mode": "scripted",
+  "ceiling": 44,
+  "fixture": {
+    "files": {"engine/__init__.py": "", "research/report.py": "def report():\n    pass\n"},
+    "modified": {"engine/liquidity.py": "def liquidity():\n    return 1.0\n", "research/report.py": "def report():\n    \"\"\"Render the report.\"\"\"\n"}
+  },
+  "tool_calls": [
+    {"tool": "gate", "args": {"name": "add engine/liquidity.py + research docstrings", "stop_criterion": "liquidity-module-plus-docstrings-done",
+      "difficulty": "MED", "capability": ["module-coder", "docstring-agent"], "role": "coder",
+      "actors": {"add-liquidity-module": "module-coder", "update-docstrings": "docstring-agent", "commit-to-master": "MAIN"}}},
+    {"tool": "dispatch", "args": {"role": "coder", "framing": "spec-5.3-implementation", "agent_id": "module-coder", "counts_toward_cap": false}},
+    {"tool": "dispatch", "args": {"role": "coder", "framing": "docstring-sync", "agent_id": "docstring-agent", "counts_toward_cap": false}},
+    {"tool": "guard", "args": {"action": {"name": "add-liquidity-module", "refs": [{"path": "engine/liquidity.py", "mode": "mutate"}],
+      "consumer_reasoning": "brand-new, not-yet-consumed module"}}},
+    {"tool": "guard", "args": {"action": {"name": "update-docstrings", "refs": [{"path": "research/report.py", "mode": "mutate"}],
+      "consumer_reasoning": "docstring text isn't consumed/synced anywhere"}}},
+    {"tool": "guard", "args": {"action": {"name": "commit-to-master", "refs": [{"path": "master", "mode": "mutate", "verb": "commit"}],
+      "tripwires": {"default-branch-history": "git diff --stat"}}}},
+    {"tool": "record_check", "args": {"claim_id": "hub-integrity:default-branch-history", "mechanism": "git-diff-scope",
+      "command": "git diff --stat", "expected": "engine/liquidity.py + research/report.py only", "observed": "matches"}},
+    {"tool": "record_check", "args": {"claim_id": "liquidity-module-correctness", "mechanism": "interpreter-import",
+      "command": "python3 -c \"import engine.liquidity\"", "expected": "exits 0, no ImportError", "observed": "exit 0"}},
+    {"tool": "ingest_return", "args": {"agent_id": "module-coder", "actor": "module-coder", "fields": {"REPORT_BACK": "/agents/module-coder.md"}}},
+    {"tool": "ingest_return", "args": {"agent_id": "docstring-agent", "actor": "docstring-agent", "fields": {"REPORT_BACK": "/agents/docstring-agent.md"}}},
+    {"tool": "corroborate", "args": {"action": "add-liquidity-module",
+      "claims": [{"claim_id": "liquidity-module-correctness", "kind": "executable", "remedy_mechanism": "pytest-fail-first"}],
+      "reconciliation": "agree"}},
+    {"tool": "filter_candidates", "args": {"candidates": ["liquidity module", "docstrings"]}},
+    {"tool": "prove", "args": {"gate": "checkpoint", "gate_at": "commit"}},
+    {"tool": "record_check", "args": {"claim_id": "liquidity-module-correctness", "mechanism": "pytest-fail-first",
+      "command": "pytest tests/test_liquidity.py -q", "expected": "fails pre-fix, passes post-fix on spec §5.3 formulas",
+      "observed": "passed", "pre_fix_result": "FAIL"}},
+    {"tool": "prove", "args": {"gate": "checkpoint", "gate_at": "commit"}},
+    {"tool": "commit", "args": {"message": "add engine/liquidity.py; sync research docstrings"}},
+    {"tool": "done", "args": {}}
+  ],
+  "injected_events": [
+    {"after_step": 14, "event": {"event": "approval_recorded", "action_id": "commit:['master']",
+      "gate": "checkpoint", "approver": "ej", "note": "checkpoint cleared"}}
+  ],
+  "expected_exit_lines": [
+    "Gate: plan needed, N=2, execution_status=dispatched, stop=liquidity-module-plus-docstrings-done.",
+    "Guard: add-liquidity-module stakes=2, hub=[], gate=checkpoint.",
+    "Guard: update-docstrings stakes=1, no hub.",
+    "Guard: commit-to-master stakes=2, hub=default-branch-history, gate=checkpoint.",
+    "Corroborate: liquidity-module-correctness: n=1/2, capped, remedy=add-claim-specific-check; reconciled=agree, corroboration-capped=true.",
+    "Filter: kept=2, merged=0, cut=0, follow_on=0.",
+    "Prove: FAIL, N=1 finding (RETURN_TO_PLANNER: add a claim-specific check with mechanism pytest-fail-first for liquidity-module-correctness), returned to planner.",
+    "Prove: PASS, plan cleared to checkpoint gate (at commit)."
+  ],
+  "expected_invariant_events": [
+    {"invariant": "I1", "tool": "commit", "refused": false},
+    {"invariant": "I4", "tool": "commit", "refused": false}
+  ],
+  "expected_final": {"agents": 2, "live_dispatches_end": 0, "prove_exit_type": "PASS", "status": "DONE",
+    "tool_outcomes": [{"tool": "commit", "ok": true, "reason": null}, {"tool": "done", "ok": true, "reason": null}]}
+}

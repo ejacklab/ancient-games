@@ -1,0 +1,51 @@
+{
+  "case_id": "ADV-B-owner-gate",
+  "task": "I4'(a) boundary: owner-gated invoke refused with no approval, passes once cleared, refused again once the approval predates an intervening commit",
+  "mode": "scripted",
+  "ceiling": 20,
+  "fixture": {"files": {"a.py": "x = 1\n"}, "modified": {"a.py": "x = 2\n"}},
+  "tool_calls": [
+    {"tool": "gate", "args": {"name": "confirm load_holdout runs", "stop_criterion": "owner-clearance-or-declared-blocked", "difficulty": "MED"}},
+    {"tool": "guard", "args": {"action": {"name": "run-load_holdout-probe",
+      "refs": [{"path": "eval.partitions.load_holdout", "mode": "invoke"}], "irreversible_clause": "a",
+      "fallback": "default do-not-run, flag the gap", "permissions": "none-until-gated",
+      "consumer_reasoning": "the loader is the one-shot unseal act", "only_candidate_for_count0": true}}},
+    {"tool": "guard", "args": {"action": {"name": "run-load_holdout-probe",
+      "refs": [{"path": "eval.partitions.load_holdout", "mode": "invoke"}], "irreversible_clause": "a",
+      "fallback": "default do-not-run, flag the gap", "permissions": "none-until-gated",
+      "consumer_reasoning": "the loader is the one-shot unseal act", "approval_on_record": true}}},
+    {"tool": "guard", "args": {"action": {"name": "edit-a", "refs": [{"path": "a.py", "mode": "mutate"}]}}},
+    {"tool": "guard", "args": {"action": {"name": "commit-to-master", "refs": [{"path": "master", "mode": "mutate", "verb": "commit"}],
+      "tripwires": {"default-branch-history": "git diff --stat"}}}},
+    {"tool": "commit", "args": {"message": "edit a.py (unrelated landing)"}},
+    {"tool": "guard", "args": {"action": {"name": "run-load_holdout-probe",
+      "refs": [{"path": "eval.partitions.load_holdout", "mode": "invoke"}], "irreversible_clause": "a",
+      "consumer_reasoning": "the loader is the one-shot unseal act", "approval_on_record": true}}},
+    {"tool": "guard", "args": {"action": {"name": "run-load_holdout-probe",
+      "refs": [{"path": "eval.partitions.load_holdout", "mode": "invoke"}], "irreversible_clause": "a",
+      "consumer_reasoning": "the loader is the one-shot unseal act", "approval_on_record": true}}}
+  ],
+  "injected_events": [
+    {"after_step": 1, "event": {"event": "approval_recorded", "action_id": "invoke:['eval.partitions.load_holdout']",
+      "gate": "owner", "approver": "ej", "note": "owner clearance granted, see eval/protocol.json review"}},
+    {"after_step": 4, "event": {"event": "approval_recorded", "action_id": "commit:['master']",
+      "gate": "checkpoint", "approver": "ej", "note": "checkpoint cleared"}},
+    {"after_step": 6, "event": {"event": "approval_recorded", "action_id": "invoke:['eval.partitions.load_holdout']",
+      "gate": "owner", "approver": "ej", "note": "re-cleared post-commit"}}
+  ],
+  "expected_exit_lines": [
+    "Gate: plan needed, N=0, execution_status=main_executes, stop=owner-clearance-or-declared-blocked.",
+    "Guard: run-load_holdout-probe stakes=3, hub=eval.partitions.load_holdout, gate=owner(ej).",
+    "Guard: edit-a stakes=1, no hub.",
+    "Guard: commit-to-master stakes=2, hub=default-branch-history, gate=checkpoint.",
+    "Guard: run-load_holdout-probe stakes=3, hub=eval.partitions.load_holdout, gate=owner(ej)."
+  ],
+  "expected_invariant_events": [
+    {"invariant": "I4", "tool": "guard", "refused": true},
+    {"invariant": "I4", "tool": "guard", "refused": false},
+    {"invariant": "I1", "tool": "commit", "refused": false},
+    {"invariant": "I4", "tool": "commit", "refused": false}
+  ],
+  "expected_final": {"agents": 0, "live_dispatches_end": 0, "status": "NO_CHOICE",
+    "tool_outcomes": [{"tool": "commit", "ok": true, "reason": null}]}
+}

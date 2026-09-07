@@ -1,0 +1,69 @@
+{
+  "case_id": "UC1-T2",
+  "task": "fix research.stability import (ImportError: _WF_GRID)",
+  "mode": "scripted",
+  "ceiling": 44,
+  "fixture": {
+    "files": {
+      "research/__init__.py": "",
+      "research/walkforward.py": "_WF_GRID = [1, 2, 3]\n",
+      "research/stability.py": "from research.sweep import _WF_GRID\n",
+      "tests/test_research_importable.py": "def test_placeholder():\n    assert True\n"
+    },
+    "modified": {
+      "research/stability.py": "from research.walkforward import _WF_GRID\n",
+      "tests/test_research_importable.py": "import importlib\n\ndef test_research_module_imports():\n    importlib.import_module('research.stability')\n"
+    }
+  },
+  "tool_calls": [
+    {"tool": "gate", "args": {"name": "fix research.stability import",
+      "stop_criterion": "import-succeeds-plus-smoke-test", "difficulty": "LOW", "capability": [],
+      "probe": {"path": "research/stability.py", "mode": "read"}}},
+    {"tool": "guard", "args": {"action": {"name": "research-and-tests-edit",
+      "refs": [{"path": "research/stability.py", "mode": "mutate"},
+               {"path": "tests/test_research_importable.py", "mode": "mutate"}],
+      "consumer_reasoning": "grep -rl research.stability across eval/,loop/ finds no registered stakes≥2 consumer"}}},
+    {"tool": "guard", "args": {"action": {"name": "commit-to-master",
+      "refs": [{"path": "master", "mode": "mutate", "verb": "commit"}],
+      "tripwires": {"default-branch-history": "git diff --stat"}}}},
+    {"tool": "record_check", "args": {"claim_id": "import-succeeds", "mechanism": "interpreter-import",
+      "command": "python3 -c \"import research.stability\"", "expected": "exits 0, no ImportError", "observed": "exit 0"}},
+    {"tool": "record_check", "args": {"claim_id": "import-succeeds", "mechanism": "pytest-fail-first",
+      "command": "pytest tests/test_research_importable.py -q",
+      "expected": "1 failed pre-fix, 14 passed post-fix", "observed": "14 passed", "pre_fix_result": "FAIL"}},
+    {"tool": "record_check", "args": {"claim_id": "no-regression", "mechanism": "suite-count",
+      "command": "make test", "expected": 274, "observed": 274}},
+    {"tool": "record_check", "args": {"claim_id": "no-regression", "mechanism": "git-diff-scope",
+      "command": "git diff --stat",
+      "expected": "exactly research/stability.py + tests/test_research_importable.py, no other files",
+      "observed": "2 files, matches"}},
+    {"tool": "corroborate", "args": {"action": "commit-to-master",
+      "claims": [{"claim_id": "import-succeeds", "kind": "executable"},
+                 {"claim_id": "no-regression", "kind": "executable"}], "reconciliation": "agree"}},
+    {"tool": "filter_candidates", "args": {"candidates": ["import fix", "docstring fix", "importability test", "Makefile change"],
+      "cut": {"Makefile change": "tests/ already globbed"},
+      "follow_on": [["extend importability pattern to eval/*.py and loop/*.py", "new-task"],
+                    ["_scratch_pivot_dense_scan.py runs heavy work at import", "dismissed:out-of-scope"]]}},
+    {"tool": "prove", "args": {"gate": "checkpoint"}},
+    {"tool": "commit", "args": {"message": "fix research.stability import; add importability test"}},
+    {"tool": "done", "args": {}}
+  ],
+  "injected_events": [
+    {"after_step": 9, "event": {"event": "approval_recorded", "action_id": "commit:['master']",
+      "gate": "checkpoint", "approver": "ej", "note": "checkpoint cleared"}}
+  ],
+  "expected_exit_lines": [
+    "Gate: plan needed, N=0, execution_status=main_executes, stop=import-succeeds-plus-smoke-test.",
+    "Guard: research-and-tests-edit stakes=1, no hub.",
+    "Guard: commit-to-master stakes=2, hub=default-branch-history, gate=checkpoint.",
+    "Corroborate: import-succeeds: n=2/2; no-regression: n=2/2; reconciled=agree.",
+    "Filter: kept=3, merged=0, cut=1, follow_on=2.",
+    "Prove: PASS, plan cleared to checkpoint gate."
+  ],
+  "expected_invariant_events": [
+    {"invariant": "I1", "tool": "commit", "refused": false},
+    {"invariant": "I4", "tool": "commit", "refused": false}
+  ],
+  "expected_final": {"agents": 0, "live_dispatches_end": 0, "prove_exit_type": "PASS", "status": "DONE",
+    "tool_outcomes": [{"tool": "commit", "ok": true, "reason": null}, {"tool": "done", "ok": true, "reason": null}]}
+}

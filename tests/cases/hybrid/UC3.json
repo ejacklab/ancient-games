@@ -1,0 +1,51 @@
+{
+  "case_id": "UC3-T3",
+  "task": "research -> owner recommendation on the sealed-holdout decision (governance-gated R1, actor=none)",
+  "mode": "scripted",
+  "ceiling": 44,
+  "fixture": {"files": {"eval/protocol.json": "{}\n"}},
+  "tool_calls": [
+    {"tool": "gate", "args": {"name": "sealed-holdout recommendation", "stop_criterion": "recommendation-ready-3-part",
+      "difficulty": "HIGH", "capability": ["spec-reader", "historian", "statistician"], "role": "researcher",
+      "governance_gated": "R1", "probe": {"path": "eval/protocol.json", "mode": "read"},
+      "actors": {"produce-holdout-recommendation": "none"}}},
+    {"tool": "dispatch", "args": {"role": "researcher", "framing": "spec-reader", "agent_id": "spec-reader", "counts_toward_cap": false}},
+    {"tool": "dispatch", "args": {"role": "researcher", "framing": "historian", "agent_id": "historian", "counts_toward_cap": false}},
+    {"tool": "dispatch", "args": {"role": "researcher", "framing": "statistician", "agent_id": "statistician", "counts_toward_cap": false}},
+    {"tool": "guard", "args": {"action": {"name": "produce-holdout-recommendation",
+      "refs": [{"path": "research/holdout_recommendation.md", "mode": "mutate"}],
+      "consumer_reasoning": "a freshly-authored research doc has no existing consumer yet"}}},
+    {"tool": "record_claim", "args": {"claim_id": "unseal-recommendation", "author": "spec-reader", "actor": "none", "kind": "judgment",
+      "text": "should/should not unseal, on these terms", "evidence_type": "file:line", "evidence_ref": "/agents/spec-reader.md:1", "framing": "spec-reader"}},
+    {"tool": "record_claim", "args": {"claim_id": "unseal-recommendation", "author": "historian", "actor": "none", "kind": "judgment",
+      "text": "should/should not unseal, on these terms", "evidence_type": "file:line", "evidence_ref": "/agents/historian.md:1", "framing": "historian"}},
+    {"tool": "record_claim", "args": {"claim_id": "unseal-recommendation", "author": "statistician", "actor": "none", "kind": "judgment",
+      "text": "should/should not unseal, on these terms", "evidence_type": "file:line", "evidence_ref": "/agents/statistician.md:1", "framing": "statistician"}},
+    {"tool": "ingest_return", "args": {"agent_id": "spec-reader", "actor": "none", "fields": {"REPORT_BACK": "/agents/spec-reader.md"}}},
+    {"tool": "ingest_return", "args": {"agent_id": "historian", "actor": "none", "fields": {"REPORT_BACK": "/agents/historian.md"}}},
+    {"tool": "ingest_return", "args": {"agent_id": "statistician", "actor": "none", "fields": {"REPORT_BACK": "/agents/statistician.md"}}},
+    {"tool": "corroborate", "args": {"action": "produce-holdout-recommendation",
+      "claims": [{"claim_id": "unseal-recommendation", "kind": "judgment"}],
+      "reconciliation": "disagree", "dominance": "irreversibility-finding"}},
+    {"tool": "filter_candidates", "args": {"candidates": ["unseal recommendation", "keep sealed forever, no path"],
+      "cut": {"keep sealed forever, no path": "dominated"},
+      "merged": {"uncertified-log-line finding": "discovered-not-planned", "power-analysis bound": "discovered-not-planned",
+                 "protocol clause reading": "discovered-not-planned"},
+      "follow_on": [["build an automated certifier", "new-task"]]}},
+    {"tool": "prove", "args": {"gate": "checkpoint"}},
+    {"tool": "done", "args": {}}
+  ],
+  "expected_exit_lines": [
+    "Gate: plan needed, N=3, execution_status=dispatched, stop=recommendation-ready-3-part, governance-gated=R1.",
+    "Guard: produce-holdout-recommendation stakes=1, no hub.",
+    "Corroborate: unseal-recommendation: n=3/3; reconciled=disagree, dominance=irreversibility-finding.",
+    "Filter: kept=1, merged=3, cut=1, follow_on=1, governance-gated=1(terminal).",
+    "Prove: PASS, plan cleared to terminal gate=owner(ej) [governance-gated]."
+  ],
+  "expected_invariant_events": [
+    {"invariant": "I5", "tool": "dispatch", "refused": false},
+    {"invariant": "I2", "tool": "done", "refused": false}
+  ],
+  "expected_final": {"agents": 3, "live_dispatches_end": 0, "prove_exit_type": "PASS", "status": "DONE",
+    "tool_outcomes": [{"tool": "done", "ok": true, "reason": null}]}
+}

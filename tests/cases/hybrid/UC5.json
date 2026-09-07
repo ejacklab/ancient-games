@@ -1,0 +1,62 @@
+{
+  "case_id": "UC5-design-review-loop",
+  "task": "design -> adversarial review -> fix -> re-review, until accepted (sequential agents, reviewer isolation). Round 2 counts n=3/2 under B·1: (a) reviewer-2 + MAIN's own claim = two distinct framings, (b) MAIN's command-backed claim once more since actor=designer",
+  "mode": "scripted",
+  "ceiling": 44,
+  "fixture": {
+    "files": {"loop/SPEC_v3.md": "# spec v2\n"},
+    "modified": {"loop/SPEC_v3.md": "# spec v3 draft\n"}
+  },
+  "native_edits": [{"after_step": 8, "path": "loop/SPEC_v3.md", "content": "# spec v3.6 (fixed after review 1)\n"}],
+  "tool_calls": [
+    {"tool": "gate", "args": {"name": "land spec v3 after adversarial review", "stop_criterion": "reviewer-accepts",
+      "difficulty": "MED", "capability": ["designer", "reviewer"], "role": "coder", "actors": {"land-spec-v3": "designer"}}},
+    {"tool": "dispatch", "args": {"role": "coder", "framing": "draft", "agent_id": "designer", "counts_toward_cap": false}},
+    {"tool": "ingest_return", "args": {"agent_id": "designer", "actor": "designer", "framing": "draft",
+      "fields": {"CLAIMS": [{"claim_id": "spec-accepted", "kind": "judgment", "evidence_type": "file:line",
+                             "evidence_ref": "/agents/designer.md:1", "text": "v3 is complete"}], "FOLLOW_ON": []}}},
+    {"tool": "guard", "args": {"action": {"name": "land-spec-v3", "refs": [{"path": "loop/SPEC_v3.md", "mode": "mutate"}],
+      "consumer_reasoning": "the spec is read by humans and by the self-lint only"}}},
+    {"tool": "dispatch", "args": {"role": "researcher", "framing": "adversarial-review-1", "agent_id": "reviewer-1", "counts_toward_cap": false}},
+    {"tool": "ingest_return", "args": {"agent_id": "reviewer-1", "actor": "designer", "framing": "adversarial-review-1",
+      "fields": {"VERDICT": "REJECT", "CLAIMS": [], "FOLLOW_ON": [["§4 loop pseudocode does not execute", "fixed"]]}}},
+    {"tool": "corroborate", "args": {"action": "land-spec-v3", "claims": [{"claim_id": "spec-accepted", "kind": "judgment"}],
+      "framings": {"spec-accepted": ["adversarial-review-1", "adversarial-review-2"]}, "reconciliation": "agree"}},
+    {"tool": "filter_candidates", "args": {"candidates": ["spec v3"], "follow_on": [["§4 loop pseudocode does not execute", "fixed"]]}},
+    {"tool": "prove", "args": {"gate": "checkpoint"}},
+    {"tool": "dispatch", "args": {"role": "researcher", "framing": "adversarial-review-2", "agent_id": "reviewer-2", "counts_toward_cap": true}},
+    {"tool": "ingest_return", "args": {"agent_id": "reviewer-2", "actor": "designer", "framing": "adversarial-review-2",
+      "fields": {"VERDICT": "ACCEPT", "CLAIMS": [{"claim_id": "spec-accepted", "kind": "judgment", "evidence_type": "file:line",
+                                                   "evidence_ref": "/agents/reviewer-2.md:1", "text": "all findings closed"}], "FOLLOW_ON": []}}},
+    {"tool": "record_claim", "args": {"claim_id": "spec-accepted", "author": "MAIN", "actor": "designer", "kind": "judgment",
+      "text": "the v3.6 pseudocode executes", "evidence_type": "command", "evidence_ref": "python3 -m pytest -q"}},
+    {"tool": "corroborate", "args": {"action": "land-spec-v3", "claims": [{"claim_id": "spec-accepted", "kind": "judgment"}],
+      "framings": {"spec-accepted": ["adversarial-review-1", "adversarial-review-2"]}, "reconciliation": "agree"}},
+    {"tool": "prove", "args": {"gate": "checkpoint"}},
+    {"tool": "guard", "args": {"action": {"name": "commit-to-master", "refs": [{"path": "master", "mode": "mutate", "verb": "commit"}],
+      "tripwires": {"default-branch-history": "git diff --stat"}}}},
+    {"tool": "commit", "args": {"message": "spec v3.6: accepted after adversarial review"}},
+    {"tool": "done", "args": {}}
+  ],
+  "injected_events": [
+    {"after_step": 14, "event": {"event": "approval_recorded", "action_id": "commit:['master']",
+      "gate": "checkpoint", "approver": "ej", "note": "checkpoint cleared"}}
+  ],
+  "expected_exit_lines": [
+    "Gate: plan needed, N=2, execution_status=dispatched, stop=reviewer-accepts.",
+    "Guard: land-spec-v3 stakes=2, hub=[], gate=checkpoint.",
+    "Corroborate: spec-accepted: n=0/2, capped, remedy=add-differently-framed-source; reconciled=agree, corroboration-capped=true.",
+    "Filter: kept=1, merged=0, cut=0, follow_on=1.",
+    "Prove: FAIL, N=1 finding (RETURN_TO_PLANNER: add source with framing adversarial-review-1 for spec-accepted), returned to planner.",
+    "Corroborate: spec-accepted: n=3/2; reconciled=agree.",
+    "Prove: PASS, plan cleared to checkpoint gate.",
+    "Guard: commit-to-master stakes=2, hub=default-branch-history, gate=checkpoint."
+  ],
+  "expected_invariant_events": [
+    {"invariant": "I5", "tool": "dispatch", "refused": false},
+    {"invariant": "I1", "tool": "commit", "refused": false},
+    {"invariant": "I4", "tool": "commit", "refused": false}
+  ],
+  "expected_final": {"agents": 3, "live_dispatches_end": 0, "prove_exit_type": "PASS", "status": "DONE",
+    "tool_outcomes": [{"tool": "commit", "ok": true, "reason": null}, {"tool": "done", "ok": true, "reason": null}]}
+}
