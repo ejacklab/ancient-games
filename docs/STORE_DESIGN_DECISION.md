@@ -32,7 +32,7 @@ The three reviews converged from different evidence: simplicity found that only 
 ## Spec and code changes (integration's rulings)
 - `SPEC.md` §7: **drop `check_executed.hub_integrity_for`** — the spec drifted; the code never had it and achieves the dual role via `claim_id`/`falsifies`. One edit.
 - `journal.py`: **no change.**
-- `lints.py`: wire `lint_scope_delta_missing` into `run_all_on_plan` — pre-existing gap, unrelated to the store. New task.
+- `lints.py`: wire `lint_scope_delta_missing` into `run_all_on_plan` — pre-existing gap, unrelated to the store. **Done 2026-09-08 (`d149a57`)**: wired in §8 order, run-scoped, Python in every backend; no case file changed because no journaled dispatch carries a `SCOPE` payload field, so it is live but not yet triggered by real data.
 - Rejected (no reader): extend `consumer_check` with the resolved hub; add `check_executed.agent_id`; fix `artifact_ref` mode collapse.
 
 ## Tests — the oracle is the Python lint, never a re-derivation

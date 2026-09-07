@@ -339,6 +339,8 @@ WHERE d.run_id = :run_id
 **Finding:** this lint is declared (`lints.py:54-58`), listed in
 `LINTS` (`lints.py:160`), and unit-tested (`test_lints.py:39-42`), but
 **`run_all_on_plan` never calls it** (`lints.py:166-185` calls the other
+
+> **Superseded 2026-09-08:** `lint_scope_delta_missing` is no longer dead — it was wired into `run_all_on_plan` in `d149a57` (§8 order, run-scoped). The observation below was true when this design was written.
 8; `grep -n lint_scope_delta_missing ancient_games/` shows only its
 definition and its entry in the `LINTS` tuple). It is not journal-backed
 in its current call convention either — its two Python parameters
