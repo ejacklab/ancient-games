@@ -178,10 +178,15 @@ def claims_without_evidence(con: sqlite3.Connection, run_id: str) -> list[Findin
 _WS = " \t\n\r\f\v"  # the ASCII members of \s, i.e. what \S excludes
 # lints.DISPOSITION_RE = ^(fixed|new-task|dismissed:\S.*|escalated:\S+)$ as a prefix set (no REGEXP callback),
 # over `s` = the disposition with the one trailing newline `$` tolerates removed; `.` never matches a newline.
+# GLOB `*` is a wildcard, not a repetition of the class before it, so `\S+` is "one class char, then no
+# whitespace in the rest" — the class match plus a NOT GLOB over substr(s, 12), exactly as `dismissed:`
+# (`\S.*`) spells its own "one class char, then no newline in the rest". Writing `[^ws][^ws]*` instead
+# would mean "two class chars then anything": it rejected `escalated:x` and accepted `escalated:ab cd`,
+# either of which raises LintBackendDivergence mid-`differential` run.
 _DISP_OK = (
     "s IN ('fixed', 'new-task')"
     f" OR (s GLOB 'dismissed:[^{_WS}]*' AND substr(s, 12) NOT GLOB '*' || char(10) || '*')"
-    f" OR s GLOB 'escalated:[^{_WS}][^{_WS}]*'"
+    f" OR (s GLOB 'escalated:[^{_WS}]*' AND substr(s, 12) NOT GLOB '*[{_WS}]*')"
 )
 
 

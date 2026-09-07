@@ -109,9 +109,23 @@ def gate(ctx: Ctx, task: TaskInput, journal: Journal, registry: list[Row] = REGI
         for i in range(k):
             sub = replace(task, capability=caps[i * size:(i + 1) * size], probe=None, probe_action=None)
             groups.append(gate(Ctx(), sub, journal, registry))
+        # C·3's last two sentences and C·5 apply to the split plan too. Skipping them left the
+        # parent ctx at dispatch_count=0 however many agents the groups dispatched, so B·1 built
+        # CapState(0), slot_remains was always True and a capped judgment claim was always handed
+        # add-differently-framed-source instead of being routed to a gate: CAP unenforced.
+        # `count` is the largest group's N (ctx.count is a per-plan N, bounded 0..3 by
+        # Ctx.validate; the plan-wide total lives in dispatch_count, which cap_state reads).
+        ctx.count = max((g.count for g in groups), default=0)
+        ctx.execution_status = "dispatched" if any(g.count >= 1 for g in groups) else "main_executes"
+        ctx.actor.update(task.actors)
+        ctx.dispatch_count += sum(g.count for g in groups)
+        fired.append("C·5")
+        ctx.stop_criterion = task.stop_criterion
+        ctx.time_box = task.time_box
         line = f"Gate: split into {k} groups, each re-planned, N≤3 each."
         journal.exit("C", fired, "PLAN_NEEDED[]", line, ctx.keys_set())
-        return GateExit("PLAN_NEEDED[]", line, groups=groups, steps_fired=fired)
+        return GateExit("PLAN_NEEDED[]", line, count, task.difficulty, ctx.stop_criterion, ctx.governance_gated,
+                        ctx.execution_status, groups=groups, steps_fired=fired)
     ctx.count = count
     if probe_guard is not None and ctx.execution_status == "hard_blocked":
         pass  # D·5's override stands (Case 2)
@@ -213,6 +227,13 @@ def guard(ctx: Ctx, action: ActionInput, journal: Journal, registry: list[Row] =
     else:
         rev = "git-revertible"
     ctx.reversibility = rev
+    # D·4/D·5 write ctx.tripwire and ctx.gate_reason for THIS action. A stakes=1 action has
+    # neither, and these are ctx state, not the exit's — left in place they are the PREVIOUS
+    # action's, and a later HUMAN_GATE cites a gate the stakes=1 action never had (and
+    # `_owner_for` names its owner). Clearing runs on both paths; the gated path then writes
+    # its own values below, exactly as before.
+    ctx.tripwire = {}
+    ctx.gate_reason = [g for g in ctx.gate_reason if g.reason not in ("stakes-2-checkpoint", "stakes-3-owner")]
     if hit.stakes == 1:
         line = f"Guard: {action.name} stakes=1, no hub."
         journal.exit("D", fired, "NO_GATE", line, ctx.keys_set())
@@ -230,7 +251,6 @@ def guard(ctx: Ctx, action: ActionInput, journal: Journal, registry: list[Row] =
     else:
         who = "human(checkpoint)"
         reason = "stakes-2-checkpoint"
-    ctx.gate_reason = [g for g in ctx.gate_reason if g.reason not in ("stakes-2-checkpoint", "stakes-3-owner")]
     ctx.gate_reason.append(GateReason(who, reason))
     if hit.gate == "owner" and not action.approval_on_record and action.only_candidate_for_count0:
         ctx.execution_status = "hard_blocked"
@@ -432,6 +452,12 @@ def corroborate(ctx: Ctx, claims: list[Claim], journal: Journal, action: str,
     for c in claims:
         c = replace(c, n_required=n_req, stakes=ctx.stakes or 1, actor=ctx.actor[action], action=c.action or action)
         ctx.claim_kind[c.claim_id] = c.kind
+        if not c.has_command:
+            # B·4 drops a claim with no cited command. It is dropped BEFORE B·1 counts it: an
+            # UNVERIFIED claim is not corroborated, so it must not write ctx.n_sources (schema
+            # FRAMING/TEMPLATE read it) or a corroboration_capped entry and its HUMAN_GATE line.
+            results.append(ClaimResult(c, "UNVERIFIED", 0, n_req))
+            continue
         if n_req == 1:
             ctx.n_sources[c.claim_id] = 1
             results.append(ClaimResult(c, "SINGLE_SOURCE", 1, 1))
@@ -452,13 +478,14 @@ def corroborate(ctx: Ctx, claims: list[Claim], journal: Journal, action: str,
             ctx.corroboration_capped = [x for x in ctx.corroboration_capped if x.claim_id != c.claim_id] + [capped]
             if remedy in ("gate-checkpoint", "gate-owner"):
                 who = f"owner({_owner_for(ctx, registry)})" if remedy == "gate-owner" else "human(checkpoint)"
+                # deduped by claim_id, like corroboration_capped just above: loop.REPLAN re-runs
+                # corroborate, and an undeduped append emitted the same HUMAN_GATE line twice.
+                ctx.gate_reason = [g for g in ctx.gate_reason
+                                   if not (g.reason == "corroboration-capped" and g.claim_id == c.claim_id)]
                 ctx.gate_reason.append(GateReason(who, "corroboration-capped", c.claim_id))
         results.append(ClaimResult(c, "CAPPED" if capped else "SOURCES", n_avail, n_req, remedy, capped))
-    # B·4 drop UNVERIFIED
+    # B·4 drop UNVERIFIED (done in the loop above, before the claim is counted)
     fired.append("B·4")
-    for r in results:
-        if not r.claim.has_command:
-            r.exit_type = "UNVERIFIED"
     survivors = [r for r in results if r.exit_type != "UNVERIFIED"]
     # B·5 reconcile (LLM input)
     if survivors and reconciliation is not None:
