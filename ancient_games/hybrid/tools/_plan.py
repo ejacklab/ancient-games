@@ -21,7 +21,7 @@ from ancient_games.registry import REGISTRY, Row
 from ancient_games.stages import Claim, Plan, PlanEntry, tripwires_for, unused_framing
 from ancient_games.trace import parse_corroborate_line
 
-from ._shared import guard_action
+from ._shared import guard_action, guard_mutate_paths
 
 
 HUB_INTEGRITY_PREFIX = "hub-integrity:"  # D·4 tripwire runs (AA3′) are recorded as checks, not claims
@@ -81,7 +81,9 @@ def plan_from_journal(events: list[dict], ctx, args: dict, registry: list[Row] =
         action = guard_action(g["args"])
         hit = reg.lookup(action.refs, registry)
         claims, capped = _claims_for(action.name, corroborates, b_exits, ctx, events)
-        entries.append(PlanEntry(action.name, g["args"].get("refs-paths", []), hit.stakes, list(hit.hubs),
+        # H9 (ABLATION_2): the entry's ref is the action's invoke/mutate paths — what `guard` wrote as the
+        # consumer_check ref — never the read refs, which no consumer check is ever expected to cover.
+        entries.append(PlanEntry(action.name, guard_mutate_paths(action), hit.stakes, list(hit.hubs),
                                  tripwires_for(hit, action.tripwires), claims, capped,
                                  getattr(ctx, "dispatch_count", 0), args.get("has_failable_check", True),
                                  args.get("metrics_named", True)))

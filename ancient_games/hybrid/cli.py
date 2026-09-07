@@ -13,7 +13,12 @@ file); every other subcommand reads it via `--manifest` or `$ANCIENT_GAMES_RUN`.
 `call` loads the manifest's ctx, runs `loop.step` (the same invariant check →
 execute-or-refuse → `tool_call` event the scripted loop runs), saves ctx, and
 prints the ToolResult as JSON. Exit codes: 0 executed (ok or declined by the
-tool's own body — read `ok`), 2 refused by an invariant, 1 error.
+tool's own body — read `ok`), 2 refused by an invariant or declined for malformed
+args (`reason` starts `invalid-args:` and names the expected shape — H10, never a
+traceback), 1 error.
+
+`init`'s default ceiling (H13, ABLATION_2) is 2× the longest free-agent journal
+under `ablation/runs/**` (tool_call events), overridable with `--ceiling`.
 
 `approve` and `fail-dispatch` write the two orchestrator-only events (§6).
 The subagent under ablation must NOT call `approve` — MAIN does; the packet
@@ -35,7 +40,7 @@ import typing
 from typing import Any
 
 from ancient_games import registry as reg
-from ancient_games.ctx import CLAIM_KINDS, DIFFICULTIES, MECHANISMS, MODES, ROLES, ArtifactRef, Ctx
+from ancient_games.ctx import ABSENCE_PATTERNS, CLAIM_KINDS, DIFFICULTIES, MECHANISMS, MODES, ROLES, ArtifactRef, Ctx
 from ancient_games.journal import _ENUMS, Journal
 from ancient_games.stages import ActionInput, Candidate, Claim, TaskInput
 
@@ -44,8 +49,24 @@ from .registry import RegisteredTool, load_tools
 from .types import Call, hydrate
 
 ENV_MANIFEST = "ANCIENT_GAMES_RUN"
-DEFAULT_CEILING = 44
+FALLBACK_CEILING = 44  # used only when no journal exists under RUNS_DIR
+RUNS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "ablation", "runs")
 EXIT_EXECUTED, EXIT_ERROR, EXIT_REFUSED = 0, 1, 2
+INVALID_ARGS = "invalid-args:"
+
+
+def default_ceiling(runs_dir: str = RUNS_DIR, fallback: int = FALLBACK_CEILING) -> int:
+    """H13: 2× the most tool_call events any journal under `runs_dir` holds (the real free-agent traces),
+    not 2× a scripted trace — a free agent spends calls on discovery and retries a script never needs."""
+    longest = 0
+    for dirpath, _, files in os.walk(runs_dir):
+        for name in files:
+            if not name.endswith(".jsonl"):
+                continue
+            with open(os.path.join(dirpath, name), encoding="utf-8") as fh:
+                n = sum(1 for ln in fh if ln.strip() and json.loads(ln).get("event") == "tool_call")
+            longest = max(longest, n)
+    return 2 * longest if longest else fallback
 
 
 # --- manifest ---------------------------------------------------------------------
@@ -134,6 +155,13 @@ NOTES: dict[str, str] = {
     "tripwires": "{hub-name-or-matched-ref-path: command}; declare the command in the form it will be run at prove "
                  "time (a pre-commit `git diff HEAD` is wrong post-commit) — re-call guard to correct it",
     "falsifies": "a claim_id (this call's, or one recorded in this run); the condition goes in `expected`",
+    "framings": "{claim_id: [framing, ...]} — a LIST per claim, e.g. {\"C1\": [\"static-scan\", \"runtime-trace\"]}; "
+                "keyed by claim_id, not by author",
+    "kind": "assigned by rule (D-KIND): text asserting absence / a universal negative (" + "|".join(ABSENCE_PATTERNS)
+            + ") is judgment; executable is accepted for such text only with closed_world",
+    "closed_world": "record_claim only: why the check space is complete (e.g. \"AST over every .py + grep for the name as a "
+                    "string + no getattr/globals() idioms\"); required to keep kind=executable on absence text; shown "
+                    "verbatim at the checkpoint gate",
     "n_required": "set by corroborate — never passed by the caller",
     "stakes": "set by corroborate — never passed by the caller",
     "actor": "set by corroborate from ctx.actor — never passed by the caller",
@@ -198,7 +226,8 @@ def tools_schema(tools: dict[str, RegisteredTool]) -> str:
 
 # --- subcommands ------------------------------------------------------------------------
 def cmd_init(a: argparse.Namespace) -> int:
-    path = write_manifest(a.run_id, a.journal, a.cwd, a.tool_dir, a.ceiling, a.manifest)
+    ceiling = a.ceiling if a.ceiling is not None else default_ceiling()
+    path = write_manifest(a.run_id, a.journal, a.cwd, a.tool_dir, ceiling, a.manifest)
     print(json.dumps({"manifest": path, **read_manifest(path)}, indent=2, sort_keys=True))
     return EXIT_EXECUTED
 
@@ -239,6 +268,8 @@ def cmd_call(a: argparse.Namespace) -> int:
     print(json.dumps(out, indent=2, sort_keys=True))
     if st.refused_by:
         return EXIT_REFUSED
+    if st.result is not None and not st.result.ok and (st.result.reason or "").startswith(INVALID_ARGS):
+        return EXIT_REFUSED  # H10: malformed args are declined with the expected shape, exit 2
     if a.tool not in tools:
         return EXIT_ERROR  # journaled as the loop journals it, but not a tool that ran
     return EXIT_EXECUTED
@@ -271,7 +302,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--journal", required=True, help="absolute path of the journal (.jsonl)")
     s.add_argument("--cwd", required=True, help="absolute path of the repo the tools act on")
     s.add_argument("--tool-dir", action="append", default=[], help="extra tool directory (repeatable)")
-    s.add_argument("--ceiling", type=int, default=DEFAULT_CEILING, help="max tool calls for the run")
+    s.add_argument("--ceiling", type=int, default=None,
+                   help="max tool calls for the run (default: 2x the longest journal under ablation/runs/, H13)")
     s.set_defaults(fn=cmd_init)
 
     s = sub.add_parser("tools", help="list the registered tools")

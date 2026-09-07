@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from .journal import kind_overrides
+
 _CLAIM_PART = re.compile(r"^(?P<claim>[^:]+): n=(?P<n>\d+)(?:/(?P<req>\d+))?(?P<rest>.*)$")
 
 
@@ -53,7 +55,7 @@ def claim_rows(events: list[dict]) -> list[ClaimRow]:
             if ev.get("claim_id") != r.claim_id:
                 continue
             if ev["event"] == "claim_recorded":
-                r.kind = ev["kind"]
+                r.kind = ev["kind"] + (" (override)" if ev.get("kind_override") else "")
                 cat = "(b)" if ev["author"] == "MAIN" else "(a)"
                 r.sources.append(f"{cat} {ev['author']}: {ev['evidence_type']} {ev['evidence_ref']}"
                                  + (f" [{ev['framing']}]" if ev.get("framing") else ""))
@@ -78,6 +80,11 @@ def render_trace(events: list[dict], title: str = "Run trace") -> str:
     for r in rows:
         out.append(f"| `{r.claim_id}` | {r.kind} | {r.n_required} | {r.n_available} | "
                    f"{'; '.join(r.sources) or 'none'} | {r.remedy or 'n/a (not capped)'} |")
+    out.append("")
+    out += ["## Claim kind overrides (D-KIND: author's `executable` over the rule's `judgment`)",
+            "| claim | author | closed_world |", "|---|---|---|"]
+    ov = kind_overrides(events)
+    out += [f"| `{o['claim_id']}` | {o['author']} | {o['closed_world']} |" for o in ov] or ["| none | | |"]
     out.append("")
     out += ["## Consumer checks", "| ref | answer | command_or_reasoning |", "|---|---|---|"]
     for ev in events:

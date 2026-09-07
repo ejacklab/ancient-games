@@ -17,6 +17,7 @@ from ancient_games.ctx import ArtifactRef, Ctx
 from ancient_games.hybrid import runner
 from ancient_games.hybrid.cli import load_ctx, save_ctx, tools_table
 from ancient_games.hybrid.registry import load_tools
+from ancient_games.hybrid.cli import default_ceiling
 from ancient_games.journal import Journal, read_events
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -44,7 +45,7 @@ def test_cli_round_trip_init_gate_guard_refused_commit_approve_commit(tmp_path):
     rc, out, err = cli(None, "init", "--run-id", "rt", "--journal", journal, "--cwd", repo)
     assert rc == 0, err
     manifest = out["manifest"]
-    assert os.path.exists(manifest) and out["ceiling"] == 44 and out["run_id"] == "rt"
+    assert os.path.exists(manifest) and out["ceiling"] == default_ceiling() >= 92 and out["run_id"] == "rt"  # H13
 
     rc, out, _ = cli(manifest, "call", "gate", json.dumps({
         "name": "fix import", "stop_criterion": "import-succeeds", "difficulty": "LOW", "capability": [],

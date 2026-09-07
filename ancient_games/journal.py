@@ -80,6 +80,8 @@ class ClaimRecordedEvent(TypedDict):
     evidence_type: str
     evidence_ref: str
     framing: str | None
+    kind_override: bool  # D-KIND: author's `executable` accepted over the rule's `judgment` (v1.4)
+    closed_world: str | None  # the author's reason the check space is complete, verbatim (v1.4)
 
 
 class ConsumerCheckEvent(TypedDict):
@@ -106,7 +108,7 @@ SHAPES: dict[str, dict[str, Any]] = {
     },
     "claim_recorded": {
         "claim_id": str, "author": str, "actor": str, "kind": str, "text": str, "evidence_type": str,
-        "evidence_ref": str, "framing": (str, type(None)),
+        "evidence_ref": str, "framing": (str, type(None)), "kind_override": bool, "closed_world": (str, type(None)),
     },
     "consumer_check": {"ref": list, "answer": str, "command_or_reasoning": str},
     # hybrid tool layer (HYBRID_SPEC §6): one event per tool call, plus the two orchestrator-written events
@@ -118,6 +120,8 @@ SHAPES: dict[str, dict[str, Any]] = {
     "approval_recorded": {"action_id": str, "gate": str, "approver": str, "note": str},
     "dispatch_failed": {"agent_id": str, "reason": str},
 }
+# fields added in harness v1.4 (D-KIND): absent from journals written before it, which must still read.
+_OPTIONAL: frozenset[tuple[str, str]] = frozenset({("claim_recorded", "kind_override"), ("claim_recorded", "closed_world")})
 _ENUMS: dict[tuple[str, str], tuple[Any, ...]] = {
     ("check_executed", "pre_fix_result"): ("FAIL", None),
     ("claim_recorded", "kind"): ("executable", "judgment"),
@@ -139,6 +143,8 @@ def validate_event(event: dict) -> dict:
         raise ValueError(f"unknown event type {event['event']!r}")
     for name, typ in shape.items():
         if name not in event:
+            if (event["event"], name) in _OPTIONAL:
+                continue
             raise ValueError(f"{event['event']} event missing typed field {name!r}")
         if typ is _ANY:
             continue
@@ -216,10 +222,11 @@ class Journal:
                             "pre_fix_result": pre_fix_result})
 
     def claim_recorded(self, claim_id: str, author: str, actor: str, kind: str, text: str, evidence_type: str,
-                       evidence_ref: str, framing: str | None = None) -> dict:
+                       evidence_ref: str, framing: str | None = None, kind_override: bool = False,
+                       closed_world: str | None = None) -> dict:
         return self.append({"event": "claim_recorded", "claim_id": claim_id, "author": author, "actor": actor,
                             "kind": kind, "text": text, "evidence_type": evidence_type, "evidence_ref": evidence_ref,
-                            "framing": framing})
+                            "framing": framing, "kind_override": kind_override, "closed_world": closed_world})
 
     def consumer_check(self, ref: list[str], answer: str, command_or_reasoning: str) -> dict:
         return self.append({"event": "consumer_check", "ref": list(ref), "answer": answer,
@@ -253,6 +260,14 @@ def read_events(path: str) -> list[dict]:
             if line:
                 out.append(validate_event(json.loads(line)))
     return out
+
+
+def kind_overrides(events: list[dict], run_id: str | None = None) -> list[dict]:
+    """D-KIND: every `claim_recorded` whose author's `executable` was accepted over the rule's `judgment`
+    — {claim_id, author, closed_world} — what the human sees at the checkpoint gate and in the trace."""
+    return [{"claim_id": e["claim_id"], "author": e["author"], "closed_world": e.get("closed_world")}
+            for e in events if e.get("event") == "claim_recorded" and e.get("kind_override")
+            and (run_id is None or e.get("run_id") == run_id)]
 
 
 def _now() -> str:

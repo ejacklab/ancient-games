@@ -8,6 +8,7 @@ never fire" (V3_1_SPEC §2).
 """
 from __future__ import annotations
 
+import re
 from dataclasses import MISSING, dataclass, field, fields
 from typing import Any
 
@@ -15,6 +16,19 @@ ROLES = ("coder", "researcher", "tester", "MAIN")
 EXECUTION_STATUSES = ("main_executes", "hard_blocked", "mixed", "dispatched")
 REVERSIBILITIES = ("git-revertible", "restorable", "irreversible")
 CLAIM_KINDS = ("executable", "judgment")
+# D-KIND (docs/ABLATION_2.md): a claim whose text asserts an absence or a universal negative is an
+# open-world claim — `judgment` by rule unless the author states why the check space is closed
+# (`closed_world`). Word-bounded, case-insensitive; a floor, not a proof. The one place the list lives.
+ABSENCE_PATTERNS = ("dead", "unused", "no references?", "never", "nothing calls", "not reachable", "no callers?",
+                    "unreferenced")
+_ABSENCE_RE = re.compile(r"\b(?:" + "|".join(ABSENCE_PATTERNS) + r")\b", re.IGNORECASE)
+
+
+def kind_by_rule(text: str) -> str | None:
+    """`judgment` when `text` matches an absence/universal-negative pattern, else None (author's kind stands)."""
+    return "judgment" if _ABSENCE_RE.search(text or "") else None
+
+
 REMEDIES = (
     "add-claim-specific-check",
     "add-differently-framed-source",

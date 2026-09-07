@@ -27,12 +27,33 @@ def action_id(verb: str, refs: list[str]) -> str:
     return f"{verb}:{sorted(refs)}"
 
 
+ACTION_SHAPE = "a JSON object (ActionInput: {name, refs: [{path, mode, verb?, consumers?}], tripwires?, ...})"
+REFS_SHAPE = "a list of JSON objects (ArtifactRef: {path, mode, verb?, consumers?})"
+
+
 def guard_action(args: dict) -> ActionInput:
-    return hydrate(ActionInput, args["action"])
+    """Hydrate `args["action"]`; a wrong shape is a ValueError naming the expected one (H10, ABLATION_2)
+    — never an AttributeError later in an invariant or the stage."""
+    action = args.get("action") if isinstance(args, dict) else None
+    if not isinstance(action, dict):
+        raise ValueError(f"must be {ACTION_SHAPE}, got {action!r} ({type(action).__name__})")
+    out = hydrate(ActionInput, action)
+    if not isinstance(out.refs, list) or not all(isinstance(r, ArtifactRef) for r in out.refs):
+        raise ValueError(f"refs must be {REFS_SHAPE}, got {action.get('refs')!r} ({type(action.get('refs')).__name__})")
+    if not isinstance(out.name, str):
+        raise ValueError(f"name must be a str, got {out.name!r} ({type(out.name).__name__})")
+    if not isinstance(out.tripwires, dict):
+        raise ValueError(f"tripwires must be {{hub-name-or-matched-ref-path: command}}, got {out.tripwires!r}")
+    return out
 
 
 def guard_paths(action: ActionInput) -> list[str]:
     return [r.path for r in action.refs]
+
+
+def guard_mutate_paths(action: ActionInput) -> list[str]:
+    """The action's invoke/mutate paths — `consumer_check.ref` as `stages.guard` emits it (H9)."""
+    return [r.path for r in action.refs if r.mode != "read"]
 
 
 def guard_action_id(action: ActionInput) -> str:

@@ -226,7 +226,7 @@ tool is one module `ancient_games/hybrid/tools/<name>.py` with `MANIFEST` + `run
 | `prove` | `stages.prove` (stages.py:641) | read | cheap | I2 (producer), I3 (consumer — `env.ctx` is a `Ctx` with 4 fields nulled, §2, L1) | UC1,2,3,5,6,7 |
 | `dispatch` | `journal.dispatch`/`stages.dispatch_source`; generates its own `agent_id` (§2 formula) | invoke | agent | I5 | UC2,3,4,5,6,7,9 |
 | `ingest_return` | `journal.ingest_return` (journal.py:218) | none | cheap | I5 | UC2,3,4,5,6 |
-| `record_claim` | `journal.claim_recorded` (journal.py:208) | none | cheap | — | UC2,3,4,5,6,7 |
+| `record_claim` | `journal.claim_recorded` (journal.py:208); assigns `kind` by rule — full signature below (D-KIND, harness v1.4) | none | cheap | — | UC2,3,4,5,6,7 |
 | `record_check` | `journal.check_executed` (journal.py:202) | none | cheap | — | UC1,2,3,5,6,7 |
 | `lookup_registry` | `registry.lookup` (registry.py:159) | read | cheap | — | UC1, UC9 |
 | `run_lint` | `lints.run_all_on_plan` + nine `lint_*` | read | cheap | — | UC7,8,9 |
@@ -256,6 +256,29 @@ its checkpoint precondition: an `approval_recorded{gate="checkpoint", action_id=
 postdating the last executed commit must exist; absent ⇒ `ToolResult(ok=False, reason=
 "checkpoint-not-cleared")`, `git commit` never runs. Only then `git commit -m <message>`; non-zero exit
 ⇒ `ToolResult(ok=False, reason=<git's own stderr>)`, never raises.
+
+**`record_claim`, in full (harness v1.4, D-KIND — docs/ABLATION_2.md):**
+
+```
+record_claim(claim_id, author, actor="MAIN", kind, text=claim_id, evidence_type, evidence_ref="", framing=None,
+             closed_world=None) -> ToolResult(ok, value=<claim_recorded event>)
+```
+`kind` is assigned by rule, not by the author alone. A claim whose `text` asserts an absence or a
+universal negative — word-bounded, case-insensitive match on `ctx.ABSENCE_PATTERNS` = (`dead`, `unused`,
+`no reference(s)`, `never`, `nothing calls`, `not reachable`, `no caller(s)`, `unreferenced`); the one place
+the list lives, data — is `judgment` by default: the author's `kind: executable` is journaled as `judgment`
+with `kind_override=false`. The author may keep `executable` only by supplying `closed_world: <non-empty
+reason>` stating why the check space is complete (e.g. "AST over every `.py` in the tree + grep for the name as
+a string + no `getattr`/`globals()` idioms"); then the event carries `kind=executable`, `kind_override=true`,
+`closed_world=<the reason, verbatim>`. Text the rule does not match keeps the author's kind, needs no
+`closed_world`, and journals no override. The rule is a keyword floor, not a proof — X3's "smuggled threshold"
+test is still the [LLM]'s to apply; the rule makes the cheap downgrade *visible* where a human is already
+looking: `commit`'s checkpoint refusal reads `checkpoint-not-cleared; kind overrides for the gate to accept or
+reject: <claim_id> (executable by closed_world: '<reason>'); …` (the bare `checkpoint-not-cleared` when there
+are none), and `render_trace` carries a `## Claim kind overrides` table. `corroborate` is bound to the recorded
+kind: a `claims[i].kind` that differs from the claim's latest `claim_recorded.kind` in this run is
+`invalid-args` — the kind cannot be re-chosen at counting time. Journals written before v1.4 lack the two
+fields; `validate_event` treats them as optional on read (`journal._OPTIONAL`), and every new write carries them.
 
 **`dispatch`, in full (updated — `agent_id` generation stated, §2):**
 ```
@@ -443,6 +466,20 @@ conflated them by also giving `dispatch_failed` a table row with tool-shaped fie
 `cost`) it could never legitimately carry (L3). v1.4 states this distinction once, here: an event can
 be journaled without being a tool; `approval_recorded` already worked this way cleanly in every prior
 round, `dispatch_failed` now matches it.
+
+**`claim_recorded` (harness v1.4, D-KIND — two fields added, §3 `record_claim`):**
+
+```python
+SHAPES["claim_recorded"] = {
+    "claim_id": str, "author": str, "actor": str, "kind": str, "text": str, "evidence_type": str,
+    "evidence_ref": str, "framing": (str, type(None)),
+    "kind_override": bool,             # the author's `executable` accepted over the rule's `judgment`
+    "closed_world": (str, type(None)), # the author's reason the check space is complete, verbatim
+}
+_OPTIONAL = {("claim_recorded", "kind_override"), ("claim_recorded", "closed_world")}  # absent in pre-v1.4 journals: still read
+```
+`journal.kind_overrides(events, run_id)` lists the overrides; `commit` names them in its checkpoint refusal and
+`render_trace` tabulates them, so the human at the gate sees every self-declared closed world before clearing it.
 
 **`args`, `exit_type`, `action_id`'s dual convention, `args_hash` — all unchanged from v1.3.**
 

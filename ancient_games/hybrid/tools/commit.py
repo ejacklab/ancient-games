@@ -1,9 +1,10 @@
 """NEW — `commit(message)`. I1′/I4′(b) are checked by the loop before this body runs;
 the body checks its own checkpoint precondition (an in-window
-`approval_recorded{gate=checkpoint, action_id=commit:['master']}`, K4) and only
+`approval_recorded{gate=checkpoint, action_id=commit:['master']}`, K4) — the refusal
+names every D-KIND `closed_world` override in this run for the gate to see — and only
 then stages the changed files and runs `git commit`. Never raises; git's own
 stderr is the reason on failure."""
-from ancient_games.journal import Journal
+from ancient_games.journal import Journal, kind_overrides
 
 from ..types import ToolResult
 from ._shared import (COMMIT_ACTION_ID_ARGS, action_id, approvals_after, changed_files, git, internal_error,
@@ -15,12 +16,22 @@ MANIFEST = {
 }
 
 
+def overrides_note(events: list[dict], run_id: str) -> str:
+    """D-KIND: the checkpoint gate shows every claim whose author overrode the rule's `judgment` to
+    `executable`, with the `closed_world` reason verbatim, so the human accepts or rejects it there."""
+    ov = kind_overrides(events, run_id)
+    if not ov:
+        return ""
+    return "; kind overrides for the gate to accept or reject: " + "; ".join(
+        f"{o['claim_id']} (executable by closed_world: {o['closed_world']!r})" for o in ov)
+
+
 def run(env, args):
     try:
         events = Journal(env.journal_path, env.run_id).read()
         aid = action_id(*COMMIT_ACTION_ID_ARGS)
         if not approvals_after(events, "checkpoint", aid, last_commit_index(events)):
-            return ToolResult(ok=False, reason="checkpoint-not-cleared")
+            return ToolResult(ok=False, reason="checkpoint-not-cleared" + overrides_note(events, env.run_id))
         changed = changed_files(env.cwd)
         if changed:
             p = git(env.cwd, "add", "--", *changed)

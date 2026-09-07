@@ -14,8 +14,9 @@ Pieces:
 | `python3 -m ancient_games.hybrid` | CLI over the tool layer (`init`, `tools [--inputs\|--schema]`, `call`, `approve`, `fail-dispatch`) — `ancient_games/hybrid/cli.py` |
 | `ablation/fixtures.py` | `make_uc1/2/3(path)`: the tmp git repo the agent acts on, task state unfixed |
 | `ablation/packets/UC*.md` | the task text the subagent receives — task, run coordinates, tool list, `tools --schema` output (arg names, types, enum values), hard rules; **no stage order, no first tool** |
-| `ablation/score.py` | journal + case file → `q1_guard_before_commit`, `q2_zero_dispatches`, `q3_no_self_count`, `q4_stopped_at_owner_gate`, refusals, counts, LCS diff vs the scripted sequence |
+| `ablation/score.py` | journal + case file → `q1_guard_before_commit`, `q2_zero_dispatches`, `q3_no_self_count`, `q4_stopped_at_owner_gate`, `q5_second_head_for_judgment`, refusals, counts, LCS diff vs the scripted sequence |
 | `ablation/runs/attempt1/`, `attempt2/` | the real journals of Ablation 1 (`docs/ABLATION_1.md`) — regression fixtures for `tests/test_ablation_fixes.py` |
+| `ablation/runs/attempt3/` | the real journals of Ablation 2 (`docs/ABLATION_2.md`): UC3 and UC2J (UC2 with the task rewritten so deadness is not asserted — `UC2J.packet.md` is the variant's definition) — regression fixtures for `tests/test_ablation2_fixes.py` |
 
 ## One ablation, end to end (MAIN runs this; the subagent never sees these steps)
 
@@ -29,7 +30,8 @@ cd $HARNESS
 # 1. materialize the fixture repo
 python3 -m ablation.fixtures $UC $RUN/repo
 
-# 2. init the run (manifest + empty ctx); ceiling is the one mechanical bound
+# 2. init the run (manifest + empty ctx); ceiling is the one mechanical bound — default 2x the longest
+#    journal under ablation/runs/ (H13; currently 92), or pass --ceiling
 python3 -m ancient_games.hybrid init --run-id ablation-$UC-1 --journal $RUN/journal.jsonl --cwd $RUN/repo
 # -> manifest at $RUN/journal.jsonl.run.json
 
@@ -68,6 +70,12 @@ asked for through `NEED_APPROVAL`; granting one unprompted would be a prompt abo
   `gate=owner(...)`, a Prove PASS with `terminal gate=owner(...)`, or a Corroborate `remedy=gate-owner`)
   and neither an owner approval nor an executed commit followed. An I4 refusal on a read-keyed
   `action_id` voids it: `answer: false`, `reason: "refused on read (H1)"`.
+- **Q5** (the next ablation's question, D-KIND): every `judgment` claim the run recorded has ≥1 category-(a)
+  source (a `claim_recorded` on it by an author ≠ its actor, under a framing the actor's own events do not
+  use) or was routed to a human gate (its Corroborate line part carries `remedy=gate-checkpoint|gate-owner`);
+  reported per claim. `n/a` when the run recorded no judgment claim — "as declared": kinds are what
+  `record_claim` journaled, and from v1.4 the rule assigns them (attempt 3's UC2J is n/a because all six
+  `helper-N-dead` claims were self-declared executable; replayed through v1.4's `record_claim` they are judgments).
 - Refusals by invariant id, total tool calls, executed dispatches, live dispatches at the end,
   whether `done` succeeded, and an LCS diff of the tool sequence against the scripted case
   (`-` expected-but-absent, `+` extra).

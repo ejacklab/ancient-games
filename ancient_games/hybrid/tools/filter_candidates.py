@@ -3,7 +3,7 @@ from ancient_games.journal import Journal
 from ancient_games.stages import Candidate, FilterDecisions, filter_candidates as _filter
 
 from ..types import ToolResult, hydrate
-from ._shared import internal_error
+from ._shared import internal_error, invalid_args
 
 MANIFEST = {
     "name": "filter_candidates",
@@ -13,9 +13,17 @@ MANIFEST = {
 
 
 def run(env, args):
+    cands_in = args.get("candidates", [])
+    if not isinstance(cands_in, list) or not all(isinstance(c, (str, dict)) for c in cands_in):  # H10
+        return invalid_args("candidates", "a list of candidate names (str) or JSON objects (Candidate)", cands_in)
+    for name in ("cut", "merged", "intents"):
+        if name in args and not isinstance(args[name], dict):
+            return invalid_args(name, "a JSON object {candidate: rule-or-intent}", args[name])
+    if "follow_on" in args and not isinstance(args["follow_on"], list):
+        return invalid_args("follow_on", "a list of [finding, disposition] pairs", args["follow_on"])
     try:
         journal = Journal(env.journal_path, env.run_id)
-        cands = [Candidate(c) if isinstance(c, str) else hydrate(Candidate, c) for c in args.get("candidates", [])]
+        cands = [Candidate(c) if isinstance(c, str) else hydrate(Candidate, c) for c in cands_in]
         decisions = hydrate(FilterDecisions, {k: args[k] for k in ("cut", "merged", "follow_on", "intents") if k in args})
         if "scope_items" in args:
             env.ctx.scope_items = list(args["scope_items"])
