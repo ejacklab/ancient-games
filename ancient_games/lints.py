@@ -106,12 +106,23 @@ def lint_evidence_after_verdict(template_text: str) -> list[Finding]:
     return out
 
 
+def in_run(events: list[dict], run_id: str | None) -> list[dict]:
+    """`events` scoped to one run when `run_id` is given; the whole list when it is None.
+    claim_ids (`C1`) and commands recur across runs, so a merged journal read unscoped
+    counts another run's sources and checks as this run's."""
+    if run_id is None:
+        return events
+    return [ev for ev in events if ev.get("run_id") == run_id]
+
+
 # 6 ------------------------------------------------------------------------
-def lint_corroboration_capped(plan: Plan, events: list[dict]) -> list[Finding]:
+def lint_corroboration_capped(plan: Plan, events: list[dict], run_id: str | None = None) -> list[Finding]:
     """(a) any group's category-(a) dispatched agents > 3, structurally;
     (b) a capped claim with a re-plannable remedy has no recorded fix — recompute
         n_available against the journal first;
-    (c) a gate-routed capped claim is not disclosed in the plan's exit line."""
+    (c) a gate-routed capped claim is not disclosed in the plan's exit line.
+    `run_id` scopes the journal read in (b) to that run (`in_run`)."""
+    events = in_run(events, run_id)
     out = []
     for e in plan.entries:
         if e.dispatched_total > CapState().cap:
@@ -136,12 +147,14 @@ def lint_corroboration_capped(plan: Plan, events: list[dict]) -> list[Finding]:
 
 
 # 7 ------------------------------------------------------------------------
-def lint_hub_touched_without_tripwire(plan: Plan, events: list[dict] | None = None) -> list[Finding]:
+def lint_hub_touched_without_tripwire(plan: Plan, events: list[dict] | None = None,
+                                      run_id: str | None = None) -> list[Finding]:
     """any entry whose hub ≠ [] has no tripwire recorded for each hub element:
     D·4 must have named a tripwire command for it, and (when the journal is
     given) a `check_executed` event running that command must exist — AA3′:
-    that event may double as a (c) source for an executable claim it falsifies."""
-    ran = {ev["command"] for ev in (events or []) if ev.get("event") == "check_executed"}
+    that event may double as a (c) source for an executable claim it falsifies.
+    `run_id` scopes the `check_executed` events considered to that run (`in_run`)."""
+    ran = {ev["command"] for ev in in_run(events or [], run_id) if ev.get("event") == "check_executed"}
     out = []
     for e in plan.entries:
         for h in e.hub:
@@ -155,9 +168,10 @@ def lint_hub_touched_without_tripwire(plan: Plan, events: list[dict] | None = No
 
 
 # 8 ------------------------------------------------------------------------
-def lint_downstream_consumer_check_unrecorded(plan: Plan, events: list[dict]) -> list[Finding]:
-    """a stakes=1 ∧ hub=[] entry with no consumer_check event for its ref."""
-    refs = [set(ev["ref"]) for ev in events if ev.get("event") == "consumer_check"]
+def lint_downstream_consumer_check_unrecorded(plan: Plan, events: list[dict], run_id: str | None = None) -> list[Finding]:
+    """a stakes=1 ∧ hub=[] entry with no consumer_check event for its ref.
+    `run_id` scopes the `consumer_check` events considered to that run (`in_run`)."""
+    refs = [set(ev["ref"]) for ev in in_run(events, run_id) if ev.get("event") == "consumer_check"]
     out = []
     for e in plan.entries:
         if e.stakes == 1 and not e.hub and not any(set(e.ref) <= r for r in refs):
@@ -210,16 +224,16 @@ def _run_id_of(events: list[dict], run_id: str | None) -> str:
     return ids.pop() if ids else ""
 
 
-def _python_journal_lints(plan: Plan, events: list[dict]) -> dict[str, list[Finding]]:
+def _python_journal_lints(plan: Plan, events: list[dict], run_id: str | None) -> dict[str, list[Finding]]:
     out: dict[str, list[Finding]] = {name: [] for name in SQL_LINTS}
-    for ev in events:
+    for ev in in_run(events, run_id):
         if ev.get("event") == "return":
             fields = ev.get("fields", {})
             out["claims-without-evidence"] += lint_claims_without_evidence(fields.get("CLAIMS", []) or [])
             out["follow-on-without-disposition"] += lint_follow_on_without_disposition(fields.get("FOLLOW_ON", []) or [])
-    out["corroboration-capped"] = lint_corroboration_capped(plan, events)
-    out["hub-touched-without-tripwire"] = lint_hub_touched_without_tripwire(plan, events)
-    out["downstream-consumer-check-unrecorded"] = lint_downstream_consumer_check_unrecorded(plan, events)
+    out["corroboration-capped"] = lint_corroboration_capped(plan, events, run_id)
+    out["hub-touched-without-tripwire"] = lint_hub_touched_without_tripwire(plan, events, run_id)
+    out["downstream-consumer-check-unrecorded"] = lint_downstream_consumer_check_unrecorded(plan, events, run_id)
     return out
 
 
@@ -246,9 +260,10 @@ def run_all_on_plan(plan: Plan, events: list[dict], *, backend: str | None = Non
     `backend` (see the module docstring): `python` keeps the findings in journal order, the
     per-return lints interleaved event by event; `sql` reports the two per-return lints
     run-wide (claims, then follow-ons) before the template lint; `differential` raises on any
-    per-lint disagreement and otherwise returns exactly the `python` list. `run_id` is the run the
-    SQL queries scope to (the Python lints read every event they are given); it may be omitted when
-    `events` holds a single run."""
+    per-lint disagreement and otherwise returns exactly the `python` list. `run_id` is the run every
+    journal-reading lint scopes to (`in_run` for the Python lints, the `WHERE run_id` of the SQL
+    queries); when it is None the Python lints read every event they are given and the SQL side
+    takes the one run in `events` (a multi-run list then needs it)."""
     from .schema import FIELDS, RETURN_CONTRACT
 
     backend = check_backend(backend) if backend is not None else default_backend()
@@ -256,7 +271,7 @@ def run_all_on_plan(plan: Plan, events: list[dict], *, backend: str | None = Non
         run_id = _run_id_of(events, run_id)
     out: list[Finding] = []
     if backend == "python" or backend == "differential":
-        for ev in events:
+        for ev in in_run(events, run_id):
             if ev.get("event") == "return":
                 fields = ev.get("fields", {})
                 out += lint_claims_without_evidence(fields.get("CLAIMS", []) or [])
@@ -265,11 +280,11 @@ def run_all_on_plan(plan: Plan, events: list[dict], *, backend: str | None = Non
                     out += lint_evidence_after_verdict(fields["TEMPLATE"])
         out += lint_schema_field_without_escape_value(FIELDS)
         out += lint_return_field_without_escape_value(RETURN_CONTRACT)
-        out += lint_corroboration_capped(plan, events)
-        out += lint_hub_touched_without_tripwire(plan, events)
-        out += lint_downstream_consumer_check_unrecorded(plan, events)
+        out += lint_corroboration_capped(plan, events, run_id)
+        out += lint_hub_touched_without_tripwire(plan, events, run_id)
+        out += lint_downstream_consumer_check_unrecorded(plan, events, run_id)
         if backend == "differential":
-            python, sql = _python_journal_lints(plan, events), _sql_journal_lints(plan, events, run_id)
+            python, sql = _python_journal_lints(plan, events, run_id), _sql_journal_lints(plan, events, run_id)
             for name in SQL_LINTS:
                 if python[name] != sql[name]:
                     raise LintBackendDivergence(name, python[name], sql[name], run_id)
@@ -277,7 +292,7 @@ def run_all_on_plan(plan: Plan, events: list[dict], *, backend: str | None = Non
     sql = _sql_journal_lints(plan, events, run_id)
     out += sql["claims-without-evidence"]
     out += sql["follow-on-without-disposition"]
-    for ev in events:
+    for ev in in_run(events, run_id):
         if ev.get("event") == "return" and ev.get("fields", {}).get("TEMPLATE"):
             out += lint_evidence_after_verdict(ev["fields"]["TEMPLATE"])
     out += lint_schema_field_without_escape_value(FIELDS)
