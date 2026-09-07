@@ -1,7 +1,10 @@
 """The SQLite read index — a disposable projection of the journal (docs/STORE_DESIGN_DECISION.md).
 
-The JSONL journal stays the source of truth; `rebuild(journal_path, db_path)` drops and
-recreates seven tables from it in one transaction, and the five query functions below
+The JSONL journal stays the source of truth; `rebuild_from_events(events, con_or_path)` drops
+and recreates seven tables from a list of events in one transaction (`rebuild(journal_path,
+db_path)` is the thin wrapper that reads the journal first; `memory_index(events)` is the
+in-memory form the `sql`/`differential` lint backends use, built from the very events the lint
+run was handed so nothing file-backed is ever consulted), and the five query functions below
 reproduce the journal-side portion of the §8 lints as `run_id`-scoped SQL, returning the
 same `Finding`s `lints.py` returns. `lints.py` is the oracle (tests/test_index.py runs
 both on the same journals); nothing here re-decides a lint.
@@ -75,13 +78,34 @@ def _text(value: Any) -> str | None:
 
 
 def rebuild(journal_path: str, db_path: str) -> dict:
-    """Drop and recreate the index from the journal, in one transaction. Idempotent: the same journal
-    yields a byte-identical dump. Returns {"rows": total rows inserted, "events": journal events read,
-    "tables": {table: rows}}."""
+    """Drop and recreate the file-backed index from the journal: `rebuild_from_events` over
+    `read_events(journal_path)`. Idempotent: the same journal yields a byte-identical dump."""
     _check_absolute("journal_path", journal_path)
     _check_absolute("db_path", db_path)
-    events = read_events(journal_path)
-    con = sqlite3.connect(db_path, timeout=BUSY_TIMEOUT, isolation_level=None)
+    return rebuild_from_events(read_events(journal_path), db_path)
+
+
+def rebuild_from_events(events: list[dict], con_or_path: sqlite3.Connection | str) -> dict:
+    """Drop and recreate the seven tables from `events`, in one transaction, on an open connection
+    or at an absolute path (opened and closed here). Returns {"rows": total rows inserted,
+    "events": events projected, "tables": {table: rows}}."""
+    if isinstance(con_or_path, sqlite3.Connection):
+        return _rebuild_on(con_or_path, events)
+    con = sqlite3.connect(_check_absolute("db_path", con_or_path), timeout=BUSY_TIMEOUT, isolation_level=None)
+    try:
+        return _rebuild_on(con, events)
+    finally:
+        con.close()
+
+
+def memory_index(events: list[dict]) -> sqlite3.Connection:
+    """A fresh `:memory:` index holding exactly `events` — the lint backends' only source."""
+    con = sqlite3.connect(":memory:", timeout=BUSY_TIMEOUT, isolation_level=None)
+    rebuild_from_events(events, con)
+    return con
+
+
+def _rebuild_on(con: sqlite3.Connection, events: list[dict]) -> dict:
     try:
         con.execute("BEGIN")
         for name in TABLES:
@@ -95,8 +119,6 @@ def rebuild(journal_path: str, db_path: str) -> dict:
     except BaseException:
         con.execute("ROLLBACK") if con.in_transaction else None
         raise
-    finally:
-        con.close()
     return {"rows": sum(tables.values()), "events": len(events), "tables": tables}
 
 

@@ -94,7 +94,8 @@ def result_summary(result: ToolResult) -> str:
     v = result.value
     et = getattr(v, "exit_type", None)
     if et is not None:
-        return f"ok: {et}"
+        lb = getattr(v, "lint_backend", None)  # prove: which lint backend checked the plan
+        return f"ok: {et}" + (f" [lint_backend={lb}]" if lb else "")
     if isinstance(v, (str, int, float, bool)) or v is None:
         return f"ok: {v}"
     if isinstance(v, dict):

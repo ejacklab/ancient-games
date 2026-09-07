@@ -642,6 +642,7 @@ class ProveExit:
     exit_line: str
     findings: list[str]
     steps_fired: list[str] = field(default_factory=list)
+    lint_backend: str = "python"  # which `lints.run_all_on_plan` backend produced the lint findings
 
 
 def disclosure(capped: Iterable[CappedClaim]) -> str:
@@ -653,8 +654,12 @@ def disclosure(capped: Iterable[CappedClaim]) -> str:
     return "; ".join(parts)
 
 
-def prove(ctx: Ctx, plan: Plan, journal: Journal, registry: list[Row] = REGISTRY, disclose: bool = True) -> ProveExit:
+def prove(ctx: Ctx, plan: Plan, journal: Journal, registry: list[Row] = REGISTRY, disclose: bool = True,
+          backend: str | None = None) -> ProveExit:
+    """`backend`: a `lints.BACKENDS` member for the §8 lints, or None for `lints.default_backend()`."""
     from . import lints  # lazy: lints imports count_sources from this module
+
+    backend = lints.check_backend(backend) if backend is not None else lints.default_backend()
 
     fired = ["A·1", "A·2", "A·3"]
     findings: list[str] = list(plan.findings)
@@ -677,13 +682,13 @@ def prove(ctx: Ctx, plan: Plan, journal: Journal, registry: list[Row] = REGISTRY
     pass_line = f"Prove: PASS, plan cleared to {gate_part}" + (f" [{disc}]" if disc else "") + "."
     plan.exit_line = pass_line
     events = journal.read()
-    lint_findings = lints.run_all_on_plan(plan, events)
+    lint_findings = lints.run_all_on_plan(plan, events, backend=backend, run_id=journal.run_id)
     findings.extend(f.message for f in lint_findings)
     if findings:
         n = len(findings)
         line = f"Prove: FAIL, N={n} finding{'s' if n != 1 else ''} ({'; '.join(findings)}), returned to planner."
         plan.exit_line = line
         journal.exit("A", fired, "RETURN_TO_PLANNER", line, ctx.keys_set())
-        return ProveExit("RETURN_TO_PLANNER", line, findings, fired)
+        return ProveExit("RETURN_TO_PLANNER", line, findings, fired, backend)
     journal.exit("A", fired, "PASS", pass_line, ctx.keys_set())
-    return ProveExit("PASS", pass_line, [], fired)
+    return ProveExit("PASS", pass_line, [], fired, backend)

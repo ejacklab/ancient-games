@@ -1,9 +1,20 @@
 """§8 — the nine lints. Each is pure: `lint_x(input) -> list[Finding]`.
 
 Inputs are ctx / return dicts / journal events / schema rows / a plan.
+
+`run_all_on_plan` has three backends (`BACKENDS`), chosen by its `backend` kwarg or, when that
+is None, by `$AG_LINT_BACKEND` (default `python`):
+  python        — the lints below, the permanent oracle;
+  sql           — the five journal-backed lints answered by `index.py`'s queries over a `:memory:`
+                  index built from the very `events` passed in (never a file); the other lints
+                  stay Python in every mode;
+  differential  — both, compared lint by lint; any disagreement raises `LintBackendDivergence`
+                  (never a silent preference) and agreement returns the Python result.
+SQL is never the oracle: when the two disagree the SQL is wrong until shown otherwise.
 """
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from typing import Any, Iterable
@@ -163,23 +174,115 @@ LINTS = (
 )
 
 
-def run_all_on_plan(plan: Plan, events: list[dict]) -> list[Finding]:
-    """A's exit: every lint in §8 over the whole plan. The two table lints run
-    against this package's own §5/§6 rows; the return-shaped lints run over
-    every ingested `return` event in the journal."""
-    from .schema import FIELDS, RETURN_CONTRACT
+BACKENDS = ("python", "sql", "differential")
+ENV_BACKEND = "AG_LINT_BACKEND"
+SQL_LINTS = ("claims-without-evidence", "follow-on-without-disposition", "corroboration-capped",
+             "hub-touched-without-tripwire", "downstream-consumer-check-unrecorded")
 
-    out: list[Finding] = []
+
+class LintBackendDivergence(AssertionError):
+    """The python and sql backends disagreed on one lint. Carries both lists; the Python one is the oracle."""
+
+    def __init__(self, lint: str, python: list[Finding], sql: list[Finding], run_id: str):
+        self.lint, self.python, self.sql, self.run_id = lint, list(python), list(sql), run_id
+        super().__init__(f"lint backend divergence on {lint!r} (run_id={run_id!r}):"
+                         f"\n  python (oracle): {self.python!r}\n  sql:             {self.sql!r}")
+
+
+def default_backend() -> str:
+    """`$AG_LINT_BACKEND`, or `python` when unset/empty; any other value is a ValueError."""
+    return check_backend(os.environ.get(ENV_BACKEND) or "python")
+
+
+def check_backend(backend: str) -> str:
+    if backend not in BACKENDS:
+        raise ValueError(f"lint backend must be one of {BACKENDS}, got {backend!r}")
+    return backend
+
+
+def _run_id_of(events: list[dict], run_id: str | None) -> str:
+    """The run the SQL queries scope to: the caller's, else the one run in `events` (or '' when empty)."""
+    if run_id is not None:
+        return run_id
+    ids = {e.get("run_id") for e in events}
+    if len(ids) > 1:
+        raise ValueError(f"sql lint backend needs run_id= for a multi-run event list, got run_ids {sorted(map(str, ids))}")
+    return ids.pop() if ids else ""
+
+
+def _python_journal_lints(plan: Plan, events: list[dict]) -> dict[str, list[Finding]]:
+    out: dict[str, list[Finding]] = {name: [] for name in SQL_LINTS}
     for ev in events:
         if ev.get("event") == "return":
             fields = ev.get("fields", {})
-            out += lint_claims_without_evidence(fields.get("CLAIMS", []) or [])
-            out += lint_follow_on_without_disposition(fields.get("FOLLOW_ON", []) or [])
-            if fields.get("TEMPLATE"):
-                out += lint_evidence_after_verdict(fields["TEMPLATE"])
+            out["claims-without-evidence"] += lint_claims_without_evidence(fields.get("CLAIMS", []) or [])
+            out["follow-on-without-disposition"] += lint_follow_on_without_disposition(fields.get("FOLLOW_ON", []) or [])
+    out["corroboration-capped"] = lint_corroboration_capped(plan, events)
+    out["hub-touched-without-tripwire"] = lint_hub_touched_without_tripwire(plan, events)
+    out["downstream-consumer-check-unrecorded"] = lint_downstream_consumer_check_unrecorded(plan, events)
+    return out
+
+
+def _sql_journal_lints(plan: Plan, events: list[dict], run_id: str) -> dict[str, list[Finding]]:
+    from . import index  # lazy: index imports Finding from here
+
+    con = index.memory_index(events)
+    try:
+        return {"claims-without-evidence": index.claims_without_evidence(con, run_id),
+                "follow-on-without-disposition": index.follow_on_without_disposition(con, run_id),
+                "corroboration-capped": index.corroboration_capped(plan, con, run_id),
+                "hub-touched-without-tripwire": index.hub_touched_without_tripwire(plan, con, run_id),
+                "downstream-consumer-check-unrecorded": index.downstream_consumer_check_unrecorded(plan, con, run_id)}
+    finally:
+        con.close()
+
+
+def run_all_on_plan(plan: Plan, events: list[dict], *, backend: str | None = None,
+                    run_id: str | None = None) -> list[Finding]:
+    """A's exit: every lint in §8 over the whole plan. The two table lints run
+    against this package's own §5/§6 rows; the return-shaped lints run over
+    every ingested `return` event in the journal.
+
+    `backend` (see the module docstring): `python` keeps the findings in journal order, the
+    per-return lints interleaved event by event; `sql` reports the two per-return lints
+    run-wide (claims, then follow-ons) before the template lint; `differential` raises on any
+    per-lint disagreement and otherwise returns exactly the `python` list. `run_id` is the run the
+    SQL queries scope to (the Python lints read every event they are given); it may be omitted when
+    `events` holds a single run."""
+    from .schema import FIELDS, RETURN_CONTRACT
+
+    backend = check_backend(backend) if backend is not None else default_backend()
+    if backend != "python":
+        run_id = _run_id_of(events, run_id)
+    out: list[Finding] = []
+    if backend == "python" or backend == "differential":
+        for ev in events:
+            if ev.get("event") == "return":
+                fields = ev.get("fields", {})
+                out += lint_claims_without_evidence(fields.get("CLAIMS", []) or [])
+                out += lint_follow_on_without_disposition(fields.get("FOLLOW_ON", []) or [])
+                if fields.get("TEMPLATE"):
+                    out += lint_evidence_after_verdict(fields["TEMPLATE"])
+        out += lint_schema_field_without_escape_value(FIELDS)
+        out += lint_return_field_without_escape_value(RETURN_CONTRACT)
+        out += lint_corroboration_capped(plan, events)
+        out += lint_hub_touched_without_tripwire(plan, events)
+        out += lint_downstream_consumer_check_unrecorded(plan, events)
+        if backend == "differential":
+            python, sql = _python_journal_lints(plan, events), _sql_journal_lints(plan, events, run_id)
+            for name in SQL_LINTS:
+                if python[name] != sql[name]:
+                    raise LintBackendDivergence(name, python[name], sql[name], run_id)
+        return out
+    sql = _sql_journal_lints(plan, events, run_id)
+    out += sql["claims-without-evidence"]
+    out += sql["follow-on-without-disposition"]
+    for ev in events:
+        if ev.get("event") == "return" and ev.get("fields", {}).get("TEMPLATE"):
+            out += lint_evidence_after_verdict(ev["fields"]["TEMPLATE"])
     out += lint_schema_field_without_escape_value(FIELDS)
     out += lint_return_field_without_escape_value(RETURN_CONTRACT)
-    out += lint_corroboration_capped(plan, events)
-    out += lint_hub_touched_without_tripwire(plan, events)
-    out += lint_downstream_consumer_check_unrecorded(plan, events)
+    out += sql["corroboration-capped"]
+    out += sql["hub-touched-without-tripwire"]
+    out += sql["downstream-consumer-check-unrecorded"]
     return out

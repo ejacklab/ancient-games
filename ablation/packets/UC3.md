@@ -44,13 +44,13 @@ guard              read          cheap  I1,I4            D — wraps `stages.gua
 ingest_return      none          cheap  I5               Wraps `journal.ingest_return` (journal.py:218): the `return` event plus its classified CLAIMS.          {"actor": "str", "agent_id": "str", "fields": "dict", "framing": "str"}
 localize           none          cheap  -                NEW — `localize(suite_output) -> {test_id, file, line, error_type}` by regex over pytest output.        {"suite_output": "str"}
 lookup_registry    read          cheap  -                Wraps `registry.lookup` (registry.py:159).                                                              {"refs": "list[ArtifactRef]"}
-prove              read          cheap  I2,I3            A — wraps `stages.prove` (R7). `env.ctx` is the stripped view (I3′): the plan is                        {"gate": "str", "gate_at": "str", "has_failable_check": "bool", "metrics_named": "bool"}
+prove              read          cheap  I2,I3            A — wraps `stages.prove` (R7). `env.ctx` is the stripped view (I3′): the plan is                        {"backend": "str", "gate": "str", "gate_at": "str", "has_failable_check": "bool", "metrics_named": "bool"}
 read_journal       read          cheap  -                Wraps `journal.read` (journal.py:189) — every UC's observe step.                                        {}
 rebuild_index      mutate        cheap  -                NEW — wraps `ancient_games.index.rebuild(journal_path, db_path)`, decided-not-yet-built                 {"db_path": "str"}
 record_check       none          cheap  -                Wraps `journal.check_executed` (journal.py:202). `falsifies` is a claim id (H3, ABLATION_1).            {"claim_id": "str", "command": "str", "expected": "str|int", "falsifies": "str", "mechanism": "str", "observed": "str|int", "pre_fix_result": "str"}
 record_claim       none          cheap  -                Wraps `journal.claim_recorded` (journal.py:208). D-KIND (ABLATION_2): `kind` is assigned by rule —      {"actor": "str", "author": "str", "claim_id": "str", "closed_world": "str", "evidence_ref": "str", "evidence_type": "str", "framing": "str", "kind": "str", "text": "str"}
 render_trace       none          cheap  -                Wraps `trace.render_trace` (trace.py:70).                                                               {"title": "str"}
-run_lint           read          cheap  -                Wraps `lints.run_all_on_plan` over the journal-reconstructed plan.                                      {"gate": "str", "gate_at": "str"}
+run_lint           read          cheap  -                Wraps `lints.run_all_on_plan` over the journal-reconstructed plan. `backend` selects the §8 lint        {"backend": "str", "gate": "str", "gate_at": "str"}
 run_suite          none          suite  -                NEW — `run_suite(command) -> {passed, failed, output, returncode}`; ok=True whenever                    {"command": "str"}
 ```
 
@@ -189,6 +189,7 @@ lookup_registry  side_effects=read  cost=cheap  -> Lookup
     external_state: str | None = None
 
 prove  side_effects=read  cost=cheap  -> ProveExit
+  backend: str
   gate: str
   gate_at: str  # the action the gate sits at, e.g. "commit"
   has_failable_check: bool
@@ -223,7 +224,8 @@ record_claim  side_effects=none  cost=cheap  -> claim_recorded event
 render_trace  side_effects=none  cost=cheap  -> markdown str
   title: str
 
-run_lint  side_effects=read  cost=cheap  -> list[Finding]
+run_lint  side_effects=read  cost=cheap  -> {backend, findings: list[Finding]}
+  backend: str
   gate: str
   gate_at: str  # the action the gate sits at, e.g. "commit"
 
