@@ -60,28 +60,14 @@ def run(tools: dict[str, RegisteredTool], choose: Callable[[dict, dict], Call | 
         if call is None:
             out.status = "NO_CHOICE"
             return out
-        checked = invariants_for(call)
-        if call.tool not in tools:
-            result = ToolResult(ok=False, reason=f"unknown-tool: {call.tool}")
-            journal.append(tool_call_event(call, checked, result))
-            out.steps.append(Step(i, call, result))
-            _after(i, injected, journal, after_step)
-            continue
-        refusals = check_invariants(call, ctx, obs["events"], tools, registry, cwd)
-        if refusals:
-            r = pick_by_priority(refusals)
-            journal.append(tool_call_event(call, checked, refused_by=r.invariant, reason=r.reason))
-            out.steps.append(Step(i, call, None, r.invariant))
-            _after(i, injected, journal, after_step)
-            continue
-        ctx_for_call = strip_corroboration(ctx) if call.tool in RESTRICTED else ctx
-        env = ToolEnv(run_id=journal.run_id, journal_path=journal.path, ctx=ctx_for_call, cwd=cwd, tools=tools)
-        result = tools[call.tool].fn(env, call.args)
-        journal.append(tool_call_event(call, checked, result))
-        out.steps.append(Step(i, call, result))
-        if result.ok:
+        st = step(tools, call, journal, ctx, i, registry, cwd, events=obs["events"])
+        out.steps.append(st)
+        result = st.result
+        if result is not None and result.ok:
             last_results[call.tool] = result.value
         _after(i, injected, journal, after_step)
+        if result is None:
+            continue
         if call.tool == "done" and result.ok:
             out.status = "DONE"
             return out
@@ -90,6 +76,32 @@ def run(tools: dict[str, RegisteredTool], choose: Callable[[dict, dict], Call | 
         elif default_plan and call.tool == default_plan[0]:
             default_plan.pop(0)
     return out
+
+
+def step(tools: dict[str, RegisteredTool], call: Call, journal: Journal, ctx: Ctx, index: int = 0,
+         registry: list[Row] = REGISTRY, cwd: str = ".", events: list[dict] | None = None) -> Step:
+    """One loop iteration after `choose`: check → execute (or refuse) → journal.
+
+    The CLI (`python3 -m ancient_games.hybrid call`) runs exactly this per
+    invocation, so a live chooser and the scripted loop share one path.
+    `events` is the journal snapshot the checks read (default: read now).
+    A `Step.result` of None means refused before execution.
+    """
+    checked = invariants_for(call)
+    if call.tool not in tools:
+        result = ToolResult(ok=False, reason=f"unknown-tool: {call.tool}")
+        journal.append(tool_call_event(call, checked, result))
+        return Step(index, call, result)
+    refusals = check_invariants(call, ctx, journal.read() if events is None else events, tools, registry, cwd)
+    if refusals:
+        r = pick_by_priority(refusals)
+        journal.append(tool_call_event(call, checked, refused_by=r.invariant, reason=r.reason))
+        return Step(index, call, None, r.invariant)
+    ctx_for_call = strip_corroboration(ctx) if call.tool in RESTRICTED else ctx
+    env = ToolEnv(run_id=journal.run_id, journal_path=journal.path, ctx=ctx_for_call, cwd=cwd, tools=tools)
+    result = tools[call.tool].fn(env, call.args)
+    journal.append(tool_call_event(call, checked, result))
+    return Step(index, call, result)
 
 
 def _after(i: int, injected: list[dict], journal: Journal, after_step) -> None:

@@ -32,6 +32,7 @@ class RegisteredTool:
     name: str
     manifest: dict
     fn: Callable[[ToolEnv, dict], ToolResult]
+    doc: str = ""  # first line of the module docstring (the CLI's `tools` listing)
 
     @property
     def side_effects(self) -> str:
@@ -86,7 +87,8 @@ def register(path: str) -> RegisteredTool:
     mod = load_module(path)
     manifest = validate_manifest(getattr(mod, "MANIFEST", None), path)
     fn = check_signature(getattr(mod, manifest["entrypoint"], None), f"{path}:{manifest['entrypoint']}")
-    return RegisteredTool(manifest["name"], manifest, fn)
+    doc = (getattr(mod, "__doc__", None) or "").strip().splitlines()
+    return RegisteredTool(manifest["name"], manifest, fn, doc[0].strip() if doc else "")
 
 
 def load_tools(*dirs: str) -> dict[str, RegisteredTool]:

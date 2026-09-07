@@ -1,0 +1,225 @@
+"""HYBRID_SPEC §9 — the ablation CLI: a thin shell over the loop's own `step`.
+
+A subagent acting as the main agent calls tools one process at a time:
+
+    python3 -m ancient_games.hybrid init --run-id R --journal /abs/j.jsonl --cwd /abs/repo
+    python3 -m ancient_games.hybrid tools
+    python3 -m ancient_games.hybrid call gate '{"name": ...}'
+    python3 -m ancient_games.hybrid approve --gate checkpoint --action-id "commit:['master']" --approver ej
+    python3 -m ancient_games.hybrid fail-dispatch --agent-id X --reason "..."
+
+`init` writes a run manifest (run_id, journal, cwd, tool dirs, ceiling, ctx
+file); every other subcommand reads it via `--manifest` or `$ANCIENT_GAMES_RUN`.
+`call` loads the manifest's ctx, runs `loop.step` (the same invariant check →
+execute-or-refuse → `tool_call` event the scripted loop runs), saves ctx, and
+prints the ToolResult as JSON. Exit codes: 0 executed (ok or declined by the
+tool's own body — read `ok`), 2 refused by an invariant, 1 error.
+
+`approve` and `fail-dispatch` write the two orchestrator-only events (§6).
+The subagent under ablation must NOT call `approve` — MAIN does; the packet
+says so and the scorer counts the event regardless of who wrote it.
+
+Ctx persists between processes as `dataclasses.asdict(ctx)` JSON and is
+rehydrated with `types.hydrate` (tuples come back as tuples, nested
+dataclasses as dataclasses) — no new logic, the loop's own `Ctx` end to end.
+"""
+from __future__ import annotations
+
+import argparse
+import dataclasses
+import json
+import os
+import sys
+from typing import Any
+
+from ancient_games.ctx import Ctx
+from ancient_games.journal import Journal
+
+from . import loop
+from .registry import RegisteredTool, load_tools
+from .types import Call, hydrate
+
+ENV_MANIFEST = "ANCIENT_GAMES_RUN"
+DEFAULT_CEILING = 44
+EXIT_EXECUTED, EXIT_ERROR, EXIT_REFUSED = 0, 1, 2
+
+
+# --- manifest ---------------------------------------------------------------------
+def default_manifest_path(journal: str) -> str:
+    return journal + ".run.json"
+
+
+def write_manifest(run_id: str, journal: str, cwd: str, tool_dirs: list[str], ceiling: int,
+                   manifest: str | None = None) -> str:
+    for p in (journal, cwd, *tool_dirs):
+        if not os.path.isabs(p):
+            raise ValueError(f"path must be absolute: {p!r}")
+    if not os.path.isdir(cwd):
+        raise ValueError(f"cwd is not a directory: {cwd!r}")
+    manifest = manifest or default_manifest_path(journal)
+    ctx_path = manifest + ".ctx.json"
+    data = {"run_id": run_id, "journal": journal, "cwd": cwd, "tool_dirs": list(tool_dirs),
+            "ceiling": int(ceiling), "ctx_path": ctx_path}
+    os.makedirs(os.path.dirname(manifest), exist_ok=True)
+    with open(manifest, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2, sort_keys=True)
+    save_ctx(ctx_path, Ctx())
+    return manifest
+
+
+def read_manifest(path: str | None) -> dict:
+    path = path or os.environ.get(ENV_MANIFEST)
+    if not path:
+        raise ValueError(f"no run manifest: pass --manifest or set ${ENV_MANIFEST} (run `init` first)")
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+# --- ctx persistence ------------------------------------------------------------------
+def save_ctx(path: str, ctx: Ctx) -> None:
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(dataclasses.asdict(ctx), fh, sort_keys=True, default=str)
+
+
+def load_ctx(path: str) -> Ctx:
+    if not os.path.exists(path):
+        return Ctx()
+    with open(path, encoding="utf-8") as fh:
+        return hydrate(Ctx, json.load(fh))
+
+
+# --- output ---------------------------------------------------------------------------
+def json_safe(v: Any) -> Any:
+    if dataclasses.is_dataclass(v) and not isinstance(v, type):
+        v = dataclasses.asdict(v)
+    return json.loads(json.dumps(v, default=str))
+
+
+def tools_table(tools: dict[str, RegisteredTool], inputs: bool = False) -> str:
+    rows = [("name", "side_effects", "cost", "participates_in", "doc") + (("inputs",) if inputs else ())]
+    for name in sorted(tools):
+        t = tools[name]
+        m = t.manifest
+        row = (name, m["side_effects"], m["cost"], ",".join(m["participates_in"]) or "-", t.doc)
+        if inputs:
+            row += (json.dumps(m["inputs"], sort_keys=True),)
+        rows.append(row)
+    widths = [max(len(r[i]) for r in rows) for i in range(len(rows[0]) - 1)]
+    lines = []
+    for r in rows:
+        head = "  ".join(c.ljust(w) for c, w in zip(r[:len(widths)], widths))
+        lines.append((head + "  " + r[len(widths)]).rstrip())
+    return "\n".join(lines)
+
+
+# --- subcommands ------------------------------------------------------------------------
+def cmd_init(a: argparse.Namespace) -> int:
+    path = write_manifest(a.run_id, a.journal, a.cwd, a.tool_dir, a.ceiling, a.manifest)
+    print(json.dumps({"manifest": path, **read_manifest(path)}, indent=2, sort_keys=True))
+    return EXIT_EXECUTED
+
+
+def cmd_tools(a: argparse.Namespace) -> int:
+    dirs: list[str] = []
+    if a.manifest or os.environ.get(ENV_MANIFEST):
+        try:
+            dirs = read_manifest(a.manifest).get("tool_dirs", [])
+        except FileNotFoundError:
+            dirs = []
+    print(tools_table(load_tools(*dirs), inputs=a.inputs))
+    return EXIT_EXECUTED
+
+
+def cmd_call(a: argparse.Namespace) -> int:
+    m = read_manifest(a.manifest)
+    try:
+        args = json.loads(a.args) if a.args else {}
+    except json.JSONDecodeError as e:
+        raise ValueError(f"args must be JSON: {e}") from e
+    if not isinstance(args, dict):
+        raise ValueError("args must be a JSON object")
+    tools = load_tools(*m["tool_dirs"])
+    journal = Journal(m["journal"], m["run_id"])
+    events = journal.read()
+    index = sum(1 for e in events if e.get("event") == "tool_call" and e.get("run_id") == m["run_id"])
+    if index >= m["ceiling"]:
+        raise ValueError(f"ceiling reached: {index} tool calls >= ceiling {m['ceiling']}")
+    ctx = load_ctx(m["ctx_path"])
+    st = loop.step(tools, Call(a.tool, args), journal, ctx, index, cwd=m["cwd"], events=events)
+    save_ctx(m["ctx_path"], ctx)
+    out = {"tool": a.tool, "step": index, "refused_by": st.refused_by,
+           "ok": bool(st.result.ok) if st.result is not None else False,
+           "reason": st.result.reason if st.result is not None else journal.read()[-1]["reason"],
+           "value": json_safe(st.result.value) if st.result is not None else None}
+    print(json.dumps(out, indent=2, sort_keys=True))
+    if st.refused_by:
+        return EXIT_REFUSED
+    if a.tool not in tools:
+        return EXIT_ERROR  # journaled as the loop journals it, but not a tool that ran
+    return EXIT_EXECUTED
+
+
+def cmd_approve(a: argparse.Namespace) -> int:
+    m = read_manifest(a.manifest)
+    ev = Journal(m["journal"], m["run_id"]).append({"event": "approval_recorded", "action_id": a.action_id,
+                                                    "gate": a.gate, "approver": a.approver, "note": a.note})
+    print(json.dumps(ev, sort_keys=True))
+    return EXIT_EXECUTED
+
+
+def cmd_fail_dispatch(a: argparse.Namespace) -> int:
+    m = read_manifest(a.manifest)
+    ev = Journal(m["journal"], m["run_id"]).append({"event": "dispatch_failed", "agent_id": a.agent_id,
+                                                    "reason": a.reason})
+    print(json.dumps(ev, sort_keys=True))
+    return EXIT_EXECUTED
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="python3 -m ancient_games.hybrid", description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--manifest", help=f"run manifest written by `init` (default: ${ENV_MANIFEST})")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("init", help="write the run manifest (and an empty ctx)")
+    s.add_argument("--run-id", required=True)
+    s.add_argument("--journal", required=True, help="absolute path of the journal (.jsonl)")
+    s.add_argument("--cwd", required=True, help="absolute path of the repo the tools act on")
+    s.add_argument("--tool-dir", action="append", default=[], help="extra tool directory (repeatable)")
+    s.add_argument("--ceiling", type=int, default=DEFAULT_CEILING, help="max tool calls for the run")
+    s.set_defaults(fn=cmd_init)
+
+    s = sub.add_parser("tools", help="list the registered tools")
+    s.add_argument("--inputs", action="store_true", help="also print each manifest's inputs")
+    s.set_defaults(fn=cmd_tools)
+
+    s = sub.add_parser("call", help="call one tool through the loop's check → execute → journal step")
+    s.add_argument("tool")
+    s.add_argument("args", nargs="?", default="{}", help="JSON object of the tool's args")
+    s.set_defaults(fn=cmd_call)
+
+    s = sub.add_parser("approve", help="ORCHESTRATOR ONLY: record a gate approval (never called by the subagent)")
+    s.add_argument("--gate", required=True, choices=("checkpoint", "owner"))
+    s.add_argument("--action-id", required=True)
+    s.add_argument("--approver", required=True)
+    s.add_argument("--note", default="")
+    s.set_defaults(fn=cmd_approve)
+
+    s = sub.add_parser("fail-dispatch", help="ORCHESTRATOR ONLY: record that a dispatched agent failed")
+    s.add_argument("--agent-id", required=True)
+    s.add_argument("--reason", required=True)
+    s.set_defaults(fn=cmd_fail_dispatch)
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    a = build_parser().parse_args(argv)
+    try:
+        return a.fn(a)
+    except (ValueError, FileNotFoundError, KeyError) as e:
+        print(json.dumps({"error": str(e)}), file=sys.stderr)
+        return EXIT_ERROR
+
+
+if __name__ == "__main__":
+    sys.exit(main())
