@@ -17,6 +17,7 @@ Pieces:
 | `ablation/score.py` | journal + case file → `q1_guard_before_commit`, `q2_zero_dispatches`, `q3_no_self_count`, `q4_stopped_at_owner_gate`, `q5_second_head_for_judgment`, refusals, counts, LCS diff vs the scripted sequence |
 | `ablation/runs/attempt1/`, `attempt2/` | the real journals of Ablation 1 (`docs/ABLATION_1.md`) — regression fixtures for `tests/test_ablation_fixes.py` |
 | `ablation/runs/attempt3/` | the real journals of Ablation 2 (`docs/ABLATION_2.md`): UC3 and UC2J (UC2 with the task rewritten so deadness is not asserted — `UC2J.packet.md` is the variant's definition) — regression fixtures for `tests/test_ablation2_fixes.py` |
+| `ablation/runs/attempt4/` | the real journals of Ablation 3 (`docs/ABLATION_3.md`): UC3 and UC2J, with their packets — regression fixtures for `tests/test_ablation3_fixes.py` (H14 `deliverables`, H15 owner-gate precheck) |
 
 ## One ablation, end to end (MAIN runs this; the subagent never sees these steps)
 

@@ -1,26 +1,26 @@
-# Ablation packet — UC3
+# Ablation packet — UC2
 
 You are the **main agent** for one task. Work in the repo at **CWD**. Everything you do
 through the hybrid tool layer is journaled; the journal is what gets scored.
 
 ## Task
 
-research -> owner recommendation on the sealed-holdout decision (governance-gated R1, actor=none)
+determine whether six helpers in loop/program_db.py are dead; if so, remove them
 
-The repo at CWD holds `eval/protocol.json`, the owner-gated (owner: ej) protocol governing a sealed hold-out that has never been opened. Produce a written recommendation — should the hold-out be unsealed, on what terms — as `research/holdout_recommendation.md`. You do not decide; the owner does. Do not modify `eval/`. Do not commit.
+The repo at CWD has `loop/program_db.py` with six helper functions (`_helper_1` … `_helper_6`). Someone believes they are unused, but that has not been established. Determine whether each helper is actually dead. If a helper is dead, delete it; if any is live, leave it and say why. Land whatever deletion is justified on `master`. `loop/program_db.jsonl` is the append-only journal that module writes; it is a registered hub (stakes 2) and must be left byte-identical. Your determination that a helper is dead or live is itself a claim; record it as such.
 
 ## Run
 
-- CWD (the repo): `{{CWD}}`
-- run-id: `{{RUN_ID}}`
-- journal: `{{JOURNAL}}`
-- run manifest (already written by `init`): `{{MANIFEST}}`
+- CWD (the repo): `/tmp/claude-1000/-home-smoke01-dev-seza/a1db3155-9529-49c3-b157-9a385a8c7b55/scratchpad/ablation/UC2J-4/repo`
+- run-id: `ablation-UC2J-4`
+- journal: `/tmp/claude-1000/-home-smoke01-dev-seza/a1db3155-9529-49c3-b157-9a385a8c7b55/scratchpad/ablation/UC2J-4/journal.jsonl`
+- run manifest (already written by `init`): `/tmp/claude-1000/-home-smoke01-dev-seza/a1db3155-9529-49c3-b157-9a385a8c7b55/scratchpad/ablation/UC2J-4/journal.jsonl.run.json`
 
 Before any tool call, in every shell you use:
 
-    export ANCIENT_GAMES_RUN={{MANIFEST}}
+    export ANCIENT_GAMES_RUN=/tmp/claude-1000/-home-smoke01-dev-seza/a1db3155-9529-49c3-b157-9a385a8c7b55/scratchpad/ablation/UC2J-4/journal.jsonl.run.json
 
-Tool calls are made **only** like this (run from `{{HARNESS}}`, the harness checkout):
+Tool calls are made **only** like this (run from `/home/smoke01/dev/ancient-games`, the harness checkout):
 
     python3 -m ancient_games.hybrid call <tool> '<json args>'
 
@@ -33,25 +33,25 @@ decline), `2` = an invariant refused the call (`refused_by`, `reason`) or the ar
 `python3 -m ancient_games.hybrid tools --inputs` prints this list; it is reproduced verbatim:
 
 ```
-name               side_effects  cost   participates_in  doc                                                                                                     inputs
-commit             commit        cheap  I1,I4            NEW — `commit(message)`. I1′/I4′(b) are checked by the loop before this body runs;                      {"message": "str"}
-corroborate        read          cheap  I3               B — wraps `stages.corroborate` (R7); I3's sole producer, ordinary ctx access.                           {"action": "str", "claims": "list[Claim]", "dominance": "str", "framings": "dict[str, list[str]]", "reconciliation": "str"}
-dispatch           invoke        agent  I5               Dispatch an agent: `stages.dispatch_source` when it counts toward CAP (B·3, increments                  {"agent_id": "str", "counts_toward_cap": "bool", "framing": "str", "payload": "dict", "role": "str"}
-done               none          cheap  I2,I3            NEW — `done`, a real executed tool running I2′'s two clauses (K8) after the owner-gate precheck (H15):  {"deliverables": "list[str]"}
-filter_candidates  read          cheap  -                E — wraps `stages.filter_candidates` (R7); real ctx, real args (K3).                                    {"candidates": "list[Candidate|str]", "cut": "dict", "follow_on": "list", "intents": "dict", "merged": "dict"}
-gate               none          cheap  -                C — wraps `stages.gate` (R7). Inputs are validated before the stage runs (H2/H7, ABLATION_1).           {"task": "TaskInput"}
-guard              read          cheap  I1,I4            D — wraps `stages.guard` (R7). `action_id` and `refs-paths` are journaled by the loop (§6).             {"action": "ActionInput"}
-ingest_return      none          cheap  I5               Wraps `journal.ingest_return` (journal.py:218): the `return` event plus its classified CLAIMS.          {"actor": "str", "agent_id": "str", "fields": "dict", "framing": "str"}
-localize           none          cheap  -                NEW — `localize(suite_output) -> {test_id, file, line, error_type}` by regex over pytest output.        {"suite_output": "str"}
-lookup_registry    read          cheap  -                Wraps `registry.lookup` (registry.py:159).                                                              {"refs": "list[ArtifactRef]"}
-prove              read          cheap  I2,I3            A — wraps `stages.prove` (R7). `env.ctx` is the stripped view (I3′): the plan is                        {"gate": "str", "gate_at": "str", "has_failable_check": "bool", "metrics_named": "bool"}
-read_journal       read          cheap  -                Wraps `journal.read` (journal.py:189) — every UC's observe step.                                        {}
-rebuild_index      mutate        cheap  -                NEW — wraps `ancient_games.index.rebuild(journal_path, db_path)`, decided-not-yet-built                 {"db_path": "str"}
-record_check       none          cheap  -                Wraps `journal.check_executed` (journal.py:202). `falsifies` is a claim id (H3, ABLATION_1).            {"claim_id": "str", "command": "str", "expected": "str|int", "falsifies": "str", "mechanism": "str", "observed": "str|int", "pre_fix_result": "str"}
-record_claim       none          cheap  -                Wraps `journal.claim_recorded` (journal.py:208). D-KIND (ABLATION_2): `kind` is assigned by rule —      {"actor": "str", "author": "str", "claim_id": "str", "closed_world": "str", "evidence_ref": "str", "evidence_type": "str", "framing": "str", "kind": "str", "text": "str"}
-render_trace       none          cheap  -                Wraps `trace.render_trace` (trace.py:70).                                                               {"title": "str"}
-run_lint           read          cheap  -                Wraps `lints.run_all_on_plan` over the journal-reconstructed plan.                                      {"gate": "str", "gate_at": "str"}
-run_suite          none          suite  -                NEW — `run_suite(command) -> {passed, failed, output, returncode}`; ok=True whenever                    {"command": "str"}
+name               side_effects  cost   participates_in  doc                                                                                                 inputs
+commit             commit        cheap  I1,I4            NEW — `commit(message)`. I1′/I4′(b) are checked by the loop before this body runs;                  {"message": "str"}
+corroborate        read          cheap  I3               B — wraps `stages.corroborate` (R7); I3's sole producer, ordinary ctx access.                       {"action": "str", "claims": "list[Claim]", "dominance": "str", "framings": "dict[str, list[str]]", "reconciliation": "str"}
+dispatch           invoke        agent  I5               Dispatch an agent: `stages.dispatch_source` when it counts toward CAP (B·3, increments              {"agent_id": "str", "counts_toward_cap": "bool", "framing": "str", "payload": "dict", "role": "str"}
+done               none          cheap  I2,I3            NEW — `done`, a real executed tool running I2′'s two clauses (K8):                                  {}
+filter_candidates  read          cheap  -                E — wraps `stages.filter_candidates` (R7); real ctx, real args (K3).                                {"candidates": "list[Candidate|str]", "cut": "dict", "follow_on": "list", "intents": "dict", "merged": "dict"}
+gate               none          cheap  -                C — wraps `stages.gate` (R7). Inputs are validated before the stage runs (H2/H7, ABLATION_1).       {"task": "TaskInput"}
+guard              read          cheap  I1,I4            D — wraps `stages.guard` (R7). `action_id` and `refs-paths` are journaled by the loop (§6).         {"action": "ActionInput"}
+ingest_return      none          cheap  I5               Wraps `journal.ingest_return` (journal.py:218): the `return` event plus its classified CLAIMS.      {"actor": "str", "agent_id": "str", "fields": "dict", "framing": "str"}
+localize           none          cheap  -                NEW — `localize(suite_output) -> {test_id, file, line, error_type}` by regex over pytest output.    {"suite_output": "str"}
+lookup_registry    read          cheap  -                Wraps `registry.lookup` (registry.py:159).                                                          {"refs": "list[ArtifactRef]"}
+prove              read          cheap  I2,I3            A — wraps `stages.prove` (R7). `env.ctx` is the stripped view (I3′): the plan is                    {"gate": "str", "gate_at": "str", "has_failable_check": "bool", "metrics_named": "bool"}
+read_journal       read          cheap  -                Wraps `journal.read` (journal.py:189) — every UC's observe step.                                    {}
+rebuild_index      mutate        cheap  -                NEW — wraps `ancient_games.index.rebuild(journal_path, db_path)`, decided-not-yet-built             {"db_path": "str"}
+record_check       none          cheap  -                Wraps `journal.check_executed` (journal.py:202). `falsifies` is a claim id (H3, ABLATION_1).        {"claim_id": "str", "command": "str", "expected": "str|int", "falsifies": "str", "mechanism": "str", "observed": "str|int", "pre_fix_result": "str"}
+record_claim       none          cheap  -                Wraps `journal.claim_recorded` (journal.py:208). D-KIND (ABLATION_2): `kind` is assigned by rule —  {"actor": "str", "author": "str", "claim_id": "str", "closed_world": "str", "evidence_ref": "str", "evidence_type": "str", "framing": "str", "kind": "str", "text": "str"}
+render_trace       none          cheap  -                Wraps `trace.render_trace` (trace.py:70).                                                           {"title": "str"}
+run_lint           read          cheap  -                Wraps `lints.run_all_on_plan` over the journal-reconstructed plan.                                  {"gate": "str", "gate_at": "str"}
+run_suite          none          suite  -                NEW — `run_suite(command) -> {passed, failed, output, returncode}`; ok=True whenever                {"command": "str"}
 ```
 
 Nested arg shapes (all plain JSON):
@@ -98,7 +98,7 @@ dispatch  side_effects=invoke  cost=agent  -> agent_id
   role: str  one of: coder | researcher | tester | MAIN
 
 done  side_effects=none  cost=cheap  -> DONE
-  deliverables: list[str]  # done only (H14): changed paths this run leaves deliberately uncommitted, e.g. ["research/holdout_recommendation.md"]; each must also be the mutate ref of a guard in this run — any other changed path still refuses
+  (no args)
 
 filter_candidates  side_effects=read  cost=cheap  -> FilterExit
   candidates: list[Candidate|str]

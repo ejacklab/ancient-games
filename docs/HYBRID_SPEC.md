@@ -1,4 +1,4 @@
-# The hybrid tool layer — spec v1.4 (fix pass after `hybrid_review_4.md`, REJECT: 3 BLOCKING)
+# The hybrid tool layer — spec v1.5 (v1.4 + ABLATION_3's H14/H15 in `done`; v1.4 was the fix pass after `hybrid_review_4.md`, REJECT: 3 BLOCKING)
 
 **This is the last documentary round; a coder starts implementation in parallel from v1.3 +
 `DECISIONS_HYBRID_4.md`, per MAIN's own instruction.** v1.3 was rejected on three findings, each
@@ -204,6 +204,10 @@ def run(env, args):
         return ToolResult(ok=False, value=None, reason=f"internal-error: {e}")
 ```
 
+v1.5 (ABLATION_3, H14/H15): the live body (`ancient_games/hybrid/tools/done.py`) additionally runs the
+owner-gate precheck between `no-prove-pass` and clause (a), and takes `deliverables: [path]` for clause (b) —
+§3's row and §4's I2 state both; the example above is v1.3's shape and is not re-typed here.
+
 ---
 
 ## 3. The tool set
@@ -236,7 +240,7 @@ tool is one module `ancient_games/hybrid/tools/<name>.py` with `MANIFEST` + `run
 | `run_suite` | NEW — `{command: str} -> {passed, failed, output}` | none | suite | — | UC6,7 |
 | `localize` | NEW — regex over `run_suite` output → `{test_id, file, line, error_type}` | none | cheap | — | UC7 |
 | `rebuild_index` | NEW — wraps `rebuild(journal_path, db_path)`, decided-not-yet-built | mutate | cheap | — | UC9 |
-| `done` | NEW — real, executed tool (§2's full example); runs I2's two clauses | none | cheap | I2, I3 (consumer — `env.ctx` is a `Ctx` with 4 fields nulled) | UC1,2,3,5,6,7,8 |
+| `done` | NEW — real, executed tool (§2's full example); runs the owner-gate precheck (H15) then I2's two clauses. Args: `deliverables: list[str]` (optional, H14) — changed paths the run leaves deliberately uncommitted; each must also be an invoke/mutate ref of an executed `guard` in this run, else clause (b) refuses naming it | none | cheap | I2, I3 (consumer — `env.ctx` is a `Ctx` with 4 fields nulled) | UC1,2,3,5,6,7,8 |
 
 **Two more journal events, written by the orchestrator, outside this table entirely — never registered,
 never `choose_llm`-selectable:** `approval_recorded` (unchanged from v1.3) and **`dispatch_failed`**
@@ -312,12 +316,24 @@ I1′  scope match at commit — reads real data (unchanged formula from v1.3, K
      → still: every commit-ending UC needs its own dedicated guard(..., verb="commit") call, and I1′'s
        own math does not itself enforce that (J7/J16's disposition stands)
 
-I2   done's own two clauses (unchanged from v1.3, executed inside `done`'s adapter body, never in
-     `check_invariants`):
+I2   done's own two clauses (executed inside `done`'s adapter body, never in `check_invariants`),
+     after the owner-gate precheck (v1.5, ABLATION_3 H15):
+     (0) owner gate, checked FIRST once a `prove` PASS exists: if the A exit line that PASS wrote cleared
+         the plan to an owner gate — `terminal gate=owner(<name>) [governance-gated]`, or `owner(<name>)
+         gate` from the prove call's own `gate` arg — and no `approval_recorded{gate="owner"}` postdates the
+         last executed commit (journal position, same window as I4′), decline with
+         reason="owner-gate-pending: <name>". The run ends explicitly at the gate; clauses (a)/(b) are
+         never reached, so a deliberately uncommitted deliverable is not reported as the problem when the
+         problem is that the owner has not decided. `done` matches on the gate only, not the action_id.
      (a) freshness: the latest non-refused `prove` PASS postdates every non-refused `mutate`-side-effect
          tool_call — `commit` is categorically never in this set (side_effects=="commit", not "mutate")
-     (b) clean tree: `changed` (I1′'s own set — tracked diff ∪ untracked not-ignored files, v1.1 D-A)
-         must be empty; non-empty ⇒ decline with reason="uncommitted-changes", naming the files
+     (b) accounted tree (v1.5, ABLATION_3 H14): `changed` (I1′'s own set — tracked diff ∪ untracked
+         not-ignored files, v1.1 D-A); a changed path is accounted for iff it is committed (i.e. absent
+         from `changed`) OR it is listed in `done`'s `deliverables` arg AND is an invoke/mutate ref of an
+         executed (non-refused, non-declined) `guard` in this run (`guard_mutate_paths`, exact path,
+         M3). Any other changed path ⇒ decline with reason="uncommitted-changes", naming exactly the
+         unaccounted paths. A listed-but-unguarded path, or a guarded-but-unlisted one, still refuses —
+         the declaration and the guard are both required, so a native edit cannot hide behind either.
      → (a) alone can only ever be tripped by `rebuild_index` — the sole `side_effects=="mutate"` tool
        among 18 (`dispatch_failed` is not a tool, L3) — since every real native file edit is off-registry (D6); (b) is what actually
        catches an uncommitted native edit

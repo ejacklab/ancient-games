@@ -301,13 +301,13 @@ def test_h12_schema_states_framings_as_dict_of_lists_with_an_example():
 
 # H13 -------------------------------------------------------------------------------------------
 def test_h13_default_ceiling_is_twice_the_longest_journal_under_runs(tmp_path):
-    assert cli.default_ceiling() == 2 * 46 == 92  # UC2J attempt 3 is the longest free-agent trace so far
+    assert cli.default_ceiling() == 2 * 62 == 124  # UC2J attempt 4 is the longest free-agent trace so far
     assert cli.default_ceiling(str(tmp_path / "nothing")) == cli.FALLBACK_CEILING == 44
     repo = tmp_path / "repo"
     repo.mkdir()
     p = subprocess.run([sys.executable, "-m", "ancient_games.hybrid", "init", "--run-id", "h13", "--journal", str(tmp_path / "j.jsonl"),
                         "--cwd", str(repo)], cwd=ROOT, capture_output=True, text=True)
-    assert p.returncode == 0 and json.loads(p.stdout)["ceiling"] >= 2 * 46
+    assert p.returncode == 0 and json.loads(p.stdout)["ceiling"] >= 2 * 62
     assert json.load(open(tmp_path / "j.jsonl.run.json"))["ceiling"] == cli.default_ceiling()
     p = subprocess.run([sys.executable, "-m", "ancient_games.hybrid", "init", "--run-id", "h13", "--journal", str(tmp_path / "k.jsonl"),
                         "--cwd", str(repo), "--ceiling", "10"], cwd=ROOT, capture_output=True, text=True)

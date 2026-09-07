@@ -168,6 +168,9 @@ NOTES: dict[str, str] = {
     "known_facts": "list of [fact, method, result, date]",
     "actors": "{action-name: MAIN | <agent-id> | none}",
     "gate_at": "the action the gate sits at, e.g. \"commit\"",
+    "deliverables": "done only (H14): changed paths this run leaves deliberately uncommitted, e.g. "
+                    "[\"research/holdout_recommendation.md\"]; each must also be the mutate ref of a guard in this run — "
+                    "any other changed path still refuses",
 }
 _NAME_RE = re.compile(r"\b(" + "|".join(DATACLASSES) + r")\b")
 
