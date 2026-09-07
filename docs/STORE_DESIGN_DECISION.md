@@ -4,6 +4,8 @@ Inputs: `SQLITE_INDEX_DESIGN.md`, `KNOWLEDGE_GRAPH_DESIGN.md`, and three isolate
 
 ## Decision
 
+*Built 2026-09-08 as `ancient_games/index.py` (`f9e131e`): 7 tables, 5 run_id-scoped queries, differential-tested against the Python lints on 10 real ablation journals (50 comparisons, 0 mismatches) plus the 8 spec cases, and on a merged multi-run DB with colliding claim ids. Rebuild ≈ 8 ms/journal.*
+
 **Build the minimal SQLite index. Defer the graph layer entirely. One spec edit, zero journal changes.**
 
 The three reviews converged from different evidence: simplicity found that only 6 lints are wired and they read only 4 event types; integration found that only 1 of 25 algorithm steps (B·1) plus A's lint run reads anything back; correctness found that every graph query and two index queries were wrong or unrunnable on real data. Nothing in the deferred set has a reader today. The repo has already built two graphs nobody queried; this decision does not build a third.
@@ -20,7 +22,7 @@ The three reviews converged from different evidence: simplicity found that only 
 **Queries (6 lints → SQL), with the correctness fixes applied:**
 1. `claims-without-evidence`
 2. `follow-on-without-disposition` (needs a registered `REGEXP`, or a `LIKE`/prefix set for the enum — choose the prefix set; simpler, no callback)
-3. `corroboration-capped` — category (b) count in SQL; (a)/(c) stay in Python because they read `Plan` fields never journaled (integration confirmed). **Every query filters `run_id`.** `COALESCE(framing,'')` on any DISTINCT/GROUP BY over framing or mechanism. Identical-`command` dedup before mechanism dedup.
+3. `corroboration-capped` — category (b) count in SQL; (a)/(c) stay in Python because they read `Plan` fields never journaled (integration confirmed). **Every query filters `run_id`.** framing counted as `COUNT(DISTINCT framing) + (COUNT(*) > COUNT(framing))` — **not** `COALESCE(framing,'')`, which would merge `None` and `''` into one bucket where Python's set semantics keep them distinct (corrected during implementation, `f9e131e`); `mechanism` is NOT NULL so needs no coalesce. Identical-`command` dedup before mechanism dedup.
 4. `hub-touched-without-tripwire` — the "ran" set from `check_executed`, scoped by `run_id`
 5. `downstream-consumer-check-unrecorded` — subset test scoped by `run_id`; empty-`ref` is vacuously true (match the Python)
 6. `evidence-after-verdict` — **stays Python.** Markdown heading order is not a SQL question; the `has_template` column it would need is not in the DDL and is not worth adding.
