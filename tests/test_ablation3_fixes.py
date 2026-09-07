@@ -23,7 +23,10 @@ RUNS = ROOT / "ablation" / "runs" / "attempt4"
 CASES = ROOT / "tests" / "cases" / "hybrid"
 TOOLS = load_tools()
 DELIVERABLE = "research/holdout_recommendation.md"
+# UC3's C·2 declared R1 governance-gated, so R1 is the subject its terminal owner gate protects
+# (REVIEW_B F1: `done` matches the approval's action_id, not just its gate).
 OWNER_APPROVAL = {"event": "approval_recorded", "action_id": "R1", "gate": "owner", "approver": "ej", "note": "test"}
+OWNER_PENDING = "owner-gate-pending: ej (approve action_id=R1)"
 
 
 def replay(tmp_path, uc: str, make) -> tuple[ToolEnv, Journal, str]:
@@ -58,8 +61,8 @@ def test_fixtures_are_the_real_attempt4_journals_and_packets():
 def test_h15_uc3_replay_ends_at_the_owner_gate_not_at_the_tree(tmp_path):
     env, journal, repo = replay(tmp_path, "UC3", make_uc3)
     write_deliverable(repo)  # the run's actual tree: the deliverable untracked, eval/ untouched
-    assert done_tool.run(env, {}) == ToolResult(False, None, "owner-gate-pending: ej")
-    assert done_tool.run(env, {"deliverables": [DELIVERABLE]}) == ToolResult(False, None, "owner-gate-pending: ej")
+    assert done_tool.run(env, {}) == ToolResult(False, None, OWNER_PENDING)
+    assert done_tool.run(env, {"deliverables": [DELIVERABLE]}) == ToolResult(False, None, OWNER_PENDING)
     # with the owner's approval on record, done proceeds to the tree clause
     journal.append(OWNER_APPROVAL)
     assert done_tool.run(env, {}) == ToolResult(False, None, f"uncommitted-changes: ['{DELIVERABLE}']")
@@ -75,9 +78,9 @@ def test_h15_owner_approval_must_postdate_the_last_commit(tmp_path):
     j.append({"event": "tool_call", "tool": "commit", "action_id": "commit:['master']", "args": {"message": "m"}, "args_hash": "x",
               "result_summary": "ok: {\"hash\": \"h\"}", "exit_type": None, "invariants_checked": ["I4", "I1"], "refused_by": None,
               "reason": None})
-    for e in events[79:81]:  # the A PASS exit line and its prove tool_call
+    for e in [events[6], *events[79:81]]:  # the executed gate call (its task names R1), the A PASS exit line, the prove call
         j.append({k: v for k, v in e.items() if k not in ("ts", "run_id")})
-    assert done_tool.run(env, {}) == ToolResult(False, None, "owner-gate-pending: ej")
+    assert done_tool.run(env, {}) == ToolResult(False, None, OWNER_PENDING)
     j.append(OWNER_APPROVAL)
     assert done_tool.run(env, {}) == ToolResult(True, "DONE", None)
 

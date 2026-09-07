@@ -21,6 +21,20 @@ from .types import Call
 PRIORITY = ("I4", "I1", "I5", "I2", "I3")
 RESTRICTED = frozenset({"prove", "done"})  # I3′ consumers: receive the stripped ctx view
 
+# `invariants_checked` is an audit record, so it names only invariants that actually ran.
+# LOOP_CHECKED is what `evaluate_loop_invariants` evaluates, tool by tool — the two are kept
+# honest by `tests/test_hybrid_invariants.py::test_invariants_checked_names_only_checks_that_ran`,
+# which reads the evaluated ids back off a real call rather than trusting this table.
+LOOP_CHECKED: dict[str, tuple[str, ...]] = {"commit": ("I1", "I4"), "guard": ("I4",), "dispatch": ("I5",)}
+# Invariants evaluated outside `check_invariants`, each with where it runs: I2 is executed by
+# `done`'s own adapter body (`tools/done.py`), I3 is static — the loader's signature check plus the
+# stripped ctx `loop.step` hands prove/done. `ingest_return` declared I5 here until it was removed:
+# it never ran (only `dispatch` evaluates I5), and running it would be wrong anyway — I5 refuses when
+# the cap is full, and refusing the return that frees a slot would deadlock the run. `ingest_return`
+# still *participates in* I5's computation (`live_dispatches`), which its manifest records; that is
+# a different claim from "a check ran on this call".
+ELSEWHERE_CHECKED: dict[str, tuple[str, ...]] = {"done": ("I2", "I3"), "prove": ("I3",)}
+
 
 @dataclass(frozen=True)
 class Refusal:
@@ -29,29 +43,43 @@ class Refusal:
 
 
 def invariants_for(call: Call) -> list[str]:
-    """Which invariant ids apply to this call (journaled as `invariants_checked`)."""
-    return {"commit": ["I1", "I4"], "guard": ["I4"], "dispatch": ["I5"], "ingest_return": ["I5"],
-            "done": ["I2", "I3"], "prove": ["I3"]}.get(call.tool, [])
+    """The invariant ids journaled as `invariants_checked` for this call — every one of them
+    evaluated: the loop-checked set (`evaluate_loop_invariants`) plus the set that runs
+    elsewhere (`ELSEWHERE_CHECKED`, which records where each of those runs)."""
+    return list(LOOP_CHECKED.get(call.tool, ())) + list(ELSEWHERE_CHECKED.get(call.tool, ()))
 
 
-def check_invariants(call: Call, ctx, events: list[dict], tools: dict, registry: list[Row] = REGISTRY,
-                     cwd: str = ".") -> list[Refusal]:
+def evaluate_loop_invariants(call: Call, ctx, events: list[dict], tools: dict, registry: list[Row] = REGISTRY,
+                             cwd: str = ".") -> tuple[list[str], list[Refusal]]:
+    """(the invariant ids this call actually evaluated, the refusals they produced).
+
+    The ids come back from the evaluation itself, so `LOOP_CHECKED` — and therefore the journal's
+    `invariants_checked` — can be checked against what ran instead of asserted."""
+    evaluated: list[str] = []
     out: list[Refusal] = []
     if call.tool == "guard":
+        evaluated.append("I4")
         r = i4_declared(call, events, registry)
         if r:
             out.append(r)
     if call.tool == "commit":
         changed = changed_files(cwd)
+        evaluated += ["I1", "I4"]
         out += i4_at_commit(changed, events, registry)
         r = i1(changed, events)
         if r:
             out.append(r)
     if call.tool == "dispatch":
+        evaluated.append("I5")
         r = i5(events)
         if r:
             out.append(r)
-    return sorted(out, key=lambda r: PRIORITY.index(r.invariant))
+    return evaluated, sorted(out, key=lambda r: PRIORITY.index(r.invariant))
+
+
+def check_invariants(call: Call, ctx, events: list[dict], tools: dict, registry: list[Row] = REGISTRY,
+                     cwd: str = ".") -> list[Refusal]:
+    return evaluate_loop_invariants(call, ctx, events, tools, registry, cwd)[1]
 
 
 def pick_by_priority(refusals: list[Refusal]) -> Refusal:
@@ -125,5 +153,6 @@ def i5(events: list[dict]) -> Refusal | None:
     return None
 
 
-__all__ = ["Refusal", "check_invariants", "pick_by_priority", "invariants_for", "PRIORITY", "RESTRICTED",
+__all__ = ["Refusal", "check_invariants", "evaluate_loop_invariants", "pick_by_priority", "invariants_for",
+           "LOOP_CHECKED", "ELSEWHERE_CHECKED", "PRIORITY", "RESTRICTED",
            "I4_MODES", "live_dispatches", "event_ok"]

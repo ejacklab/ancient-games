@@ -320,11 +320,19 @@ I2   done's own two clauses (executed inside `done`'s adapter body, never in `ch
      after the owner-gate precheck (v1.5, ABLATION_3 H15):
      (0) owner gate, checked FIRST once a `prove` PASS exists: if the A exit line that PASS wrote cleared
          the plan to an owner gate — `terminal gate=owner(<name>) [governance-gated]`, or `owner(<name>)
-         gate` from the prove call's own `gate` arg — and no `approval_recorded{gate="owner"}` postdates the
-         last executed commit (journal position, same window as I4′), decline with
-         reason="owner-gate-pending: <name>". The run ends explicitly at the gate; clauses (a)/(b) are
-         never reached, so a deliberately uncommitted deliverable is not reported as the problem when the
-         problem is that the owner has not decided. `done` matches on the gate only, not the action_id.
+         gate` from the prove call's own `gate` arg — and no `approval_recorded{gate="owner",
+         action_id=<the gate's own subject>}` postdates the last executed commit (journal position, same
+         window as I4′), decline with reason="owner-gate-pending: <name> (approve action_id=<id>)". The run
+         ends explicitly at the gate; clauses (a)/(b) are never reached, so a deliberately uncommitted
+         deliverable is not reported as the problem when the problem is that the owner has not decided.
+         **v1.6 (REVIEW_B F1): `done` matches the action_id as well as the gate**, the way I4′ does — it
+         previously matched on the gate alone, so an owner approval recorded for an unrelated action
+         cleared a governance-gated decision the owner had never seen. The subject is the governance-gated
+         registry row id when the exit line carries `[governance-gated]` (the same key `i4_at_commit` uses,
+         25′), read from the latest executed `gate` call's `task.governance_gated` and not from the exit
+         line; otherwise `plan:<run_id>`, the terminal gate's newly-given id — the prove call's own
+         `gate=owner(...)` arg clears this run's plan and the journal names no narrower subject. A
+         governance-gated plan whose row cannot be read back fails closed on `governance-gated:<unknown>`.
      (a) freshness: the latest non-refused `prove` PASS postdates every non-refused `mutate`-side-effect
          tool_call — `commit` is categorically never in this set (side_effects=="commit", not "mutate")
      (b) accounted tree (v1.5, ABLATION_3 H14): `changed` (I1′'s own set — tracked diff ∪ untracked
