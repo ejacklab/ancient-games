@@ -22,7 +22,8 @@ def run(env, args):
         return invalid_args("backend", " | ".join(BACKENDS), backend)
     try:
         events = Journal(env.journal_path, env.run_id).read()
-        findings = run_all_on_plan(plan_from_journal(events, env.ctx, args), events, backend=backend, run_id=env.run_id)
+        findings = run_all_on_plan(plan_from_journal(events, env.ctx, args, run_id=env.run_id), events,
+                                   backend=backend, run_id=env.run_id)
         return ToolResult(ok=True, value={"backend": backend, "findings": findings})
     except Exception as e:
         return internal_error(e)

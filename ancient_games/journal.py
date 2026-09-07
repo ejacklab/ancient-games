@@ -203,6 +203,14 @@ class Journal:
         return ev
 
     def read(self) -> list[dict]:
+        """This run's events only. A Journal bound to run B must never hand out run A's
+        events: every corroboration count, plan reconstruction and trace built from a
+        Journal is run-scoped at the source. Use `read_all()` for the whole file."""
+        return [e for e in read_events(self.path) if e.get("run_id") == self.run_id]
+
+    def read_all(self) -> list[dict]:
+        """Every event in the file, across all runs — for callers that legitimately want
+        the whole journal (index rebuilds, ablation scoring)."""
         return read_events(self.path)
 
     # --- convenience constructors, one per §7 shape -------------------------

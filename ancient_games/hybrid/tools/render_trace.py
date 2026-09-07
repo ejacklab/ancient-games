@@ -14,6 +14,6 @@ MANIFEST = {
 def run(env, args):
     try:
         events = Journal(env.journal_path, env.run_id).read()
-        return ToolResult(ok=True, value=render_trace(events, args.get("title", "Run trace")))
+        return ToolResult(ok=True, value=render_trace(events, args.get("title", "Run trace"), run_id=env.run_id))
     except Exception as e:
         return internal_error(e)

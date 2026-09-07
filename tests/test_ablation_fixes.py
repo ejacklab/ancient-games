@@ -288,7 +288,9 @@ def test_h8_zero_recorded_claims_returns_to_planner(tmp_path):
     journal.check_executed("hub-integrity:default-branch-history", "git-diff-scope", "git diff --stat", "clean", "clean")
     journal.append({"event": "claim_recorded", "run_id": "someone-else", "claim_id": "C9", "author": "MAIN", "actor": "MAIN",
                     "kind": "judgment", "text": "t", "evidence_type": "command", "evidence_ref": "x", "framing": None})
-    assert recorded_claim_ids(journal.read()) == ["C9"] and recorded_claim_ids(journal.read(), "h8-empty") == []
+    # the file holds it (read_all), but the Journal bound to this run never hands it out (read)
+    assert recorded_claim_ids(journal.read_all()) == ["C9"] and recorded_claim_ids(journal.read_all(), "h8-empty") == []
+    assert recorded_claim_ids(journal.read()) == []
     r = prove_tool.run(env, {"gate": "checkpoint"})
     assert r.value.exit_type == "RETURN_TO_PLANNER" and r.value.findings == ["RETURN_TO_PLANNER: no claims recorded"]
     # a claim recorded only as an executed check (Z2′: stated expected value) is a recorded claim too

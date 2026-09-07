@@ -45,7 +45,9 @@ def parse_corroborate_line(line: str) -> list[ClaimRow]:
     return rows
 
 
-def claim_rows(events: list[dict]) -> list[ClaimRow]:
+def claim_rows(events: list[dict], run_id: str | None = None) -> list[ClaimRow]:
+    if run_id is not None:
+        events = [e for e in events if e.get("run_id") == run_id]
     rows: list[ClaimRow] = []
     for ev in events:
         if ev.get("event") == "exit" and ev.get("algorithm") == "B":
@@ -65,12 +67,17 @@ def claim_rows(events: list[dict]) -> list[ClaimRow]:
     return rows
 
 
-def stage_exits(events: list[dict]) -> list[str]:
-    return [ev["exit_line"] for ev in events if ev.get("event") == "exit"]
+def stage_exits(events: list[dict], run_id: str | None = None) -> list[str]:
+    return [ev["exit_line"] for ev in events if ev.get("event") == "exit"
+            and (run_id is None or ev.get("run_id") == run_id)]
 
 
-def render_trace(events: list[dict], title: str = "Run trace") -> str:
-    run_id = next((ev.get("run_id") for ev in events), "run")
+def render_trace(events: list[dict], title: str = "Run trace", run_id: str | None = None) -> str:
+    """The trace of ONE run. `run_id` names it; absent, the first event's run decides.
+    A merged journal renders only the titled run's rows — the artifact a human audits
+    must not mix another run's evidence into this run's corroboration table."""
+    run_id = run_id if run_id is not None else next((ev.get("run_id") for ev in events), "run")
+    events = [ev for ev in events if ev.get("run_id") == run_id]
     out = [f"# {title} — {run_id}", "", "## Stage exits", "```"]
     out += stage_exits(events)
     out += ["```", ""]
@@ -83,7 +90,7 @@ def render_trace(events: list[dict], title: str = "Run trace") -> str:
     out.append("")
     out += ["## Claim kind overrides (D-KIND: author's `executable` over the rule's `judgment`)",
             "| claim | author | closed_world |", "|---|---|---|"]
-    ov = kind_overrides(events)
+    ov = kind_overrides(events, run_id)
     out += [f"| `{o['claim_id']}` | {o['author']} | {o['closed_world']} |" for o in ov] or ["| none | | |"]
     out.append("")
     out += ["## Consumer checks", "| ref | answer | command_or_reasoning |", "|---|---|---|"]
