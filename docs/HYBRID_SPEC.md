@@ -308,7 +308,9 @@ I3   fully static:
          silently succeeding, and `stages.prove`'s own `ctx.keys_set()` call (stages.py:671,673) works
          normally, since a `Ctx` is still a `Ctx`
      tool-internal: `prove` re-derives n_available per claim from the journal, never from `ctx`;
-         `corroborate` keeps ordinary, unrestricted access — it is I3's sole producer
+         `corroborate` keeps ordinary, unrestricted access — it is I3's sole producer; `prove`'s
+         claim list is the run's *recorded* claims, and a recorded claim with no corroborate result
+         is a RETURN_TO_PLANNER finding (H8, below) — the count must exist before prove can read it
      trust boundary (§11): nothing in the loader validates that a differently-named tool computing a
          corroboration-shaped number must adopt this pattern — an [LLM] judgment call at tool-add time
 
@@ -353,6 +355,21 @@ tripwire in the form it will be run at prove time: a scope check declared pre-co
 is `git diff --stat HEAD~1 HEAD`. `guard` may be re-called to correct a mis-declared tripwire — the
 later non-refused guard's declaration is the one the journal-rebuilt plan carries. A tripwire may be
 keyed by the hub element's name or by the path of a ref that matched into it (H6).
+
+**Claim coverage (H8, ABLATION_1; harness v1.3).** The plan `prove` evaluates is built from this run's
+recorded claims, not from whatever `corroborate` happened to be called on: `recorded = ` every
+`claim_recorded` or `check_executed` claim_id with `run_id == env.run_id`, deduped in first-seen
+order (a claim with a stated expected value is journaled as a check, Z2′ — still a recorded claim);
+`hub-integrity:<hub>` is a D·4 tripwire run (AA3′), never a claim. For each recorded claim with no
+executed `corroborate` tool_call naming it in `args.claims` → finding
+`RETURN_TO_PLANNER: run corroborate for <claim_id>`; a run with `recorded == []` → finding
+`RETURN_TO_PLANNER: no claims recorded`. The findings are carried on the plan (`Plan.findings`,
+`tools/_plan.claim_coverage_findings`) and `stages.prove` reports them first, in its ordinary
+`Prove: FAIL, N=…` line with the A exit journaled as usual; only claims with a corroborate result are
+scored, and a capped one routes exactly as before. `prove` still never counts — it only checks that
+`corroborate`'s journaled result exists for every claim — so an empty plan can no longer PASS (UC2
+attempt 2's journal, replayed, now returns
+`Prove: FAIL, N=1 finding (RETURN_TO_PLANNER: run corroborate for C1), returned to planner.`).
 
 ---
 

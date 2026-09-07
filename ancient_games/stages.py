@@ -633,6 +633,7 @@ class Plan:
     governance_gated: str = "none"
     gate_at: str | None = None  # e.g. "commit" -> "(at commit)"
     exit_line: str = ""  # A composes it; the corroboration-capped lint reads it for disclosure
+    findings: list[str] = field(default_factory=list)  # supplied by the plan builder (H8: claim coverage); A reports them first
 
 
 @dataclass
@@ -656,7 +657,7 @@ def prove(ctx: Ctx, plan: Plan, journal: Journal, registry: list[Row] = REGISTRY
     from . import lints  # lazy: lints imports count_sources from this module
 
     fired = ["A·1", "A·2", "A·3"]
-    findings: list[str] = []
+    findings: list[str] = list(plan.findings)
     for e in plan.entries:
         for c in e.claims:
             if not c.has_command:

@@ -16,6 +16,13 @@ wherever that phrase appeared, with no other change to any step, outcome, or exi
 > names used below (`"historian"`, `"A"`, `"B"`, ...) are illustrative shorthand for that generated
 > value, unchanged from v1.3's own convention — Adversarial A below shows the real format once.
 
+> **Harness v1.3 (H8, `HYBRID_SPEC.md` §4 "Claim coverage"):** every `prove` step below already sits
+> after a `corroborate` step naming every claim the sequence recorded (UC1 step 8, UC2 steps 11/17,
+> UC7 step 13; UC3–UC6 likewise), so no sequence gains a step and no exit line changes. What changes
+> is the counterfactual: a sequence that reached `prove` with a recorded claim and no `corroborate`
+> for it would now get `RETURN_TO_PLANNER: run corroborate for <claim_id>` instead of a PASS on an
+> empty plan, and one with no recorded claim at all gets `RETURN_TO_PLANNER: no claims recorded`.
+
 ---
 
 ## UC1 — T2, one-line fix + class-level guard (zero dispatch)

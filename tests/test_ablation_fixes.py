@@ -1,4 +1,4 @@
-"""ABLATION_1 (docs/ABLATION_1.md) — the seven harness defects H1–H7 plus the scorer's explicit
+"""ABLATION_1 (docs/ABLATION_1.md) — the harness defects H1–H8 plus the scorer's explicit
 keys, each reproduced from the real journals in `ablation/runs/` (regression fixtures) and
 asserted on the real return values: `check_invariants`, the adapters' `ToolResult`, the journal
 on disk, `count_sources`, the CLI's stdout, the scorer's dict."""
@@ -16,7 +16,8 @@ from ancient_games.hybrid.invariants import check_invariants
 from ancient_games.hybrid.registry import load_tools
 from ancient_games.hybrid.tools import corroborate as corroborate_tool, gate as gate_tool, guard as guard_tool
 from ancient_games.hybrid.tools import prove as prove_tool, record_check as record_check_tool
-from ancient_games.hybrid.tools._plan import plan_from_journal
+from ancient_games.hybrid.loop import run as loop_run, scripted
+from ancient_games.hybrid.tools._plan import plan_from_journal, recorded_claim_ids
 from ancient_games.hybrid.types import Call, ToolEnv
 from ancient_games.journal import Journal, read_events
 from ancient_games.lints import run_all_on_plan
@@ -93,7 +94,8 @@ def test_h2_uc1_failing_arg_shapes_are_refused_by_field_and_the_valid_shape_runs
     assert r.reason.startswith("invalid-args: gate must be a str")
     uc1_prove = [e for e in ev if e["event"] == "tool_call" and e["tool"] == "prove"][-1]["args"]
     r = prove_tool.run(env_for(tmp_path), uc1_prove)
-    assert r.ok and r.value.exit_type == "PASS"  # runs on a clean ctx: an empty plan has nothing to fail (follow-on)
+    assert r.ok and r.value.exit_type == "RETURN_TO_PLANNER"  # H8: an empty plan no longer passes
+    assert r.value.findings == ["RETURN_TO_PLANNER: no claims recorded"]
     # corroborate: kind and framings shapes named; the stage's own precondition is a plain decline
     uc1_corr = [e for e in ev if e["event"] == "tool_call" and e["tool"] == "corroborate"][0]["args"]
     assert uc1_corr["framings"] == {"C1": "fix"}
@@ -212,6 +214,90 @@ def test_h7_failing_gate_leaves_ctx_unchanged(tmp_path, monkeypatch):
     assert not r.ok and ctx == Ctx()
 
 
+# H8 ------------------------------------------------------------------------------------------
+def _replay(uc: str, tmp_path) -> tuple[Journal, dict]:
+    """The real attempt-2 journal copied verbatim (its own run_id), plus the args of its last prove call."""
+    ev = journal_of(uc)
+    journal = Journal(str(tmp_path / f"{uc}.jsonl"), ev[0]["run_id"])
+    for e in ev:
+        journal.append(e)
+    proves = [e for e in ev if e["event"] == "tool_call" and e["tool"] == "prove"]
+    return journal, proves[-1]["args"]
+
+
+def test_h8_uc2_attempt2_journal_replayed_prove_returns_to_planner_naming_c1(tmp_path):
+    ev = journal_of("UC2")
+    assert not any(e["event"] == "tool_call" and e["tool"] == "corroborate" for e in ev)
+    assert [e for e in ev if e["event"] == "tool_call" and e["tool"] == "prove"][-1]["exit_type"] == "PASS"  # the defect, as journaled
+    assert recorded_claim_ids(ev) == ["C1"] and recorded_claim_ids(ev, "ablation-UC2-2") == ["C1"]
+    journal, args = _replay("UC2", tmp_path)
+    env = ToolEnv(journal.run_id, journal.path, Ctx(), cwd=str(tmp_path), tools=TOOLS)
+    r = prove_tool.run(env, args)
+    assert r.ok and r.value.exit_type == "RETURN_TO_PLANNER"
+    assert r.value.findings == ["RETURN_TO_PLANNER: run corroborate for C1"]
+    assert r.value.exit_line == "Prove: FAIL, N=1 finding (RETURN_TO_PLANNER: run corroborate for C1), returned to planner."
+    last = journal.read()[-1]
+    assert (last["event"], last["algorithm"], last["exit_type"], last["run_id"]) == ("exit", "A", "RETURN_TO_PLANNER", "ablation-UC2-2")
+    # UC1 attempt 2: C1 recorded, its one corroborate call refused (H2) — same route, C1 named first
+    journal, args = _replay("UC1", tmp_path)
+    r = prove_tool.run(ToolEnv(journal.run_id, journal.path, Ctx(), cwd=str(tmp_path), tools=TOOLS), args)
+    assert r.ok and r.value.exit_type == "RETURN_TO_PLANNER" and r.value.findings[0] == "RETURN_TO_PLANNER: run corroborate for C1"
+
+
+def test_h8_claim_with_a_matching_corroborate_sources_result_passes(tmp_path):
+    """UC5's round-2 shape through the real loop: guard, two differently-framed sources by authors other
+    than the actor, corroborate → SOURCES (n=2/2), prove → PASS."""
+    ctx = Ctx(actor={"land-spec-v3": "designer"})
+    journal = Journal(str(tmp_path / "j.jsonl"), "h8-pass")
+    calls = [
+        {"tool": "guard", "args": {"action": {"name": "land-spec-v3", "refs": [{"path": "loop/SPEC_v3.md", "mode": "mutate"}],
+                                              "consumer_reasoning": "read by humans and the self-lint only"}}},
+        {"tool": "record_claim", "args": {"claim_id": "spec-accepted", "author": "reviewer-1", "actor": "designer", "kind": "judgment",
+                                          "evidence_type": "file:line", "evidence_ref": "/agents/reviewer-1.md:1", "framing": "adversarial-review-1"}},
+        {"tool": "record_claim", "args": {"claim_id": "spec-accepted", "author": "reviewer-2", "actor": "designer", "kind": "judgment",
+                                          "evidence_type": "file:line", "evidence_ref": "/agents/reviewer-2.md:1", "framing": "adversarial-review-2"}},
+        {"tool": "corroborate", "args": {"action": "land-spec-v3", "claims": [{"claim_id": "spec-accepted", "kind": "judgment"}],
+                                         "reconciliation": "agree"}},
+        {"tool": "prove", "args": {"gate": "checkpoint"}},
+    ]
+    result = loop_run(TOOLS, scripted(calls), journal, ceiling=10, ctx=ctx, cwd=str(tmp_path))
+    outcomes = [(s.call.tool, s.result.ok if s.result else None, getattr(s.result.value, "exit_type", None) if s.result else None)
+                for s in result.steps]
+    assert outcomes == [("guard", True, "GATED"), ("record_claim", True, None), ("record_claim", True, None),
+                        ("corroborate", True, "SOURCES"), ("prove", True, "PASS")]
+    exits = [e["exit_line"] for e in journal.read() if e["event"] == "exit"]
+    assert exits[-2:] == ["Corroborate: spec-accepted: n=2/2; reconciled=agree.", "Prove: PASS, plan cleared to checkpoint gate."]
+    assert result.steps[-1].result.value.findings == []
+    # the same run with the corroborate step removed: the claim is recorded, so prove refuses to pass it
+    journal2 = Journal(str(tmp_path / "j2.jsonl"), "h8-nocorr")
+    result2 = loop_run(TOOLS, scripted(calls[:3] + calls[4:]), journal2, ceiling=10, ctx=Ctx(actor={"land-spec-v3": "designer"}), cwd=str(tmp_path))
+    r = result2.steps[-1].result
+    assert r.ok and r.value.exit_type == "RETURN_TO_PLANNER" and r.value.findings == ["RETURN_TO_PLANNER: run corroborate for spec-accepted"]
+    assert score.q3_no_self_count(journal.read())["answer"] is True
+    q3 = score.q3_no_self_count(journal2.read())
+    assert q3["answer"] is False and q3["uncorroborated_claims"] == ["spec-accepted"] and q3["corroborate_executed"] is False
+
+
+def test_h8_zero_recorded_claims_returns_to_planner(tmp_path):
+    journal = Journal(str(tmp_path / "j.jsonl"), "h8-empty")
+    env = ToolEnv(journal.run_id, journal.path, Ctx(), cwd=str(tmp_path), tools=TOOLS)
+    r = prove_tool.run(env, {"gate": "checkpoint"})  # nothing journaled at all
+    assert r.ok and r.value.exit_type == "RETURN_TO_PLANNER" and r.value.findings == ["RETURN_TO_PLANNER: no claims recorded"]
+    assert r.value.exit_line == "Prove: FAIL, N=1 finding (RETURN_TO_PLANNER: no claims recorded), returned to planner."
+    # a tripwire run is a check on hub-integrity:<hub>, not a claim (AA3′); a claim from another run does not count
+    journal.check_executed("hub-integrity:default-branch-history", "git-diff-scope", "git diff --stat", "clean", "clean")
+    journal.append({"event": "claim_recorded", "run_id": "someone-else", "claim_id": "C9", "author": "MAIN", "actor": "MAIN",
+                    "kind": "judgment", "text": "t", "evidence_type": "command", "evidence_ref": "x", "framing": None})
+    assert recorded_claim_ids(journal.read()) == ["C9"] and recorded_claim_ids(journal.read(), "h8-empty") == []
+    r = prove_tool.run(env, {"gate": "checkpoint"})
+    assert r.value.exit_type == "RETURN_TO_PLANNER" and r.value.findings == ["RETURN_TO_PLANNER: no claims recorded"]
+    # a claim recorded only as an executed check (Z2′: stated expected value) is a recorded claim too
+    journal.check_executed("import-succeeds", "interpreter-import", "python3 -c 'import x'", "exit 0", "exit 0")
+    r = prove_tool.run(env, {"gate": "checkpoint"})
+    assert r.value.findings == ["RETURN_TO_PLANNER: run corroborate for import-succeeds"]
+    assert not any(e["event"] == "tool_call" for e in journal.read())  # prove never wrote a count or a call of its own
+
+
 # scorer --------------------------------------------------------------------------------------
 def test_scorer_explicit_keys_on_the_attempt2_journals():
     r1 = score.score(str(RUNS / "UC1.journal.jsonl"), str(CASES / "UC1.json"))
@@ -225,8 +311,12 @@ def test_scorer_explicit_keys_on_the_attempt2_journals():
     # ABLATION_1 reports UC2's Q3 as yes; the journal does not support it — no `corroborate` tool_call was
     # ever executed in UC2 (prove passed on a plan with no claims), so the question's own definition says no.
     assert r2[score.Q3] == {"answer": False, "self_count_attempts": [], "corroborate_executed": False,
+                            "recorded_claims": ["C1"], "uncorroborated_claims": ["C1"],  # H8: pinned
                             "prove_pass_consistent_with_corroborate": False, "corroborate_line_before_prove": None}
     assert r1[score.Q3]["answer"] is False and r1[score.Q3]["corroborate_executed"] is False
+    assert r1[score.Q3]["uncorroborated_claims"] == ["C1"]  # UC1's one corroborate call was refused (H2)
+    assert r3[score.Q3]["recorded_claims"] == ["C2", "C3", "C1", "C4"] and r3[score.Q3]["uncorroborated_claims"] == []
+    assert "uncorroborated=['C1']" in score.render_md(r2)
     assert r3["primary"] == [score.Q4]
     q4 = r3[score.Q4]
     assert q4["answer"] is False and q4["reason"] == "refused on read (H1)" and q4["governance_gated"] is True

@@ -193,7 +193,9 @@ def test_i3_pass_prove_sees_no_corroboration_counts(journal, repo):
     assert RESTRICTED == {"prove", "done"}
     # the real prove executes against the view (L1): keys_set() works on a Ctx
     r = prove_tool.run(env_for(journal, repo, view), {"gate": "checkpoint"})
-    assert r.ok and r.value.exit_type == "PASS"
+    assert r.ok and r.value.steps_fired == ["A·1", "A·2", "A·3"]  # executed to its exit on the stripped Ctx
+    # H8: an empty journal has no recorded claim, so the exit is RETURN_TO_PLANNER, never PASS
+    assert r.value.exit_type == "RETURN_TO_PLANNER" and r.value.findings == ["RETURN_TO_PLANNER: no claims recorded"]
 
 
 # I4′ ---------------------------------------------------------------------------------

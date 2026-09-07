@@ -1,5 +1,8 @@
 """A — wraps `stages.prove` (R7). `env.ctx` is the stripped view (I3′): the plan is
-rebuilt from the journal, so every count A checks is `corroborate`'s journaled one."""
+rebuilt from the journal, so every count A checks is `corroborate`'s journaled one.
+H8 (ABLATION_1): the plan's claims are the run's recorded ones (`_plan.recorded_claim_ids`);
+a recorded claim with no executed `corroborate` naming it, or a run with no recorded claim,
+is a RETURN_TO_PLANNER finding — `prove` never counts, and never PASSes an empty plan."""
 from ancient_games.journal import Journal
 from ancient_games.stages import prove as _prove
 
@@ -24,7 +27,7 @@ def run(env, args):
         return invalid_args("gate_at", "a str or null", args["gate_at"])
     try:
         journal = Journal(env.journal_path, env.run_id)
-        plan = plan_from_journal(journal.read(), env.ctx, args)
+        plan = plan_from_journal(journal.read(), env.ctx, args, run_id=env.run_id)
         return ToolResult(ok=True, value=_prove(env.ctx, plan, journal, disclose=args.get("disclose", True)))
     except Exception as e:
         return internal_error(e)

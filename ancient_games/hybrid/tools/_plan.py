@@ -6,6 +6,12 @@ one entry (refs, stakes/hub via the registry, tripwires from its own
 args); the latest Corroborate exit line per action supplies the claims'
 n_required / capped status — counts come from `corroborate`'s journaled
 result, never from the agent or from ctx.
+
+H8 (ABLATION_1): the claims A must see are the run's *recorded* claims, not
+the ones `corroborate` happened to be called on. `recorded_claim_ids` lists
+them; every one without an executed `corroborate` call naming it is a
+RETURN_TO_PLANNER finding on the plan, and a run with none recorded is one
+too — so `prove` cannot PASS an empty plan.
 """
 from __future__ import annotations
 
@@ -18,9 +24,55 @@ from ancient_games.trace import parse_corroborate_line
 from ._shared import guard_action
 
 
-def plan_from_journal(events: list[dict], ctx, args: dict, registry: list[Row] = REGISTRY) -> Plan:
-    corroborates = [e for e in events if e.get("event") == "tool_call" and e["tool"] == "corroborate"
-                    and e["refused_by"] is None and e["reason"] is None]
+HUB_INTEGRITY_PREFIX = "hub-integrity:"  # D·4 tripwire runs (AA3′) are recorded as checks, not claims
+
+
+def _this_run(events: list[dict], run_id: str | None) -> list[dict]:
+    return events if run_id is None else [e for e in events if e.get("run_id") == run_id]
+
+
+def recorded_claim_ids(events: list[dict], run_id: str | None = None) -> list[str]:
+    """The claims this run recorded, deduped by claim_id in first-seen order: every `claim_recorded`
+    and every `check_executed` claim_id (a claim with a stated expected value is journaled as a
+    check — `journal.classify_event`, Z2′ — so it is a recorded claim too). `hub-integrity:*` is a
+    tripwire run, never a claim."""
+    out: list[str] = []
+    for e in _this_run(events, run_id):
+        if e.get("event") in ("claim_recorded", "check_executed"):
+            cid = e.get("claim_id")
+            if isinstance(cid, str) and not cid.startswith(HUB_INTEGRITY_PREFIX) and cid not in out:
+                out.append(cid)
+    return out
+
+
+def _executed_corroborates(events: list[dict]) -> list[dict]:
+    return [e for e in events if e.get("event") == "tool_call" and e["tool"] == "corroborate"
+            and e["refused_by"] is None and e["reason"] is None]
+
+
+def corroborated_claim_ids(events: list[dict], run_id: str | None = None) -> set[str]:
+    """Every claim_id an executed `corroborate` call in this run was asked to count."""
+    out: set[str] = set()
+    for call in _executed_corroborates(_this_run(events, run_id)):
+        for c in call["args"].get("claims", []) or []:
+            if isinstance(c, dict) and isinstance(c.get("claim_id"), str):
+                out.add(c["claim_id"])
+    return out
+
+
+def claim_coverage_findings(events: list[dict], run_id: str | None = None) -> list[str]:
+    """H8: one RETURN_TO_PLANNER finding per recorded claim with no corroborate result, or one for
+    a run that recorded no claims at all."""
+    recorded = recorded_claim_ids(events, run_id)
+    if not recorded:
+        return ["RETURN_TO_PLANNER: no claims recorded"]
+    covered = corroborated_claim_ids(events, run_id)
+    return [f"RETURN_TO_PLANNER: run corroborate for {c}" for c in recorded if c not in covered]
+
+
+def plan_from_journal(events: list[dict], ctx, args: dict, registry: list[Row] = REGISTRY,
+                      run_id: str | None = None) -> Plan:
+    corroborates = _executed_corroborates(events)
     b_exits = [e for e in events if e.get("event") == "exit" and e.get("algorithm") == "B"]
     entries: list[PlanEntry] = []
     for g in events:
@@ -33,7 +85,8 @@ def plan_from_journal(events: list[dict], ctx, args: dict, registry: list[Row] =
                                  tripwires_for(hit, action.tripwires), claims, capped,
                                  getattr(ctx, "dispatch_count", 0), args.get("has_failable_check", True),
                                  args.get("metrics_named", True)))
-    return Plan(entries, args.get("gate", "checkpoint"), getattr(ctx, "governance_gated", "none"), args.get("gate_at"))
+    return Plan(entries, args.get("gate", "checkpoint"), getattr(ctx, "governance_gated", "none"), args.get("gate_at"),
+                findings=claim_coverage_findings(events, run_id))
 
 
 def _claims_for(action_name: str, corroborates: list[dict], b_exits: list[dict], ctx, events: list[dict]):
