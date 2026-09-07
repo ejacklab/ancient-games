@@ -224,6 +224,13 @@ def _run_id_of(events: list[dict], run_id: str | None) -> str:
     return ids.pop() if ids else ""
 
 
+def _dispatched_fields(events: list[dict], run_id: str | None) -> dict[str, dict[str, None]]:
+    """agent_id -> the payload field names its `dispatch` event journaled (the journal records the names,
+    not the values), keyed like the dispatch dict `lint_scope_delta_missing` reads."""
+    return {ev["agent_id"]: dict.fromkeys(ev.get("payload_fields", []))
+            for ev in in_run(events, run_id) if ev.get("event") == "dispatch"}
+
+
 def _python_journal_lints(plan: Plan, events: list[dict], run_id: str | None) -> dict[str, list[Finding]]:
     out: dict[str, list[Finding]] = {name: [] for name in SQL_LINTS}
     for ev in in_run(events, run_id):
@@ -259,7 +266,8 @@ def run_all_on_plan(plan: Plan, events: list[dict], *, backend: str | None = Non
 
     `backend` (see the module docstring): `python` keeps the findings in journal order, the
     per-return lints interleaved event by event; `sql` reports the two per-return lints
-    run-wide (claims, then follow-ons) before the template lint; `differential` raises on any
+    run-wide (claims, then follow-ons) before the scope-delta and template lints (Python in every
+    mode; scope-delta reads each return against its agent's journaled `dispatch` payload field names); `differential` raises on any
     per-lint disagreement and otherwise returns exactly the `python` list. `run_id` is the run every
     journal-reading lint scopes to (`in_run` for the Python lints, the `WHERE run_id` of the SQL
     queries); when it is None the Python lints read every event they are given and the SQL side
@@ -270,12 +278,14 @@ def run_all_on_plan(plan: Plan, events: list[dict], *, backend: str | None = Non
     if backend != "python":
         run_id = _run_id_of(events, run_id)
     out: list[Finding] = []
+    dispatched = _dispatched_fields(events, run_id)
     if backend == "python" or backend == "differential":
         for ev in in_run(events, run_id):
             if ev.get("event") == "return":
                 fields = ev.get("fields", {})
                 out += lint_claims_without_evidence(fields.get("CLAIMS", []) or [])
                 out += lint_follow_on_without_disposition(fields.get("FOLLOW_ON", []) or [])
+                out += lint_scope_delta_missing(fields, dispatched.get(ev.get("agent_id"), {}))
                 if fields.get("TEMPLATE"):
                     out += lint_evidence_after_verdict(fields["TEMPLATE"])
         out += lint_schema_field_without_escape_value(FIELDS)
@@ -293,8 +303,11 @@ def run_all_on_plan(plan: Plan, events: list[dict], *, backend: str | None = Non
     out += sql["claims-without-evidence"]
     out += sql["follow-on-without-disposition"]
     for ev in in_run(events, run_id):
-        if ev.get("event") == "return" and ev.get("fields", {}).get("TEMPLATE"):
-            out += lint_evidence_after_verdict(ev["fields"]["TEMPLATE"])
+        if ev.get("event") == "return":
+            fields = ev.get("fields", {})
+            out += lint_scope_delta_missing(fields, dispatched.get(ev.get("agent_id"), {}))
+            if fields.get("TEMPLATE"):
+                out += lint_evidence_after_verdict(fields["TEMPLATE"])
     out += lint_schema_field_without_escape_value(FIELDS)
     out += lint_return_field_without_escape_value(RETURN_CONTRACT)
     out += sql["corroboration-capped"]

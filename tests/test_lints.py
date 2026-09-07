@@ -187,3 +187,30 @@ def test_all_nine_present():
     for name in lints.LINTS:
         fn = "lint_" + name.replace("-when-SCOPE-present", "").replace("-", "_")
         assert hasattr(lints, fn), fn
+
+
+def test_scope_delta_missing_through_run_all_on_plan(tmp_path):
+    """§8 #3 runs in `run_all_on_plan`: each `return` is read against its agent's journaled `dispatch`
+    payload field names; identical in every backend (it is Python in all three)."""
+    from ancient_games.journal import Journal
+    fail = Journal(str(tmp_path / "fail.jsonl"), "scope")
+    fail.dispatch("scoped-coder", "coder", "impl", ["INTENT", "SCOPE", "STOP"], "/agents/scoped-coder.md")
+    fail.ingest_return("scoped-coder", {"CLAIMS": [], "FOLLOW_ON": []}, "MAIN")  # no SCOPE_DELTA at all
+    want = lints.Finding("scope-delta-missing-when-SCOPE-present", "SCOPE_DELTA", "SCOPE sent but SCOPE_DELTA absent")
+    for backend in lints.BACKENDS:
+        got = lints.run_all_on_plan(Plan([]), fail.read(), backend=backend)
+        assert got == [want], (backend, got)
+    ok = Journal(str(tmp_path / "ok.jsonl"), "scope")
+    ok.dispatch("scoped-coder", "coder", "impl", ["INTENT", "SCOPE", "STOP"], "/agents/scoped-coder.md")
+    ok.ingest_return("scoped-coder", {"CLAIMS": [], "FOLLOW_ON": [], "SCOPE_DELTA": "N/A"}, "MAIN")  # explicit-empty
+    ok.dispatch("unscoped", "researcher", "read", ["INTENT", "STOP", "FRAMING", "OUTPUT"], "/agents/unscoped.md")
+    ok.ingest_return("unscoped", {"CLAIMS": [], "FOLLOW_ON": []}, "MAIN")  # SCOPE never sent
+    ok.ingest_return("MAIN", {"CLAIMS": [], "FOLLOW_ON": []}, "MAIN")  # never dispatched
+    for backend in lints.BACKENDS:
+        assert lints.run_all_on_plan(Plan([]), ok.read(), backend=backend) == [], backend
+    # scoped like the rest: another run's SCOPE dispatch of the same agent_id does not reach this run's return
+    events = fail.read() + ok.read()
+    for e in events[:2]:
+        e["run_id"] = "other"
+    assert lints.run_all_on_plan(Plan([]), events, backend="differential", run_id="scope") == []
+    assert lints.run_all_on_plan(Plan([]), events, backend="python") == [want]  # unscoped: every event
