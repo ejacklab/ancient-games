@@ -2,7 +2,7 @@
 absence / universal-negative text (`ctx.ABSENCE_PATTERNS`) is `judgment`; the author's `executable`
 is accepted only with a non-empty `closed_world` reason, and that override is journaled."""
 from ancient_games.ctx import CLAIM_KINDS, kind_by_rule
-from ancient_games.journal import Journal
+from ancient_games.journal import EVIDENCE_TYPES, Journal
 
 from ..types import ToolResult
 from ._shared import internal_error, invalid_args
@@ -34,6 +34,8 @@ def run(env, args):
     closed_world = args.get("closed_world")
     if closed_world is not None and not isinstance(closed_world, str):
         return invalid_args("closed_world", "a str stating why the check space is complete, or omitted", closed_world)
+    if args.get("evidence_type") not in EVIDENCE_TYPES:
+        return invalid_args("evidence_type", " | ".join(EVIDENCE_TYPES), args.get("evidence_type"))
     try:
         text = args.get("text", args["claim_id"])
         kind, override = assign_kind(args["kind"], text, closed_world)

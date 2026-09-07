@@ -8,7 +8,7 @@ from ancient_games.journal import Journal, kind_overrides
 
 from ..types import ToolResult
 from ._shared import (COMMIT_ACTION_ID_ARGS, action_id, approvals_after, changed_files, git, internal_error,
-                      last_commit_index)
+                      last_commit_index, require_str)
 
 MANIFEST = {
     "name": "commit", "inputs": {"message": "str"}, "outputs": "{hash}",
@@ -27,6 +27,9 @@ def overrides_note(events: list[dict], run_id: str) -> str:
 
 
 def run(env, args):
+    bad = require_str(args, "message")  # before the try: a missing message is the caller's error
+    if bad is not None:
+        return bad
     try:
         events = Journal(env.journal_path, env.run_id).read()
         aid = action_id(*COMMIT_ACTION_ID_ARGS)

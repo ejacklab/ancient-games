@@ -2,7 +2,7 @@
 from ancient_games.journal import Journal
 
 from ..types import ToolResult
-from ._shared import internal_error
+from ._shared import internal_error, require_str
 
 MANIFEST = {
     "name": "record_check",
@@ -22,6 +22,9 @@ def known_claim_ids(events: list[dict], run_id: str) -> list[str]:
 
 
 def run(env, args):
+    bad = require_str(args, "claim_id", "mechanism")  # before the try: the caller's error, not internal
+    if bad is not None:
+        return bad
     try:
         journal = Journal(env.journal_path, env.run_id)
         claim_id = args["claim_id"]

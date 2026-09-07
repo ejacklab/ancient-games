@@ -2,7 +2,7 @@
 from ancient_games.journal import Journal
 
 from ..types import ToolResult
-from ._shared import internal_error
+from ._shared import internal_error, require_str
 
 MANIFEST = {
     "name": "ingest_return", "inputs": {"agent_id": "str", "fields": "dict", "actor": "str", "framing": "str"},
@@ -11,6 +11,9 @@ MANIFEST = {
 
 
 def run(env, args):
+    bad = require_str(args, "agent_id")  # before the try: a missing agent_id is the caller's error
+    if bad is not None:
+        return bad
     try:
         journal = Journal(env.journal_path, env.run_id)
         evs = journal.ingest_return(args["agent_id"], args.get("fields") or {}, args.get("actor", "MAIN"), args.get("framing"))

@@ -4,7 +4,7 @@ import re
 import subprocess
 
 from ..types import ToolResult
-from ._shared import internal_error
+from ._shared import internal_error, require_str
 
 MANIFEST = {
     "name": "run_suite", "inputs": {"command": "str"}, "outputs": "{passed, failed, output, returncode}",
@@ -13,6 +13,9 @@ MANIFEST = {
 
 
 def run(env, args):
+    bad = require_str(args, "command")  # before the try: a missing command is the caller's error
+    if bad is not None:
+        return bad
     try:
         p = subprocess.run(args["command"], shell=True, cwd=env.cwd, capture_output=True, text=True, timeout=600)
         output = p.stdout + p.stderr

@@ -6,12 +6,11 @@ is a RETURN_TO_PLANNER finding — `prove` never counts, and never PASSes an emp
 `backend` selects the §8 lint backend (`lints.BACKENDS`: python — the oracle — | sql | differential);
 absent, `$AG_LINT_BACKEND` decides, defaulting to python. The journaled `result_summary` names it."""
 from ancient_games.journal import Journal
-from ancient_games.lints import BACKENDS, default_backend
 from ancient_games.stages import prove as _prove
 
 from ..types import ToolResult
 from ._plan import plan_from_journal
-from ._shared import internal_error, invalid_args
+from ._shared import internal_error, invalid_args, resolve_backend
 
 MANIFEST = {
     "name": "prove", "inputs": {"gate": "str", "gate_at": "str", "has_failable_check": "bool", "metrics_named": "bool",
@@ -25,9 +24,9 @@ def run(env, args):
     for name in FLAGS:  # H2 (ABLATION_1): typed flags
         if name in args and not isinstance(args[name], bool):
             return invalid_args(name, "true or false", args[name])
-    backend = args.get("backend", default_backend())
-    if backend not in BACKENDS:
-        return invalid_args("backend", " | ".join(BACKENDS), backend)
+    backend, bad = resolve_backend(args)
+    if bad is not None:
+        return bad
     if "gate" in args and not isinstance(args["gate"], str):
         return invalid_args("gate", "a str (checkpoint | owner(<name>) | none)", args["gate"])
     if args.get("gate_at") is not None and not isinstance(args["gate_at"], str):

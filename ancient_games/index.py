@@ -141,10 +141,13 @@ def _insert(con: sqlite3.Connection, ev: dict) -> None:
         cur = con.execute('INSERT INTO "return" VALUES (?,?,?,?)', (run_id, ts, ev["agent_id"], json.dumps(fields, sort_keys=True)))
         rid = cur.lastrowid
         # absent keys take the lint's own defaults: claim_id/finding -> NULL (subject `#<i>`), evidence_ref -> ''
+        # a malformed (non-dict) CLAIMS entry is projected as one with no claim_id and no evidence —
+        # `lint_claims_without_evidence` reports it, so the SQL side must not skip it silently
         con.executemany("INSERT INTO return_claim VALUES (?,?,?,?,?,?)",
-                        [(run_id, rid, i, None if "claim_id" not in c else str(c["claim_id"]),
-                          _text(c.get("evidence_type")), _text(c.get("evidence_ref", "")))
-                         for i, c in enumerate(fields.get("CLAIMS", []) or []) if isinstance(c, dict)])
+                        [(run_id, rid, i, None if not isinstance(c, dict) or "claim_id" not in c else str(c["claim_id"]),
+                          _text(c.get("evidence_type")) if isinstance(c, dict) else None,
+                          _text(c.get("evidence_ref", "")) if isinstance(c, dict) else "")
+                         for i, c in enumerate(fields.get("CLAIMS", []) or [])])
         rows = []
         for i, entry in enumerate(fields.get("FOLLOW_ON", []) or []):
             if isinstance(entry, dict):

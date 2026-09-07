@@ -7,7 +7,7 @@ from ancient_games.journal import Journal
 from ancient_games.stages import dispatch_source
 
 from ..types import ToolResult
-from ._shared import internal_error
+from ._shared import internal_error, require_str
 
 MANIFEST = {
     "name": "dispatch", "inputs": {"role": "str", "framing": "str", "payload": "dict", "counts_toward_cap": "bool", "agent_id": "str"},
@@ -16,6 +16,9 @@ MANIFEST = {
 
 
 def run(env, args):
+    bad = require_str(args, "role", "framing")  # before the try: missing role/framing is the caller's error
+    if bad is not None:
+        return bad
     try:
         journal = Journal(env.journal_path, env.run_id)
         role, framing = args["role"], args["framing"]

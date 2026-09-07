@@ -131,6 +131,9 @@ _ENUMS: dict[tuple[str, str], tuple[Any, ...]] = {
 }
 
 
+EVIDENCE_TYPES = _ENUMS[("claim_recorded", "evidence_type")]  # what a claim_recorded event accepts
+
+
 def validate_event(event: dict) -> dict:
     """Return the event if it has exactly the typed fields §7 states; else ValueError."""
     if not isinstance(event, dict):

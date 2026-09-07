@@ -35,9 +35,17 @@ class Finding:
 
 # 1 ------------------------------------------------------------------------
 def lint_claims_without_evidence(claims: Iterable[dict[str, Any]]) -> list[Finding]:
-    """any CLAIMS entry lacking command | file:line | URL | (opinion)."""
+    """any CLAIMS entry lacking command | file:line | URL | (opinion).
+
+    A malformed entry — anything that is not a JSON object — is a finding like any other
+    entry with no evidence, never an AttributeError out of the oracle and never a silent
+    skip: it names no evidence, so it fails the lint. `index.claims_without_evidence`
+    projects it the same way (subject `#<i>`)."""
     out = []
     for i, c in enumerate(claims):
+        if not isinstance(c, dict):
+            out.append(Finding("claims-without-evidence", f"#{i}", f"claim #{i} lacks command|file:line|URL|(opinion)"))
+            continue
         et = c.get("evidence_type")
         ref = c.get("evidence_ref", "")
         cid = str(c.get("claim_id", f"#{i}"))

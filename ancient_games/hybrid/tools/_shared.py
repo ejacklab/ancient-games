@@ -12,6 +12,7 @@ import copy
 import dataclasses
 import hashlib
 import json
+import os
 import subprocess
 from typing import Any
 
@@ -183,6 +184,37 @@ def invalid_args(field: str, accepted: str, got: Any) -> ToolResult:
     never an `internal-error`."""
     return ToolResult(ok=False, value=None,
                       reason=f"invalid-args: {field} must be {accepted}, got {got!r} ({type(got).__name__})")
+
+
+def resolve_backend(args: dict) -> tuple[str | None, ToolResult | None]:
+    """The §8 lint backend: `args["backend"]` when given, else `$AG_LINT_BACKEND`.
+
+    Either being invalid is the caller's error — `invalid-args` naming the field and the
+    accepted values — never a ValueError raised across the tool boundary, which `loop.step`
+    does not catch (it would kill the loop and journal nothing). The environment default is
+    consulted ONLY when no explicit backend was passed, so a bad `$AG_LINT_BACKEND` cannot
+    reject a call that named a valid backend of its own.
+    """
+    from ancient_games.lints import BACKENDS, ENV_BACKEND, default_backend
+    accepted = " | ".join(BACKENDS)
+    got = args.get("backend") if isinstance(args, dict) else None
+    if got is not None:
+        return (got, None) if got in BACKENDS else (None, invalid_args("backend", accepted, got))
+    try:
+        return default_backend(), None
+    except ValueError:
+        return None, invalid_args(f"${ENV_BACKEND}", accepted, os.environ.get(ENV_BACKEND))
+
+
+def require_str(args: dict, *names: str, allow_empty: bool = False) -> ToolResult | None:
+    """`invalid-args` for the first required arg that is absent or not a str — checked BEFORE the
+    adapter's broad try, so a missing required arg is the caller's error and not an `internal-error`
+    (`invalid_args`' own contract; `cli.cmd_call` exits 2 only on an `invalid-args:` reason)."""
+    for name in names:
+        got = args.get(name) if isinstance(args, dict) else None
+        if not isinstance(got, str) or (not got and not allow_empty):
+            return invalid_args(name, "a str" if allow_empty else "a non-empty str", got)
+    return None
 
 
 def ctx_snapshot(ctx: Any) -> Any:

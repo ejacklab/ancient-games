@@ -3,11 +3,11 @@ backend (`lints.BACKENDS`: python — the oracle — | sql | differential); abse
 decides, defaulting to python. The value is `{"backend": ..., "findings": [...]}` so the journaled
 `result_summary` names how the findings were produced."""
 from ancient_games.journal import Journal
-from ancient_games.lints import BACKENDS, default_backend, run_all_on_plan
+from ancient_games.lints import run_all_on_plan
 
 from ..types import ToolResult
 from ._plan import plan_from_journal
-from ._shared import internal_error, invalid_args
+from ._shared import internal_error, resolve_backend
 
 MANIFEST = {
     "name": "run_lint", "inputs": {"gate": "str", "gate_at": "str", "backend": "str"},
@@ -17,9 +17,9 @@ MANIFEST = {
 
 
 def run(env, args):
-    backend = args.get("backend", default_backend())
-    if backend not in BACKENDS:
-        return invalid_args("backend", " | ".join(BACKENDS), backend)
+    backend, bad = resolve_backend(args)
+    if bad is not None:
+        return bad
     try:
         events = Journal(env.journal_path, env.run_id).read()
         findings = run_all_on_plan(plan_from_journal(events, env.ctx, args, run_id=env.run_id), events,
