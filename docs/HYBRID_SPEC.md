@@ -239,7 +239,7 @@ tool is one module `ancient_games/hybrid/tools/<name>.py` with `MANIFEST` + `run
 | `commit` | NEW — full signature below | commit | cheap | I1, I4 | UC1,2,5,6,7 |
 | `run_suite` | NEW — `{command: str} -> {passed, failed, output}` | none | suite | — | UC6,7 |
 | `localize` | NEW — regex over `run_suite` output → `{test_id, file, line, error_type}` | none | cheap | — | UC7 |
-| `rebuild_index` | NEW — wraps `rebuild(journal_path, db_path)`, decided-not-yet-built | mutate | cheap | — | UC9 |
+| `rebuild_index` | NEW — wraps `rebuild(journal_path, db_path)` (built: `ancient_games/index.py`, DECISIONS #57–63) | mutate | cheap | — | UC9 |
 | `done` | NEW — real, executed tool (§2's full example); runs the owner-gate precheck (H15) then I2's two clauses. Args: `deliverables: list[str]` (optional, H14) — changed paths the run leaves deliberately uncommitted; each must also be an invoke/mutate ref of an executed `guard` in this run, else clause (b) refuses naming it | none | cheap | I2, I3 (consumer — `env.ctx` is a `Ctx` with 4 fields nulled) | UC1,2,3,5,6,7,8 |
 
 **Two more journal events, written by the orchestrator, outside this table entirely — never registered,
