@@ -328,6 +328,13 @@ def cmd_tools(a: argparse.Namespace) -> int:
 
 def cmd_call(a: argparse.Namespace) -> int:
     m = read_manifest(a.manifest)
+    # F3: JSON in the tool-name slot, before `load_tools` and before the journal is touched. It
+    # was journaling a `tool_call` with `unknown-tool: {"claim_id"...` and spending budget —
+    # 6 of the 8 live interface failures on harness >= v1.3, all in one run, 5.5% of its budget.
+    if a.tool.lstrip().startswith("{"):
+        print(json.dumps({"error": "the tool NAME goes first, then its args: "
+                                   "call <tool> '<json args>' — got JSON in the tool-name position"}), file=sys.stderr)
+        return EXIT_REFUSED
     try:
         args = json.loads(a.args) if a.args else {}
     except json.JSONDecodeError as e:

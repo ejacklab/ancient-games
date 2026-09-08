@@ -237,3 +237,37 @@ def test_cli_exits_2_on_every_bad_record_check_field(name, manifest):
     assert out["ok"] is False and out["refused_by"] is None, out
     assert out["reason"].startswith("invalid-args: "), out
     assert p.returncode == 2, p.stdout + p.stderr
+
+
+# --- step 3 (F3): JSON in the tool-name slot is refused before anything is spent ---------------
+def _cli(manifest, *argv):
+    p = subprocess.run([sys.executable, "-m", "ancient_games.hybrid"]
+                       + (["--manifest", manifest] if manifest else []) + list(argv),
+                       cwd=ROOT, capture_output=True, text=True)
+    return p
+
+
+def test_json_in_the_tool_name_slot_is_refused_and_costs_nothing(tmp_path):
+    """It was journaling a `tool_call` with `unknown-tool: {"claim_id"...` and spending budget:
+    6 of the 8 live interface failures on harness >= v1.3, all in one run, 5.5% of its budget."""
+    repo = fixtures.make_uc1(str(tmp_path / "repo"))
+    journal = tmp_path / "j.jsonl"
+    init = _cli(None, "init", "--run-id", "f3", "--journal", str(journal), "--cwd", repo)
+    assert init.returncode == 0, init.stderr
+    m = json.loads(init.stdout)["manifest"]
+    before = journal.read_text(encoding="utf-8")
+    p = _cli(m, "call", '{"claim_id": "C1", "author": "MAIN"}', "{}")
+    assert p.returncode == 2, p.stdout + p.stderr
+    assert "the tool NAME goes first" in json.loads(p.stderr)["error"]
+    assert journal.read_text(encoding="utf-8") == before  # nothing appended, no budget spent
+
+
+def test_a_genuine_unknown_tool_is_unaffected(tmp_path):
+    """The refusal is keyed on a leading `{`, not on "not a known tool": an ordinary typo must
+    still journal `unknown-tool: bogus` exactly as before (tests/test_ablation_harness.py pins it)."""
+    repo = fixtures.make_uc1(str(tmp_path / "repo"))
+    journal = tmp_path / "j.jsonl"
+    m = json.loads(_cli(None, "init", "--run-id", "f3b", "--journal", str(journal), "--cwd", repo).stdout)["manifest"]
+    p = _cli(m, "call", "bogus", "{}")
+    assert p.returncode == 1 and json.loads(p.stdout)["reason"] == "unknown-tool: bogus"
+    assert '"unknown-tool: bogus"' in journal.read_text(encoding="utf-8")
