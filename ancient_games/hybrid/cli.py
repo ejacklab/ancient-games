@@ -44,14 +44,14 @@ from ancient_games.ctx import ABSENCE_PATTERNS, CLAIM_KINDS, DIFFICULTIES, MECHA
 from ancient_games.journal import _ENUMS, Journal
 from ancient_games.stages import ActionInput, Candidate, Claim, TaskInput
 
-from . import loop
+from . import autonomy, loop
 from .registry import RegisteredTool, load_tools
 from .types import Call, hydrate
 
 ENV_MANIFEST = "ANCIENT_GAMES_RUN"
 FALLBACK_CEILING = 44  # used only when no journal exists under RUNS_DIR
 RUNS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "ablation", "runs")
-EXIT_EXECUTED, EXIT_ERROR, EXIT_REFUSED = 0, 1, 2
+EXIT_EXECUTED, EXIT_ERROR, EXIT_REFUSED, EXIT_PAUSED = 0, 1, 2, 3
 INVALID_ARGS = "invalid-args:"
 
 
@@ -75,20 +75,36 @@ def default_manifest_path(journal: str) -> str:
 
 
 def write_manifest(run_id: str, journal: str, cwd: str, tool_dirs: list[str], ceiling: int,
-                   manifest: str | None = None) -> str:
+                   manifest: str | None = None, autonomy_mode: str = "auto",
+                   pause_after: list[dict] | None = None, resume: bool = False) -> str:
     for p in (journal, cwd, *tool_dirs):
         if not os.path.isabs(p):
             raise ValueError(f"path must be absolute: {p!r}")
     if not os.path.isdir(cwd):
         raise ValueError(f"cwd is not a directory: {cwd!r}")
+    rules = autonomy.validate_rules(autonomy.rules_for(autonomy_mode, pause_after))
+    if resume:
+        # The journal is the mode's home (§8), so a resume adopts what the run already declared
+        # rather than letting a second `init` with different flags contradict it.
+        cfg = autonomy.config_from(Journal(journal, run_id).read())
+        autonomy_mode, rules = cfg["autonomy"], autonomy.rules_for(cfg["autonomy"], cfg["pause_after"])
     manifest = manifest or default_manifest_path(journal)
     ctx_path = manifest + ".ctx.json"
+    # `pause_after` here is the RESOLVED rule list, so the manifest never reads `[]` for a mode
+    # that pauses on every call; enforcement still reads `run_config` back off the journal.
     data = {"run_id": run_id, "journal": journal, "cwd": cwd, "tool_dirs": list(tool_dirs),
-            "ceiling": int(ceiling), "ctx_path": ctx_path}
+            "ceiling": int(ceiling), "ctx_path": ctx_path,
+            "autonomy": autonomy_mode, "pause_after": list(rules)}
     os.makedirs(os.path.dirname(manifest), exist_ok=True)
     with open(manifest, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2, sort_keys=True)
-    save_ctx(ctx_path, Ctx())
+    if not resume:
+        save_ctx(ctx_path, Ctx())
+        # The mode's home is the journal, not the manifest and not ctx (AUTONOMY_DESIGN v2 §8):
+        # a journal is append-only, so no tool can unwrite it. The manifest copy is a convenience
+        # for `queue`/`--help`; every enforcement path reads `run_config` back off the journal.
+        Journal(journal, run_id).append({"event": "run_config", "autonomy": autonomy_mode,
+                                         "pause_after": list(rules), "ceiling": int(ceiling)})
     return manifest
 
 
@@ -228,11 +244,48 @@ def tools_schema(tools: dict[str, RegisteredTool]) -> str:
 
 
 # --- subcommands ------------------------------------------------------------------------
+PHASES_EXAMPLE = [{"name": "research", "tool": "corroborate"},
+                  {"name": "implement", "tool": "prove", "exit_type": "PASS"},
+                  {"name": "land", "tool": "commit"}]
+
+
 def cmd_init(a: argparse.Namespace) -> int:
+    if a.phases_example:
+        print(json.dumps(PHASES_EXAMPLE, indent=2))
+        return EXIT_EXECUTED
     ceiling = a.ceiling if a.ceiling is not None else default_ceiling()
-    path = write_manifest(a.run_id, a.journal, a.cwd, a.tool_dir, ceiling, a.manifest)
+    pause_after = json.loads(a.pause_after) if a.pause_after else None
+    if pause_after is not None and not isinstance(pause_after, list):
+        raise ValueError("--pause-after must be a JSON list of {name, tool, exit_type?} objects")
+    if a.resume and not os.path.exists(a.journal):
+        raise ValueError(f"--resume needs an existing journal: {a.journal!r}")
+    path = write_manifest(a.run_id, a.journal, a.cwd, a.tool_dir, ceiling, a.manifest,
+                          a.autonomy, pause_after, resume=a.resume)
     print(json.dumps({"manifest": path, **read_manifest(path)}, indent=2, sort_keys=True))
     return EXIT_EXECUTED
+
+
+def cmd_preauthorize(a: argparse.Namespace) -> int:
+    m = read_manifest(a.manifest)
+    journal = Journal(m["journal"], m["run_id"])
+    for pat in a.scope_path:
+        if not autonomy.safe_path(pat.replace("*", "x")):
+            raise ValueError(f"scope path must be repo-relative with no '..' segment: {pat!r}")
+    gid = f"grant:{len(autonomy.grants(journal.read())) + 1}"
+    ev = journal.append({"event": "preauthorization_recorded", "grant_id": gid, "approver": a.approver,
+                         "scope_paths": list(a.scope_path), "max_uses": a.max_uses,
+                         "allow_kind_overrides": a.allow_kind_overrides, "note": a.note})
+    print(json.dumps(ev, indent=2, sort_keys=True))
+    return EXIT_EXECUTED
+
+
+def cmd_queue(a: argparse.Namespace) -> int:
+    """The deferral queue (§6). Exits non-zero while any deferral stands — the queue is a record,
+    not a gate, and a non-zero exit is the cheapest teeth that does not touch the invariant floor."""
+    m = read_manifest(a.manifest)
+    q = [e for e in Journal(m["journal"], m["run_id"]).read() if e.get("event") == "deferred_decision"]
+    print(json.dumps({"deferred": q, "count": len(q)}, indent=2, sort_keys=True))
+    return EXIT_ERROR if q else EXIT_EXECUTED
 
 
 def cmd_tools(a: argparse.Namespace) -> int:
@@ -259,8 +312,17 @@ def cmd_call(a: argparse.Namespace) -> int:
     journal = Journal(m["journal"], m["run_id"])
     events = journal.read()
     index = sum(1 for e in events if e.get("event") == "tool_call" and e.get("run_id") == m["run_id"])
-    if index >= m["ceiling"]:
-        raise ValueError(f"ceiling reached: {index} tool calls >= ceiling {m['ceiling']}")
+    # AUTONOMY_DESIGN v2 §3: a pause is an effective ceiling, so the bound check the CLI already
+    # performs on every process is the whole enforcement — no new refusal path, and it survives a
+    # restart for free because the budget is recomputed from the journal rather than remembered.
+    rules = autonomy.rules_from_events(events)
+    if index >= autonomy.effective_ceiling(events, rules, m["ceiling"]):
+        b = autonomy.open_boundary(events, rules)
+        if b is None:
+            raise ValueError(f"ceiling reached: {index} tool calls >= ceiling {m['ceiling']}")
+        print(json.dumps({"paused_at": b.id, "boundary": b.name, "step": index,
+                          "resume": autonomy.pause_message(b)}, indent=2, sort_keys=True))
+        return EXIT_PAUSED
     ctx = load_ctx(m["ctx_path"])
     st = loop.step(tools, Call(a.tool, args), journal, ctx, index, cwd=m["cwd"], events=events)
     save_ctx(m["ctx_path"], ctx)
@@ -307,6 +369,15 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--tool-dir", action="append", default=[], help="extra tool directory (repeatable)")
     s.add_argument("--ceiling", type=int, default=None,
                    help="max tool calls for the run (default: 2x the longest journal under ablation/runs/, H13)")
+    s.add_argument("--autonomy", choices=autonomy.MODES, default="auto",
+                   help="auto: stop only where an invariant demands it (default, = today's behaviour); "
+                        "phase: also stop after each --pause-after rule; step: stop after every call")
+    s.add_argument("--pause-after", default=None,
+                   help="JSON list of {name, tool, exit_type?} — required for --autonomy phase, "
+                        "which has no default list (phases are named per task)")
+    s.add_argument("--phases-example", action="store_true", help="print an example --pause-after list and exit")
+    s.add_argument("--resume", action="store_true",
+                   help="reuse an existing journal and run_id; keeps the saved ctx and run_config")
     s.set_defaults(fn=cmd_init)
 
     s = sub.add_parser("tools", help="list the registered tools")
@@ -320,11 +391,26 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(fn=cmd_call)
 
     s = sub.add_parser("approve", help="ORCHESTRATOR ONLY: record a gate approval (never called by the subagent)")
-    s.add_argument("--gate", required=True, choices=("checkpoint", "owner"))
+    s.add_argument("--gate", required=True, choices=("checkpoint", "owner", "resume"))
     s.add_argument("--action-id", required=True)
     s.add_argument("--approver", required=True)
     s.add_argument("--note", default="")
     s.set_defaults(fn=cmd_approve)
+
+    s = sub.add_parser("preauthorize", help="ORCHESTRATOR ONLY: grant an advance, path-scoped commit approval")
+    s.add_argument("--approver", required=True)
+    s.add_argument("--scope-path", action="append", required=True,
+                   help="repo-relative glob the grant covers (repeatable); * stays within one path "
+                        "segment, ** crosses segments. EVERY changed path must match one, or the commit refuses")
+    s.add_argument("--max-uses", type=int, default=1)
+    s.add_argument("--allow-kind-overrides", action="store_true",
+                   help="permit committing under this grant when the run carries a D-KIND closed_world "
+                        "override. OFF by default: it turns a pre-commit disclosure into a post-commit review")
+    s.add_argument("--note", default="")
+    s.set_defaults(fn=cmd_preauthorize)
+
+    s = sub.add_parser("queue", help="list this run's deferred decisions (exits non-zero while any stands)")
+    s.set_defaults(fn=cmd_queue)
 
     s = sub.add_parser("fail-dispatch", help="ORCHESTRATOR ONLY: record that a dispatched agent failed")
     s.add_argument("--agent-id", required=True)

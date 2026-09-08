@@ -99,7 +99,9 @@ def test_cli_exit_codes_and_orchestrator_events(tmp_path):
     rc, out, _ = cli(manifest, "fail-dispatch", "--agent-id", "historian", "--reason", "timeout")
     assert rc == 0 and out["event"] == "dispatch_failed" and out["agent_id"] == "historian"
     rc, out, _ = cli(manifest, "call", "read_journal", "{}")
-    assert rc == 0 and out["ok"] and [e["event"] for e in out["value"]] == ["tool_call", "dispatch_failed"]
+    # `run_config` first: `init` writes the autonomy mode into the journal, where it is append-only
+    # and no tool can unwrite it (AUTONOMY_DESIGN v2 §8). This also pins that init writes it at all.
+    assert rc == 0 and out["ok"] and [e["event"] for e in out["value"]] == ["run_config", "tool_call", "dispatch_failed"]
     rc, out, err = cli(manifest, "call", "read_journal", "{}")
     assert rc == 1 and "ceiling reached: 2" in err
     rc, out, err = cli(None, "call", "gate", "{}")

@@ -6,6 +6,7 @@ then stages the changed files and runs `git commit`. Never raises; git's own
 stderr is the reason on failure."""
 from ancient_games.journal import Journal, kind_overrides
 
+from .. import autonomy
 from ..types import ToolResult
 from ._shared import (COMMIT_ACTION_ID_ARGS, action_id, approvals_after, changed_files, git, internal_error,
                       last_commit_index, require_str)
@@ -31,11 +32,29 @@ def run(env, args):
     if bad is not None:
         return bad
     try:
-        events = Journal(env.journal_path, env.run_id).read()
+        journal = Journal(env.journal_path, env.run_id)
+        events = journal.read()
         aid = action_id(*COMMIT_ACTION_ID_ARGS)
+        overrides = kind_overrides(events, env.run_id)
+        grant, changed = None, None
         if not approvals_after(events, "checkpoint", aid, last_commit_index(events)):
-            return ToolResult(ok=False, reason="checkpoint-not-cleared" + overrides_note(events, env.run_id))
-        changed = changed_files(env.cwd)
+            # AUTONOMY_DESIGN v2 §5: a pre-authorisation is evaluated FRESH, here, against the
+            # paths actually about to be committed. It mints no approval — every commit shares the
+            # constant action_id ("commit", ["master"]), so a stored derived approval would sit
+            # in-window and clear a LATER commit whose paths its scope never covered.
+            # `changed_files` shells out to git, so it stays behind the grants check: with no grant
+            # on record this reports `checkpoint-not-cleared` without needing a repo at all, which
+            # is what it did before pre-authorisation existed.
+            if not autonomy.grants(events):
+                return ToolResult(ok=False, reason="checkpoint-not-cleared" + overrides_note(events, env.run_id))
+            changed = changed_files(env.cwd)
+            grant, why = autonomy.live_grant(events, changed, bool(overrides))
+            if grant is None:
+                note = f"; no live pre-authorisation: {why}" if why else ""
+                return ToolResult(ok=False, reason="checkpoint-not-cleared"
+                                  + overrides_note(events, env.run_id) + note)
+        if changed is None:
+            changed = changed_files(env.cwd)  # BEFORE the commit; afterwards the tree is clean
         if changed:
             p = git(env.cwd, "add", "--", *changed)
             if p.returncode != 0:
@@ -43,6 +62,25 @@ def run(env, args):
         p = git(env.cwd, "commit", "-m", args["message"])
         if p.returncode != 0:
             return ToolResult(ok=False, reason=(p.stderr.strip() or p.stdout.strip()))
+        if grant is not None:
+            _record_grant_use(journal, grant, aid, changed, overrides)
         return ToolResult(ok=True, value={"hash": git(env.cwd, "rev-parse", "HEAD").stdout.strip()})
     except Exception as e:
         return internal_error(e)
+
+
+def _record_grant_use(journal, grant, aid: str, changed: list[str], overrides: list[dict]) -> None:
+    """Audit records, written only AFTER `git commit` returned 0 — they authorise nothing and
+    `run`'s explicit-approval branch never reads them (§5.2).
+
+    A commit taken under a grant is a commit no human saw, so each D-KIND `closed_world` override
+    that would have been surfaced verbatim in the refusal is queued instead of shown: `deferred_
+    decision` is the record that the disclosure happened with nobody reading it (§6). It is a
+    record, not a gate — nothing downstream reads it back."""
+    journal.append({"event": "approval_derived", "grant_id": grant["grant_id"], "action_id": aid,
+                    "approver": grant["approver"], "paths": list(changed)})
+    for o in overrides:
+        journal.append({"event": "deferred_decision", "kind": "kind-override",
+                        "payload": f"{o['claim_id']} (executable by closed_world: {o['closed_world']!r})",
+                        "boundary": aid,
+                        "reason": f"committed under pre-authorisation {grant['grant_id']}; not reviewed at a gate"})

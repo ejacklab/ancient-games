@@ -119,6 +119,16 @@ SHAPES: dict[str, dict[str, Any]] = {
     },
     "approval_recorded": {"action_id": str, "gate": str, "approver": str, "note": str},
     "dispatch_failed": {"agent_id": str, "reason": str},
+    # autonomy (AUTONOMY_DESIGN v2). `run_config` is written once by `init` and is where the mode
+    # lives: the journal is append-only, so no tool can unwrite it — unlike ctx, which every
+    # non-RESTRICTED tool receives by reference and which fails open when its file is missing (§8).
+    "run_config": {"autonomy": str, "pause_after": list, "ceiling": int},
+    "preauthorization_recorded": {"grant_id": str, "approver": str, "scope_paths": list,
+                                  "max_uses": int, "allow_kind_overrides": bool, "note": str},
+    # written AFTER `git commit` returns 0, by a path that authorises nothing and that `commit`'s
+    # explicit-approval branch never reads (§5.2): an audit record, never a credential.
+    "approval_derived": {"grant_id": str, "action_id": str, "approver": str, "paths": list},
+    "deferred_decision": {"kind": str, "payload": str, "boundary": str, "reason": str},
 }
 # fields added in harness v1.4 (D-KIND): absent from journals written before it, which must still read.
 _OPTIONAL: frozenset[tuple[str, str]] = frozenset({("claim_recorded", "kind_override"), ("claim_recorded", "closed_world")})
@@ -127,7 +137,11 @@ _ENUMS: dict[tuple[str, str], tuple[Any, ...]] = {
     ("claim_recorded", "kind"): ("executable", "judgment"),
     ("claim_recorded", "evidence_type"): ("command", "file:line"),
     ("tool_call", "refused_by"): ("I1", "I4", "I5", None),  # I2/I3 never populate this (HYBRID_SPEC §4)
-    ("approval_recorded", "gate"): ("checkpoint", "owner"),
+    # "resume" (AUTONOMY_DESIGN v2 §3) is consumed only by `autonomy.effective_ceiling`; it clears a
+    # pause boundary and grants nothing. Old journals still validate: gate is always present with a
+    # legal pre-existing value, and enums are checked only on the value actually carried.
+    ("approval_recorded", "gate"): ("checkpoint", "owner", "resume"),
+    ("run_config", "autonomy"): ("auto", "phase", "step"),
 }
 
 

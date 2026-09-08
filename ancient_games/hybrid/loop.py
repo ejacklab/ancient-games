@@ -16,6 +16,7 @@ from ancient_games.ctx import Ctx
 from ancient_games.journal import Journal
 from ancient_games.registry import REGISTRY, Row
 
+from . import autonomy
 from .invariants import RESTRICTED, check_invariants, invariants_for, pick_by_priority
 from .registry import RegisteredTool
 from .tools._shared import tool_call_event
@@ -36,8 +37,12 @@ class Step:
 @dataclass
 class RunResult:
     ctx: Ctx
-    status: str  # DONE | CEILING_REACHED | NO_CHOICE
+    status: str  # DONE | PAUSED | CEILING_REACHED | NO_CHOICE
+    # PAUSED: an autonomy boundary is open (AUTONOMY_DESIGN v2 §3). `paused_at` names it so a
+    # caller can print how to resume; the run itself carries no state — re-entering `run` over
+    # the same journal after a resume approval continues it.
     steps: list[Step] = field(default_factory=list)
+    paused_at: str | None = None
 
 
 def strip_corroboration(ctx: Ctx) -> Ctx:
@@ -53,6 +58,10 @@ def run(tools: dict[str, RegisteredTool], choose: Callable[[dict, dict], Call | 
     default_plan = list(DEFAULT_PLAN)
     last_results: dict[str, object] = {}
     out = RunResult(ctx, "CEILING_REACHED")
+    # AUTONOMY_DESIGN v2 §3: the mode is read from the journal (`run_config`), never from ctx —
+    # ctx is mutable, every non-RESTRICTED tool receives the loop's own object, and a missing ctx
+    # file fails open. A run with no `run_config` is `auto`, which is exactly today's behaviour.
+    rules = autonomy.rules_from_events(journal.read())
     for i in range(ceiling):
         # `journal.read()` re-parses and re-validates the whole file each iteration. Left as-is,
         # deliberately: every tool appends through its OWN `Journal` instance, so this one cannot
@@ -63,6 +72,16 @@ def run(tools: dict[str, RegisteredTool], choose: Callable[[dict, dict], Call | 
         # run. Revisit if a run's journal reaches tens of thousands of events.
         obs = {"ctx": ctx.as_dict(), "events": journal.read(), "suggested_next": list(default_plan),
                "last_results": dict(last_results)}
+        # The pause is a BUDGET, not a verdict on this call: it can only lower the number of calls
+        # the run may spend, never admit one the floor refused. With no rules it is a no-op.
+        # `effective_ceiling` is the single bound — `open_boundary` only classifies the stop, so
+        # that a pause is distinguishable from an exhausted budget without being a second mechanism.
+        spent = sum(1 for e in obs["events"] if e.get("event") == "tool_call")
+        if spent >= autonomy.effective_ceiling(obs["events"], rules, ceiling):
+            b = autonomy.open_boundary(obs["events"], rules)
+            out.status = "PAUSED" if b is not None else "CEILING_REACHED"
+            out.paused_at = b.id if b is not None else None
+            return out
         call = choose(obs, tools)
         if call is None:
             out.status = "NO_CHOICE"

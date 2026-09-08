@@ -298,7 +298,7 @@ def test_cli_rebuild_index_succeeds(tmp_path):
                        cwd=ROOT, capture_output=True, text=True)
     assert p.returncode == 0, p.stderr
     out = json.loads(p.stdout)
-    assert out["ok"] is True and out["reason"] is None and out["value"]["events"] == 85 and out["value"]["rows"] > 0
+    assert out["ok"] is True and out["reason"] is None and out["value"]["events"] == 86  # 85 + the `run_config` event `init` now writes and out["value"]["rows"] > 0
     assert index.connect(db).execute("PRAGMA user_version").fetchone()[0] == 1
     # a relative db_path is the caller's error (H2), not an internal error
     p = subprocess.run(cmd + ["--manifest", manifest, "call", "rebuild_index", json.dumps({"db_path": "index.sqlite"})],

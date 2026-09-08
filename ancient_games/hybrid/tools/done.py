@@ -100,6 +100,15 @@ def run(env, args):
             unaccounted = [f for f in changed if f not in accounted]
             if unaccounted:
                 return ToolResult(ok=False, reason=f"uncommitted-changes: {unaccounted}")
+        # AUTONOMY_DESIGN v2 §6: a run that committed under a pre-authorisation may have queued
+        # disclosures nobody read. The run still finishes — that is what continue-and-queue means —
+        # but the count rides out on `reason` so an unattended run cannot end silently. `value`
+        # stays the string "DONE": eight assertions compare the whole ToolResult exactly, and no
+        # run without deferrals produces this branch.
+        deferred = [e for e in events if e.get("event") == "deferred_decision"]
+        if deferred:
+            return ToolResult(ok=True, value="DONE",
+                              reason=f"deferred-decisions: {len(deferred)} (list them with `queue`)")
         return ToolResult(ok=True, value="DONE")
     except Exception as e:
         return internal_error(e)
