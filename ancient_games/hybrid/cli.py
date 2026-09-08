@@ -44,7 +44,7 @@ from ancient_games.ctx import ABSENCE_PATTERNS, CLAIM_KINDS, DIFFICULTIES, MECHA
 from ancient_games.journal import _ENUMS, Journal
 from ancient_games.stages import ActionInput, Candidate, Claim, TaskInput
 
-from . import autonomy, loop
+from . import autonomy, loop, supervise
 from .registry import RegisteredTool, load_tools
 from .types import Call, hydrate
 
@@ -279,6 +279,32 @@ def cmd_preauthorize(a: argparse.Namespace) -> int:
     return EXIT_EXECUTED
 
 
+def cmd_status(a: argparse.Namespace) -> int:
+    """The terminal-state oracle, exit-coded: 0 ONLY when the run finished with nothing
+    outstanding. This is the queue gate — a run that ends with unreviewed deferrals exits 4, so a
+    wrapper or CI notices what §6 deliberately keeps out of the invariant floor."""
+    m = read_manifest(a.manifest)
+    events = Journal(m["journal"], m["run_id"]).read()
+    st = supervise.terminal_state(events, autonomy.rules_from_events(events), m["ceiling"])
+    print(supervise.as_json(st))
+    return supervise.STATE_EXIT[st["state"]]
+
+
+def cmd_drive(a: argparse.Namespace) -> int:
+    """Run unattended until a terminus. The one [LLM] cell is an external command: observation
+    JSON on stdin, one {"tool", "args"} object on stdout. Every iteration re-derives its state
+    from the journal, so killing this process and re-running it resumes rather than restarts."""
+    m = read_manifest(a.manifest)
+    tools = load_tools(*m["tool_dirs"])
+    journal = Journal(m["journal"], m["run_id"])
+    ctx = load_ctx(m["ctx_path"])
+    st = supervise.drive(tools, supervise.command_chooser(a.chooser), journal, m["ceiling"], ctx,
+                         cwd=m["cwd"], save_ctx=lambda c: save_ctx(m["ctx_path"], c),
+                         max_calls=a.max_calls)
+    print(supervise.as_json(st))
+    return supervise.STATE_EXIT[st["state"]]
+
+
 def cmd_queue(a: argparse.Namespace) -> int:
     """The deferral queue (§6). Exits non-zero while any deferral stands — the queue is a record,
     not a gate, and a non-zero exit is the cheapest teeth that does not touch the invariant floor."""
@@ -411,6 +437,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("queue", help="list this run's deferred decisions (exits non-zero while any stands)")
     s.set_defaults(fn=cmd_queue)
+
+    s = sub.add_parser("status", help="the run's terminal state; exits 0 ONLY if it finished with nothing outstanding")
+    s.set_defaults(fn=cmd_status)
+
+    s = sub.add_parser("drive", help="run unattended to a terminus, choosing tools with an external command")
+    s.add_argument("--chooser", required=True,
+                   help="command invoked per step: observation JSON on stdin, one "
+                        "{\"tool\": ..., \"args\": {...}} object on stdout; empty output ends the run")
+    s.add_argument("--max-calls", type=int, default=None,
+                   help="bound THIS invocation (the run's own budget stays --ceiling); "
+                        "reaching it is not a terminus, so a later `drive` continues the same run")
+    s.set_defaults(fn=cmd_drive)
 
     s = sub.add_parser("fail-dispatch", help="ORCHESTRATOR ONLY: record that a dispatched agent failed")
     s.add_argument("--agent-id", required=True)

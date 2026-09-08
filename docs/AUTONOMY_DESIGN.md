@@ -235,7 +235,46 @@ behaviour — the backward-compatible reading, and safe because the *floor* is i
 **Verified by sabotage, not by assertion** (the project's standing bar): breaking each guarantee in
 turn must fail a case. `rule_matches` ignoring `exit_type` → 1 fail; `scope_covers` falling back to
 `fnmatch` → 3; `live_grant` ignoring scope → 1; the audit record written before `git commit` → 1;
-`effective_ceiling` never lowering the budget → 3. Full suite 303 passed.
+`effective_ceiling` never lowering the budget → 3. For §12: deferrals not outranking `DONE` → 2;
+`DONE_WITH_DEFERRALS` exiting 0 → 2; a failing chooser read as no-choice → 1; `default_plan_from`
+ignoring `RETURN_TO_PLANNER` → 1 (the first version of that case was degenerate and passed the
+sabotage — with only `gate, guard` popped the remaining plan already equals `REPLAN`, so the case
+now walks the plan to `prove` first). Full suite 318 passed.
+
+## 12. The unattended supervisor (`ancient_games/hybrid/supervise.py`)
+
+Built after the modes, because "runs for hours" needs something that *keeps* running and something
+that decides when it may stop. Two pieces, deliberately separate:
+
+**`terminal_state(events, rules, ceiling)`** — the oracle, from the journal alone:
+`RUNNING | PAUSED | CEILING_REACHED | DONE | DONE_WITH_DEFERRALS`. Because every input is
+journal-derived, a fresh process after a crash gives the same answer the dead one would have. That
+is what makes a long run *resumable* rather than merely long. Order matters: a finished run
+outranks a pause (a boundary after `done` has nothing left to gate), and deferrals outrank `DONE`
+so an unattended run cannot end silently with disclosures nobody read.
+
+**`drive(...)`** — `loop.run` with the one `[LLM]` cell moved out of process. A chooser *command*
+receives the observation on stdin and answers with one `{"tool", "args"}` object on stdout, so the
+supervisor is testable without a model (a three-line script is a valid chooser) and an LLM-backed
+chooser is just one such program. Every iteration re-derives state from the journal, so killing the
+process and re-running it resumes. `--max-calls` bounds one invocation without being a terminus.
+
+**The queue gate.** `status` and `drive` exit **0 only** when the run finished with nothing
+outstanding: `DONE`=0, `PAUSED`=3, `DONE_WITH_DEFERRALS`=**4**, unfinished=1. §6 keeps the queue
+out of the invariant floor on purpose, so this exit code is the only teeth it has — enough for a
+wrapper or CI to notice, and nothing the floor depends on.
+
+```
+python3 -m ancient_games.hybrid drive  --chooser 'python3 my_chooser.py' [--max-calls N]
+python3 -m ancient_games.hybrid status         # same oracle, runs nothing
+python3 -m ancient_games.hybrid queue          # the deferrals themselves
+```
+
+**Two limits, stated.** A journal records result *summaries*, not return values, so `last_results`
+is empty under `drive` and `scripted`'s `{"$from": ...}` does not work there — an external chooser
+reads the journal, which is the durable record. And `drive` fails loudly if a step journals
+nothing, because a terminus derived from the journal would otherwise be unreachable and the loop
+would spin (a sabotage that stopped it re-reading hung the suite instead of failing it).
 
 ## 11. Open, deliberately not built
 - A phase whose exit is semantic rather than a journaled `exit_type` (§4: make it a tool).
