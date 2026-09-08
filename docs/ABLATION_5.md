@@ -41,6 +41,31 @@ was a property of that run rather than of no-change runs generally.
 about D-KIND and nothing about corroboration — and the CLAIMS channel will still never have carried
 a claim in a live run, for the third time.
 
+## A confound found during setup, recorded before the run
+
+The widened word list is **published to the agent**, because `cli.NOTES["kind"]` renders
+`ABSENCE_PATTERNS` into `tools --schema` and the packet carries it verbatim. MAIN's prompt therefore
+now contains:
+
+```
+text asserting absence / a universal negative (dead|unused|no references?|never|nothing calls|
+not reachable|unreachable|no callers?|unreferenced|no code paths?|no producers?|no usages?|
+not called) is judgment; executable is accepted for such text only with closed_world
+```
+
+— including the exact word ablation 4's agent used. That is not a mistake to hide: publishing the
+rule is D-KIND's design ("disclosure, not compulsion", ABLATION_3), and every prior ablation
+published the list too. But it changes what prediction 1 measures. An agent can now see which words
+cost it a `closed_world` and could route around them.
+
+**Whether it routes around the published list is itself observable, and worth more than prediction 1.**
+The structural half of the rule — a negation bound to an unbounded scope — is deliberately *not*
+published, so a claim rephrased to dodge the vocabulary can still be caught by the structure. If the
+journal shows an absence claim phrased to avoid every listed word and the structural rule catches it,
+that is direct evidence for why the fix needed two halves rather than a longer list.
+
+Recorded now, before the run, rather than discovered in the results.
+
 ## Stopping rules
 
 Unchanged from `ABLATION_4_DESIGN` §6, plus: halt if prediction 1 is falsified — that is a defect in
