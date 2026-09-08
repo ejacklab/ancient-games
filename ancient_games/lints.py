@@ -239,19 +239,6 @@ def _dispatched_fields(events: list[dict], run_id: str | None) -> dict[str, dict
             for ev in in_run(events, run_id) if ev.get("event") == "dispatch"}
 
 
-def _python_journal_lints(plan: Plan, events: list[dict], run_id: str | None) -> dict[str, list[Finding]]:
-    out: dict[str, list[Finding]] = {name: [] for name in SQL_LINTS}
-    for ev in in_run(events, run_id):
-        if ev.get("event") == "return":
-            fields = ev.get("fields", {})
-            out["claims-without-evidence"] += lint_claims_without_evidence(fields.get("CLAIMS", []) or [])
-            out["follow-on-without-disposition"] += lint_follow_on_without_disposition(fields.get("FOLLOW_ON", []) or [])
-    out["corroboration-capped"] = lint_corroboration_capped(plan, events, run_id)
-    out["hub-touched-without-tripwire"] = lint_hub_touched_without_tripwire(plan, events, run_id)
-    out["downstream-consumer-check-unrecorded"] = lint_downstream_consumer_check_unrecorded(plan, events, run_id)
-    return out
-
-
 def _sql_journal_lints(plan: Plan, events: list[dict], run_id: str) -> dict[str, list[Finding]]:
     from . import index  # lazy: index imports Finding from here
 
@@ -288,21 +275,30 @@ def run_all_on_plan(plan: Plan, events: list[dict], *, backend: str | None = Non
     out: list[Finding] = []
     dispatched = _dispatched_fields(events, run_id)
     if backend == "python" or backend == "differential":
+        # the five journal-backed lints are bucketed as they are appended, so `differential`
+        # compares the Findings this run actually produced instead of recomputing all five.
+        python: dict[str, list[Finding]] = {name: [] for name in SQL_LINTS}
         for ev in in_run(events, run_id):
             if ev.get("event") == "return":
                 fields = ev.get("fields", {})
-                out += lint_claims_without_evidence(fields.get("CLAIMS", []) or [])
-                out += lint_follow_on_without_disposition(fields.get("FOLLOW_ON", []) or [])
+                cwe = lint_claims_without_evidence(fields.get("CLAIMS", []) or [])
+                fwd = lint_follow_on_without_disposition(fields.get("FOLLOW_ON", []) or [])
+                python["claims-without-evidence"] += cwe
+                python["follow-on-without-disposition"] += fwd
+                out += cwe
+                out += fwd
                 out += lint_scope_delta_missing(fields, dispatched.get(ev.get("agent_id"), {}))
                 if fields.get("TEMPLATE"):
                     out += lint_evidence_after_verdict(fields["TEMPLATE"])
         out += lint_schema_field_without_escape_value(FIELDS)
         out += lint_return_field_without_escape_value(RETURN_CONTRACT)
-        out += lint_corroboration_capped(plan, events, run_id)
-        out += lint_hub_touched_without_tripwire(plan, events, run_id)
-        out += lint_downstream_consumer_check_unrecorded(plan, events, run_id)
+        python["corroboration-capped"] = lint_corroboration_capped(plan, events, run_id)
+        python["hub-touched-without-tripwire"] = lint_hub_touched_without_tripwire(plan, events, run_id)
+        python["downstream-consumer-check-unrecorded"] = lint_downstream_consumer_check_unrecorded(plan, events, run_id)
+        for name in ("corroboration-capped", "hub-touched-without-tripwire", "downstream-consumer-check-unrecorded"):
+            out += python[name]
         if backend == "differential":
-            python, sql = _python_journal_lints(plan, events, run_id), _sql_journal_lints(plan, events, run_id)
+            sql = _sql_journal_lints(plan, events, run_id)
             for name in SQL_LINTS:
                 if python[name] != sql[name]:
                     raise LintBackendDivergence(name, python[name], sql[name], run_id)

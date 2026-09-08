@@ -70,7 +70,7 @@ Only the two new rows this round; every other row is unchanged from
 
 | property | type | set by | consumed by | notes |
 |---|---|---|---|---|
-| `difficulty` | `LOW \| MED \| HIGH` | C·2 | C·3 (agent-count decision tree), the Gate exit line | **new (AA2′, closes AA2)** — a falsifiable statement about task difficulty, not a bare self-assessment label (#9); C·2's own step text has required this since the first draft, with no ctx row to hold it until now. Escape value: `UNKNOWN` (recorded, never silently omitted, when C·2 cannot yet state a level). |
+| `difficulty` | `LOW \| MED \| HIGH` | C·2 | C's `PLAN_NEEDED` exit value (`GateExit.difficulty`) — **advisory** (REVIEW_B F7): F1's count is one agent per independent angle, and `stages.decision_tree` deliberately does not read difficulty; no rule states how a level would move the count | **new (AA2′, closes AA2)** — a falsifiable statement about task difficulty, not a bare self-assessment label (#9); C·2's own step text has required this since the first draft, with no ctx row to hold it until now. Escape value: `UNKNOWN` (recorded, never silently omitted, when C·2 cannot yet state a level). |
 | `capability` | `list[str]` | C·2 | schema role selection (`DISPATCH`), D·4's tool-grant lookup | **new (AA2′, closes AA2)** — the specific tool/role capabilities the task needs (a measurable lookup — tool grants, context size — never a self-assessment, #9), named alongside `difficulty` in C·2's step text since the first draft. Escape value: `[]` (no special capability needed beyond the default grant). |
 
 ---

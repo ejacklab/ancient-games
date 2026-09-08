@@ -261,6 +261,13 @@ class Journal:
 
 
 def read_events(path: str) -> list[dict]:
+    """Every event in the file, unscoped. `Journal.read()` (this run only) is what almost every
+    caller wants; a run bound to B must never count A's sources. Three modules legitimately read
+    across runs — `index` (the index projects whole journals), `hybrid.runner` (a replay case
+    judges a journal recorded by another run) and `ablation.score` (scoring an ablation journal
+    from outside any run) — and that set is pinned by
+    tests/test_review_b_fixes.py::test_f8_read_events_importers_are_the_sanctioned_set, so a
+    fourth caller cannot re-open the hole quietly."""
     _check_absolute(path)
     if not os.path.exists(path):
         return []

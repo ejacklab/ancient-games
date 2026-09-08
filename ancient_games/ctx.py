@@ -8,7 +8,11 @@ never fire" (V3_1_SPEC §2).
 """
 from __future__ import annotations
 
+import ast
+import functools
+import inspect
 import re
+import textwrap
 from dataclasses import MISSING, dataclass, field, fields
 from typing import Any
 
@@ -176,6 +180,10 @@ class Ctx:
         for cid, kind in self.claim_kind.items():
             if kind not in CLAIM_KINDS:
                 raise ValueError(f"claim_kind[{cid!r}]={kind!r} not in {CLAIM_KINDS}")
+        for name, (func, param) in CHECKED_CONSUMERS.items():
+            if not _reads(func, param):
+                raise ValueError(f"ctx property {name!r} declares {func}() as a consumer, but {func}() never "
+                                 f"reads its {param!r} argument")
         for e in self.hub:
             if e not in self.tripwire and self.stakes is not None and self.stakes >= 2:
                 # D·4 names one tripwire per hub element; a gap here is what the
@@ -204,7 +212,7 @@ CTX_META: dict[str, tuple[str, str]] = {
     "execution_status": ("C·3; D·5 override", "schema (Gate/Guard exit lines)"),
     "stop_criterion": ("C·5", "schema STOP"),
     "time_box": ("C·5", "schema STOP"),
-    "difficulty": ("C·2", "C·3 (F1 decision tree), C exit line"),
+    "difficulty": ("C·2", "C's PLAN_NEEDED exit value (GateExit.difficulty); advisory, see CHECKED_CONSUMERS"),
     "capability": ("C·2", "C·3 (F1 decision tree), schema role selection, D·4 tool grants"),
     "actor": ("C·3/C·4, or D at execution_status=main_executes", "B·1 self-exclusion, journal claim_recorded.actor"),
     "dispatch_count": ("C·3/C·4; B·1 on RETURN_TO_PLANNER-triggered dispatch", "B·1 cap_state"),
@@ -235,3 +243,29 @@ CTX_META: dict[str, tuple[str, str]] = {
     "env_policy": ("orchestrator constant, C·2", "CORE ENV_POLICY"),
     "template_version": ("E·5", "schema TEMPLATE.version, journal"),
 }
+
+
+# The consumer claims `validate()` can actually check. A CTX_META consumer entry may name a pure
+# function that receives the property as an argument; when it does, that function's body must LOAD
+# the argument — merely accepting it is not consuming it. `validate()` used to check only that the
+# metadata NAMES a consumer, so `difficulty` sat there as "C·3 (F1 decision tree)" while
+# `stages.decision_tree` never read its `difficulty` argument at all: a declared consumer that does
+# not read the property, which nothing could catch. difficulty is now recorded as what it is — C·2
+# states it, C reports it in its PLAN_NEEDED exit value, and F1's count is capability-driven (one
+# agent per independent angle); no spec sentence says how a difficulty level would move that count,
+# so it is advisory, not an input.
+CHECKED_CONSUMERS: dict[str, tuple[str, str]] = {
+    # ctx property -> (ancient_games.stages function, the parameter carrying the property)
+    "capability": ("decision_tree", "capability"),
+}
+
+
+@functools.lru_cache(maxsize=None)
+def _reads(func: str, param: str) -> bool:
+    """True when `ancient_games.stages.<func>` loads `param` somewhere in its body. An argument the
+    function only declares produces no `Name` node in a Load context, so it reads as unconsumed."""
+    from . import stages
+
+    tree = ast.parse(textwrap.dedent(inspect.getsource(getattr(stages, func))))
+    return any(isinstance(n, ast.Name) and n.id == param and isinstance(n.ctx, ast.Load)
+               for n in ast.walk(tree.body[0]))

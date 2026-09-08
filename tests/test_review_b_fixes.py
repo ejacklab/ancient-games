@@ -318,3 +318,123 @@ def test_f6_an_unverified_claim_writes_nothing_to_ctx(tmp_path):
     assert out.exit_type == "UNVERIFIED" and out.result("J1").exit_type == "UNVERIFIED"
     assert ctx.n_sources == {} and ctx.corroboration_capped == [] and ctx.gate_reason == []
     assert out.exit_line == "Corroborate: ."
+
+
+# F7 — a declared consumer that does not read the property ------------------------------------
+def test_f7_validate_catches_a_declared_consumer_that_never_reads_the_property(monkeypatch):
+    """The class of defect, reproduced exactly as it stood: CTX_META said `difficulty` was
+    consumed by C·3's F1 decision tree and `stages.decision_tree` never read the argument."""
+    from ancient_games import ctx as ctx_mod
+
+    monkeypatch.setitem(ctx_mod.CHECKED_CONSUMERS, "difficulty", ("decision_tree", "difficulty"))
+    ctx_mod._reads.cache_clear()
+    with pytest.raises(ValueError, match=r"'difficulty' declares decision_tree\(\) as a consumer"):
+        Ctx().validate()
+
+
+def test_f7_the_shipped_consumer_claims_hold():
+    from ancient_games import ctx as ctx_mod
+
+    ctx_mod._reads.cache_clear()
+    Ctx().validate()  # every entry in CHECKED_CONSUMERS really is read
+    assert ctx_mod.CHECKED_CONSUMERS["capability"] == ("decision_tree", "capability")
+    assert ctx_mod._reads("decision_tree", "capability") and not ctx_mod._reads("decision_tree", "difficulty")
+
+
+def test_f7_difficulty_is_advisory_not_an_input_to_the_count():
+    """difficulty no longer claims C·3, and the real function proves why: the count does not move."""
+    from ancient_games import stages
+    from ancient_games.ctx import CTX_META
+
+    assert "C·3" not in CTX_META["difficulty"][1] and "decision tree" not in CTX_META["difficulty"][1]
+    assert CTX_META["difficulty"][1].startswith("C's PLAN_NEEDED exit value")
+    assert stages.decision_tree("LOW", ["a", "b"]) == stages.decision_tree("HIGH", ["a", "b"]) == 2
+    assert stages.decision_tree("UNKNOWN", []) == 0
+
+
+# F8 — read_events stays importable, so pin who may import it ---------------------------------
+SANCTIONED_READ_EVENTS_IMPORTERS = {
+    "ancient_games/index.py",          # the index projects whole journals
+    "ancient_games/hybrid/runner.py",  # a replay case judges a journal recorded by another run
+    "ablation/score.py",               # scoring an ablation journal from outside any run
+}
+
+
+def _read_events_importers() -> set[str]:
+    """Every shipped module (never the tests) that imports `read_events`, by repo-relative path."""
+    import ast as _ast
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    out = set()
+    for path in sorted(root.glob("ancient_games/**/*.py")) + sorted(root.glob("ablation/**/*.py")):
+        rel = path.relative_to(root).as_posix()
+        if rel == "ancient_games/journal.py":  # where it is defined
+            continue
+        tree = _ast.parse(path.read_text(encoding="utf-8"))
+        for node in _ast.walk(tree):
+            if isinstance(node, _ast.ImportFrom) and any(a.name == "read_events" for a in node.names):
+                out.add(rel)
+            elif isinstance(node, _ast.Attribute) and node.attr == "read_events":
+                out.add(rel)
+    return out
+
+
+def test_f8_read_events_importers_are_the_sanctioned_set():
+    """`Journal.read()` is run-scoped and `read_all()` is the declared escape hatch, but
+    `read_events` is still importable. A fourth caller must not appear silently: it would read
+    another run's events with nothing in the call to say so."""
+    assert _read_events_importers() == SANCTIONED_READ_EVENTS_IMPORTERS
+
+
+def test_f8_the_replay_path_needs_the_whole_file(tmp_path):
+    """runner.py's use is legitimate: UC8 replays UC1's journal, so its own run_id names no event
+    in the file and `Journal(path, case_id).read()` would return nothing to compare."""
+    import json as _json
+    from pathlib import Path
+
+    from ancient_games.hybrid import runner
+
+    case = _json.loads((Path(__file__).parent / "cases" / "hybrid" / "UC8.json").read_text())
+    j = Journal(str(tmp_path / "other.jsonl"), "UC1")
+    j.append({"event": "exit", "algorithm": "C", "steps_fired": [], "exit_type": "RESOLVED",
+              "exit_line": "Gate: resolved by x, no dispatch.", "ctx_keys_set": []})
+    assert case["case_id"] != j.run_id
+    assert Journal(j.path, case["case_id"]).read() == []      # run-scoped: nothing to judge
+    assert len(runner.read_events(j.path)) == 1               # the whole file is the subject
+
+
+# F9 — hot paths -------------------------------------------------------------------------------
+def test_f9_q3_calls_corroborated_claim_ids_once(monkeypatch, tmp_path):
+    """It walks every event; the comprehension called it once per recorded claim."""
+    from ablation import score
+
+    j = Journal(str(tmp_path / "q3.jsonl"), "q3")
+    for cid in ("C1", "C2", "C3", "C4"):
+        j.claim_recorded(cid, "a", "MAIN", "executable", cid, "command", "pytest -q")
+    events = j.read()
+    calls = []
+    real = score.corroborated_claim_ids
+    monkeypatch.setattr(score, "corroborated_claim_ids", lambda ev: calls.append(1) or real(ev))
+    got = score.q3_no_self_count(events)
+    assert len(calls) == 1
+    assert got["uncorroborated_claims"] == ["C1", "C2", "C3", "C4"] and got["answer"] is False
+
+
+def test_f9_differential_compares_the_findings_it_already_computed(tmp_path, monkeypatch):
+    """Each journal-backed lint runs once per differential call, not twice."""
+    from ancient_games import lints
+
+    j = _follow_on_journal(tmp_path, "hot", ["later"])
+    j.check_executed("X", "hash-compare", "sha256sum a", "h", "h")
+    counts = {}
+    for name in ("lint_corroboration_capped", "lint_hub_touched_without_tripwire",
+                 "lint_downstream_consumer_check_unrecorded", "lint_claims_without_evidence",
+                 "lint_follow_on_without_disposition"):
+        real = getattr(lints, name)
+        monkeypatch.setattr(lints, name, (lambda n, f: lambda *a, **k: (counts.__setitem__(n, counts.get(n, 0) + 1),
+                                                                       f(*a, **k))[1])(name, real))
+    out = lints.run_all_on_plan(Plan([]), j.read(), backend="differential", run_id="hot")
+    assert set(counts.values()) == {1}, counts
+    assert [f.lint for f in out] == ["follow-on-without-disposition"]
+    assert not hasattr(lints, "_python_journal_lints")  # the second, redundant pass is gone

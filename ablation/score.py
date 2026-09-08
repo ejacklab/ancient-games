@@ -118,7 +118,8 @@ def q3_no_self_count(events: list[dict]) -> dict:
                 if (ks := _find_keys(e["args"], SELF_COUNT_KEYS))]
     corroborated = any(e["tool"] == "corroborate" and event_ok(e) for e in calls)
     recorded = recorded_claim_ids(events)
-    uncorroborated = [c for c in recorded if c not in corroborated_claim_ids(events)]  # H8
+    covered = corroborated_claim_ids(events)  # hoisted: it walks every event, and the comprehension called it per claim
+    uncorroborated = [c for c in recorded if c not in covered]  # H8
     proves = [(i, e) for i, e in enumerate(events) if e.get("event") == "tool_call" and e["tool"] == "prove"
               and event_ok(e) and e.get("exit_type") == "PASS"]
     consistent, line = None, None

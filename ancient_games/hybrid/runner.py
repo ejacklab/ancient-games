@@ -78,6 +78,10 @@ def _git(root: str, *argv: str) -> None:
 # --- run ------------------------------------------------------------------------------
 def run_case(case: dict, journal_path: str, cwd: str, tools: dict[str, RegisteredTool] | None = None) -> Report:
     if case.get("mode") == "replay":
+        # `read_events`, not `Journal.read()`: a replay case judges a journal RECORDED ELSEWHERE
+        # (UC8 replays UC1's, so its own case_id/run_id names no event in the file) and the whole
+        # file is the subject. One of three sanctioned unscoped readers — see
+        # tests/test_review_b_fixes.py::test_f8_read_events_importers_are_the_sanctioned_set.
         events = read_events(journal_path)
         return Report(case["case_id"], None, events, compare(case, events, None))
     if tools is None:

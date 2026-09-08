@@ -64,7 +64,13 @@ class GateExit:
 
 def decision_tree(difficulty: str, capability: Iterable[str]) -> int:
     """F1: MAIN only / +1 / +2 / +3 — one agent per independent angle or
-    capability MAIN lacks. (May exceed 3 here; C·4 splits, never raises the cap.)"""
+    capability MAIN lacks. (May exceed 3 here; C·4 splits, never raises the cap.)
+
+    `difficulty` is C·2's stated level, passed here because F1 names it alongside
+    capability — but it is ADVISORY and deliberately not read: the count is one agent
+    per independent angle, and no spec sentence says how a difficulty level would move
+    it. `ctx.CTX_META` records difficulty as consumed by C's PLAN_NEEDED exit value
+    accordingly; `ctx.CHECKED_CONSUMERS` is what keeps that honest."""
     return len(list(capability))
 
 

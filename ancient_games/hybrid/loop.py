@@ -54,6 +54,13 @@ def run(tools: dict[str, RegisteredTool], choose: Callable[[dict, dict], Call | 
     last_results: dict[str, object] = {}
     out = RunResult(ctx, "CEILING_REACHED")
     for i in range(ceiling):
+        # `journal.read()` re-parses and re-validates the whole file each iteration. Left as-is,
+        # deliberately: every tool appends through its OWN `Journal` instance, so this one cannot
+        # know a cached snapshot is still current, and an incremental reader would need a file
+        # offset + staleness protocol whose failure mode is serving the loop stale events — the
+        # one thing the journal exists to prevent. The cost it buys off is 0.55 ms per read on
+        # the largest real journal (UC2J, 108 events / 139 KB), i.e. ~24 ms across a ceiling-44
+        # run. Revisit if a run's journal reaches tens of thousands of events.
         obs = {"ctx": ctx.as_dict(), "events": journal.read(), "suggested_next": list(default_plan),
                "last_results": dict(last_results)}
         call = choose(obs, tools)

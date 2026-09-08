@@ -77,3 +77,30 @@
 61. `downstream-consumer-check-unrecorded`: an empty `ref` is covered by *any* consumer_check of the run and by none when the run has none — `any(set() <= r for r in refs)` is False on an empty `refs`; the SQL keeps that (tested).
 62. `rebuild_index` (supersedes #40's decline): a relative or missing `db_path` is declined `invalid-args: db_path must be an absolute path (str)` (H2), so UC9's scripted `"index.sqlite"` now records that decline instead of `index-not-built`. The tool's first docstring line — the `tools --inputs` cell the ablation packets carry verbatim — is left as it was so the packets under `ablation/packets/` stay byte-identical with the frozen attempt-3/4 ones; refreshing it is an ablation-protocol decision, not a coder's.
 63. Tests (`tests/test_index.py`): the oracle is always the Python lint on the same events — 10 real journals × 5 queries and 8 spec cases × 5 queries, 0 mismatches; `count_sources` on every claim of every real plan; a three-journal merge (`C1` in each run) equal per run, with the unscoped count shown to differ (UC3-2: 8 findings scoped, 2 unscoped); two rebuilds byte-identical (`iterdump`); relative paths raise; user_version; a FAIL and a PASS input per query; the CLI `call rebuild_index` end to end. The dispatch counted 11 journals; there are 10 (492 events).
+
+## REVIEW_B (xhigh review, 2026-09)
+
+- **F7 — `difficulty` is advisory, not an F1 input.** `CTX_META` declared it consumed by "C·3 (F1
+  decision tree)" while `stages.decision_tree` never read the argument, and `Ctx.validate()` could
+  not notice: it only checked that the metadata NAMES a consumer. Chosen: declare it advisory rather
+  than make it move the count — F1 as specified (SPEC.md §4 C·3) is one agent per independent angle
+  or missing capability, and no spec sentence says how a difficulty level would change that, so
+  inventing one would alter dispatch counts across every case with nothing behind it. difficulty is
+  recorded as consumed by C's `PLAN_NEEDED` exit value, which is true. `ctx.CHECKED_CONSUMERS` +
+  `ctx._reads` are the new check for the class: a CTX_META consumer entry that names a function must
+  name one whose body actually LOADS the argument.
+- **F8 — `read_events` stays public, with a pinned importer set.** `Journal.read()` is run-scoped and
+  `read_all()` is the escape hatch, but `read_events` remains importable and three shipped modules
+  use it. Not renamed to `_read_events`: nine test modules import it as part of the module's real
+  surface, so privatizing would either force private access in tests or need a public alias (no
+  guard at all). Instead the sanctioned set — `index.py`, `hybrid/runner.py`, `ablation/score.py` —
+  is pinned by a test that walks the shipped source. `hybrid/runner.py:81` is legitimate: a replay
+  case judges a journal recorded by ANOTHER run (UC8 replays UC1's), so the whole file is the
+  subject and a run-scoped read would return nothing.
+- **F9 — `loop.run` keeps re-reading the journal each iteration.** Not made incremental. Every tool
+  appends through its own `Journal` instance, so the loop's instance cannot know a cached snapshot
+  is current; an incremental reader needs a file-offset/staleness protocol whose failure mode is
+  serving the loop stale events — the thing the journal exists to prevent. Measured cost bought off:
+  0.55 ms per read on the largest real journal (UC2J, 108 events / 139 KB), ~24 ms over a ceiling-44
+  run. Revisit at tens of thousands of events per run.
+
