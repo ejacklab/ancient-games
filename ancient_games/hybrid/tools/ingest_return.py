@@ -28,9 +28,12 @@ def delegate(entry: dict, agent_id: str, actor: str, framing: str | None):
     mirror used, unchanged — including the `claim_id` collapse below.
     """
     if classify_event(entry) == "check_executed":
-        # B·1 (c) counts only check_executed{claim_id=X, falsifies=X}, so an entry naming the claim
-        # it falsifies is recorded against THAT claim, not against the entry's own id.
-        return record_check, {"claim_id": entry.get("falsifies") or entry.get("claim_id"),
+        # H18 (ABLATION_5): the mirror used to collapse claim_id to `falsifies` here, so the SAME
+        # check counted through this door and not through `record_check` — n=1/2 vs n=0/2 on a
+        # byte-identical entry. One rule now, both doors: `claim_id` is the claim the check is
+        # evidence for, and a `falsifies` naming a different claim is the caller's error, named
+        # by `record_check.validate` with this entry's index.
+        return record_check, {"claim_id": entry.get("claim_id"),
                               "mechanism": entry.get("mechanism", "other:unlabelled"),
                               "command": entry.get("command", entry.get("evidence_ref", "")),
                               "expected": entry.get("expected", ""), "observed": entry.get("observed", ""),

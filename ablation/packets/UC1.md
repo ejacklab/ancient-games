@@ -175,7 +175,7 @@ guard  side_effects=read  cost=cheap  -> GuardExit
 ingest_return  side_effects=none  cost=cheap  -> list[event]
   actor: str  # the actor of the action the claim is about: MAIN | <agent-id> | none (Z3′) — B·1 counts a claim_recorded as a source only when its author differs from this
   agent_id: str
-  fields: dict  # the agent's return, keyed by the §6 return contract — REPORT_BACK, CLAIMS (always; [] when none), FOLLOW_ON, NOT_DONE, plus SCOPE_DELTA / VERDICT / NOT_ESTABLISHED where they apply (`schema.RETURN_CONTRACT` is the full table). A CLAIMS entry is {claim_id, kind: executable|judgment, text, evidence_type: command|file:line, evidence_ref, framing?, closed_world?}; an entry that instead names a value it could have failed to match — {claim_id, falsifies, mechanism, command, expected, observed} — is recorded as a check, not a claim
+  fields: dict  # the agent's return, keyed by the §6 return contract — REPORT_BACK, CLAIMS (always; [] when none), FOLLOW_ON, NOT_DONE, plus SCOPE_DELTA / VERDICT / NOT_ESTABLISHED where they apply (`schema.RETURN_CONTRACT` is the full table). A CLAIMS entry is {claim_id, kind: executable|judgment, text, evidence_type: command|file:line, evidence_ref, framing?, closed_world?}; an entry that instead names a value it could have failed to match — {claim_id, mechanism, command, expected, observed} — is recorded as a check on THAT claim_id, not as a claim (`falsifies`, if given, restates the same claim_id)
   framing: str
 
 localize  side_effects=none  cost=cheap  -> {test_id, file, line, error_type}
@@ -206,7 +206,7 @@ record_check  side_effects=none  cost=cheap  -> check_executed event
   claim_id: str
   command: str
   expected: str|int
-  falsifies: str  # a claim_id (this call's, or one recorded in this run); the condition goes in `expected`
+  falsifies: str  # this call's own claim_id, restated (H18: B·1 counts a check only when the two agree, so any other value counts for nothing); the condition goes in `expected`
   mechanism: str  one of: interpreter-import | pytest-fail-first | suite-count | git-diff-scope | hash-compare | adversarial-case | other:<name>
   observed: str|int
   pre_fix_result: str  one of: FAIL | null
@@ -239,7 +239,7 @@ run_suite  side_effects=none  cost=suite  -> {passed, failed, output, returncode
 | field | when | shape | consumed by | escape value |
 |---|---|---|---|---|
 | REPORT_BACK | always | path + ≤3 lines | MAIN | N/A — required, always present |
-| CLAIMS | always | each → command \| file:line \| URL \| (opinion), plus kind ∈ {executable, judgment}, plus falsifies: <claim_id> when the entry is an executed check backing another claim | A, B | N/A — required, always present (an empty list only when the agent made literally no claims, itself an explicit [], never omitted) |
+| CLAIMS | always | each → command \| file:line \| URL \| (opinion), plus kind ∈ {executable, judgment}, plus falsifies: <claim_id> restating the entry's own claim_id when it is an executed check | A, B | N/A — required, always present (an empty list only when the agent made literally no claims, itself an explicit [], never omitted) |
 | SCOPE_DELTA | always when SCOPE was present; else N/A | added/dropped, explicit even if empty | E | N/A (SCOPE absent from the dispatch) |
 | FOLLOW_ON | always | finding → fixed \| new-task \| dismissed:reason \| escalated:owner | E | N/A — required; an explicit empty list when there is nothing to report, never omitted |
 | NOT_DONE | always | step → why → command for MAIN | E, D | N/A — required; an explicit empty list when nothing is left undone |

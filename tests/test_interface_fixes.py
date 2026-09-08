@@ -187,17 +187,36 @@ def test_bad_record_check_field_is_invalid_args_never_internal_error(name, tmp_p
     assert r.reason.startswith(f"invalid-args: {field} must be "), r.reason
 
 
-def test_bad_falsifies_still_enumerates_the_admissible_claim_ids(tmp_path):
-    """The prefix is gained WITHOUT losing the enumerated detail — that detail is the
-    admissible-alternatives content, and is why this field has had 0 failures since it was added."""
-    env = _env(tmp_path)
-    assert record_claim_tool.run(env, {"claim_id": CLAIM, "author": "MAIN", "actor": "agent-1", "kind": "judgment",
-                                       "text": "the thing holds", "evidence_type": "command",
-                                       "evidence_ref": "$ true"}).ok is True
-    r = record_check_tool.run(env, dict(VALID_CHECK, falsifies="0 matches or file missing"))
-    assert r.reason == ("invalid-args: falsifies must be a claim_id — put the condition in `expected` "
-                        f"(this call's claim_id is {CLAIM!r}; claim_ids recorded in this run: ['{CLAIM}']), "
+def test_bad_falsifies_names_the_one_value_it_may_take(tmp_path):
+    """H18 narrowed the admissible set from "a claim_id recorded in this run" to exactly one value —
+    this call's own claim_id — because B·1 counts a check only when the two agree. Naming the single
+    legal value is tighter than enumerating every recorded id, and the `expected` guidance that gave
+    this field 0 failures since ABLATION_1's H3 is kept verbatim."""
+    r = record_check_tool.run(_env(tmp_path), dict(VALID_CHECK, falsifies="0 matches or file missing"))
+    assert r.reason == (f"invalid-args: falsifies must be this call's own claim_id, {CLAIM!r} — a check is "
+                        "evidence FOR the claim named in `claim_id`, and B·1 counts it only when the two "
+                        "agree, so a different value here counts for nothing. Put a CONDITION in `expected`; "
+                        "to back claim '0 matches or file missing', pass claim_id='0 matches or file missing', "
                         "got '0 matches or file missing' (str)")
+
+
+def test_the_same_check_counts_the_same_through_both_doors(tmp_path):
+    """H18 itself: one byte-identical entry used to reach n=0/2 through `record_check` and n=1/2
+    through `ingest_return`, because the mirror collapsed claim_id to `falsifies` and record_check
+    did not. Both doors now apply one rule, so both give the same answer — here, both refuse."""
+    entry = {"claim_id": "C1-check", "falsifies": CLAIM, "mechanism": "suite-count",
+             "command": "pytest -q", "expected": "111 passed", "observed": "111 passed"}
+    direct = record_check_tool.run(_dispatched(tmp_path), dict(entry))
+    viareturn = ingest_tool.run(_dispatched(tmp_path), {"agent_id": "adv-1", "actor": "MAIN",
+                                                        "fields": {"CLAIMS": [dict(entry)]}})
+    assert direct.ok is False and viareturn.ok is False
+    assert direct.reason.startswith("invalid-args: falsifies must be this call's own claim_id, 'C1-check'")
+    assert viareturn.reason.startswith("invalid-args: fields.CLAIMS[0].falsifies must be this call's own claim_id")
+    # and the shape that DOES count is accepted identically through both
+    ok_entry = dict(entry, claim_id=CLAIM)
+    assert record_check_tool.run(_dispatched(tmp_path), dict(ok_entry)).ok is True
+    assert ingest_tool.run(_dispatched(tmp_path), {"agent_id": "adv-1", "actor": "MAIN",
+                                                   "fields": {"CLAIMS": [dict(ok_entry)]}}).ok is True
 
 
 def test_other_prefixed_mechanism_is_still_accepted(tmp_path):
@@ -410,16 +429,17 @@ def test_ingest_return_accepts_both_claims_shapes_its_schema_documents(tmp_path)
             {"claim_id": "graph-memory-unused", "kind": "executable", "text": "graph memory is unused",
              "evidence_type": "command", "evidence_ref": "python3 -c 'import loop.graph_memory'",
              "closed_world": "AST scan covers every module"},
-            # the documented shape: a check BACKING another claim, which is the case the note describes
-            # and the only one where the claim_id collapse matters
-            {"claim_id": "graph-memory-check", "falsifies": "graph-memory-unused", "mechanism": "suite-count",
+            # H18: a check is evidence FOR the claim in `claim_id`; `falsifies` restates it. The
+            # collapse this used to pin is gone — both doors now apply the same rule.
+            {"claim_id": "graph-memory-unused", "falsifies": "graph-memory-unused", "mechanism": "suite-count",
              "command": "pytest -q", "expected": "all pass", "observed": "all pass"},
         ]}})
     assert r.ok is True, r.reason
     evs = _events(env)
     assert [event["event"] for event in evs] == ["dispatch", "return", "claim_recorded", "check_executed"]
     assert evs[2]["closed_world"] == "AST scan covers every module"
-    # recorded against the claim it falsifies, not its own id — B·1 (c) counts only claim_id == falsifies
+    # counted for B·1 (c), which requires claim_id == falsifies — now the caller's own doing, not a
+    # silent rewrite by the mirror
     assert evs[3]["claim_id"] == "graph-memory-unused" and evs[3]["falsifies"] == "graph-memory-unused"
 
 
@@ -436,7 +456,7 @@ def test_ingest_return_mirrors_claims_through_the_guarded_writers(tmp_path):
     r = ingest_tool.run(env, {"agent_id": "tester-1", "actor": "coder-1", "framing": "adversarial", "fields": {
         "REPORT_BACK": "/agents/t.md",
         "CLAIMS": [{"claim_id": "c1", "kind": "judgment", "evidence_type": "file:line", "evidence_ref": "a.py:3"},
-                   {"claim_id": "c1-check", "kind": "executable", "falsifies": "c1", "mechanism": "pytest-fail-first",
+                   {"claim_id": "c1", "kind": "executable", "falsifies": "c1", "mechanism": "pytest-fail-first",
                     "command": "pytest -q", "expected": "pass", "observed": "pass", "pre_fix_result": "FAIL"},
                    {"claim_id": "c3", "kind": "executable", "evidence_type": "command", "evidence_ref": "sha256sum f",
                     "mechanism": "hash-compare", "command": "sha256sum f", "expected": "abc", "observed": "abc"},

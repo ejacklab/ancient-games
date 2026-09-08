@@ -177,7 +177,8 @@ NOTES: dict[str | tuple[str, str], str] = {
                  "naming an owner-gated file here owner-gates the action",
     "tripwires": "{hub-name-or-matched-ref-path: command}; declare the command in the form it will be run at prove "
                  "time (a pre-commit `git diff HEAD` is wrong post-commit) — re-call guard to correct it",
-    "falsifies": "a claim_id (this call's, or one recorded in this run); the condition goes in `expected`",
+    "falsifies": "this call's own claim_id, restated (H18: B·1 counts a check only when the two agree, so any "
+                 "other value counts for nothing); the condition goes in `expected`",
     "framings": "{claim_id: [framing, ...]} — a LIST per claim, e.g. {\"C1\": [\"static-scan\", \"runtime-trace\"]}; "
                 "keyed by claim_id, not by author",
     "kind": "assigned by rule (D-KIND): text asserting absence / a universal negative (" + "|".join(ABSENCE_PATTERNS)
@@ -196,7 +197,8 @@ NOTES: dict[str | tuple[str, str], str] = {
         "(`schema.RETURN_CONTRACT` is the full table). A CLAIMS entry is "
         "{claim_id, kind: executable|judgment, text, evidence_type: command|file:line, evidence_ref, "
         "framing?, closed_world?}; an entry that instead names a value it could have failed to match — "
-        "{claim_id, falsifies, mechanism, command, expected, observed} — is recorded as a check, not a claim"
+        "{claim_id, mechanism, command, expected, observed} — is recorded as a check on THAT claim_id, "
+        "not as a claim (`falsifies`, if given, restates the same claim_id)"
     ),
     "known_facts": "list of [fact, method, result, date]",
     "actors": "{action-name: MAIN | <agent-id> | none}",

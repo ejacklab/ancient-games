@@ -133,19 +133,20 @@ def test_h3_falsifies_must_be_a_claim_id(tmp_path):
     env = ToolEnv(journal.run_id, journal.path, Ctx(), cwd=str(tmp_path), tools=TOOLS)
     for e in checks_ok:
         r = record_check_tool.run(env, e["args"])
-        # F2: the same enumerated detail, now behind the `invalid-args:` prefix cmd_call exits 2 on
-        assert not r.ok and r.reason.startswith("invalid-args: falsifies must be a claim_id — put the condition "
-                                                "in `expected`")
-        assert "['C2', 'C3', 'C1', 'C4']" in r.reason
+        # F2 put this behind the `invalid-args:` prefix cmd_call exits 2 on; H18 then narrowed the
+        # admissible set to one value, so the message names that value instead of every recorded id
+        assert not r.ok and r.reason.startswith("invalid-args: falsifies must be this call's own claim_id, ")
+        assert "Put a CONDITION in `expected`" in r.reason
     assert not any(e["event"] == "check_executed" for e in journal.read())
     corrected = dict(checks_ok[0]["args"], falsifies="C1")
     r = record_check_tool.run(env, corrected)
     assert r.ok and r.value["falsifies"] == "C1" and journal.read()[-1]["event"] == "check_executed"
     assert count_sources(c1, journal.read(), CapState(0), []) == (1, "add-claim-specific-check")
-    # omitted falsifies defaults to the call's own claim_id (the scripted cases' shape); a different
-    # recorded claim id is accepted; an unrecorded id is not
+    # omitted falsifies defaults to the call's own claim_id (the scripted cases' shape). H18: naming
+    # ANY other claim is now refused — recorded (C4) or not (C9) — because B·1 counts a check only
+    # when claim_id == falsifies, so either way it would have counted for nothing, silently.
     assert record_check_tool.run(env, {k: v for k, v in corrected.items() if k != "falsifies"}).ok
-    assert record_check_tool.run(env, dict(corrected, falsifies="C4")).ok
+    assert not record_check_tool.run(env, dict(corrected, falsifies="C4")).ok
     assert not record_check_tool.run(env, dict(corrected, falsifies="C9")).ok
     assert count_sources(c1, journal.read(), CapState(0), []) == (1, "add-claim-specific-check")  # same command: once
 
@@ -165,7 +166,9 @@ def test_h4_tools_schema_prints_enums_and_the_packets_carry_it():
     gg = [ln for ln in out.splitlines() if ln.strip().startswith("governance_gated:")]
     assert gg and all("one of: none | R1 | R2 | R3 | R9" in ln and "never a bool" in ln for ln in gg)
     assert "mode: str  (required)  one of: read | invoke | mutate" in out
-    assert "falsifies: str  # a claim_id" in out and "consumers:" in out and "tripwires:" in out
+    # H18 narrowed this from "a claim_id" to the one value it may take
+    assert "falsifies: str  # this call's own claim_id, restated" in out
+    assert "consumers:" in out and "tripwires:" in out
     for uc in ("UC1", "UC2", "UC3"):
         packet = (ROOT / "ablation" / "packets" / f"{uc}.md").read_text()
         assert "## Tool schema" in packet and cli.tools_schema(TOOLS) in packet

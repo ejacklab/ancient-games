@@ -196,7 +196,7 @@ def _verdict_role(ctx: Ctx) -> bool:
 RETURN_CONTRACT: list[ReturnField] = [
     ReturnField("REPORT_BACK", _always, "always", "path + ≤3 lines", "MAIN", "N/A — required, always present"),
     ReturnField("CLAIMS", _always, "always",
-                "each → command | file:line | URL | (opinion), plus kind ∈ {executable, judgment}, plus falsifies: <claim_id> when the entry is an executed check backing another claim",
+                "each → command | file:line | URL | (opinion), plus kind ∈ {executable, judgment}, plus falsifies: <claim_id> restating the entry's own claim_id when it is an executed check",
                 "A, B", "N/A — required, always present (an empty list only when the agent made literally no claims, itself an explicit [], never omitted)"),
     ReturnField("SCOPE_DELTA", _scope_present, "always when SCOPE was present; else N/A", "added/dropped, explicit even if empty",
                 "E", "N/A (SCOPE absent from the dispatch)"),
