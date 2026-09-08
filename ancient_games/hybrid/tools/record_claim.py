@@ -5,7 +5,7 @@ from ancient_games.ctx import CLAIM_KINDS, kind_by_rule
 from ancient_games.journal import EVIDENCE_TYPES, Journal
 
 from ..types import ToolResult
-from ._shared import internal_error, invalid_args
+from ._shared import author_refusal, internal_error, invalid_args
 
 MANIFEST = {
     "name": "record_claim",
@@ -36,10 +36,13 @@ def run(env, args):
         return invalid_args("closed_world", "a str stating why the check space is complete, or omitted", closed_world)
     if args.get("evidence_type") not in EVIDENCE_TYPES:
         return invalid_args("evidence_type", " | ".join(EVIDENCE_TYPES), args.get("evidence_type"))
+    journal = Journal(env.journal_path, env.run_id)  # no I/O; constructed here so the F1 check can read it
+    bad = author_refusal(args["author"], journal.read())  # F1: `author` is load-bearing for B·1 (a)
+    if bad is not None:
+        return bad
     try:
         text = args.get("text", args["claim_id"])
         kind, override = assign_kind(args["kind"], text, closed_world)
-        journal = Journal(env.journal_path, env.run_id)
         ev = journal.claim_recorded(args["claim_id"], args["author"], args.get("actor", "MAIN"), kind, text,
                                     args["evidence_type"], args.get("evidence_ref", ""), args.get("framing"),
                                     kind_override=override, closed_world=closed_world if override else None)

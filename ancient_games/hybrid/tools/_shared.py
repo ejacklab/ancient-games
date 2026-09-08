@@ -186,6 +186,32 @@ def invalid_args(field: str, accepted: str, got: Any) -> ToolResult:
                       reason=f"invalid-args: {field} must be {accepted}, got {got!r} ({type(got).__name__})")
 
 
+def dispatched_agent_ids(events: list[dict]) -> set[str]:
+    """agent_ids this run actually dispatched (journaled, I5-capped)."""
+    return {e["agent_id"] for e in events if e.get("event") == "dispatch"}
+
+
+def eligible_authors(events: list[dict]) -> set[str]:
+    """Who may author a `claim_recorded` in this run: MAIN, or an agent this run dispatched.
+
+    B·1 counts category-(a) sources as `author != actor` (stages.py:325), so `author` is
+    load-bearing and was previously a free caller string: three invented names bought n=3/3 with
+    zero dispatches. Policy lives here, in the tool layer — `journal.py` records events and is not
+    the gate.
+
+    `events` MUST come from `Journal(...).read()` (run-scoped); `read_all()` would let another
+    run's dispatches authorise this run's claims."""
+    return {"MAIN"} | dispatched_agent_ids(events)
+
+
+def author_refusal(author: str, events: list[dict]) -> ToolResult | None:
+    """F1: `invalid-args` when `author` is neither MAIN nor an agent this run dispatched."""
+    ok = eligible_authors(events)
+    if author in ok:
+        return None
+    return invalid_args("author", "MAIN, or an agent_id this run dispatched (" + ", ".join(sorted(ok)) + ")", author)
+
+
 def resolve_backend(args: dict) -> tuple[str | None, ToolResult | None]:
     """The §8 lint backend: `args["backend"]` when given, else `$AG_LINT_BACKEND`.
 

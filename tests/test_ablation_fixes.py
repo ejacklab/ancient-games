@@ -252,6 +252,11 @@ def test_h8_claim_with_a_matching_corroborate_sources_result_passes(tmp_path):
     calls = [
         {"tool": "guard", "args": {"action": {"name": "land-spec-v3", "refs": [{"path": "loop/SPEC_v3.md", "mode": "mutate"}],
                                               "consumer_reasoning": "read by humans and the self-lint only"}}},
+        # F1: an author must be MAIN or an agent this run dispatched, so the two reviewers whose
+        # claims corroborate the spec are dispatched first — which is what "two differently-framed
+        # sources by authors other than the actor" means in the first place.
+        {"tool": "dispatch", "args": {"role": "researcher", "framing": "adversarial-review-1", "agent_id": "reviewer-1"}},
+        {"tool": "dispatch", "args": {"role": "researcher", "framing": "adversarial-review-2", "agent_id": "reviewer-2"}},
         {"tool": "record_claim", "args": {"claim_id": "spec-accepted", "author": "reviewer-1", "actor": "designer", "kind": "judgment",
                                           "evidence_type": "file:line", "evidence_ref": "/agents/reviewer-1.md:1", "framing": "adversarial-review-1"}},
         {"tool": "record_claim", "args": {"claim_id": "spec-accepted", "author": "reviewer-2", "actor": "designer", "kind": "judgment",
@@ -263,14 +268,15 @@ def test_h8_claim_with_a_matching_corroborate_sources_result_passes(tmp_path):
     result = loop_run(TOOLS, scripted(calls), journal, ceiling=10, ctx=ctx, cwd=str(tmp_path))
     outcomes = [(s.call.tool, s.result.ok if s.result else None, getattr(s.result.value, "exit_type", None) if s.result else None)
                 for s in result.steps]
-    assert outcomes == [("guard", True, "GATED"), ("record_claim", True, None), ("record_claim", True, None),
+    assert outcomes == [("guard", True, "GATED"), ("dispatch", True, None), ("dispatch", True, None),
+                        ("record_claim", True, None), ("record_claim", True, None),
                         ("corroborate", True, "SOURCES"), ("prove", True, "PASS")]
     exits = [e["exit_line"] for e in journal.read() if e["event"] == "exit"]
     assert exits[-2:] == ["Corroborate: spec-accepted: n=2/2; reconciled=agree.", "Prove: PASS, plan cleared to checkpoint gate."]
     assert result.steps[-1].result.value.findings == []
     # the same run with the corroborate step removed: the claim is recorded, so prove refuses to pass it
     journal2 = Journal(str(tmp_path / "j2.jsonl"), "h8-nocorr")
-    result2 = loop_run(TOOLS, scripted(calls[:3] + calls[4:]), journal2, ceiling=10, ctx=Ctx(actor={"land-spec-v3": "designer"}), cwd=str(tmp_path))
+    result2 = loop_run(TOOLS, scripted(calls[:5] + calls[6:]), journal2, ceiling=10, ctx=Ctx(actor={"land-spec-v3": "designer"}), cwd=str(tmp_path))
     r = result2.steps[-1].result
     assert r.ok and r.value.exit_type == "RETURN_TO_PLANNER" and r.value.findings == ["RETURN_TO_PLANNER: run corroborate for spec-accepted"]
     assert score.q3_no_self_count(journal.read())["answer"] is True
