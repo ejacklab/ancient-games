@@ -148,6 +148,13 @@ _ENUMS: dict[tuple[str, str], tuple[Any, ...]] = {
 EVIDENCE_TYPES = _ENUMS[("claim_recorded", "evidence_type")]  # what a claim_recorded event accepts
 
 
+def valid_mechanism(m: Any) -> bool:
+    """§7's rule for `check_executed.mechanism`: a MECHANISMS entry, or `other:<name>` with a
+    non-empty name. One definition — `validate_event` and `tools/record_check` both call it, so
+    the write-time check and the caller-facing one cannot drift."""
+    return isinstance(m, str) and (m in MECHANISMS or (m.startswith("other:") and len(m) > 6))
+
+
 def validate_event(event: dict) -> dict:
     """Return the event if it has exactly the typed fields §7 states; else ValueError."""
     if not isinstance(event, dict):
@@ -170,10 +177,9 @@ def validate_event(event: dict) -> dict:
         enum = _ENUMS.get((event["event"], name))
         if enum is not None and event[name] not in enum:
             raise ValueError(f"{event['event']}.{name} must be one of {enum}, got {event[name]!r}")
-    if event["event"] == "check_executed":
-        m = event["mechanism"]
-        if m not in MECHANISMS and not (m.startswith("other:") and len(m) > 6):
-            raise ValueError(f"check_executed.mechanism must be one of {MECHANISMS} or other:<name>, got {m!r}")
+    if event["event"] == "check_executed" and not valid_mechanism(event["mechanism"]):
+        raise ValueError(f"check_executed.mechanism must be one of {MECHANISMS} or other:<name>, "
+                         f"got {event['mechanism']!r}")
     if event["event"] == "consumer_check" and not all(isinstance(r, str) for r in event["ref"]):
         raise ValueError("consumer_check.ref must be a list of str")
     extra = set(event) - set(shape) - {"ts", "run_id", "event"}

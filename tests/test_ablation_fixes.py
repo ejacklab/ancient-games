@@ -132,7 +132,9 @@ def test_h3_falsifies_must_be_a_claim_id(tmp_path):
     env = ToolEnv(journal.run_id, journal.path, Ctx(), cwd=str(tmp_path), tools=TOOLS)
     for e in checks_ok:
         r = record_check_tool.run(env, e["args"])
-        assert not r.ok and r.reason.startswith("falsifies must be a claim_id; put the condition in `expected`")
+        # F2: the same enumerated detail, now behind the `invalid-args:` prefix cmd_call exits 2 on
+        assert not r.ok and r.reason.startswith("invalid-args: falsifies must be a claim_id — put the condition "
+                                                "in `expected`")
         assert "['C2', 'C3', 'C1', 'C4']" in r.reason
     assert not any(e["event"] == "check_executed" for e in journal.read())
     corrected = dict(checks_ok[0]["args"], falsifies="C1")

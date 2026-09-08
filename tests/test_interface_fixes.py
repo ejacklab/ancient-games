@@ -14,12 +14,19 @@ from __future__ import annotations
 
 import ast
 import json
+import subprocess
+import sys
 from pathlib import Path
+
+import pytest
+
+from ablation import fixtures
 
 from ancient_games.ctx import Ctx
 from ancient_games.hybrid.registry import load_tools
 from ancient_games.hybrid.tools import (corroborate as corroborate_tool, dispatch as dispatch_tool,
-                                        ingest_return as ingest_tool, record_claim as record_claim_tool)
+                                        ingest_return as ingest_tool, record_check as record_check_tool,
+                                        record_claim as record_claim_tool)
 from ancient_games.hybrid.types import ToolEnv
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -154,3 +161,79 @@ def test_claim_recorded_writers_are_the_sanctioned_set():
     """A third writer would re-open the F1 hole quietly: the author check lives at the two call
     sites, not in `journal.py`, which records events and is not the gate."""
     assert _claim_recorded_writers() == SANCTIONED_CLAIM_RECORDED_WRITERS
+
+
+# --- step 2 (F2): record_check validates its fields, and a bad one exits 2 ---------------------
+VALID_CHECK = {"claim_id": CLAIM, "mechanism": "suite-count", "command": "pytest -q",
+               "expected": "318 passed", "observed": "318 passed"}
+BAD_CHECKS = {
+    "mechanism": dict(VALID_CHECK, mechanism="eyeballed-it"),
+    "bare-other": dict(VALID_CHECK, mechanism="other:"),
+    "pre_fix_result": dict(VALID_CHECK, pre_fix_result="PASS"),
+    "expected": dict(VALID_CHECK, expected=["318 passed"]),
+    "observed": dict(VALID_CHECK, observed={"n": 318}),
+    "falsifies": dict(VALID_CHECK, falsifies="0 matches or file missing"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(BAD_CHECKS))
+def test_bad_record_check_field_is_invalid_args_never_internal_error(name, tmp_path):
+    r = record_check_tool.run(_env(tmp_path), dict(BAD_CHECKS[name]))
+    assert r.ok is False
+    field = "mechanism" if name == "bare-other" else name
+    assert r.reason.startswith(f"invalid-args: {field} must be "), r.reason
+
+
+def test_bad_falsifies_still_enumerates_the_admissible_claim_ids(tmp_path):
+    """The prefix is gained WITHOUT losing the enumerated detail — that detail is the
+    admissible-alternatives content, and is why this field has had 0 failures since it was added."""
+    env = _env(tmp_path)
+    assert record_claim_tool.run(env, {"claim_id": CLAIM, "author": "MAIN", "actor": "agent-1", "kind": "judgment",
+                                       "text": "the thing holds", "evidence_type": "command",
+                                       "evidence_ref": "$ true"}).ok is True
+    r = record_check_tool.run(env, dict(VALID_CHECK, falsifies="0 matches or file missing"))
+    assert r.reason == ("invalid-args: falsifies must be a claim_id — put the condition in `expected` "
+                        f"(this call's claim_id is {CLAIM!r}; claim_ids recorded in this run: ['{CLAIM}']), "
+                        "got '0 matches or file missing' (str)")
+
+
+def test_other_prefixed_mechanism_is_still_accepted(tmp_path):
+    r = record_check_tool.run(_env(tmp_path), dict(VALID_CHECK, mechanism="other:my-thing"))
+    assert r.ok is True, r.reason
+    assert r.value["mechanism"] == "other:my-thing"
+
+
+def test_a_valid_call_writes_the_same_event_as_before(tmp_path):
+    """The validators are a gate, not a rewrite: a sound call's event is unchanged."""
+    r = record_check_tool.run(_env(tmp_path), dict(VALID_CHECK))
+    assert r.ok is True, r.reason
+    assert {k: v for k, v in r.value.items() if k not in ("ts", "run_id")} == {
+        "event": "check_executed", "claim_id": CLAIM, "falsifies": CLAIM, "mechanism": "suite-count",
+        "command": "pytest -q", "expected": "318 passed", "observed": "318 passed", "pre_fix_result": None}
+
+
+@pytest.fixture(scope="module")
+def manifest(tmp_path_factory):
+    d = tmp_path_factory.mktemp("if-cli")
+    repo = fixtures.make_uc1(str(d / "repo"))
+    p = subprocess.run([sys.executable, "-m", "ancient_games.hybrid", "init", "--run-id", "if",
+                        "--journal", str(d / "j.jsonl"), "--cwd", repo], cwd=ROOT, capture_output=True, text=True)
+    assert p.returncode == 0, p.stderr
+    return json.loads(p.stdout)["manifest"]
+
+
+def _call(manifest, tool, args):
+    return subprocess.run([sys.executable, "-m", "ancient_games.hybrid", "--manifest", manifest,
+                           "call", tool, json.dumps(args)], cwd=ROOT, capture_output=True, text=True)
+
+
+@pytest.mark.parametrize("name", sorted(BAD_CHECKS))
+def test_cli_exits_2_on_every_bad_record_check_field(name, manifest):
+    """The exit code IS the defect: `cmd_call` keys EXIT_REFUSED on the `invalid-args:` prefix, so
+    before F2 a bad `falsifies` returned a bare reason and the process exited 0 — a caller error
+    reporting success."""
+    p = _call(manifest, "record_check", BAD_CHECKS[name])
+    out = json.loads(p.stdout)
+    assert out["ok"] is False and out["refused_by"] is None, out
+    assert out["reason"].startswith("invalid-args: "), out
+    assert p.returncode == 2, p.stdout + p.stderr
