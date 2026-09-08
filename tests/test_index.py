@@ -83,11 +83,11 @@ def _build(journal_path: str, tmp_path: Path, name: str = "index.sqlite") -> sql
 
 # --- 1. differential on real data ----------------------------------------------------------
 def test_real_journal_set_is_the_expected_one():
-    """11 since ablation 4 (attempt5/GM1, 26 events). The pin is what stops a journal appearing or
+    """12 since ablation 5 (attempt5 + attempt6, both GM1). The pin is what stops a journal appearing or
     vanishing unnoticed, so a new run updates it deliberately — the differential test below then
     runs over the new journal too, which is how a fresh run's events get lint-checked at all."""
-    assert len(REAL_JOURNALS) == 11
-    assert sum(len(read_events(p)) for p in REAL_JOURNALS) == 518
+    assert len(REAL_JOURNALS) == 12
+    assert sum(len(read_events(p)) for p in REAL_JOURNALS) == 549
 
 
 @pytest.mark.parametrize("journal_path", REAL_JOURNALS, ids=[os.path.relpath(p, ROOT / "ablation" / "runs") for p in REAL_JOURNALS])
