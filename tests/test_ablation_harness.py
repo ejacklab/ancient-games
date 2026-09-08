@@ -88,6 +88,22 @@ def test_cli_round_trip_init_gate_guard_refused_commit_approve_commit(tmp_path):
     assert all(e["run_id"] == "rt" for e in events)
 
 
+def test_gm1_packet_carries_the_generated_blocks_and_its_case_task():
+    """The ablation-4 packet is not in the UC tuple above (its case file lives under ablation/cases,
+    not tests/cases/hybrid, so it is never executed as a scripted case). Pin the same properties."""
+    packet = (ROOT / "ablation" / "packets" / "GM1.md").read_text()
+    assert tools_table(load_tools(), inputs=True) in packet
+    assert return_contract_table() in packet
+    assert json.loads((ROOT / "ablation" / "cases" / "GM1.json").read_text())["task"] in packet
+    for ph in ("{{CWD}}", "{{RUN_ID}}", "{{JOURNAL}}", "{{MANIFEST}}", "{{HARNESS}}"):
+        assert ph in packet
+    # the neutral framing the design requires: the belief is stated as unestablished, and nothing
+    # names the mechanism under test (predictions 2 and 4 die if the packet hints at either)
+    assert "has not been established" in packet
+    for leak in ("program_db.py:551", "lazy import", "D-KIND", "closed_world", "framing"):
+        assert leak not in packet.split("## Task")[1].split("## Run")[0], leak
+
+
 def test_cli_exit_codes_and_orchestrator_events(tmp_path):
     repo = fixtures.make_uc3(str(tmp_path / "repo"))
     journal = str(tmp_path / "j.jsonl")
