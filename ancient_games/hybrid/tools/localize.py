@@ -9,6 +9,10 @@ MANIFEST = {
     "side_effects": "none", "cost": "cheap", "participates_in": [], "entrypoint": "run",
 }
 
+# Harnesses set FORCE_COLOR/PY_COLORS, so a captured pytest run arrives with SGR escapes and
+# every ^-anchored pattern below misses (UC7 went red-then-green correctly while localize
+# reported "no failure located"). Strip them before matching.
+_ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 _FAILED = re.compile(r"^(?:FAILED|ERROR) (\S+?)(?: - (.*))?$", re.M)
 _FRAME = re.compile(r"^([\w./-]+\.py):(\d+): ", re.M)
 _ERR = re.compile(r"^E\s+(\w+(?:Error|Exception|Failed)\b)", re.M)
@@ -17,6 +21,7 @@ _ERR = re.compile(r"^E\s+(\w+(?:Error|Exception|Failed)\b)", re.M)
 def run(env, args):
     try:
         out = args.get("suite_output") or ""
+        out = _ANSI.sub("", out)
         failed = _FAILED.search(out)
         frames = _FRAME.findall(out)
         err = _ERR.search(out)
