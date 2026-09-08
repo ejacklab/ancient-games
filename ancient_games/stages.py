@@ -122,7 +122,14 @@ def gate(ctx: Ctx, task: TaskInput, journal: Journal, registry: list[Row] = REGI
         # `count` is the largest group's N (ctx.count is a per-plan N, bounded 0..3 by
         # Ctx.validate; the plan-wide total lives in dispatch_count, which cap_state reads).
         ctx.count = max((g.count for g in groups), default=0)
-        ctx.execution_status = "dispatched" if any(g.count >= 1 for g in groups) else "main_executes"
+        # D·5's override stands on the split path too. Sub-gates are re-planned with
+        # probe=None, so the parent's C·1 guard is the only place hard_blocked can come
+        # from; overwriting it here lost it outright and journalled a Case-2 plan as
+        # `dispatched` — the same task kept the status at N<=3 and dropped it at N>3.
+        if probe_guard is not None and ctx.execution_status == "hard_blocked":
+            pass
+        else:
+            ctx.execution_status = "dispatched" if any(g.count >= 1 for g in groups) else "main_executes"
         ctx.actor.update(task.actors)
         ctx.dispatch_count += sum(g.count for g in groups)
         fired.append("C·5")
@@ -131,7 +138,7 @@ def gate(ctx: Ctx, task: TaskInput, journal: Journal, registry: list[Row] = REGI
         line = f"Gate: split into {k} groups, each re-planned, N≤3 each."
         journal.exit("C", fired, "PLAN_NEEDED[]", line, ctx.keys_set())
         return GateExit("PLAN_NEEDED[]", line, count, task.difficulty, ctx.stop_criterion, ctx.governance_gated,
-                        ctx.execution_status, groups=groups, steps_fired=fired)
+                        ctx.execution_status, groups=groups, steps_fired=fired, probe_guard=probe_guard)
     ctx.count = count
     if probe_guard is not None and ctx.execution_status == "hard_blocked":
         pass  # D·5's override stands (Case 2)

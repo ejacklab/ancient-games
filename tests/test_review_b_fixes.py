@@ -438,3 +438,39 @@ def test_f9_differential_compares_the_findings_it_already_computed(tmp_path, mon
     assert set(counts.values()) == {1}, counts
     assert [f.lint for f in out] == ["follow-on-without-disposition"]
     assert not hasattr(lints, "_python_journal_lints")  # the second, redundant pass is gone
+
+
+# --- C·4 split path must preserve D·5's hard_blocked override (review finding) -------------
+def test_split_path_preserves_hard_blocked_from_the_probe_guard(tmp_path):
+    """Same task, same unapproved owner-gated probe: the status survived at N<=3 and was
+    silently overwritten with `dispatched` at N>3, journalling a Case-2 plan as dispatched."""
+    import os
+    from ancient_games import stages, registry as reg
+    from ancient_games.journal import Journal
+    from ancient_games.ctx import Ctx, ArtifactRef
+
+    row = [r for r in reg.REGISTRY if getattr(r, "gate", None) == "owner"][0]
+    path = row.pattern[0] if isinstance(row.pattern, tuple) else row.pattern
+
+    def run(n):
+        j = Journal(str(tmp_path / f"j{n}.jsonl"), f"r{n}")
+        probe = ArtifactRef(path=path, mode="invoke")
+        act = stages.ActionInput(name="probe-act", refs=[probe],
+                                 approval_on_record=False, only_candidate_for_count0=True)
+        t = stages.TaskInput(name="t", role="researcher", difficulty="MED",
+                             capability=[f"angle{i}" for i in range(n)],
+                             probe=probe, probe_action=act,
+                             actors={"probe-act": "MAIN"}, stop_criterion="done")
+        c = Ctx()
+        ex = stages.gate(c, t, j)
+        return ex, c
+
+    ex3, c3 = run(3)
+    assert ex3.exit_type == "PLAN_NEEDED" and c3.execution_status == "hard_blocked"
+
+    ex4, c4 = run(4)
+    assert ex4.exit_type == "PLAN_NEEDED[]", "4 capabilities must take the split path"
+    assert c4.execution_status == "hard_blocked", (
+        f"split path lost D·5's override: {c4.execution_status!r}")
+    assert ex4.execution_status == "hard_blocked", "the exit line must carry it too"
+    assert ex4.probe_guard is not None, "the split return must surface the probe guard"
