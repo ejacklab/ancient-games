@@ -15,10 +15,14 @@ MANIFEST = {
 def unmatched_tripwire_keys(action, registry=reg.REGISTRY) -> tuple[list[str], list[str]]:
     """H11 (ABLATION_2): a declared tripwire must land on a hub element of this action — keyed by the hub's
     name or by the path of a ref that matched into it (H6). A key that resolves to no hub was silently
-    dropped (UC2J: `tripwire: {}`); now it is the caller's error, named. Returns (unmatched keys, hubs)."""
+    dropped (UC2J: `tripwire: {}`); now it is the caller's error, named. Returns (unmatched keys, the
+    keys that would have been accepted).
+
+    F5: it returned `hubs`, which is a strict subset of what it accepts — a path-alias key is legal
+    and was not listed, so the rejection was incomplete and, for that case, misleading."""
     hit = reg.lookup(action.refs, registry)
     allowed = {k for h in hit.hubs for k in hit.tripwire_keys(h)}
-    return [k for k in action.tripwires if k not in allowed], list(hit.hubs)
+    return [k for k in action.tripwires if k not in allowed], sorted(allowed)
 
 
 def run(env, args):
@@ -26,9 +30,11 @@ def run(env, args):
         action = guard_action(args)
     except (ValueError, TypeError, KeyError) as e:
         return ToolResult(ok=False, reason=f"invalid-args: action: {e}")
-    unmatched, hubs = unmatched_tripwire_keys(action)
+    unmatched, allowed = unmatched_tripwire_keys(action)
     if unmatched:
-        return invalid_args("action.tripwires", f"keyed by a hub element of this action (hubs: {hubs}) or the path of a "
+        # The `consumers` clause stays: where there are no hubs, `allowed` is empty too, and an empty
+        # admissible set is not guidance — that clause is the only part saying what to do next.
+        return invalid_args("action.tripwires", f"one of {allowed} — a hub element of this action, or the path of a "
                             "ref that matched into one; a hub reached only through a mutate ref must be declared in that "
                             "ref's `consumers` first", unmatched)
     snapshot = ctx_snapshot(env.ctx)

@@ -460,7 +460,8 @@ def corroborate(ctx: Ctx, claims: list[Claim], journal: Journal, action: str,
     results: list[ClaimResult] = []
     n_req = n_required_for(ctx, registry)
     if action not in ctx.actor:
-        raise ValueError(f"ctx.actor has no entry for action {action!r} (set at C·3/C·4 or by D)")
+        raise ValueError(f"ctx.actor has no entry for action {action!r} (set at C·3/C·4 or by D); "
+                         f"actions with an actor: {sorted(ctx.actor)}")
     cap_state = CapState(ctx.dispatch_count)
     for c in claims:
         c = replace(c, n_required=n_req, stakes=ctx.stakes or 1, actor=ctx.actor[action], action=c.action or action)

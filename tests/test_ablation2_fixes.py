@@ -250,7 +250,9 @@ def test_h11_a_tripwire_keyed_on_an_undeclared_hub_is_named_and_the_declared_con
     assert all("hub=[]" in ln for ln in d_lines)  # the defect, as journaled: hub [] and tripwire {} on every guard
     # replayed: the silently dropped tripwire key is now the caller's error, and the reason says what to declare
     r = guard_tool.run(env_for(tmp_path), first)
-    assert not r.ok and r.reason == ("invalid-args: action.tripwires must be keyed by a hub element of this action (hubs: []) or "
+    # F5: the rejection enumerates the keys it would accept (here none — the `consumers` clause is
+    # what tells the caller what to do next)
+    assert not r.ok and r.reason == ("invalid-args: action.tripwires must be one of [] — a hub element of this action, or "
                                      "the path of a ref that matched into one; a hub reached only through a mutate ref must be "
                                      "declared in that ref's `consumers` first, got ['loop/program_db.jsonl'] (list)")
     for g in guards[1:]:  # re-keyed by the mutate path (R7, hub?=no): resolves to no hub either

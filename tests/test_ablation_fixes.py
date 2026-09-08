@@ -106,7 +106,8 @@ def test_h2_uc1_failing_arg_shapes_are_refused_by_field_and_the_valid_shape_runs
         "invalid-args: claims[0].kind must be one of executable|judgment, got 'suite' (str)"
     good = dict(uc1_corr, framings={"C1": ["fix"]})
     r = corroborate_tool.run(env_for(tmp_path), good)
-    assert not r.ok and r.reason == "ctx.actor has no entry for action 'commit' (set at C·3/C·4 or by D)"
+    assert not r.ok and r.reason == ("ctx.actor has no entry for action 'commit' (set at C·3/C·4 or by D); "
+                                     "actions with an actor: []")
     ctx = Ctx(actor={"commit": "MAIN"})
     r = corroborate_tool.run(env_for(tmp_path, ctx), good)
     assert r.ok and r.value.exit_type == "SINGLE_SOURCE"

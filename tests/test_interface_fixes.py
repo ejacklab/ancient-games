@@ -26,6 +26,7 @@ from ancient_games.ctx import Ctx
 from ancient_games.hybrid import cli
 from ancient_games.hybrid.registry import load_tools
 from ancient_games.hybrid.tools import (corroborate as corroborate_tool, dispatch as dispatch_tool,
+                                        guard as guard_tool,
                                         ingest_return as ingest_tool, record_check as record_check_tool,
                                         record_claim as record_claim_tool)
 from ancient_games.hybrid.types import ToolEnv
@@ -301,3 +302,50 @@ def test_note_for_falls_back_to_the_bare_key():
     assert cli.note_for("record_claim", "kind") == cli.NOTES["kind"]
     assert cli.note_for("anything-at-all", "governance_gated") == cli.NOTES["governance_gated"]
     assert cli.note_for("record_claim", "no-such-field") is None
+
+
+# --- step 5 (F5): rejections enumerate their legal values --------------------------------------
+def test_unknown_action_names_the_actions_that_have_an_actor(tmp_path):
+    env = _env(tmp_path)
+    env.ctx.actor = {"land-spec": "designer", ACTION: "MAIN"}
+    r = corroborate_tool.run(env, {"action": "no-such-action", "claims": [{"claim_id": CLAIM, "kind": "judgment"}]})
+    assert r.ok is False
+    assert r.reason == ("ctx.actor has no entry for action 'no-such-action' (set at C·3/C·4 or by D); "
+                        f"actions with an actor: ['{ACTION}', 'land-spec']")
+
+
+def test_a_legal_action_is_unchanged(tmp_path):
+    env = _env(tmp_path)
+    assert _corroborate(env).ok is True
+
+
+COMMIT_TO_MASTER = {"name": "commit-to-master", "refs": [{"path": "master", "mode": "mutate", "verb": "commit"}]}
+
+
+def test_a_tripwire_keyed_by_a_matched_ref_path_alias_is_accepted(tmp_path):
+    """hubs is ['default-branch-history'], but 'master' — the path of the ref that matched into it —
+    is equally legal (H6). Printing hubs alone would have misreported exactly this case."""
+    env = _env(tmp_path)
+    r = guard_tool.run(env, {"action": dict(COMMIT_TO_MASTER, tripwires={"master": "git diff --stat"})})
+    assert r.ok is True, r.reason
+    unmatched, allowed = guard_tool.unmatched_tripwire_keys(
+        guard_tool.guard_action({"action": dict(COMMIT_TO_MASTER, tripwires={"master": "x"})}))
+    assert unmatched == [] and allowed == ["default-branch-history", "master"]
+
+
+def test_a_bad_tripwire_key_enumerates_both_admissible_keys(tmp_path):
+    r = guard_tool.run(_env(tmp_path), {"action": dict(COMMIT_TO_MASTER, tripwires={"nonsense": "x"})})
+    assert r.ok is False
+    assert r.reason.startswith("invalid-args: action.tripwires must be one of "
+                               "['default-branch-history', 'master'] — a hub element of this action"), r.reason
+
+
+def test_the_empty_hub_case_still_carries_the_consumers_clause(tmp_path):
+    """Where there are no hubs the admissible set is empty, and an empty set is not guidance —
+    the `consumers` clause is the only part telling the caller what to do next."""
+    action = {"name": "edit", "refs": [{"path": "research/stability.py", "mode": "mutate"}],
+              "tripwires": {"loop/program_db.jsonl": "x"}}
+    r = guard_tool.run(_env(tmp_path), {"action": action})
+    assert r.ok is False
+    assert "must be one of [] — " in r.reason
+    assert "must be declared in that ref's `consumers` first" in r.reason
