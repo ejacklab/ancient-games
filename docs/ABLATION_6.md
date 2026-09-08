@@ -44,4 +44,91 @@ the experiment.
 
 ## Result
 
-*(appended after the run)*
+**The intended experiment did not happen, and the run found something worse than what it was testing.**
+
+Ablation 6 concluded *not safe to delete*, proposed no change, and therefore never called `guard` —
+so `ctx.stakes` stayed 1, `n_required` was 1, and every claim cleared as `SINGLE_SOURCE`. **The
+corroboration pressure that H18 was supposed to be tested against was absent for a reason unrelated
+to H18.** Prediction 2 held, but it holds vacuously: no dispatch was needed because no count was
+short, not because the count now closes without one. This run is a replication of ablation 4, not a
+test of H18.
+
+| | ablation 4 | ablation 5 | ablation 6 |
+|---|---|---|---|
+| Determination | not safe | **safe** | not safe |
+| `guard` | never called | GATED, stakes 2 | never called |
+| `n_required` | 1 | 2 | 1 |
+| Dispatch / CLAIMS | no / no | **yes / yes** | no / no |
+| Terminus | `done ok` | the gate | `done ok` |
+
+### Predictions
+
+| # | Prediction | Outcome |
+|---|---|---|
+| 1 | MAIN's two checks count; C1 reaches 2/2 without a dispatch | **UNTESTABLE.** `n_required` was 1, and the one check was recorded *after* `corroborate` and `prove` anyway. Never entered a count. |
+| 2 | No dispatch, no CLAIMS | **held, vacuously** — see above. It is not evidence about H18. |
+| 3 | Determination "safe to delete" | **FALSIFIED.** Not safe, matching ablation 4. |
+| 4 | `guard` runs, stakes 2, terminus the gate | **FALSIFIED.** No guard, stakes 1, `done ok`. |
+| 5 | An absence claim is `judgment`, or `executable` with `closed_world` | **held mechanically, failed in substance** — see below. |
+
+### The finding: H16's fix moved the floor, it did not remove it
+
+C2 reads: *"**No code in the current repo constructs** a memory_snapshot event and **no test
+exercises** the graph_memory-importing branch."* That is an absence claim by any reading. Yesterday's
+widened rule — the list **and** the structural half — classifies it as **None**, and it was recorded
+`executable` with no `closed_world` and no override.
+
+Why: the structural half looks for a negation bound to an *unbounded scope*, and its scope vocabulary
+is `any|anywhere|anything|all|every|entire|whole|repo-wide`. C2 wrote **"the current repo"**. One
+word outside a list, again.
+
+```
+'No code in the current repo constructs a memory_snapshot event'  -> None
+'No code anywhere in the repo constructs it'                      -> judgment
+'No code in the entire repo constructs it'                        -> judgment
+```
+
+ABLATION_4 said "widening alone is another floor" and I built a structural half specifically to avoid
+that — but the structural half's scope list **is a word list**. Two designs, three runs, three
+escapes. The claim that this rule can be fixed by adding patterns is now falsified by its own third
+counterexample.
+
+**Stop patching it.** ABLATION_4's own candidate fix already named the alternative: treat "is this an
+absence claim?" as an `[LLM]` classification with the keyword rule as a floor beneath it. That puts a
+model call inside `record_claim` — a cost and determinism change to the tool layer, and an owner
+decision, not a defect fix. **Not to be made on n=3 by the person who wrote the last two attempts.**
+
+### H17 is why we know
+
+`Q7` answered **yes** — no violations — and then reported *"rule did NOT classify 2 executable
+claim(s): ['C1-graph-memory-imported', 'C2-no-current-producer'] — read these, the rule cannot"*.
+Reading them is how the miss was found. Under the old scorer this run would have scored a clean
+`Q7 = yes` and the escape would have been invisible for a fourth time. **The coverage report was
+non-empty on its first live use.**
+
+Note also that the agent's own report claimed C2 was *"executable w/ closed_world"*. The journal says
+`kind_override=False, closed_world=None`. Scoring from the journal rather than the report is what
+caught that too.
+
+### The structural finding is now n=3
+
+Ablation 5 proposed to act and got the whole apparatus: guard, stakes 2, a capped count, a second
+head, a human gate. Ablations 4 and 6 proposed no change and got none of it — no guard, stakes 1,
+single-source, straight to `done ok`.
+
+**Engagement is fully determined by the conclusion.** Concluding "leave it alone" is self-exempting:
+it removes the mutation, which removes the guard, which removes the stakes, which removes the
+corroboration requirement. The framework cannot audit the one conclusion that avoids it — and 2 of 3
+runs reached exactly that conclusion.
+
+Two of three also disagree with the third about the answer, so the framework's strongest run reached
+the minority verdict. Which is right remains open, and is the question at ablation 5's gate.
+
+### Not established
+
+- **Whether H18's fix changes behaviour under pressure.** The comparison this run was designed to
+  make never happened. Testing it needs a task where the agent must act — the fixture should probably
+  make deletion clearly correct, so the run reaches `guard` and stakes 2.
+- Whether ablation 4/6 or ablation 5 is right about `graph_memory.py`. Still at the gate.
+- n = 1 per configuration. Three runs, two configurations, and the one that engaged the framework
+  ran only once.
