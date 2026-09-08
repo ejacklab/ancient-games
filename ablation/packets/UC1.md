@@ -63,6 +63,7 @@ Nested arg shapes (all plain JSON):
   `backup_exists`, `tripwires: {hub: command}`, `fallback`, `permissions`, `consumer_reasoning`.
 - `ArtifactRef`: `path`, `mode` (`read|mutate|invoke`), `verb` (e.g. `commit`), `consumers: [path]`.
 - `corroborate` args: `action`, `claims: [{claim_id, kind: executable|judgment}]`, `framings: {claim_id: [framing, ...]}` (a list per claim), `reconciliation`, `dominance`.
+- `ingest_return` args: `agent_id`, `fields` keyed by the Return contract below, `actor`, `framing`; `fields.CLAIMS` is a list of either claim entries or executed-check entries.
 - The dataclasses are in `ancient_games/stages.py` and `ancient_games/ctx.py` if you need more.
 
 ## Tool schema
@@ -174,7 +175,7 @@ guard  side_effects=read  cost=cheap  -> GuardExit
 ingest_return  side_effects=none  cost=cheap  -> list[event]
   actor: str  # the actor of the action the claim is about: MAIN | <agent-id> | none (Z3′) — B·1 counts a claim_recorded as a source only when its author differs from this
   agent_id: str
-  fields: dict
+  fields: dict  # the agent's return, keyed by the §6 return contract — REPORT_BACK, CLAIMS (always; [] when none), FOLLOW_ON, NOT_DONE, plus SCOPE_DELTA / VERDICT / NOT_ESTABLISHED where they apply (`schema.RETURN_CONTRACT` is the full table). A CLAIMS entry is {claim_id, kind: executable|judgment, text, evidence_type: command|file:line, evidence_ref, framing?, closed_world?}; an entry that instead names a value it could have failed to match — {claim_id, falsifies, mechanism, command, expected, observed} — is recorded as a check, not a claim
   framing: str
 
 localize  side_effects=none  cost=cheap  -> {test_id, file, line, error_type}
@@ -214,7 +215,7 @@ record_claim  side_effects=none  cost=cheap  -> claim_recorded event
   actor: str  # the actor of the action the claim is about: MAIN | <agent-id> | none (Z3′) — B·1 counts a claim_recorded as a source only when its author differs from this
   author: str
   claim_id: str
-  closed_world: str  # record_claim only: why the check space is complete (e.g. "AST over every .py + grep for the name as a string + no getattr/globals() idioms"); required to keep kind=executable on absence text; shown verbatim at the checkpoint gate
+  closed_world: str  # why the check space is complete (e.g. "AST over every .py + grep for the name as a string + no getattr/globals() idioms"); required to keep kind=executable on absence text; shown verbatim at the checkpoint gate
   evidence_ref: str
   evidence_type: str  one of: command | file:line
   framing: str
@@ -232,6 +233,23 @@ run_lint  side_effects=read  cost=cheap  -> {backend, findings: list[Finding]}
 run_suite  side_effects=none  cost=suite  -> {passed, failed, output, returncode}
   command: str
 ```
+
+## Return contract
+
+| field | when | shape | consumed by | escape value |
+|---|---|---|---|---|
+| REPORT_BACK | always | path + ≤3 lines | MAIN | N/A — required, always present |
+| CLAIMS | always | each → command \| file:line \| URL \| (opinion), plus kind ∈ {executable, judgment}, plus falsifies: <claim_id> when the entry is an executed check backing another claim | A, B | N/A — required, always present (an empty list only when the agent made literally no claims, itself an explicit [], never omitted) |
+| SCOPE_DELTA | always when SCOPE was present; else N/A | added/dropped, explicit even if empty | E | N/A (SCOPE absent from the dispatch) |
+| FOLLOW_ON | always | finding → fixed \| new-task \| dismissed:reason \| escalated:owner | E | N/A — required; an explicit empty list when there is nothing to report, never omitted |
+| NOT_DONE | always | step → why → command for MAIN | E, D | N/A — required; an explicit empty list when nothing is left undone |
+| VERIFY_OUTPUT | when VERIFY was present | verbatim per cmd | A | N/A (VERIFY not present in the dispatch) |
+| COMMIT | when COMMIT_POLICY was present | hash \| not-committed:reason | D | N/A (COMMIT_POLICY not present — role≠coder, or no commit stage in this dispatch) |
+| PRE_FIX_PROOF | when NEW_TEST_PROOF ∨ FALSIFYING_PROCEDURE present | red output, then green output | A | N/A (neither present in the dispatch) |
+| HUB_INTEGRITY_RESULT | when HUB_INTEGRITY present | agent's value is advisory only — MAIN runs the real tripwire | D | N/A (hub=∅, HUB_INTEGRITY not sent) |
+| VERDICT | role∈{researcher,tester} | VERIFIED \| NOT-VERIFIED \| FALSIFIED \| INSUFFICIENT_DATA(n) | B, A | N/A (role∈{coder, MAIN} — no verdict-bearing role) |
+| NOT_ESTABLISHED | role∈{researcher,tester} | list | B | N/A (role∈{coder, MAIN}); an explicit empty list when nothing is unestablished |
+| RESIDUAL_RISK | role=tester | text | D | N/A (role≠tester) |
 
 ## Hard rules
 

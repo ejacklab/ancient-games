@@ -15,10 +15,11 @@ import pytest
 from ablation import fixtures, score
 from ancient_games.ctx import ArtifactRef, Ctx
 from ancient_games.hybrid import runner
-from ancient_games.hybrid.cli import load_ctx, save_ctx, tools_table
+from ancient_games.hybrid.cli import load_ctx, return_contract_table, save_ctx, tools_table
 from ancient_games.hybrid.registry import load_tools
 from ancient_games.hybrid.cli import default_ceiling
 from ancient_games.journal import Journal, read_events
+from ancient_games.schema import RETURN_CONTRACT
 
 ROOT = Path(__file__).resolve().parent.parent
 CASES = ROOT / "tests" / "cases" / "hybrid"
@@ -117,9 +118,17 @@ def test_tools_listing_has_all_eighteen_and_the_packets_carry_it_verbatim():
     assert lines[0].split() == ["name", "side_effects", "cost", "participates_in", "doc", "inputs"]
     assert [ln.split()[0] for ln in lines[1:]] == sorted(tools) and len(tools) == 18
     assert "approve" not in table and "dispatch_failed" not in [ln.split()[0] for ln in lines]
+    # `x in packet` cannot catch the GENERATOR dropping trailing rows — a truncated table is still a
+    # substring of the full one. Pin completeness against the schema source, not against the packet.
+    contract = return_contract_table()
+    rows = [ln for ln in contract.splitlines() if ln.startswith("| ") and not ln.startswith("| field")
+            and not ln.startswith("|---")]
+    assert len(rows) == len(RETURN_CONTRACT)
+    assert all(any(row.startswith(f"| {r.field} ") for row in rows) for r in RETURN_CONTRACT)
     for uc in ("UC1", "UC2", "UC3"):
         packet = (ROOT / "ablation" / "packets" / f"{uc}.md").read_text()
         assert table in packet
+        assert contract in packet
         assert json.loads((CASES / f"{uc}.json").read_text())["task"] in packet
         for ph in ("{{CWD}}", "{{RUN_ID}}", "{{JOURNAL}}", "{{MANIFEST}}", "{{HARNESS}}"):
             assert ph in packet

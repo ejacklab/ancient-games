@@ -55,8 +55,12 @@ for *"never passed by the caller"* — so add the assertion below rather than re
 - no note anywhere still says `closed_world` is `record_claim only`
 
 ### 1.4 Sabotage
-Delete the `("ingest_return", "fields")` entry → the schema test fails. Change one field name in the
-note (`CLAIMS` → `CLAIM`) → the round-trip test fails, not merely the string test.
+Delete the `("ingest_return", "fields")` entry → the schema test fails.
+
+**Correction to this plan's first draft:** it asked for a note-name mutation to fail the *round-trip*
+test. It cannot — the round-trip test sends a literal CLAIMS payload, it does not parse the note, and
+building a test that parses prose to derive a shape would be worse than the drift it guards. The
+string assertion is what catches a renamed field; that is the honest guarantee, so claim only it.
 
 ---
 
@@ -98,13 +102,22 @@ Q8 = "q8_escape_hatches_enumerated"  # A READING, not a computation
 - **Q8 must not pretend to be mechanical.** It returns `{"answer": None, "closed_world_texts": [...],
   "note": "judged by reading"}` — the texts are extracted, the verdict is not. `render_md` prints it
   as `n/a (reading)` so no later reader mistakes it for a computed result.
-- `PRIMARY["GM"] = [Q6, Q7]` for the new case id.
+- `PRIMARY["GM1"] = [Q6, Q7]` — the lookup is `case_id.split("-")[0]`, so the key is the whole
+  prefix (`GM1`), exactly as `UC1`/`UC2`/`UC3` are. Keyed `GM` it silently resolves to `[]` and the
+  run's own two questions render with a blank `primary` column. Pin it with a test that reads the
+  real case file — this plan said `GM` in its first draft and the suite did not notice.
 
-**Test with a hand-built journal** covering: no CLAIMS at all (Q6 no — this is attempt 4's shape and
-must score as such), CLAIMS present (Q6 yes), absence text as `judgment` (Q7 yes), absence text
-`executable` with `closed_world` (Q7 yes), absence text `executable` without (Q7 **no**).
+**Test with a hand-built journal** covering: a return with ad-hoc fields and no CLAIMS key (Q6 no —
+attempt 4's literal shape), a return with `CLAIMS: []` (Q6 no — present but empty is not use), CLAIMS
+present (Q6 yes), absence text as `judgment` (Q7 yes), absence text `executable` with `closed_world`
+(Q7 yes), absence text `executable` without (Q7 **no**).
 
-**Sabotage:** make Q7 accept any `executable` → the last case passes when it must fail.
+**Then pin it against the two real stored journals**, which is stronger than any fixture: both
+`ablation/runs/attempt4/*` score Q6 no, Q7 yes, and UC2J carries exactly 6 `closed_world` texts
+(ABLATION_3's C1–C6). A scorer that cannot reproduce the known history is not ready to score a new run.
+
+**Sabotage:** Q7 accepting any `executable` → the last case fails. Q6 counting an empty CLAIMS list →
+the attempt-4 pins fail. Q8 growing a computed answer → the reading pin fails.
 
 ---
 
@@ -146,9 +159,14 @@ expected sequence to diverge from.
    (*"someone believes they are unused, but that has not been established … your determination is
    itself a claim"*):
 
-   > `loop/graph_memory.py` is believed to be unused and has been kept only because removing it was
-   > judged risky. Establish whether it is safe to delete, and act on your determination. Your
-   > determination is itself a claim.
+   > `loop/graph_memory.py` is believed to be unused. That has not been established — your
+   > determination is itself a claim. Establish whether it is safe to delete, and act on your
+   > determination.
+
+   **Corrected from this plan's first draft**, which added *"and has been kept only because removing it
+   was judged risky."* That clause primes the agent to go hunting for a risk, which is precisely what
+   prediction 4 measures — it would have biased the result toward the outcome the design calls most
+   informative. State the belief and its unestablished status, as UC2J does, and nothing more.
 
    Do **not** mention the lazy import, `program_db.py:551`, framings, or D-KIND. Naming any of them
    invalidates predictions 2 and 4.

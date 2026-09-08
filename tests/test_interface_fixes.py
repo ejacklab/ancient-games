@@ -305,6 +305,13 @@ def test_note_for_falls_back_to_the_bare_key():
     assert cli.note_for("record_claim", "no-such-field") is None
 
 
+def test_ingest_return_schema_names_the_return_contract_and_closed_world_is_not_writer_only():
+    schema = cli.tools_schema(TOOLS)
+    fields = next(line for line in schema.splitlines() if line.startswith("  fields: dict"))
+    assert all(name in fields for name in ("CLAIMS", "REPORT_BACK", "closed_world"))
+    assert all("record_claim only" not in note for note in cli.NOTES.values())
+
+
 # --- step 5 (F5): rejections enumerate their legal values --------------------------------------
 def test_unknown_action_names_the_actions_that_have_an_actor(tmp_path):
     env = _env(tmp_path)
@@ -393,6 +400,27 @@ def _dispatched(tmp_path, agent="adv-1"):
     env = _env(tmp_path)
     assert dispatch_tool.run(env, {"role": "researcher", "framing": "f1", "agent_id": agent}).ok
     return env
+
+
+def test_ingest_return_accepts_both_claims_shapes_its_schema_documents(tmp_path):
+    """The contract note is an interface: its claim and check shapes must round-trip unchanged."""
+    env = _dispatched(tmp_path, "contract-agent")
+    r = ingest_tool.run(env, {"agent_id": "contract-agent", "actor": "MAIN", "framing": "static-scan", "fields": {
+        "REPORT_BACK": "/agents/contract.md", "FOLLOW_ON": [], "NOT_DONE": [], "CLAIMS": [
+            {"claim_id": "graph-memory-unused", "kind": "executable", "text": "graph memory is unused",
+             "evidence_type": "command", "evidence_ref": "python3 -c 'import loop.graph_memory'",
+             "closed_world": "AST scan covers every module"},
+            # the documented shape: a check BACKING another claim, which is the case the note describes
+            # and the only one where the claim_id collapse matters
+            {"claim_id": "graph-memory-check", "falsifies": "graph-memory-unused", "mechanism": "suite-count",
+             "command": "pytest -q", "expected": "all pass", "observed": "all pass"},
+        ]}})
+    assert r.ok is True, r.reason
+    evs = _events(env)
+    assert [event["event"] for event in evs] == ["dispatch", "return", "claim_recorded", "check_executed"]
+    assert evs[2]["closed_world"] == "AST scan covers every module"
+    # recorded against the claim it falsifies, not its own id — B·1 (c) counts only claim_id == falsifies
+    assert evs[3]["claim_id"] == "graph-memory-unused" and evs[3]["falsifies"] == "graph-memory-unused"
 
 
 def _events(env):

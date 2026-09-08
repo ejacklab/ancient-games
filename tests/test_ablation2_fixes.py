@@ -354,3 +354,51 @@ def test_scorer_q5_counts_only_a_differently_framed_other_author_or_a_gate(tmp_p
     # executable claims never enter Q5
     j.claim_recorded("import-ok", "MAIN", "MAIN", "executable", "import succeeds", "command", "python3 -c 'import x'")
     assert score.q5_second_head_for_judgment(j.read())["judgment_claims"] == ["h-dead", "g-unused"]
+
+
+def test_scorer_q6_q7_and_q8_score_returns_and_kind_overrides_without_reading_reports(tmp_path):
+    j = Journal(str(tmp_path / "q6-q8.jsonl"), "q6-q8")
+    assert score.q6_claims_channel_used(j.read()) == {"answer": False, "returns_with_claims": []}
+    j.returned("worker", {"CLAIMS": [{"claim_id": "unused", "kind": "judgment"}]})
+    assert score.q6_claims_channel_used(j.read()) == {
+        "answer": True, "returns_with_claims": [{"agent_id": "worker", "claim_count": 1}]}
+    j.claim_recorded("judged", "MAIN", "MAIN", "judgment", "graph memory is unused", "command", "grep")
+    j.claim_recorded("overridden", "MAIN", "MAIN", "executable", "graph memory is unused", "command", "grep",
+                     kind_override=True, closed_world="AST scan covers every module")
+    assert score.q7_kind_honest(j.read())["answer"] is True
+    assert score.q8_escape_hatches_enumerated(j.read()) == {
+        "answer": None, "closed_world_texts": ["AST scan covers every module"], "note": "judged by reading"}
+    j.claim_recorded("dishonest", "MAIN", "MAIN", "executable", "graph memory is unused", "command", "grep")
+    assert score.q7_kind_honest(j.read())["answer"] is False
+
+
+def test_scorer_q6_is_no_for_a_return_that_carries_no_claims_key(tmp_path):
+    """Attempt 4's actual shape: both live returns carried ad-hoc fields and no CLAIMS key at all.
+    That must score Q6=no, not crash and not vacuously pass."""
+    j = Journal(str(tmp_path / "adhoc.jsonl"), "adhoc")
+    j.returned("adv-1", {"verdict": "VERIFIED", "strongest_attack": "…", "bears_on_C4": "…"})
+    j.returned("adv-2", {"CLAIMS": []})  # present but empty is still not use
+    assert score.q6_claims_channel_used(j.read()) == {"answer": False, "returns_with_claims": []}
+
+
+def test_scorer_q6_q7_reproduce_the_stored_attempt4_journals():
+    """The strongest regression available: score the two REAL free-agent journals. Both returned
+    without CLAIMS (Q6 no — the fact ABLATION_4's P0 exists to change), and neither carried a
+    dishonest kind. UC2J's six C1–C6 closed_world overrides are the texts Q8 hands to a reader."""
+    root = Path(__file__).resolve().parent.parent
+    uc3 = score.score(str(root / "ablation/runs/attempt4/UC3.journal.jsonl"),
+                      str(root / "tests/cases/hybrid/UC3.json"))
+    uc2j = score.score(str(root / "ablation/runs/attempt4/UC2J.journal.jsonl"),
+                       str(root / "tests/cases/hybrid/UC2.json"))
+    assert uc3[score.Q6]["answer"] is False and uc2j[score.Q6]["answer"] is False
+    assert uc3[score.Q7]["answer"] is True and uc2j[score.Q7]["answer"] is True
+    assert len(uc2j[score.Q8]["closed_world_texts"]) == 6
+    assert uc3[score.Q8]["answer"] is None  # a reading, never a computed verdict
+
+
+def test_scorer_marks_the_gm1_case_primary_questions():
+    """`uc` is `case_id.split("-")[0]`, so the PRIMARY key must be `GM1`, not `GM` — keyed wrong, the
+    run's own two questions render with a blank `primary` column and the report says nothing."""
+    root = Path(__file__).resolve().parent.parent
+    case = json.loads((root / "ablation/cases/GM1.json").read_text())
+    assert score.PRIMARY[case["case_id"].split("-")[0]] == [score.Q6, score.Q7]

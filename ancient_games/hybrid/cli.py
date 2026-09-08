@@ -42,6 +42,7 @@ from typing import Any
 from ancient_games import registry as reg
 from ancient_games.ctx import ABSENCE_PATTERNS, CLAIM_KINDS, DIFFICULTIES, MECHANISMS, MODES, ROLES, ArtifactRef, Ctx
 from ancient_games.journal import _ENUMS, Journal
+from ancient_games.schema import RETURN_CONTRACT
 from ancient_games.stages import ActionInput, Candidate, Claim, TaskInput
 
 from . import autonomy, loop, supervise
@@ -181,7 +182,7 @@ NOTES: dict[str | tuple[str, str], str] = {
                 "keyed by claim_id, not by author",
     "kind": "assigned by rule (D-KIND): text asserting absence / a universal negative (" + "|".join(ABSENCE_PATTERNS)
             + ") is judgment; executable is accepted for such text only with closed_world",
-    "closed_world": "record_claim only: why the check space is complete (e.g. \"AST over every .py + grep for the name as a "
+    "closed_world": "why the check space is complete (e.g. \"AST over every .py + grep for the name as a "
                     "string + no getattr/globals() idioms\"); required to keep kind=executable on absence text; shown "
                     "verbatim at the checkpoint gate",
     "n_required": "set by corroborate — never passed by the caller",
@@ -189,6 +190,14 @@ NOTES: dict[str | tuple[str, str], str] = {
     ("Claim", "actor"): "set by corroborate from ctx.actor — never passed by the caller",
     ("record_claim", "actor"): _CLAIM_ACTOR_NOTE,
     ("ingest_return", "actor"): _CLAIM_ACTOR_NOTE,
+    ("ingest_return", "fields"): (
+        "the agent's return, keyed by the §6 return contract — REPORT_BACK, CLAIMS (always; [] when none), "
+        "FOLLOW_ON, NOT_DONE, plus SCOPE_DELTA / VERDICT / NOT_ESTABLISHED where they apply "
+        "(`schema.RETURN_CONTRACT` is the full table). A CLAIMS entry is "
+        "{claim_id, kind: executable|judgment, text, evidence_type: command|file:line, evidence_ref, "
+        "framing?, closed_world?}; an entry that instead names a value it could have failed to match — "
+        "{claim_id, falsifies, mechanism, command, expected, observed} — is recorded as a check, not a claim"
+    ),
     "known_facts": "list of [fact, method, result, date]",
     "actors": "{action-name: MAIN | <agent-id> | none}",
     "gate_at": "the action the gate sits at, e.g. \"commit\"",
@@ -258,6 +267,19 @@ def tools_schema(tools: dict[str, RegisteredTool]) -> str:
                 lines += _field_lines(DATACLASSES[dc], 2, (dc,))
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def return_contract_table() -> str:
+    """Render the §6 contract for packets from its single schema source."""
+    def cell(value: str) -> str:
+        return value.replace("|", "\\|").replace("\n", "<br>")
+
+    lines = ["| field | when | shape | consumed by | escape value |",
+             "|---|---|---|---|---|"]
+    for row in RETURN_CONTRACT:
+        lines.append("| " + " | ".join(cell(value) for value in (
+            row.field, row.when_text, row.shape, row.consumed_by, row.escape_value)) + " |")
+    return "\n".join(lines) + "\n"
 
 
 # --- subcommands ------------------------------------------------------------------------
