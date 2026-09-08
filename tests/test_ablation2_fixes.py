@@ -59,13 +59,53 @@ def test_fixtures_are_the_real_attempt3_journals_and_packets():
 
 # D-KIND ----------------------------------------------------------------------------------------
 def test_dkind_rule_is_data_word_bounded_and_case_insensitive():
-    assert ABSENCE_PATTERNS == ("dead", "unused", "no references?", "never", "nothing calls", "not reachable", "no callers?",
-                                "unreferenced")
+    assert ABSENCE_PATTERNS == ("dead", "unused", "no references?", "never", "nothing calls", "not reachable",
+                                "unreachable", "no callers?", "unreferenced", "no code paths?", "no producers?",
+                                "no usages?", "not called")
     for text in ("_helper_1 is dead", "these are UNUSED", "No references to foo", "never called", "Nothing calls it",
                  "not reachable from main", "no caller exists", "no callers exist", "an unreferenced symbol"):
         assert kind_by_rule(text) == "judgment", text
     for text in ("import succeeds", "the deadline passed", "deadlock-free", "suite is green", ""):
         assert kind_by_rule(text) is None, text
+
+
+def test_dkind_h16_the_phrasings_that_walked_past_the_word_list(tmp_path):
+    """ABLATION_4 F1: GM1's C2 was an absence claim in substance and stayed `executable` — it wrote
+    "unreachable" where the list held "not reachable", one space. These are its ACTUAL phrasings,
+    taken from ablation/runs/attempt5/GM1.journal.jsonl, plus the structural rule that catches the
+    ones no word list would."""
+    for text in ("the module is unreachable via any current caller",
+                 "no code path anywhere in the repository produces a memory_snapshot event",
+                 "there is no producer of this event",
+                 "no usages outside the module itself",
+                 "grep for memory_snapshot across all .py files finds zero matches",
+                 "none of the callers anywhere touch it"):
+        assert kind_by_rule(text) == "judgment", text
+    # the window is a bounded run of same-line characters, not "up to the next period": code text is
+    # full of periods, and a period-terminated window cut GM1's own sentence in half
+    assert kind_by_rule("grep across all .py files outside loop/program_db.py finds zero matches") == "judgment"
+    assert kind_by_rule("no failures\nall tests considered") is None  # a window never crosses a line
+    # over-inclusion is deliberate and asymmetric: a false positive costs one `closed_world` sentence,
+    # a false negative hands a claim the right to corroborate itself under category (c)
+    assert kind_by_rule("no failures in the entire suite") == "judgment"
+    for text in ("all 385 tests pass", "the hash matches the pre-deletion value",
+                 "python3 -c \"import loop.graph_memory\" exits 0"):
+        assert kind_by_rule(text) is None, text
+
+
+def test_dkind_h16_replays_the_gm1_claims_it_missed():
+    """The three claims the live run actually recorded. C2 was recorded `executable` under the old
+    rule; it must now be `judgment` unless its author states a closed world. C1 is a POSITIVE claim
+    ("is imported and called by") and must stay untouched — the widened rule must not sweep it in."""
+    import json
+    root = Path(__file__).resolve().parent.parent
+    claims = {e["claim_id"]: e for e in
+              (json.loads(l) for l in (root / "ablation/runs/attempt5/GM1.journal.jsonl").read_text().splitlines() if l.strip())
+              if e["event"] == "claim_recorded"}
+    assert kind_by_rule(claims["C1"]["text"]) is None                # positive claim, unaffected
+    assert kind_by_rule(claims["C2"]["text"]) == "judgment"          # H16: was None, recorded executable
+    assert kind_by_rule(claims["C3"]["text"]) == "judgment"          # already caught
+    assert claims["C2"]["kind"] == "executable"                      # what the run journaled, unchanged history
 
 
 def test_dkind_uc2j_six_helper_claims_replayed_become_judgment_unless_closed_world(tmp_path):
@@ -366,6 +406,10 @@ def test_scorer_q6_q7_and_q8_score_returns_and_kind_overrides_without_reading_re
     j.claim_recorded("overridden", "MAIN", "MAIN", "executable", "graph memory is unused", "command", "grep",
                      kind_override=True, closed_world="AST scan covers every module")
     assert score.q7_kind_honest(j.read())["answer"] is True
+    # H17: the scorer shares kind_by_rule with the harness, so it reports the rule's COVERAGE too —
+    # every executable claim the rule did not classify, which is where the next H16 would hide
+    j.claim_recorded("positive", "MAIN", "MAIN", "executable", "the import resolves cleanly", "command", "python3 -c ...")
+    assert [c["claim_id"] for c in score.q7_kind_honest(j.read())["unclassified_executable"]] == ["positive"]
     assert score.q8_escape_hatches_enumerated(j.read()) == {
         "answer": None, "closed_world_texts": ["AST scan covers every module"], "note": "judged by reading"}
     j.claim_recorded("dishonest", "MAIN", "MAIN", "executable", "graph memory is unused", "command", "grep")

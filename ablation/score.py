@@ -39,7 +39,9 @@ is explicitly a reading aid, not a computed verdict:
      `CLAIMS` list.
   Q7 (kind honest) — each recorded absence/universal-negative claim is
      `judgment`, unless its journaled D-KIND override has a non-empty
-     `closed_world` reason.
+     `closed_world` reason. It shares `kind_by_rule` with the harness, so it
+     cannot detect a claim the rule failed to classify (H17); it therefore also
+     reports `unclassified_executable`, the claims where such a miss would hide.
   Q8 (escape hatches enumerated) — extracts `closed_world` texts for a human
      reading; it deliberately has no computed answer.
 
@@ -222,9 +224,18 @@ def q7_kind_honest(events: list[dict]) -> dict:
                   and not (event.get("kind_override") is True
                            and isinstance(event.get("closed_world"), str)
                            and event["closed_world"].strip())]
+    # H17 (ABLATION_4): this scorer applies the SAME `kind_by_rule` as the thing it scores, so it
+    # cannot see a claim the rule failed to classify — which is exactly how GM1's C2 passed. Report
+    # the rule's COVERAGE alongside its verdict: every `executable` claim the rule did not touch is
+    # where the next miss would hide, and a reader must be handed that list rather than a bare "yes".
+    unclassified = [{"claim_id": event.get("claim_id"), "text": (event.get("text") or "")[:160]}
+                    for event in events if event.get("event") == "claim_recorded"
+                    and event.get("kind") == "executable"
+                    and kind_by_rule(event.get("text", "")) is None]
     return {"answer": not violations,
             "absence_claims": [event.get("claim_id") for event in absence_claims],
-            "violations": violations}
+            "violations": violations,
+            "unclassified_executable": unclassified}
 
 
 def q8_escape_hatches_enumerated(events: list[dict]) -> dict:
@@ -303,7 +314,9 @@ def render_md(r: dict) -> str:
     lines.append(f"| Q6 non-empty CLAIMS channel used | {_yn(q6['answer'])} | {'yes' if Q6 in r['primary'] else ''} | "
                  f"returns_with_claims={q6['returns_with_claims']} |")
     lines.append(f"| Q7 absence claim kinds are honest | {_yn(q7['answer'])} | {'yes' if Q7 in r['primary'] else ''} | "
-                 f"absence_claims={q7['absence_claims']} violations={q7['violations']} |")
+                 f"absence_claims={q7['absence_claims']} violations={q7['violations']}; "
+                 f"rule did NOT classify {len(q7['unclassified_executable'])} executable claim(s): "
+                 f"{[c['claim_id'] for c in q7['unclassified_executable']]} — read these, the rule cannot |")
     lines.append(f"| Q8 escape hatches enumerated | n/a (reading) |  | closed_world_texts={q8['closed_world_texts']} |")
     lines += ["", "| metric | value |", "|---|---|",
               f"| total tool calls | {r['total_tool_calls']} |", f"| executed dispatches | {r['dispatches']} |",

@@ -96,6 +96,13 @@ what let `CHK-suite` (category (c), `executable`-only) back C2.
 shares the blind spot exactly. A metric that cannot see the failure it exists to detect must be
 reported as such.
 
+> **Retrospective, added after H16 was fixed (2026-09-09).** Re-scoring this same journal with the
+> widened rule flips Q7 from **yes** to **no**, naming C2 as the violation: an `executable` claim
+> whose text asserts a universal negative, with no `kind_override` and no `closed_world`. The table
+> above is left as it scored on the day, and this is the correction. Q7 now also reports the rule's
+> coverage — every `executable` claim it did *not* classify — so the next miss of this kind is
+> visible to a reader instead of invisible to the metric.
+
 **F2 — `actor = "none"` makes a claim its own second head.** Z3′ specifies that when
 actor(X) = `none`, category (a) is "vacuously true for every author" — so MAIN's own claims count as
 sources for MAIN's own claims. `ctx.actor` is caller-set at C·3/C·4. Demonstrated directly:

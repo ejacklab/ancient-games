@@ -23,14 +23,32 @@ CLAIM_KINDS = ("executable", "judgment")
 # D-KIND (docs/ABLATION_2.md): a claim whose text asserts an absence or a universal negative is an
 # open-world claim — `judgment` by rule unless the author states why the check space is closed
 # (`closed_world`). Word-bounded, case-insensitive; a floor, not a proof. The one place the list lives.
-ABSENCE_PATTERNS = ("dead", "unused", "no references?", "never", "nothing calls", "not reachable", "no callers?",
-                    "unreferenced")
+ABSENCE_PATTERNS = ("dead", "unused", "no references?", "never", "nothing calls", "not reachable",
+                    "unreachable", "no callers?", "unreferenced", "no code paths?", "no producers?",
+                    "no usages?", "not called")
 _ABSENCE_RE = re.compile(r"\b(?:" + "|".join(ABSENCE_PATTERNS) + r")\b", re.IGNORECASE)
+
+# H16 (docs/ABLATION_4.md): the word list alone is a floor, and GM1's C2 walked straight past it —
+# it wrote "unreachable" where the list held "not reachable", one space, and stayed `executable` with
+# no `closed_world`. Vocabulary will always be one phrasing behind; structure is not. A negation
+# bound to an UNBOUNDED scope in the same sentence is a universal negative whatever nouns it uses,
+# in either order ("no code path anywhere", "across all .py files … finds zero matches").
+_NEGATION = r"(?:\bno\b|\bzero\b|\bnone\b|\bnothing\b|\bnever\b|\bnot\b)"
+_UNBOUNDED = r"(?:\bany\b|\banywhere\b|\banything\b|\ball\b|\bevery\b|\bentire\b|\bwhole\b|\brepo-wide\b)"
+_QUANTIFIED_NEGATIVE_RE = re.compile(
+    rf"(?:{_NEGATION}.{{0,80}}?{_UNBOUNDED})|(?:{_UNBOUNDED}.{{0,80}}?{_NEGATION})", re.IGNORECASE)
 
 
 def kind_by_rule(text: str) -> str | None:
-    """`judgment` when `text` matches an absence/universal-negative pattern, else None (author's kind stands)."""
-    return "judgment" if _ABSENCE_RE.search(text or "") else None
+    """`judgment` when `text` asserts an absence or a universal negative, else None (author's kind stands).
+
+    Two tests, both floors, deliberately tuned to OVER-include: the two errors are not symmetric.
+    A false positive costs the author one sentence of `closed_world`; a false negative silently hands
+    a claim the right to be corroborated by its own checks (B·1 category (c) is `executable`-only).
+    So "no failures in the entire suite" is forced to `judgment` too — and the sentence saying the
+    suite is the whole space is worth having on the record."""
+    text = text or ""
+    return "judgment" if (_ABSENCE_RE.search(text) or _QUANTIFIED_NEGATIVE_RE.search(text)) else None
 
 
 REMEDIES = (

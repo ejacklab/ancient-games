@@ -80,7 +80,7 @@ corroborate  side_effects=read  cost=cheap  -> CorroborateExit
   action: str
   claims: list[Claim]
     claim_id: str  (required)
-    kind: str  (required)  one of: executable | judgment  # assigned by rule (D-KIND): text asserting absence / a universal negative (dead|unused|no references?|never|nothing calls|not reachable|no callers?|unreferenced) is judgment; executable is accepted for such text only with closed_world
+    kind: str  (required)  one of: executable | judgment  # assigned by rule (D-KIND): text asserting absence / a universal negative (dead|unused|no references?|never|nothing calls|not reachable|unreachable|no callers?|unreferenced|no code paths?|no producers?|no usages?|not called) is judgment; executable is accepted for such text only with closed_world
     action: str | None = None
     has_command: bool = True
     remedy_mechanism: str | None = None
@@ -219,7 +219,7 @@ record_claim  side_effects=none  cost=cheap  -> claim_recorded event
   evidence_ref: str
   evidence_type: str  one of: command | file:line
   framing: str
-  kind: str  one of: executable | judgment  # assigned by rule (D-KIND): text asserting absence / a universal negative (dead|unused|no references?|never|nothing calls|not reachable|no callers?|unreferenced) is judgment; executable is accepted for such text only with closed_world
+  kind: str  one of: executable | judgment  # assigned by rule (D-KIND): text asserting absence / a universal negative (dead|unused|no references?|never|nothing calls|not reachable|unreachable|no callers?|unreferenced|no code paths?|no producers?|no usages?|not called) is judgment; executable is accepted for such text only with closed_world
   text: str
 
 render_trace  side_effects=none  cost=cheap  -> markdown str
