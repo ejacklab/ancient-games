@@ -23,6 +23,7 @@ import pytest
 from ablation import fixtures
 
 from ancient_games.ctx import Ctx
+from ancient_games.hybrid import cli
 from ancient_games.hybrid.registry import load_tools
 from ancient_games.hybrid.tools import (corroborate as corroborate_tool, dispatch as dispatch_tool,
                                         ingest_return as ingest_tool, record_check as record_check_tool,
@@ -271,3 +272,32 @@ def test_a_genuine_unknown_tool_is_unaffected(tmp_path):
     p = _cli(m, "call", "bogus", "{}")
     assert p.returncode == 1 and json.loads(p.stdout)["reason"] == "unknown-tool: bogus"
     assert '"unknown-tool: bogus"' in journal.read_text(encoding="utf-8")
+
+
+# --- step 4 (F4): a note keyed by (owner, field), and the class of error it prevents -----------
+NEVER_PASSED = "never passed by the caller"
+
+
+def test_no_note_claims_a_field_is_never_caller_passed_when_a_tool_requires_it():
+    """The point of the fix: `NOTES` was keyed by bare field name, so Claim.actor's note printed
+    against `record_claim.actor` — a REQUIRED input — telling every agent not to pass it. This
+    catches the class, not the instance."""
+    offenders = [(name, arg) for name, t in TOOLS.items() for arg in t.manifest["inputs"]
+                 if NEVER_PASSED in (cli.note_for(name, arg) or "")]
+    assert offenders == []
+
+
+def test_the_dataclass_note_survived_the_re_keying():
+    """It was moved, not deleted: Claim.actor really is filled by corroborate."""
+    assert NEVER_PASSED in cli.note_for("Claim", "actor")
+    assert NEVER_PASSED in cli.NOTES[("Claim", "actor")]
+    schema = cli.tools_schema(TOOLS)
+    assert schema.count(NEVER_PASSED) == 3  # Claim.n_required, Claim.stakes, Claim.actor — no tool input
+    assert "actor: str  # the actor of the action the claim is about" in schema
+
+
+def test_note_for_falls_back_to_the_bare_key():
+    """Bare keys still apply to every owner — only the collisions are re-keyed."""
+    assert cli.note_for("record_claim", "kind") == cli.NOTES["kind"]
+    assert cli.note_for("anything-at-all", "governance_gated") == cli.NOTES["governance_gated"]
+    assert cli.note_for("record_claim", "no-such-field") is None

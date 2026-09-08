@@ -172,7 +172,7 @@ guard  side_effects=read  cost=cheap  -> GuardExit
     only_candidate_for_count0: bool = False
 
 ingest_return  side_effects=none  cost=cheap  -> list[event]
-  actor: str  # set by corroborate from ctx.actor — never passed by the caller
+  actor: str  # the actor of the action the claim is about: MAIN | <agent-id> | none (Z3′) — B·1 counts a claim_recorded as a source only when its author differs from this
   agent_id: str
   fields: dict
   framing: str
@@ -211,7 +211,7 @@ record_check  side_effects=none  cost=cheap  -> check_executed event
   pre_fix_result: str  one of: FAIL | null
 
 record_claim  side_effects=none  cost=cheap  -> claim_recorded event
-  actor: str  # set by corroborate from ctx.actor — never passed by the caller
+  actor: str  # the actor of the action the claim is about: MAIN | <agent-id> | none (Z3′) — B·1 counts a claim_recorded as a source only when its author differs from this
   author: str
   claim_id: str
   closed_world: str  # record_claim only: why the check space is complete (e.g. "AST over every .py + grep for the name as a string + no getattr/globals() idioms"); required to keep kind=executable on absence text; shown verbatim at the checkpoint gate

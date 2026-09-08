@@ -164,7 +164,13 @@ ENUMS: dict[str, tuple] = {
     "irreversible_clause": ("a", "b", None),
     "governance_gated": ("none",) + tuple(r.id for r in reg.REGISTRY if r.gate == "owner"),
 }
-NOTES: dict[str, str] = {
+# F4: keyed by bare field name OR by (owner, field), owner being the dataclass name at
+# `_field_lines` and the tool name at `tools_schema`. A bare key applied to every same-named field
+# of every owner: `record_claim`'s required `actor` input printed "set by corroborate — never
+# passed by the caller", which belongs to Claim.actor alone.
+_CLAIM_ACTOR_NOTE = ("the actor of the action the claim is about: MAIN | <agent-id> | none (Z3′) — "
+                     "B·1 counts a claim_recorded as a source only when its author differs from this")
+NOTES: dict[str | tuple[str, str], str] = {
     "governance_gated": "a registry row id whose gate=owner, or \"none\" — never a bool",
     "consumers": "downstream paths that READ the mutated artifact (D2′) — not the files this action reads; "
                  "naming an owner-gated file here owner-gates the action",
@@ -180,7 +186,9 @@ NOTES: dict[str, str] = {
                     "verbatim at the checkpoint gate",
     "n_required": "set by corroborate — never passed by the caller",
     "stakes": "set by corroborate — never passed by the caller",
-    "actor": "set by corroborate from ctx.actor — never passed by the caller",
+    ("Claim", "actor"): "set by corroborate from ctx.actor — never passed by the caller",
+    ("record_claim", "actor"): _CLAIM_ACTOR_NOTE,
+    ("ingest_return", "actor"): _CLAIM_ACTOR_NOTE,
     "known_facts": "list of [fact, method, result, date]",
     "actors": "{action-name: MAIN | <agent-id> | none}",
     "gate_at": "the action the gate sits at, e.g. \"commit\"",
@@ -189,6 +197,13 @@ NOTES: dict[str, str] = {
                     "any other changed path still refuses",
 }
 _NAME_RE = re.compile(r"\b(" + "|".join(DATACLASSES) + r")\b")
+
+
+def note_for(owner: str, field: str) -> str | None:
+    """The note for `owner.field`: the (owner, field) entry if there is one, else the bare-field
+    entry. `ENUMS` stays bare-keyed — every field name it shares across owners (role, kind,
+    governance_gated) carries the same enum for each, so no collision exists there to fix."""
+    return NOTES.get((owner, field), NOTES.get(field))
 
 
 def _type_str(hint: Any) -> str:
@@ -212,8 +227,9 @@ def _field_lines(cls: type, indent: int, seen: tuple[str, ...]) -> list[str]:
         line = f"{pad}{f.name}: {t}{req}"
         if f.name in ENUMS:
             line += "  one of: " + " | ".join("null" if v is None else str(v) for v in ENUMS[f.name])
-        if f.name in NOTES:
-            line += f"  # {NOTES[f.name]}"
+        note = note_for(cls.__name__, f.name)
+        if note:
+            line += f"  # {note}"
         out.append(line)
         for name in _NAME_RE.findall(t):
             if name not in seen:
@@ -234,8 +250,9 @@ def tools_schema(tools: dict[str, RegisteredTool]) -> str:
             line = f"  {arg}: {t}"
             if arg in ENUMS:
                 line += "  one of: " + " | ".join("null" if v is None else str(v) for v in ENUMS[arg])
-            if arg in NOTES:
-                line += f"  # {NOTES[arg]}"
+            note = note_for(name, arg)
+            if note:
+                line += f"  # {note}"
             lines.append(line)
             for dc in _NAME_RE.findall(t):
                 lines += _field_lines(DATACLASSES[dc], 2, (dc,))
