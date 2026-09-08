@@ -25,7 +25,10 @@ def assign_kind(declared: str, text: str, closed_world) -> tuple[str, bool]:
     return declared, False
 
 
-def run(env, args):
+def validate(args) -> ToolResult | None:
+    """Every check that needs no I/O, split out so a caller holding several claims can validate them
+    ALL before writing any (`ingest_return`: the `return` event and its claims are one unit). The
+    author gate stays in `run` — it reads the journal. Same shape as `corroborate._validate`."""
     for name in ("claim_id", "author"):
         if not isinstance(args.get(name), str) or not args[name]:
             return invalid_args(name, "a non-empty str", args.get(name))
@@ -36,6 +39,14 @@ def run(env, args):
         return invalid_args("closed_world", "a str stating why the check space is complete, or omitted", closed_world)
     if args.get("evidence_type") not in EVIDENCE_TYPES:
         return invalid_args("evidence_type", " | ".join(EVIDENCE_TYPES), args.get("evidence_type"))
+    return None
+
+
+def run(env, args):
+    bad = validate(args)
+    if bad is not None:
+        return bad
+    closed_world = args.get("closed_world")
     journal = Journal(env.journal_path, env.run_id)  # no I/O; constructed here so the F1 check can read it
     bad = author_refusal(args["author"], journal.read())  # F1: `author` is load-bearing for B·1 (a)
     if bad is not None:

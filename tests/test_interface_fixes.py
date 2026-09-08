@@ -349,3 +349,39 @@ def test_the_empty_hub_case_still_carries_the_consumers_clause(tmp_path):
     assert r.ok is False
     assert "must be one of [] — " in r.reason
     assert "must be declared in that ref's `consumers` first" in r.reason
+
+
+# --- step 5a: validation is split from the write, and the split changed nothing ----------------
+def test_validate_is_pure_and_agrees_with_run(tmp_path):
+    """`validate` must reach the same verdict `run` does on every arg-shape case, without touching
+    the journal — that equivalence is what lets `ingest_return` check a whole batch before writing."""
+    cases = [
+        (record_claim_tool, {"claim_id": CLAIM, "author": "MAIN", "kind": "judgment", "text": "t",
+                             "evidence_type": "command", "evidence_ref": "r"}, None),
+        (record_claim_tool, {"claim_id": "", "author": "MAIN", "kind": "judgment",
+                             "evidence_type": "command"}, "claim_id"),
+        (record_claim_tool, {"claim_id": CLAIM, "author": "MAIN", "kind": "suite",
+                             "evidence_type": "command"}, "kind"),
+        (record_claim_tool, {"claim_id": CLAIM, "author": "MAIN", "kind": "judgment",
+                             "evidence_type": "(opinion)"}, "evidence_type"),
+        (record_check_tool, dict(VALID_CHECK), None),
+        (record_check_tool, dict(VALID_CHECK, mechanism="eyeballed-it"), "mechanism"),
+        (record_check_tool, dict(VALID_CHECK, pre_fix_result="PASS"), "pre_fix_result"),
+        (record_check_tool, dict(VALID_CHECK, expected=["a"]), "expected"),
+    ]
+    for tool, args, field in cases:
+        v = tool.validate(dict(args))
+        if field is None:
+            assert v is None, (tool.MANIFEST["name"], args, v)
+        else:
+            assert v is not None and v.reason.startswith(f"invalid-args: {field} must be "), (args, v)
+        run = tool.run(_env(tmp_path), dict(args))
+        assert (v is None) == run.ok, (tool.MANIFEST["name"], args, v, run)
+
+
+def test_validate_writes_nothing(tmp_path):
+    env = _env(tmp_path)
+    record_claim_tool.validate({"claim_id": CLAIM, "author": "MAIN", "kind": "judgment",
+                                "evidence_type": "command", "evidence_ref": "r"})
+    record_check_tool.validate(dict(VALID_CHECK))
+    assert not Path(env.journal_path).exists()

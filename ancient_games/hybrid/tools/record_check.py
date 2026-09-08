@@ -28,8 +28,10 @@ def known_claim_ids(events: list[dict], run_id: str) -> list[str]:
     return out
 
 
-def run(env, args):
-    bad = require_str(args, "claim_id", "mechanism")  # before the try: the caller's error, not internal
+def validate(args) -> ToolResult | None:
+    """Every check that needs no I/O (F2), split out so `ingest_return` can validate a whole CLAIMS
+    list before writing any of it. The `falsifies` check stays in `run` — it reads the journal."""
+    bad = require_str(args, "claim_id", "mechanism")  # the caller's error, not internal
     if bad is not None:
         return bad
     if not valid_mechanism(args["mechanism"]):  # one definition, shared with journal.validate_event
@@ -39,6 +41,13 @@ def run(env, args):
     for name in ("expected", "observed"):
         if name in args and not isinstance(args[name], _NUM_OR_STR):
             return invalid_args(name, "a str or a number", args[name])
+    return None
+
+
+def run(env, args):
+    bad = validate(args)
+    if bad is not None:
+        return bad
     journal = Journal(env.journal_path, env.run_id)
     claim_id = args["claim_id"]
     falsifies = args.get("falsifies") or claim_id
