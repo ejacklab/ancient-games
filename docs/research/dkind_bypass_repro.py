@@ -1,5 +1,14 @@
-"""Reproduction for docs/DKIND_MIRROR_RESEARCH.md §2: does a return-sourced `executable` kind
-bypass the allow_kind_overrides grant control? Run from the repo root: python3 docs/research/dkind_bypass_repro.py"""
+"""Reproduction for docs/DKIND_MIRROR_RESEARCH.md §2, kept as a living check now that §8 has
+landed. Run from the repo root: python3 docs/research/dkind_bypass_repro.py
+
+BEFORE the fix, the three cases printed:
+  A  record_claim, executable + closed_world  -> override seen, commit REFUSED by the grant
+  B  ingest_return, executable, no reason     -> override NOT seen, commit SUCCEEDED
+  (C did not exist: a helper could not state a reason, because nothing asked it for one.)
+
+AFTER: B is recorded as `judgment` — the cheap label is gone, so the helper's own checks no
+longer corroborate it — and C, the helper's override in writing, is refused by the same grant
+that refuses MAIN's. The honest path and the silent path now get the same answer."""
 import os, sys, tempfile
 sys.path.insert(0, ".")
 from ablation import fixtures
@@ -40,10 +49,19 @@ R.run(env, {"claim_id": "C1", "author": "MAIN", "actor": "agent-x", "kind": "exe
             "evidence_type": "command", "evidence_ref": "$ grep -r", "closed_world": CW})
 report("A  record_claim, executable + closed_world:", env, j)
 
-# B: a dispatched agent returns the identical claim, declaring executable itself
+# B: a dispatched agent returns the identical claim, declaring executable itself, no reason given
 env, j = setup("dk-agent")
 D.run(env, {"role": "researcher", "framing": "f1", "agent_id": "adv-1"})
 I.run(env, {"agent_id": "adv-1", "actor": "agent-x", "framing": "f1",
             "fields": {"CLAIMS": [{"claim_id": "C1", "kind": "executable", "text": TEXT,
                                    "evidence_type": "command", "evidence_ref": "$ grep -r"}]}})
-report("B  ingest_return, executable self-declared:", env, j)
+report("B  ingest_return, executable self-declared, no reason:", env, j)
+
+# C: the same helper, stating why its check space is complete — the ratified policy
+env, j = setup("dk-agent-cw")
+D.run(env, {"role": "researcher", "framing": "f1", "agent_id": "adv-1"})
+I.run(env, {"agent_id": "adv-1", "actor": "agent-x", "framing": "f1",
+            "fields": {"CLAIMS": [{"claim_id": "C1", "kind": "executable", "text": TEXT,
+                                   "evidence_type": "command", "evidence_ref": "$ grep -r",
+                                   "closed_world": CW}]}})
+report("C  ingest_return, executable + closed_world:", env, j)

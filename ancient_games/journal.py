@@ -192,7 +192,11 @@ def classify_event(evidence: dict) -> str:
     """§7 (Z2′): a piece of evidence is a `check_executed` event iff it names an
     explicit expected value or falsifying condition the observed result could
     have failed to match; a bare citation of a command's output is a
-    `claim_recorded` event even when MAIN ran the command."""
+    `claim_recorded` event even when MAIN ran the command.
+
+    The rule, not the writing: `hybrid/tools/ingest_return` calls this to route each
+    returned CLAIMS entry to the tool that owns that event type, before anything is
+    written. B·1 still only ever reads already-classified events."""
     expected = evidence.get("expected")
     stated = expected not in (None, "") or evidence.get("pre_fix_result") == "FAIL" or bool(evidence.get("falsifies"))
     return "check_executed" if stated else "claim_recorded"
@@ -263,21 +267,14 @@ class Journal:
         return self.append({"event": "consumer_check", "ref": list(ref), "answer": answer,
                             "command_or_reasoning": command_or_reasoning})
 
-    def ingest_return(self, agent_id: str, fields: dict, actor: str, framing: str | None = None) -> list[dict]:
-        """§6: record the `return` event and mirror each CLAIMS entry into the
-        event `classify_event` (§7, Z2′) picks — classification happens here,
-        at write time, so B·1 only ever reads already-classified events."""
-        out = [self.append({"event": "return", "agent_id": agent_id, "fields": fields})]
-        for c in fields.get("CLAIMS", []) or []:
-            if classify_event(c) == "check_executed":
-                out.append(self.check_executed(c.get("falsifies") or c["claim_id"], c.get("mechanism", "other:unlabelled"),
-                                               c.get("command", c.get("evidence_ref", "")), c.get("expected", ""),
-                                               c.get("observed", ""), c.get("pre_fix_result"), c.get("falsifies")))
-            elif c.get("evidence_type") in ("command", "file:line"):
-                out.append(self.claim_recorded(c["claim_id"], agent_id, actor, c["kind"], c.get("text", c["claim_id"]),
-                                               c["evidence_type"], c.get("evidence_ref", ""),
-                                               c.get("framing", framing)))
-        return out
+    def returned(self, agent_id: str, fields: dict) -> dict:
+        """§6: the `return` event alone. Mirroring its CLAIMS into `claim_recorded` /
+        `check_executed` used to happen here, which made this module a second, unguarded writer of
+        both — it grew three defects the guarded tools did not have (a free `author`, a
+        self-declared `kind`, unvalidated fields with a partial write on failure). The mirror now
+        lives in `hybrid/tools/ingest_return.py`, which delegates to the tools that own those
+        events. This module records events; it is not the gate."""
+        return self.append({"event": "return", "agent_id": agent_id, "fields": fields})
 
 
 def read_events(path: str) -> list[dict]:

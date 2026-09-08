@@ -139,16 +139,16 @@ def test_historic_journals_authored_only_under_eligible_names():
 
 
 # --- step 1 (F1): a third `claim_recorded` writer must not appear silently ---------------------
+# 5c: was two. `journal.ingest_return`'s mirror was the second, and it is gone — `ingest_return`
+# now delegates to this same tool, so there is exactly ONE writer of `claim_recorded` in the tree.
 SANCTIONED_CLAIM_RECORDED_WRITERS = {
-    "ancient_games/journal.py",                    # the ingest_return mirror (guarded in ingest_return.py)
-    "ancient_games/hybrid/tools/record_claim.py",  # the direct writer
+    "ancient_games/hybrid/tools/record_claim.py",  # the only writer
 }
 
 
 def _claim_recorded_writers() -> set[str]:
     """Every shipped module (never the tests) that CALLS `.claim_recorded(...)`, by repo-relative
-    path. The definition site inside journal.py is a FunctionDef, not a Call, so it is not counted;
-    journal.py appears here only for the `ingest_return` mirror at journal.py:271."""
+    path. The definition site inside journal.py is a FunctionDef, not a Call, so it is not counted."""
     out = set()
     for path in sorted(ROOT.glob("ancient_games/**/*.py")) + sorted(ROOT.glob("ablation/**/*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -160,8 +160,9 @@ def _claim_recorded_writers() -> set[str]:
 
 
 def test_claim_recorded_writers_are_the_sanctioned_set():
-    """A third writer would re-open the F1 hole quietly: the author check lives at the two call
-    sites, not in `journal.py`, which records events and is not the gate."""
+    """A second writer would re-open the F1 hole quietly: the author check, the D-KIND rule and
+    every future guard live at the one call site, not in `journal.py`, which records events and is
+    not the gate."""
     assert _claim_recorded_writers() == SANCTIONED_CLAIM_RECORDED_WRITERS
 
 
@@ -385,3 +386,123 @@ def test_validate_writes_nothing(tmp_path):
                                 "evidence_type": "command", "evidence_ref": "r"})
     record_check_tool.validate(dict(VALID_CHECK))
     assert not Path(env.journal_path).exists()
+
+
+# --- steps 5b/5c/5d: one guarded writer, one atomic batch, D-KIND on both paths ----------------
+def _dispatched(tmp_path, agent="adv-1"):
+    env = _env(tmp_path)
+    assert dispatch_tool.run(env, {"role": "researcher", "framing": "f1", "agent_id": agent}).ok
+    return env
+
+
+def _events(env):
+    from ancient_games.journal import Journal
+    return Journal(env.journal_path, env.run_id).read()
+
+
+def test_ingest_return_mirrors_claims_through_the_guarded_writers(tmp_path):
+    """The mapping `journal.ingest_return` used, unchanged — ported here when the mirror moved into
+    the tool (was tests/test_journal.py::test_ingest_return_mirrors_claims). The `claim_id` collapse
+    on the second entry is load-bearing: B·1 (c) counts only check_executed{claim_id=X, falsifies=X}."""
+    env = _dispatched(tmp_path, "tester-1")
+    r = ingest_tool.run(env, {"agent_id": "tester-1", "actor": "coder-1", "framing": "adversarial", "fields": {
+        "REPORT_BACK": "/agents/t.md",
+        "CLAIMS": [{"claim_id": "c1", "kind": "judgment", "evidence_type": "file:line", "evidence_ref": "a.py:3"},
+                   {"claim_id": "c1-check", "kind": "executable", "falsifies": "c1", "mechanism": "pytest-fail-first",
+                    "command": "pytest -q", "expected": "pass", "observed": "pass", "pre_fix_result": "FAIL"},
+                   {"claim_id": "c3", "kind": "executable", "evidence_type": "command", "evidence_ref": "sha256sum f",
+                    "mechanism": "hash-compare", "command": "sha256sum f", "expected": "abc", "observed": "abc"},
+                   {"claim_id": "c2", "kind": "judgment", "evidence_type": "(opinion)"}],
+        "FOLLOW_ON": [], "NOT_DONE": []}})
+    assert r.ok is True, r.reason
+    evs = [e for e in _events(env) if e["event"] != "dispatch"]
+    assert [e["event"] for e in evs] == ["return", "claim_recorded", "check_executed", "check_executed"]
+    assert evs[1]["author"] == "tester-1" and evs[1]["actor"] == "coder-1" and evs[1]["framing"] == "adversarial"
+    assert evs[2]["claim_id"] == "c1" and evs[2]["falsifies"] == "c1" and evs[2]["pre_fix_result"] == "FAIL"
+    assert evs[3]["claim_id"] == "c3" and evs[3]["falsifies"] == "c3" and evs[3]["mechanism"] == "hash-compare"
+
+
+def test_a_bad_entry_writes_nothing_at_all(tmp_path):
+    """Atomicity: the `return` event and its claims are one unit. Before 5b a bad entry half-way
+    down left the earlier claims and the `return` on disk while the call reported failure, so a
+    retry duplicated them."""
+    env = _dispatched(tmp_path)
+    good = {"claim_id": "C{}", "kind": "judgment", "text": "t", "evidence_type": "command", "evidence_ref": "x"}
+    claims = [dict(good, claim_id="C1"), dict(good, claim_id="C2"),
+              {"claim_id": "C3", "falsifies": "C3", "kind": "executable", "mechanism": "eyeballed-it",
+               "command": "x", "expected": "0", "observed": "0"}]
+    r = ingest_tool.run(env, {"agent_id": "adv-1", "actor": "MAIN", "fields": {"CLAIMS": claims}})
+    assert r.ok is False
+    assert r.reason.startswith("invalid-args: fields.CLAIMS[2].mechanism must be "), r.reason
+    assert [e["event"] for e in _events(env)] == ["dispatch"]  # not even the `return` event
+
+
+@pytest.mark.parametrize("entry,field", [
+    ({"claim_id": "C1", "kind": "suite", "evidence_type": "command", "evidence_ref": "x"}, "kind"),
+    ({"claim_id": "", "kind": "judgment", "evidence_type": "command", "evidence_ref": "x"}, "claim_id"),
+    ({"claim_id": "C1", "falsifies": "C1", "mechanism": "suite-count", "command": "x",
+      "expected": "0", "observed": ["0"]}, "observed"),
+])
+def test_a_bad_claims_entry_is_invalid_args_naming_its_index(entry, field, tmp_path):
+    env = _dispatched(tmp_path)
+    r = ingest_tool.run(env, {"agent_id": "adv-1", "actor": "MAIN", "fields": {"CLAIMS": [entry]}})
+    assert r.ok is False and r.reason.startswith(f"invalid-args: fields.CLAIMS[0].{field} must be "), r.reason
+
+
+def test_a_non_object_claims_entry_is_named_not_a_traceback(tmp_path):
+    env = _dispatched(tmp_path)
+    r = ingest_tool.run(env, {"agent_id": "adv-1", "fields": {"CLAIMS": ["a bare string"]}})
+    assert r.ok is False and r.reason.startswith("invalid-args: fields.CLAIMS[0] must be an object")
+    assert "internal-error" not in r.reason  # it was an AttributeError out of classify_event
+
+
+def test_cli_exits_2_on_a_bad_claims_entry(manifest):
+    """F2's defect survived in the mirror: the same bad mechanism was `invalid-args` + exit 2
+    through record_check and `internal-error` + exit 0 through ingest_return. Delegation ends that."""
+    p = _call(manifest, "dispatch", {"role": "researcher", "framing": "f1", "agent_id": "adv-cli"})
+    assert p.returncode == 0, p.stdout + p.stderr
+    p = _call(manifest, "ingest_return", {"agent_id": "adv-cli", "fields": {"CLAIMS": [
+        {"claim_id": "C9", "falsifies": "C9", "mechanism": "eyeballed-it", "command": "x",
+         "expected": "0", "observed": "0"}]}})
+    out = json.loads(p.stdout)
+    assert out["ok"] is False and out["reason"].startswith("invalid-args: fields.CLAIMS[0].mechanism"), out
+    assert p.returncode == 2, p.stdout + p.stderr
+
+
+# --- 5d: D-KIND applies to a helper's report ---------------------------------------------------
+ABSENCE = "the six helpers are dead — nothing calls them"
+CLOSED_WORLD = "AST over every .py + grep for the name as a string + no getattr/globals() idioms"
+
+
+def _returned_claim(env, **extra):
+    r = ingest_tool.run(env, {"agent_id": "adv-1", "actor": "agent-x", "framing": "f1", "fields": {
+        "CLAIMS": [dict({"claim_id": CLAIM, "kind": "executable", "text": ABSENCE,
+                         "evidence_type": "command", "evidence_ref": "$ grep -r"}, **extra)]}})
+    assert r.ok is True, r.reason
+    return [e for e in _events(env) if e["event"] == "claim_recorded"][0]
+
+
+def test_a_helper_cannot_self_declare_executable_on_absence_text(tmp_path):
+    """The hole this closes: the same claim was `judgment` through record_claim and stayed
+    `executable` through a helper's return, which unlocked B·1 (c) — the helper's own checks
+    counting as its own corroboration."""
+    ev = _returned_claim(_dispatched(tmp_path))
+    assert (ev["kind"], ev["kind_override"], ev["closed_world"]) == ("judgment", False, None)
+
+
+def test_a_helper_keeps_executable_by_stating_why_its_space_is_complete(tmp_path):
+    """The ratified policy: a helper MAY override, only in writing, and the override is then
+    journaled, disclosed at the gate and gate-controlled like MAIN's own."""
+    ev = _returned_claim(_dispatched(tmp_path), closed_world=CLOSED_WORLD)
+    assert (ev["kind"], ev["kind_override"], ev["closed_world"]) == ("executable", True, CLOSED_WORLD)
+    assert ev["author"] == "adv-1"  # the gate sees WHOSE closed world it is
+
+
+def test_a_helpers_override_is_visible_to_the_disclosure_machinery(tmp_path):
+    """All four D-KIND consumers key on `kind_overrides()`. A return-sourced override was invisible
+    to every one of them, which is what let it past a grant that exists to refuse exactly this."""
+    from ancient_games.journal import kind_overrides
+    env = _dispatched(tmp_path)
+    _returned_claim(env, closed_world=CLOSED_WORLD)
+    ov = kind_overrides(_events(env), env.run_id)
+    assert [(o["claim_id"], o["author"], o["closed_world"]) for o in ov] == [(CLAIM, "adv-1", CLOSED_WORLD)]

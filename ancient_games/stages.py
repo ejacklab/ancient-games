@@ -338,8 +338,8 @@ def unused_framing(claim: Claim, events: list[dict], framings: list[str]) -> str
 def count_sources(claim: Claim, events: list[dict], cap_state: CapState, framings: list[str]) -> tuple[int, str | None]:
     """V3_5_SPEC §4 B·1 — the complete source-counting rule, as a pure function.
 
-    Reads already-classified events: classification (§7, Z2′) happens at
-    journal-write time (`journal.classify_event`, called by `ingest_return`),
+    Reads already-classified events: classification (§7, Z2′) happens before the
+    write (`journal.classify_event`, called by `hybrid/tools/ingest_return`),
     never here — the reviewer's AA4 reading.
     Returns (n_available, remedy); remedy is None when not capped.
     """

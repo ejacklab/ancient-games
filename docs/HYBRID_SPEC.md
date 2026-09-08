@@ -229,7 +229,7 @@ tool is one module `ancient_games/hybrid/tools/<name>.py` with `MANIFEST` + `run
 | `filter_candidates` | `stages.filter_candidates` (stages.py:539) | read | cheap | — (not I3-restricted, K3) | UC1,2,3,4,5,6 |
 | `prove` | `stages.prove` (stages.py:641) | read | cheap | I2 (producer), I3 (consumer — `env.ctx` is a `Ctx` with 4 fields nulled, §2, L1) | UC1,2,3,5,6,7 |
 | `dispatch` | `journal.dispatch`/`stages.dispatch_source`; generates its own `agent_id` (§2 formula) | invoke | agent | I5 | UC2,3,4,5,6,7,9 |
-| `ingest_return` | `journal.ingest_return` (journal.py:218) | none | cheap | I5 | UC2,3,4,5,6 |
+| `ingest_return` | `journal.returned` + each CLAIMS entry delegated to `record_claim` / `record_check` (v1.5) | none | cheap | I5 | UC2,3,4,5,6 |
 | `record_claim` | `journal.claim_recorded` (journal.py:208); assigns `kind` by rule — full signature below (D-KIND, harness v1.4) | none | cheap | — | UC2,3,4,5,6,7 |
 | `record_check` | `journal.check_executed` (journal.py:202) | none | cheap | — | UC1,2,3,5,6,7 |
 | `lookup_registry` | `registry.lookup` (registry.py:159) | read | cheap | — | UC1, UC9 |

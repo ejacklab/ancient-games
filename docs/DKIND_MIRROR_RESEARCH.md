@@ -264,3 +264,43 @@ the spec's deliberate choice (B·1 (c), "regardless of who ran it") and is *only
   pure functions of `(env, args)`. They are today.
 - **A decision to let agents write events directly**, rather than through MAIN's tool calls, would
   make the mirror the right abstraction after all and this whole document moot.
+
+
+---
+
+## 8. Outcome (landed)
+
+Ratified by the owner: **helpers may override, only in writing** (Option 1's policy), on
+**Option 5's structure** (one door). Landed as `5a` and `5b/5c/5d`.
+
+`journal.ingest_return` is gone; `journal.returned` writes the `return` event and nothing else.
+`hybrid/tools/ingest_return` classifies each CLAIMS entry with `classify_event` and delegates it to
+`record_claim.run` / `record_check.run` — the guarded writers — after validating the **whole batch**.
+There is now exactly one writer of `claim_recorded` in the tree, and F1's AST pin says so.
+
+What §2's table looks like now, from the same reproduction script:
+
+| path | recorded | `commit` |
+|---|---|---|
+| A — MAIN, `executable` + written reason | executable, override | refused by the grant |
+| B — helper, `executable`, no reason | **judgment**, no override | commits (nothing is being claimed as self-sufficient) |
+| C — helper, `executable` + written reason | executable, override, author `adv-1` | **refused by the same grant** |
+
+A and C are now identical, which is the point: the honest path and the silent path get the same
+answer, and the silent path no longer buys a cheaper count.
+
+§2.1's self-certification collapses with it — the same one-dispatch, one-call sequence that reached
+`n=3/3`:
+
+```
+before: Corroborate: C1: n=3/3; reconciled=agree.
+after:  Corroborate: C1: n=0/3, capped, remedy=gate-owner; reconciled=agree, corroboration-capped=true.
+```
+
+§2.2's two adjacent defects are fixed as a side effect of delegating: a bad field is now
+`invalid-args: fields.CLAIMS[i].<field>` and exits 2, and a bad entry anywhere in the list writes
+nothing at all — not even the `return` event.
+
+**Not done, deliberately:** §6's secondary question (unbounded `other:<name>` mechanism labels) needs
+no action while D-KIND holds on every path, which it now does. §2.3 still stands — the CLAIMS channel
+has never fired in a live run, so its first real use remains its first real test.

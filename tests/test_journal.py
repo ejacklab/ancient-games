@@ -83,19 +83,16 @@ def test_classify_event_z2_prime():
     assert classify_event({"evidence_type": "command", "evidence_ref": "ast scan + grep -rnw", "expected": ""}) == "claim_recorded"
 
 
-def test_ingest_return_mirrors_claims(tmp_path):
+def test_returned_writes_only_the_return_event(tmp_path):
+    """5c: the CLAIMS mirror used to live here, which made this module a second, unguarded writer of
+    `claim_recorded` and `check_executed`. It is now `hybrid/tools/ingest_return`, which delegates to
+    the tools that own those events; the mapping it inherited is pinned by
+    tests/test_interface_fixes.py::test_ingest_return_mirrors_claims_through_the_guarded_writers."""
     j = Journal(str(tmp_path / "j.jsonl"))
-    j.ingest_return("tester-1", {
+    ev = j.returned("tester-1", {
         "REPORT_BACK": "/agents/t.md",
-        "CLAIMS": [{"claim_id": "c1", "kind": "judgment", "evidence_type": "file:line", "evidence_ref": "a.py:3"},
-                   {"claim_id": "c1-check", "kind": "executable", "falsifies": "c1", "mechanism": "pytest-fail-first",
-                    "command": "pytest -q", "expected": "pass", "observed": "pass", "pre_fix_result": "FAIL"},
-                   {"claim_id": "c3", "kind": "executable", "evidence_type": "command", "evidence_ref": "sha256sum f",
-                    "mechanism": "hash-compare", "command": "sha256sum f", "expected": "abc", "observed": "abc"},
-                   {"claim_id": "c2", "kind": "judgment", "evidence_type": "(opinion)"}],
-        "FOLLOW_ON": [], "NOT_DONE": []}, actor="coder-1", framing="adversarial")
-    evs = j.read()
-    assert [e["event"] for e in evs] == ["return", "claim_recorded", "check_executed", "check_executed"]
-    assert evs[1]["author"] == "tester-1" and evs[1]["actor"] == "coder-1" and evs[1]["framing"] == "adversarial"
-    assert evs[2]["claim_id"] == "c1" and evs[2]["falsifies"] == "c1" and evs[2]["pre_fix_result"] == "FAIL"
-    assert evs[3]["claim_id"] == "c3" and evs[3]["falsifies"] == "c3" and evs[3]["mechanism"] == "hash-compare"  # classify_event: stated expected
+        "CLAIMS": [{"claim_id": "c1", "kind": "judgment", "evidence_type": "file:line", "evidence_ref": "a.py:3"}],
+        "FOLLOW_ON": [], "NOT_DONE": []})
+    assert ev["event"] == "return" and ev["agent_id"] == "tester-1"
+    assert [e["event"] for e in j.read()] == ["return"]
+    assert not hasattr(j, "ingest_return")

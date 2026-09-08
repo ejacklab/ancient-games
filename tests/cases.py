@@ -116,12 +116,16 @@ def run_t1(journal: Journal) -> Run:
         irreversible_clause="b", tripwires={"loop/program_db.jsonl": "sha256sum loop/program_db.jsonl"},
         fallback="N−1: re-audit and restore any helper with a live caller", permissions="checkpoint-before-commit",
         consumer_reasoning="loop/program_db.jsonl (R4) is written by program_db.py"), journal)
-    journal.ingest_return("historian", {
+    journal.returned("historian", {
         "REPORT_BACK": "/agents/historian.md",
         "CLAIMS": [{"claim_id": "six-are-dead", "kind": "judgment", "evidence_type": "file:line",
                     "evidence_ref": "loop/program_db.py:573,611,648", "text": "all six TRULY_DEAD"}],
         "SCOPE_DELTA": "N/A", "FOLLOW_ON": [], "NOT_DONE": [],
-        "VERDICT": "VERIFIED", "NOT_ESTABLISHED": []}, actor="MAIN", framing="schema-dispatch-read")
+        "VERDICT": "VERIFIED", "NOT_ESTABLISHED": []})
+    # the return's one CLAIMS entry, mirrored. `tools/ingest_return` does this from the entry; this
+    # fixture writes the journal directly, so it states the mirrored event itself.
+    journal.claim_recorded("six-are-dead", "historian", "MAIN", "judgment", "all six TRULY_DEAD", "file:line",
+                           "loop/program_db.py:573,611,648", framing="schema-dispatch-read")
     journal.claim_recorded("six-are-dead", "MAIN", "MAIN", "judgment", "six helpers have zero live references", "command",
                            "ast scan + grep -rnw", framing="text-reference-scan")
     h = "fdfa84bc"

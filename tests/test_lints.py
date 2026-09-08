@@ -195,17 +195,17 @@ def test_scope_delta_missing_through_run_all_on_plan(tmp_path):
     from ancient_games.journal import Journal
     fail = Journal(str(tmp_path / "fail.jsonl"), "scope")
     fail.dispatch("scoped-coder", "coder", "impl", ["INTENT", "SCOPE", "STOP"], "/agents/scoped-coder.md")
-    fail.ingest_return("scoped-coder", {"CLAIMS": [], "FOLLOW_ON": []}, "MAIN")  # no SCOPE_DELTA at all
+    fail.returned("scoped-coder", {"CLAIMS": [], "FOLLOW_ON": []})  # no SCOPE_DELTA at all
     want = lints.Finding("scope-delta-missing-when-SCOPE-present", "SCOPE_DELTA", "SCOPE sent but SCOPE_DELTA absent")
     for backend in lints.BACKENDS:
         got = lints.run_all_on_plan(Plan([]), fail.read(), backend=backend)
         assert got == [want], (backend, got)
     ok = Journal(str(tmp_path / "ok.jsonl"), "scope")
     ok.dispatch("scoped-coder", "coder", "impl", ["INTENT", "SCOPE", "STOP"], "/agents/scoped-coder.md")
-    ok.ingest_return("scoped-coder", {"CLAIMS": [], "FOLLOW_ON": [], "SCOPE_DELTA": "N/A"}, "MAIN")  # explicit-empty
+    ok.returned("scoped-coder", {"CLAIMS": [], "FOLLOW_ON": [], "SCOPE_DELTA": "N/A"})  # explicit-empty
     ok.dispatch("unscoped", "researcher", "read", ["INTENT", "STOP", "FRAMING", "OUTPUT"], "/agents/unscoped.md")
-    ok.ingest_return("unscoped", {"CLAIMS": [], "FOLLOW_ON": []}, "MAIN")  # SCOPE never sent
-    ok.ingest_return("MAIN", {"CLAIMS": [], "FOLLOW_ON": []}, "MAIN")  # never dispatched
+    ok.returned("unscoped", {"CLAIMS": [], "FOLLOW_ON": []})  # SCOPE never sent
+    ok.returned("MAIN", {"CLAIMS": [], "FOLLOW_ON": []})  # never dispatched
     for backend in lints.BACKENDS:
         assert lints.run_all_on_plan(Plan([]), ok.read(), backend=backend) == [], backend
     # scoped like the rest: another run's SCOPE dispatch of the same agent_id does not reach this run's return
