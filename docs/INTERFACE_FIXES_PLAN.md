@@ -72,10 +72,37 @@ not reproduce it.)
 — a **caller-supplied string**. `author` appears **0** times in `lints.py`, `invariants.py`,
 `_plan.py`. All 33 real `record_claim` calls used `"MAIN"`, so constraining it breaks nothing.
 
-**Change** — in `tools/record_claim.py::run`, before writing: accept `author` only if it is
-`"MAIN"` or an `agent_id` carrying a `dispatch` event in this run. Reject with `invalid_args`
-naming the admissible set (which is exactly `{"MAIN"} ∪ dispatched agent_ids`, already derivable
-from the journal — the same shape `record_check.falsifies` already uses).
+**REVIEW P1 (valid, and this plan was wrong): there are TWO writers, not one.**
+`journal.py:271` — reached from `tools/ingest_return.py:19` — writes `claim_recorded` with the
+caller's `agent_id` as the `author`, and `ingest_return` validates only that it is a string.
+Reproduced identically:
+
+```
+ingest_return ×3, agent_ids ghost-1|2|3, dispatch events: 0
+claim_recorded authors: ['ghost-1', 'ghost-2', 'ghost-3']
+Corroborate: C1: n=3/3
+```
+
+`ingest_return` is in fact the **stronger** forge: it also writes a `return` event, so the journal
+reads like genuine agent returns. Constraining only `record_claim` would have left the headline fix
+defeatable by using a different tool — the exact failure mode recorded in this repo's own
+`fix-the-pattern-not-the-report-site` note, repeated.
+
+**Change — at the choke point, not at the two report sites.** `claim_recorded(` has exactly two
+call sites (`journal.py:271`, `record_claim.py:43`). Add `eligible_authors(events) -> set[str]` =
+`{"MAIN"} ∪ {agent_id of every dispatch event in this run}` to `tools/_shared.py`; apply it in
+BOTH `record_claim.run` and `ingest_return.run`, rejecting via `invalid_args` naming the admissible
+set (the shape `record_check.falsifies` already uses). Policy stays in the tool layer — `journal.py`
+records events and must not become the gate.
+
+**Pin the writer set so a third one cannot reopen this.** Add an AST test that the `claim_recorded(`
+call sites are exactly the sanctioned two and that each is guarded, following the existing
+precedent `tests/test_review_b_fixes.py::test_f8_read_events_importers_are_the_sanctioned_set`.
+
+**"Breaks nothing" — verified, not assumed.** Across every historic journal,
+`authors ⊆ {"MAIN"} ∪ dispatched` holds: the only run that ever dispatched (attempt4/UC3,
+`adv-1`) recorded all claims under `MAIN`, and its `ingest_return` agent_ids are `MAIN` and the
+genuinely-dispatched `adv-1`.
 
 **What this does NOT fix, stated plainly:** an agent can still `dispatch` and then author claims as
 that agent without the agent having done the work. This raises forging from *typing a string* to
@@ -100,12 +127,25 @@ reopened.
 
 **Change** — validate `mechanism` (against `MECHANISMS` + `other:<name>`), `pre_fix_result`
 (`FAIL|None`), and the `expected`/`observed` types in `record_check.run`, each via `invalid_args`.
-Keep the existing `falsifies` message, which is already the right shape.
 
-**Also fix the exit code honestly:** a declined-for-bad-input result must exit 2 regardless of
-which helper produced it. Prefer making `internal_error` unreachable for caller errors over
-widening `cmd_call`'s prefix test — the prefix test is the contract, and widening it would let a
-genuine internal error masquerade as a decline.
+**REVIEW P1b (valid — this plan contradicted itself).** The draft said to keep the `falsifies`
+message unchanged *and* required every caller error to exit 2. Both cannot hold: `record_check.py:35`
+returns a bare `FALSIFIES_REASON` with no `invalid-args:` prefix, and `cmd_call` keys `EXIT_REFUSED`
+on that prefix, so a bad `falsifies` exits **0** today — confirmed at HEAD:
+
+```
+reason: falsifies must be a claim_id; put the condition in `expected` (got 'the suite passes'; ...)
+exit:   0
+```
+
+Wrap it with `invalid_args` while **retaining its enumerated detail** (this call's `claim_id` and
+the claim_ids recorded in this run) — that detail is the admissible-alternatives content and is the
+reason the field has had 0 failures since. Assert the CLI exit code, not just the reason string.
+
+**Fix the exit code at the source:** a declined-for-bad-input result must exit 2 regardless of which
+helper produced it. Prefer making `internal_error` unreachable for caller errors over widening
+`cmd_call`'s prefix test — the prefix test is the contract, and widening it would let a genuine
+internal error masquerade as a decline.
 
 ### F3 — reject a `call` tool name that starts with `{`
 
@@ -150,8 +190,17 @@ already works here: `record_check.falsifies` enumerates known claim_ids and has 
 
 **Change** — append `sorted(ctx.actor)` to that message. Then sweep for the same shape: a rejection
 whose admissible set is computed (or trivially available) at rejection time and thrown away.
-`guard.unmatched_tripwire_keys` already returns the legal keys and is a candidate; check what it
-currently prints before changing it.
+
+**REVIEW P2 (valid — this plan's note was inaccurate).** `guard.unmatched_tripwire_keys`
+(`guard.py:15`) computes `allowed = {k for h in hit.hubs for k in hit.tripwire_keys(h)}` and then
+returns `(unmatched, list(hit.hubs))`, **discarding `allowed`**; the error prints hub *names*. Its
+own docstring says a key may be the hub's name **or** the path of a ref that matched into it, so
+hubs is a strict subset of the admissible set — printing it is both incomplete and, for a
+path-alias key, misleading. Return and print `sorted(allowed)`.
+
+One caveat when implementing: where `hit.hubs` is empty, `allowed` is empty too, and an empty
+admissible set is not guidance. Keep the existing `consumers` clause for that case — it is the only
+part of the message that tells the caller what to do next.
 
 **Deliberately not generalised into a mechanism.** Two of the three historic hotspots sit at 0
 failures across 99 calls; a general framework would be built past the point of return.
@@ -176,15 +225,18 @@ failures across 99 calls; a general framework would be built past the point of r
 
 1. F1: three `record_claim` calls with invented authors and no dispatch → refused, message names the
    admissible set. **The forge repro above becomes a regression test** and must go from `n=3/3` to refused.
-2. F1: `author="MAIN"` still works; an author matching a real `dispatch` in this run still works.
-3. F1: replaying all 33 historic `record_claim` calls still succeeds (the "breaks nothing" claim, asserted).
-4. F2: out-of-enum `mechanism`, bad `pre_fix_result`, mistyped `expected` → each `invalid-args:` **and exit 2**.
-5. F2: `record_check`'s existing `falsifies` behaviour is unchanged.
-6. F3: `call '{"claim_id":...}'` → exit 2 naming the correct invocation shape; a real unknown tool still journals `unknown-tool`.
-7. F4: `record_claim.actor` no longer prints "never passed by the caller"; `Claim.actor` (inside `corroborate`) still does.
-8. F4: the mechanical check — no note claiming a field is never caller-passed appears against a field in that tool's `MANIFEST["inputs"]`.
-9. F5: `corroborate` with an unknown action names the legal actions; with a legal action, unchanged.
-10. All 318 existing tests still pass.
+2. F1: **the same forge through `ingest_return`** (three invented `agent_id`s, no dispatch) → refused.
+3. F1: `author="MAIN"` still works; an author matching a real `dispatch` in this run still works.
+4. F1: the AST pin — `claim_recorded(` has exactly the two sanctioned, guarded call sites.
+5. F1: every historic journal still satisfies `authors ⊆ {"MAIN"} ∪ dispatched` (the "breaks nothing" claim, asserted).
+6. F2: out-of-enum `mechanism`, bad `pre_fix_result`, mistyped `expected` → each `invalid-args:` **and exit 2**.
+7. F2: a bad `falsifies` keeps its enumerated detail **and now exits 2** (today it exits 0).
+8. F3: `call '{"claim_id":...}'` → exit 2 naming the correct invocation shape; a real unknown tool still journals `unknown-tool`.
+9. F4: `record_claim.actor` no longer prints "never passed by the caller"; `Claim.actor` (inside `corroborate`) still does.
+10. F4: the mechanical check — no note claiming a field is never caller-passed appears against a field in that tool's `MANIFEST["inputs"]`.
+11. F5: `corroborate` with an unknown action names the legal actions; with a legal action, unchanged.
+12. F5: a tripwire keyed by a matched-ref path alias is accepted, and the rejection message lists `allowed`, not hubs.
+13. All 318 existing tests still pass.
 
 **Verified by sabotage, not assertion** (standing bar, and it has found two real defects this
 session): each fix must have a one-line mutation that fails a case. Specifically — F1 accepting any
@@ -202,6 +254,10 @@ invariant floor, or the autonomy layer.
 authoring under several names now will not. That is the point, but it means any stored ablation
 journal replayed as a fixture may score differently — check `ablation/score.py` q3/q5 against the
 attempt4 journals before and after, and record any movement rather than absorbing it.
+
+**Review, 2026-09-08:** three findings against this plan (P1, P1b, P2), all three verified as VALID
+by reproduction at HEAD and folded in above. P1 was the serious one — the plan constrained one of
+two writers, which would have shipped a headline fix defeatable by switching tools.
 
 **Open, not addressed here:** `ingest_return` still accepts a dispatched agent's self-declared
 claim kind (D-KIND's remaining hole); F1 narrows the neighbouring surface without closing it.
