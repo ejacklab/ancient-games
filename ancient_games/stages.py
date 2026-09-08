@@ -469,6 +469,15 @@ def corroborate(ctx: Ctx, claims: list[Claim], journal: Journal, action: str,
             # B·4 drops a claim with no cited command. It is dropped BEFORE B·1 counts it: an
             # UNVERIFIED claim is not corroborated, so it must not write ctx.n_sources (schema
             # FRAMING/TEMPLATE read it) or a corroboration_capped entry and its HUMAN_GATE line.
+            # Not writing is not enough on a rerun (loop.REPLAN re-runs B): a prior call that
+            # capped this claim left its n_sources, corroboration_capped entry and
+            # corroboration-capped gate reason in ctx, and schema._gate_lines went on emitting
+            # a HUMAN_GATE for a claim this call returns UNVERIFIED. Clear that state too.
+            # D·5's own gate reasons (claim_id=None) are not ours to drop.
+            ctx.n_sources.pop(c.claim_id, None)
+            ctx.corroboration_capped = [x for x in ctx.corroboration_capped if x.claim_id != c.claim_id]
+            ctx.gate_reason = [g for g in ctx.gate_reason
+                               if not (g.claim_id == c.claim_id and g.reason == "corroboration-capped")]
             results.append(ClaimResult(c, "UNVERIFIED", 0, n_req))
             continue
         if n_req == 1:

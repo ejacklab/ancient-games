@@ -474,3 +474,31 @@ def test_split_path_preserves_hard_blocked_from_the_probe_guard(tmp_path):
         f"split path lost D·5's override: {c4.execution_status!r}")
     assert ex4.execution_status == "hard_blocked", "the exit line must carry it too"
     assert ex4.probe_guard is not None, "the split return must surface the probe guard"
+
+
+# --- a rerun that turns a capped claim UNVERIFIED must clear its state (review finding) -----
+def test_unverified_rerun_clears_prior_corroboration_state(tmp_path):
+    """loop.REPLAN re-runs B. A claim capped on an earlier pass and re-submitted without a
+    cited command was returned UNVERIFIED while its n_sources, corroboration_capped entry and
+    corroboration-capped gate reason stayed in ctx — schema._gate_lines kept emitting a
+    HUMAN_GATE for a claim the run had just dropped."""
+    from ancient_games import stages, schema
+    from ancient_games.ctx import Ctx, GateReason
+    from ancient_games.journal import Journal
+
+    j = Journal(str(tmp_path / "j.jsonl"), "r1")
+    ctx = Ctx(); ctx.stakes = 2; ctx.actor = {"act": "MAIN"}
+    ctx.gate_reason.append(GateReason("human(checkpoint)", "stakes-2-checkpoint"))  # D·5's own
+
+    first = stages.corroborate(ctx, [stages.Claim("C1", "judgment", has_command=True)], j, "act")
+    assert first.exit_type == "CAPPED"
+    assert ctx.n_sources["C1"] == 0 and any(x.claim_id == "C1" for x in ctx.corroboration_capped)
+
+    second = stages.corroborate(ctx, [stages.Claim("C1", "judgment", has_command=False)], j, "act")
+    assert second.exit_type == "UNVERIFIED"
+    assert "C1" not in ctx.n_sources
+    assert not any(x.claim_id == "C1" for x in ctx.corroboration_capped)
+    assert not any(g.claim_id == "C1" for g in ctx.gate_reason)
+    assert not any("claim=C1" in ln for ln in schema._gate_lines(ctx)), schema._gate_lines(ctx)
+    # D·5's own gate reason is not ours to drop
+    assert any(g.reason == "stakes-2-checkpoint" and g.claim_id is None for g in ctx.gate_reason)
