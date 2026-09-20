@@ -4,7 +4,7 @@
 
 ## What changed, and only this
 
-One variable: H18 (`f28082a`) — `record_check` and `ingest_return` now apply one rule, so a check is
+One variable: H18 (`71c0fb0`) — `record_check` and `ingest_return` now apply one rule, so a check is
 evidence for the claim named in `claim_id` and a `falsifies` naming any other claim is refused by
 name. Everything else is ablation 5's setup: same task, fixture (`34c7bf6`), ceiling (124), autonomy
 (`auto`, no grant), model (Sonnet), prompt. Journal at `attempt7/`.

@@ -1,7 +1,7 @@
 # Ablation 4 — design: does the CLAIMS channel work when an agent can see it?
 
 Design only. Pre-registered before the run, so the result cannot be rationalised afterwards.
-Written against `e2daf82` (D-KIND closed on both paths, 363 tests green).
+Written against `9329c78` (D-KIND closed on both paths, 363 tests green).
 
 ---
 
@@ -46,7 +46,7 @@ for `framings` is not explicit enough"*), on a different field.
 findings through `ingest_return`'s CLAIMS — and when it does, does the now-guarded path behave?
 
 **What it cannot establish, stated up front.** D-KIND holding on the CLAIMS path is *mechanically
-guaranteed* at `e2daf82` — unit-tested, sabotage-checked, one writer. A live run does not test the
+guaranteed* at `9329c78` — unit-tested, sabotage-checked, one writer. A live run does not test the
 rule. It tests whether the **situation arises at all** and whether the interface is usable under
 free choice. That is an interface result, not a correctness one. Anyone reading this later should
 not upgrade it into evidence that D-KIND "works", which the tests already establish more strongly.
@@ -105,7 +105,7 @@ Recorded now so the result cannot be fitted afterwards.
 |---|---|---|
 | 1 | With P0 landed, the agent returns worker findings as `CLAIMS` rather than ad-hoc fields | ad-hoc field names again ⇒ the contract is still not reaching the agent; a packet defect, not an agent one |
 | 2 | It dispatches, because a genuinely different framing exists (UC3's pattern, not UC2J's) | a reasoned refusal naming why the second instrument would differ — that is a *result*, not a failure, and repeats attempt 4's discrimination |
-| 3 | The worker's `graph_memory is unused` claim is recorded `judgment`; any `executable` needs `closed_world` | an `executable` with no `closed_world` on the CLAIMS path ⇒ the fix at `e2daf82` is wrong; investigate before anything else |
+| 3 | The worker's `graph_memory is unused` claim is recorded `judgment`; any `executable` needs `closed_world` | an `executable` with no `closed_world` on the CLAIMS path ⇒ the fix at `9329c78` is wrong; investigate before anything else |
 | 4 | The naive closed_world argument ("AST + grep") is offered **and is false here** — the lazy import at `program_db.py:551` defeats it | the agent enumerates dynamic-import sites unprompted ⇒ F2 is weaker than ABLATION_3 thought |
 | 5 | The run ends at the checkpoint gate with the override disclosed, not at a commit | a commit under an undisclosed override ⇒ a second bypass; stop the run and treat as a defect |
 

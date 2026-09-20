@@ -3,7 +3,7 @@
 A design, not a run. Sequential by default. Method: `docs/WORKFLOW_DESIGN_METHOD.md`.
 
 Nothing below was executed against `README.md`, and no unclear spot is resolved here. Written on 2026-09-20 at HEAD
-`4a0c94b`. Read in this session: `state.md`, `algorithm.md`, `readiness.md`, the method, the design template,
+`edd0edc`. Read in this session: `state.md`, `algorithm.md`, `readiness.md`, the method, the design template,
 `.claude/workflows/intake.js` (the checks this design must pass), `README.md:15-40`, `PROJECT_OVERVIEW.md:400-412`.
 Run in this session: `command -v` for `bash grep sed git python3 sha256sum diff mktemp env tail` (all found);
 `git status --short` (baseline plus `?? runs/`); `NO_COLOR` is unset. pytest was not run in this step.
@@ -184,5 +184,5 @@ about one short agent in a run of four. p3 needs p1 and p2; p4 needs p3.
   check, item 5).
 - "s2 to s5 belong to one session" is read as: no number crosses from one agent to another. s1, s2 and s4 are one
   agent (p3); every check measures N again instead of trusting a recorded one.
-- The design assumes the working tree and HEAD (`4a0c94b`) are not changed by anyone else during the run. If they
+- The design assumes the working tree and HEAD (`edd0edc`) are not changed by anyone else during the run. If they
   are, the checks still measure fresh, but the baseline comparison of `git status --short` will fail and say so.

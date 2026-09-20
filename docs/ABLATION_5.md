@@ -5,7 +5,7 @@ pre-registration; nothing below is edited afterwards, only appended to.
 
 ## What changed, and only this
 
-One variable: `kind_by_rule` (H16/H17, `bf0f17a`). Same task, same fixture (`seza/backtest` at
+One variable: `kind_by_rule` (H16/H17, `3bbb7e1`). Same task, same fixture (`seza/backtest` at
 `34c7bf6`), same ceiling (124), same autonomy (`auto`, no grant), same model for MAIN (Sonnet), a
 fresh cold agent with the same 289-line prompt. Ablation 4's run is `ablation/runs/attempt5/`; this
 one is `attempt6/`.

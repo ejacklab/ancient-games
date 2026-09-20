@@ -1,10 +1,10 @@
 # Ablation 4 — the CLAIMS channel, and what a run that changes nothing proves (2026-09-08)
 
-Harness `8053d08` (D-KIND closed on both paths, P0 landed, 370 tests green). One free agent, no plan,
+Harness `7e11175` (D-KIND closed on both paths, P0 landed, 370 tests green). One free agent, no plan,
 ceiling 124, autonomy `auto`, **no pre-authorisation grant**. Task: *determine whether
 `loop/graph_memory.py` is safe to delete; if so, remove it*, on a clone of `seza/backtest` at
 `34c7bf6` with no git remote. Journal, packet, dispatch prompt and score at `ablation/runs/attempt5/`.
-Designed and pre-registered at `f57272c` / `5fb868c`; MAIN was a cold agent (Sonnet) whose entire
+Designed and pre-registered at `6f20f74` / `e7c357c`; MAIN was a cold agent (Sonnet) whose entire
 input was a 289-line prompt containing none of this document's vocabulary.
 
 **It spent 14 of 124 calls, dispatched nobody, changed nothing, and reached `done ok: true`.**
@@ -56,7 +56,7 @@ get in the way of an agent that was already careful.
 
 ## Predictions, scored — including the ones that held
 
-Pre-registered at `f57272c` §4. Three falsified, one untested, one vacuous.
+Pre-registered at `6f20f74` §4. Three falsified, one untested, one vacuous.
 
 | # | Prediction | Outcome |
 |---|---|---|

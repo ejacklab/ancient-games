@@ -1,6 +1,6 @@
 # Ancient Games: project map and module review
 
-Reviewed snapshot: commit `229d733`, 2026-09-10. This document describes the current implementation;
+Reviewed snapshot: commit `33a114b`, 2026-09-10. This document describes the current implementation;
 `SPEC.md`, `DECISIONS.md`, and the design/ablation documents explain its evolution.
 The module boundaries below are logical review boundaries, not a proposed directory rewrite.
 

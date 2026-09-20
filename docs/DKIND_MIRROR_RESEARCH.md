@@ -1,6 +1,6 @@
 # The D-KIND mirror hole — what it actually is, and four ways to close it
 
-Research, not a design. Everything below was measured against `dcc0abd` (F1–F5 landed, 351 tests
+Research, not a design. Everything below was measured against `3305896` (F1–F5 landed, 351 tests
 green). Reproduction scripts are inline; each finding names the command that produced it.
 
 **Scope note.** `docs/INTERFACE_FIXES_IMPL.md` left this out deliberately: "`ingest_return` still

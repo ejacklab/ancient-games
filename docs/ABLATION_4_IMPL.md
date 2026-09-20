@@ -3,7 +3,7 @@
 Executes `docs/ABLATION_4_DESIGN.md`. Read that first for *why*; this is *how*, and is meant to be
 followed without re-deriving the decisions.
 
-**Baseline:** `f57272c`, tree clean, `python3 -m pytest -q` → **363 passed**. Every code step below
+**Baseline:** `6f20f74`, tree clean, `python3 -m pytest -q` → **363 passed**. Every code step below
 ends green; do not carry a red suite across steps.
 
 **Order is not arbitrary.** Steps 1–2 are the P0 the design calls blocking: without them the run
@@ -40,7 +40,7 @@ contract and both CLAIMS entry shapes:
 ```
 
 ### 1.2 Fix the note 5d made stale — a defect this session introduced
-`NOTES["closed_world"]` still opens *"record_claim only: …"*. Since `e2daf82` a CLAIMS entry carries
+`NOTES["closed_world"]` still opens *"record_claim only: …"*. Since `9329c78` a CLAIMS entry carries
 `closed_world` too, and it is the whole mechanism by which the ratified policy ("a helper may
 override, in writing") reaches a return. The note now contradicts shipped behaviour.
 
@@ -82,7 +82,7 @@ Extend the existing packet checks (`test_ablation_harness.py::test_tools_listing
 `tools_schema(TOOLS) in packet`): assert `return_contract_table() in packet` for all three.
 
 **Regenerate, do not hand-edit.** The tools table's column widths are computed from content — a
-longer docstring re-pads every row. Use the script shape from `e2daf82`'s packet regeneration.
+longer docstring re-pads every row. Use the script shape from `9329c78`'s packet regeneration.
 
 ---
 

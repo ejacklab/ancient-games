@@ -3,7 +3,7 @@
 Step 2 of the intake workflow (method §3.2, §3.3). A design only: nothing here was executed against README.md, and
 no unclear spot below has been resolved.
 
-Read in this session on 2026-09-20 at HEAD `4a0c94b`: `state.md`, `readiness.md`, `docs/WORKFLOW_DESIGN_METHOD.md`,
+Read in this session on 2026-09-20 at HEAD `edd0edc`: `state.md`, `readiness.md`, `docs/WORKFLOW_DESIGN_METHOD.md`,
 the four templates, `README.md:15-40`, `PROJECT_OVERVIEW.md:400-412`. Commands run: `grep -n "68 passed" README.md`
 → line 33 only; `git status --short` → the baseline plus `?? runs/`; `NO_COLOR` is unset in this session. pytest was
 not run in this step; the 379 figure is step 1's.
@@ -42,7 +42,7 @@ Listed before any is resolved. None is resolved here.
 | Id | What is unclear | Kind | Blocks steps | Depends on spot |
 |---|---|---|---|---|
 | u1 | The exact replacement wording. pytest prints `N passed in …s` and prints no xfailed figure when there are none, so `, 0 xfailed` is README wording, not pytest output. Keep the suffix or drop it? | decision | s4 | — |
-| u2 | The number itself. It is a command result, not stored knowledge: 379 is dated 2026-09-20 / `4a0c94b` / `NO_COLOR` unset (readiness.md "Missing or unverified", verify piece). It must be retaken in the session that edits | information | s4 | — |
+| u2 | The number itself. It is a command result, not stored knowledge: 379 is dated 2026-09-20 / `edd0edc` / `NO_COLOR` unset (readiness.md "Missing or unverified", verify piece). It must be retaken in the session that edits | information | s4 | — |
 | u3 | Whether a plain `python3 -m pytest -q` (the command the README shows) still gives `378 passed, 1 failed` when `NO_COLOR` is set. Recorded in `PROJECT_OVERVIEW.md:402-410`; not reproduced in step 1 or here | information | s5 — its expected scope is set by u4, and u4 part (c) cannot be put to EJ as a fact until this is known. s2 does not wait for it: it unsets `NO_COLOR` | — |
 | u4 | Scope beyond line 33: (a) `README.md:19-21` describes the suite as "eight trace test cases … nine lints" and was not checked against a suite of 379 tests; (b) eight files under `docs/` carry dated counts (282 … 370) tied to named commits; (c) if u3 is confirmed, a reader with `NO_COLOR` set will not see the number the README shows. The challenge names only the count in README.md | decision | s5 (its "only README.md, one line" expectation) | u3 (part c disappears if u3 is not confirmed) |
 | u5 | Whether the run ends with a commit. The challenge does not ask for one; the house rule keeps "run the suite" and "commit" as separate steps; CLAUDE.md Rule 6 says show the diff and get approval | decision | s6 | — |

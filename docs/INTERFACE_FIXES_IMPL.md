@@ -1,9 +1,9 @@
 # Tool-interface fixes — implementation plan
 
-Executes `docs/INTERFACE_FIXES_PLAN.md` (design, as amended by review `aad7630`). Read that first
+Executes `docs/INTERFACE_FIXES_PLAN.md` (design, as amended by review `4fb0146`). Read that first
 for *why*; this document is *how*, and is meant to be followed without re-deriving the decisions.
 
-**Baseline:** `aad7630`, tree clean, `python3 -m pytest -q` → **318 passed**. Every step below ends
+**Baseline:** `4fb0146`, tree clean, `python3 -m pytest -q` → **318 passed**. Every step below ends
 green; do not carry a red suite across steps.
 
 **Order is not arbitrary.** F1 and F2 are correctness (a live forge; a caller error reporting

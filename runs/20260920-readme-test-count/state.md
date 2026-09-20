@@ -23,7 +23,7 @@ folder; the final check compares against this.
 ?? tests/workflows/
 ```
 
-HEAD at baseline: `4a0c94b` (branch `master`). `runs/` is not git-ignored, so the final status will also show `?? runs/`.
+HEAD at baseline: `edd0edc` (branch `master`). `runs/` is not git-ignored, so the final status will also show `?? runs/`.
 
 ## Steps
 
@@ -48,7 +48,7 @@ Step ids (s1–s6) refer to the steps table in algorithm.md.
 | Id | What is unclear | Kind (information / decision / unknown) | Blocks steps | Depends on spot |
 |---|---|---|---|---|
 | u1 | Exact replacement wording for README.md:33: keep the `, 0 xfailed` suffix (README wording, not pytest output) or drop it | decision | s4 | — |
-| u2 | The number itself: a command result dated 2026-09-20 / `4a0c94b` / `NO_COLOR` unset (379); must be retaken in the session that edits | information | s4 | — |
+| u2 | The number itself: a command result dated 2026-09-20 / `edd0edc` / `NO_COLOR` unset (379); must be retaken in the session that edits | information | s4 | — |
 | u3 | Whether plain `python3 -m pytest -q` with `NO_COLOR` set still gives `378 passed, 1 failed` (`PROJECT_OVERVIEW.md:402-410`); not reproduced | information | s5 | — |
 | u4 | Scope beyond line 33: README.md:19-21 suite description, dated counts in eight `docs/` files, a possible `NO_COLOR` note | decision | s5 | u3 |
 | u5 | Whether the run ends with a commit or leaves the change uncommitted | decision | s6 | — |
