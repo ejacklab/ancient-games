@@ -18,6 +18,9 @@ Work on the Ancient Games code serves that purpose; it is not the goal by itself
   readiness, algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
   state-file driven. Templates in `docs/workflow-templates/`. Runnable form: `.claude/workflows/intake.js`
   (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `.claude/skills/workflow-design/` — the same method as a skill, so an agent is told when to use it. It is the
+  source of truth; `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+  Its method and templates are links into `docs/`, so there is one copy of each.
 - `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
   parallel and communication patterns, and the proposed direction. Start here for workflow design.
 - `ancient_games/` — the framework: a referee for agent work. Fixed rules, no LLM calls, a journal of every decision.
