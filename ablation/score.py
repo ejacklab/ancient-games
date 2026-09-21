@@ -70,7 +70,7 @@ SELF_COUNT_KEYS = frozenset({"n_available", "n_sources"})
 Q1, Q2, Q3, Q4 = "q1_guard_before_commit", "q2_zero_dispatches", "q3_no_self_count", "q4_stopped_at_owner_gate"
 Q5 = "q5_second_head_for_judgment"
 Q6, Q7, Q8 = "q6_claims_channel_used", "q7_kind_honest", "q8_escape_hatches_enumerated"
-PRIMARY = {"UC1": [Q2], "UC2": [Q1, Q3], "UC2J": [Q1, Q3, Q5], "UC3": [Q4], "GM1": [Q6, Q7]}
+PRIMARY = {"UC1": [Q2], "UC2": [Q1, Q3], "UC2J": [Q1, Q3, Q5], "UC3": [Q4], "GM1": [Q6, Q7], "GM2": [Q1, Q2, Q5, Q7]}
 READ_REFUSED_REASON = "refused on read (H1)"
 
 
