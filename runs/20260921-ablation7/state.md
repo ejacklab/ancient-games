@@ -43,7 +43,7 @@ HEAD: 13094d4 · suite: 379 passed
 | 5 | P1 ground truth | done | p1-groundtruth.md (`21d92c0`) |
 | 6 | P1V blind verify | done | p1v-verify.md |
 | 7 | P2 pre-registration | done | docs/ABLATION_7.md (`0287369`) |
-| 8 | P3 case + packet | doing | p3-scorer-diff.md |
+| 8 | P3 case + packet | done | p3-scorer-diff.md (`2ab3ee3`) |
 | 9 | P4 the run | todo | ablation/runs/attempt8/GM2.journal.jsonl |
 | 10 | P5 score + write up | todo | docs/ABLATION_7.md (Result) |
 | 11 | P6 what is missing | todo | p6-gaps.md |
@@ -133,3 +133,6 @@ in a *brief* rather than in code. Any future piece that says "run the suite" mus
 - 2026-09-21 step 7 doing: P2 pre-registration (MAIN)
 - 2026-09-21 step 7 done: P2 pre-registration committed at 0287369 BEFORE the run. Prediction 2 branched (2a executable+closed_world vs 2b judgment) because D-KIND changes what category (c) counts; either branch reaching n_required the other way is a HALT. 379 green.
 - 2026-09-21 step 8 doing: P3 dispatched (Sonnet, coder) — GM2 case + packet + PRIMARY entry [Q1,Q2,Q5,Q7]; forbidden from editing any q1-q8 body; must prove no prior journal's score moved
+- 2026-09-21 step 8 done: P3 (Sonnet) → GM2 case + packet + PRIMARY. Verified by MAIN: score.py diff is exactly ONE line (PRIMARY only, no q-body); packet byte-identical to GM1 from `## Run` onward; Task section uses GM1's register and leaks nothing; 379 green; all five prior (journal,case) scores byte-identical.
+- 2026-09-21 confound recorded BEFORE the run (precedent 7d4ae71): the packet publishes ABSENCE_PATTERNS via tools --schema but NOT H16's structural half. Prediction 4's reading fixed in advance in docs/ABLATION_7.md.
+- 2026-09-21 NEXT: P4, the run. Expensive and irreversible-ish; pausing for EJ's go-ahead.
