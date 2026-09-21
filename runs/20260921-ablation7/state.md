@@ -44,9 +44,9 @@ HEAD: 13094d4 · suite: 379 passed
 | 6 | P1V blind verify | done | p1v-verify.md |
 | 7 | P2 pre-registration | done | docs/ABLATION_7.md (`0287369`) |
 | 8 | P3 case + packet | done | p3-scorer-diff.md (`2ab3ee3`) |
-| 9 | P4 the run | doing | ablation/runs/attempt8/GM2.journal.jsonl |
-| 10 | P5 score + write up | todo | docs/ABLATION_7.md (Result) |
-| 11 | P6 what is missing | todo | p6-gaps.md |
+| 9 | P4 the run | done | ablation/runs/attempt8/GM2.journal.jsonl |
+| 10 | P5 score + write up | done | docs/ABLATION_7.md (Result) |
+| 11 | P6 what is missing | doing | p6-gaps.md |
 
 ## Size decision
 
@@ -157,3 +157,7 @@ then. Granting one unprompted would be a prompt about stage order.
 - 2026-09-21 confound recorded BEFORE the run (precedent 7d4ae71): the packet publishes ABSENCE_PATTERNS via tools --schema but NOT H16's structural half. Prediction 4's reading fixed in advance in docs/ABLATION_7.md.
 - 2026-09-21 NEXT: P4, the run. Expensive and irreversible-ish; pausing for EJ's go-ahead.
 - 2026-09-21 step 9 doing: P4 dispatched (Sonnet). Fixture cloned at ebdfd5f (clone, not worktree — backtest holds master). Source repo verified untouched after setup.
+- 2026-09-21 step 9 done: P4 run complete. 16 tool calls, 0 dispatches, 0 refusals, terminus done ok, fixture commit cf846c9 (7 deletions). MAIN adjudicated the checkpoint gate and accepted C1's override on five grounds recorded in approval_recorded.note. Source repo verified untouched.
+- 2026-09-21 step 10 done: P5 scored. ALL FIVE predictions HELD. Headline: prediction 3 was pre-registered as most informative IF IT FAILED, and it held -- ablation 5's dispatch was a defect artifact. Q3 answered no and the SCORER is wrong (it penalises honest capping); filed, not fixed.
+- 2026-09-21 journal pin updated deliberately 13->14 journals / 568->598 events; attempt8 now in the differential lint sweep; 381 green.
+- 2026-09-21 step 11 doing: P6 dispatched (Opus, blind) — what is missing.
