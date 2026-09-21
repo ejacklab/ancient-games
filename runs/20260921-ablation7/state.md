@@ -46,7 +46,7 @@ HEAD: 13094d4 · suite: 379 passed
 | 8 | P3 case + packet | done | p3-scorer-diff.md (`2ab3ee3`) |
 | 9 | P4 the run | done | ablation/runs/attempt8/GM2.journal.jsonl |
 | 10 | P5 score + write up | done | docs/ABLATION_7.md (Result) |
-| 11 | P6 what is missing | doing | p6-gaps.md |
+| 11 | P6 what is missing | done | p6-gaps.md (`4b26e74`) |
 
 ## Size decision
 
@@ -161,3 +161,6 @@ then. Granting one unprompted would be a prompt about stage order.
 - 2026-09-21 step 10 done: P5 scored. ALL FIVE predictions HELD. Headline: prediction 3 was pre-registered as most informative IF IT FAILED, and it held -- ablation 5's dispatch was a defect artifact. Q3 answered no and the SCORER is wrong (it penalises honest capping); filed, not fixed.
 - 2026-09-21 journal pin updated deliberately 13->14 journals / 568->598 events; attempt8 now in the differential lint sweep; 381 green.
 - 2026-09-21 step 11 doing: P6 dispatched (Opus, blind) — what is missing.
+- 2026-09-21 step 11 done: P6 (Opus, blind) → 2 BLOCKERS + 9 MAJOR. MAIN verified each before accepting. HEADLINE RETRACTED (aca6539).
+- 2026-09-21 RUN COMPLETE. What survives: prediction 1 (the framework engages when acting is correct) and the both-directions D-KIND discrimination in one run. What does NOT: everything resting on prediction 3.
+- 2026-09-21 OPEN, carried out of this run: (1) file the Q3 defect properly — it is a substring test against a line containing agent free text, so a run with no cap could flip it by prose; it also overturns DECISIONS.md #54 and that decision must be cited; (2) future GM cases need `fixture.modified` so scores reproduce without --repo; (3) the ablation-5-vs-6 graph_memory disagreement is still open and untouched.
