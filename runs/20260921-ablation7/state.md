@@ -44,7 +44,7 @@ HEAD: 13094d4 · suite: 379 passed
 | 6 | P1V blind verify | done | p1v-verify.md |
 | 7 | P2 pre-registration | done | docs/ABLATION_7.md (`0287369`) |
 | 8 | P3 case + packet | done | p3-scorer-diff.md (`2ab3ee3`) |
-| 9 | P4 the run | todo | ablation/runs/attempt8/GM2.journal.jsonl |
+| 9 | P4 the run | doing | ablation/runs/attempt8/GM2.journal.jsonl |
 | 10 | P5 score + write up | todo | docs/ABLATION_7.md (Result) |
 | 11 | P6 what is missing | todo | p6-gaps.md |
 
@@ -121,6 +121,26 @@ in a *brief* rather than in code. Any future piece that says "run the suite" mus
 - `loop/tests/` carries **2 pre-existing failures** in `test_worktree.py` (a holdout git-object-leak
   check, an artifact of running inside a full-history worktree). Baseline, not signal.
 
+## P4 run coordinates (live)
+
+| | |
+|---|---|
+| run dir | `/tmp/ablation7-run/` (fixture, journal, packet, dispatch prompt) |
+| fixture | a **clone** of `seza/backtest`, `master` forced to `ebdfd5f8…`, origin removed. A worktree was not usable: `backtest` has `master` checked out itself, and git refuses the same branch in two worktrees. Verified at setup: HEAD = `ebdfd5f8…`, branch `master`, target present at `core.py:282`, 0 modified. |
+| run-id | `ablation-GM2-1` · ceiling **124** · autonomy **auto** (no grant) |
+| journal | `/tmp/ablation7-run/journal.jsonl` → copied to `ablation/runs/attempt8/` after the run |
+| packet | `/tmp/ablation7-run/packet.md`, 266 lines, **0** unsubstituted placeholders |
+| model under test | **Sonnet** (pre-registered; NOT a quality dial) |
+
+**Deviation from attempt 7, recorded:** attempt 7 inlined the packet into the dispatch prompt;
+this run points the agent at the filled packet on disk and requires it to echo the Task and Hard
+rules back before acting, so it can be verified the brief was loaded. Functionally equivalent,
+verifiable, and it keeps the packet byte-exact rather than retyped.
+
+**MAIN's standing duty during the run:** the agent is forbidden by packet rule 2 from running
+`approve`. When it prints `NEED_APPROVAL <action_id> <gate>`, MAIN records the approval — and only
+then. Granting one unprompted would be a prompt about stage order.
+
 ## Log (append only)
 
 - 2026-09-21 step 1 done: readiness run; 2 tool proofs FAILED first time (scorer invocation; `eval/forecast.py` not dead) and are recorded
@@ -136,3 +156,4 @@ in a *brief* rather than in code. Any future piece that says "run the suite" mus
 - 2026-09-21 step 8 done: P3 (Sonnet) → GM2 case + packet + PRIMARY. Verified by MAIN: score.py diff is exactly ONE line (PRIMARY only, no q-body); packet byte-identical to GM1 from `## Run` onward; Task section uses GM1's register and leaks nothing; 379 green; all five prior (journal,case) scores byte-identical.
 - 2026-09-21 confound recorded BEFORE the run (precedent 7d4ae71): the packet publishes ABSENCE_PATTERNS via tools --schema but NOT H16's structural half. Prediction 4's reading fixed in advance in docs/ABLATION_7.md.
 - 2026-09-21 NEXT: P4, the run. Expensive and irreversible-ish; pausing for EJ's go-ahead.
+- 2026-09-21 step 9 doing: P4 dispatched (Sonnet). Fixture cloned at ebdfd5f (clone, not worktree — backtest holds master). Source repo verified untouched after setup.
