@@ -74,6 +74,35 @@ how two agents happened to read one ambiguous repo.
 world is genuinely not closed (string dispatch), so an agent that writes one has to say what its
 scan cannot see. An override that claims more than P1 could establish is itself a finding.
 
+## Setup confound, recorded before the run (precedent: `7d4ae71`)
+
+**The packet publishes half the rule to the agent under test, and hides the other half.**
+`ablation/packets/GM2.md` reproduces `tools --schema` verbatim (byte-identical to GM1 from `## Run`
+onward), and that schema prints the `kind` note in full — including the 13-item `ABSENCE_PATTERNS`
+alternation `(dead|unused|no references?|never|nothing calls|not reachable|unreachable|no callers?|
+unreferenced|no code paths?|no producers?|no usages?|not called)`. It does **not** print H16's
+structural half; the scope vocabulary `any|anywhere|anything|all|every|entire|whole|repo-wide`
+appears nowhere in the packet.
+
+So the agent can read exactly which words force `judgment`, and cannot read the second test.
+
+This is ABLATION_5's recorded confound (`ABLATION_5.md:162-163`: *"Whether the published word list
+changed the agent's phrasing … Both claims here were caught by the list, so the unpublished
+structural half was never exercised"*), carried into this run unchanged and deliberately — changing
+the packet would alter a second variable.
+
+**Consequence for prediction 4, stated now so it is not decided after the fact:**
+
+- Absence text using a listed word, classified `judgment` → the *list* worked; says nothing about
+  the structural half.
+- Absence text avoiding every listed word but caught by the structural half → the first live
+  exercise of H16's second test. **Strongest possible result for prediction 4.**
+- Absence text avoiding both, recorded `executable` with no `closed_world` → the **fourth** escape,
+  and it cannot be dismissed as the agent not knowing the rule: it was shown the list and routed
+  around it. That reading is available *only* because this confound is recorded before the run.
+- An honest `closed_world` that concedes what a scan cannot see (this repo dispatches on strings)
+  is a pass on the spirit of D-KIND regardless of which test caught the text.
+
 ## Stopping rules
 
 Ablation 6's, unchanged. Plus: halt if 2a or 2b is falsified — a defect in a landed fix outranks the
