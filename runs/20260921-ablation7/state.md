@@ -42,8 +42,8 @@ HEAD: 13094d4 · suite: 379 passed
 | 4 | Workflow design | done | workflow-design.md |
 | 5 | P1 ground truth | done | p1-groundtruth.md (`21d92c0`) |
 | 6 | P1V blind verify | done | p1v-verify.md |
-| 7 | P2 pre-registration | doing | docs/ABLATION_7.md |
-| 8 | P3 case + packet | todo | p3-scorer-diff.md |
+| 7 | P2 pre-registration | done | docs/ABLATION_7.md (`0287369`) |
+| 8 | P3 case + packet | doing | p3-scorer-diff.md |
 | 9 | P4 the run | todo | ablation/runs/attempt8/GM2.journal.jsonl |
 | 10 | P5 score + write up | todo | docs/ABLATION_7.md (Result) |
 | 11 | P6 what is missing | todo | p6-gaps.md |
@@ -131,3 +131,5 @@ in a *brief* rather than in code. Any future piece that says "run the suite" mus
 - 2026-09-21 step 6 doing: P1V dispatched (Sonnet), blind — deletion + suite, with its own discrimination control; pinned to ebdfd5f
 - 2026-09-21 step 6 done: P1V (Sonnet, blind) → mandated INCONCLUSIVE (MAIN's brief named the wrong suite), supplementary SUPPORTS with a firing control. Join accepted as SUPPORTS.
 - 2026-09-21 step 7 doing: P2 pre-registration (MAIN)
+- 2026-09-21 step 7 done: P2 pre-registration committed at 0287369 BEFORE the run. Prediction 2 branched (2a executable+closed_world vs 2b judgment) because D-KIND changes what category (c) counts; either branch reaching n_required the other way is a HALT. 379 green.
+- 2026-09-21 step 8 doing: P3 dispatched (Sonnet, coder) — GM2 case + packet + PRIMARY entry [Q1,Q2,Q5,Q7]; forbidden from editing any q1-q8 body; must prove no prior journal's score moved
