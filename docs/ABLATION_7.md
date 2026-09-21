@@ -134,6 +134,85 @@ A  Prove: PASS, plan cleared to checkpoint gate (at commit) [corroboration-cappe
 | 4 | **HELD** | Q7 yes, `violations=[]`. C1 `executable` **with** `kind_override=True` and a closed world; C2 `judgment`. No escape. |
 | 5 | **HELD** | Deleted and landed; matches the ground truth P1/P1V established before the run and the agent could not see. |
 
+## CORRECTION (P6, same day) — the headline above is RETRACTED
+
+The blind gap pass (`runs/20260921-ablation7/p6-gaps.md`, `4b26e74`) falsified the headline. MAIN
+verified each point independently before accepting it. **Read this section before the Result above;
+the Result is left unedited so the retraction is legible rather than tidied away.**
+
+**R1 — "ablation 5's dispatch was a defect artifact" is NOT established by this run.** The claim
+needs H18 to be the variable separating this run from its control. It is not, on two counts, both
+checked by MAIN:
+
+- **Ablation 6 (`attempt7`) also had zero dispatches.** Counted across every journal: only
+  `attempt4/UC3` and `attempt6/GM1` ever dispatched — 2 of 14 runs. Prediction 3 holding
+  *replicates the control*; it does not test anything.
+- **H18 landed BEFORE ablation 6's pre-registration** — `71c0fb0` at 02:04:40, `5f99386` at
+  02:05:03, 23 seconds apart. H18 was already in force for the control. Relative to ablation 5 the
+  fixture, the target, the claim structure *and* H18 all differ, so the null is a four-variable
+  comparison.
+
+The argument that would work exists and was not made: ablation 6's journal shows capped 0/2 → a
+second check → capped 0/2 again → *then* dispatch. That is the pressure sequence. This run never
+reproduced it.
+
+**R2 — "no dispatch" is partly an artifact of an omitted argument.** C2 was capped `n=0/2` with an
+open dispatch slot — the pressure was present. MAIN ran `count_sources` on the real journal:
+with the submitted `framings: {}` the remedy is `gate-checkpoint`; with **one** framing enumerated
+it is `add-differently-framed-source` — the remedy that leads to a second head. The agent's empty
+`framings` dict, not the framework, decided there would be no dispatch. The Result never connects
+C2 to prediction 3.
+
+**R3 — the confound reading was applied wrongly, against this document's own pre-registration.**
+§"Setup confound" fixed in advance that absence text *avoiding every listed word but caught by the
+structural half* is "the first live exercise of H16's second test — strongest possible result".
+MAIN re-ran both regexes on all three claims:
+
+| claim | word list | structural half |
+|---|---|---|
+| C1 | `'no callers'` | `'no callers or references anywhere'` |
+| C3 | no match | no match |
+| **C2** | **no match** | **`'zero callers/references in this repo (C1), removing it does not change any'`** |
+
+**C2 is the clean case, and the Result says it "still has not happened".** That is this document
+contradicting its own pre-registration, which is the precise failure the pre-registration existed to
+prevent. The honest caveat — a different sentence from the one written — is that C2 was *declared*
+`judgment` by its author, so the rule agreeing with a self-declaration is weaker evidence than the
+rule overriding a declared `executable`. The structural half fired first on live text here; it did
+not have to overrule anyone.
+
+**R4 — Q1's evidence does not reproduce from the repo alone.** Scored without `--repo`, **Q1 flips
+to `no`** ("no committed files known"), and Q1 is PRIMARY for GM2. `GM2.json` carries no
+`fixture.modified`, and the only repo containing `cf846c9` was the unarchived clone in `/tmp`. The
+fixture commit is now archived as `ablation/runs/attempt8/GM2.fixture-commit.patch`; the case file
+is deliberately **not** edited after the fact. Future GM cases should carry `fixture.modified`.
+
+**R5 — the mandated sabotage proof was missing; MAIN has now run it.** `workflow-design.md`'s QC
+required "sabotage one scorer question and confirm the diff catches it"; `p3-scorer-diff.md` has no
+such step, so "all five diffs IDENTICAL" was unproven — which is also what a blind comparison
+prints. Run now on `attempt4/UC3` with `q2_zero_dispatches` stubbed: the Q2 row changed, so the
+comparison **does** discriminate. Weaker than ideal: the stub broke the row's shape rather than
+flipping its value.
+
+**R6 — the ground-truth table overstates P1V.** `ABLATION_7.md`'s table shows P1V's self-chosen
+*supplementary* suite as its method with a control that "fired". P1V's own verdict line reads
+`INCONCLUSIVE (on the mandated procedure)` and `The control did not fire`. `state.md` records this
+honestly; this document did not.
+
+**R7 — the Q3 dismissal is substantively right but was stated self-servingly.** P6 verified
+independently that `stages.prove` is *designed* to PASS while disclosing a gated cap, so
+`consistent = ("capped" not in line)` genuinely false-positives and the run is not inconsistent.
+But: it overturns a **recorded decision** (`DECISIONS.md:68`, #54) without citing it; the real
+defect is worse than stated — a substring test against a line containing agent free text, so a run
+with *no* cap could flip Q3 by prose; and "filed, not fixed here" was **false** — nothing was filed.
+Filing it is now an open item.
+
+### What survives
+
+Prediction 1 (the framework engages when acting is correct) and the both-directions D-KIND
+discrimination inside one run are unaffected by R1–R7 and remain this run's real results. Everything
+resting on prediction 3 does not.
+
 ### The headline: ablation 5's dispatch was a defect artifact
 
 Prediction 3 was pre-registered as **most informative if it failed**. It held. With H18 fixed and
