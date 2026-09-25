@@ -24,11 +24,17 @@ questions marked "must answer": they are blueprint questions, and no step that b
 
 <the exact files to read, tools to use, skills that apply — nothing else>
 
+## Off limits
+
+<paths and things this task must not change; the check confirms it, e.g. `git status --short` shows changes only in
+the listed paths>
+
 ## The check
 
 <how we know it is done. Best: a command and the result it must give.
-For a product change: the acceptance criteria in scope (R1.1, …) and how each is checked, plus: what passed before
-still passes, and nothing off limits was changed. Anything else found goes to docs/blueprint/backlog.md.>
+For a product change: the acceptance criteria in scope (R1.1, …) and how each is checked, plus: the baseline (the
+test command, run before the change) still passes, and nothing off limits changed. Anything else found goes to
+docs/blueprint/backlog.md.>
 
 ## Independent check (only if the task is tiny but risky)
 

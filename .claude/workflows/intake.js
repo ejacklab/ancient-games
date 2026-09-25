@@ -32,6 +32,7 @@ const SECTIONS = ['vision', 'requirements', 'domain model', 'business logic', 'a
 const NOT_A_PRODUCT_CHANGE = 'not a product change'
 const TASK_KINDS = [NOT_A_PRODUCT_CHANGE, 'fix', 'feature', 'new product']
 const MUST_NEED = { fix: ['requirements'], feature: ['vision', 'requirements'], 'new product': SECTIONS }
+const CRITERION = /^[RN][0-9]+\.[0-9]+$/ // R1.1 for a requirement, N1.1 for a non-functional requirement
 
 const COMMON = `
 You are one step of the intake workflow in this repository. Method: docs/WORKFLOW_DESIGN_METHOD.md.
@@ -142,7 +143,8 @@ const PROMPT_SCHEMA = {
     check: { type: 'string' },
     check_kind: { type: 'string', enum: ['script', 'judged', 'ej'] },
     independent_check: { type: 'string', description: 'empty unless the task is risky' },
-    acceptance_criteria: { type: 'array', items: { type: 'string' }, description: 'for a product change: the criteria in scope (R1.1, ...); the check is these passing' },
+    acceptance_criteria: { type: 'array', items: { type: 'string' }, description: 'for a product change: the criteria in scope (R1.1, N1.1, ...); the check names each one, plus that the baseline still passes and nothing off limits changed; empty otherwise' },
+    must_not_change: { type: 'string', description: 'the paths and things this task must not change' },
     questions_for_ej: {
       type: 'array',
       description: 'one entry per decision spot; empty if there are none',
@@ -156,7 +158,7 @@ const PROMPT_SCHEMA = {
       },
     },
   },
-  required: ['output_file', 'task', 'steps', 'check', 'check_kind', 'independent_check', 'acceptance_criteria', 'questions_for_ej'],
+  required: ['output_file', 'task', 'steps', 'check', 'check_kind', 'independent_check', 'acceptance_criteria', 'must_not_change', 'questions_for_ej'],
 }
 
 const DESIGN_SCHEMA = {
@@ -176,7 +178,7 @@ const DESIGN_SCHEMA = {
           resolves_spot: { type: 'string', description: 'unclear spot id this piece resolves, else empty' },
           builds: { type: 'boolean', description: "true if the piece changes the product's code, schema, UI or configuration" },
           blueprint_sections: { type: 'array', items: { type: 'string', enum: SECTIONS }, description: 'the blueprint sections the piece depends on' },
-          acceptance_criteria: { type: 'array', items: { type: 'string' }, description: 'for a piece that builds: the criteria it covers; its stop is these passing' },
+          acceptance_criteria: { type: 'array', items: { type: 'string' }, description: 'for a piece that builds: the criteria it covers (its stop names them, plus that the baseline still passes and must_not_change holds); for a blueprint piece: the criteria it is expected to propose; otherwise empty' },
           check: { type: 'string' },
           check_kind: { type: 'string', enum: ['script', 'judged', 'ej'] },
           attempt_limit: { type: 'integer', description: '1 for pattern step' },
@@ -227,7 +229,7 @@ const DESIGN_SCHEMA = {
         required: ['spot', 'question', 'assumption', 'must_answer'],
       },
     },
-    acceptance_criteria: { type: 'array', items: { type: 'string' }, description: 'for a product change: every criterion in scope (R1.1, ...); the success criteria and the only stop target' },
+    acceptance_criteria: { type: 'array', items: { type: 'string' }, description: 'for a product change: every criterion in scope (R1.1, N1.1, ...), each covered by a piece that builds; the run\'s success criteria. Empty otherwise' },
     agent_count: { type: 'integer' },
     cost_estimate: { type: 'string' },
     success_criteria: { type: 'string' },
@@ -242,7 +244,8 @@ const VERIFY_ITEMS = [
   ['V4', 'state.md is complete: the challenge verbatim, the baseline, the Blueprint section, every finished step marked done with its output file, the size decision, the unclear spots and the questions for EJ matching the data below, one log line per finished step.'],
   ['V5', 'Every file named in a brief or in "what you need" exists.'],
   ['V6', '`git status --short` now differs from the baseline recorded in state.md only by paths under runs/.'],
-  ['V7', 'readiness.md has a Blueprint section that matches the blueprint data below, and its kind of task fits the challenge (a challenge that changes code, schema, UI or configuration is not "not a product change"). For a product change: every section marked settled says so in its file, and every acceptance criterion named in the data is either written in the requirements or non-functional section, or named as a criterion that a blueprint piece in the design is to propose.'],
+  ['V7', 'readiness.md has a Blueprint section that matches the blueprint data below. For a product change: every section marked settled says so in its file, and every section marked settled or draft really covers what the task needs (otherwise it is incomplete); every acceptance criterion is written in the requirements or non-functional section, or is one a blueprint piece in the design is to propose; every piece whose files change the product\'s code, schema, UI or configuration is marked builds; every stop of a piece that builds has all three parts (its criteria pass, the baseline still passes, must-not-change holds) and no open-ended clause such as "until the reviewer finds nothing more". For a task that is not a product change: pass, and say so.'],
+  ['V8', 'The kind of task in the blueprint data fits the challenge: a challenge whose work changes the product\'s code, schema, UI or configuration is never "not a product change"; a fix restores behaviour the requirements already describe; anything else that adds or changes behaviour is a feature.'],
 ]
 
 const VERIFY_SCHEMA = {
@@ -298,6 +301,8 @@ function checkBlueprint(bp) {
     if (!secs.some(x => x.section === m && x.needed)) f.push(`blueprint: a ${bp.task_kind} needs the ${m} section`)
   }
   for (const x of secs) if (x.status !== 'missing' && !has(x.file)) f.push(`blueprint: section ${x.section} is ${x.status} but names no file`)
+  const req = secs.find(x => x.section === 'requirements')
+  if (bp.task_kind === 'fix' && req && (req.status === 'incomplete' || req.status === 'missing')) f.push('blueprint: a fix restores behaviour the requirements already describe; they do not describe it, so the task is a feature')
   return f
 }
 
@@ -330,6 +335,7 @@ function checkAlgorithm(a, bp) {
   for (const p of spots) {
     if (has(p.blueprint_section) && !unsettled.some(x => x.section === p.blueprint_section)) f.push(`spot ${p.id}: ${p.blueprint_section} is not a needed, unsettled blueprint section`)
   }
+  for (const d of new Set(dupes(spots.map(p => p.blueprint_section).filter(has)))) f.push(`blueprint section ${d} has more than one unclear spot; it gets exactly one`)
   return f
 }
 
@@ -342,6 +348,8 @@ function checkPrompt(p, algo, bp) {
   if (!has(p.check)) f.push('prompt: it names no check')
   if (algo.risk === 'high' && !has(p.independent_check)) f.push('prompt: the task is risky but there is no independent check')
   const criteria = p.acceptance_criteria || []
+  if (!has(p.must_not_change)) f.push('prompt: it does not say what is off limits')
+  for (const c of criteria) if (!CRITERION.test(c)) f.push(`prompt: criterion "${c}" is not an id like R1.1 or N1.1`)
   if (isChange(bp) && !criteria.length) f.push('prompt: a product change must name the acceptance criteria in scope')
   if (!isChange(bp) && criteria.length) f.push('prompt: the task is not a product change, so it has no acceptance criteria')
   for (const c of criteria) if (!mentions(p.check, c)) f.push(`prompt: the check does not name criterion ${c}`)
@@ -369,6 +377,7 @@ function checkDesign(d, algo, bp) {
       if (!(p.attempt_limit >= 1)) f.push(`piece ${p.id}: a ${p.pattern} needs an attempt limit`)
       if (!has(p.feedback)) f.push(`piece ${p.id}: a ${p.pattern} needs the feedback that goes back on failure`)
       if (!has(p.exit_on_limit)) f.push(`piece ${p.id}: a ${p.pattern} needs an exit for when the limit is hit`)
+      else if (!/unclear|EJ/.test(p.exit_on_limit)) f.push(`piece ${p.id}: when the limit is hit it goes back to the unclear list or to EJ, not another round`)
     }
     for (const x of p.needs || []) if (x === p.id || !ids.includes(x)) f.push(`piece ${p.id}: needs unknown piece ${x}`)
     if (!has(p.brief_given)) f.push(`piece ${p.id}: the context (what the agent is given) is empty`)
@@ -404,33 +413,48 @@ function checkDesign(d, algo, bp) {
     return ((byId[from] || {}).needs || []).some(x => x === to || reach(x, to, seen))
   }
 
-  // Blueprint: a piece that builds stops at its acceptance criteria and waits for the sections it depends on.
+  // Blueprint (method 3.1, 3.6): the criteria are the stop target; sections are waited for; drafts come first.
   const change = isChange(bp)
   const inScope = d.acceptance_criteria || []
   const needed = neededSections(bp)
   const spots = algo.unclear_spots || []
+  const drafters = pieces.filter(q => spots.some(s => s.id === q.resolves_spot && has(s.blueprint_section) && s.kind === 'information'))
+  const drafterOf = sec => drafters.find(q => spots.some(s => s.id === q.resolves_spot && s.blueprint_section === sec))
   if (change && !inScope.length) f.push('design: a product change must list the acceptance criteria in scope')
   if (!change && inScope.length) f.push('design: the task is not a product change, so it has no acceptance criteria')
-  for (const c of inScope) if (!mentions(d.success_criteria, c)) f.push(`design: the success criteria do not name criterion ${c}`)
+  for (const c of inScope) {
+    if (!CRITERION.test(c)) f.push(`design: criterion "${c}" is not an id like R1.1 or N1.1`)
+    if (!mentions(d.success_criteria, c)) f.push(`design: the success criteria do not name criterion ${c}`)
+  }
   for (const p of pieces) {
-    const spot = spots.find(s => s.id === p.resolves_spot)
-    if (spot && has(spot.blueprint_section) && spot.kind === 'information' && p.check_kind !== 'ej') f.push(`piece ${p.id}: it drafts the ${spot.blueprint_section} section, which is settled only when EJ accepts it, so its check must be EJ's`)
+    const drafts = drafters.includes(p)
+    const crit = p.acceptance_criteria || []
+    if (drafts && p.check_kind !== 'ej') f.push(`piece ${p.id}: it drafts a blueprint section, which is settled only when EJ accepts it, so its check must be EJ's`)
+    if (!change && crit.length) f.push(`piece ${p.id}: the task is not a product change, so it carries no acceptance criteria`)
+    else if (!p.builds && !drafts && crit.length) f.push(`piece ${p.id}: only a piece that builds, or a blueprint piece proposing them, carries acceptance criteria`)
+    for (const c of crit) if (!CRITERION.test(c)) f.push(`piece ${p.id}: criterion "${c}" is not an id like R1.1 or N1.1`)
+    // Any piece that depends on an incomplete or missing section needs the piece that drafts it: until then there is nothing to read.
+    for (const sec of p.blueprint_sections || []) {
+      const x = needed.find(y => y.section === sec)
+      if (!x) { if (p.builds && change) f.push(`piece ${p.id}: it depends on the ${sec} section, which readiness did not mark as needed`); continue }
+      if (x.status !== 'missing' && x.status !== 'incomplete') continue
+      const drafter = drafterOf(sec)
+      if (drafter === p) continue
+      if (!drafter || !reach(p.id, drafter.id)) f.push(`piece ${p.id}: it ${p.builds ? 'builds' : 'depends'} on the ${x.status} ${sec} section but does not need the piece that drafts it`)
+    }
     if (!p.builds) continue
     if (!change) { f.push(`piece ${p.id}: it builds, but readiness says the task is not a product change`); continue }
-    if (!(p.acceptance_criteria || []).length) f.push(`piece ${p.id}: it builds but names no acceptance criteria`)
-    for (const c of p.acceptance_criteria || []) {
+    if (!crit.length) f.push(`piece ${p.id}: it builds but names no acceptance criteria`)
+    if (!(p.blueprint_sections || []).length) f.push(`piece ${p.id}: it builds but names no blueprint section it depends on`)
+    for (const c of crit) {
       if (!inScope.includes(c)) f.push(`piece ${p.id}: criterion ${c} is not in the design's acceptance criteria`)
       // The stop is the criteria, not an open-ended review; a judged check is a checklist of the same criteria.
       if (!mentions(p.stop, c)) f.push(`piece ${p.id}: its stop condition does not name criterion ${c}`)
       if (p.check_kind === 'judged' && !mentions(p.check, c)) f.push(`piece ${p.id}: a judged check must be a checklist of its criteria, and it does not name ${c}`)
-    }
-    if (!(p.blueprint_sections || []).length) f.push(`piece ${p.id}: it builds but names no blueprint section it depends on`)
-    for (const sec of p.blueprint_sections || []) {
-      const x = needed.find(y => y.section === sec)
-      if (!x) { f.push(`piece ${p.id}: it depends on the ${sec} section, which readiness did not mark as needed`); continue }
-      if (x.status !== 'missing' && x.status !== 'incomplete') continue
-      const drafter = pieces.find(q => spots.some(s => s.id === q.resolves_spot && s.blueprint_section === sec))
-      if (!drafter || !reach(p.id, drafter.id)) f.push(`piece ${p.id}: it builds on the ${x.status} ${sec} section but does not need the piece that drafts it`)
+      const home = c[0] === 'N' ? 'non-functional' : 'requirements'
+      if (!(p.blueprint_sections || []).includes(home)) f.push(`piece ${p.id}: it covers ${c} but does not list the ${home} section`)
+      const proposer = drafters.find(q => q !== p && (q.acceptance_criteria || []).includes(c))
+      if (proposer && !reach(p.id, proposer.id)) f.push(`piece ${p.id}: criterion ${c} is proposed by ${proposer.id}, which it does not need`)
     }
   }
   if (change) {
@@ -471,10 +495,13 @@ const feedbackBlock = failed => failed.length
   ? `\nYour previous attempt failed these checks. Fix exactly these, in the file and in your returned data:\n- ${failed.join('\n- ')}\n`
   : ''
 
-const readyPrompt = failed => `${COMMON}
-STEP 1 — intake, readiness and the blueprint check.${failed.length ? `
-This is a repair attempt: ${RUN_DIR}/state.md and readiness.md already exist. Keep the baseline and the log lines in
-state.md as they are; fix only the failed items listed at the end, in readiness.md, state.md and your returned data.` : ''}
+const readyPrompt = failed => failed.length ? `${COMMON}
+STEP 1, REPAIR — your first attempt at intake, readiness and the blueprint check failed the checks listed below.
+${RUN_DIR}/state.md and ${RUN_DIR}/readiness.md already exist. Do not take a new baseline, do not recreate either file,
+and do not add a second log line for step 1. Fix only the failed items, in the Blueprint sections of readiness.md and
+state.md, and return all of your data again with the fixes (method 3.1; layout docs/workflow-templates/blueprint.md).
+${feedbackBlock(failed)}` : `${COMMON}
+STEP 1 — intake, readiness and the blueprint check.
 1. BEFORE creating anything, run \`git status --short\` and keep the output.
 2. Create ${RUN_DIR}/state.md from docs/workflow-templates/state.md: the run id, the challenge verbatim, the baseline
    output from 1.
@@ -487,10 +514,13 @@ state.md as they are; fix only the failed items listed at the end, in readiness.
    change, find the product's blueprint map (docs/blueprint/README.md in its repository) and, for each of the eight
    sections (${SECTIONS.join(', ')}), whether this task depends on it and its status FOR THIS TASK: settled (the file
    says EJ accepted it, and it covers what the task needs), draft (covers the task, but not accepted), incomplete
-   (exists, accepted or not, but does not cover the task — e.g. no requirement for this feature yet), or missing. A fix needs at least the requirements; a feature at least the vision and the requirements; a new
-   product all eight. Read the files; do not assume. Fill in the Blueprint section of readiness.md and of state.md.
-5. Mark step 1 done in state.md and add the log line.
-${feedbackBlock(failed)}`
+   (exists, accepted or not, but does not cover the task — e.g. no requirement for this feature yet), or missing.
+   Judge coverage yourself: the file's own Status line only says whether EJ accepted it. A fix needs at least the
+   requirements, and they must describe the behaviour it restores (otherwise it is a feature); a feature needs at
+   least the vision and the requirements; a new product all eight. A task whose work changes the product's code,
+   schema, UI or configuration is never "${NOT_A_PRODUCT_CHANGE}". Read the files; do not assume. Fill in the
+   Blueprint section of readiness.md and of state.md.
+5. Mark step 1 done in state.md and add the log line.`
 
 const algoPrompt = failed => `${COMMON}
 STEP 2 — write the algorithm and list ALL the unclear spots. Read ${RUN_DIR}/readiness.md as well.
@@ -519,10 +549,12 @@ Create ${RUN_DIR}/prompt.md from docs/workflow-templates/prompt-file.md using ${
 as a question for EJ at the top with its provisional assumption, the task, the steps (at most ${MAX_STEPS_PER_PIECE},
 written on the provisional assumptions), exactly what is needed, the check${algo.risk === 'high' ? ', and an independent check because the task is risky' : ''}.
 A question about a blueprint section is must_answer: no step that builds runs until EJ answers it; say so in the file.
-${isChange(bp) ? `This is a product change: name the acceptance criteria in scope (R1.1, ...). The check names each of them and how
-it is checked, plus: what passed before still passes, and nothing off limits changed. A failure of any of these is a
-failure, not a backlog item. Anything else found (a new wish, an improvement, a gap no criterion covers) goes to the
-product's docs/blueprint/backlog.md.` : 'This task is not a product change: acceptance_criteria is an empty list.'}
+Fill in the Off limits section (must_not_change).
+${isChange(bp) ? `This is a product change: name the acceptance criteria in scope (ids like R1.1 or N1.1). The check names each of
+them and how it is checked, plus: the baseline (the product's test command, run before the change) still passes, and
+nothing off limits changed. A failure of any of these is a failure, not a backlog item. Anything else found (a new
+wish, an improvement, a problem neither the criteria nor the baseline covers) goes to the product's
+docs/blueprint/backlog.md.` : 'This task is not a product change: acceptance_criteria is an empty list.'}
 Mark step 4 done and add the log line.
 ${feedbackBlock(failed)}`
 
@@ -546,16 +578,20 @@ and ${RUN_DIR}/readiness.md. Follow docs/WORKFLOW_DESIGN_METHOD.md sections 3.4 
 - A piece that needs another piece gets that piece's returns and evidence as part of its context.
 - Blueprint (readiness.md, Blueprint section; method 3.1 and 3.6). ${isChange(bp) ? `This is a product change.
   Mark every piece that changes the product's code, schema, UI or configuration as builds=true. A piece that builds
-  names the blueprint sections it depends on and the acceptance criteria it covers (R1.1, ...). Its stop condition
-  names each of those criteria and has three parts: they pass; what passed before still passes (existing tests,
-  criteria of settled requirements); its must-not-change holds. A failure of any part is a failed attempt. A judged
-  check is a checklist of those criteria, never an open-ended review. List every criterion in scope at the top level
-  and name each in the success criteria; every one of them is covered by a piece that builds. An incomplete or
-  missing section gets a blueprint piece that drafts the missing part into the product's docs/blueprint/ from the
-  sections above it; its check is EJ's (check_kind ej), because only EJ settles a section; every piece that builds on
-  that section needs it. If that piece is to write the requirements, list the criteria you expect it to propose. A
-  draft section is a question for EJ with must_answer=true. Anything else found (a new wish, an improvement, a gap no
-  criterion covers) goes to the product's docs/blueprint/backlog.md, never into new pieces or attempts of this run.` : 'This task is not a product change: no piece builds, and acceptance_criteria is an empty list.'}
+  names the blueprint sections it depends on (requirements for an R criterion, non-functional for an N criterion) and
+  the acceptance criteria it covers (ids like R1.1 or N1.1). Its stop condition names each of those criteria and has
+  three parts: they pass; the baseline still passes (the product's test command and its output, recorded in the state
+  file before the first piece that builds); its must-not-change holds. A failure of any part is a failed attempt. A
+  judged check is a fixed checklist of those three parts, never an open-ended review. A loop that hits its limit goes
+  back to the unclear list or to EJ. List every criterion in scope at the top level and name each in the success
+  criteria; every one of them is covered by a piece that builds. An incomplete or missing section gets exactly one
+  blueprint piece that drafts the missing part into the product's docs/blueprint/ from the sections above it; its
+  check is EJ's (check_kind ej), because only EJ settles a section; it lists the criteria it is expected to propose;
+  every piece that depends on that section or covers one of those criteria needs it. No other piece that does not
+  build carries criteria. A draft section is a question for EJ with must_answer=true; pieces that only research or
+  design may run on it and name the drafts they assumed. Anything else found (a new wish, an improvement, a problem
+  neither the criteria nor the baseline covers) goes to the product's docs/blueprint/backlog.md, never into new
+  pieces or attempts of this run.` : 'This task is not a product change: no piece builds, no piece carries acceptance criteria, and acceptance_criteria is an empty list.'}
 - Fill in predictability (agent count, cost estimate and its basis, success criteria), debuggability and quality control.
 Return the same design as structured data. Mark step 4 done and add the log line.
 ${feedbackBlock(failed)}`
@@ -628,6 +664,9 @@ for (let n = 1; n <= MAX_ATTEMPTS; n++) {
     continue
   }
   const verdict = await run(verifyPrompt(kind, out, bp, jsFailed), { label: `5-verify#${n}`, phase: 'Check', schema: VERIFY_SCHEMA })
+  // A wrong kind of task switches every blueprint check off, and only step 1 decides it: stop instead of repairing step 4.
+  const kindItem = verdict && (verdict.items || []).find(i => i.id === 'V8')
+  if (kindItem && !kindItem.pass) return { status: 'unverified', step: 1, run_dir: RUN_DIR, failed_items: [`V8: ${kindItem.note || 'the kind of task does not fit the challenge'} (rerun intake; the kind decides every blueprint check)`], agents_used: agentsUsed }
   failed = jsFailed.concat(verdict ? checkVerdict(verdict) : ['The verifier returned nothing, so the attempt is unverified.'])
   if (!failed.length) break
   log(`${kind} attempt ${n}/${MAX_ATTEMPTS}: ${failed.length} check(s) failed`)

@@ -16,6 +16,16 @@ folder; the final check compares against this.
 <output>
 ```
 
+## Product baseline (a product change only)
+
+The product's test command and its output, taken by the run that builds, before its first step or piece that builds
+(intake designs only, so it leaves this empty). "What passed before" means this. Leave out for a task that is not a
+product change.
+
+```
+<command and output>
+```
+
 ## Steps
 
 Status is one of: todo · doing · done · blocked.

@@ -16,8 +16,8 @@ docs/blueprint/
   06-data-model.md       data model, schema design and its decisions
   07-ui-ux.md
   08-non-functional.md
-  backlog.md             findings outside the acceptance criteria in scope; never worked on inside the run that
-                         found them
+  backlog.md             what a run found that neither its acceptance criteria nor its baseline covers; never
+                         worked on inside the run that found it
 ```
 
 A section kept somewhere else (for example a project's own spec) is not copied: its row in the map points there,
@@ -25,7 +25,7 @@ and that project's rules on who may change it still hold.
 
 ## The map — `README.md`
 
-| # | Section (short name used in readiness and state files) | Where it is | Status (settled / draft / missing) | Accepted by EJ on |
+| # | Section (short name used in readiness and state files) | Where it is | Status of the file (settled / draft / missing) | Accepted by EJ on |
 |---|---|---|---|---|
 | 1 | Product vision (`vision`) | 01-vision.md | | |
 | 2 | Core requirements (`requirements`) | 02-requirements.md | | |
@@ -44,6 +44,10 @@ Drawn from: <the sections above it that this one serves, e.g. 02-requirements.md
 ```
 
 Only EJ changes a status to settled. An agent that drafts or edits a section sets it to draft.
+
+This is the status of the file: whether EJ has accepted it. It is not the status for a task. Readiness judges, for
+each task, whether a section is settled, draft, incomplete (it does not cover the task, whatever the file says) or
+missing (method §3.1).
 
 ## Headings per section
 
@@ -72,5 +76,5 @@ Only EJ changes a status to settled. An agent that drafts or edits a section set
 
 ## Backlog — `backlog.md`
 
-| Date | Run id | Found by | What | Why it is out of scope (no acceptance criterion in scope covers it, and it did not pass before) |
-|---|---|---|---|---|
+| Date | Run id | Found by | What | Why it is out of scope (neither the criteria in scope nor the baseline covers it) | Suspected break? (yes / no) |
+|---|---|---|---|---|---|

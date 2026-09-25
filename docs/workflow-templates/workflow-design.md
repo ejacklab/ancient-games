@@ -2,7 +2,7 @@
 
 A design, not a run. Sequential by default. Method: `docs/WORKFLOW_DESIGN_METHOD.md`.
 
-## Questions for EJ (answer before running the designed workflow)
+## Questions for EJ (answer before running the designed workflow; a blueprint question holds back only the pieces that build on it)
 
 | # | Question | Provisional assumption | Blueprint section (or none) |
 |---|---|---|---|
@@ -10,11 +10,14 @@ A design, not a run. Sequential by default. Method: `docs/WORKFLOW_DESIGN_METHOD
 ## Blueprint
 
 - Kind of task: <not a product change | fix | feature | new product>. Map: <path, or none>.
-- Acceptance criteria in scope: <R1.1, …, N1.1, …>. These are the run's success criteria. Where a blueprint piece
-  is to write them, name the criteria you expect it to propose; they are fixed when EJ accepts that piece.
-- A piece that builds stops when its criteria pass, what passed before still passes, and its "must not change" holds.
-  Anything else found — a new wish, an improvement, a gap no criterion in scope covers — goes to
-  `docs/blueprint/backlog.md`, not into this run.
+- Acceptance criteria in scope (a product change only; none otherwise): <R1.1, …, N1.1, …>. These are the run's
+  success criteria; every one is covered by a piece that builds. Where a blueprint piece is to write them, it names the
+  criteria it is expected to propose; they are fixed when EJ accepts that piece (if EJ accepts different ones, the
+  pieces covering them are planned again).
+- Baseline: <the product's test command>; its output is written to state.md before the first piece that builds.
+- A piece that builds stops when its criteria pass, the baseline still passes, and its "must not change" holds; a
+  failure of any is a failed attempt. Anything else found — a new wish, an improvement, a problem neither the criteria
+  nor the baseline covers — goes to `docs/blueprint/backlog.md`, not into this run.
 
 ## Pieces, in the order they run
 
@@ -30,9 +33,11 @@ where they fit (INTENT, STOP, OUTPUT, SCOPE; CLAIMS, NOT_ESTABLISHED).
 - **Resolves unclear spot:** <spot id, or none>
 - **Builds:** <yes: changes the product's code, schema, UI or configuration / no>
 - **Blueprint sections it depends on:** <sections, or none>. If it builds, it does not start while any of them is
-  unsettled; if not, it may use draft sections and its output names the drafts it assumed
-- **Acceptance criteria it covers:** <R1.1, … — required when it builds; its stop names them, plus "what passed
-  before still passes" and its "must not change">
+  unsettled; if not, it may use draft sections and its output names the drafts it assumed. Either way it needs the
+  blueprint piece of any incomplete or missing section it depends on
+- **Acceptance criteria it covers:** <R1.1, … — required when it builds; its stop names them, plus "the baseline still
+  passes" and its "must not change"; a judged check is a checklist of those three. A blueprint piece lists the
+  criteria it is expected to propose; any other piece that does not build lists none>
 - **Check:** <what decides done> — kind: script / checklist judged by a separate agent / EJ
 - **Attempt limit:** <n> (loops and explores)
 - **Feedback on failure:** <what goes back to the agent — the check's real output>
@@ -76,5 +81,5 @@ Only pieces for which all five hold. Otherwise they stay sequential.
 
 - Which checks are scripts, which are judged, which are EJ's.
 - How each script check is shown to be able to fail (sabotage check).
-- The final "what is missing" pass: <who, what it looks at>. It measures against the acceptance criteria in scope;
-  what it finds outside them goes to the backlog.
+- The final "what is missing" pass: <who, what it looks at>. It measures against the three-part stop: a failure of a
+  criterion, the baseline or "must not change" is a failed attempt; anything else it finds goes to the backlog.

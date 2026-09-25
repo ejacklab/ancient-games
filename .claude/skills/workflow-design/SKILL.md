@@ -6,7 +6,7 @@ description: "Designing a workflow for an incoming task or challenge — or deci
 # Workflow design
 
 The job: turn a challenge into **a prompt file** (small task) or **a workflow design** (bigger task). You are
-designing, not executing. The full method with its reasons is `references/method.md`; the four templates are in
+designing, not executing. The full method with its reasons is `references/method.md`; the five templates are in
 `assets/templates/`. Read the method once before your first design in a session.
 
 Why this exists: agents left alone pick a pattern first ("let's fan out five subagents") and discover later that
@@ -34,12 +34,15 @@ agent can read; a subagent starts with nothing but its prompt.
    `docs/blueprint/` (layout: `blueprint.md`): vision, core requirements with acceptance criteria, domain model,
    business logic, architecture, data model and schema decisions, UI/UX, non-functional requirements. The kind of task
    decides which sections are needed (a fix: the requirement it restores and what it touches; a feature: vision,
-   requirements and what it changes; a new product: all eight; not a product change: none). Each needed section is
+   requirements and what it changes; a new product: all eight; not a product change: none, and no acceptance
+   criteria). A task that changes code, schema, UI or configuration is never "not a product change"; a wrong kind
+   switches the check off, so it is a stop. Each needed section is
    settled (EJ accepted it and it covers the task), draft (covers the task, not accepted), incomplete (does not cover
    the task, e.g. no requirement for the feature yet) or missing. Draft → a question for the person; incomplete or
    missing → a blueprint piece at the front that drafts the missing part for the person to accept. A piece that
    builds does not start until every section it depends on is settled — blueprint questions are not answered by
-   silence. Research and design pieces may run on drafts and name the drafts they assumed. Why: without a fixed
+   silence. Research and design pieces may run on drafts and name the drafts they assumed; any piece that depends on
+   an incomplete or missing section needs the piece that drafts it. Why: without a fixed
    target every review finds more to do, and the run never ends.
 2. **Write the algorithm.** Try to write the steps that would solve the task. A step is one action with a result
    that can be checked, and each step names its check. The attempt is the evaluation: steps that write clearly mean
@@ -70,10 +73,14 @@ agent can read; a subagent starts with nothing but its prompt.
    check; the time saved is worth the extra join. Parallel buys only clock time and costs predictability and
    debuggability. Independent verifiers need to be blind to each other, not simultaneous.
 8. **The run ends at the acceptance criteria.** A piece that builds names the blueprint sections it depends on and the
-   acceptance criteria it covers. Its stop: those criteria pass, what passed before still passes (existing tests,
-   settled requirements), and its "must not change" holds; a failure of any of these is a failed attempt. Anything
-   else found — a new wish, an improvement, a gap no criterion in scope covers — by a worker, a verifier or the final
-   "what is missing" pass goes to `docs/blueprint/backlog.md` with the date and run id, never into the current run.
+   acceptance criteria it covers (ids like R1.1 or N1.1); every criterion in scope is covered by a piece that builds.
+   Its stop: those criteria pass, everything the baseline recorded as passing still passes (the test command and its
+   output, written to the state file before the first piece that builds), and its "must not change" holds; a failure
+   of any of these is a failed attempt. A judged check is a fixed checklist of those three, never an open-ended
+   review. Criteria a blueprint piece proposes are fixed when the person accepts it; if they differ from what the
+   design expected, the pieces covering them are planned again. Anything else found — a new wish, an improvement, a
+   problem neither the criteria nor the baseline covers — by a worker, a verifier or the final "what is missing" pass
+   goes to `docs/blueprint/backlog.md` with the date and run id, never into the current run.
 
 ## Every node carries five things
 
@@ -81,7 +88,7 @@ agent can read; a subagent starts with nothing but its prompt.
 |---|---|
 | **Tools** | what the agent uses, each proved working |
 | **Context** | exactly what it is given, and what is withheld (a verifier never sees the worker's reasoning) |
-| **Contract** | the intent, the observable stop condition (for a piece that builds: its acceptance criteria pass, nothing that passed before breaks, "must not change" holds), what it returns and in what shape, what it may and must not change |
+| **Contract** | the intent, the observable stop condition (for a piece that builds: its acceptance criteria pass, the baseline still passes, "must not change" holds), what it returns and in what shape, what it may and must not change |
 | **Evidence** | the proof that comes back with the result (a command and its output, or file:line) and the file it is saved in |
 | **State** | what it reads from the state file before starting and what it writes back |
 
@@ -103,8 +110,8 @@ Check it shows all three, and say so in the design:
 - **Debuggability** — labelled agents; every step's input and output in a file; pieces small enough to rerun alone;
   a resume point after a failure.
 - **Quality control** — a check per piece; blind verifiers; proof each script check can fail; a contradiction check
-  at joins; a final "what is missing" pass measured against the acceptance criteria in scope (anything else goes to
-  the backlog); skipped or unrun checks reported as such.
+  at joins; a final "what is missing" pass measured against the three-part stop of step 8 (a failure there is a
+  failed attempt; anything else goes to the backlog); skipped or unrun checks reported as such.
 
 ## Output
 
