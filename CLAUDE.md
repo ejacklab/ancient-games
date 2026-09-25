@@ -15,9 +15,9 @@ Work on the Ancient Games code serves that purpose; it is not the goal by itself
 ## The knowledge here
 
 - `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
-  readiness, algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
-  state-file driven. Templates in `docs/workflow-templates/`. Runnable form: `.claude/workflows/intake.js`
-  (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+  readiness (with a check of the product's blueprint), algorithm first, list the unclear spots, clear pieces as
+  loops, then the graph; sequential first; state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
 - `.claude/skills/workflow-design/` — the same method as a skill, so an agent is told when to use it. It is the
   source of truth; `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
   Its method and templates are links into `docs/`, so there is one copy of each.
