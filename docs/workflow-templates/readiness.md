@@ -27,11 +27,15 @@ Method §3.1, blueprint check. Layout: `docs/workflow-templates/blueprint.md`.
 - Kind of task: <not a product change | fix | feature | new product> — <one line why>
 - If not a product change: no sections are needed; say why and leave the table out.
 
-| Section | Needed for this task? | Status for this task (settled / draft / missing) | File | Effect (none / question for EJ / blueprint piece) |
+Section names, exactly: vision, requirements, domain model, business logic, architecture, data model, ui/ux,
+non-functional.
+
+| Section | Needed for this task? | Status for this task (settled / draft / incomplete / missing) | File | Effect (none / question for EJ / blueprint piece) |
 |---|---|---|---|---|
 
-A draft section becomes a question for EJ; a missing one becomes a blueprint piece at the front. A piece that builds
-does not start until every section it depends on is settled.
+Settled: EJ accepted it and it covers this task. Draft: it covers this task, but EJ has not accepted it → a question
+for EJ. Incomplete: it does not cover this task → a blueprint piece drafts the missing part. Missing → a blueprint
+piece drafts the section. A piece that builds does not start until every section it depends on is settled.
 
 ## Missing or unverified
 

@@ -35,9 +35,11 @@ agent can read; a subagent starts with nothing but its prompt.
    business logic, architecture, data model and schema decisions, UI/UX, non-functional requirements. The kind of task
    decides which sections are needed (a fix: the requirement it restores and what it touches; a feature: vision,
    requirements and what it changes; a new product: all eight; not a product change: none). Each needed section is
-   settled (EJ accepted it and it covers the task), draft, or missing. Draft → a question for the person; missing →
-   a blueprint piece at the front that drafts it for the person to accept. A piece that builds does not start until
-   every section it depends on is settled — blueprint questions are not answered by silence. Why: without a fixed
+   settled (EJ accepted it and it covers the task), draft (covers the task, not accepted), incomplete (does not cover
+   the task, e.g. no requirement for the feature yet) or missing. Draft → a question for the person; incomplete or
+   missing → a blueprint piece at the front that drafts the missing part for the person to accept. A piece that
+   builds does not start until every section it depends on is settled — blueprint questions are not answered by
+   silence. Research and design pieces may run on drafts and name the drafts they assumed. Why: without a fixed
    target every review finds more to do, and the run never ends.
 2. **Write the algorithm.** Try to write the steps that would solve the task. A step is one action with a result
    that can be checked, and each step names its check. The attempt is the evaluation: steps that write clearly mean
@@ -46,7 +48,8 @@ agent can read; a subagent starts with nothing but its prompt.
    a *decision* → a question for the person · *unknown* → a bounded explore loop), which steps it blocks, and whether
    it depends on another spot. Listing first matters because one answer often removes another spot. Questions go to
    the person as one batch, each with a provisional assumption so it can be answered in a few words. A draft
-   blueprint section is a decision spot; a missing one is an information spot.
+   blueprint section is a decision spot; an incomplete or missing one is an information spot, so the task is a
+   workflow design.
 4. **Size.** Up to 3 steps with nothing unclear except decisions that have a default → a prompt file, questions at
    the top. More than 3 steps → consider a new piece, but split only if each part keeps its own check and the split
    changes how the work is done. Too-small pieces cost more than they give: fixed cost per agent, context lost at
@@ -67,8 +70,10 @@ agent can read; a subagent starts with nothing but its prompt.
    check; the time saved is worth the extra join. Parallel buys only clock time and costs predictability and
    debuggability. Independent verifiers need to be blind to each other, not simultaneous.
 8. **The run ends at the acceptance criteria.** A piece that builds names the blueprint sections it depends on and the
-   acceptance criteria it covers; its stop is those criteria passing. Anything found outside them — by a worker, a
-   verifier or the final "what is missing" pass — goes to `docs/blueprint/backlog.md`, never into the current run.
+   acceptance criteria it covers. Its stop: those criteria pass, what passed before still passes (existing tests,
+   settled requirements), and its "must not change" holds; a failure of any of these is a failed attempt. Anything
+   else found — a new wish, an improvement, a gap no criterion in scope covers — by a worker, a verifier or the final
+   "what is missing" pass goes to `docs/blueprint/backlog.md` with the date and run id, never into the current run.
 
 ## Every node carries five things
 
@@ -76,7 +81,7 @@ agent can read; a subagent starts with nothing but its prompt.
 |---|---|
 | **Tools** | what the agent uses, each proved working |
 | **Context** | exactly what it is given, and what is withheld (a verifier never sees the worker's reasoning) |
-| **Contract** | the intent, the observable stop condition (for a piece that builds: the acceptance criteria it covers), what it returns and in what shape, what it may and must not change |
+| **Contract** | the intent, the observable stop condition (for a piece that builds: its acceptance criteria pass, nothing that passed before breaks, "must not change" holds), what it returns and in what shape, what it may and must not change |
 | **Evidence** | the proof that comes back with the result (a command and its output, or file:line) and the file it is saved in |
 | **State** | what it reads from the state file before starting and what it writes back |
 

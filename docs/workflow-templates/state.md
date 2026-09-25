@@ -31,7 +31,7 @@ Status is one of: todo · doing · done · blocked.
 ## Blueprint
 
 Kind of task: <not a product change | fix | feature | new product>. Map: <path, or none>.
-Needed sections not settled: <section: draft | missing, …, or none>.
+Needed sections not settled: <section: draft | incomplete | missing, …, or none>.
 
 ## Size decision
 

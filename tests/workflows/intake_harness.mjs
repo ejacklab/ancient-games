@@ -189,12 +189,13 @@ const ALGO_FEATURE = {
   steps: [step('s1'), step('s2'), step('s3', { clear: false, check: '', check_kind: 'none' }), step('s4'), step('s5')],
   unclear_spots: [B_REQ, B_DATA], risk: 'low', risk_reason: 'easy to undo',
 }
+const BUILD_STOP = c => `${c} passes, the existing suite still passes, nothing off limits changed`
 const DESIGN_FEATURE = {
   output_file: `${RUN}/workflow-design.md`,
   pieces: [
     piece('p1', { resolves_spot: 'b2', check: 'EJ accepts 06-data-model.md', check_kind: 'ej', blueprint_sections: ['requirements'] }),
-    piece('p2', { builds: true, blueprint_sections: ['requirements', 'data model'], acceptance_criteria: ['R1.1'], needs: ['p1'] }),
-    piece('p3', { builds: true, blueprint_sections: ['requirements'], acceptance_criteria: ['R1.2'], needs: ['p2'] }),
+    piece('p2', { builds: true, blueprint_sections: ['requirements', 'data model'], acceptance_criteria: ['R1.1'], needs: ['p1'], stop: BUILD_STOP('R1.1') }),
+    piece('p3', { builds: true, blueprint_sections: ['requirements'], acceptance_criteria: ['R1.2'], needs: ['p2'], stop: BUILD_STOP('R1.2') }),
   ],
   order: ['p1', 'p2', 'p3'], joins: [], parallel_candidates: [],
   questions_for_ej: [{ spot: 'b1', question: B_REQ.question, assumption: B_REQ.assumption, must_answer: true }],
@@ -231,6 +232,7 @@ for (const [name, fn, text] of readySabotage) {
   const second = calls.find(c => c.label === '1-readiness#2')
   expect('readiness repair: bad then good -> verified', result.status === 'verified', JSON.stringify(result))
   expect('readiness repair: the failed item is fed back', !!second && second.prompt.includes('no reason is given'), 'feedback text not in the prompt')
+  expect('readiness repair: attempt 2 keeps the baseline', !!second && second.prompt.includes('Keep the baseline'), 'repair note not in the prompt')
 }
 
 // Algorithm sabotage: every needed, unsettled section becomes the right kind of spot.
@@ -239,6 +241,11 @@ const algoSabotage = [
   ['a missing section asked as a decision', a => { a.unclear_spots = [B_REQ, { ...B_DATA, kind: 'decision', question: 'Q?', assumption: 'A' }] }, 'data model is missing: it needs an unclear spot of kind information'],
   ['a spot about a settled section', a => { a.unclear_spots.push({ ...B_REQ, id: 'b3', blueprint_section: 'vision' }) }, 'b3: vision is not a needed, unsettled blueprint section'],
 ]
+{ // an incomplete section (it does not cover the task) must be drafted, not just accepted
+  const bp = clone(BP_FEATURE); bp.sections[1].status = 'incomplete'
+  const { result } = await runCase({ ...feature, '1-': { ...READY, blueprint: bp }, '2-': ALGO_FEATURE })
+  expect('sabotage algorithm: an incomplete section asked as a decision -> named', result.status === 'unverified' && result.step === 2 && named(result, 'requirements is incomplete: it needs an unclear spot of kind information'), JSON.stringify(result))
+}
 for (const [name, fn, text] of algoSabotage) {
   const a = clone(ALGO_FEATURE); fn(a)
   const { result } = await runCase({ ...feature, '2-': a })
@@ -256,6 +263,10 @@ const designSabotage = [
   ['building on a missing section without its drafter', d => { d.pieces[1].needs = [] }, 'p2: it builds on the missing data model section but does not need the piece that drafts it'],
   ['a drafted section settled by a script, not EJ', d => { d.pieces[0].check_kind = 'script' }, 'p1: it drafts the data model section'],
   ['a blueprint question answerable by silence', d => { d.questions_for_ej[0].must_answer = false }, 'b1: a blueprint question must be marked must_answer'],
+  ['a builder whose stop is an open-ended review', d => { d.pieces[1].stop = 'the reviewer finds nothing more to improve' }, 'p2: its stop condition does not name criterion R1.1'],
+  ['a judged builder check that is not the criteria', d => { Object.assign(d.pieces[1], { pattern: 'loop', attempt_limit: 9, feedback: 'the review', exit_on_limit: 'to EJ', check_kind: 'judged', check: 'a reviewer tries to reject it' }) }, 'p2: a judged check must be a checklist of its criteria'],
+  ['success criteria that do not name a criterion', d => { d.success_criteria = 'reviewer satisfied' }, 'the success criteria do not name criterion R1.1'],
+  ['a product change where no piece builds', d => { d.pieces[1].builds = false; d.pieces[2].builds = false }, 'criterion R1.1: no piece that builds covers it'],
 ]
 for (const [name, fn, text] of designSabotage) {
   const { result, calls } = await runCase({ ...feature, '4-': mutateF(fn) })
@@ -266,18 +277,41 @@ for (const [name, fn, text] of designSabotage) {
   const { result } = await runCase({ ...base, '2-': ALGO_BIG, '4-': d })
   expect('sabotage design: building in a task that is not a product change -> named', named(result, 'p2: it builds, but readiness says the task is not a product change'), JSON.stringify(result.failed_items))
 }
+{ // acceptance criteria in a task that is not a product change
+  const d = mutate(x => { x.acceptance_criteria = ['R1.1'] })
+  const r1 = await runCase({ ...base, '2-': ALGO_BIG, '4-': d })
+  expect('sabotage design: criteria in a task that is not a product change -> named', named(r1.result, 'not a product change, so it has no acceptance criteria'), JSON.stringify(r1.result.failed_items))
+  const r2 = await runCase({ ...base, '2-': ALGO_SMALL, '4-': { ...PROMPT_OK, acceptance_criteria: ['R1.1'], check: 'R1.1 passes' } })
+  expect('sabotage prompt: criteria in a task that is not a product change -> named', named(r2.result, 'not a product change, so it has no acceptance criteria'), JSON.stringify(r2.result.failed_items))
+}
+{ // an incomplete section is drafted by a blueprint piece that every builder on it needs
+  const bp = clone(BP_FEATURE); bp.sections[1].status = 'incomplete'
+  const a = clone(ALGO_FEATURE); a.unclear_spots = [{ ...B_DATA }, { id: 'b1', what: 'no requirement for the export', kind: 'information', blueprint_section: 'requirements', blocks: ['s4'], depends_on: [] }]
+  const d = mutateF(x => {
+    x.pieces.unshift(piece('p0', { resolves_spot: 'b1', check: 'EJ accepts the new R1 block in 02-requirements.md', check_kind: 'ej' }))
+    x.pieces[2].needs = ['p0', 'p1']; x.order = ['p0', 'p1', 'p2', 'p3']; x.questions_for_ej = []
+  })
+  const r1 = await runCase({ ...feature, '1-': { ...READY, blueprint: bp }, '2-': a, '4-': d })
+  expect('incomplete requirements drafted by a blueprint piece -> verified design', r1.result.status === 'verified' && r1.result.size === 'design', JSON.stringify(r1.result))
+  const r2 = await runCase({ ...feature, '1-': { ...READY, blueprint: bp }, '2-': a, '4-': mutateF(x => {
+    x.pieces.unshift(piece('p0', { resolves_spot: 'b1', check: 'EJ accepts', check_kind: 'ej' })); x.order = ['p0', 'p1', 'p2', 'p3']; x.questions_for_ej = []
+  }) })
+  expect('sabotage design: building on an incomplete section without its drafter -> named', named(r2.result, 'p2: it builds on the incomplete requirements section but does not need the piece that drafts it'), JSON.stringify(r2.result.failed_items))
+}
 
 // Size with a blueprint: a draft section alone keeps a task small; a missing one never does.
 {
   const a = clone(ALGO_SMALL); a.unclear_spots = [{ ...B_REQ, blocks: ['s2'] }]
   const bp = { ...BP_FEATURE, sections: [sec('vision', 'settled'), sec('requirements', 'draft')] }
-  const p = { ...PROMPT_OK, acceptance_criteria: ['R1.1'], questions_for_ej: [{ spot: 'b1', question: B_REQ.question, assumption: B_REQ.assumption, must_answer: true }] }
+  const p = { ...PROMPT_OK, acceptance_criteria: ['R1.1'], check: 'pytest -q: R1.1 passes, the rest of the suite still passes', questions_for_ej: [{ spot: 'b1', question: B_REQ.question, assumption: B_REQ.assumption, must_answer: true }] }
   const r1 = await runCase({ ...base, '1-': { ...READY, blueprint: bp }, '2-': a, '4-': p })
   expect('2 steps + a draft requirement -> small, must-answer question comes out', r1.result.status === 'verified' && r1.result.size === 'small' && r1.result.questions_for_ej[0].must_answer === true, JSON.stringify(r1.result))
   const r2 = await runCase({ ...base, '1-': { ...READY, blueprint: bp }, '2-': a, '4-': { ...p, questions_for_ej: [{ ...p.questions_for_ej[0], must_answer: false }] } })
   expect('sabotage prompt: blueprint question answerable by silence -> named', r2.result.status === 'unverified' && named(r2.result, 'b1: a blueprint question must be marked must_answer'), JSON.stringify(r2.result.failed_items))
   const r3 = await runCase({ ...base, '1-': { ...READY, blueprint: bp }, '2-': a, '4-': { ...p, acceptance_criteria: [] } })
   expect('sabotage prompt: product change with no criteria -> named', r3.result.status === 'unverified' && named(r3.result, 'must name the acceptance criteria'), JSON.stringify(r3.result.failed_items))
+  const r4 = await runCase({ ...base, '1-': { ...READY, blueprint: bp }, '2-': a, '4-': { ...p, check: 'pytest -q' } })
+  expect('sabotage prompt: a check that does not name its criterion -> named', r4.result.status === 'unverified' && named(r4.result, 'the check does not name criterion R1.1'), JSON.stringify(r4.result.failed_items))
 }
 {
   const a = clone(ALGO_SMALL); a.unclear_spots = [{ ...B_DATA, blocks: ['s2'] }]
@@ -285,6 +319,12 @@ for (const [name, fn, text] of designSabotage) {
   const d = { ...DESIGN_FEATURE, questions_for_ej: [] }
   const { result } = await runCase({ ...base, '1-': { ...READY, blueprint: bp }, '2-': a, '4-': d })
   expect('2 steps + a missing section -> design, not small', result.size === 'design' && result.status === 'verified', JSON.stringify(result))
+}
+{
+  const a = clone(ALGO_SMALL); a.unclear_spots = [{ ...B_DATA, blocks: ['s2'] }]
+  const bp = { ...BP_FEATURE, sections: [sec('vision', 'settled'), sec('requirements', 'settled'), sec('data model', 'incomplete')] }
+  const { result } = await runCase({ ...base, '1-': { ...READY, blueprint: bp }, '2-': a, '4-': { ...DESIGN_FEATURE, questions_for_ej: [] } })
+  expect('2 steps + an incomplete section -> design, not small', result.size === 'design' && result.status === 'verified', JSON.stringify(result))
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed')

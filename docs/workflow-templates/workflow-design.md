@@ -10,8 +10,11 @@ A design, not a run. Sequential by default. Method: `docs/WORKFLOW_DESIGN_METHOD
 ## Blueprint
 
 - Kind of task: <not a product change | fix | feature | new product>. Map: <path, or none>.
-- Acceptance criteria in scope: <R1.1, …>. These are the run's success criteria and the only stop target of the
-  pieces that build. Findings outside them go to `docs/blueprint/backlog.md`, not into this run.
+- Acceptance criteria in scope: <R1.1, …, N1.1, …>. These are the run's success criteria. Where a blueprint piece
+  is to write them, name the criteria you expect it to propose; they are fixed when EJ accepts that piece.
+- A piece that builds stops when its criteria pass, what passed before still passes, and its "must not change" holds.
+  Anything else found — a new wish, an improvement, a gap no criterion in scope covers — goes to
+  `docs/blueprint/backlog.md`, not into this run.
 
 ## Pieces, in the order they run
 
@@ -26,8 +29,10 @@ where they fit (INTENT, STOP, OUTPUT, SCOPE; CLAIMS, NOT_ESTABLISHED).
 - **Pattern:** step (do once, check) · loop (attempt, check, repair) · explore (bounded search for an unknown)
 - **Resolves unclear spot:** <spot id, or none>
 - **Builds:** <yes: changes the product's code, schema, UI or configuration / no>
-- **Blueprint sections it depends on:** <sections, or none>; it does not start while any of them is unsettled
-- **Acceptance criteria it covers:** <R1.1, … — required when it builds; its stop is these passing>
+- **Blueprint sections it depends on:** <sections, or none>. If it builds, it does not start while any of them is
+  unsettled; if not, it may use draft sections and its output names the drafts it assumed
+- **Acceptance criteria it covers:** <R1.1, … — required when it builds; its stop names them, plus "what passed
+  before still passes" and its "must not change">
 - **Check:** <what decides done> — kind: script / checklist judged by a separate agent / EJ
 - **Attempt limit:** <n> (loops and explores)
 - **Feedback on failure:** <what goes back to the agent — the check's real output>

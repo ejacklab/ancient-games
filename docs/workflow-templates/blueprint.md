@@ -16,7 +16,8 @@ docs/blueprint/
   06-data-model.md       data model, schema design and its decisions
   07-ui-ux.md
   08-non-functional.md
-  backlog.md             findings outside the requirements in scope; never worked on inside the run that found them
+  backlog.md             findings outside the acceptance criteria in scope; never worked on inside the run that
+                         found them
 ```
 
 A section kept somewhere else (for example a project's own spec) is not copied: its row in the map points there,
@@ -24,16 +25,16 @@ and that project's rules on who may change it still hold.
 
 ## The map — `README.md`
 
-| # | Section | Where it is | Status (settled / draft / missing) | Accepted by EJ on |
+| # | Section (short name used in readiness and state files) | Where it is | Status (settled / draft / missing) | Accepted by EJ on |
 |---|---|---|---|---|
-| 1 | Product vision | 01-vision.md | | |
-| 2 | Core requirements | 02-requirements.md | | |
-| 3 | Domain model | 03-domain-model.md | | |
-| 4 | Business logic | 04-business-logic.md | | |
-| 5 | System architecture | 05-architecture.md | | |
-| 6 | Data model and schema decisions | 06-data-model.md | | |
-| 7 | UI / UX design | 07-ui-ux.md | | |
-| 8 | Non-functional requirements | 08-non-functional.md | | |
+| 1 | Product vision (`vision`) | 01-vision.md | | |
+| 2 | Core requirements (`requirements`) | 02-requirements.md | | |
+| 3 | Domain model (`domain model`) | 03-domain-model.md | | |
+| 4 | Business logic (`business logic`) | 04-business-logic.md | | |
+| 5 | System architecture (`architecture`) | 05-architecture.md | | |
+| 6 | Data model and schema decisions (`data model`) | 06-data-model.md | | |
+| 7 | UI / UX design (`ui/ux`) | 07-ui-ux.md | | |
+| 8 | Non-functional requirements (`non-functional`) | 08-non-functional.md | | |
 
 ## Every section file starts with
 
@@ -71,5 +72,5 @@ Only EJ changes a status to settled. An agent that drafts or edits a section set
 
 ## Backlog — `backlog.md`
 
-| Date | Run id | Found by | What | Why it is out of scope (no criterion in scope covers it) |
+| Date | Run id | Found by | What | Why it is out of scope (no acceptance criterion in scope covers it, and it did not pass before) |
 |---|---|---|---|---|

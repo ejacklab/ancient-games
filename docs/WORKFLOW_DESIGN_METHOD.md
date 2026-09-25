@@ -89,8 +89,9 @@ feature.
 **Status of each needed section, judged for this task:**
 
 - **settled** — EJ has accepted it (the file says so, with a date) and it covers what this task needs;
-- **draft** — it exists, but EJ has not accepted it, or it does not yet cover this task (for example the feature has
-  no requirement yet);
+- **draft** — it covers what this task needs, but EJ has not accepted it;
+- **incomplete** — it exists, accepted or not, but does not cover this task (for example the feature has no
+  requirement yet, or the change needs a table the data model does not have);
 - **missing** — there is no such section.
 
 **What each status does to the flow:**
@@ -99,11 +100,13 @@ feature.
 |---|---|
 | settled | nothing; the fast path |
 | draft | an unclear spot of kind **decision**: a question for EJ ("accept this section as written?"), the draft being the provisional assumption |
+| incomplete | an unclear spot of kind **information**: a blueprint piece at the front drafts the missing part into the section (for requirements: the new R-blocks with their acceptance criteria), and EJ accepts it (the piece's check is EJ's) |
 | missing | an unclear spot of kind **information**: a blueprint piece at the front drafts the section from the sections above it, and EJ accepts it (the piece's check is EJ's) |
 
 **Blueprint confirmations are not answered by silence.** In a prompt file other questions stand on their provisional
-assumption unless EJ corrects them (3.3); blueprint questions do not. A piece that **builds** — changes the product's code, schema, UI or configuration — does not start
-until every section it depends on is settled, so a blueprint question must be answered before such a piece runs.
+assumption unless EJ corrects them (3.3); blueprint questions do not. A piece that **builds** — changes the
+product's code, schema, UI or configuration — does not start until every section it depends on is settled, so a
+blueprint question must be answered, and a blueprint piece accepted, before such a piece runs.
 Pieces that only research or design may run on draft sections; their output names the draft sections they assumed.
 
 This check is per task. Per piece, the design records which sections the piece depends on (3.6).
@@ -131,16 +134,16 @@ For each spot record:
 Questions for EJ go out as one batch, each with a provisional assumption so it can be answered in a few words.
 In a prompt file a provisional assumption stands unless EJ corrects it; a workflow design's questions are answered
 before the designed workflow runs. Blueprint questions are the exception in a prompt file too: they need an explicit
-answer before any step that builds on them runs (3.1, blueprint check). Where spots are resolved separately, one joining step compares the answers. A contradiction is a stop: pick one and
-say why, never average.
+answer before any step that builds on them runs (3.1, blueprint check). Where spots are resolved separately, one
+joining step compares the answers. A contradiction is a stop: pick one and say why, never average.
 
 ### 3.4 Size
 
 - Up to 3 steps and nothing unclear except decisions that have a provisional assumption → one piece → a prompt
   file, with those decisions listed at the top as questions for EJ. A spot of kind information or unknown always
   means a workflow design. (Changed 2026-09-20 after trial 1, where three decisions with obvious defaults helped
-  push a one-line fix out of "small"; n=1.) Blueprint spots follow the same rule: a missing section always means
-  a workflow design; a draft section alone does not.
+  push a one-line fix out of "small"; n=1.) Blueprint spots follow the same rule: a missing or incomplete section
+  always means a workflow design; a draft section alone does not.
 - More than 3 steps → consider a new piece. Split only if each part keeps its own check **and** splitting changes
   how the work is done ("Split iff it changes the route", `challenge-mediation` skill).
 - Risk is judged separately from size: how late a mistake would be noticed, whether it can be undone, how many
@@ -188,11 +191,20 @@ Every node carries five things, so that it can be run, checked and resumed witho
 An edge is then more than "needs": it is the earlier node's *returns* and *evidence* becoming the later node's context.
 
 A node that **builds** also names the blueprint sections it depends on and the acceptance criteria it covers (R1.1,
-…). Its stop condition is those criteria passing, nothing more. It `needs` the blueprint piece for any of its
-sections that was missing, and it does not start while any of its sections is unsettled (3.1, blueprint check).
-Anything a worker or verifier finds outside those criteria is written to the product's `docs/blueprint/backlog.md`
-with the date and the run id; it does not become a new piece or a new attempt in this run. This is what lets a run
-end.
+…, and non-functional N1.1, …). Its stop condition has three parts, all objective:
+
+1. the acceptance criteria it covers pass;
+2. what passed before still passes — the existing tests and the criteria of settled requirements it does not cover;
+3. its contract's "must not change" holds.
+
+A failure of any of the three is a failed attempt, not a backlog item. It `needs` the blueprint piece for any of
+its sections that was missing or incomplete, and it does not start while any of its sections is unsettled (3.1,
+blueprint check). When a blueprint piece is to write the criteria, the design names the criteria it expects that
+piece to propose; they are fixed when EJ accepts the piece, before any node that builds starts.
+
+Anything else a worker or verifier finds — a new wish, an improvement, a problem no criterion in scope covers and
+that did not pass before either — is written to the product's `docs/blueprint/backlog.md` with the date and the run
+id; it does not become a new piece or a new attempt in this run. This is what lets a run end.
 
 With everything known, the script schedules; agents do not decide who works next. If a node hits its attempt limit
 it returns to the unclear list and only that part of the graph is planned again.
