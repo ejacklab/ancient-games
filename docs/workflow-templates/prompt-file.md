@@ -4,10 +4,11 @@ For a small task: up to 3 steps, nothing unclear except decisions that have a de
 
 ## Questions for EJ (leave out if there are none)
 
-The steps below are written on the provisional assumptions. Answer only where the assumption is wrong.
+The steps below are written on the provisional assumptions. Answer only where the assumption is wrong — except
+questions marked "must answer": they are blueprint questions, and no step that builds runs until EJ has answered them.
 
-| # | Question | Provisional assumption |
-|---|---|---|
+| # | Question | Provisional assumption | Must answer before building? |
+|---|---|---|---|
 
 ## Task
 
@@ -25,7 +26,9 @@ The steps below are written on the provisional assumptions. Answer only where th
 
 ## The check
 
-<how we know it is done. Best: a command and the result it must give>
+<how we know it is done. Best: a command and the result it must give.
+For a product change: the acceptance criteria in scope (R1.1, …) and how each is checked. Nothing beyond them;
+anything else found goes to docs/blueprint/backlog.md.>
 
 ## Independent check (only if the task is tiny but risky)
 

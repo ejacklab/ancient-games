@@ -4,8 +4,14 @@ A design, not a run. Sequential by default. Method: `docs/WORKFLOW_DESIGN_METHOD
 
 ## Questions for EJ (answer before running the designed workflow)
 
-| # | Question | Provisional assumption |
-|---|---|---|
+| # | Question | Provisional assumption | Blueprint section (or none) |
+|---|---|---|---|
+
+## Blueprint
+
+- Kind of task: <not a product change | fix | feature | new product>. Map: <path, or none>.
+- Acceptance criteria in scope: <R1.1, …>. These are the run's success criteria and the only stop target of the
+  pieces that build. Findings outside them go to `docs/blueprint/backlog.md`, not into this run.
 
 ## Pieces, in the order they run
 
@@ -19,6 +25,9 @@ where they fit (INTENT, STOP, OUTPUT, SCOPE; CLAIMS, NOT_ESTABLISHED).
 - **More than 3 steps because:** <reason, or leave out>
 - **Pattern:** step (do once, check) · loop (attempt, check, repair) · explore (bounded search for an unknown)
 - **Resolves unclear spot:** <spot id, or none>
+- **Builds:** <yes: changes the product's code, schema, UI or configuration / no>
+- **Blueprint sections it depends on:** <sections, or none>; it does not start while any of them is unsettled
+- **Acceptance criteria it covers:** <R1.1, … — required when it builds; its stop is these passing>
 - **Check:** <what decides done> — kind: script / checklist judged by a separate agent / EJ
 - **Attempt limit:** <n> (loops and explores)
 - **Feedback on failure:** <what goes back to the agent — the check's real output>
@@ -52,7 +61,7 @@ Only pieces for which all five hold. Otherwise they stay sequential.
 
 - Agents in total: <n>. Bounds: <attempt limits, concurrency>.
 - Cost estimate: <tokens or a range, and what it is based on>.
-- Success criteria, written before the run: <…>
+- Success criteria, written before the run: <for a product change, the acceptance criteria in scope>
 
 ## Debuggability
 
@@ -62,4 +71,5 @@ Only pieces for which all five hold. Otherwise they stay sequential.
 
 - Which checks are scripts, which are judged, which are EJ's.
 - How each script check is shown to be able to fail (sabotage check).
-- The final "what is missing" pass: <who, what it looks at>.
+- The final "what is missing" pass: <who, what it looks at>. It measures against the acceptance criteria in scope;
+  what it finds outside them goes to the backlog.

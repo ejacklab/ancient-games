@@ -22,11 +22,16 @@ Status is one of: todo · doing · done · blocked.
 
 | # | Step | Status | Output file |
 |---|---|---|---|
-| 1 | Intake and readiness | todo | readiness.md |
+| 1 | Intake, readiness and blueprint check | todo | readiness.md |
 | 2 | Algorithm and unclear spots | todo | algorithm.md |
 | 3 | Size decision | todo | (recorded below) |
 | 4 | Prompt file or workflow design | todo | prompt.md or workflow-design.md |
 | 5 | Checks | todo | check.md |
+
+## Blueprint
+
+Kind of task: <not a product change | fix | feature | new product>. Map: <path, or none>.
+Needed sections not settled: <section: draft | missing, …, or none>.
 
 ## Size decision
 
@@ -34,13 +39,13 @@ Status is one of: todo · doing · done · blocked.
 
 ## Unclear spots
 
-| Id | What is unclear | Kind (information / decision / unknown) | Blocks steps | Depends on spot |
-|---|---|---|---|---|
+| Id | What is unclear | Kind (information / decision / unknown) | Blueprint section (or none) | Blocks steps | Depends on spot |
+|---|---|---|---|---|---|
 
 ## Questions for EJ (one batch)
 
-| # | Question | Provisional assumption if unanswered |
-|---|---|---|
+| # | Question | Provisional assumption if unanswered | Must be answered before building (blueprint questions: yes) |
+|---|---|---|---|
 
 ## Log (append only)
 

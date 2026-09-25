@@ -49,6 +49,65 @@ What the information check finds changes the flow:
 Anything missing becomes a preparation piece at the front. Each task should leave the knowledge better structured
 than it found it, so the next task gets the fast path.
 
+#### Blueprint check — part of readiness
+
+(Added 2026-09-25 after EJ found that several projects never ended: their workflows built without a fixed target,
+so every verify or review step could find more to do. Not yet tried on a real challenge; n=0.)
+
+A stop condition means something only against a fixed target. For a task that changes a product, that target is the
+product's **blueprint**: what the product is for and what it must do, written down and accepted by EJ. The tools and
+information checks above do not ask for it, so this check does.
+
+The blueprint lives in the product's repository, in `docs/blueprint/`, one file per section, with a map
+(`docs/blueprint/README.md`) that says where each section is. Where a project already keeps a section elsewhere, the
+map points there and that project's rules on who may change it still hold. Layout and headings:
+`docs/workflow-templates/blueprint.md`.
+
+| # | Section | Whose decision |
+|---|---|---|
+| 1 | Product vision | EJ's. An agent may only write down what EJ has said |
+| 2 | Core requirements, each with checkable acceptance criteria (R1, R1.1, …) | EJ's. An agent may draft from the vision |
+| 3 | Domain model | drafted by an agent from sections 1–2, accepted by EJ |
+| 4 | Business logic | drafted by an agent from sections 2–3, accepted by EJ |
+| 5 | System architecture | drafted by an agent from sections 2–4 and 8, accepted by EJ |
+| 6 | Data model, schema design and its decisions | drafted by an agent from sections 3–5, accepted by EJ |
+| 7 | UI / UX design | drafted by an agent from sections 2–4, accepted by EJ |
+| 8 | Non-functional requirements (performance, security, cost, limits) | EJ's. An agent may draft from the vision |
+
+Each section traces to the sections it is drawn from: a line that serves nothing above it is a finding, not a
+feature.
+
+**Which sections a task needs** depends on what kind of task it is:
+
+| Kind of task | Sections needed |
+|---|---|
+| Not a product change (research, a question, an analysis, an edit to documentation only) | none; record why, and the check ends here |
+| Fix: restores behaviour the requirements already describe | the requirement it restores, and the sections the fix touches |
+| Feature: adds or changes behaviour | vision, requirements, and every section the feature changes |
+| New product | all eight |
+
+**Status of each needed section, judged for this task:**
+
+- **settled** — EJ has accepted it (the file says so, with a date) and it covers what this task needs;
+- **draft** — it exists, but EJ has not accepted it, or it does not yet cover this task (for example the feature has
+  no requirement yet);
+- **missing** — there is no such section.
+
+**What each status does to the flow:**
+
+| Status | Effect |
+|---|---|
+| settled | nothing; the fast path |
+| draft | an unclear spot of kind **decision**: a question for EJ ("accept this section as written?"), the draft being the provisional assumption |
+| missing | an unclear spot of kind **information**: a blueprint piece at the front drafts the section from the sections above it, and EJ accepts it (the piece's check is EJ's) |
+
+**Blueprint confirmations are not answered by silence.** In a prompt file other questions stand on their provisional
+assumption unless EJ corrects them (3.3); blueprint questions do not. A piece that **builds** — changes the product's code, schema, UI or configuration — does not start
+until every section it depends on is settled, so a blueprint question must be answered before such a piece runs.
+Pieces that only research or design may run on draft sections; their output names the draft sections they assumed.
+
+This check is per task. Per piece, the design records which sections the piece depends on (3.6).
+
 ### 3.2 Write the algorithm
 
 Try to write the steps that would solve the task. A **step** is one action with a result that can be checked.
@@ -70,7 +129,9 @@ For each spot record:
 | Depends on | another spot whose answer might remove or change this one |
 
 Questions for EJ go out as one batch, each with a provisional assumption so it can be answered in a few words.
-Where spots are resolved separately, one joining step compares the answers. A contradiction is a stop: pick one and
+In a prompt file a provisional assumption stands unless EJ corrects it; a workflow design's questions are answered
+before the designed workflow runs. Blueprint questions are the exception in a prompt file too: they need an explicit
+answer before any step that builds on them runs (3.1, blueprint check). Where spots are resolved separately, one joining step compares the answers. A contradiction is a stop: pick one and
 say why, never average.
 
 ### 3.4 Size
@@ -78,7 +139,8 @@ say why, never average.
 - Up to 3 steps and nothing unclear except decisions that have a provisional assumption → one piece → a prompt
   file, with those decisions listed at the top as questions for EJ. A spot of kind information or unknown always
   means a workflow design. (Changed 2026-09-20 after trial 1, where three decisions with obvious defaults helped
-  push a one-line fix out of "small"; n=1.)
+  push a one-line fix out of "small"; n=1.) Blueprint spots follow the same rule: a missing section always means
+  a workflow design; a draft section alone does not.
 - More than 3 steps → consider a new piece. Split only if each part keeps its own check **and** splitting changes
   how the work is done ("Split iff it changes the route", `challenge-mediation` skill).
 - Risk is judged separately from size: how late a mistake would be noticed, whether it can be undone, how many
@@ -124,6 +186,13 @@ Every node carries five things, so that it can be run, checked and resumed witho
 | **State** | what the node reads from the state file and what it writes back | the journal, read before every step |
 
 An edge is then more than "needs": it is the earlier node's *returns* and *evidence* becoming the later node's context.
+
+A node that **builds** also names the blueprint sections it depends on and the acceptance criteria it covers (R1.1,
+…). Its stop condition is those criteria passing, nothing more. It `needs` the blueprint piece for any of its
+sections that was missing, and it does not start while any of its sections is unsettled (3.1, blueprint check).
+Anything a worker or verifier finds outside those criteria is written to the product's `docs/blueprint/backlog.md`
+with the date and the run id; it does not become a new piece or a new attempt in this run. This is what lets a run
+end.
 
 With everything known, the script schedules; agents do not decide who works next. If a node hits its attempt limit
 it returns to the unclear list and only that part of the graph is planned again.
@@ -176,6 +245,6 @@ Not verified: Codex's memory and subagent features beyond `AGENTS.md`.
 
 | Quality | What must be there |
 |---|---|
-| **Predictability** | The script schedules; fixed bounds on attempts, pieces and concurrency; structured outputs; stop conditions and success criteria written before the run; a cost estimate before the run |
+| **Predictability** | The script schedules; fixed bounds on attempts, pieces and concurrency; structured outputs; stop conditions and success criteria written before the run — for a product change, the acceptance criteria in scope; a cost estimate before the run |
 | **Debuggability** | Every agent labelled; each step's input and output saved to a file; pieces small enough to rerun alone; resume from the failed point; feedback kept per attempt; state in one place |
-| **Quality control** | A check per piece; a verifier that does not see the worker's reasoning; proof the check can fail; a contradiction check at joins; a final "what is missing" pass; skipped or unrun checks reported |
+| **Quality control** | A check per piece; a verifier that does not see the worker's reasoning; proof the check can fail; a contradiction check at joins; a final "what is missing" pass, measured against the acceptance criteria in scope (what it finds outside them goes to the backlog); skipped or unrun checks reported |
