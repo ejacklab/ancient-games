@@ -29,7 +29,8 @@ agent can read; a subagent starts with nothing but its prompt.
 1. **Readiness.** List the tools (run a command to prove each works — do not assume), the skills that already cover
    part of the work, and the information: is it there, what structure is it in, is it verified against its source,
    and which agents and tools can read it. Anything missing becomes a preparation piece at the front of the flow.
-   Template: `readiness.md`.
+   Template: `readiness.md`. A node run by Codex or `agy` (not a Claude subagent): read `references/executor-kinds.md`
+   first — the canary that proves the tool, read-only versus write, the fallback rule (n=0).
    **Blueprint check** (part of readiness). If the task changes a product, check the product's blueprint in
    `docs/blueprint/` (layout: `blueprint.md`): vision, core requirements with acceptance criteria, domain model,
    business logic, architecture, data model and schema decisions, UI/UX, non-functional requirements. The kind of task
