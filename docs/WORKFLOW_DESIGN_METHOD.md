@@ -3,7 +3,7 @@
 Agreed between EJ and Claude on 2026-09-20. This is the method this folder uses to turn an incoming challenge into
 either a prompt file or a workflow design. It has been tried on nothing yet: every number and every piece of
 "evidence" below comes from one session (n=1) and is not to be built on as a rule until it has been used on real
-challenges.
+challenges. The tier rule in 3.5 was added on 2026-09-22 and has had no run at all (n=0).
 
 Runnable form: `.claude/workflows/intake.js`. Templates: `docs/workflow-templates/`. Runs: `runs/<run id>/`.
 
@@ -30,7 +30,8 @@ intake workflow on such a task costs more than the task.
 For the task, and later for each piece, list:
 
 - **Tools**: the commands, scripts and connections needed, each with the command that proved it works. Run it; do
-  not assume.
+  not assume. For a node run by Codex or `agy`, the proof is the canary piece in `docs/EXECUTOR_KINDS.md`, which
+  also says which kind a node is assigned to and how its failure shows.
 - **Skills** that already cover part of the work.
 - **Information**: is the knowledge there; what structure is it in (a state file, a root map, a hierarchy of md
   files, a memory folder, a journal or index, a graph, only the web); and which agents and tools can actually use
@@ -170,12 +171,20 @@ A piece is loop-ready only if it has all five:
 1. A check. Best is a script; next a fixed checklist judged by a separate agent; last EJ's own judgment.
 2. A limit on attempts.
 3. Specific feedback: the script's real output, not just "failed".
-4. An exit for when the limit is hit: the piece goes back to the unclear list or to EJ. It was not as clear as it
-   looked.
+4. An exit for when the limit is hit. If the attempts ran on a cheap tier, the exit is a fresh node on a stronger
+   tier with a short handoff note (the piece, its check, the last feedback) and its own limit. When that limit is
+   hit too, or there is no stronger tier, the piece goes back to the unclear list or to EJ. It was not as clear as
+   it looked. (Tier exit added 2026-09-22 at EJ's request; n=0.)
 5. A check the worker cannot edit, and that is known to be able to fail (the house sabotage check).
 
 A loop only closes when its check is objective. (n=1: a planner/critic loop whose check was "try to reject it" ran
 three rounds, 6 → 5 → 4 problems, and never closed. See `20260919-plan-critic-issues.md`.)
+
+Attempts start on the cheapest tier that could plausibly do the piece; a stronger tier, which costs many times more
+per token, is bought only for what the cheap one could not finish. Escalation is a fresh node, never a tier switch
+inside the running session: a switch voids the prompt cache, so the stronger tier re-reads the whole context at its
+fresh input rate, and a session in which the cheap tier flailed is mostly wrong turns that would anchor the stronger
+tier towards the same dead ends. (Added 2026-09-22 at EJ's request; n=0.)
 
 ### 3.6 The rest is a graph
 
@@ -221,7 +230,7 @@ problem that neither the criteria in scope nor the baseline covers — is writte
 is marked as such, for EJ); it does not become a new piece or a new attempt in this run. This is what lets a run end.
 
 With everything known, the script schedules; agents do not decide who works next. If a node hits its attempt limit
-it returns to the unclear list and only that part of the graph is planned again.
+and its tier exit is spent, it returns to the unclear list and only that part of the graph is planned again.
 
 Whole picture: graph on the outside, loops inside the nodes, exploration only inside the unknown-spot nodes. This is
 what `20260919-state.md` calls combined execution.

@@ -18,6 +18,7 @@ export const meta = {
 //   communication     -> every agent is an explicit invocation and control returns here;
 //                        shared state is only the verified output of `depends_on` segments;
 //                        verifiers never see the worker's method or each other (READ_SCOPE.deny).
+// Models: Opus only for deep thinking (plan, plan critic, designer segments); Sonnet for everything else.
 
 const opts = typeof args === 'string' ? { goal: args } : (args || {})
 const MODE = opts.mode === 'prototype' ? 'prototype' : 'design'
@@ -262,13 +263,13 @@ async function runOne(seg, plan, deps) {
   for (let attempt = 1; attempt <= bound; attempt++) {
     const isolate = MODE === 'prototype' && seg.role === 'coder' && !worktree
     work = await agent(workPrompt(seg, plan, deps, feedback, worktree), {
-      label: `${seg.role}:${seg.id}#${attempt}`, phase: 'Execute', schema: WORK_SCHEMA,
+      label: `${seg.role}:${seg.id}#${attempt}`, phase: 'Execute', schema: WORK_SCHEMA, model: seg.role === 'designer' ? 'opus' : 'sonnet',
       ...(isolate ? { isolation: 'worktree' } : {}),
     })
     if (!work) return { id: seg.id, status: 'error', attempts: attempt, work: null, verdicts: [], reason: 'The worker returned nothing.' }
     if (work.worktree_path) worktree = { path: work.worktree_path, branch: work.branch || '' }
     verdicts = await parallel(framings.map(f => () =>
-      agent(verifyPrompt(seg, plan, work, worktree, f), { label: `verify-${f.key}:${seg.id}#${attempt}`, phase: 'Verify', schema: VERDICT_SCHEMA })))
+      agent(verifyPrompt(seg, plan, work, worktree, f), { label: `verify-${f.key}:${seg.id}#${attempt}`, phase: 'Verify', schema: VERDICT_SCHEMA, model: 'sonnet' })))
     const missing = verdicts.filter(v => !v).length
     if (!missing && verdicts.every(v => v.pass)) return { id: seg.id, status: 'verified', attempts: attempt, work, verdicts }
     feedback = verdicts.filter(Boolean).flatMap(v => v.problems)
@@ -281,11 +282,11 @@ async function runOne(seg, plan, deps) {
 phase('Plan')
 let plan = null, problems = []
 for (let round = 1; round <= MAX_PLAN_ROUNDS; round++) {
-  plan = await agent(planPrompt(problems), { label: `plan#${round}`, phase: 'Plan', schema: PLAN_SCHEMA })
+  plan = await agent(planPrompt(problems), { label: `plan#${round}`, phase: 'Plan', schema: PLAN_SCHEMA, model: 'opus' })
   if (!plan) return { status: 'plan_failed', mode: MODE, goal: GOAL, reason: 'The planner returned nothing.' }
   problems = planProblems(plan)
   if (!problems.length) {
-    const review = await agent(criticPrompt(plan), { label: `plan-critic#${round}`, phase: 'Plan', schema: CRITIC_SCHEMA })
+    const review = await agent(criticPrompt(plan), { label: `plan-critic#${round}`, phase: 'Plan', schema: CRITIC_SCHEMA, model: 'opus' })
     if (!review) problems = ['The plan critic returned nothing, so the plan is unreviewed.']
     else if (!review.approved) problems = review.problems.length ? review.problems : ['The critic rejected the plan without naming a problem.']
   }
@@ -335,7 +336,7 @@ Sections, in this order:
 Goal: ${GOAL}
 Mode: ${MODE}
 Plan: ${JSON.stringify(plan, null, 2)}
-Results: ${JSON.stringify(results, null, 2)}`, { label: 'report', phase: 'Report' })
+Results: ${JSON.stringify(results, null, 2)}`, { label: 'report', phase: 'Report', model: 'sonnet' })
 
 const verified = results.filter(r => r.status === 'verified').length
 return {

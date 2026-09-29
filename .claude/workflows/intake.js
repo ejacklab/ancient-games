@@ -14,6 +14,7 @@ export const meta = {
 // runs/<runId>/state.md, does one step, writes its output file and updates the state.
 // The script has no file access. It schedules, decides the size, and runs the objective checks.
 // Loops here close on fixed yes/no items, never on an open-ended "find a problem" review.
+// Models: Opus only for deep thinking (algorithm, workflow design); Sonnet for readiness, prompt files and the check.
 
 const opts = typeof args === 'string' ? { challenge: args } : (args || {})
 const CHALLENGE = typeof opts.challenge === 'string' ? opts.challenge.trim() : ''
@@ -619,7 +620,7 @@ const fail = (step, reason, extra) => ({ status: 'error', step, reason, run_dir:
 phase('Readiness')
 let ready = null, failed = []
 for (let n = 1; n <= MAX_ATTEMPTS; n++) {
-  ready = await run(readyPrompt(failed), { label: `1-readiness#${n}`, phase: 'Readiness', schema: READY_SCHEMA })
+  ready = await run(readyPrompt(failed), { label: `1-readiness#${n}`, phase: 'Readiness', schema: READY_SCHEMA, model: 'sonnet' })
   if (!ready) return fail(1, 'The readiness agent returned nothing.')
   failed = checkBlueprint(ready.blueprint)
   if (!failed.length) break
@@ -635,7 +636,7 @@ phase('Algorithm')
 let algo = null
 failed = []
 for (let n = 1; n <= MAX_ATTEMPTS; n++) {
-  algo = await run(algoPrompt(failed), { label: `2-algorithm#${n}`, phase: 'Algorithm', schema: ALGO_SCHEMA })
+  algo = await run(algoPrompt(failed), { label: `2-algorithm#${n}`, phase: 'Algorithm', schema: ALGO_SCHEMA, model: 'opus' })
   if (!algo) return fail(2, 'The algorithm agent returned nothing.')
   failed = checkAlgorithm(algo, bp)
   if (!failed.length) break
@@ -654,7 +655,7 @@ let out = null
 failed = []
 for (let n = 1; n <= MAX_ATTEMPTS; n++) {
   out = await run(small ? smallPrompt(algo, bp, failed) : designPrompt(algo, bp, failed),
-    { label: `4-${small ? 'prompt' : 'design'}#${n}`, phase: 'Design', schema: small ? PROMPT_SCHEMA : DESIGN_SCHEMA })
+    { label: `4-${small ? 'prompt' : 'design'}#${n}`, phase: 'Design', schema: small ? PROMPT_SCHEMA : DESIGN_SCHEMA, model: small ? 'sonnet' : 'opus' })
   if (!out) return fail(4, `The ${kind} agent returned nothing.`)
   const jsFailed = small ? checkPrompt(out, algo, bp) : checkDesign(out, algo, bp)
   // Skip the verifier while a repair attempt remains and the free checks already failed.
@@ -663,7 +664,7 @@ for (let n = 1; n <= MAX_ATTEMPTS; n++) {
     log(`${kind} attempt ${n}/${MAX_ATTEMPTS}: ${failed.length} script check(s) failed`)
     continue
   }
-  const verdict = await run(verifyPrompt(kind, out, bp, jsFailed), { label: `5-verify#${n}`, phase: 'Check', schema: VERIFY_SCHEMA })
+  const verdict = await run(verifyPrompt(kind, out, bp, jsFailed), { label: `5-verify#${n}`, phase: 'Check', schema: VERIFY_SCHEMA, model: 'sonnet' })
   // A wrong kind of task switches every blueprint check off, and only step 1 decides it: stop instead of repairing step 4.
   const kindItem = verdict && (verdict.items || []).find(i => i.id === 'V8')
   if (kindItem && !kindItem.pass) return { status: 'unverified', step: 1, run_dir: RUN_DIR, failed_items: [`V8: ${kindItem.note || 'the kind of task does not fit the challenge'} (rerun intake; the kind decides every blueprint check)`], agents_used: agentsUsed }

@@ -62,11 +62,17 @@ agent can read; a subagent starts with nothing but its prompt.
    (a script is best; next a fixed checklist judged by a separate agent; last the person's judgment), an attempt
    limit, specific feedback (the check's real output), an exit for when the limit is hit, and a check the worker
    cannot edit and that is known to be able to fail. A loop closes only on an objective check — an open-ended
-   "find problems" reviewer always finds one more, so that loop never ends.
+   "find problems" reviewer always finds one more, so that loop never ends. Attempts start on the cheapest tier that
+   could plausibly do the piece. When its limit is hit, the exit is a fresh node on a stronger tier with a short
+   handoff note (the piece, its check, the last feedback) and its own limit, never a tier switch inside the running
+   session: a switch voids the prompt cache, so the stronger tier re-reads the whole context at its fresh input rate,
+   and the cheap tier's wrong turns would anchor it towards the same dead ends. When that limit is hit too, or there
+   is no stronger tier, the piece goes back to the unclear list or to the person. (Added 2026-09-22 at EJ's request;
+   n=0.)
 6. **The rest is a graph.** Nodes are right-sized pieces, edges are "needs the result of", a result is verified before
    anything that depends on it starts, and branches meet at a joining step where contradictions are a stop, never
-   averaged. The script schedules; agents do not decide who works next. A node that hits its limit goes back to the
-   unclear list and only that part is planned again.
+   averaged. The script schedules; agents do not decide who works next. A node that hits its limit with its tier
+   exit spent goes back to the unclear list and only that part is planned again.
 7. **Sequential first; parallel is the last decision.** Design everything as sequential, state-file-driven steps.
    Only when the design is complete, look for really independent pieces — all five must hold: neither needs the
    other's result; no shared files or resources; doing one would not change how the other is done; each has its own
@@ -135,5 +141,6 @@ step 4. `task-decomposition-strategies` helps with splitting; where it leans par
 rule wins. `agent-loop` enforces a test loop for step 5. `chronos-ledger` tracks state across sessions.
 `workflow-authoring` is the script API for turning a finished design into a Workflow script.
 
-Everything here comes from one working session and one trial (n=1). Treat the numbers — the 3-step rule, the cost
-figures — as working values to be tested, and tell the person when a real task contradicts them.
+Everything here comes from one working session and one trial (n=1); the tier rule in step 5 has had none (n=0).
+Treat the numbers — the 3-step rule, the cost figures — as working values to be tested, and tell the person when a
+real task contradicts them.
