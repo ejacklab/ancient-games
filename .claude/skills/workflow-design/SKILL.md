@@ -31,6 +31,9 @@ agent can read; a subagent starts with nothing but its prompt.
    and which agents and tools can read it. Anything missing becomes a preparation piece at the front of the flow.
    Template: `readiness.md`. A node run by Codex or `agy` (not a Claude subagent): read `references/executor-kinds.md`
    first — the canary that proves the tool, read-only versus write, the fallback rule (n=0).
+   Every node names its role, engine, exact model and effort (never a default; the Codex plugin's example models are
+   stale). The COO is the main Claude session: she distributes by the graph, monitors the state file, reviews
+   verdicts, and may do a small node herself under four conditions and a tool-call cap — same file.
    **Blueprint check** (part of readiness). If the task changes a product, check the product's blueprint in
    `docs/blueprint/` (layout: `blueprint.md`): vision, core requirements with acceptance criteria, domain model,
    business logic, architecture, data model and schema decisions, UI/UX, non-functional requirements. The kind of task
@@ -72,7 +75,7 @@ agent can read; a subagent starts with nothing but its prompt.
    n=0.)
 6. **The rest is a graph.** Nodes are right-sized pieces, edges are "needs the result of", a result is verified before
    anything that depends on it starts, and branches meet at a joining step where contradictions are a stop, never
-   averaged. The script schedules; agents do not decide who works next. A node that hits its limit with its tier
+   averaged. The design's edges schedule (a script, or the COO following the graph); role agents do not decide who works next. A node that hits its limit with its tier
    exit spent goes back to the unclear list and only that part is planned again.
 7. **Sequential first; parallel is the last decision.** Design everything as sequential, state-file-driven steps.
    Only when the design is complete, look for really independent pieces — all five must hold: neither needs the
@@ -111,7 +114,7 @@ file. This is what lets another agent, another tool, or tomorrow's session conti
 
 Check it shows all three, and say so in the design:
 
-- **Predictability** — the script schedules; limits on attempts, pieces and concurrency; structured outputs; success
+- **Predictability** — the design's edges schedule (script or COO); limits on attempts, pieces and concurrency; structured outputs; success
   criteria written before the run (for a product change: the acceptance criteria in scope); an agent count and a
   cost estimate with its basis.
 - **Debuggability** — labelled agents; every step's input and output in a file; pieces small enough to rerun alone;

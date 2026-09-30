@@ -229,7 +229,9 @@ problem that neither the criteria in scope nor the baseline covers — is writte
 `docs/blueprint/backlog.md` with the date and the run id (a suspected break of something the baseline does not cover
 is marked as such, for EJ); it does not become a new piece or a new attempt in this run. This is what lets a run end.
 
-With everything known, the script schedules; agents do not decide who works next. If a node hits its attempt limit
+With everything known, the design's edges decide who works next: a Workflow script, or the COO (the main Claude
+session) following the graph. A node's role subagents do not choose the next node. Each node names its role, engine,
+model and effort; the COO's contract, and when she does a small node herself, are in `docs/EXECUTOR_KINDS.md`. If a node hits its attempt limit
 and its tier exit is spent, it returns to the unclear list and only that part of the graph is planned again.
 
 Whole picture: graph on the outside, loops inside the nodes, exploration only inside the unknown-spot nodes. This is
@@ -280,6 +282,6 @@ Not verified: Codex's memory and subagent features beyond `AGENTS.md`.
 
 | Quality | What must be there |
 |---|---|
-| **Predictability** | The script schedules; fixed bounds on attempts, pieces and concurrency; structured outputs; stop conditions and success criteria written before the run — for a product change, the acceptance criteria in scope; a cost estimate before the run |
+| **Predictability** | The design's edges schedule (script or COO); fixed bounds on attempts, pieces and concurrency; structured outputs; stop conditions and success criteria written before the run — for a product change, the acceptance criteria in scope; a cost estimate before the run |
 | **Debuggability** | Every agent labelled; each step's input and output saved to a file; pieces small enough to rerun alone; resume from the failed point; feedback kept per attempt; state in one place |
 | **Quality control** | A check per piece; a verifier that does not see the worker's reasoning; proof the check can fail; a contradiction check at joins; a final "what is missing" pass, measured against the three-part stop of 3.6 (a failure there is a failed attempt; anything else it finds goes to the backlog); skipped or unrun checks reported |

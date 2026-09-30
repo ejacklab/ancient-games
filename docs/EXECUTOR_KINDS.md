@@ -4,13 +4,15 @@ Written 2026-09-29 from one research session (three Sonnet 5.5 agents for Codex,
 read-only checks. Nothing here has been run in a real workflow (n=0). What the research agents read from docs or
 GitHub is marked *reported*; what was checked on this machine is marked *verified*.
 
-A node in a workflow design (method 3.6) is run by one executor kind. This file says what each kind is, what it is
-assigned to, how it is called, how its failure shows, and the rules that keep mixed runs predictable. The method's
+A node in a workflow design (method 3.6) has a **role** (planner, coder, reviewer, classifier, …: what it does) and
+an **engine** (who does the work) with an exact **model** and **effort**. Role and engine are chosen separately, and
+the engine is named in the node, never left to a default. This file says what each engine is, what it is assigned
+to, how it is called, how its failure shows, and the rules that keep mixed runs predictable. The method's
 readiness step (3.1) proves each tool works; the canary below is that proof for these three.
 
 ## The three kinds
 
-| | Claude subagent | Codex (GPT-6-sol) | Antigravity `agy` (Gemini) |
+| | Claude subagent | Codex (GPT-6.1-sol) | Antigravity `agy` (Gemini) |
 |---|---|---|---|
 | Assigned to (EJ's view 2026-09-29, unmeasured) | orchestration, cheap research fan-out, glue | research and reports, coding and code generation, code review, finance, data extraction, workflow planning and design, web search | classification (Gemini 3.1 Pro) |
 | Called by | the Agent or Workflow tool | plugin `codex@openai-codex` v1.0.6: `/codex:rescue`, `/codex:review`, `/codex:adversarial-review`; or `codex exec` from Bash | `agy -p "<prompt>"` from Bash |
@@ -20,11 +22,67 @@ readiness step (3.1) proves each tool works; the canary below is that proof for 
 | Structured result | report returned to the caller | `--output-schema <file>`, `-o/--output-last-message <file>`, `--json` (*verified* in `--help`) | `--output-format json`, `--json-schema` (flags *verified*) |
 | Resume | SendMessage to the agent | `--resume-last` in rescue; `codex exec resume --last` (*verified* in `--help`) | `-c` or `--conversation <id>` (*verified* in `--help`) |
 | Reads which instruction file | `CLAUDE.md` | `AGENTS.md` (and `~/.codex/config.toml`) | `AGENTS.md` and `GEMINI.md`, third-party source only; `CLAUDE.md` not found (*uncertain*) |
-| Model source | the agent's `model` setting | `--model`/`--effort` (rescue, `exec -m`); `~/.codex/config.toml` (`gpt-6-sol`, effort medium) when none is passed | `--model`; `agy models` lists what the plan offers, and it includes Claude models as well as Gemini, so "agy = Gemini" is a choice |
+| Model source | the agent's `model` setting | `--model`/`--effort` (rescue, `exec -m`); `~/.codex/config.toml` when none is passed: `gpt-6.1-sol`, effort medium, plan-mode effort high (*verified* 2026-09-30). Do not rely on it; see "Model and effort" | `--model`; `agy models` lists what the plan offers, and it includes Claude models as well as Gemini, so "agy = Gemini" is a choice |
 
 The assignment column is EJ's stated preference, recorded as such. The research found no head-to-head evidence for
 or against it. The design treats it as a default that a node can override with a reason, and the first runs are
 where it gets tested.
+
+## Roles, engines, model and effort
+
+Provisional map from EJ's assignments (unmeasured, n=0; a node may override with a reason):
+
+| Role | Engine | Model, effort |
+|---|---|---|
+| Planner | Codex | `gpt-6.1-sol`, high (the one place high is chosen on purpose) |
+| Coder | Codex | `gpt-6.1-sol`, medium |
+| Reviewer, verifier | Codex, fresh session, never the coder's | `gpt-6.1-sol`, medium |
+| Researcher | Codex (web search: see Open) | `gpt-6.1-sol`, medium |
+| Classifier | `agy` | Gemini 3.1 Pro, per `agy models` |
+| Small task | the COO herself | her own model |
+
+**Model and effort.**
+
+- Every Codex or `agy` call passes the model and the effort explicitly (`codex exec -m <model> -c
+  model_reasoning_effort=<e>`, rescue `--model/--effort`, `agy --model`). The design names them in the node; the
+  wrapper does not choose. Effort follows the role, not one global setting.
+- The Codex plugin's own docs and rescue prompt use `gpt-5.4-mini`, `gpt-5.3-codex-spark` and a `gpt-5-4-prompting`
+  skill as examples. Never copy a model name from them. A workflow that shows 5.4 or an unrequested high is traced to a
+  call that left the model or effort out, or copied an example.
+- The node's result records the model the tool reports. The COO fails the node if it is not the one the contract
+  named. How `codex exec` and `agy` report the model in their output is not yet checked; the canary settles it
+  (*unknown*).
+- The names go stale (`gpt-6-sol` in this file already had). They live in the design's node blocks and the canary
+  log, so a change is one edit and the canary shows what actually ran.
+
+## The COO
+
+The COO is the main Claude session, and the one fixed node in every design. Three jobs:
+
+1. **Distribution.** Reads the state file, takes the next node the graph allows, writes its brief (role, engine,
+   model, effort, contract, context) and dispatches it to a role subagent. The order comes from the design's edges,
+   not from her preference. A departure from the design is a Log line with the reason.
+2. **Monitoring.** Reads the state file: status, evidence paths, the reported model. She does not read the raw
+   Codex or `agy` output; that would fill her context.
+3. **Main review.** Accepts, sends back for repair, or escalates. She reviews the verdict and the evidence of an
+   independent verifier (a fresh session, a different engine where possible, rule 5), not every diff. For a risky
+   node she may spot-check the evidence.
+
+She holds the stop conditions: attempt limits, tier exit, the executor-failure rule below, the model check. Role
+subagents only report status. Her picture of the run lives in the state file, so a fresh session can take over.
+
+**When she does a node herself.** All four must hold:
+
+- the problem, the fix and the check are each one sentence (the test for skipping a workflow, method 2);
+- it fits in a few files and a few tool calls without bloating her context;
+- it is reversible and touches no live system, running agent or shared state (Rule 6 applies whoever does it);
+- the check is a command whose output she records, not "it looks right".
+
+Otherwise she dispatches it. It is recorded in the state file as a node with engine "COO", like any other.
+
+**The cap.** If she passes **8 tool calls** on one node, she stops and dispatches it. The 8 is my provisional number,
+not measured; EJ sets it. The guard exists because doing everything herself feels faster and turns the design back
+into one large session.
 
 ## How a failure shows
 
@@ -50,7 +108,7 @@ kind, with an answer that can be checked:
 3. Record the tool's version in the state file. Pass only if the exit code is right, the file exists with exactly that content, stderr has no approval-denied
    or quota notice, and for `agy` the json `status` is success.
 4. The canary node returns `pass`, `fail` or `timeout` with the reason to the script, and the state file records it.
-   The script, not the state file, decides which kinds the graph may use.
+   The scheduler (the script or the COO), not the state file, decides which kinds the graph may use.
    Format, one Log line per kind: `canary <kind> <version> pass|fail|timeout: <reason>`.
 5. Sabotage check (house rule): once, run an impossible task and confirm the canary reports `fail`. Until that has
    been done, the canary is not known to be able to fail.
@@ -85,8 +143,9 @@ Log line for each: `<node> executor-fail <kind>: <reason>`.
    cannot pin model or effort (#769), spends Codex usage on every stop.
 7. **Instruction files.** `agy` is not known to read `CLAUDE.md`. A node run by `agy` gets its rules in the prompt
    or in `AGENTS.md`, never assumed from `CLAUDE.md`.
-8. **External kinds are called through a Claude wrapper.** The script schedules nodes (method 3.6); a Codex or
-   `agy` node runs as a Claude subagent that makes one Bash call. That costs Claude tokens on every such node, and
+8. **External kinds are called through a Claude wrapper.** The COO (or a Workflow script) schedules nodes
+   (method 3.6); a Codex or `agy` node runs as a role subagent that builds the prompt, makes one Bash call with the
+   model and effort the brief names, and writes the result file. That costs Claude tokens on every such node, and
    the wrapper sees the worker's output, so the wrapper is never that node's verifier.
 
 ## Open before relying on this

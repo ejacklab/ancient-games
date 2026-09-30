@@ -54,7 +54,10 @@ where they fit (INTENT, STOP, OUTPUT, SCOPE; CLAIMS, NOT_ESTABLISHED).
 - **State — writes:** <what it records in the state file when it finishes>
 - **Context — given:** <exact files and facts this agent gets>
 - **Context — withheld:** <what it must not see, e.g. the worker's reasoning for a verifier>
-- **Tools and skills:** <…> — a Codex or `agy` node also names: kind, read-only or write, fallback kind or none (`docs/EXECUTOR_KINDS.md`)
+- **Role and engine:** <role: planner / coder / reviewer / classifier / … ; engine: Codex / `agy` / Claude subagent / COO herself>
+  — model and effort named exactly (never a default); a Codex or `agy` node also names read-only or write, and a
+  fallback engine or none (`docs/EXECUTOR_KINDS.md`). A COO node meets all four conditions there and stays under the cap
+- **Tools and skills:** <…>
 
 ## Joins
 
