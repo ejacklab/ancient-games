@@ -30,19 +30,27 @@ where it gets tested.
 
 ## Roles, engines, model and effort
 
-Provisional map from EJ's assignments (unmeasured, n=0; a node may override with a reason):
+Provisional map from EJ's assignments (unmeasured, n=0; a node may override with a reason). EJ, 2026-09-30:
+**Codex defaults to `gpt-6.1-sol`; high thinking uses `gpt-6-astra`. `agy` defaults to Gemini 3.8 Flash; high
+thinking uses Gemini 3.1 Pro.** Both names *verified* to exist here: `gpt-6-astra` in `~/.codex/models_cache.json`,
+and the `agy models` ids below. Thinking level is chosen by picking the model, so the coder's "medium" effort is
+what `gpt-6.1-sol` runs at when no other effort is passed.
 
 | Role | Engine | Model, effort |
 |---|---|---|
-| Planner | Codex | `gpt-6.1-sol`, high (the one place high is chosen on purpose) |
-| Coder | Codex | `gpt-6.1-sol`, medium |
-| Reviewer, verifier | Codex, fresh session, never the coder's | `gpt-6.1-sol`, medium |
-| Researcher | Codex (web search: see Open) | `gpt-6.1-sol`, medium |
-| Classifier | `agy` | Gemini 3.1 Pro, per `agy models` |
+| Planner, and any node whose contract asks for high thinking | Codex | `gpt-6-astra` (the high-thinking model) |
+| Coder | Codex | `gpt-6.1-sol`, default effort |
+| Reviewer, verifier | Codex, fresh session, never the coder's | `gpt-6.1-sol`, default effort; `gpt-6-astra` when the review is a high-thinking one |
+| Researcher | Codex (web search: see Open) | `gpt-6.1-sol`, default effort |
+| Any other `agy` node | `agy` | `gemini-3.8-flash-medium` |
+| Classifier | `agy` | `gemini-3.1-pro-high` (EJ's earlier assignment of classification to 3.1 Pro kept; see below) |
 | Small task | the COO herself | her own model |
 
 **Model and effort.**
 
+- For `agy` the thinking level is part of the model id (`gemini-3.8-flash-low|medium|high`,
+  `gemini-3.1-pro-low|high`; `agy models`). "Gemini 3.8 Flash" means `-medium` here, my choice, since EJ named no level.
+  "Codex default effort" is what `~/.codex/config.toml` sets (medium); still pass it, so a config edit cannot change a run.
 - Every Codex or `agy` call passes the model and the effort explicitly (`codex exec -m <model> -c
   model_reasoning_effort=<e>`, rescue `--model/--effort`, `agy --model`). The design names them in the node; the
   wrapper does not choose. Effort follows the role, not one global setting.
@@ -52,7 +60,7 @@ Provisional map from EJ's assignments (unmeasured, n=0; a node may override with
 - The node's result records the model the tool reports. The COO fails the node if it is not the one the contract
   named. How `codex exec` and `agy` report the model in their output is not yet checked; the canary settles it
   (*unknown*).
-- The names go stale (`gpt-6-sol` in this file already had). They live in the design's node blocks and the canary
+- The names go stale (`gpt-6-sol` in this file already had; the list changes, so check `~/.codex/models_cache.json` and `agy models`). They live in the design's node blocks and the canary
   log, so a change is one edit and the canary shows what actually ran.
 
 ## The COO
