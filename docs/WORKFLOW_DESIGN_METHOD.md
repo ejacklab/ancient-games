@@ -3,7 +3,8 @@
 Agreed between EJ and Claude on 2026-09-20. This is the method this folder uses to turn an incoming challenge into
 either a prompt file or a workflow design. It has been tried on nothing yet: every number and every piece of
 "evidence" below comes from one session (n=1) and is not to be built on as a rule until it has been used on real
-challenges. The tier rule in 3.5 was added on 2026-09-22 and has had no run at all (n=0).
+challenges. The tier rule in 3.5 was added on 2026-09-22, and the restatement step 3.0 on 2026-10-01; neither has
+had a run at all (n=0).
 
 Runnable form: `.claude/workflows/intake.js`. Templates: `docs/workflow-templates/`. Runs: `runs/<run id>/`.
 
@@ -19,11 +20,38 @@ Runnable form: `.claude/workflows/intake.js`. Templates: `docs/workflow-template
 
 ## 2. When not to use this method
 
-If you can state the problem, the fix and the check in one sentence each, and being wrong would show itself at
-once: write the prompt file by hand from `docs/workflow-templates/prompt-file.md`, or just do the task. Running the
-intake workflow on such a task costs more than the task.
+Restate the challenge first (3.0); the test reads the restatement, not the raw text. If you can state the
+restated problem, the fix and the check in one sentence each, and being wrong would show itself at once: write the
+prompt file by hand from `docs/workflow-templates/prompt-file.md`, or just do the task. Running the intake
+workflow on such a task costs more than the task.
 
 ## 3. The steps
+
+### 3.0 Restate the challenge — before anything
+
+(Added 2026-10-01 at EJ's request; not tried on a real challenge, n=0. Not yet encoded in `intake.js`; see
+`TODO.md`.)
+
+From the challenge text alone — one paragraph, no tools, no agents, no repository browsing — state three things:
+
+- the **objective**: what is true when the task is done;
+- **in scope**: what the task touches;
+- **out of scope**: what it must not touch.
+
+A part that cannot be written, or a challenge that allows two readings, is the first **unclear spot** (kind:
+decision, 3.3): a question for EJ with the restatement as the provisional assumption. No new blocking rule is
+added: a prompt file's restatement stands on its provisional assumption like any decision, and a design's
+question batch reaches EJ before anything runs.
+
+The tiny test (§2) reads the restatement, not the raw text: tiny means the *restated* problem, fix and check are
+one sentence each. A big-sounding challenge with a narrow objective stays small; a vague one ("improve
+performance") cannot slip through as tiny.
+
+The restatement goes at the top of the output, beside the verbatim challenge in the state file, so EJ sees and
+can correct what the run understood before tokens are spent.
+
+Cost guard (trial 1, 3.4): this step is one paragraph in the same session, never an agent, never a tool call. On
+a tiny task it is the prompt file's first lines, so the cheap path stays cheap.
 
 ### 3.1 Readiness — always first
 

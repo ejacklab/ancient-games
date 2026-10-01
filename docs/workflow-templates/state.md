@@ -7,6 +7,13 @@ never reasoning; put notes in your own output file. Never delete a log line.
 
 <the challenge exactly as it was given>
 
+## Restatement (method 3.0)
+
+What the run understood: the objective — what is true when done; in scope; out of scope. One paragraph, from the
+challenge text alone. EJ corrects it here if it is wrong.
+
+<objective · in scope · out of scope>
+
 ## Baseline
 
 Output of `git status --short`, taken before the run folder was created. The run may add files only under its own

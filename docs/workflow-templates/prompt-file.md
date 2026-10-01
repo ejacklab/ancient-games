@@ -10,6 +10,11 @@ questions marked "must answer": they are blueprint questions, and no step that b
 | # | Question | Provisional assumption | Must answer before building? |
 |---|---|---|---|
 
+## Objective and scope (restated, method 3.0)
+
+<one paragraph: the objective — what is true when done; in scope; out of scope. Stands on its provisional
+assumption unless EJ corrects it.>
+
 ## Task
 
 <one or two sentences: what to do>

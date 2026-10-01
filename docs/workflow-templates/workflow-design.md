@@ -7,6 +7,13 @@ A design, not a run. Sequential by default. Method: `docs/WORKFLOW_DESIGN_METHOD
 | # | Question | Provisional assumption | Blueprint section (or none) |
 |---|---|---|---|
 
+## Restatement (method 3.0)
+
+What this design understood: the objective — what is true when done; in scope; out of scope. One paragraph, from
+the challenge text alone, written before the design began.
+
+<objective · in scope · out of scope>
+
 ## Blueprint
 
 - Kind of task: <not a product change | fix | feature | new product>. Map: <path, or none>.

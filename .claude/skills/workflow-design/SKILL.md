@@ -1,6 +1,6 @@
 ---
 name: workflow-design
-description: "Designing a workflow for an incoming task or challenge — or deciding that none is needed — before any agents are dispatched: check readiness (including the product blueprint: vision, requirements with acceptance criteria, domain, architecture, data, UI, non-functional), write the algorithm first, list every unclear spot, size the pieces, run clear pieces as loops with objective checks, then wire the rest as a graph whose nodes each carry tools, context, a contract, evidence and state; sequential and state-file driven first, parallel decided last. Use whenever someone asks to design, plan, create, improve or review a workflow, an agent pipeline, an orchestration or a multi-agent / subagent setup; asks how many agents a task needs, whether to parallelise or loop, or how agents should pass information; brings a task too big for one prompt; or when you are about to write a Workflow script or dispatch several subagents without a written design. NOT for: a task of one to three obvious steps (just do it), the Workflow script API (use workflow-authoring), or running an already designed workflow."
+description: "Designing a workflow for an incoming task or challenge — or deciding that none is needed — before any agents are dispatched: restate the challenge's objective and scope, check readiness (including the product blueprint: vision, requirements with acceptance criteria, domain, architecture, data, UI, non-functional), write the algorithm first, list every unclear spot, size the pieces, run clear pieces as loops with objective checks, then wire the rest as a graph whose nodes each carry tools, context, a contract, evidence and state; sequential and state-file driven first, parallel decided last. Use whenever someone asks to design, plan, create, improve or review a workflow, an agent pipeline, an orchestration or a multi-agent / subagent setup; asks how many agents a task needs, whether to parallelise or loop, or how agents should pass information; brings a task too big for one prompt; or when you are about to write a Workflow script or dispatch several subagents without a written design. NOT for: a task of one to three obvious steps (just do it), the Workflow script API (use workflow-authoring), or running an already designed workflow."
 ---
 
 # Workflow design
@@ -13,13 +13,21 @@ Why this exists: agents left alone pick a pattern first ("let's fan out five sub
 they lacked information, that a loop had no way to close, or that two parallel workers collided. This method makes
 the cheap discoveries first.
 
-## Before anything: is it tiny?
+## First: restate the challenge (method 3.0)
 
-If you can state the problem, the fix and the check in one sentence each, and a mistake would show itself at once,
-do not design a workflow. Do the task, or fill in `assets/templates/prompt-file.md`. A process that costs more than
-the task is a failure of the method, not a success. (Trial 1, n=1: a one-line README fix went through the full
-process and cost about 309k tokens, partly because checks and handover were counted as steps. Count only the steps
-the challenge itself needs.)
+From the challenge text alone — one paragraph, no tools, no agents: the **objective** (what is true when the task
+is done), what is **in scope**, what is **out of scope**. A part that cannot be written, or a challenge that allows
+two readings, is the first unclear spot (kind: decision) — a question for the person with the restatement as the
+provisional assumption. The restatement goes at the top of the output, beside the verbatim challenge in the state
+file. One paragraph in the same session, never an agent, never a tool call. (Added 2026-10-01 at EJ's request; n=0.)
+
+## Then: is it tiny?
+
+The test reads the restatement, not the raw text. If the restated problem, the fix and the check are one sentence
+each, and a mistake would show itself at once, do not design a workflow. Do the task, or fill in
+`assets/templates/prompt-file.md`. A process that costs more than the task is a failure of the method, not a
+success. (Trial 1, n=1: a one-line README fix went through the full process and cost about 309k tokens, partly
+because checks and handover were counted as steps. Count only the steps the challenge itself needs.)
 
 ## The steps
 
@@ -145,6 +153,6 @@ step 4. `task-decomposition-strategies` helps with splitting; where it leans par
 rule wins. `agent-loop` enforces a test loop for step 5. `chronos-ledger` tracks state across sessions.
 `workflow-authoring` is the script API for turning a finished design into a Workflow script.
 
-Everything here comes from one working session and one trial (n=1); the tier rule in step 5 has had none (n=0).
-Treat the numbers — the 3-step rule, the cost figures — as working values to be tested, and tell the person when a
-real task contradicts them.
+Everything here comes from one working session and one trial (n=1); the restate step and the tier rule in step 5
+have had none (n=0). Treat the numbers — the 3-step rule, the cost figures — as working values to be tested, and
+tell the person when a real task contradicts them.
