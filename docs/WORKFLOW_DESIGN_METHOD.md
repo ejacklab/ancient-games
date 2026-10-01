@@ -58,7 +58,9 @@ a tiny task it is the prompt file's first lines, so the cheap path stays cheap.
 For the task, and later for each piece, list:
 
 - **Tools**: the commands, scripts and connections needed, each with the command that proved it works. Run it; do
-  not assume. For a node run by Codex or `agy`, the proof is the canary piece in `docs/EXECUTOR_KINDS.md`, which
+  not assume. The skill's inventory script (`.claude/skills/workflow-design/scripts/readiness.py`) proves the
+  standard set in one pass and marks every line verified / reported / unknown; what it cannot prove stays unknown.
+  For a node run by Codex or `agy`, the proof is the canary piece in `docs/EXECUTOR_KINDS.md`, which
   also says which kind a node is assigned to and how its failure shows.
 - **Skills** that already cover part of the work.
 - **Information**: is the knowledge there; what structure is it in (a state file, a root map, a hierarchy of md
