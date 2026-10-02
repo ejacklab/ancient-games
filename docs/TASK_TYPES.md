@@ -183,6 +183,19 @@ Join check: the tester's cases (proven able to fail) pass, the baseline still pa
 the three-part stop of method 3.6. Feedback: `runlog.py` wraps the dev and tester calls and logs each verdict
 (method 3.8 item 10).
 
+**Lead-in by case (EJ, 2026-10-03; n=0).** Steps 3–5 above are the same in every case. Steps 1–2 and the
+tester's oracle depend on where the truth comes from:
+
+| Case | Source of truth | Lead-in (before anything builds) | Tester's oracle | Main risk |
+|---|---|---|---|---|
+| A. Requirements not clear | EJ, through questions | Requirements discovery: one batch of questions, each with a provisional answer; the COO drafts R-blocks with acceptance criteria; EJ accepts them. Examples or a throwaway prototype may help EJ decide. No piece builds until requirements are settled (method 3.1, blueprint check). | The criteria EJ accepted | Building the wrong thing |
+| B. Clear, migrating from an old system | The old system's behaviour | Extract the old behaviour (use case #1): its algorithm from the old code, confirmed by a differential test against the old system, never by re-reading (`~/skills/verify-extraction`); record golden input/output pairs from the old system. | Parity: the same inputs give the same outputs on old and new, plus data-migration checks | A plausible but wrong description of the old system |
+| C. Clear, new feature on an existing system | The existing code plus the new requirement | Scan and understand the system (use case #2 at scale): a map of the affected areas and extension points, and the regression baseline recorded before any change. | The new criteria, plus "the baseline still passes" | Breaking something not known to be connected |
+| D. Feature for a new system | EJ's blueprint | All eight blueprint sections settled first (vision, requirements, domain, logic, architecture, data, UI, non-functional), then scaffolding. | The criteria; there is no baseline yet | Architecture decided too early or too vaguely |
+
+A run names its case in the restatement (method 3.0) and checks it against the facts at readiness: an existing
+codebase is never case D, and a case-B run with no access to the old system is not ready.
+
 **combine sources into an algorithm (use case #1)** — extract → reconcile → algorithm → verify, as described under
 "Use cases in focus"; n=0.
 
