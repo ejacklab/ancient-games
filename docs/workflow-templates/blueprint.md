@@ -18,6 +18,9 @@ docs/blueprint/
   08-non-functional.md
   backlog.md             what a run found that neither its acceptance criteria nor its baseline covers; never
                          worked on inside the run that found it
+  decisions.md           append-only: why a choice was made and what was rejected (method §4, project memory)
+  changelog.md           append-only: one entry per run that builds; release notes come from it
+  lessons.md             append-only: dated traps with a recheck date or trigger
 ```
 
 A section kept somewhere else (for example a project's own spec) is not copied: its row in the map points there,
@@ -77,4 +80,24 @@ missing (method §3.1).
 ## Backlog — `backlog.md`
 
 | Date | Run id | Found by | What | Why it is out of scope (neither the criteria in scope nor the baseline covers it) | Suspected break? (yes / no) |
+|---|---|---|---|---|---|
+
+## Memory files — `decisions.md`, `changelog.md`, `lessons.md`
+
+Append only; never rewrite an entry (a reversal is a new entry pointing at the old one). Each entry is about five
+lines, dated, and carries a requirement id or a path so it can be found by `grep`. Method §4, project memory.
+
+`decisions.md`
+
+| Date | Decision | Why | Alternatives rejected | Serves (R/N ids) |
+|---|---|---|---|---|
+
+`changelog.md`
+
+| Date | Run id | What changed | Criteria covered | Commits | Baseline result | Release note (optional, for users) |
+|---|---|---|---|---|---|---|
+
+`lessons.md`
+
+| Date | Where (path or module) | The trap | How it was found | Recheck by (date or trigger) | Stale? |
 |---|---|---|---|---|---|

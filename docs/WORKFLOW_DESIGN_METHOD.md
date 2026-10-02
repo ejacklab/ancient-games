@@ -395,6 +395,24 @@ Working rules: each agent gets a brief with only what its piece needs and writes
 main agent keeps conclusions, not details; stored knowledge carries a date and is rechecked before it is relied on;
 knowledge (stable) is kept apart from state (changes every run).
 
+**Project memory for software work (added 2026-10-02 at EJ's request; n=0).** A release note is written for users
+after the fact; it tells an agent what shipped, not why or what to avoid, so it is an output here, not the
+memory. A product keeps three small append-only files beside its blueprint, each existing to answer one listed
+query (the rule above: no store without a query):
+
+| File (`docs/blueprint/`) | Answers | Entry (kept to about 5 lines) | Written by, when |
+|---|---|---|---|
+| `decisions.md` | "Why did we choose X? What did we reject?" | date · decision · why · alternatives rejected · the R/N ids it serves | the COO, when a decision spot is answered (3.3) or a design choice is made; EJ's answers are the decisions |
+| `changelog.md` | "What did run N change, and did it pass?" | date · run id · what changed · criteria covered (R1.1…) · commits · baseline result · optional `release note:` line for users | the COO, once at the end of each run that builds, from the state file |
+| `lessons.md` | "What goes wrong around module Y?" | date · where (path or module) · the trap · how it was found · recheck by (a date or a trigger) | any node proposes, the COO appends; an entry past its recheck is marked stale, never silently trusted |
+
+Working rules: append only, never rewritten (a reversal is a new entry that points at the old one); every entry
+carries a date and, where it applies, a requirement id or a path, so an agent finds it by `grep`, not by reading the
+file; readiness (3.1, information) and the design read only the entries for the sections, ids and paths the task
+touches; the blueprint's `README.md` map lists the files so an agent knows they exist. A release note, when one is
+needed, is generated from the `release note:` lines of the changelog, not written separately. The qwen findings of
+2026-10-02 (silent model substitution, exit 0 with no file) are examples of lessons.
+
 Caution on graphs: this repo built two graphs nobody queried and then deferred a third. Its rule — "no node or edge
 type without a listed query" — applies here too (`docs/KNOWLEDGE_GRAPH_DESIGN.md` §1, `docs/STORE_DESIGN_DECISION.md`).
 Not verified: Codex's memory and subagent features beyond `AGENTS.md`.

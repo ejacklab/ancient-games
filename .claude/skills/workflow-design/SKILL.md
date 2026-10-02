@@ -123,6 +123,9 @@ agent can read; a subagent starts with nothing but its prompt.
    design expected, the pieces covering them are planned again. Anything else found — a new wish, an improvement, a
    problem neither the criteria nor the baseline covers — by a worker, a verifier or the final "what is missing" pass
    goes to `docs/blueprint/backlog.md` with the date and run id, never into the current run.
+   A product also keeps three append-only memory files beside it: `decisions.md` (why, what was rejected),
+   `changelog.md` (one entry per run that builds; release notes come from it) and `lessons.md` (dated traps with a
+   recheck); each answers one listed query and is found by id or path, never read whole (method §4).
 
 ## Every node carries five things
 
