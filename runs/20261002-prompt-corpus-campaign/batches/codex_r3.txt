@@ -1,0 +1,78 @@
+You classify work prompts for a workflow-design system. For each prompt output ONE line of JSON, no prose, no fences:
+{"id":"<id>","cats":[<category names>],"tiny":<true|false>,"builds":<true|false>}
+
+Categories (exact names): code generation; code review; ui/ux dev; debugging; test data gen; test cases gen; test script gen; repo scanning; multi step planning; information extraction; web search; classification; research and reports; document and explain; grade a run; others.
+
+Follow these labelling rules exactly:
+
+## Labelling rules (round-1 lessons, 2026-10-02)
+
+Measured on 50 executor samples (codex 25, agy 25): strict agreement was 12% / 24% before these rules
+existed; every disagreement class traced to a missing definition, not to a weak model.
+
+1. **One label per distinct deliverable — list the deliverables first, then label each.** The primary category
+   is the one that answers the the ask. Do not add a secondary label for work that is *inside* the primary: a
+   research task reads (not also "information extraction"); a debugging diagnosis cites logs (not also
+   "research and reports"). Multi-label only when the prompt asks for several *separately delivered* outputs
+   ("extract the rules, write them up, then generate test cases" = three deliverables). Dropping a deliverable's
+   label is as wrong as adding a passenger label (round-2: combo prompts lost their web-search and
+   test-script labels).
+2. **Information extraction** applies only when the deliverable *is* the structured data (a table, a schema-
+   validated list, field values) — never as a passenger label.
+3. **Code review vs research and reports**: review = a verdict on the quality/correctness of work against a
+   standard, delivered as an issue report; research = an answer or a findings list. "Compare A to B, list
+   divergences with citations" is research; "review this file against the spec, write an issue report" is
+   review. **Re-validating an existing finding** against current code ("still open, resolved, or wrong?") is
+   research — it updates a findings list, it does not grade work.
+4. **Grade a run vs debugging**: grading applies a fixed rubric to a finished run's evidence and stops;
+   debugging seeks a root cause. "Which check fired and why" is debugging; "keep the verdicts separate,
+   missing proof = UNKNOWN" is grading.
+5. **builds=true means the deliverable changes product or test surface** — code, schema, configuration, UI,
+   test files, **and generated fixture/seed data that feeds tests or environments** (round-2: fixtures are test
+   surface). Findings lists, reports, notes, diaries, command sheets are **not** builds — and neither are
+   **deliverable data outputs** (a CSV/JSON table that *is* the answer): a report in data shape is still a
+   report (round-3: the gate caught this mislabel on its own corpus author). A `document and explain` piece
+   that writes only prose is builds=false even though it writes a file.
+6. **tiny + cats=[] is for session-control directives** (status, stop, restate, commit, one-step advice) and
+   one-sentence tasks **whose restatement succeeds**: tiny requires the restated problem, fix and check to be
+   one sentence each. A prompt you cannot restate ("make it faster", "look into the thing from yesterday") is
+   **never tiny** — it is `others` with decision spots. Classifying vague as tiny is the fail-unsafe error: it
+   skips the whole method (round-2: the flash tier made exactly this error on 3/3 vague prompts). A standing
+   invariant ("do not add fields unless…") is also tiny/[] — it constrains future work, it is not itself a task.
+7. **Test cases gen vs test script gen** (round-2, 4 confusions in 50 samples): *cases* = the assertions —
+   what behavior is checked, including that content as test code ("extend the unit tests to modules 815–817",
+   "add a sabotage case"). *Script* = the machinery that runs things — runners, injectors, drivers, harness
+   CLIs, their flags and error reporting ("extend run_e2e.sh with --retry"). If the deliverable would still
+   make sense with a different runner, it is cases; if it is about the runner, it is script.
+
+
+
+Prompts:
+
+[p221] Where does the DSD set the basic-call indicator, and does iopAMAmapping.js mirror it? Cite both.
+[p222] Fix the iBCF path dropping partials with zero octets. Repro with fixture ibcf-0009.rec first.
+[p223] List every header the aggregation stage reads, with the stage that writes each one.
+[p224] Write the findings list for br_processEvent vs iopValidation stage order. Both-side citations, epistemic labels.
+[p225] Add the IOP-CAL-RYC-A102 stamp for records that age off after the third retry.
+[p226] Grade run dev217-1002: functional, delivery, health verdicts separate, run directory only.
+[p227] Write the one-page explainer of category codes for the billing team. They have not seen the DSD.
+[p228] Review the interop-source diff for the recycle fix blind: you get the diff and the finding, not my notes.
+[p229] Plan moving the sensor-id lookup into stage 3 without breaking the recycle contract. No edits.
+[p230] Classify this week's error-topic records: lookup-fail, schema-reject, aged-off, other.
+[p231] Research whether ANDF stages can share a Nashorn engine across records and what that does to our state assumptions. Dated sources.
+[p232] Scan both streamers for stages whose YAML route predicate no JS branch can ever satisfy.
+[p233] Build the small dashboard that shows recycle depth per hour from the run logs.
+[p234] Generate the MT partial pairs for the video-direction cases, distinct chargingIds, under fixtures/mt/.
+[p235] Write the E2E cases named in recycled-filter-algorithm.md that the suite does not have yet.
+[p236] Extend run_e2e.sh so one failing case does not abort the rest, and the summary names each failure.
+[p237] Why does the reprocess streamer emit two error records for one aged-off session? Cite log lines and JS branches.
+[p238] Compare values-dev116 and values-dev217 route predicates for stage 7; findings rows only.
+[p239] Extract the sumFields and lastValueFields lists into one table with the DSD store rule each mirrors.
+[p240] Implement the filter-code rename A103 to B203 in interop-source only, with the YAML route updated in the same change.
+[p241] Review my findings-aggregation.md against lb_mapping.dsd. Flag rows whose DSD citation does not say what the row claims.
+[p242] What breaks if we remove the IOP-FTR-BLR-A103 stamp? One paragraph for my senior, cite the router.
+[p243] Grade case IOP-MO-11 from the run directory. The unit test passed locally; that does not count.
+[p244] Find every place the recording-office default 0000000 can reach the AMA record. Coverage manifest with paths.
+[p245] Research the DST behaviour of the old distributor file timestamps in the DSD and report whether our connector must replicate it.
+
+Output exactly one JSON line per prompt id, nothing else.

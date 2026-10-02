@@ -1,0 +1,78 @@
+You classify work prompts for a workflow-design system. For each prompt output ONE line of JSON, no prose, no fences:
+{"id":"<id>","cats":[<category names>],"tiny":<true|false>,"builds":<true|false>}
+
+Categories (exact names): code generation; code review; ui/ux dev; debugging; test data gen; test cases gen; test script gen; repo scanning; multi step planning; information extraction; web search; classification; research and reports; document and explain; grade a run; others.
+
+Follow these labelling rules exactly:
+
+## Labelling rules (round-1 lessons, 2026-10-02)
+
+Measured on 50 executor samples (codex 25, agy 25): strict agreement was 12% / 24% before these rules
+existed; every disagreement class traced to a missing definition, not to a weak model.
+
+1. **One label per distinct deliverable — list the deliverables first, then label each.** The primary category
+   is the one that answers the the ask. Do not add a secondary label for work that is *inside* the primary: a
+   research task reads (not also "information extraction"); a debugging diagnosis cites logs (not also
+   "research and reports"). Multi-label only when the prompt asks for several *separately delivered* outputs
+   ("extract the rules, write them up, then generate test cases" = three deliverables). Dropping a deliverable's
+   label is as wrong as adding a passenger label (round-2: combo prompts lost their web-search and
+   test-script labels).
+2. **Information extraction** applies only when the deliverable *is* the structured data (a table, a schema-
+   validated list, field values) — never as a passenger label.
+3. **Code review vs research and reports**: review = a verdict on the quality/correctness of work against a
+   standard, delivered as an issue report; research = an answer or a findings list. "Compare A to B, list
+   divergences with citations" is research; "review this file against the spec, write an issue report" is
+   review. **Re-validating an existing finding** against current code ("still open, resolved, or wrong?") is
+   research — it updates a findings list, it does not grade work.
+4. **Grade a run vs debugging**: grading applies a fixed rubric to a finished run's evidence and stops;
+   debugging seeks a root cause. "Which check fired and why" is debugging; "keep the verdicts separate,
+   missing proof = UNKNOWN" is grading.
+5. **builds=true means the deliverable changes product or test surface** — code, schema, configuration, UI,
+   test files, **and generated fixture/seed data that feeds tests or environments** (round-2: fixtures are test
+   surface). Findings lists, reports, notes, diaries, command sheets are **not** builds — and neither are
+   **deliverable data outputs** (a CSV/JSON table that *is* the answer): a report in data shape is still a
+   report (round-3: the gate caught this mislabel on its own corpus author). A `document and explain` piece
+   that writes only prose is builds=false even though it writes a file.
+6. **tiny + cats=[] is for session-control directives** (status, stop, restate, commit, one-step advice) and
+   one-sentence tasks **whose restatement succeeds**: tiny requires the restated problem, fix and check to be
+   one sentence each. A prompt you cannot restate ("make it faster", "look into the thing from yesterday") is
+   **never tiny** — it is `others` with decision spots. Classifying vague as tiny is the fail-unsafe error: it
+   skips the whole method (round-2: the flash tier made exactly this error on 3/3 vague prompts). A standing
+   invariant ("do not add fields unless…") is also tiny/[] — it constrains future work, it is not itself a task.
+7. **Test cases gen vs test script gen** (round-2, 4 confusions in 50 samples): *cases* = the assertions —
+   what behavior is checked, including that content as test code ("extend the unit tests to modules 815–817",
+   "add a sabotage case"). *Script* = the machinery that runs things — runners, injectors, drivers, harness
+   CLIs, their flags and error reporting ("extend run_e2e.sh with --retry"). If the deliverable would still
+   make sense with a different runner, it is cases; if it is about the runner, it is script.
+
+
+
+Prompts:
+
+[p271] Research the vendor rate limits, then update our client's backoff and write the boundary cases for the new limits.
+[p272] Scan the repo for TODO(name) markers, classify them by area, and plan the cleanup of the top area.
+[p273] Debug the nightly timeout, fix it, grade tonight's run afterwards, and write the note for standup.
+[p274] Extract the legacy schema, generate fixtures from it, extend the runner to load them, and write the negative cases.
+[p275] Review the PR, implement must-fixes, rerun the suite, and update the PR description with what changed.
+[p276] Search for how the framework does retries now, compare to our wrapper, and align ours where the docs confirm a change.
+[p277] Classify the crash reports, debug the top class, and write the fix plan for the second class. Do not implement the plan.
+[p278] Build the status dashboard, generate its demo data, and write the operator commands for it.
+[p279] Grade the migration dry-run, debug every FAIL verdict, and regrade after the fixes.
+[p280] Document the pipeline for onboarding, extract the stage table it cites from the YAML, and review the doc against the YAML.
+[p281] Research the DSD ageing rules, align the reprocess streamer, and extend the E2E cases to cover day-boundary ageing.
+[p282] Scan for secrets in the repo, fix every hit, and review the fixes blind before commit.
+[p283] Plan the ledger automation, get my ok, then implement it with the sabotage test.
+[p284] Extract the error taxonomy from the logs, classify this week's records with it, and report the distribution.
+[p285] Debug the schema-registry 40403 for our filter topic this time — it is on our run key — and fix the subject registration.
+[p286] Write the runbook for the recycle queue, generate a stuck-queue fixture, and test the runbook steps against dev217.
+[p287] Compare our gate findings taxonomy to the framework's lint findings, and align the wording where they mean the same thing.
+[p288] Research agy quota behaviour on exhaustion, then write the wrapper timeout rule into EXECUTOR_KINDS with the sources.
+[p289] Grade this campaign round 1 and round 2 against the restated stop condition in the state file, then plan round 3 improvements.
+[p290] Classify all 300 corpus prompts by source domain, extract the per-domain category distribution, and report which categories the real distribution over- or under-weights.
+[p291] Review the generated designs for p271 to p275 against TASK_TYPES.md. Fixed checklist: category fits, default pattern right, margin claim sound if any, nothing needed missing.
+[p292] Which TASK_TYPES row is used most by the 300-p corpus, and does its default check match what the prompts actually demand?
+[p293] Do we need a dependency-upgrading category, or do the existing rows cover p266 and p174? Decide with citations to both prompts.
+[p294] Grade the campaign itself: did each round end green, are all bugs in a report, did any enhancement weaken a principle? Rubric from the state file.
+[p295] Write the lessons-learned section of the campaign report from the three round files. No new claims, cite the rounds.
+
+Output exactly one JSON line per prompt id, nothing else.

@@ -1,0 +1,63 @@
+You classify work prompts for a workflow-design system. For each prompt output ONE line of JSON, no prose, no fences:
+{"id":"<id>","cats":[<category names>],"tiny":<true|false>,"builds":<true|false>}
+
+Categories (exact names): code generation; code review; ui/ux dev; debugging; test data gen; test cases gen; test script gen; repo scanning; multi step planning; information extraction; web search; classification; research and reports; document and explain; grade a run; others.
+
+Follow these labelling rules exactly:
+
+## Labelling rules (round-1 lessons, 2026-10-02)
+
+Measured on 50 executor samples (codex 25, agy 25): strict agreement was 12% / 24% before these rules
+existed; every disagreement class traced to a missing definition, not to a weak model.
+
+1. **One label per distinct deliverable.** The primary category is the one that answers the ask. Do not add a
+   secondary label for work that is *inside* the primary: a research task reads (not also "information
+   extraction"); a debugging diagnosis cites logs (not also "research and reports"). Multi-label only when the
+   prompt asks for several *separately delivered* outputs ("extract the rules, write them up, then generate
+   test cases" = three deliverables).
+2. **Information extraction** applies only when the deliverable *is* the structured data (a table, a schema-
+   validated list, field values) — never as a passenger label.
+3. **Code review vs research and reports**: review = a verdict on the quality/correctness of work against a
+   standard; research = an answer or a findings list. "Compare A to B, list divergences with citations" is
+   research; "review this file against the spec, write an issue report" is review.
+4. **Grade a run vs debugging**: grading applies a fixed rubric to a finished run's evidence and stops;
+   debugging seeks a root cause. "Which check fired and why" is debugging; "keep the verdicts separate,
+   missing proof = UNKNOWN" is grading.
+5. **builds=true means the deliverable changes product or test surface** — code, schema, configuration, UI,
+   test files. Findings lists, reports, notes, diaries, command sheets are **not** builds (a `document and
+   explain` piece that writes only prose is builds=false even though it writes a file).
+6. **tiny + cats=[] is for session-control directives** (status, stop, restate, commit, one-step advice) and
+   one-sentence tasks. A standing invariant ("do not add fields unless…") is also tiny/[] — it constrains
+   future work, it is not itself a task.
+
+
+
+Prompts:
+
+[p176] Classify the crash reports from last week by stack signature. Labels: null-deref, timeout, oom, unknown.
+[p177] Research how postgres vacuum interacts with our nightly batch window and report what we should change.
+[p178] Generate seed data for the staging users table: 1k rows, valid FKs, no PII.
+[p179] Fix the flaky selenium test that only fails on the grid, not locally. Repro with the grid profile first.
+[p180] Build a small status page showing queue depth per worker. Keep it one html file.
+[p181] Write a shell script that rotates the app logs weekly and keeps 8 generations.
+[p182] Review the terraform plan output for destructive changes before I apply. List every destroy.
+[p183] Grade last night's deployment against the release checklist. Missing evidence is UNKNOWN, not PASS.
+[p184] Extract invoice totals from the 30 PDFs in inbound/ into one CSV. Flag unreadable pages, do not guess amounts.
+[p185] Plan the rate limiter, wait for my ok, then implement stage 1 only.
+[p186] Scan the repo for deprecated API calls, then fix the top 5 by usage.
+[p187] Research how competitors structure billing records, then draft our schema and write the validation tests.
+[p188] Debug the flaky aggregation test, fix it, then get a blind review of the fix from a fresh session.
+[p189] Extract the schema from the legacy dump, generate fixtures from it, and validate the fixtures against the live topic.
+[p190] Plan the migration, get my ok, then implement stage 1 with tests.
+[p191] Grade the run, debug whatever failed, and write the note for my standup.
+[p192] Review the PR, implement the reviewer's must-fix items, then rerun the suite.
+[p193] Search the vendor docs for the new retry API, extract the changes into a table, then update our client wrapper.
+[p194] Classify the backlog by area, plan the top three epics, and break epic 1 into pieces with checks.
+[p195] Write the runbook, generate the fixtures it references, and test the runbook end to end on dev217.
+[p196] make it faster
+[p197] look into the thing from yesterday
+[p198] research best practices for canary deploys and decide whether we adopt them
+[p199] do everything in the TODO.md
+[p200] review this operator prompt list and tell me which of our task categories are missing from it
+
+Output exactly one JSON line per prompt id, nothing else.

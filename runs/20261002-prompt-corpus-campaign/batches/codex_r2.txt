@@ -1,0 +1,63 @@
+You classify work prompts for a workflow-design system. For each prompt output ONE line of JSON, no prose, no fences:
+{"id":"<id>","cats":[<category names>],"tiny":<true|false>,"builds":<true|false>}
+
+Categories (exact names): code generation; code review; ui/ux dev; debugging; test data gen; test cases gen; test script gen; repo scanning; multi step planning; information extraction; web search; classification; research and reports; document and explain; grade a run; others.
+
+Follow these labelling rules exactly:
+
+## Labelling rules (round-1 lessons, 2026-10-02)
+
+Measured on 50 executor samples (codex 25, agy 25): strict agreement was 12% / 24% before these rules
+existed; every disagreement class traced to a missing definition, not to a weak model.
+
+1. **One label per distinct deliverable.** The primary category is the one that answers the ask. Do not add a
+   secondary label for work that is *inside* the primary: a research task reads (not also "information
+   extraction"); a debugging diagnosis cites logs (not also "research and reports"). Multi-label only when the
+   prompt asks for several *separately delivered* outputs ("extract the rules, write them up, then generate
+   test cases" = three deliverables).
+2. **Information extraction** applies only when the deliverable *is* the structured data (a table, a schema-
+   validated list, field values) — never as a passenger label.
+3. **Code review vs research and reports**: review = a verdict on the quality/correctness of work against a
+   standard; research = an answer or a findings list. "Compare A to B, list divergences with citations" is
+   research; "review this file against the spec, write an issue report" is review.
+4. **Grade a run vs debugging**: grading applies a fixed rubric to a finished run's evidence and stops;
+   debugging seeks a root cause. "Which check fired and why" is debugging; "keep the verdicts separate,
+   missing proof = UNKNOWN" is grading.
+5. **builds=true means the deliverable changes product or test surface** — code, schema, configuration, UI,
+   test files. Findings lists, reports, notes, diaries, command sheets are **not** builds (a `document and
+   explain` piece that writes only prose is builds=false even though it writes a file).
+6. **tiny + cats=[] is for session-control directives** (status, stop, restate, commit, one-step advice) and
+   one-sentence tasks. A standing invariant ("do not add fields unless…") is also tiny/[] — it constrains
+   future work, it is not itself a task.
+
+
+
+Prompts:
+
+[p126] Grade case IOP-MT-09 from the run directory only. Local tests do not count.
+[p127] Write the onboarding doc for interop-source/: what a new engineer reads first, in what order, and what not to touch.
+[p128] Debug why dev116 accepts the fixture that dev217 rejects. Same bytes, different schema subjects.
+[p129] Research whether the CCF distributor did DST handling on file timestamps. Report with citations; do not infer from the ADD.
+[p130] Generate boundary test data for octetCount overflow: max, max+1, negative, null.
+[p131] Plan the decommission of the legacy validation stage. Name every consumer that must move first.
+[p132] List every Kafka topic per stage from the deployed YAML. Table only.
+[p133] Review run_e2e.sh for LF endings and quoting bugs. Issue report, no edits.
+[p134] The inject script overwrites transferred .rec files. Find the line and fix it in interop-source/ only.
+[p135] Write the one-pager for my senior: why recycle exists, what it costs, what breaks without it.
+[p136] Search the web for Nashorn deprecation impact on ANDF stages. Dated sources, say what is confirmed vs rumour.
+[p137] Classify the rows in findings-aggregation.md by DSD procedure. Output the mapping table.
+[p138] Compare the fresh and recycled filter JS. Which rules exist in only one of them? Findings rows with both citations.
+[p139] Extend the AMA mapping unit tests to cover modules 815 through 817.
+[p140] The injector sent duplicate correlation tags twice this week. Find where the tag is generated and why it repeats.
+[p141] Re-read finding F2 in PROJECT_OVERVIEW.md against the current hybrid/tools/_plan.py. Still open, resolved, or wrong? New line citations.
+[p142] Fix the ANSI environment leak in tests/test_localize_ansi.py so ambient NO_COLOR cannot decide coverage.
+[p143] Add a sabotage test for the design_gate ledger parser: a row with a swapped column must produce a G7 finding.
+[p144] Explain count_sources' three source categories to a new joiner. Point form, then one worked example.
+[p145] Scan ancient_games/ for dead imports and unused helpers. Findings with file and line.
+[p146] Plan the F11 fix so the commit check inspects the index, not the working tree. Do not implement yet.
+[p147] Compare SPEC.md §4 B·1 to stages.py count_sources. List every divergence with both citations and a CONFIRMED/INFERRED label.
+[p148] Generate hypothesis strategies for Claim fixtures covering executable and judgment kinds.
+[p149] Grade runs/20260921-ablation7/ against the three-part stop rubric. Missing proof is UNKNOWN, not PASS.
+[p150] Write the README section that explains when to use the workflow-design skill and when not to.
+
+Output exactly one JSON line per prompt id, nothing else.
