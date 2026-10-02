@@ -45,14 +45,14 @@ changes the design — six is the ceiling, never a target:
 |---|---|---|---|
 | 1 | Why does EJ want this — what problem is behind the ask? | the objective (the XY-problem guard) | unclear spot, decision |
 | 2 | Why now — what triggered it? | priority; whether a cheaper fix exists | noted; rarely blocking |
-| 3 | Why this shape of solution — why the requested approach over alternatives? | the category and its default pattern (`docs/TASK_TYPES.md`) | decision spot, batched |
+| 3 | Why this shape of solution — why the requested approach over alternatives? | the provisional category and its default pattern (`docs/TASK_TYPES.md`) | decision spot, batched |
 | 4 | Why would it fail — what breaks if we get it wrong? | the risk tier → review depth and independent checks | assume the higher tier |
 | 5 | Why does it stop where it stops? | in scope / out of scope | decision spot |
 | 6 | Why would we believe it is done? | the stop condition and check kind (script, checklist, EJ) | the piece is not loop-ready (3.5) |
 
-End with the **category** (multi-label, marked *inferred*) from `docs/TASK_TYPES.md`, checked against the
-facts: a design whose pieces touch product code, schema, UI or configuration is never categorized read-only.
-A wrong category is a **stop and replan**, not a repair — the blueprint kind-guard's shape.
+End with a **provisional category** (multi-label, marked *inferred*) from `docs/TASK_TYPES.md`. It is a guess
+from the text alone: it feeds the tiny test (§2) and a first default lookup, and 3.2 relabels it from the
+algorithm (since 2026-10-02; before, the category was fixed here and only checked against the facts).
 
 A part that cannot be written, or a challenge that allows two readings, is the first **unclear spot** (kind:
 decision, 3.3): a question for EJ with the restatement as the provisional assumption. No new blocking rule is
@@ -63,7 +63,7 @@ The tiny test (§2) reads the restatement, not the raw text: tiny means the *res
 one sentence each. A big-sounding challenge with a narrow objective stays small; a vague one ("improve
 performance") cannot slip through as tiny.
 
-The restatement, the why-answers and the category go at the top of the output, beside the verbatim challenge in
+The restatement, the why-answers and the provisional category go at the top of the output, beside the verbatim challenge in
 the state file, so EJ sees and can correct what the run understood before tokens are spent.
 
 Cost guard (trial 1, 3.4): this step is one paragraph and six short answers in the same session, never an
@@ -175,6 +175,30 @@ Try to write the steps that would solve the task. A **step** is one action with 
 - A step with no check you can name counts as unclear, however tidy it looks. This guards against a confident
   algorithm for a problem that is not understood.
 
+**Label the pieces (added 2026-10-02 at EJ's request; n=0).** Once the steps are written, group them into
+**pieces** — consecutive steps that end in one deliverable — and give each piece a category from
+`docs/TASK_TYPES.md`, with its default pattern, engine and check beside it. The labels come from the algorithm, not
+from the prompt text: a prompt that reads as one category often holds several (fix a test, then document it).
+
+- Label deliverables, not raw steps. File IO, shell execution and workflow execution stay inside the piece they
+  serve (TASK_TYPES.md, "Step-level, not categories"); its labelling rules 1–9 apply per piece.
+- A piece with no matching row is `others` and gets the full method from first principles. Steps that cannot be
+  grouped into one deliverable are an unclear spot.
+- The piece labels replace the provisional category from 3.0. Where they differ, the pieces win and the
+  difference is a Log line.
+- Facts check, per piece: a piece that changes product code, schema, UI or configuration is never labelled
+  read-only, and a label that contradicts what the piece writes is a **stop and replan**, not a repair (the
+  blueprint kind-guard's shape).
+- **A label is not a node.** Labelling says what kind of work a piece is; it does not say it needs its own agent.
+  Pieces that share an engine and have no independent check between them merge into one node run by the main
+  agent in one session — the default. A hand-off to a subagent must pay for itself: it has its own objective
+  check, or needs a different kind (a blind reviewer, another engine), or its context would not fit. EJ's
+  experience (2026-10-02, unmeasured here): a prompt finished by the main agent is faster than the same work split
+  over three subagents going back and forth, from the waiting and from context lost at every hand-off. Same
+  warning as 3.4: fixed cost per agent, context lost at every split, more joins.
+- Output: one row per piece in the state file — steps · deliverable · category · default pattern, engine and check
+  from the table · and the node it merges into. The node contract still names the exact model and effort.
+
 ### 3.3 List all the unclear spots before resolving any
 
 For each spot record:
@@ -205,7 +229,7 @@ joining step compares the answers. A contradiction is a stop: pick one and say w
   things it touches. Tiny but risky → the prompt file gets one independent check.
 
 **Default-first design.** When the size decision says workflow design, the design starts from a lookup, not a
-blank page: the category row or combination pipeline in `docs/TASK_TYPES.md` supplies the default pattern,
+blank page: each piece's category row (labelled in 3.2) or combination pipeline in `docs/TASK_TYPES.md` supplies the default pattern,
 engine, check and sabotage; `others` gets the full method from first principles. A bespoke (challenger) design
 replaces a default only on a written claim of ≥20% lower projected run cost **at equal coverage** (same
 criteria ids, same checks, same blindness — coverage is a gate, never an axis). The decision is reviewed by the

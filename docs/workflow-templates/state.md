@@ -12,7 +12,7 @@ never reasoning; put notes in your own output file. Never delete a log line.
 What the run understood: the objective — what is true when done; in scope; out of scope. One paragraph, from the
 challenge text alone. EJ corrects it here if it is wrong.
 
-<objective · in scope · out of scope · six whys (short) · categories (inferred)>
+<objective · in scope · out of scope · six whys (short) · provisional category (inferred; relabelled per piece after the algorithm)>
 
 ## Baseline
 

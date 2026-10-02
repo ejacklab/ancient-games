@@ -14,7 +14,7 @@ number, nothing more.
 
 ```mermaid
 flowchart TD
-  A["a challenge arrives"] --> R0["0 UNDERSTAND THE CHALLENGE, 3.0<br/>from the challenge text alone, no tools, no agents:<br/>OBJECTIVE — what is true when done; IN SCOPE; OUT OF SCOPE.<br/>then the SIX WHYS, each feeding a design field:<br/>why wanted · why now · why this shape · why would it fail ·<br/>why stop here · why believe it's done. a ceiling, never a target.<br/>end with the CATEGORY (multi-label, inferred, TASK_TYPES.md),<br/>checked against facts: touches product code → never read-only-only,<br/>a wrong category is a STOP and replan.<br/>a part you cannot write, or two readings,<br/>is the first UNCLEAR SPOT (decision)"]
+  A["a challenge arrives"] --> R0["0 UNDERSTAND THE CHALLENGE, 3.0<br/>from the challenge text alone, no tools, no agents:<br/>OBJECTIVE — what is true when done; IN SCOPE; OUT OF SCOPE.<br/>then the SIX WHYS, each feeding a design field:<br/>why wanted · why now · why this shape · why would it fail ·<br/>why stop here · why believe it's done. a ceiling, never a target.<br/>end with a PROVISIONAL CATEGORY (multi-label, inferred, TASK_TYPES.md):<br/>a guess for the tiny test and a first lookup; 3.2 relabels it.<br/>a part you cannot write, or two readings,<br/>is the first UNCLEAR SPOT (decision)"]
   R0 --> B{"method 2: is it tiny?<br/>the RESTATED problem, fix and check<br/>one sentence each, and being wrong<br/>would show itself at once"}
   B -->|"yes"| PF["fill in prompt-file.md, or just do the task.<br/>a process that costs more than the task<br/>is a failure of the method, not a success"]
   B -->|"no"| S1["1 READINESS, 3.1<br/>tools, each proved by running it, not assumed<br/>skills that already cover part of the work<br/>information: is it there, in what structure,<br/>verified against its source, readable by whom"]
@@ -22,7 +22,7 @@ flowchart TD
   BP --> MISS{"anything missing<br/>or unverified?"}
   MISS -->|"yes"| PREP["a preparation piece at the front of the flow.<br/>each task leaves the knowledge better<br/>structured than it found it"]
   MISS -->|"no"| S2
-  PREP --> S2["2 WRITE THE ALGORITHM, 3.2<br/>the steps that would solve the task.<br/>a step is one action with a result that can be checked"]
+  PREP --> S2["2 WRITE THE ALGORITHM, 3.2<br/>the steps that would solve the task.<br/>a step is one action with a result that can be checked.<br/>then LABEL THE PIECES: group steps into pieces that each end in one<br/>deliverable, give each a TASK_TYPES.md category (replaces the guess).<br/>touches product code → never read-only; a wrong label is a STOP and replan.<br/>a label is NOT a node: same-engine pieces with no independent<br/>check between them merge into one main-agent session"]
   S2 --> SPOT{"does every step write clearly,<br/>and can you name its check?"}
   SPOT -->|"a step does not"| U["an UNCLEAR SPOT.<br/>a step with no check you can name counts<br/>as unclear, however tidy it looks"]
   SPOT -->|"all of them do"| S3
@@ -39,7 +39,7 @@ flowchart TD
   S4 -->|"more than 3 steps"| SPLIT["consider a new piece. split only if each part<br/>keeps its own check AND the split changes<br/>how the work is done"]
   S4 -->|"a spot of kind information or unknown,<br/>or a blueprint section missing or incomplete"| DESIGN["a workflow design, always"]
   SPLIT --> S5
-  DESIGN --> DF["DEFAULT-FIRST, 3.4<br/>the category row or pipeline in TASK_TYPES.md supplies<br/>pattern, engine, check, sabotage. a CHALLENGER design replaces it<br/>only on a written ≥20%-lower-projected-cost claim AT EQUAL COVERAGE<br/>(coverage is a gate, never an axis). reviewed by design_gate.py (script)<br/>+ one blind checklist pass (sonnet 5.5; different kind when it builds).<br/>every run reconciles its claim in TASK_TYPES_LEDGER.md — n=0 until it fills"]
+  DESIGN --> DF["DEFAULT-FIRST, 3.4<br/>each piece's category row or pipeline in TASK_TYPES.md supplies<br/>pattern, engine, check, sabotage. a CHALLENGER design replaces it<br/>only on a written ≥20%-lower-projected-cost claim AT EQUAL COVERAGE<br/>(coverage is a gate, never an axis). reviewed by design_gate.py (script)<br/>+ one blind checklist pass (sonnet 5.5; different kind when it builds).<br/>every run reconciles its claim in TASK_TYPES_LEDGER.md — n=0 until it fills"]
   DF --> S5["5 CLEAR PIECES RUN AS LOOPS, 3.5<br/>diagram 3. they run WHILE the unclear<br/>spots are still being resolved"]
   S3 -.->|"pieces already clear and not blocked<br/>start here, without waiting"| S5
   S5 --> S6["6 THE REST IS A GRAPH, 3.6<br/>nodes are right-sized pieces, a node may hold its own loop<br/>edges are: this piece needs that piece's result<br/>a result is verified before anything that depends on it starts<br/>branches meet at a joining node. diagram 4"]
@@ -203,8 +203,8 @@ It is a multi-agent run, so it is used only when EJ asks for it.
 
 | Diagram | `docs/WORKFLOW_DESIGN_METHOD.md` | `.claude/skills/workflow-design/SKILL.md` |
 |---|---|---|
-| 1, top | 3.0 understand the challenge (six whys, category), §2's tiny test reads it | "First: understand the challenge", then "Then: is it tiny?" |
-| 1 | 3.1 readiness, 3.2 algorithm, 3.3 spots, 3.4 size, 3.5 loops, 3.6 graph, 3.7 sequential first | steps 1–7, same order |
+| 1, top | 3.0 understand the challenge (six whys, provisional category), §2's tiny test reads it | "First: understand the challenge", then "Then: is it tiny?" |
+| 1 | 3.1 readiness, 3.2 algorithm and piece labels, 3.3 spots, 3.4 size, 3.5 loops, 3.6 graph, 3.7 sequential first | steps 1–7, same order |
 | 1, at DESIGN | 3.4 "Default-first design" and the 20% ledger | step 4's default-first sentences; `references/task-types.md` |
 | 1, bottom | 3.6, the node that builds, the baseline, the backlog | step 8, "the run ends at the acceptance criteria" |
 | 2 | 3.1, "Blueprint check — part of readiness" | inside step 1 |

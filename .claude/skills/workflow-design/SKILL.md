@@ -20,9 +20,8 @@ done), what is **in scope**, what is **out of scope**. Then the **six whys**, ea
 why does the person want this (objective) · why now (priority) · why this shape of solution (category + default
 pattern) · why would it fail (risk tier → review depth) · why does it stop where it stops (scope) · why would
 we believe it is done (check kind). Stop early when an answer no longer changes the design — six is a ceiling,
-never a target. End with the **category** (multi-label, marked inferred) from `references/task-types.md`,
-checked against facts: a design touching product code is never categorized read-only, and a wrong category is a
-stop and replan. A part that cannot be written, or a challenge that allows two readings, is the first unclear
+never a target. End with a **provisional category** (multi-label, marked inferred) from `references/task-types.md`: a guess
+that feeds the tiny test and a first default lookup; step 2 relabels it from the algorithm. A part that cannot be written, or a challenge that allows two readings, is the first unclear
 spot (kind: decision) — a question for the person with the restatement as the provisional assumption. The
 restatement goes at the top of the output, beside the verbatim challenge in the state file. One paragraph in
 the same session, never an agent, never a tool call. (Added 2026-10-01 at EJ's request; six whys and
@@ -69,6 +68,14 @@ agent can read; a subagent starts with nothing but its prompt.
 2. **Write the algorithm.** Try to write the steps that would solve the task. A step is one action with a result
    that can be checked, and each step names its check. The attempt is the evaluation: steps that write clearly mean
    a defined problem; a step you cannot write clearly, or whose check you cannot name, is an **unclear spot**.
+   Then **label the pieces**: group the steps into pieces that each end in one deliverable and give each a category
+   from `references/task-types.md` (file IO, shell and workflow execution stay inside their piece; no matching row =
+   `others`, full method). The piece labels replace the provisional category and the difference is a Log line.
+   A piece that changes product code, schema, UI or configuration is never read-only: a contradicting label is a
+   stop and replan. One state-file row per piece: steps · deliverable · category · default pattern, engine, check · node it merges
+   into. **A label is not a node**: pieces with the same engine and no independent check between them merge into
+   one main-agent session, the default; a subagent hand-off must buy an objective check, a different kind, or
+   context room (EJ's experience: splitting one prompt over three subagents is slower — waiting and lost context).
 3. **List every unclear spot before resolving any.** For each: its kind (missing *information* → a research piece ·
    a *decision* → a question for the person · *unknown* → a bounded explore loop), which steps it blocks, and whether
    it depends on another spot. Listing first matters because one answer often removes another spot. Questions go to
@@ -77,7 +84,7 @@ agent can read; a subagent starts with nothing but its prompt.
    workflow design.
 4. **Size.** Up to 3 steps with nothing unclear except decisions that have a default → a prompt file, questions at
    the top. More than 3 steps → consider a new piece, but split only if each part keeps its own check and the split
-   changes how the work is done. A workflow design starts **default-first**: the category row or combination
+   changes how the work is done. A workflow design starts **default-first**: each piece's category row (labelled in step 2) or combination
    pipeline in `references/task-types.md` supplies the default pattern, engine, check and sabotage; a challenger
    design replaces a default only on a written ≥20%-lower-projected-cost claim at equal coverage, reviewed by
    `scripts/design_gate.py` plus one blind fixed-checklist pass (a different kind when it builds), and reconciled

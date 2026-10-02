@@ -12,7 +12,7 @@ A design, not a run. Sequential by default. Method: `docs/WORKFLOW_DESIGN_METHOD
 What this design understood: the objective — what is true when done; in scope; out of scope. One paragraph, from
 the challenge text alone, written before the design began.
 
-<objective · in scope · out of scope · the six whys (short answers) · categories (inferred, per docs/TASK_TYPES.md)>
+<objective · in scope · out of scope · the six whys (short answers) · provisional category (inferred; the pieces below carry the real labels)>
 
 ## Blueprint
 
@@ -36,6 +36,7 @@ where they fit (INTENT, STOP, OUTPUT, SCOPE; CLAIMS, NOT_ESTABLISHED).
 
 - **Steps:** 1. … 2. … 3. …
 - **More than 3 steps because:** <reason, or leave out>
+- **Category:** <from docs/TASK_TYPES.md, labelled in 3.2 from the algorithm: one per deliverable; `others` if no row>
 - **Pattern:** step (do once, check) · loop (attempt, check, repair) · explore (bounded search for an unknown)
 - **Resolves unclear spot:** <spot id, or none>
 - **Builds:** <yes: changes the product's code, schema, UI or configuration / no>

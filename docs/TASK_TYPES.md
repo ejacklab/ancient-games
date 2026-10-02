@@ -9,13 +9,17 @@ copy the table into code or another doc — change it here, the gate follows.
 
 ## How this is used (the design rule)
 
-1. **Categorize at §3.0.** The six why-questions (method 3.0) end with the category or categories — multi-label,
-   marked *inferred* — checked against facts: a design whose pieces touch product code, schema, UI or config is
-   never categorized read-only. A wrong category is a **stop and replan**, not a repair (the blueprint
-   kind-guard's shape).
-2. **Default-first.** Look up the category's row (or the combination's pipeline), adapt it to the specifics,
-   then run the normal gates. Steps 2–4 of the method still run — the algorithm attempt is what confirms the
-   category. `others` has no default: the full method from first principles.
+1. **Guess at §3.0, label at §3.2.** The six why-questions (method 3.0) end with a *provisional* category — a
+   guess from the prompt text that feeds the tiny test and a first lookup. After the algorithm is written (method
+   3.2) its steps are grouped into pieces, one deliverable each, and **each piece is labelled** from this table
+   (changed 2026-10-02 at EJ's request; n=0). The piece labels replace the guess; a difference is a Log line.
+   A label says what kind of work a piece is, not that it needs its own agent: same-engine pieces with no independent
+   check between them merge into one node (method 3.2, "a label is not a node").
+   Checked against facts per piece: a piece that touches product code, schema, UI or config is never labelled
+   read-only. A wrong label is a **stop and replan**, not a repair (the blueprint kind-guard's shape).
+2. **Default-first.** For each labelled piece look up its row (or the combination's pipeline), adapt it to the
+   specifics, then run the normal gates. Steps 2–4 of the method still run. `others` has no default: the full
+   method from first principles.
 3. **Challenger (the 20% rule).** A bespoke design replaces the default only with a written claim **before the
    run**: ≥20% lower projected run cost (tokens / agents / wall time) **at equal coverage** — same acceptance
    criteria ids, same checks, same blindness. Coverage is a gate, never an axis; nobody trades completeness for
