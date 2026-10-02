@@ -241,8 +241,9 @@ def check_machine(cwd: Path) -> Check:
 def open_unknowns() -> list[Check]:
     return [
         Check("Open unknowns", "subagent concurrency limit", UNKNOWN,
-              "runtime policy of each tool, not provable from outside; check its docs or measure it",
-              "—"),
+              "runtime policy, not provable from outside. Claude Code docs report 20 concurrent, nesting depth 3 "
+              "(v2.1.217+, env overrides; reported, not measured here); codex/agy: no figure",
+              "docs/EXECUTOR_KINDS.md, Concurrency row"),
         Check("Open unknowns", "codex/agy execute a task", UNKNOWN,
               "canary required (spends quota; needs the person's go-ahead)",
               "docs/EXECUTOR_KINDS.md canary piece"),
