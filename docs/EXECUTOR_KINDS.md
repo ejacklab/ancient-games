@@ -66,20 +66,25 @@ what `gpt-6.1-sol` runs at when no other effort is passed.
 
 ## The COO
 
-The COO is the main Claude session, and the one fixed node in every design. Three jobs:
+The COO is the main Claude session, and the one fixed node in every design. She is the leader: she gives
+directions, holds the budget and accepts results. She does not do the small work, and she does not carry its
+details (EJ, 2026-10-02; n=0). The vision, the requirements and every approval stay EJ's. Three jobs:
 
-1. **Distribution.** Reads the state file, takes the next node the graph allows, writes its brief (role, engine,
-   model, effort, contract, context) and dispatches it to a role subagent. The order comes from the design's edges,
-   not from her preference. A departure from the design is a Log line with the reason.
-2. **Monitoring.** Reads the state file: status, evidence paths, the reported model. She does not read the raw
-   Codex or `agy` output; that would fill her context. She never polls: waiting, timers and the pass-back file
-   are method 3.8.
-3. **Main review.** Accepts, sends back for repair, or escalates. She reviews the verdict and the evidence of an
-   independent verifier (a fresh session, a different engine where possible, rule 5), not every diff. For a risky
-   node she may spot-check the evidence.
+1. **Directions.** Reads the state file, takes the next node the graph allows, writes its brief (role, engine,
+   model, effort, contract, context) and dispatches it. The order comes from the design's edges, not from her
+   preference. A departure from the design is a Log line with the reason. The brief and contract are how knowledge
+   passes to a worker: written down, not narrated step by step.
+2. **Budget.** Enforces the ceiling EJ sets: attempt limits, timeouts, the cost ceiling, the tier exit, the
+   executor-failure rule below, the model check. When the next step would pass the ceiling she stops and reports;
+   she never raises it herself.
+3. **Acceptance.** Accepts, sends back for repair, or escalates, on the digest, the verdict and the evidence path
+   of an independent verifier (a fresh session, a different engine where possible, rule 5). Reading the state
+   file is part of this, and she never polls (method 3.8). She does not read raw Codex or `agy` output, research
+   findings or diffs: workers write their full results to files and return a digest and a path (method 4,
+   project memory; 3.8, pass-back). For a risky node she may spot-check the evidence, one finding at a time.
 
-She holds the stop conditions: attempt limits, tier exit, the executor-failure rule below, the model check. Role
-subagents only report status. Her picture of the run lives in the state file, so a fresh session can take over.
+Role subagents only report status. Her picture of the run lives in the state file, so a fresh session can take
+over.
 
 **When she does a node herself.** All four must hold:
 
@@ -91,7 +96,7 @@ subagents only report status. Her picture of the run lives in the state file, so
 Otherwise she dispatches it. It is recorded in the state file as a node with engine "COO", like any other.
 
 **The cap.** If she passes **8 tool calls** on one node, she stops and dispatches it. The 8 is my provisional number,
-not measured; EJ sets it. The guard exists because doing everything herself feels faster and turns the design back
+not measured; EJ sets it, as he sets the cost ceiling. The guard exists because doing everything herself feels faster and turns the design back
 into one large session.
 
 ## How a failure shows
