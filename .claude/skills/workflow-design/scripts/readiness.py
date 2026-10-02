@@ -95,6 +95,8 @@ def check_codex_cache() -> Check:
         d = json.loads(p.read_text())
     except (OSError, ValueError) as e:
         return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+    if not isinstance(d, dict):
+        return Check("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
     models = d.get("models")
     ids: list[str] = []
     if isinstance(models, list):
@@ -144,6 +146,8 @@ def check_qwen_config(home: Path) -> Check:
         d = json.loads(p.read_text())
     except (OSError, ValueError) as e:
         return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+    if not isinstance(d, dict):
+        return Check("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
     model = d.get("model") or {}
     providers = d.get("modelProviders") or {}
     n_models = sum(len(v) for v in providers.values() if isinstance(v, list))

@@ -180,8 +180,6 @@ def test_rt_03a_truncated_and_unreadable_cache(sandbox):
             cache.chmod(0o644)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="RT-03b: ~/.codex/models_cache.json top-level array raises AttributeError on .get")
 def test_rt_03b_non_object_codex_cache(sandbox):
     cache = write_file(sandbox.home / ".codex/models_cache.json", '[{"id": "gpt-6"}]')
     checks = json_checks(sandbox.run("--json"))
@@ -191,8 +189,6 @@ def test_rt_03b_non_object_codex_cache(sandbox):
     assert check["detail"].startswith("unreadable:")
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="RT-03c: ~/.qwen/settings.json top-level array raises AttributeError on .get")
 def test_rt_03c_non_object_qwen_settings(sandbox):
     settings = write_file(sandbox.home / ".qwen/settings.json", '[{"id": "gpt-6"}]')
     checks = json_checks(sandbox.run("--json"))
