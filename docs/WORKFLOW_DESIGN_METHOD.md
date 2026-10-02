@@ -330,6 +330,48 @@ Only when the design is complete, look for tasks that are **really independent**
 Parallel buys only clock time, and it costs predictability, debuggability and extra joins. Independence of
 verifiers is about what they see, not when they run: two verifiers can run one after another and stay independent.
 
+### 3.8 Running a node: executors are tools, timers, pass-back, no polling
+
+(Added 2026-10-02 at EJ's request. n=0: every number below is a provisional working value that the ledger replaces
+with measured ones. Not yet encoded in `design_gate.py` or `intake.js`.)
+
+The COO (the main Claude session) is the leader and holds the thinking. Codex, `agy`, `qwen` and role subagents are
+**tools** she calls: agents are not yet stable (a call may stop half-way, return nothing, or return something
+malformed), and every exchange with them costs the COO a turn that re-reads her whole context. So:
+
+1. **One small task per call.** A call has one deliverable, one command line and an expected finish inside its
+   timeout. A loop is not inside the call: if a piece loops, the COO or the script runs the loop and each attempt is
+   a fresh small call (3.5). A piece too big for one bounded call is not handed over whole; the COO splits it only
+   where 3.2's "a label is not a node" allows (own check, different kind, or context room).
+2. **Two timers per call, both named in the node.** The *inner* timer is the tool's own (`qwen --max-wall-time`,
+   `agy --print-timeout`; `codex exec` has none verified, so it relies on the outer one). The *outer* timer is a
+   `timeout` around the whole command, a little longer than the inner. Timeout values scale with the task; the
+   provisional sizes are: classification or lookup 60–90 s (the canary's figure), one-file change or one-file test
+   set about 5 min, diff review about 5 min, research about 10 min. The design lists them with its cost estimate,
+   and the ledger records actual wall time so the numbers get replaced.
+3. **No polling.** The COO never repeats "is it done?" and never sleeps in a loop; each check is a turn. She waits
+   in one of three ways: a blocking call under the outer timeout; a background run that notifies her when it
+   exits; or a small script that waits and prints one line `done|fail|timeout <result path>`. A progress file the
+   tool writes is read only after a timeout, to see how far it got. The design states the COO turns it expects per
+   node (provisional: two, dispatch and accept) and the total.
+4. **Pass-back contract.** Every call writes one result file in the node's own path
+   (`runs/<id>/nodes/<node>-<attempt>.result.*`), written to a temp name and renamed, with a fixed header: node,
+   attempt, engine, model as the tool reports it, `status: ok|fail|partial`, start and end time, evidence path;
+   then the body. A **script** (no model) validates it: the file exists and is not empty, the header parses, the
+   status is present, the reported model equals the contract's. The COO reads the capped summary (provisional: the
+   header and the first 40 lines) and the path, never the raw output.
+5. **An unstable return is a failure of the executor, not of the work.** All of these count: no file, empty file,
+   unparseable header, wrong model, a timeout, and a clean exit with no result (`qwen` headless exits 0 with no file
+   when its write tools are withheld; a wrong `-m` exits 0 and silently runs another model — both seen
+   2026-10-02, `docs/EXECUTOR_KINDS.md`). `partial` is a status the COO decides on: retry only the remainder as a
+   new small call. Executor failures follow the existing rule: they do not count against the attempt limit, the
+   node reruns once fresh on its fallback with a short handoff note, and a second failure blocks it and goes to EJ.
+6. **A half-finished node must not leave a mess.** A node that builds writes only inside its contract's "may
+   change" paths, and runs from a clean commit or a worktree, so a failed call is discarded whole. The COO never
+   reverts files by hand to "tidy up": a revert of anything but a discarded worktree is a Rule 6 confirmation.
+7. **Keep the COO's reading small.** Results by path, one-line Log entries, only the state rows the next step
+   needs. Raw tool output never enters her context.
+
 ## 4. State and memory
 
 The state lives in a file (`docs/workflow-templates/state.md`). Each agent reads it, does one step, writes the new

@@ -110,7 +110,10 @@ agent can read; a subagent starts with nothing but its prompt.
    Only when the design is complete, look for really independent pieces — all five must hold: neither needs the
    other's result; no shared files or resources; doing one would not change how the other is done; each has its own
    check; the time saved is worth the extra join. Parallel buys only clock time and costs predictability and
-   debuggability. Independent verifiers need to be blind to each other, not simultaneous.
+   debuggability. Independent verifiers need to be blind to each other, not simultaneous. When running, executors are
+   tools (method 3.8): one small bounded task per call, an inner and an outer timer named in the node, no polling
+   (every status check is a turn), one atomically written result file with a fixed header that a script validates,
+   and any missing, empty, malformed, wrong-model or timed-out return is a failure of the executor, not of the work.
 8. **The run ends at the acceptance criteria.** A piece that builds names the blueprint sections it depends on and the
    acceptance criteria it covers (ids like R1.1 or N1.1); every criterion in scope is covered by a piece that builds.
    Its stop: those criteria pass, everything the baseline recorded as passing still passes (the test command and its

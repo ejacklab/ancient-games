@@ -72,7 +72,8 @@ The COO is the main Claude session, and the one fixed node in every design. Thre
    model, effort, contract, context) and dispatches it to a role subagent. The order comes from the design's edges,
    not from her preference. A departure from the design is a Log line with the reason.
 2. **Monitoring.** Reads the state file: status, evidence paths, the reported model. She does not read the raw
-   Codex or `agy` output; that would fill her context.
+   Codex or `agy` output; that would fill her context. She never polls: waiting, timers and the pass-back file
+   are method 3.8.
 3. **Main review.** Accepts, sends back for repair, or escalates. She reviews the verdict and the evidence of an
    independent verifier (a fresh session, a different engine where possible, rule 5), not every diff. For a risky
    node she may spot-check the evidence.
