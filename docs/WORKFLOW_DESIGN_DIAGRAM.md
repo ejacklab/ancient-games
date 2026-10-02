@@ -14,7 +14,7 @@ number, nothing more.
 
 ```mermaid
 flowchart TD
-  A["a challenge arrives"] --> R0["0 RESTATE THE CHALLENGE, 3.0<br/>from the challenge text alone, one paragraph,<br/>no tools, no agents: the OBJECTIVE — what is true when done;<br/>IN SCOPE — what it touches; OUT OF SCOPE — what it must not.<br/>a part you cannot write, or two readings,<br/>is the first UNCLEAR SPOT (decision)"]
+  A["a challenge arrives"] --> R0["0 UNDERSTAND THE CHALLENGE, 3.0<br/>from the challenge text alone, no tools, no agents:<br/>OBJECTIVE — what is true when done; IN SCOPE; OUT OF SCOPE.<br/>then the SIX WHYS, each feeding a design field:<br/>why wanted · why now · why this shape · why would it fail ·<br/>why stop here · why believe it's done. a ceiling, never a target.<br/>end with the CATEGORY (multi-label, inferred, TASK_TYPES.md),<br/>checked against facts: touches product code → never read-only-only,<br/>a wrong category is a STOP and replan.<br/>a part you cannot write, or two readings,<br/>is the first UNCLEAR SPOT (decision)"]
   R0 --> B{"method 2: is it tiny?<br/>the RESTATED problem, fix and check<br/>one sentence each, and being wrong<br/>would show itself at once"}
   B -->|"yes"| PF["fill in prompt-file.md, or just do the task.<br/>a process that costs more than the task<br/>is a failure of the method, not a success"]
   B -->|"no"| S1["1 READINESS, 3.1<br/>tools, each proved by running it, not assumed<br/>skills that already cover part of the work<br/>information: is it there, in what structure,<br/>verified against its source, readable by whom"]
@@ -39,7 +39,8 @@ flowchart TD
   S4 -->|"more than 3 steps"| SPLIT["consider a new piece. split only if each part<br/>keeps its own check AND the split changes<br/>how the work is done"]
   S4 -->|"a spot of kind information or unknown,<br/>or a blueprint section missing or incomplete"| DESIGN["a workflow design, always"]
   SPLIT --> S5
-  DESIGN --> S5["5 CLEAR PIECES RUN AS LOOPS, 3.5<br/>diagram 3. they run WHILE the unclear<br/>spots are still being resolved"]
+  DESIGN --> DF["DEFAULT-FIRST, 3.4<br/>the category row or pipeline in TASK_TYPES.md supplies<br/>pattern, engine, check, sabotage. a CHALLENGER design replaces it<br/>only on a written ≥20%-lower-projected-cost claim AT EQUAL COVERAGE<br/>(coverage is a gate, never an axis). reviewed by design_gate.py (script)<br/>+ one blind checklist pass (sonnet 5.5; different kind when it builds).<br/>every run reconciles its claim in TASK_TYPES_LEDGER.md — n=0 until it fills"]
+  DF --> S5["5 CLEAR PIECES RUN AS LOOPS, 3.5<br/>diagram 3. they run WHILE the unclear<br/>spots are still being resolved"]
   S3 -.->|"pieces already clear and not blocked<br/>start here, without waiting"| S5
   S5 --> S6["6 THE REST IS A GRAPH, 3.6<br/>nodes are right-sized pieces, a node may hold its own loop<br/>edges are: this piece needs that piece's result<br/>a result is verified before anything that depends on it starts<br/>branches meet at a joining node. diagram 4"]
   S6 --> S7["7 SEQUENTIAL FIRST, 3.7<br/>read the state file, do one step, write the state back.<br/>parallel is the LAST decision: all five independence<br/>tests must hold, and it buys only clock time"]
@@ -183,6 +184,7 @@ algorithms" means C/D/B/E/A; in step 2 above, "write the algorithm" means write 
 | Steps 1–7 as a whole | `runs/20260920-readme-test-count/` (intake trial 1, design only, ~309k tokens for a one-line README fix — the size rule was wrong and was changed because of it), `runs/20260921-ablation7/` (designed **and executed** end to end: 6 pieces, blind verifier, join, pre-registration, and a final "what is missing" pass that retracted the run's own headline), `runs/20260930-blueprint-review/` (designed, nothing run, blocked on Q1) | 3 designs, 1 executed |
 | The loop rule and its objective check | `20260919-plan-critic-issues.md`: the planner/critic loop that never closed | 1 |
 | The restatement step (3.0) | added 2026-10-01 at EJ's request; not encoded in intake.js yet (`TODO.md`) | **0** |
+| Task types, the 20% rule, the design gate | added 2026-10-01 at EJ's request; `design_gate.py` + 16-prompt corpus green offline | **0** |
 | The tier exit (3.5) | added 2026-09-22, after ablation 7 ran | **0** |
 | The blueprint check (3.1, diagram 2) | added 2026-09-25, after ablation 7 ran | **0** |
 | Executor kinds, models, the COO contract | `docs/EXECUTOR_KINDS.md`, 2026-09-29/30 | **0** |
@@ -201,8 +203,9 @@ It is a multi-agent run, so it is used only when EJ asks for it.
 
 | Diagram | `docs/WORKFLOW_DESIGN_METHOD.md` | `.claude/skills/workflow-design/SKILL.md` |
 |---|---|---|
-| 1, top | 3.0 restate the challenge, §2's tiny test reads it | "First: restate the challenge", then "Then: is it tiny?" |
+| 1, top | 3.0 understand the challenge (six whys, category), §2's tiny test reads it | "First: understand the challenge", then "Then: is it tiny?" |
 | 1 | 3.1 readiness, 3.2 algorithm, 3.3 spots, 3.4 size, 3.5 loops, 3.6 graph, 3.7 sequential first | steps 1–7, same order |
+| 1, at DESIGN | 3.4 "Default-first design" and the 20% ledger | step 4's default-first sentences; `references/task-types.md` |
 | 1, bottom | 3.6, the node that builds, the baseline, the backlog | step 8, "the run ends at the acceptance criteria" |
 | 2 | 3.1, "Blueprint check — part of readiness" | inside step 1 |
 | 3 | 3.5 | step 5 |

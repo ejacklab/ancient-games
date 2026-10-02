@@ -12,7 +12,7 @@ A design, not a run. Sequential by default. Method: `docs/WORKFLOW_DESIGN_METHOD
 What this design understood: the objective — what is true when done; in scope; out of scope. One paragraph, from
 the challenge text alone, written before the design began.
 
-<objective · in scope · out of scope>
+<objective · in scope · out of scope · the six whys (short answers) · categories (inferred, per docs/TASK_TYPES.md)>
 
 ## Blueprint
 
@@ -79,6 +79,8 @@ Only pieces for which all five hold. Otherwise they stay sequential.
 
 ## Predictability
 
+- Design source: <default ⟨category · pipeline⟩ | challenger: claimed margin ≥20% at equal coverage ⟨basis⟩ —
+  a ledger row in docs/TASK_TYPES_LEDGER.md is reconciled at the run's end>
 - Agents in total: <n>. Bounds: <attempt limits, concurrency>.
 - Cost estimate: <tokens or a range, and what it is based on>.
 - Success criteria, written before the run: <for a product change, the acceptance criteria in scope>

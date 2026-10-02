@@ -1,6 +1,6 @@
 ---
 name: workflow-design
-description: "Designing a workflow for an incoming task or challenge — or deciding that none is needed — before any agents are dispatched: restate the challenge's objective and scope, check readiness (including the product blueprint: vision, requirements with acceptance criteria, domain, architecture, data, UI, non-functional), write the algorithm first, list every unclear spot, size the pieces, run clear pieces as loops with objective checks, then wire the rest as a graph whose nodes each carry tools, context, a contract, evidence and state; sequential and state-file driven first, parallel decided last. Use whenever someone asks to design, plan, create, improve or review a workflow, an agent pipeline, an orchestration or a multi-agent / subagent setup; asks how many agents a task needs, whether to parallelise or loop, or how agents should pass information; brings a task too big for one prompt; or when you are about to write a Workflow script or dispatch several subagents without a written design. NOT for: a task of one to three obvious steps (just do it), the Workflow script API (use workflow-authoring), or running an already designed workflow."
+description: "Designing a workflow for an incoming task or challenge — or deciding that none is needed — before any agents are dispatched: understand the challenge (objective, scope, six whys, category and its default pattern), check readiness (including the product blueprint: vision, requirements with acceptance criteria, domain, architecture, data, UI, non-functional), write the algorithm first, list every unclear spot, size the pieces, run clear pieces as loops with objective checks, then wire the rest as a graph whose nodes each carry tools, context, a contract, evidence and state; sequential and state-file driven first, parallel decided last. Use whenever someone asks to design, plan, create, improve or review a workflow, an agent pipeline, an orchestration or a multi-agent / subagent setup; asks how many agents a task needs, whether to parallelise or loop, or how agents should pass information; brings a task too big for one prompt; or when you are about to write a Workflow script or dispatch several subagents without a written design. NOT for: a task of one to three obvious steps (just do it), the Workflow script API (use workflow-authoring), or running an already designed workflow."
 ---
 
 # Workflow design
@@ -13,13 +13,20 @@ Why this exists: agents left alone pick a pattern first ("let's fan out five sub
 they lacked information, that a loop had no way to close, or that two parallel workers collided. This method makes
 the cheap discoveries first.
 
-## First: restate the challenge (method 3.0)
+## First: understand the challenge (method 3.0)
 
-From the challenge text alone — one paragraph, no tools, no agents: the **objective** (what is true when the task
-is done), what is **in scope**, what is **out of scope**. A part that cannot be written, or a challenge that allows
-two readings, is the first unclear spot (kind: decision) — a question for the person with the restatement as the
-provisional assumption. The restatement goes at the top of the output, beside the verbatim challenge in the state
-file. One paragraph in the same session, never an agent, never a tool call. (Added 2026-10-01 at EJ's request; n=0.)
+From the challenge text alone — no tools, no agents. State the **objective** (what is true when the task is
+done), what is **in scope**, what is **out of scope**. Then the **six whys**, each feeding one design field:
+why does the person want this (objective) · why now (priority) · why this shape of solution (category + default
+pattern) · why would it fail (risk tier → review depth) · why does it stop where it stops (scope) · why would
+we believe it is done (check kind). Stop early when an answer no longer changes the design — six is a ceiling,
+never a target. End with the **category** (multi-label, marked inferred) from `references/task-types.md`,
+checked against facts: a design touching product code is never categorized read-only, and a wrong category is a
+stop and replan. A part that cannot be written, or a challenge that allows two readings, is the first unclear
+spot (kind: decision) — a question for the person with the restatement as the provisional assumption. The
+restatement goes at the top of the output, beside the verbatim challenge in the state file. One paragraph in
+the same session, never an agent, never a tool call. (Added 2026-10-01 at EJ's request; six whys and
+categorization the same day; n=0.)
 
 ## Then: is it tiny?
 
@@ -70,7 +77,11 @@ agent can read; a subagent starts with nothing but its prompt.
    workflow design.
 4. **Size.** Up to 3 steps with nothing unclear except decisions that have a default → a prompt file, questions at
    the top. More than 3 steps → consider a new piece, but split only if each part keeps its own check and the split
-   changes how the work is done. Too-small pieces cost more than they give: fixed cost per agent, context lost at
+   changes how the work is done. A workflow design starts **default-first**: the category row or combination
+   pipeline in `references/task-types.md` supplies the default pattern, engine, check and sabotage; a challenger
+   design replaces a default only on a written ≥20%-lower-projected-cost claim at equal coverage, reviewed by
+   `scripts/design_gate.py` plus one blind fixed-checklist pass (a different kind when it builds), and reconciled
+   in the ledger (n=0). Too-small pieces cost more than they give: fixed cost per agent, context lost at
    every split, more joins. Judge risk separately from size (noticed late? cannot be undone? touches many things?);
    tiny but risky gets one independent check.
 5. **Clear pieces run as loops** while the unclear spots are being resolved. A piece is loop-ready only with: a check

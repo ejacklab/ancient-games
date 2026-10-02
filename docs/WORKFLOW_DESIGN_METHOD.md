@@ -20,23 +20,39 @@ Runnable form: `.claude/workflows/intake.js`. Templates: `docs/workflow-template
 
 ## 2. When not to use this method
 
-Restate the challenge first (3.0); the test reads the restatement, not the raw text. If you can state the
+Understand the challenge first (3.0); the test reads the restatement, not the raw text. If you can state the
 restated problem, the fix and the check in one sentence each, and being wrong would show itself at once: write the
 prompt file by hand from `docs/workflow-templates/prompt-file.md`, or just do the task. Running the intake
 workflow on such a task costs more than the task.
 
 ## 3. The steps
 
-### 3.0 Restate the challenge — before anything
+### 3.0 Understand the challenge — before anything
 
-(Added 2026-10-01 at EJ's request; not tried on a real challenge, n=0. Not yet encoded in `intake.js`; see
-`TODO.md`.)
+(Added 2026-10-01 at EJ's request; extended the same day with the six whys and categorization; not tried on a
+real challenge, n=0. Not yet encoded in `intake.js`; see `TODO.md`.)
 
-From the challenge text alone — one paragraph, no tools, no agents, no repository browsing — state three things:
+From the challenge text alone — no tools, no agents, no repository browsing — state three things:
 
 - the **objective**: what is true when the task is done;
 - **in scope**: what the task touches;
 - **out of scope**: what it must not touch.
+
+Then answer the **six whys**, each feeding one design field. Stop early on any why whose answer no longer
+changes the design — six is the ceiling, never a target:
+
+| # | Why | Feeds | Unanswerable ⇒ |
+|---|---|---|---|
+| 1 | Why does EJ want this — what problem is behind the ask? | the objective (the XY-problem guard) | unclear spot, decision |
+| 2 | Why now — what triggered it? | priority; whether a cheaper fix exists | noted; rarely blocking |
+| 3 | Why this shape of solution — why the requested approach over alternatives? | the category and its default pattern (`docs/TASK_TYPES.md`) | decision spot, batched |
+| 4 | Why would it fail — what breaks if we get it wrong? | the risk tier → review depth and independent checks | assume the higher tier |
+| 5 | Why does it stop where it stops? | in scope / out of scope | decision spot |
+| 6 | Why would we believe it is done? | the stop condition and check kind (script, checklist, EJ) | the piece is not loop-ready (3.5) |
+
+End with the **category** (multi-label, marked *inferred*) from `docs/TASK_TYPES.md`, checked against the
+facts: a design whose pieces touch product code, schema, UI or configuration is never categorized read-only.
+A wrong category is a **stop and replan**, not a repair — the blueprint kind-guard's shape.
 
 A part that cannot be written, or a challenge that allows two readings, is the first **unclear spot** (kind:
 decision, 3.3): a question for EJ with the restatement as the provisional assumption. No new blocking rule is
@@ -47,11 +63,11 @@ The tiny test (§2) reads the restatement, not the raw text: tiny means the *res
 one sentence each. A big-sounding challenge with a narrow objective stays small; a vague one ("improve
 performance") cannot slip through as tiny.
 
-The restatement goes at the top of the output, beside the verbatim challenge in the state file, so EJ sees and
-can correct what the run understood before tokens are spent.
+The restatement, the why-answers and the category go at the top of the output, beside the verbatim challenge in
+the state file, so EJ sees and can correct what the run understood before tokens are spent.
 
-Cost guard (trial 1, 3.4): this step is one paragraph in the same session, never an agent, never a tool call. On
-a tiny task it is the prompt file's first lines, so the cheap path stays cheap.
+Cost guard (trial 1, 3.4): this step is one paragraph and six short answers in the same session, never an
+agent, never a tool call. On a tiny task it is the prompt file's first lines, so the cheap path stays cheap.
 
 ### 3.1 Readiness — always first
 
@@ -187,6 +203,15 @@ joining step compares the answers. A contradiction is a stop: pick one and say w
   how the work is done ("Split iff it changes the route", `challenge-mediation` skill).
 - Risk is judged separately from size: how late a mistake would be noticed, whether it can be undone, how many
   things it touches. Tiny but risky → the prompt file gets one independent check.
+
+**Default-first design.** When the size decision says workflow design, the design starts from a lookup, not a
+blank page: the category row or combination pipeline in `docs/TASK_TYPES.md` supplies the default pattern,
+engine, check and sabotage; `others` gets the full method from first principles. A bespoke (challenger) design
+replaces a default only on a written claim of ≥20% lower projected run cost **at equal coverage** (same
+criteria ids, same checks, same blindness — coverage is a gate, never an axis). The decision is reviewed by the
+script gate (`design_gate.py`) plus one blind fixed-checklist pass (Sonnet 5.5; a different kind when the
+design builds or EJ flagged high risk), and every run reconciles its claim in `docs/TASK_TYPES_LEDGER.md` —
+that ledger is how the defaults earn their n. (Added 2026-10-01 at EJ's request; n=0.)
 
 Anchors for the number 3: Gate splits capability lists over three (`ancient_games/stages.py:109`) and the
 concurrency cap is 3 (`ancient_games/registry.py:24`).
