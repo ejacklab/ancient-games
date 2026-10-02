@@ -10,7 +10,7 @@ the engine is named in the node, never left to a default. This file says what ea
 to, how it is called, how its failure shows, and the rules that keep mixed runs predictable. The method's
 readiness step (3.1) proves each tool works; the canary below is that proof for these three.
 
-## The four kinds (qwen added 2026-10-02; its canary has not run)
+## The four kinds (qwen added 2026-10-02; canary passed once, n=1)
 
 | | Claude subagent | Codex (GPT-6.1-sol) | Antigravity `agy` (Gemini) | Qwen Code `qwen` (OpenAI-compatible provider) |
 |---|---|---|---| --- |
@@ -123,11 +123,16 @@ kind, with an answer that can be checked:
 5. Sabotage check (house rule): once, run an impossible task and confirm the canary reports `fail`. Until that has
    been done, the canary is not known to be able to fail.
 
-**`qwen` form (written 2026-10-02, not run).** `qwen --approval-mode plan --max-tool-calls 0 --max-wall-time 90s
---json-schema '{"type":"object","required":["ok"],"properties":{"ok":{"const":true}}}' --output-format json -m <model>
-"Return ok true."` Pass: exit 0, a valid structured result with `ok: true`, no tool call made, stderr without an
-approval or quota notice, and the model the tool reports equals `<model>`. Sabotage: the same call with
-`--max-wall-time 1s` must end exit 55 and the canary must report `fail` or `timeout`. Never probe qwen with a bare word.
+**`qwen` form (run 2026-10-02, qwen 0.24.7, `-m qwen3.8-flash`).** `qwen --approval-mode plan --max-wall-time 90s
+--json-schema '{"type":"object","required":["ok"],"properties":{"ok":{"type":"boolean"}}}' --output-format json
+-m <model> "Return ok true."` with stdin closed. Pass: exit 0, `subtype: success`, the result's `result` field is
+`{"ok":true}`, and the `system` init event's `model` equals `<model>`. Result: **pass**, 1 turn, about 17.8k tokens.
+Sabotage: the same call with `--max-wall-time 1s` ended exit 55 with `FatalBudgetExceededError` on stderr: **fail
+proven**. Lessons: (1) `{"ok":{"const":true}}` failed 5 turns (~112k tokens): the model sent `"true"` as a string
+and the tool kept rejecting it, so use `type: boolean` and check the value in the script; (2) `--max-tool-calls 0`
+aborted with exit 55 even though `structured_output` is documented as exempt, so do not use it here; (3) `--bare`
+skips settings, so auth is lost ("No auth type is selected"); (4) a bare run loads ~17k input tokens of
+context, a run with skills and memory loaded cost far more. Never probe qwen with a bare word.
 
 It does not prove quota left, output quality, or that the tool stays inside its workspace. Each canary spends a
 little usage, so it runs once per run, and the person's go-ahead for the run covers it. Open: whether to re-check
@@ -172,8 +177,9 @@ Log line for each: `<node> executor-fail <kind>: <reason>`.
   enable it non-interactively is unknown.
 - Remaining usage cannot be read by the workflow for any of the four kinds; only failure is visible. Design for
   clean stops, not for percentages. Unchecked: Codex `/status` in the TUI, `agy` `/credits`.
-- `qwen`: the canary above is written, not run. Open: whether `--json-schema` returns valid output on this token plan,
-  whether `plan` mode blocks writes, whether `AGENTS.md` is read, what it costs per call, and whether the key is valid.
+- `qwen`: the canary passed and its sabotage failed as required (above); the key is valid. Still open: whether `plan`
+  mode blocks writes, whether `AGENTS.md` is read, the per-call cost on the plan (a canary call is ~18k tokens), and
+  exit codes other than 55.
 - `agy` headless behaviour on quota exhaustion, and whether `agy` logs in non-interactively here, are untested.
 - Pricing for `agy` comes only from SEO pages that disagree; model lists conflict between blogs (trust `agy
   models`).
