@@ -386,6 +386,14 @@ malformed), and every exchange with them costs the COO a turn that re-reads her 
    digest of about 15 lines, no more than 20, plus the path (`docs/workflow-templates/research-file.md`). The COO
    reads the digest; to settle a doubt she reads one finding by id, or sends a small verify node. A design decided
    from the research goes to `decisions.md` (4).
+10. **Every run leaves a feedback record** (added 2026-10-02; n=0; `docs/research/20261002-workflow-feedback`).
+   During the run, `scripts/runlog.py exec` wraps each Codex, `qwen` or `agy` call (start, end, exit, duration;
+   raw output to the gitignored `runs/<id>/raw/`) and `runlog.py verdict` writes one line per node check. After
+   it, `scripts/harvest_run.py` reads what the engines already recorded (Workflow run JSON and agent transcripts,
+   Codex rollouts joined by time window and cwd, never guessed) into `runs/<id>/feedback.jsonl` and prints a
+   digest whose last line is the ledger's Actual cost. Tokens are kept in parts (new input, cache read, output):
+   cache reads are often ten times the new input. Only ids, numbers, paths and status are written; the repo is
+   public. Every parser fails loudly when an engine changes its format.
 
 ## 4. State and memory
 
