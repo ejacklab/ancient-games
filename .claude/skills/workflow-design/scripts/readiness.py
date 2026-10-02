@@ -133,6 +133,29 @@ def check_agy_login(net: bool) -> Check:
     return Check("Models and logins", item, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
 
 
+def check_qwen_config(home: Path) -> Check:
+    """Reads ~/.qwen/settings.json only; never prints a key and never calls `qwen`
+    (a bare `qwen <word>` is a one-shot prompt that spends quota)."""
+    item = "qwen config (model, provider)"
+    p = home / ".qwen" / "settings.json"
+    if not p.exists():
+        return Check("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+    try:
+        d = json.loads(p.read_text())
+    except (OSError, ValueError) as e:
+        return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+    model = d.get("model") or {}
+    providers = d.get("modelProviders") or {}
+    n_models = sum(len(v) for v in providers.values() if isinstance(v, list))
+    env = d.get("env") or {}
+    key = "key set in settings env" if any(env.values()) else "no key in settings env"
+    host = str(model.get("baseUrl", "?")).split("/")[2:3]
+    auth = (d.get("security") or {}).get("auth", {}).get("selectedType", "?")
+    return Check("Models and logins", item, REPORTED,
+                 f"default {model.get('name', '?')}, auth {auth}, {n_models} listed models, "
+                 f"endpoint {host[0] if host else '?'}, {key} (file claim; key validity not tested)", str(p))
+
+
 def list_names(p: Path) -> list[str] | None:
     if not p.is_dir():
         return None
@@ -244,7 +267,7 @@ def open_unknowns() -> list[Check]:
               "runtime policy, not provable from outside. Claude Code docs report 20 concurrent, nesting depth 3 "
               "(v2.1.217+, env overrides; reported, not measured here); codex/agy: no figure",
               "docs/EXECUTOR_KINDS.md, Concurrency row"),
-        Check("Open unknowns", "codex/agy execute a task", UNKNOWN,
+        Check("Open unknowns", "codex/agy/qwen execute a task", UNKNOWN,
               "canary required (spends quota; needs the person's go-ahead)",
               "docs/EXECUTOR_KINDS.md canary piece"),
     ]
@@ -257,9 +280,11 @@ def gather(args: argparse.Namespace) -> list[Check]:
         checks: list[Check] = list(ex.map(check_binary, binaries))
     checks.append(check_codex_cache())
     checks.append(check_agy_login(args.net))
+    checks.append(check_qwen_config(home))
     for label, p in [("claude skills (user)", home / ".claude" / "skills"),
                      ("agents skills (cross-tool)", home / ".agents" / "skills"),
                      ("codex skills (user)", home / ".codex" / "skills"),
+                     ("qwen skills (user)", home / ".qwen" / "skills"),
                      ("project skills", cwd / ".claude" / "skills")]:
         checks.append(check_dir_listing("Skills and workflows", label, p))
     checks.append(check_dir_listing("Skills and workflows", "workflow scripts",
