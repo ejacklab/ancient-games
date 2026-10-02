@@ -13,6 +13,10 @@ Findings are named:
   G5 challenger: claim >= 20%, arithmetic matches the estimates, coverage equal to the default
   G6 a design with building nodes carries a reviewer; single-kind builders get a different-kind reviewer
   G7 ledger rows carry every field the reconciliation needs
+  G8 labels agree: the design's categories equal the categories its nodes carry (method 3.2: the piece
+     labels replace the provisional category, so a claimed category no node carries, or a node category
+     the design does not claim, means the relabelling did not happen; the in-run `code review` node that G6
+     requires is exempt from the second direction)
 
 Usage:
   design_gate.py design.json [--types PATH]
@@ -192,6 +196,13 @@ def validate_design(d: dict, types: dict) -> list[str]:
                 if rk == "unknown" or rk in constraint:
                     f.append(f"G6: reviewer engine {r.get('engine')!r} is not a different kind from "
                              f"what it reviews ({sorted(constraint)})")
+    node_cats = {_cat(n) for n in nodes if _cat(n)}
+    if cats and node_cats:
+        for c in sorted(set(cats) - node_cats):
+            f.append(f"G8: category {c!r} is claimed but no node carries it — relabel from the algorithm (3.2)")
+        # the in-run review node G6 demands is not a deliverable of the prompt, so it may be unlisted
+        for c in sorted(node_cats - set(cats) - {"code review"}):
+            f.append(f"G8: a node carries category {c!r} that the design does not list")
     return f
 
 
@@ -255,9 +266,7 @@ def self_test(types_path: Path) -> int:
     def expect(label, design, want_prefix):
         nonlocal ok
         findings = validate_design(design, types)
-        hit = any(x.startswith(want_prefix) for x in findings)
-        if want_prefix is None:
-            hit = not findings
+        hit = (not findings) if want_prefix is None else any(x.startswith(want_prefix) for x in findings)
         print(f"{'ok  ' if hit else 'FAIL'} self-test: {label}")
         ok = ok and hit
 
@@ -265,7 +274,15 @@ def self_test(types_path: Path) -> int:
     d = copy.deepcopy(_good_design()); d["categories"] = ["research and reports"]
     expect("research-only categories on a building design -> G2", d, "G2")
     d = copy.deepcopy(_good_design()); d["categories"] = ["others"]
+    for n in d["nodes"]:
+        if n["category"] != "code review":
+            n["category"] = "others"
     expect("others may build (exempt) -> clean", d, None)
+    d = copy.deepcopy(_good_design()); d["categories"] = ["research and reports"]
+    d["nodes"][0]["category"] = "research and reports"; d["nodes"][1]["category"] = "code generation"
+    expect("a node category the design does not list -> G8", d, "G8")
+    d = copy.deepcopy(_good_design()); d["categories"] = ["research and reports", "code generation", "classification"]
+    expect("a claimed category no node carries -> G8", d, "G8")
     d = copy.deepcopy(_good_design()); d["nodes"][1]["check"] = ""
     expect("a node without a check -> G3", d, "G3")
     d = copy.deepcopy(_good_design()); d["nodes"][1]["loop"] = {"exit": "x", "feedback": "y"}

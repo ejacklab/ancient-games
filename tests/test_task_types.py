@@ -287,3 +287,22 @@ def test_gate_cli_end_to_end(tmp_path):
     r = subprocess.run([sys.executable, str(SCRIPTS / "design_gate.py"), str(p)],
                        capture_output=True, text=True, timeout=60)
     assert r.returncode == 1 and "G2" in r.stdout, r.stdout + r.stderr
+
+
+def test_labels_agree_between_design_and_nodes():
+    # method 3.2: piece labels replace the provisional category, so design and nodes must carry the same set
+    import copy
+    good = dg._good_design()
+    assert not [f for f in dg.validate_design(good, TYPES) if f.startswith("G8")]
+
+    unlisted = copy.deepcopy(good)
+    unlisted["categories"] = ["research and reports"]          # nodes still carry code generation
+    assert any(f.startswith("G8") and "code generation" in f for f in dg.validate_design(unlisted, TYPES))
+
+    unclaimed = copy.deepcopy(good)
+    unclaimed["categories"] = good["categories"] + ["classification"]   # no node carries it
+    assert any(f.startswith("G8") and "classification" in f for f in dg.validate_design(unclaimed, TYPES))
+
+    # the in-run review node that G6 demands is exempt from the "unlisted" direction
+    assert any(n["category"] == "code review" for n in good["nodes"])
+    assert not any("code review" in f for f in dg.validate_design(good, TYPES) if f.startswith("G8"))

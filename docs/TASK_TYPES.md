@@ -26,7 +26,8 @@ copy the table into code or another doc — change it here, the gate follows.
    speed. "Ask three times, get three different answers" is variance, not signal — the default stands unless
    the margin is claimed and proven on paper first.
 4. **Two-layer review of the decision.**
-   - **Script layer (free, deterministic):** `scripts/design_gate.py` — structure, category-vs-facts, the
+   - **Script layer (free, deterministic):** `scripts/design_gate.py` — structure, category-vs-facts, label agreement (G8: the design's
+     categories equal the categories its nodes carry; the in-run review node is exempt), the
      margin arithmetic, coverage equality, pipeline well-formedness, the reviewer-kind rule, ledger rows.
    - **Checklist layer (cheap judgment):** a Sonnet 5.5 subagent, fresh session, blind to the designer's
      reasoning, judges a fixed 4-item checklist **in one pass**: does the category fit the challenge's intent?
