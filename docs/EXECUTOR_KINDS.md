@@ -73,7 +73,9 @@ details (EJ, 2026-10-02; n=0). The vision, the requirements and every approval s
 1. **Directions.** Reads the state file, takes the next node the graph allows, writes its brief (role, engine,
    model, effort, contract, context) and dispatches it. The order comes from the design's edges, not from her
    preference. A departure from the design is a Log line with the reason. The brief and contract are how knowledge
-   passes to a worker: written down, not narrated step by step.
+   passes to a worker: written down, not narrated step by step. This is where the stronger model's skill goes: every
+   brief carries a template, a worked example and the standard the result is judged by (method 3.8;
+   `docs/workflow-templates/node-brief.md`), so the worker needs no guessing and she never rewrites a result.
 2. **Budget.** Enforces the ceiling EJ sets: attempt limits, timeouts, the cost ceiling, the tier exit, the
    executor-failure rule below, the model check. When the next step would pass the ceiling she stops and reports;
    she never raises it herself.

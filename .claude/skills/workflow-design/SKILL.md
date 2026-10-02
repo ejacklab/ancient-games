@@ -114,6 +114,9 @@ agent can read; a subagent starts with nothing but its prompt.
    tools (method 3.8): one small bounded task per call, an inner and an outer timer named in the node, no polling
    (every status check is a turn), one atomically written result file with a fixed header that a script validates,
    and any missing, empty, malformed, wrong-model or timed-out return is a failure of the executor, not of the work.
+   The stronger model's work is the brief: every one carries a template, a worked example and the standard the result
+   is judged by (`references/method.md` 3.8; `docs/workflow-templates/node-brief.md`). Research goes to files
+   (`docs/research/<date>-<topic>/`) and only a digest of about 15 lines returns to the COO.
 8. **The run ends at the acceptance criteria.** A piece that builds names the blueprint sections it depends on and the
    acceptance criteria it covers (ids like R1.1 or N1.1); every criterion in scope is covered by a piece that builds.
    Its stop: those criteria pass, everything the baseline recorded as passing still passes (the test command and its

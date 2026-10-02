@@ -280,7 +280,7 @@ Every node carries five things, so that it can be run, checked and resumed witho
 |---|---|---|
 | **Tools** | what the agent uses, each proved working | — |
 | **Context** | exactly what the agent is given, and what is withheld | `KNOWN_FACTS`, `READ_SCOPE.deny` |
-| **Contract** | the intent, the stop condition, what comes back and in what shape, what may and must not change | `INTENT`, `STOP`, `OUTPUT`, `SCOPE` (`ancient_games/schema.py`) |
+| **Contract** | the intent, the stop condition, what comes back and in what shape (given to the worker as a template, an example and a standard, 3.8), what may and must not change | `INTENT`, `STOP`, `OUTPUT`, `SCOPE` (`ancient_games/schema.py`) |
 | **Evidence** | the proof that comes back with the result and the file it is saved in; a verifier reads the evidence, never the reasoning | `CLAIMS`, `VERIFY_OUTPUT`, `NOT_ESTABLISHED` (the return contract) |
 | **State** | what the node reads from the state file and what it writes back | the journal, read before every step |
 
@@ -357,8 +357,10 @@ malformed), and every exchange with them costs the COO a turn that re-reads her 
 4. **Pass-back contract.** Every call writes one result file in the node's own path
    (`runs/<id>/nodes/<node>-<attempt>.result.*`), written to a temp name and renamed, with a fixed header: node,
    attempt, engine, model as the tool reports it, `status: ok|fail|partial`, start and end time, evidence path;
-   then the body. A **script** (no model) validates it: the file exists and is not empty, the header parses, the
-   status is present, the reported model equals the contract's. The COO reads the capped summary (provisional: the
+   then the body (`docs/workflow-templates/result-file.md`). A **script** (no model,
+   `.claude/skills/workflow-design/scripts/validate_result.py`) validates it: the file exists and is not empty, the
+   header parses, the status is present, the reported model, node and attempt equal the contract's, the evidence
+   path exists. The COO reads the capped summary (provisional: the
    header and the first 40 lines) and the path, never the raw output.
 5. **An unstable return is a failure of the executor, not of the work.** All of these count: no file, empty file,
    unparseable header, wrong model, a timeout, and a clean exit with no result (`qwen` headless exits 0 with no file
@@ -371,6 +373,19 @@ malformed), and every exchange with them costs the COO a turn that re-reads her 
    reverts files by hand to "tidy up": a revert of anything but a discarded worktree is a Rule 6 confirmation.
 7. **Keep the COO's reading small.** Results by path, one-line Log entries, only the state rows the next step
    needs. Raw tool output never enters her context.
+8. **The stronger model gives the worker a template, an example and a standard** (EJ, 2026-10-02: this is the
+   COO's real work). The COO is the smarter model and the worker is a tool, often a cheaper one; so every brief
+   carries (a) the **template** the result must follow, (b) one worked **example** of a good result, small and
+   real, and (c) the **standard** it will be judged by: the check as the worker can run it, what failing looks
+   like, and the sabotage the check is known to catch. The COO writes these once, in the brief
+   (`docs/workflow-templates/node-brief.md`), instead of correcting the result afterwards: it cuts unstable
+   returns, retries and her own review reading. A brief with no template, no example or no standard is not
+   dispatched; a part she cannot write is an unclear spot (3.3).
+9. **Research is written to files.** A research node writes the full findings to
+   `docs/research/<date>-<topic>/FINDINGS.md` (each finding with an id, a source and a label) and returns only a
+   digest of about 15 lines, no more than 20, plus the path (`docs/workflow-templates/research-file.md`). The COO
+   reads the digest; to settle a doubt she reads one finding by id, or sends a small verify node. A design decided
+   from the research goes to `decisions.md` (4).
 
 ## 4. State and memory
 
@@ -391,7 +406,7 @@ Kinds of memory when running in Claude Code or Codex with subagents:
 | Run records (workflow `journal.jsonl`, the Ancient Games journal) | Nobody reads them unless asked |
 | A subagent's final report | All that comes back; the rest is lost unless written to a file |
 
-Working rules: each agent gets a brief with only what its piece needs and writes its full result to a file; the
+Working rules: each agent gets a brief with only what its piece needs (with a template, an example and a standard, 3.8) and writes its full result to a file; research and decided designs are files too (3.8, `docs/research/`, `decisions.md`); the
 main agent keeps conclusions, not details; stored knowledge carries a date and is rechecked before it is relied on;
 knowledge (stable) is kept apart from state (changes every run).
 
