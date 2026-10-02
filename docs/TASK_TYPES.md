@@ -43,6 +43,32 @@ copy the table into code or another doc — change it here, the gate follows.
    beats its projection twice becomes a candidate new default; a default repeatedly overridden gets its row
    rewritten. This is how the table earns its n.
 
+## Use cases in focus (EJ, 2026-10-02)
+
+What a software developer does daily, ranked for EJ's work. A use case is usually a pipeline of the categories
+below, not one row. Evidence: the 90 real prompts of the 2026-10-02 corpus campaign, labelled by the COO (not
+independent); #8 has no prompt in that corpus and is ranked on ordinary practice. n=0 for every default here.
+
+| # | Use case | Real prompts (of 90) | Category rows it uses | Default ready? |
+|---|---|---|---|---|
+| 1 | Combine several sources into an algorithm | most of the ~50 "understanding" prompts | research and reports, information extraction | candidate pipeline extract → reconcile → algorithm → verify; a row only after two real runs |
+| 2 | Answer a question about existing code ("where is X", "explain Y", "is Z still true") | the rest of those ~50 | repo scanning, information extraction | yes |
+| 3 | Fix a bug (logs, reproduce, root cause, fix, rerun) | 7 | debugging, code generation | yes, `debugging` pipeline |
+| 4 | Build a feature (plan, design, implement) | 9 | multi step planning, code generation, ui/ux dev | yes |
+| 5 | Verify (tests, test data, double-confirm against the spec, grade a run) | 10 | test cases gen, test script gen, test data gen, grade a run | yes |
+| 6 | Report and document (status, meeting notes, explain for others) | 5 | document and explain | yes |
+| 7 | Review code (own, a teammate's, an agent's) | 3 | code review | yes |
+| 8 | Learn something new (outside docs, libraries, tools) | 0 | web search, research and reports | yes |
+
+Out of focus for now (EJ): ship and operate (deploy, CI, environment, incidents) and maintenance (refactor,
+dependency upgrades). Neither has a row; one is added when a real task of that kind arrives. Session-control
+directives (status, commit, stop) are not a use case: they stay tiny.
+
+#1 is the most frequent and the riskiest: an extracted description is a hypothesis until checked against its
+source, and a second LLM read is not a check (`~/skills/verify-extraction`, where a one-line summary of a 70-line
+function was wrong in 5 of 6 differential rounds). Its verify step is a differential test for code and a blind
+checklist with a planted wrong fact for prose; two disagreeing sources are reconciled with a reason, never averaged.
+
 ## Categories
 
 `Touches product` is tri-state: **yes** (every piece writes product), **mixed** (the category runs read-only as
