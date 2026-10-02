@@ -1,0 +1,40 @@
+....................F..                                                  [100%]
+=================================== FAILURES ===================================
+___________________ test_rt_19_populated_memory_and_history ____________________
+
+sandbox = namespace(home=PosixPath('/tmp/pytest-of-smoke01/pytest-27/test_rt_19_populated_memory_an0/home'), bin=PosixPath('/tmp...unction sandbox.<locals>.calls at 0x70df55bec040>, reset_logs=<function sandbox.<locals>.reset_logs at 0x70df55bec540>)
+
+    def test_rt_19_populated_memory_and_history(sandbox):
+        memories = sandbox.home / ".qwen/memories"
+        write_file(memories / "MEMORY.md", "first\n\nthird\nlast")
+        projects = sandbox.home / ".claude/projects"
+        for name in ("project-a", "project-b"):
+            (projects / name).mkdir(parents=True)
+        write_file(projects / "notes.txt", "not a project directory")
+        checks = json_checks(sandbox.run("--json"))
+        assert_row(checks, "qwen auto-memory (user)", "verified",
+                   "4 index lines in MEMORY.md; project dirs under ~/.qwen/projects/", memories, "Memory")
+>       assert_row(checks, "claude session history", "verified", "2 project histories", projects, "Memory")
+
+test_m2.py:471: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+checks = [{'detail': 'not on PATH', 'group': 'Tools', 'item': 'claude', 'proof': '`command -v claude`', ...}, {'detail': 'not o...ode`', ...}, {'detail': 'not on PATH', 'group': 'Tools', 'item': 'python3', 'proof': '`command -v python3`', ...}, ...]
+item = 'claude session history', status = 'verified'
+detail = '2 project histories'
+proof = PosixPath('/tmp/pytest-of-smoke01/pytest-27/test_rt_19_populated_memory_an0/home/.claude/projects')
+group = 'Memory'
+
+    def assert_row(checks, item, status, detail, proof, group=None):
+        actual = row(checks, item, group)
+>       assert (actual["status"], actual["detail"], actual["proof"]) == (status, detail, str(proof))
+E       AssertionError: assert ('verified', ...ude/projects') == ('verified', ...ude/projects')
+E         
+E         At index 1 diff: '3 project histories' != '2 project histories'
+E         Use -v to get more diff
+
+test_m2.py:105: AssertionError
+=========================== short test summary info ============================
+FAILED test_m2.py::test_rt_19_populated_memory_and_history - AssertionError: ...
+1 failed, 22 passed in 12.90s
+exit 1

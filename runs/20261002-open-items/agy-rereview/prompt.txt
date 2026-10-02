@@ -1,0 +1,880 @@
+Do not use any tools. You are a blind reviewer. Below are readiness.py (the script under test) and test_readiness.py (its test suite), each with line numbers. An earlier review found 4 defects: (1) RT-03 bundled passing and failing sub-checks under one xfail, (2) hardcoded relative script path, (3) RT-10 had no process-survival assertion, (4) seven missing cases: blueprint without README, empty dir listing, symlink and truncation, MCP servers present/empty, populated memory/history counts, present instruction files, agy --net error paths.
+
+Answer: (A) for each of the 4 earlier defects, FIXED yes/no with test line refs. (B) for each test RT-15..RT-21 and the new RT-03a/b/c: the concrete mutation of readiness.py (line, before, after) that turns it red, or TAUTOLOGICAL. (C) any new defects. (D) any remaining uncovered branch of readiness.py. Binary verdicts, line refs, no praise.
+
+=== readiness.py ===
+     1	#!/usr/bin/env python3
+     2	"""readiness.py — the standard tool inventory for method 3.1 (readiness).
+     3	
+     4	Proves what is installed and logged in on this machine. It never spends quota:
+     5	no canary is run, so "executes a task" stays unknown here and remains an
+     6	explicit, separately approved step (docs/EXECUTOR_KINDS.md in the Ancient Games
+     7	repo). Every line carries a status and the command or path that proved it:
+     8	
+     9	  verified  a command run just now proved it
+    10	  reported  a local file claims it (may be stale)
+    11	  unknown   not provable on this machine
+    12	  MISSING   expected and not there
+    13	
+    14	Generic by design (the skill is global): nothing hardcodes a project. Project
+    15	extras come in through flags (--blueprint, --workflows).
+    16	
+    17	Usage:
+    18	  readiness.py [--net] [--json] [--require TOOL ...] [--blueprint DIR]
+    19	               [--workflows DIR] [--self-test]
+    20	
+    21	Exit codes: 0 ok · 1 a --require'd tool or an explicit --blueprint dir is MISSING · 2 usage error.
+    22	"""
+    23	from __future__ import annotations
+    24	
+    25	import argparse
+    26	import json
+    27	import os
+    28	import shutil
+    29	import socket
+    30	import subprocess
+    31	import sys
+    32	from concurrent.futures import ThreadPoolExecutor
+    33	from dataclasses import asdict, dataclass
+    34	from datetime import date, datetime, timezone
+    35	from pathlib import Path
+    36	
+    37	CMD_TIMEOUT = 10   # seconds per local command
+    38	NET_TIMEOUT = 30   # seconds for --net commands (agy models talks to the network)
+    39	DEFAULT_BINARIES = ["claude", "codex", "agy", "qwen", "node", "python3", "git"]
+    40	
+    41	VERIFIED = "verified"
+    42	REPORTED = "reported"
+    43	UNKNOWN = "unknown"
+    44	MISSING = "MISSING"
+    45	
+    46	GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
+    47	          "Machine", "Open unknowns"]
+    48	
+    49	
+    50	@dataclass
+    51	class Check:
+    52	    group: str
+    53	    item: str
+    54	    status: str
+    55	    detail: str
+    56	    proof: str
+    57	
+    58	
+    59	def run_cmd(cmd: list[str], timeout: int = CMD_TIMEOUT) -> tuple:
+    60	    """(returncode, stripped output). rc is None if the binary does not exist,
+    61	    'timeout' if it did not answer in time."""
+    62	    try:
+    63	        p = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=timeout)
+    64	    except FileNotFoundError:
+    65	        return None, "not on PATH"
+    66	    except subprocess.TimeoutExpired:
+    67	        return "timeout", f"no answer within {timeout}s"
+    68	    except OSError as e:
+    69	        return None, str(e)
+    70	    return p.returncode, ((p.stdout or "").strip() or (p.stderr or "").strip())
+    71	
+    72	
+    73	def first_line(out: str) -> str:
+    74	    return out.splitlines()[0][:100] if out else "(no output)"
+    75	
+    76	
+    77	def check_binary(name: str) -> Check:
+    78	    rc, out = run_cmd([name, "--version"])
+    79	    proof = f"`{name} --version`"
+    80	    if rc is None:
+    81	        return Check("Tools", name, MISSING, "not on PATH", f"`command -v {name}`")
+    82	    if rc == "timeout":
+    83	        return Check("Tools", name, UNKNOWN, out, proof)
+    84	    if rc == 0:
+    85	        return Check("Tools", name, VERIFIED, first_line(out), proof)
+    86	    return Check("Tools", name, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+    87	
+    88	
+    89	def check_codex_cache() -> Check:
+    90	    item = "codex model cache"
+    91	    p = Path.home() / ".codex" / "models_cache.json"
+    92	    if not p.exists():
+    93	        return Check("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+    94	    try:
+    95	        d = json.loads(p.read_text())
+    96	    except (OSError, ValueError) as e:
+    97	        return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+    98	    if not isinstance(d, dict):
+    99	        return Check("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
+   100	    models = d.get("models")
+   101	    ids: list[str] = []
+   102	    if isinstance(models, list):
+   103	        for m in models:
+   104	            ids.append(str(m.get("id") or m.get("slug") or m.get("name") or "?")
+   105	                       if isinstance(m, dict) else str(m))
+   106	    elif isinstance(models, dict):
+   107	        ids = list(models)
+   108	    age = ""
+   109	    f_at = d.get("fetched_at")
+   110	    if isinstance(f_at, (int, float)):
+   111	        age = f", cache {(datetime.now(timezone.utc).timestamp() - f_at) / 86400:.0f}d old"
+   112	    elif isinstance(f_at, str):
+   113	        age = f", fetched_at {f_at[:10]}"
+   114	    shown = f": {', '.join(ids[:6])}" + (" …" if len(ids) > 6 else "") if ids else ""
+   115	    return Check("Models and logins", item, REPORTED,
+   116	                 f"{len(ids)} model ids{age}{shown} (cache may be stale)", str(p))
+   117	
+   118	
+   119	def check_agy_login(net: bool) -> Check:
+   120	    item = "agy login (model list)"
+   121	    proof = "`agy models` (network)"
+   122	    if not net:
+   123	        return Check("Models and logins", item, UNKNOWN,
+   124	                     "offline run: not provable without `agy models`; rerun with --net", proof)
+   125	    rc, out = run_cmd(["agy", "models"], timeout=NET_TIMEOUT)
+   126	    if rc is None:
+   127	        return Check("Models and logins", item, MISSING, "agy not on PATH", "`agy --version`")
+   128	    if rc == "timeout":
+   129	        return Check("Models and logins", item, UNKNOWN, out, proof)
+   130	    ids = [l.split()[0] for l in out.splitlines()
+   131	           if l.split() and not l.lower().startswith("fetching")]
+   132	    if rc == 0 and ids:
+   133	        return Check("Models and logins", item, VERIFIED,
+   134	                     f"{len(ids)} models: {', '.join(ids[:4])} …", proof)
+   135	    return Check("Models and logins", item, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+   136	
+   137	
+   138	def check_qwen_config(home: Path) -> Check:
+   139	    """Reads ~/.qwen/settings.json only; never prints a key and never calls `qwen`
+   140	    (a bare `qwen <word>` is a one-shot prompt that spends quota)."""
+   141	    item = "qwen config (model, provider)"
+   142	    p = home / ".qwen" / "settings.json"
+   143	    if not p.exists():
+   144	        return Check("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+   145	    try:
+   146	        d = json.loads(p.read_text())
+   147	    except (OSError, ValueError) as e:
+   148	        return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+   149	    if not isinstance(d, dict):
+   150	        return Check("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
+   151	    model = d.get("model") or {}
+   152	    providers = d.get("modelProviders") or {}
+   153	    n_models = sum(len(v) for v in providers.values() if isinstance(v, list))
+   154	    env = d.get("env") or {}
+   155	    key = "key set in settings env" if any(env.values()) else "no key in settings env"
+   156	    host = str(model.get("baseUrl", "?")).split("/")[2:3]
+   157	    auth = (d.get("security") or {}).get("auth", {}).get("selectedType", "?")
+   158	    return Check("Models and logins", item, REPORTED,
+   159	                 f"default {model.get('name', '?')}, auth {auth}, {n_models} listed models, "
+   160	                 f"endpoint {host[0] if host else '?'}, {key} (file claim; key validity not tested)", str(p))
+   161	
+   162	
+   163	def list_names(p: Path) -> list[str] | None:
+   164	    if not p.is_dir():
+   165	        return None
+   166	    out = []
+   167	    for e in sorted(p.iterdir()):
+   168	        if e.name.startswith("."):
+   169	            continue
+   170	        if e.is_symlink():
+   171	            out.append(f"{e.name} → {os.readlink(e)}")
+   172	        elif e.is_dir() or e.suffix in (".js", ".mjs", ".md"):
+   173	            out.append(e.name)
+   174	    return out
+   175	
+   176	
+   177	def check_dir_listing(group: str, item: str, p: Path, absent_status: str = VERIFIED) -> Check:
+   178	    names = list_names(p)
+   179	    if names is None:
+   180	        return Check(group, item, absent_status, f"absent ({p})", str(p))
+   181	    if not names:
+   182	        return Check(group, item, absent_status, f"empty ({p})", str(p))
+   183	    shown = ", ".join(names[:8]) + (" …" if len(names) > 8 else "")
+   184	    return Check(group, item, VERIFIED, f"{len(names)}: {shown}", str(p))
+   185	
+   186	
+   187	def check_blueprint(p: Path) -> Check:
+   188	    item = f"blueprint ({p})"
+   189	    if not p.is_dir():
+   190	        return Check("Skills and workflows", item, MISSING, "directory not found", str(p))
+   191	    files = sorted(e.name for e in p.iterdir() if e.suffix == ".md")
+   192	    has_map = "README.md" in files
+   193	    return Check("Skills and workflows", item, VERIFIED,
+   194	                 f"{len(files)} sections, map {'present' if has_map else 'MISSING'}: {', '.join(files[:8])}",
+   195	                 str(p))
+   196	
+   197	
+   198	def check_instruction_files(cwd: Path) -> Check:
+   199	    names = ["CLAUDE.md", "AGENTS.md", "QWEN.md", "GEMINI.md"]
+   200	    present = [n for n in names if (cwd / n).exists()]
+   201	    absent = [n for n in names if n not in present]
+   202	    detail = (f"present: {', '.join(present) or 'none'}"
+   203	              + (f"; absent: {', '.join(absent)}" if absent else ""))
+   204	    return Check("Memory", "project instruction files", VERIFIED, detail, str(cwd))
+   205	
+   206	
+   207	def check_qwen_memory(home: Path) -> Check:
+   208	    p = home / ".qwen" / "memories"
+   209	    idx = p / "MEMORY.md"
+   210	    if not p.is_dir():
+   211	        return Check("Memory", "qwen auto-memory (user)", VERIFIED, f"absent ({p})", str(p))
+   212	    try:
+   213	        n = len(idx.read_text(errors="replace").splitlines()) if idx.exists() else 0
+   214	    except OSError as e:
+   215	        return Check("Memory", "qwen auto-memory (user)", UNKNOWN, f"MEMORY.md unreadable: {e}", str(p))
+   216	    return Check("Memory", "qwen auto-memory (user)", VERIFIED,
+   217	                 f"{n} index lines in MEMORY.md; project dirs under ~/.qwen/projects/", str(p))
+   218	
+   219	
+   220	def check_claude_history(home: Path) -> Check:
+   221	    p = home / ".claude" / "projects"
+   222	    if not p.is_dir():
+   223	        return Check("Memory", "claude session history", VERIFIED, f"absent ({p})", str(p))
+   224	    n = sum(1 for e in p.iterdir() if e.is_dir())
+   225	    return Check("Memory", "claude session history", VERIFIED, f"{n} project histories", str(p))
+   226	
+   227	
+   228	def check_mcp(home: Path, cwd: Path) -> list[Check]:
+   229	    out = []
+   230	    sources = [("~/.claude/settings.json", home / ".claude" / "settings.json"),
+   231	               ("~/.claude.json", home / ".claude.json"),
+   232	               ("~/.qwen/settings.json", home / ".qwen" / "settings.json"),
+   233	               (".mcp.json (project)", cwd / ".mcp.json")]
+   234	    for label, p in sources:
+   235	        if not p.exists():
+   236	            out.append(Check("MCP", label, VERIFIED, "file absent → no servers from it", str(p)))
+   237	            continue
+   238	        try:
+   239	            d = json.loads(p.read_text())
+   240	        except (OSError, ValueError) as e:
+   241	            out.append(Check("MCP", label, UNKNOWN, f"unreadable: {e}", str(p)))
+   242	            continue
+   243	        servers = d.get("mcpServers") if isinstance(d, dict) else None
+   244	        if servers:
+   245	            out.append(Check("MCP", label, VERIFIED,
+   246	                             f"{len(servers)} servers: {', '.join(list(servers)[:6])}", str(p)))
+   247	        else:
+   248	            out.append(Check("MCP", label, VERIFIED, "no mcpServers key", str(p)))
+   249	    return out
+   250	
+   251	
+   252	def check_machine(cwd: Path) -> Check:
+   253	    cores = os.cpu_count() or "?"
+   254	    mem_gib = "?"
+   255	    try:
+   256	        for line in Path("/proc/meminfo").read_text().splitlines():
+   257	            if line.startswith("MemAvailable:"):
+   258	                mem_gib = f"{int(line.split()[1]) / 1048576:.1f} GiB"
+   259	                break
+   260	    except OSError:
+   261	        pass
+   262	    du = shutil.disk_usage(cwd)
+   263	    return Check("Machine", "this machine", VERIFIED,
+   264	                 f"{cores} cores; {mem_gib} RAM available; {du.free / 2**30:.0f} G free on {cwd}",
+   265	                 "`os.cpu_count`, `/proc/meminfo`, `shutil.disk_usage`")
+   266	
+   267	
+   268	def open_unknowns() -> list[Check]:
+   269	    return [
+   270	        Check("Open unknowns", "subagent concurrency limit", UNKNOWN,
+   271	              "runtime policy, not provable from outside. Claude Code docs report 20 concurrent, nesting depth 3 "
+   272	              "(v2.1.217+, env overrides; reported, not measured here); codex/agy: no figure",
+   273	              "docs/EXECUTOR_KINDS.md, Concurrency row"),
+   274	        Check("Open unknowns", "codex/agy/qwen execute a task", UNKNOWN,
+   275	              "canary required (spends quota; needs the person's go-ahead)",
+   276	              "docs/EXECUTOR_KINDS.md canary piece"),
+   277	    ]
+   278	
+   279	
+   280	def gather(args: argparse.Namespace) -> list[Check]:
+   281	    home, cwd = Path.home(), Path.cwd()
+   282	    binaries = list(dict.fromkeys(DEFAULT_BINARIES + list(args.require or [])))
+   283	    with ThreadPoolExecutor(max_workers=max(1, min(8, len(binaries)))) as ex:
+   284	        checks: list[Check] = list(ex.map(check_binary, binaries))
+   285	    checks.append(check_codex_cache())
+   286	    checks.append(check_agy_login(args.net))
+   287	    checks.append(check_qwen_config(home))
+   288	    for label, p in [("claude skills (user)", home / ".claude" / "skills"),
+   289	                     ("agents skills (cross-tool)", home / ".agents" / "skills"),
+   290	                     ("codex skills (user)", home / ".codex" / "skills"),
+   291	                     ("qwen skills (user)", home / ".qwen" / "skills"),
+   292	                     ("project skills", cwd / ".claude" / "skills")]:
+   293	        checks.append(check_dir_listing("Skills and workflows", label, p))
+   294	    checks.append(check_dir_listing("Skills and workflows", "workflow scripts",
+   295	                                    Path(args.workflows) if args.workflows else cwd / ".claude" / "workflows"))
+   296	    if args.blueprint:
+   297	        checks.append(check_blueprint(Path(args.blueprint)))
+   298	    checks.append(check_instruction_files(cwd))
+   299	    checks.append(check_qwen_memory(home))
+   300	    checks.append(check_claude_history(home))
+   301	    checks.extend(check_mcp(home, cwd))
+   302	    checks.append(check_machine(cwd))
+   303	    checks.extend(open_unknowns())
+   304	    checks.sort(key=lambda c: GROUPS.index(c.group))
+   305	    return checks
+   306	
+   307	
+   308	def exit_code(checks: list[Check], requires: list[str]) -> int:
+   309	    missing = {c.item for c in checks if c.status == MISSING}
+   310	    known = {c.item for c in checks}
+   311	    for r in requires:
+   312	        if r in missing or r not in known:
+   313	            return 1
+   314	    for c in checks:  # an explicitly named --blueprint dir that is not there is a hard fail
+   315	        if c.item.startswith("blueprint (") and c.status == MISSING:
+   316	            return 1
+   317	    return 0
+   318	
+   319	
+   320	def cell(text: str) -> str:
+   321	    return text.replace("|", "\\|")
+   322	
+   323	
+   324	def to_markdown(checks: list[Check]) -> str:
+   325	    lines = [f"# Readiness tools check — {date.today().isoformat()} — {socket.gethostname()}", "",
+   326	             "Installed and logged in only; no canary was run, no quota spent.", ""]
+   327	    current = None
+   328	    for c in checks:
+   329	        if c.group != current:
+   330	            if current is not None:
+   331	                lines.append("")
+   332	            current = c.group
+   333	            lines += [f"## {current}", "", "| Item | Status | Detail | Proof |", "|---|---|---|---|"]
+   334	        lines.append(f"| {cell(c.item)} | {c.status} | {cell(c.detail)} | {cell(c.proof)} |")
+   335	    return "\n".join(lines) + "\n"
+   336	
+   337	
+   338	def self_test() -> int:
+   339	    fake = "readiness-selftest-fake-tool"
+   340	    c = check_binary(fake)
+   341	    code = exit_code([c], [fake])
+   342	    if c.status == MISSING and code == 1:
+   343	        print(f"self-test PASS: `{fake}` reported MISSING and --require on it exits 1 — the check can fail.")
+   344	        return 0
+   345	    print(f"self-test FAIL: status={c.status}, exit code={code} (expected MISSING, 1)")
+   346	    return 1
+   347	
+   348	
+   349	def main(argv: list[str] | None = None) -> int:
+   350	    ap = argparse.ArgumentParser(description="Method 3.1 readiness inventory (no quota spent).")
+   351	    ap.add_argument("--net", action="store_true",
+   352	                    help="also run network checks (`agy models`); off by default")
+   353	    ap.add_argument("--json", action="store_true", help="JSON instead of markdown")
+   354	    ap.add_argument("--require", action="append", default=[],
+   355	                    help="tool that must be verified present; exit 1 if MISSING (repeatable)")
+   356	    ap.add_argument("--blueprint", metavar="DIR", help="a product's blueprint directory to include")
+   357	    ap.add_argument("--workflows", metavar="DIR", help="workflow scripts directory (default .claude/workflows)")
+   358	    ap.add_argument("--self-test", action="store_true", help="prove the check can fail, then exit")
+   359	    args = ap.parse_args(argv)
+   360	    if args.self_test:
+   361	        return self_test()
+   362	    checks = gather(args)
+   363	    if args.json:
+   364	        print(json.dumps({"date": date.today().isoformat(), "host": socket.gethostname(),
+   365	                          "checks": [asdict(c) for c in checks]}, indent=1))
+   366	    else:
+   367	        print(to_markdown(checks), end="")
+   368	    return exit_code(checks, args.require)
+   369	
+   370	
+   371	if __name__ == "__main__":
+   372	    sys.exit(main())
+
+=== test_readiness.py ===
+     1	"""RT-01–RT-21: readiness inventory with an isolated HOME and fake executables."""
+     2	from __future__ import annotations
+     3	
+     4	import json
+     5	import os
+     6	import re
+     7	import socket
+     8	import subprocess
+     9	import sys
+    10	import time
+    11	import uuid
+    12	from datetime import date
+    13	from pathlib import Path
+    14	from types import SimpleNamespace
+    15	
+    16	import pytest
+    17	
+    18	ROOT = Path(__file__).resolve().parent.parent
+    19	SCRIPT = ROOT / ".claude/skills/workflow-design/scripts/readiness.py"
+    20	BINARIES = ["claude", "codex", "agy", "qwen", "node", "python3", "git"]
+    21	GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
+    22	          "Machine", "Open unknowns"]
+    23	MCP_LABELS = {"~/.claude/settings.json", "~/.claude.json", "~/.qwen/settings.json",
+    24	              ".mcp.json (project)"}
+    25	
+    26	
+    27	@pytest.fixture
+    28	def sandbox(tmp_path):
+    29	    home, bin_dir, cwd = (tmp_path / name for name in ("home", "bin", "proj"))
+    30	    for path in (home, bin_dir, cwd):
+    31	        path.mkdir()
+    32	    logs = tmp_path / "logs"
+    33	    logs.mkdir()
+    34	    # Do not inherit credentials, tool configuration, or a fallback search PATH.
+    35	    env = {"HOME": str(home), "PATH": str(bin_dir), "FAKE_LOGS": str(logs)}
+    36	
+    37	    def fake(name, body=None):
+    38	        if body is None:
+    39	            body = f"print({name + '-fake 0.1'!r})\n"
+    40	        path = bin_dir / name
+    41	        path.write_text(
+    42	            f"#!{sys.executable}\n"
+    43	            "import json, os, sys\n"
+    44	            f"with open(os.path.join(os.environ['FAKE_LOGS'], {name!r}), 'a') as log:\n"
+    45	            "    log.write(json.dumps(sys.argv[1:]) + '\\n')\n" + body
+    46	        )
+    47	        path.chmod(0o755)
+    48	        return path
+    49	
+    50	    def full():
+    51	        for name in BINARIES:
+    52	            fake(name)
+    53	
+    54	    def run(*args, timeout=35):
+    55	        return subprocess.run([sys.executable, str(SCRIPT), *map(str, args)],
+    56	                              env=env, cwd=cwd, capture_output=True, text=True,
+    57	                              timeout=timeout)
+    58	
+    59	    def calls(name):
+    60	        path = logs / name
+    61	        return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+    62	
+    63	    def reset_logs():
+    64	        for path in logs.iterdir():
+    65	            path.unlink()
+    66	
+    67	    return SimpleNamespace(home=home, bin=bin_dir, cwd=cwd, env=env, fake=fake,
+    68	                           full=full, run=run, calls=calls, reset_logs=reset_logs)
+    69	
+    70	
+    71	def write_file(path, text):
+    72	    path.parent.mkdir(parents=True, exist_ok=True)
+    73	    path.write_text(text)
+    74	    return path
+    75	
+    76	
+    77	def json_checks(result, code=0):
+    78	    assert result.returncode == code, result.stderr
+    79	    assert "Traceback" not in result.stderr
+    80	    return json.loads(result.stdout)["checks"]
+    81	
+    82	
+    83	def markdown_checks(text):
+    84	    checks = []
+    85	    group = None
+    86	    for line in text.splitlines():
+    87	        if line.startswith("## "):
+    88	            group = line[3:]
+    89	        elif line.startswith("| ") and not line.startswith("| Item |"):
+    90	            cells = [cell.strip() for cell in re.split(r"(?<!\\)\|", line)[1:-1]]
+    91	            assert len(cells) == 4, line
+    92	            checks.append(dict(zip(("group", "item", "status", "detail", "proof"),
+    93	                                   [group, *cells])))
+    94	    return checks
+    95	
+    96	
+    97	def row(checks, item, group=None):
+    98	    matches = [c for c in checks if c["item"] == item and (group is None or c["group"] == group)]
+    99	    assert len(matches) == 1, matches
+   100	    return matches[0]
+   101	
+   102	
+   103	def assert_row(checks, item, status, detail, proof, group=None):
+   104	    actual = row(checks, item, group)
+   105	    assert (actual["status"], actual["detail"], actual["proof"]) == (status, detail, str(proof))
+   106	
+   107	
+   108	def test_rt_01_sanitized_full_inventory(sandbox):
+   109	    sandbox.full()
+   110	    before = date.today().isoformat()
+   111	    result = sandbox.run()
+   112	    assert result.returncode == 0, result.stderr
+   113	    assert result.stdout.splitlines()[0] in {
+   114	        f"# Readiness tools check — {day} — {socket.gethostname()}"
+   115	        for day in (before, date.today().isoformat())
+   116	    }
+   117	    output = result.stdout + result.stderr
+   118	    assert str(Path.home()) not in output
+   119	    assert str(ROOT) not in output
+   120	    assert "Traceback" not in result.stderr
+   121	    checks = markdown_checks(result.stdout)
+   122	    assert len(checks) == 26
+   123	    for name in BINARIES:
+   124	        assert_row(checks, name, "verified", f"{name}-fake 0.1", f"`{name} --version`", "Tools")
+   125	        assert sandbox.calls(name) == [["--version"]]
+   126	    for item, path in [("qwen config (model, provider)", sandbox.home / ".qwen/settings.json"),
+   127	                       ("codex model cache", sandbox.home / ".codex/models_cache.json")]:
+   128	        assert_row(checks, item, "unknown", f"no {path}", path)
+   129	    directories = {
+   130	        "claude skills (user)": sandbox.home / ".claude/skills",
+   131	        "agents skills (cross-tool)": sandbox.home / ".agents/skills",
+   132	        "codex skills (user)": sandbox.home / ".codex/skills",
+   133	        "qwen skills (user)": sandbox.home / ".qwen/skills",
+   134	        "project skills": sandbox.cwd / ".claude/skills",
+   135	        "workflow scripts": sandbox.cwd / ".claude/workflows",
+   136	    }
+   137	    for item, path in directories.items():
+   138	        assert_row(checks, item, "verified", f"absent ({path})", path)
+   139	    mcp = [c for c in checks if c["group"] == "MCP"]
+   140	    assert {c["item"] for c in mcp} == MCP_LABELS
+   141	    assert all(c["status"] == "verified" and c["detail"] == "file absent → no servers from it" for c in mcp)
+   142	    assert row(checks, "project instruction files")["detail"] == (
+   143	        "present: none; absent: CLAUDE.md, AGENTS.md, QWEN.md, GEMINI.md")
+   144	    unknowns = [c for c in checks if c["group"] == "Open unknowns"]
+   145	    assert len(unknowns) == 2 and all(c["status"] == "unknown" for c in unknowns)
+   146	
+   147	
+   148	def test_rt_02_broken_qwen_json_keeps_inventory(sandbox):
+   149	    path = write_file(sandbox.home / ".qwen/settings.json", '{ "model": {')
+   150	    checks = json_checks(sandbox.run("--json"))
+   151	    assert len(checks) == 26
+   152	    unreadable = [c for c in checks if "unreadable" in c["detail"]]
+   153	    assert {(c["group"], c["item"]) for c in unreadable} == {
+   154	        ("Models and logins", "qwen config (model, provider)"), ("MCP", "~/.qwen/settings.json")}
+   155	    assert all(c["status"] == "unknown" and c["detail"].startswith("unreadable:")
+   156	               and c["proof"] == str(path) for c in unreadable)
+   157	    assert {c["item"] for c in checks if c["group"] == "MCP"} == MCP_LABELS
+   158	    assert len([c for c in checks if c["group"] == "Open unknowns"]) == 2
+   159	    assert all(c["status"] == "MISSING" for c in checks if c["group"] == "Tools")
+   160	
+   161	
+   162	def test_rt_03a_truncated_and_unreadable_cache(sandbox):
+   163	    cache = write_file(sandbox.home / ".codex/models_cache.json", '{"models": [{"id": "x"},')
+   164	    cache.chmod(0o644)
+   165	    checks = json_checks(sandbox.run("--json"))
+   166	    assert len(checks) == 26
+   167	    check = row(checks, "codex model cache")
+   168	    assert check["status"] == "unknown" and check["proof"] == str(cache)
+   169	    assert check["detail"].startswith("unreadable:") and "Expecting" in check["detail"]
+   170	    # Root can read mode 0000; exercise permission denial only when it is enforceable.
+   171	    if os.geteuid() != 0:
+   172	        cache.chmod(0o000)
+   173	        try:
+   174	            checks = json_checks(sandbox.run("--json"))
+   175	            assert len(checks) == 26
+   176	            check = row(checks, "codex model cache")
+   177	            assert check["status"] == "unknown" and check["proof"] == str(cache)
+   178	            assert check["detail"].startswith("unreadable:") and "Permission denied" in check["detail"]
+   179	        finally:
+   180	            cache.chmod(0o644)
+   181	
+   182	
+   183	def test_rt_03b_non_object_codex_cache(sandbox):
+   184	    cache = write_file(sandbox.home / ".codex/models_cache.json", '[{"id": "gpt-6"}]')
+   185	    checks = json_checks(sandbox.run("--json"))
+   186	    assert len(checks) == 26
+   187	    check = row(checks, "codex model cache")
+   188	    assert check["status"] == "unknown" and check["proof"] == str(cache)
+   189	    assert check["detail"].startswith("unreadable:")
+   190	
+   191	
+   192	def test_rt_03c_non_object_qwen_settings(sandbox):
+   193	    settings = write_file(sandbox.home / ".qwen/settings.json", '[{"id": "gpt-6"}]')
+   194	    checks = json_checks(sandbox.run("--json"))
+   195	    assert len(checks) == 26
+   196	    check = row(checks, "qwen config (model, provider)")
+   197	    assert check["status"] == "unknown" and check["proof"] == str(settings)
+   198	    assert check["detail"].startswith("unreadable:")
+   199	
+   200	
+   201	def test_rt_04_cache_fallbacks_cap_and_age(sandbox):
+   202	    sandbox.full()
+   203	    examples = [
+   204	        ({"models": [{"id": "a"}, {"slug": "b"}, {"name": "c"}, {"note": 1}, "raw"],
+   205	          "fetched_at": time.time() - 10 * 86400},
+   206	         "5 model ids, cache 10d old: a, b, c, ?, raw (cache may be stale)"),
+   207	        ({"models": [{"id": f"m{i}"} for i in range(1, 10)]},
+   208	         "9 model ids: m1, m2, m3, m4, m5, m6 … (cache may be stale)"),
+   209	        ({"models": {"x": {"o": 1}, "y": {}}, "fetched_at": "2026-09-01T00:00:00Z"},
+   210	         "2 model ids, fetched_at 2026-09-01: x, y (cache may be stale)"),
+   211	    ]
+   212	    for data, detail in examples:
+   213	        path = write_file(sandbox.home / ".codex/models_cache.json", json.dumps(data))
+   214	        assert_row(json_checks(sandbox.run("--json")), "codex model cache", "reported", detail, path)
+   215	
+   216	
+   217	def test_rt_05_qwen_secrets_never_printed(sandbox):
+   218	    sandbox.full()
+   219	    secrets = [f"sk-SENTINEL-{uuid.uuid4().hex}" for _ in range(3)]
+   220	    path = write_file(sandbox.home / ".qwen/settings.json", json.dumps({
+   221	        "env": {"AG_TEST_KEY": secrets[0], "EMPTY": ""}, "apiKey": secrets[1],
+   222	        "security": {"auth": {"selectedType": "test-oauth-type"}},
+   223	        "model": {"name": "sentinel-model", "baseUrl": f"https://sentinel-host.invalid/v1?token={secrets[2]}"},
+   224	    }))
+   225	    for args in [(), ("--json",)]:
+   226	        result = sandbox.run(*args)
+   227	        assert result.returncode == 0, result.stderr
+   228	        assert all(secret not in result.stdout + result.stderr for secret in secrets)
+   229	        checks = json_checks(result) if args else markdown_checks(result.stdout)
+   230	        assert_row(checks, "qwen config (model, provider)", "reported",
+   231	                   "default sentinel-model, auth test-oauth-type, 0 listed models, endpoint sentinel-host.invalid, "
+   232	                   "key set in settings env (file claim; key validity not tested)", path)
+   233	
+   234	
+   235	def test_rt_06_require_matrix_and_dedupe(sandbox):
+   236	    for name in ("git", "python3"):
+   237	        sandbox.fake(name)
+   238	    for args, code in [(('--require', 'git'), 0), (('--require', 'nope'), 1),
+   239	                       (('--require', 'git', '--require', 'nope'), 1),
+   240	                       ((), 0), (('--require', 'git', '--require', 'git', '--json'), 0)]:
+   241	        result = sandbox.run(*args)
+   242	        assert result.returncode == code, result.stderr
+   243	        checks = json_checks(result, code) if "--json" in args else markdown_checks(result.stdout)
+   244	        assert_row(checks, "git", "verified", "git-fake 0.1", "`git --version`", "Tools")
+   245	        if "nope" in args:
+   246	            assert_row(checks, "nope", "MISSING", "not on PATH", "`command -v nope`", "Tools")
+   247	        tools = [c for c in checks if c["group"] == "Tools"]
+   248	        assert len(tools) == (8 if "nope" in args else 7)
+   249	        assert len([c for c in tools if c["item"] == "git"]) == 1
+   250	        if not args:
+   251	            assert all(row(checks, n, "Tools")["status"] == "MISSING"
+   252	                       for n in ("claude", "codex", "agy", "qwen", "node"))
+   253	
+   254	
+   255	def test_rt_07_WART_require_accepts_present_broken_tool(sandbox):
+   256	    sandbox.fake("broken", "print('boom on stderr\\nsecond line', file=sys.stderr)\nsys.exit(3)\n")
+   257	    checks = json_checks(sandbox.run("--require", "broken", "--json"))
+   258	    assert_row(checks, "broken", "unknown", "exit 3: boom on stderr", "`broken --version`", "Tools")
+   259	
+   260	
+   261	def test_rt_08_json_contract_and_markdown_row_sets(sandbox):
+   262	    sandbox.full()
+   263	    before = date.today().isoformat()
+   264	    result = sandbox.run("--json")
+   265	    checks = json_checks(result)
+   266	    data = json.loads(result.stdout)
+   267	    assert set(data) == {"date", "host", "checks"}
+   268	    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", data["date"])
+   269	    assert data["date"] in {before, date.today().isoformat()}
+   270	    assert data["host"] == socket.gethostname()
+   271	    assert isinstance(checks, list) and checks
+   272	    for check in checks:
+   273	        assert set(check) == {"group", "item", "status", "detail", "proof"}
+   274	        assert check["status"] in {"verified", "reported", "unknown", "MISSING"}
+   275	        assert check["group"] in GROUPS
+   276	    indices = [GROUPS.index(c["group"]) for c in checks]
+   277	    assert indices == sorted(indices)
+   278	    assert len({c["item"] for c in checks if c["group"] == "Tools"}) == 7
+   279	    assert len([c for c in checks if c["group"] == "MCP"]) == 4
+   280	    unknowns = [c for c in checks if c["group"] == "Open unknowns"]
+   281	    assert len(unknowns) == 2 and all(c["status"] == "unknown" for c in unknowns)
+   282	    plain = sandbox.run()
+   283	    assert plain.returncode == 0, plain.stderr
+   284	    markdown = markdown_checks(plain.stdout)
+   285	    assert len(markdown) == len(checks)
+   286	    # Free RAM can change between processes; all stable rows must agree in both modes.
+   287	    assert [c for c in markdown if c["group"] != "Machine"] == [c for c in checks if c["group"] != "Machine"]
+   288	    assert {(c["group"], c["item"]) for c in markdown} == {(c["group"], c["item"]) for c in checks}
+   289	
+   290	
+   291	def test_rt_09_markdown_groups_escaping_and_truncation(sandbox):
+   292	    sandbox.full()
+   293	    sandbox.fake("claude", "print('1.0 | beta')\n")
+   294	    sandbox.fake("codex", "print('X' * 300)\n")
+   295	    before = date.today().isoformat()
+   296	    plain = sandbox.run()
+   297	    assert plain.returncode == 0, plain.stderr
+   298	    lines = plain.stdout.splitlines()
+   299	    assert lines[0] in {f"# Readiness tools check — {d} — {socket.gethostname()}"
+   300	                        for d in (before, date.today().isoformat())}
+   301	    assert lines[1:4] == ["", "Installed and logged in only; no canary was run, no quota spent.", ""]
+   302	    assert [line for line in lines if line.startswith("## ")] == [f"## {g}" for g in GROUPS]
+   303	    for group in GROUPS:
+   304	        start = lines.index(f"## {group}")
+   305	        assert lines[start + 1:start + 4] == ["", "| Item | Status | Detail | Proof |", "|---|---|---|---|"]
+   306	    assert lines.count("| Item | Status | Detail | Proof |") == len(GROUPS)
+   307	    assert lines.count("|---|---|---|---|") == len(GROUPS)
+   308	    markdown = markdown_checks(plain.stdout)
+   309	    checks = json_checks(sandbox.run("--json"))
+   310	    assert row(markdown, "claude", "Tools")["detail"] == r"1.0 \| beta"
+   311	    assert row(checks, "claude", "Tools")["detail"] == "1.0 | beta"
+   312	    assert row(markdown, "codex", "Tools")["detail"] == "X" * 100
+   313	    assert row(checks, "codex", "Tools")["detail"] == "X" * 100
+   314	    assert len(markdown) == len(checks)
+   315	
+   316	
+   317	def test_rt_10_hanging_binary_is_bounded(sandbox):
+   318	    # A Python sleeper needs no real sleep binary and is killed directly, without a shell child.
+   319	    pid_file = sandbox.bin.parent / "hanging.pid"
+   320	    sandbox.fake("claude", f"with open({str(pid_file)!r}, 'w') as pid_file:\n"
+   321	                 "    pid_file.write(str(os.getpid()))\nimport time\ntime.sleep(60)\n")
+   322	    start = time.monotonic()
+   323	    result = sandbox.run("--require", "claude", "--json", timeout=35)
+   324	    elapsed = time.monotonic() - start
+   325	    pid = int(pid_file.read_text())
+   326	    with pytest.raises(ProcessLookupError):
+   327	        os.kill(pid, 0)
+   328	    assert 10 <= elapsed < 25
+   329	    checks = json_checks(result)
+   330	    assert len(checks) == 26
+   331	    assert_row(checks, "claude", "unknown", "no answer within 10s", "`claude --version`", "Tools")
+   332	    assert all(row(checks, name, "Tools")["status"] == "MISSING" for name in BINARIES[1:])
+   333	
+   334	
+   335	def test_rt_11_qwen_quota_tripwire(sandbox):
+   336	    sandbox.fake("qwen", "if sys.argv[1:] != ['--version']:\n"
+   337	                 "    print('UNEXPECTED qwen INVOCATION: ' + ' '.join(sys.argv[1:]))\n"
+   338	                 "    sys.exit(9)\nprint('qwen-fake 0.0')\n")
+   339	    for args in [(), ("--json",), ("--require", "qwen"), ("--self-test",)]:
+   340	        sandbox.reset_logs()
+   341	        result = sandbox.run(*args)
+   342	        assert result.returncode == 0, result.stderr
+   343	        assert "UNEXPECTED" not in result.stdout + result.stderr
+   344	        assert "exit 9" not in result.stdout + result.stderr
+   345	        assert sandbox.calls("qwen") == ([] if "--self-test" in args else [["--version"]])
+   346	        if "--self-test" not in args:
+   347	            checks = json_checks(result) if "--json" in args else markdown_checks(result.stdout)
+   348	            assert_row(checks, "qwen", "verified", "qwen-fake 0.0", "`qwen --version`", "Tools")
+   349	
+   350	
+   351	def test_rt_12_net_opt_in_and_agy_banner_parsing(sandbox):
+   352	    sandbox.fake("agy", "if sys.argv[1:] == ['--version']:\n"
+   353	                 "    print('agy-fake 1.2.14')\n"
+   354	                 "elif sys.argv[1:] == ['models']:\n"
+   355	                 "    print('Fetching models…\\ngemini-9-pro\\n gemini-9-flash\\n\\n   \\ngpt-oss-120b-medium')\n"
+   356	                 "else:\n    print('UNEXPECTED agy INVOCATION')\n    sys.exit(9)\n")
+   357	    offline = json_checks(sandbox.run("--json"))
+   358	    assert sandbox.calls("agy") == [["--version"]]
+   359	    assert_row(offline, "agy", "verified", "agy-fake 1.2.14", "`agy --version`", "Tools")
+   360	    assert_row(offline, "agy login (model list)", "unknown",
+   361	               "offline run: not provable without `agy models`; rerun with --net", "`agy models` (network)")
+   362	    sandbox.reset_logs()
+   363	    online = json_checks(sandbox.run("--json", "--net"))
+   364	    assert sandbox.calls("agy") == [["--version"], ["models"]]
+   365	    assert_row(online, "agy login (model list)", "verified",
+   366	               "3 models: gemini-9-pro, gemini-9-flash, gpt-oss-120b-medium …", "`agy models` (network)")
+   367	
+   368	
+   369	def test_rt_13_blueprint_workflows_and_usage_errors(sandbox):
+   370	    bp, wf, nope = (sandbox.cwd / name for name in ("bp", "wf", "nope"))
+   371	    for name in ("README.md", "a.md", "b.md", "notes.txt"):
+   372	        write_file(bp / name, "")
+   373	    for name in ("a.js", "b.js", "tool.py", ".hidden.js"):
+   374	        write_file(wf / name, "")
+   375	    result = sandbox.run("--blueprint", bp)
+   376	    assert result.returncode == 0, result.stderr
+   377	    assert_row(markdown_checks(result.stdout), f"blueprint ({bp})", "verified",
+   378	               "3 sections, map present: README.md, a.md, b.md", bp)
+   379	    checks = json_checks(sandbox.run("--blueprint", nope, "--json"), code=1)
+   380	    assert_row(checks, f"blueprint ({nope})", "MISSING", "directory not found", nope)
+   381	    result = sandbox.run("--workflows", wf)
+   382	    assert result.returncode == 0, result.stderr
+   383	    assert_row(markdown_checks(result.stdout), "workflow scripts", "verified", "2: a.js, b.js", wf)
+   384	    for args in [("--nope",), ("--blueprint",), ("--require", "a", "b")]:
+   385	        result = sandbox.run(*args)
+   386	        assert result.returncode == 2
+   387	        assert "usage:" in result.stderr and "error:" in result.stderr
+   388	        assert result.stdout == ""
+   389	
+   390	
+   391	def test_rt_14_self_test_pass_fail_and_json_precedence(sandbox):
+   392	    sandbox.full()
+   393	    expected = ("self-test PASS: `readiness-selftest-fake-tool` reported MISSING and --require on it exits 1 "
+   394	                "— the check can fail.\n")
+   395	    for args in [("--self-test",), ("--self-test", "--json")]:
+   396	        result = sandbox.run(*args)
+   397	        assert result.returncode == 0 and result.stdout == expected
+   398	        assert result.stderr == ""
+   399	        assert all(sandbox.calls(name) == [] for name in BINARIES)
+   400	        assert "#" not in result.stdout and "| Item | Status" not in result.stdout
+   401	        with pytest.raises(json.JSONDecodeError):
+   402	            json.loads(result.stdout)
+   403	    sandbox.fake("readiness-selftest-fake-tool", "print('fake 1.0')\n")
+   404	    result = sandbox.run("--self-test")
+   405	    assert result.returncode == 1
+   406	    assert result.stdout == "self-test FAIL: status=verified, exit code=0 (expected MISSING, 1)\n"
+   407	    assert result.stderr == ""
+   408	    assert sandbox.calls("readiness-selftest-fake-tool") == [["--version"]]
+   409	    assert all(sandbox.calls(name) == [] for name in BINARIES)
+   410	
+   411	
+   412	
+   413	def test_rt_15_blueprint_without_map(sandbox):
+   414	    bp = sandbox.cwd / "bp"
+   415	    for name in ("b.md", "a.md", "notes.txt"):
+   416	        write_file(bp / name, "")
+   417	    checks = json_checks(sandbox.run("--blueprint", bp, "--json"))
+   418	    assert_row(checks, f"blueprint ({bp})", "verified",
+   419	               "2 sections, map MISSING: a.md, b.md", bp, "Skills and workflows")
+   420	
+   421	
+   422	def test_rt_16_empty_skill_directory(sandbox):
+   423	    skills = sandbox.home / ".claude/skills"
+   424	    skills.mkdir(parents=True)
+   425	    assert_row(json_checks(sandbox.run("--json")), "claude skills (user)", "verified",
+   426	               f"empty ({skills})", skills, "Skills and workflows")
+   427	
+   428	
+   429	def test_rt_17_skill_symlink_and_listing_cap(sandbox):
+   430	    skills = sandbox.home / ".claude/skills"
+   431	    skills.mkdir(parents=True)
+   432	    (skills / "a-link").symlink_to("../target")
+   433	    (skills.parent / "target").mkdir()
+   434	    for i in range(1, 8):
+   435	        (skills / f"skill-{i}").mkdir()
+   436	    detail = "8: a-link → ../target, " + ", ".join(f"skill-{i}" for i in range(1, 8))
+   437	    assert_row(json_checks(sandbox.run("--json")), "claude skills (user)", "verified",
+   438	               detail, skills, "Skills and workflows")
+   439	    (skills / "skill-8").mkdir()
+   440	    assert_row(json_checks(sandbox.run("--json")), "claude skills (user)", "verified",
+   441	               "9:" + detail[2:] + " …", skills, "Skills and workflows")
+   442	
+   443	
+   444	def test_rt_18_mcp_servers_and_empty_object(sandbox):
+   445	    sources = [
+   446	        ("~/.claude/settings.json", sandbox.home / ".claude/settings.json"),
+   447	        ("~/.claude.json", sandbox.home / ".claude.json"),
+   448	        ("~/.qwen/settings.json", sandbox.home / ".qwen/settings.json"),
+   449	        (".mcp.json (project)", sandbox.cwd / ".mcp.json"),
+   450	    ]
+   451	    for data, detail in [({"mcpServers": {"alpha": {}, "beta": {}}}, "2 servers: alpha, beta"),
+   452	                         ({}, "no mcpServers key")]:
+   453	        for _, path in sources:
+   454	            write_file(path, json.dumps(data))
+   455	        checks = json_checks(sandbox.run("--json"))
+   456	        assert {c["item"] for c in checks if c["group"] == "MCP"} == MCP_LABELS
+   457	        for label, path in sources:
+   458	            assert_row(checks, label, "verified", detail, path, "MCP")
+   459	
+   460	
+   461	def test_rt_19_populated_memory_and_history(sandbox):
+   462	    memories = sandbox.home / ".qwen/memories"
+   463	    write_file(memories / "MEMORY.md", "first\n\nthird\nlast")
+   464	    projects = sandbox.home / ".claude/projects"
+   465	    for name in ("project-a", "project-b"):
+   466	        (projects / name).mkdir(parents=True)
+   467	    write_file(projects / "notes.txt", "not a project directory")
+   468	    checks = json_checks(sandbox.run("--json"))
+   469	    assert_row(checks, "qwen auto-memory (user)", "verified",
+   470	               "4 index lines in MEMORY.md; project dirs under ~/.qwen/projects/", memories, "Memory")
+   471	    assert_row(checks, "claude session history", "verified", "2 project histories", projects, "Memory")
+   472	
+   473	
+   474	def test_rt_20_present_instruction_files(sandbox):
+   475	    for name in ("CLAUDE.md", "QWEN.md"):
+   476	        write_file(sandbox.cwd / name, "instructions")
+   477	    assert_row(json_checks(sandbox.run("--json")), "project instruction files", "verified",
+   478	               "present: CLAUDE.md, QWEN.md; absent: AGENTS.md, GEMINI.md", sandbox.cwd, "Memory")
+   479	    for name in ("AGENTS.md", "GEMINI.md"):
+   480	        write_file(sandbox.cwd / name, "instructions")
+   481	    assert_row(json_checks(sandbox.run("--json")), "project instruction files", "verified",
+   482	               "present: CLAUDE.md, AGENTS.md, QWEN.md, GEMINI.md", sandbox.cwd, "Memory")
+   483	
+   484	
+   485	def test_rt_21_net_agy_absent_and_nonzero(sandbox):
+   486	    checks = json_checks(sandbox.run("--json", "--net"))
+   487	    assert_row(checks, "agy login (model list)", "MISSING", "agy not on PATH",
+   488	               "`agy --version`", "Models and logins")
+   489	    assert sandbox.calls("agy") == []
+   490	    sandbox.fake("agy", "if sys.argv[1:] == ['--version']:\n"
+   491	                 "    print('agy-fake 0.1')\n"
+   492	                 "elif sys.argv[1:] == ['models']:\n"
+   493	                 "    print('login failed\\nsecond line', file=sys.stderr)\n"
+   494	                 "    sys.exit(3)\n"
+   495	                 "else:\n    sys.exit(9)\n")
+   496	    checks = json_checks(sandbox.run("--json", "--net"))
+   497	    assert sandbox.calls("agy") == [["--version"], ["models"]]
+   498	    assert_row(checks, "agy", "verified", "agy-fake 0.1", "`agy --version`", "Tools")
+   499	    assert_row(checks, "agy login (model list)", "unknown", "exit 3: login failed",
+   500	               "`agy models` (network)", "Models and logins")
+

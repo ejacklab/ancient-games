@@ -449,7 +449,8 @@ def test_rt_18_mcp_servers_and_empty_object(sandbox):
         (".mcp.json (project)", sandbox.cwd / ".mcp.json"),
     ]
     for data, detail in [({"mcpServers": {"alpha": {}, "beta": {}}}, "2 servers: alpha, beta"),
-                         ({}, "no mcpServers key")]:
+                         ({}, "no mcpServers key"),
+                         ({"mcpServers": {}}, "mcpServers present but empty")]:
         for _, path in sources:
             write_file(path, json.dumps(data))
         checks = json_checks(sandbox.run("--json"))
@@ -498,3 +499,24 @@ def test_rt_21_net_agy_absent_and_nonzero(sandbox):
     assert_row(checks, "agy", "verified", "agy-fake 0.1", "`agy --version`", "Tools")
     assert_row(checks, "agy login (model list)", "unknown", "exit 3: login failed",
                "`agy models` (network)", "Models and logins")
+
+
+def test_rt_22_unreadable_dirs_report_unknown(sandbox):
+    # Found by the agy re-review: an unreadable skills or history dir crashed the inventory.
+    if os.geteuid() == 0:
+        pytest.skip("root can read mode 0000 directories")
+    skills = sandbox.home / ".claude/skills"
+    projects = sandbox.home / ".claude/projects"
+    skills.mkdir(parents=True)
+    projects.mkdir(parents=True)
+    skills.chmod(0o000)
+    projects.chmod(0o000)
+    try:
+        checks = json_checks(sandbox.run("--json"))
+        for item, path in (("claude skills (user)", skills), ("claude session history", projects)):
+            check = row(checks, item)
+            assert check["status"] == "unknown" and check["proof"] == str(path)
+            assert check["detail"].startswith("unreadable:") and "Permission denied" in check["detail"]
+    finally:
+        skills.chmod(0o755)
+        projects.chmod(0o755)

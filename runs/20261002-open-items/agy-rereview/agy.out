@@ -1,0 +1,82 @@
+### (A) Earlier Defects Verdict
+
+1. **Defect 1 (RT-03 bundled passing and failing sub-checks under one xfail)**: 
+   - **FIXED: YES** — Disaggregated into discrete test functions `test_rt_03a_truncated_and_unreadable_cache` (test lines 162–181), `test_rt_03b_non_object_codex_cache` (test lines 183–190), and `test_rt_03c_non_object_qwen_settings` (test lines 192–199); all xfail markers removed.
+2. **Defect 2 (hardcoded relative script path)**: 
+   - **FIXED: YES** — Anchored to `ROOT = Path(__file__).resolve().parent.parent` (test line 18) making `SCRIPT` an absolute path (`ROOT / ".claude/skills/workflow-design/scripts/readiness.py"`, test line 19), preventing execution failures when running with custom `cwd` in subprocess calls. *(Note: repo-relative subpath remains hardcoded at test line 19).*
+3. **Defect 3 (RT-10 had no process-survival assertion)**: 
+   - **FIXED: YES** — Added PID file tracking and process-liveness assertion verifying the hung process was terminated: `with pytest.raises(ProcessLookupError): os.kill(pid, 0)` (test lines 319–321, 325–327).
+4. **Defect 4 (seven missing cases)**: 
+   - **FIXED: YES** — Added `test_rt_15` (test lines 413–420), `test_rt_16` (test lines 422–427), `test_rt_17` (test lines 429–442), `test_rt_18` (test lines 444–459), `test_rt_19` (test lines 461–472), `test_rt_20` (test lines 474–483), and `test_rt_21` (test lines 485–500).
+
+---
+
+### (B) Mutation Sensitivity (RT-03a/b/c, RT-15–RT-21)
+
+* **RT-03a**:
+  * Line: 97
+  * Before: `return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))`
+  * After: `return Check("Models and logins", item, UNKNOWN, f"failed: {e}", str(p))`
+* **RT-03b**:
+  * Line: 99
+  * Before: `return Check("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))`
+  * After: `return Check("Models and logins", item, UNKNOWN, "malformed object", str(p))`
+* **RT-03c**:
+  * Line: 150
+  * Before: `return Check("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))`
+  * After: `return Check("Models and logins", item, UNKNOWN, "malformed object", str(p))`
+* **RT-15**:
+  * Line: 193
+  * Before: `has_map = "README.md" in files`
+  * After: `has_map = True`
+* **RT-16**:
+  * Line: 182
+  * Before: `return Check(group, item, absent_status, f"empty ({p})", str(p))`
+  * After: `return Check(group, item, absent_status, f"absent ({p})", str(p))`
+* **RT-17**:
+  * Line: 171
+  * Before: `out.append(f"{e.name} → {os.readlink(e)}")`
+  * After: `out.append(e.name)`
+* **RT-18**:
+  * Line: 244
+  * Before: `if servers:`
+  * After: `if False:`
+* **RT-19**:
+  * Line: 224
+  * Before: `n = sum(1 for e in p.iterdir() if e.is_dir())`
+  * After: `n = sum(1 for e in p.iterdir())`
+* **RT-20**:
+  * Line: 203
+  * Before: `+ (f"; absent: {', '.join(absent)}" if absent else ""))`
+  * After: `+ f"; absent: {', '.join(absent)}")`
+* **RT-21**:
+  * Line: 126
+  * Before: `if rc is None:`
+  * After: `if False:`
+
+---
+
+### (C) New Defects
+
+1. **`readiness.py` lines 243–248**: False reporting for empty `mcpServers`. If a configuration file contains `{"mcpServers": {}}`, `servers` evaluates to `{}` (falsy at line 244), causing line 248 to report `"no mcpServers key"` despite the key being present.
+2. **`test_readiness.py` lines 451–452**: Omission of empty `mcpServers` dict test. `test_rt_18` tests top-level `{}` but does not test `{"mcpServers": {}}`, missing the bug noted in (1).
+3. **`readiness.py` line 224 & line 167**: Unhandled `PermissionError` when reading directory contents. `p.iterdir()` in `check_claude_history` and `list_names` is not guarded by `try...except OSError`, causing an unhandled crash if a directory has mode 0000.
+4. **`readiness.py` line 194**: Missing truncation ellipsis in `check_blueprint`. Unlike `check_dir_listing` (line 183), `check_blueprint` slices `files[:8]` without appending `" …"` when `len(files) > 8`.
+
+---
+
+### (D) Remaining Uncovered Branches in `readiness.py`
+
+1. **Line 68–69**: `except OSError as e:` in `run_cmd` (non-`FileNotFoundError` operating system errors).
+2. **Line 74**: `else` branch in `first_line` returning `"(no output)"` when `out` is empty.
+3. **Line 114**: `check_codex_cache` branch when `ids` is empty (`shown = ""`).
+4. **Line 128–129**: `check_agy_login` timeout branch (`if rc == "timeout":`).
+5. **Line 132**: `check_agy_login` branch where `rc == 0` but `ids` is empty.
+6. **Line 155**: `check_qwen_config` else branch `"no key in settings env"` when `env` exists but contains no non-empty values.
+7. **Line 156**: `check_qwen_config` fallback to `'?'` when `baseUrl` has fewer than 3 segments separated by `/`.
+8. **Line 172**: `list_names` branch matching `.mjs` extension.
+9. **Line 213**: `check_qwen_memory` branch where `~/.qwen/memories` is a directory but `MEMORY.md` does not exist (`n = 0`).
+10. **Line 214–215**: `check_qwen_memory` exception branch `except OSError as e:` when reading `MEMORY.md`.
+11. **Line 243**: `check_mcp` branch where `d` is not a dict (`isinstance(d, dict)` is `False`).
+12. **Line 246**: `check_mcp` branch when `len(servers) > 6` (server name truncation).
+13. **Line 260–261**: `check_machine` exception branch `except OSError:` when `/proc/meminfo` is missing or unreadable.

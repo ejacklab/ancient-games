@@ -175,7 +175,10 @@ def list_names(p: Path) -> list[str] | None:
 
 
 def check_dir_listing(group: str, item: str, p: Path, absent_status: str = VERIFIED) -> Check:
-    names = list_names(p)
+    try:
+        names = list_names(p)
+    except OSError as e:
+        return Check(group, item, UNKNOWN, f"unreadable: {e}", str(p))
     if names is None:
         return Check(group, item, absent_status, f"absent ({p})", str(p))
     if not names:
@@ -221,7 +224,10 @@ def check_claude_history(home: Path) -> Check:
     p = home / ".claude" / "projects"
     if not p.is_dir():
         return Check("Memory", "claude session history", VERIFIED, f"absent ({p})", str(p))
-    n = sum(1 for e in p.iterdir() if e.is_dir())
+    try:
+        n = sum(1 for e in p.iterdir() if e.is_dir())
+    except OSError as e:
+        return Check("Memory", "claude session history", UNKNOWN, f"unreadable: {e}", str(p))
     return Check("Memory", "claude session history", VERIFIED, f"{n} project histories", str(p))
 
 
@@ -245,7 +251,8 @@ def check_mcp(home: Path, cwd: Path) -> list[Check]:
             out.append(Check("MCP", label, VERIFIED,
                              f"{len(servers)} servers: {', '.join(list(servers)[:6])}", str(p)))
         else:
-            out.append(Check("MCP", label, VERIFIED, "no mcpServers key", str(p)))
+            out.append(Check("MCP", label, VERIFIED,
+                             "no mcpServers key" if servers is None else "mcpServers present but empty", str(p)))
     return out
 
 
