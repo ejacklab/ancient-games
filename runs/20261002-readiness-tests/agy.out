@@ -1,0 +1,143 @@
+### Case-by-Case Review (RT-01 to RT-14)
+
+#### RT-01: Sanitized HOME + fake PATH + tmp cwd: full inventory, machine untouched
+- **(a) Implements case:** **YES** ([`test_readiness.py:88-121`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L88-L121)). Validates returncode 0, markdown header format, leak checks for real home and repo path, full 26-row inventory, all 7 fake binary details and proofs, nonexistent configs degrading to `unknown`, 6 nonexistent skill/workflow directories reporting `verified` (`absent`), MCP nonexistent files reporting `verified`, project instruction files, and open unknowns.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:277`](file:///home/smoke01/dev/ancient-games/readiness.py#L277), mutate `home, cwd = Path.home(), Path.cwd()` to `home = Path("/home/smoke01")`. Output will contain real home path, triggering `AssertionError` at [`test_readiness.py:99`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L99). Alternatively, in [`readiness.py:173`](file:///home/smoke01/dev/ancient-games/readiness.py#L173), mutate `absent_status: str = VERIFIED` to `MISSING`, turning the 6 directory checks red at [`test_readiness.py:115`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L115).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:38`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L38)). `env` strictly sets `HOME` and `PATH` to temporary directories; all 7 binaries are stubbed locally.
+
+---
+
+#### RT-02: Broken ~/.qwen/settings.json degrades to 'unreadable', twice, and never aborts
+- **(a) Implements case:** **YES** ([`test_readiness.py:124-135`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L124-L135)). Verifies rc 0, non-aborting 26-row output, exactly two rows marked `unknown` starting with `unreadable:` (both `Models and logins` and `MCP`), missing tool degradation, and absence of tracebacks.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:145`](file:///home/smoke01/dev/ancient-games/readiness.py#L145), narrow `except (OSError, ValueError):` to `except OSError:`. A `json.JSONDecodeError` escapes uncaught, crashing `readiness.py` with exit code 1 and a traceback, tripping [`test_readiness.py:67`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L67) in `json_checks`.
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:124-126`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L124-L126)). `bin_dir` is empty, no real commands can run, and HOME is isolated.
+
+---
+
+#### RT-03: Broken ~/.codex/models_cache.json: syntax error and valid-but-not-an-object
+- **(a) Implements case:** **NO** ([`test_readiness.py:138-164`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138-L164)). The test bundles passing sub-runs (Run A syntax error and Run C permission denied) with failing sub-runs (Run B array) under a single `@pytest.mark.xfail(strict=True, raises=AssertionError)`. Because `cache_result` raises `AssertionError` at [`test_readiness.py:160`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L160), the loop terminates early: `qwen_result` is never asserted, and the syntax error / permission denied assertions are masked under the expected failure wrapper.
+- **(b) CAN IT FAIL:** **YES (on fix/mutation)**. Currently, the test expects to fail and produces `XFAIL`. If [`readiness.py:98`](file:///home/smoke01/dev/ancient-games/readiness.py#L98) and [`readiness.py:147`](file:///home/smoke01/dev/ancient-games/readiness.py#L147) are fixed to guard array payloads (`isinstance(d, dict)`), the test completes without raising `AssertionError`, turning red as `XPASS (strict)` at [`test_readiness.py:138`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138). Without fixing the script, any mutation that crashes Run A or Run C with an `AssertionError` remains green as `XFAIL`.
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:138-164`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138-L164)). Isolated files in `tmp_path`, no network calls.
+
+---
+
+#### RT-04: Well-formed codex cache -> 'reported' row: id fallbacks, cap at 6, cache age
+- **(a) Implements case:** **YES** ([`test_readiness.py:167-182`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L167-L182)). Tests all three variants: fallback chain (`id` -> `slug` -> `name` -> `?`), list capping at 6 with ellipsis, dict-key models, and relative timestamp vs. ISO prefix formatting.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:112`](file:///home/smoke01/dev/ancient-games/readiness.py#L112), mutate `ids[:6]` to `ids[:5]`. Sub-run (ii) outputs 5 models instead of 6, failing the assertion at [`test_readiness.py:182`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L182).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:168`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L168)). Executables are mocked via `sandbox.full()`, HOME is isolated.
+
+---
+
+#### RT-05: A key in ~/.qwen/settings.json is never printed, in either output mode
+- **(a) Implements case:** **YES** ([`test_readiness.py:185-201`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L185-L201)). Injects three distinct UUID sentinels into `env`, `apiKey`, and query string of `model.baseUrl`. Tests both Markdown and JSON modes, verifying that none of the sentinels leak to stdout or stderr while confirming the file was parsed.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:151`](file:///home/smoke01/dev/ancient-games/readiness.py#L151), mutate `key = "key set in settings env" if any(env.values()) else ...` to `key = f"env {env}"`. Sentinels appear in stdout, failing [`test_readiness.py:196`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L196).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:186-193`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L186-L193)). Written to `sandbox.home`, no real qwen invocations.
+
+---
+
+#### RT-06: --require exit-code matrix, dedupe, and the 'inventory reports, require gates' rule
+- **(a) Implements case:** **YES** ([`test_readiness.py:204-222`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L204-L222)). Tests all 5 combinations: passing `--require`, missing `--require`, mixed missing/passing `--require`, un-gated run with missing tools returning 0, and duplicate `--require` flag deduplication in JSON mode.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:309`](file:///home/smoke01/dev/ancient-games/readiness.py#L309), mutate `return 1` to `return 0`. Invocations with missing tools exit 0 instead of 1, failing [`test_readiness.py:212`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L212).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:205-206`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L205-L206)). Only mock binaries `git` and `python3` are created in sandbox.
+
+---
+
+#### RT-07: --require against a binary that exists but exits non-zero (present wart)
+- **(a) Implements case:** **YES** ([`test_readiness.py:225-228`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L225-L228)). Pinpoints the wart where a broken tool exiting non-zero is marked `unknown` with exit code 0 rather than gating out with code 1.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:308`](file:///home/smoke01/dev/ancient-games/readiness.py#L308), mutate `if r in missing or r not in known:` to `if r in missing or r not in known or any(c.status != VERIFIED for c in checks if c.item == r):`. Returncode becomes 1, failing `json_checks` at [`test_readiness.py:227`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L227) via [`test_readiness.py:67`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L67).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:226`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L226)). Binary is a mocked Python script in sandbox bin.
+
+---
+
+#### RT-08: --json output contract: keys, row shape, status vocabulary, group order
+- **(a) Implements case:** **YES** ([`test_readiness.py:231-257`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L231-L257)). Asserts exact top-level keys (`date`, `host`, `checks`), row schema (`group`, `item`, `status`, `detail`, `proof`), status vocabulary, group sorting order, and parity between Markdown and JSON row counts.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:300`](file:///home/smoke01/dev/ancient-games/readiness.py#L300), delete `checks.sort(key=lambda c: GROUPS.index(c.group))`. Group order diverges, failing `assert indices == sorted(indices)` at [`test_readiness.py:248`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L248).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:233`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L233)). Mocked via `sandbox.full()`.
+
+---
+
+#### RT-09: Markdown rendering: single heading per group, pipe escaping, 100-char truncation
+- **(a) Implements case:** **YES** ([`test_readiness.py:260-281`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L260-L281)). Verifies header formatting, group section headings, 100-character truncation for long outputs, and pipe escaping in table cells (`1.0 \| beta` vs `1.0 | beta` in JSON).
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:317`](file:///home/smoke01/dev/ancient-games/readiness.py#L317), mutate `return text.replace("|", "\\|")` to `return text`. Unescaped pipe splits table row into 5 cells instead of 4, failing `assert len(cells) == 4` in `markdown_checks` at [`test_readiness.py:76`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L76).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:261-263`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L261-L263)). Stubbed binaries in sandbox bin.
+
+---
+
+#### RT-10: A hanging binary hits CMD_TIMEOUT instead of hanging the inventory
+- **(a) Implements case:** **YES** ([`test_readiness.py:284-294`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L284-L294)). Executes a mock hanging executable, measures execution time, and verifies the 10-second timeout ceiling (< 25s) with status `unknown` and detail `no answer within 10s`.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:37`](file:///home/smoke01/dev/ancient-games/readiness.py#L37), mutate `CMD_TIMEOUT = 10` to `30`. Execution exceeds 25 seconds, failing `assert 10 <= elapsed < 25` at [`test_readiness.py:290`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L290).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:286`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L286)). In-process `time.sleep` in Python mock script; no external commands executed.
+
+---
+
+#### RT-11: Fake qwen guard: readiness.py may only ever call `qwen --version`
+- **(a) Implements case:** **YES** ([`test_readiness.py:297-310`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L297-L310)). Sets a tripwire in `qwen` stub that exits 9 on any arguments other than `--version`, testing across plain, `--json`, `--require qwen`, and `--self-test` runs.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:283`](file:///home/smoke01/dev/ancient-games/readiness.py#L283), insert `run_cmd(["qwen", "models"])`. Mock script exits 9, logging unexpected invocation and failing [`test_readiness.py:305-307`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L305-L307).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:298-300`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L298-L300)). Isolated stub recording arguments to file.
+
+---
+
+#### RT-12: --net is the only network switch, and `agy models` parsing ignores the banner
+- **(a) Implements case:** **YES** ([`test_readiness.py:313-330`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L313-L330)). Proves offline run never invokes `agy models`, and `--net` run parses model list while filtering out `Fetching models…` banner and blank lines.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:120`](file:///home/smoke01/dev/ancient-games/readiness.py#L120), delete `if not net: return Check(...)`. The offline run executes `agy models`, failing `assert sandbox.calls("agy") == [["--version"]]` at [`test_readiness.py:321`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L321).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:314-319`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L314-L319)). `agy` is stubbed locally; network is never touched.
+
+---
+
+#### RT-13: --blueprint / --workflows flags and argparse usage errors (exit 2)
+- **(a) Implements case:** **YES** ([`test_readiness.py:333-350`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L333-L350)). Tests custom `--blueprint`, missing `--blueprint` directory hard failure (exit 1), custom `--workflows`, and argparse exit 2 errors (`--nope`, missing arg `--blueprint`, and invalid extra arg to `--require`).
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:311`](file:///home/smoke01/dev/ancient-games/readiness.py#L311), mutate `if c.item.startswith("blueprint (") and c.status == MISSING: return 1` to `pass`. The missing blueprint check exits 0 instead of 1, failing [`test_readiness.py:342`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L342).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:334-338`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L334-L338)). Operates solely in sandbox directory.
+
+---
+
+#### RT-14: --self-test proves the gate can fail, and fails honestly when it cannot
+- **(a) Implements case:** **YES** ([`test_readiness.py:353-370`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L353-L370)). Validates PASS condition when fake tool is missing, precedence of `--self-test` over `--json`, and honest FAIL condition (exit 1) when the fake tool binary exists.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:342`](file:///home/smoke01/dev/ancient-games/readiness.py#L342), mutate `return 1` in `self_test()` to `return 0`. Run 2 exits 0, failing `assert result.returncode == 1` at [`test_readiness.py:367`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L367).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:354`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L354)). Uses sandbox fakes; verifies zero binary calls during `--self-test` at [`test_readiness.py:361`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L361).
+
+---
+
+### Defects in the Test File
+
+1. **Unreachable assertions and masked failures under `xfail` in `test_rt_03` ([`test_readiness.py:138-164`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138-L164))**:
+   - Marking the whole function with `@pytest.mark.xfail(raises=AssertionError)` masks any potential failure in Run A (truncated JSON, [`test_readiness.py:141-145`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L141-L145)) or Run C (mode 0000, [`test_readiness.py:146-152`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L146-L152)). Both should pass; if either regresses, it raises `AssertionError` and is erroneously recorded as expected failure (`XFAIL`).
+   - In lines [`test_readiness.py:159-164`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L159-L164), `json_checks(cache_result)` raises `AssertionError` on the first iteration. The loop aborts immediately, so `qwen_result` is never asserted, leaving the second defect unverified.
+
+2. **Hardcoded relative path to script ([`test_readiness.py:18`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L18))**:
+   - `SCRIPT = ROOT / ".claude/skills/workflow-design/scripts/readiness.py"` hardcodes an assumed subdirectory path instead of resolving relative to the workspace root or accepting an environment override.
+
+3. **Incomplete process survival assertion in RT-10 ([`test_readiness.py:284-294`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L284-L294))**:
+   - The test spec states "No 'sleep' process from the run survives (assert by scanning the process table for the fake script path or by the elapsed bound alone if the suite forbids ps)". The test does not inspect the process table; it relies solely on the elapsed time bound.
+
+---
+
+### Missing Cases
+
+1. **`check_blueprint` section map missing**:
+   - [`readiness.py:188-190`](file:///home/smoke01/dev/ancient-games/readiness.py#L188-L190): When `.md` files exist in `--blueprint` but `README.md` is absent, detail must report `map MISSING`. Only `map present` is tested in RT-13.
+2. **`check_dir_listing` empty directory handling**:
+   - [`readiness.py:177-178`](file:///home/smoke01/dev/ancient-games/readiness.py#L177-L178): A directory that exists but contains no matching entries must report `empty (<path>)`. Only `absent (<path>)` is tested in RT-01.
+3. **`check_dir_listing` symlink resolution and truncation**:
+   - [`readiness.py:166-167`](file:///home/smoke01/dev/ancient-games/readiness.py#L166-L167), [`readiness.py:179`](file:///home/smoke01/dev/ancient-games/readiness.py#L179): Symlinks formatted as `name → target` and truncation (`…` when > 8 items) in directory listings are never tested.
+4. **`check_mcp` with configured servers**:
+   - [`readiness.py:239-244`](file:///home/smoke01/dev/ancient-games/readiness.py#L239-L244): Valid JSON containing `mcpServers` (reporting server count and names) or containing an empty object (reporting `no mcpServers key`) is never tested. Only absent and malformed files are covered.
+5. **Populated memory and history directories**:
+   - [`readiness.py:209-213`](file:///home/smoke01/dev/ancient-games/readiness.py#L209-L213) (`check_qwen_memory` parsing line count from `MEMORY.md`) and [`readiness.py:220-221`](file:///home/smoke01/dev/ancient-games/readiness.py#L220-L221) (`check_claude_history` counting project subdirectories) are only tested in absent state.
+6. **Populated instruction files**:
+   - [`readiness.py:196-199`](file:///home/smoke01/dev/ancient-games/readiness.py#L196-L199): `check_instruction_files` is only tested when all four instruction files are absent. The `present: ...` branch is never exercised with existing files.
+7. **`check_agy_login` error paths under `--net`**:
+   - [`readiness.py:124-127`](file:///home/smoke01/dev/ancient-games/readiness.py#L124-L127), [`readiness.py:133`](file:///home/smoke01/dev/ancient-games/readiness.py#L133): `agy` not on PATH (`rc is None`), command timeout, and non-zero exit codes during `--net` are never tested.
+
+---
+
+### Is the Strict xfail on RT-03 Justified?
+
+**Verdict: NO**
+
+- **Line References:** [`test_readiness.py:138-140`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138-L140), [`test_readiness.py:141-152`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L141-L152), [`test_readiness.py:159-164`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L159-L164); [`readiness.py:98`](file:///home/smoke01/dev/ancient-games/readiness.py#L98), [`readiness.py:147`](file:///home/smoke01/dev/ancient-games/readiness.py#L147).
+- **Reasoning:**
+  1. **Masks Passing Assertions:** Sub-runs A (syntax error, [`test_readiness.py:141-145`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L141-L145)) and C (mode 0000, [`test_readiness.py:146-152`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L146-L152)) pass on the current script. Applying `xfail` to the entire test function means any regression in Run A or Run C will be silently swallowed as expected failure.
+  2. **Execution Never Reaches Second Defect:** The assertion loop at line 159 fails on `cache_result` at line 160. `qwen_result` is never evaluated. Fixing `check_codex_cache` in the script will keep the test marked `XFAIL` because execution will proceed to `qwen_result` and fail there.
+  3. **Misattributed Exception Type:** The mark expects `raises=AssertionError` ([`test_readiness.py:138`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138)). The defect is an unhandled `AttributeError` in the target script's child process. The test runner only sees an `AssertionError` because `json_checks` asserts `result.returncode == 0` ([`test_readiness.py:67`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L67)).
+  4. **Correct Architecture:** Run A and Run C must be separated into a standard passing test without `xfail`. The top-level array sub-runs for `codex` and `qwen` must be separated into two isolated, individually marked `xfail` tests.

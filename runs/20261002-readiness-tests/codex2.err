@@ -1,0 +1,1976 @@
+Reading additional input from stdin...
+OpenAI Codex v0.159.3
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a0fc8b-a6d9-7e71-9e13-02676167f416
+--------
+user
+Edit ONLY tests/test_readiness.py (read runs/20261002-readiness-tests/agy.out, section 'Defects in the Test File', 'Missing Cases' and the RT-03 verdict, plus the file and .claude/skills/workflow-design/scripts/readiness.py). Do: (1) split RT-03 into three tests: one NON-xfail test for the truncated/unreadable cases (syntax error, mode 0000) that must pass now; two separate strict xfail tests, one for a top-level JSON array in ~/.codex/models_cache.json and one for ~/.qwen/settings.json, each with its own reason (the script raises AttributeError on a non-object JSON). Keep names test_rt_03a/03b/03c. (2) Add tests RT-15..RT-21 for the 7 missing cases: blueprint without README.md ('map MISSING'); empty skill dir ('empty (...)'); symlink 'name → target' and the '…' truncation above 8 entries; MCP servers present vs empty object; populated qwen memory MEMORY.md line count and claude project history dir count; present instruction files; agy under --net with agy absent, timing out is optional, non-zero exit. (3) In RT-10 additionally assert the fake hanging script's process does not survive (scan /proc or use a pid file written by the fake). Do not touch readiness.py or other files. Do not fix the AttributeError. Run env -u NO_COLOR python3 -m pytest -q tests/test_readiness.py. Final message: counts, what each new test mutation would turn red, anything not done.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the review and repository instructions, update only `tests/test_readiness.py`, and run the requested pytest command. I’m using the coding-discipline skill for this test change.
+exec
+/bin/bash -lc 'cat CLAUDE.md; cat /home/smoke01/.agents/skills/coding-discipline/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The main product is `.claude/skills/workflow-design/`: a skill that designs workflows, symlinked to
+`~/.claude/skills/workflow-design` so it works in every project. The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the Ancient Games code serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the Ancient Games code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the three engines (Claude subagent, Codex,
+  Antigravity `agy`), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the framework: a referee for agent work. Fixed rules, no LLM calls, a journal of every decision.
+  Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the framework's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+---
+name: coding-discipline
+description: Baseline engineering discipline for any hands-on task in a repository. Use when writing, editing, refactoring, debugging or reviewing code, when running builds, tests or linters, when adding a dependency, or when preparing a git commit.
+---
+
+# Coding discipline
+
+Baseline rules for working in a repository. They apply regardless of language,
+framework or project.
+
+## Before changing anything
+
+- Read the actual file first. Never write or edit from an assumption about its contents.
+- Read a neighbouring example of the same kind of thing — a sibling module, an existing
+  test, an existing endpoint — and match it. The repository's own conventions outrank
+  your preferences on naming, formatting, typing, file layout and error style.
+- Confirm a dependency is already in use in the project, via its manifest, existing
+  imports or neighbouring code, before reaching for it. Do not add a new dependency to
+  solve something the existing ones already cover.
+
+## Keep the change minimal
+
+- Do the task that was asked. Not the adjacent task, not the cleanup you noticed on the
+  way past, not the refactor that would leave this nicer than you found it.
+- No speculative abstraction. Three similar lines beat a helper with one caller.
+- No error handling, fallbacks or validation for conditions that cannot occur. Validate
+  at boundaries only: user input, external APIs, data arriving from outside the process.
+- Comments explain *why*, and only where the code cannot carry it. No comment that
+  narrates what the next line does, and never a comment addressed to the reader about
+  the changes you are making.
+- Existing code you did not expect to find is someone's in-progress work. Leave it alone
+  unless the task requires otherwise, and stop to ask if it conflicts with what you were
+  asked to do.
+
+## Verify instead of assuming
+
+- Find the project's real check commands from its README, Makefile or package manifest.
+  Never assume `npm test`, `pytest` or `make build` is correct for this repo.
+- Run them after the change. A change you did not run is a change you did not finish.
+- Report what actually happened. If a check failed, show the failure. If you could not
+  run a check, say so and say why. Never describe unverified work as working, and never
+  skip, suppress or weaken a failing check to produce a clean result.
+
+## Git
+
+- Before committing, run `git status`, `git diff HEAD` and `git log -n 3` — to separate
+  your change from what was already in the working tree, and to match the repository's
+  commit message style.
+- Stage only the paths that belong to this change. No `git add -A` while unrelated
+  modifications are present.
+- Draft the commit message yourself, weighted toward why rather than what.
+- Never push, force-push, amend a published commit, delete a branch, or rewrite history
+  unless explicitly asked to in this conversation. Prior approval does not carry over to
+  a later commit.
+- Do not revert work that is not yours. Revert your own change only if it caused a
+  failure or you are asked to.
+- For history questions, `git log` and `git blame` are authoritative. Run the command
+  rather than reasoning from memory of the codebase.
+
+## When blocked or unsure
+
+- Ask one focused question when only the user can decide, and keep it to a single round.
+- Otherwise choose the safe default, do the work, and state which default you chose so
+  it can be corrected.
+- Investigate before working around an obstacle: read the error, check your assumption,
+  address the root cause. Do not bypass a guard, a lock or a failing check just to make
+  the obstacle go away.
+- Clean up scratch files you created. Leave the working tree containing only the change
+  you were asked for.
+
+exec
+/bin/bash -lc 'cat tests/test_readiness.py' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+"""RT-01–RT-14: readiness inventory with an isolated HOME and fake executables."""
+from __future__ import annotations
+
+import json
+import os
+import re
+import socket
+import subprocess
+import sys
+import time
+import uuid
+from datetime import date
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+SCRIPT = ROOT / ".claude/skills/workflow-design/scripts/readiness.py"
+BINARIES = ["claude", "codex", "agy", "qwen", "node", "python3", "git"]
+GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
+          "Machine", "Open unknowns"]
+MCP_LABELS = {"~/.claude/settings.json", "~/.claude.json", "~/.qwen/settings.json",
+              ".mcp.json (project)"}
+
+
+@pytest.fixture
+def sandbox(tmp_path):
+    home, bin_dir, cwd = (tmp_path / name for name in ("home", "bin", "proj"))
+    for path in (home, bin_dir, cwd):
+        path.mkdir()
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    # Do not inherit credentials, tool configuration, or a fallback search PATH.
+    env = {"HOME": str(home), "PATH": str(bin_dir), "FAKE_LOGS": str(logs)}
+
+    def fake(name, body=None):
+        if body is None:
+            body = f"print({name + '-fake 0.1'!r})\n"
+        path = bin_dir / name
+        path.write_text(
+            f"#!{sys.executable}\n"
+            "import json, os, sys\n"
+            f"with open(os.path.join(os.environ['FAKE_LOGS'], {name!r}), 'a') as log:\n"
+            "    log.write(json.dumps(sys.argv[1:]) + '\\n')\n" + body
+        )
+        path.chmod(0o755)
+        return path
+
+    def full():
+        for name in BINARIES:
+            fake(name)
+
+    def run(*args, timeout=35):
+        return subprocess.run([sys.executable, str(SCRIPT), *map(str, args)],
+                              env=env, cwd=cwd, capture_output=True, text=True,
+                              timeout=timeout)
+
+    def calls(name):
+        path = logs / name
+        return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+
+    def reset_logs():
+        for path in logs.iterdir():
+            path.unlink()
+
+    return SimpleNamespace(home=home, bin=bin_dir, cwd=cwd, env=env, fake=fake,
+                           full=full, run=run, calls=calls, reset_logs=reset_logs)
+
+
+def write_file(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+    return path
+
+
+def json_checks(result, code=0):
+    assert result.returncode == code, result.stderr
+    assert "Traceback" not in result.stderr
+    return json.loads(result.stdout)["checks"]
+
+
+def markdown_checks(text):
+    checks = []
+    group = None
+    for line in text.splitlines():
+        if line.startswith("## "):
+            group = line[3:]
+        elif line.startswith("| ") and not line.startswith("| Item |"):
+            cells = [cell.strip() for cell in re.split(r"(?<!\\)\|", line)[1:-1]]
+            assert len(cells) == 4, line
+            checks.append(dict(zip(("group", "item", "status", "detail", "proof"),
+                                   [group, *cells])))
+    return checks
+
+
+def row(checks, item, group=None):
+    matches = [c for c in checks if c["item"] == item and (group is None or c["group"] == group)]
+    assert len(matches) == 1, matches
+    return matches[0]
+
+
+def assert_row(checks, item, status, detail, proof, group=None):
+    actual = row(checks, item, group)
+    assert (actual["status"], actual["detail"], actual["proof"]) == (status, detail, str(proof))
+
+
+def test_rt_01_sanitized_full_inventory(sandbox):
+    sandbox.full()
+    before = date.today().isoformat()
+    result = sandbox.run()
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines()[0] in {
+        f"# Readiness tools check — {day} — {socket.gethostname()}"
+        for day in (before, date.today().isoformat())
+    }
+    output = result.stdout + result.stderr
+    assert str(Path.home()) not in output
+    assert str(ROOT) not in output
+    assert "Traceback" not in result.stderr
+    checks = markdown_checks(result.stdout)
+    assert len(checks) == 26
+    for name in BINARIES:
+        assert_row(checks, name, "verified", f"{name}-fake 0.1", f"`{name} --version`", "Tools")
+        assert sandbox.calls(name) == [["--version"]]
+    for item, path in [("qwen config (model, provider)", sandbox.home / ".qwen/settings.json"),
+                       ("codex model cache", sandbox.home / ".codex/models_cache.json")]:
+        assert_row(checks, item, "unknown", f"no {path}", path)
+    directories = {
+        "claude skills (user)": sandbox.home / ".claude/skills",
+        "agents skills (cross-tool)": sandbox.home / ".agents/skills",
+        "codex skills (user)": sandbox.home / ".codex/skills",
+        "qwen skills (user)": sandbox.home / ".qwen/skills",
+        "project skills": sandbox.cwd / ".claude/skills",
+        "workflow scripts": sandbox.cwd / ".claude/workflows",
+    }
+    for item, path in directories.items():
+        assert_row(checks, item, "verified", f"absent ({path})", path)
+    mcp = [c for c in checks if c["group"] == "MCP"]
+    assert {c["item"] for c in mcp} == MCP_LABELS
+    assert all(c["status"] == "verified" and c["detail"] == "file absent → no servers from it" for c in mcp)
+    assert row(checks, "project instruction files")["detail"] == (
+        "present: none; absent: CLAUDE.md, AGENTS.md, QWEN.md, GEMINI.md")
+    unknowns = [c for c in checks if c["group"] == "Open unknowns"]
+    assert len(unknowns) == 2 and all(c["status"] == "unknown" for c in unknowns)
+
+
+def test_rt_02_broken_qwen_json_keeps_inventory(sandbox):
+    path = write_file(sandbox.home / ".qwen/settings.json", '{ "model": {')
+    checks = json_checks(sandbox.run("--json"))
+    assert len(checks) == 26
+    unreadable = [c for c in checks if "unreadable" in c["detail"]]
+    assert {(c["group"], c["item"]) for c in unreadable} == {
+        ("Models and logins", "qwen config (model, provider)"), ("MCP", "~/.qwen/settings.json")}
+    assert all(c["status"] == "unknown" and c["detail"].startswith("unreadable:")
+               and c["proof"] == str(path) for c in unreadable)
+    assert {c["item"] for c in checks if c["group"] == "MCP"} == MCP_LABELS
+    assert len([c for c in checks if c["group"] == "Open unknowns"]) == 2
+    assert all(c["status"] == "MISSING" for c in checks if c["group"] == "Tools")
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="RT-03: codex cache and qwen config call .get on top-level JSON arrays, aborting the inventory")
+def test_rt_03_bad_cache_and_non_object_configs(sandbox):
+    cache = write_file(sandbox.home / ".codex/models_cache.json", '{"models": [{"id": "x"},')
+    cache.chmod(0o644)
+    check = row(json_checks(sandbox.run("--json")), "codex model cache")
+    assert check["status"] == "unknown" and check["proof"] == str(cache)
+    assert check["detail"].startswith("unreadable:") and "Expecting" in check["detail"]
+    if os.geteuid() != 0:
+        cache.chmod(0o000)
+        try:
+            check = row(json_checks(sandbox.run("--json")), "codex model cache")
+            assert check["status"] == "unknown" and check["proof"] == str(cache)
+            assert check["detail"].startswith("unreadable:") and "Permission denied" in check["detail"]
+        finally:
+            cache.chmod(0o644)
+    cache.write_text('[{"id": "gpt-6"}]')
+    cache_result = sandbox.run("--json")
+    cache.unlink()
+    settings = write_file(sandbox.home / ".qwen/settings.json", '[{"id": "gpt-6"}]')
+    qwen_result = sandbox.run("--json")
+    # Run both readers before asserting so the known cache crash cannot mask the qwen defect.
+    for result, item, path in [(cache_result, "codex model cache", cache),
+                               (qwen_result, "qwen config (model, provider)", settings)]:
+        checks = json_checks(result)
+        assert len(checks) == 26
+        check = row(checks, item)
+        assert check["status"] == "unknown" and check["proof"] == str(path)
+        assert check["detail"].startswith("unreadable:")
+
+
+def test_rt_04_cache_fallbacks_cap_and_age(sandbox):
+    sandbox.full()
+    examples = [
+        ({"models": [{"id": "a"}, {"slug": "b"}, {"name": "c"}, {"note": 1}, "raw"],
+          "fetched_at": time.time() - 10 * 86400},
+         "5 model ids, cache 10d old: a, b, c, ?, raw (cache may be stale)"),
+        ({"models": [{"id": f"m{i}"} for i in range(1, 10)]},
+         "9 model ids: m1, m2, m3, m4, m5, m6 … (cache may be stale)"),
+        ({"models": {"x": {"o": 1}, "y": {}}, "fetched_at": "2026-09-01T00:00:00Z"},
+         "2 model ids, fetched_at 2026-09-01: x, y (cache may be stale)"),
+    ]
+    for data, detail in examples:
+        path = write_file(sandbox.home / ".codex/models_cache.json", json.dumps(data))
+        assert_row(json_checks(sandbox.run("--json")), "codex model cache", "reported", detail, path)
+
+
+def test_rt_05_qwen_secrets_never_printed(sandbox):
+    sandbox.full()
+    secrets = [f"sk-SENTINEL-{uuid.uuid4().hex}" for _ in range(3)]
+    path = write_file(sandbox.home / ".qwen/settings.json", json.dumps({
+        "env": {"AG_TEST_KEY": secrets[0], "EMPTY": ""}, "apiKey": secrets[1],
+        "security": {"auth": {"selectedType": "test-oauth-type"}},
+        "model": {"name": "sentinel-model", "baseUrl": f"https://sentinel-host.invalid/v1?token={secrets[2]}"},
+    }))
+    for args in [(), ("--json",)]:
+        result = sandbox.run(*args)
+        assert result.returncode == 0, result.stderr
+        assert all(secret not in result.stdout + result.stderr for secret in secrets)
+        checks = json_checks(result) if args else markdown_checks(result.stdout)
+        assert_row(checks, "qwen config (model, provider)", "reported",
+                   "default sentinel-model, auth test-oauth-type, 0 listed models, endpoint sentinel-host.invalid, "
+                   "key set in settings env (file claim; key validity not tested)", path)
+
+
+def test_rt_06_require_matrix_and_dedupe(sandbox):
+    for name in ("git", "python3"):
+        sandbox.fake(name)
+    for args, code in [(('--require', 'git'), 0), (('--require', 'nope'), 1),
+                       (('--require', 'git', '--require', 'nope'), 1),
+                       ((), 0), (('--require', 'git', '--require', 'git', '--json'), 0)]:
+        result = sandbox.run(*args)
+        assert result.returncode == code, result.stderr
+        checks = json_checks(result, code) if "--json" in args else markdown_checks(result.stdout)
+        assert_row(checks, "git", "verified", "git-fake 0.1", "`git --version`", "Tools")
+        if "nope" in args:
+            assert_row(checks, "nope", "MISSING", "not on PATH", "`command -v nope`", "Tools")
+        tools = [c for c in checks if c["group"] == "Tools"]
+        assert len(tools) == (8 if "nope" in args else 7)
+        assert len([c for c in tools if c["item"] == "git"]) == 1
+        if not args:
+            assert all(row(checks, n, "Tools")["status"] == "MISSING"
+                       for n in ("claude", "codex", "agy", "qwen", "node"))
+
+
+def test_rt_07_WART_require_accepts_present_broken_tool(sandbox):
+    sandbox.fake("broken", "print('boom on stderr\\nsecond line', file=sys.stderr)\nsys.exit(3)\n")
+    checks = json_checks(sandbox.run("--require", "broken", "--json"))
+    assert_row(checks, "broken", "unknown", "exit 3: boom on stderr", "`broken --version`", "Tools")
+
+
+def test_rt_08_json_contract_and_markdown_row_sets(sandbox):
+    sandbox.full()
+    before = date.today().isoformat()
+    result = sandbox.run("--json")
+    checks = json_checks(result)
+    data = json.loads(result.stdout)
+    assert set(data) == {"date", "host", "checks"}
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", data["date"])
+    assert data["date"] in {before, date.today().isoformat()}
+    assert data["host"] == socket.gethostname()
+    assert isinstance(checks, list) and checks
+    for check in checks:
+        assert set(check) == {"group", "item", "status", "detail", "proof"}
+        assert check["status"] in {"verified", "reported", "unknown", "MISSING"}
+        assert check["group"] in GROUPS
+    indices = [GROUPS.index(c["group"]) for c in checks]
+    assert indices == sorted(indices)
+    assert len({c["item"] for c in checks if c["group"] == "Tools"}) == 7
+    assert len([c for c in checks if c["group"] == "MCP"]) == 4
+    unknowns = [c for c in checks if c["group"] == "Open unknowns"]
+    assert len(unknowns) == 2 and all(c["status"] == "unknown" for c in unknowns)
+    plain = sandbox.run()
+    assert plain.returncode == 0, plain.stderr
+    markdown = markdown_checks(plain.stdout)
+    assert len(markdown) == len(checks)
+    # Free RAM can change between processes; all stable rows must agree in both modes.
+    assert [c for c in markdown if c["group"] != "Machine"] == [c for c in checks if c["group"] != "Machine"]
+    assert {(c["group"], c["item"]) for c in markdown} == {(c["group"], c["item"]) for c in checks}
+
+
+def test_rt_09_markdown_groups_escaping_and_truncation(sandbox):
+    sandbox.full()
+    sandbox.fake("claude", "print('1.0 | beta')\n")
+    sandbox.fake("codex", "print('X' * 300)\n")
+    before = date.today().isoformat()
+    plain = sandbox.run()
+    assert plain.returncode == 0, plain.stderr
+    lines = plain.stdout.splitlines()
+    assert lines[0] in {f"# Readiness tools check — {d} — {socket.gethostname()}"
+                        for d in (before, date.today().isoformat())}
+    assert lines[1:4] == ["", "Installed and logged in only; no canary was run, no quota spent.", ""]
+    assert [line for line in lines if line.startswith("## ")] == [f"## {g}" for g in GROUPS]
+    for group in GROUPS:
+        start = lines.index(f"## {group}")
+        assert lines[start + 1:start + 4] == ["", "| Item | Status | Detail | Proof |", "|---|---|---|---|"]
+    assert lines.count("| Item | Status | Detail | Proof |") == len(GROUPS)
+    assert lines.count("|---|---|---|---|") == len(GROUPS)
+    markdown = markdown_checks(plain.stdout)
+    checks = json_checks(sandbox.run("--json"))
+    assert row(markdown, "claude", "Tools")["detail"] == r"1.0 \| beta"
+    assert row(checks, "claude", "Tools")["detail"] == "1.0 | beta"
+    assert row(markdown, "codex", "Tools")["detail"] == "X" * 100
+    assert row(checks, "codex", "Tools")["detail"] == "X" * 100
+    assert len(markdown) == len(checks)
+
+
+def test_rt_10_hanging_binary_is_bounded(sandbox):
+    # A Python sleeper needs no real sleep binary and is killed directly, without a shell child.
+    sandbox.fake("claude", "import time\ntime.sleep(60)\n")
+    start = time.monotonic()
+    result = sandbox.run("--require", "claude", "--json", timeout=35)
+    elapsed = time.monotonic() - start
+    assert 10 <= elapsed < 25
+    checks = json_checks(result)
+    assert len(checks) == 26
+    assert_row(checks, "claude", "unknown", "no answer within 10s", "`claude --version`", "Tools")
+    assert all(row(checks, name, "Tools")["status"] == "MISSING" for name in BINARIES[1:])
+
+
+def test_rt_11_qwen_quota_tripwire(sandbox):
+    sandbox.fake("qwen", "if sys.argv[1:] != ['--version']:\n"
+                 "    print('UNEXPECTED qwen INVOCATION: ' + ' '.join(sys.argv[1:]))\n"
+                 "    sys.exit(9)\nprint('qwen-fake 0.0')\n")
+    for args in [(), ("--json",), ("--require", "qwen"), ("--self-test",)]:
+        sandbox.reset_logs()
+        result = sandbox.run(*args)
+        assert result.returncode == 0, result.stderr
+        assert "UNEXPECTED" not in result.stdout + result.stderr
+        assert "exit 9" not in result.stdout + result.stderr
+        assert sandbox.calls("qwen") == ([] if "--self-test" in args else [["--version"]])
+        if "--self-test" not in args:
+            checks = json_checks(result) if "--json" in args else markdown_checks(result.stdout)
+            assert_row(checks, "qwen", "verified", "qwen-fake 0.0", "`qwen --version`", "Tools")
+
+
+def test_rt_12_net_opt_in_and_agy_banner_parsing(sandbox):
+    sandbox.fake("agy", "if sys.argv[1:] == ['--version']:\n"
+                 "    print('agy-fake 1.2.14')\n"
+                 "elif sys.argv[1:] == ['models']:\n"
+                 "    print('Fetching models…\\ngemini-9-pro\\n gemini-9-flash\\n\\n   \\ngpt-oss-120b-medium')\n"
+                 "else:\n    print('UNEXPECTED agy INVOCATION')\n    sys.exit(9)\n")
+    offline = json_checks(sandbox.run("--json"))
+    assert sandbox.calls("agy") == [["--version"]]
+    assert_row(offline, "agy", "verified", "agy-fake 1.2.14", "`agy --version`", "Tools")
+    assert_row(offline, "agy login (model list)", "unknown",
+               "offline run: not provable without `agy models`; rerun with --net", "`agy models` (network)")
+    sandbox.reset_logs()
+    online = json_checks(sandbox.run("--json", "--net"))
+    assert sandbox.calls("agy") == [["--version"], ["models"]]
+    assert_row(online, "agy login (model list)", "verified",
+               "3 models: gemini-9-pro, gemini-9-flash, gpt-oss-120b-medium …", "`agy models` (network)")
+
+
+def test_rt_13_blueprint_workflows_and_usage_errors(sandbox):
+    bp, wf, nope = (sandbox.cwd / name for name in ("bp", "wf", "nope"))
+    for name in ("README.md", "a.md", "b.md", "notes.txt"):
+        write_file(bp / name, "")
+    for name in ("a.js", "b.js", "tool.py", ".hidden.js"):
+        write_file(wf / name, "")
+    result = sandbox.run("--blueprint", bp)
+    assert result.returncode == 0, result.stderr
+    assert_row(markdown_checks(result.stdout), f"blueprint ({bp})", "verified",
+               "3 sections, map present: README.md, a.md, b.md", bp)
+    checks = json_checks(sandbox.run("--blueprint", nope, "--json"), code=1)
+    assert_row(checks, f"blueprint ({nope})", "MISSING", "directory not found", nope)
+    result = sandbox.run("--workflows", wf)
+    assert result.returncode == 0, result.stderr
+    assert_row(markdown_checks(result.stdout), "workflow scripts", "verified", "2: a.js, b.js", wf)
+    for args in [("--nope",), ("--blueprint",), ("--require", "a", "b")]:
+        result = sandbox.run(*args)
+        assert result.returncode == 2
+        assert "usage:" in result.stderr and "error:" in result.stderr
+        assert result.stdout == ""
+
+
+def test_rt_14_self_test_pass_fail_and_json_precedence(sandbox):
+    sandbox.full()
+    expected = ("self-test PASS: `readiness-selftest-fake-tool` reported MISSING and --require on it exits 1 "
+                "— the check can fail.\n")
+    for args in [("--self-test",), ("--self-test", "--json")]:
+        result = sandbox.run(*args)
+        assert result.returncode == 0 and result.stdout == expected
+        assert result.stderr == ""
+        assert all(sandbox.calls(name) == [] for name in BINARIES)
+        assert "#" not in result.stdout and "| Item | Status" not in result.stdout
+        with pytest.raises(json.JSONDecodeError):
+            json.loads(result.stdout)
+    sandbox.fake("readiness-selftest-fake-tool", "print('fake 1.0')\n")
+    result = sandbox.run("--self-test")
+    assert result.returncode == 1
+    assert result.stdout == "self-test FAIL: status=verified, exit code=0 (expected MISSING, 1)\n"
+    assert result.stderr == ""
+    assert sandbox.calls("readiness-selftest-fake-tool") == [["--version"]]
+    assert all(sandbox.calls(name) == [] for name in BINARIES)
+
+exec
+/bin/bash -lc 'cat .claude/skills/workflow-design/scripts/readiness.py' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+#!/usr/bin/env python3
+"""readiness.py — the standard tool inventory for method 3.1 (readiness).
+
+Proves what is installed and logged in on this machine. It never spends quota:
+no canary is run, so "executes a task" stays unknown here and remains an
+explicit, separately approved step (docs/EXECUTOR_KINDS.md in the Ancient Games
+repo). Every line carries a status and the command or path that proved it:
+
+  verified  a command run just now proved it
+  reported  a local file claims it (may be stale)
+  unknown   not provable on this machine
+  MISSING   expected and not there
+
+Generic by design (the skill is global): nothing hardcodes a project. Project
+extras come in through flags (--blueprint, --workflows).
+
+Usage:
+  readiness.py [--net] [--json] [--require TOOL ...] [--blueprint DIR]
+               [--workflows DIR] [--self-test]
+
+Exit codes: 0 ok · 1 a --require'd tool or an explicit --blueprint dir is MISSING · 2 usage error.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import socket
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict, dataclass
+from datetime import date, datetime, timezone
+from pathlib import Path
+
+CMD_TIMEOUT = 10   # seconds per local command
+NET_TIMEOUT = 30   # seconds for --net commands (agy models talks to the network)
+DEFAULT_BINARIES = ["claude", "codex", "agy", "qwen", "node", "python3", "git"]
+
+VERIFIED = "verified"
+REPORTED = "reported"
+UNKNOWN = "unknown"
+MISSING = "MISSING"
+
+GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
+          "Machine", "Open unknowns"]
+
+
+@dataclass
+class Check:
+    group: str
+    item: str
+    status: str
+    detail: str
+    proof: str
+
+
+def run_cmd(cmd: list[str], timeout: int = CMD_TIMEOUT) -> tuple:
+    """(returncode, stripped output). rc is None if the binary does not exist,
+    'timeout' if it did not answer in time."""
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=timeout)
+    except FileNotFoundError:
+        return None, "not on PATH"
+    except subprocess.TimeoutExpired:
+        return "timeout", f"no answer within {timeout}s"
+    except OSError as e:
+        return None, str(e)
+    return p.returncode, ((p.stdout or "").strip() or (p.stderr or "").strip())
+
+
+def first_line(out: str) -> str:
+    return out.splitlines()[0][:100] if out else "(no output)"
+
+
+def check_binary(name: str) -> Check:
+    rc, out = run_cmd([name, "--version"])
+    proof = f"`{name} --version`"
+    if rc is None:
+        return Check("Tools", name, MISSING, "not on PATH", f"`command -v {name}`")
+    if rc == "timeout":
+        return Check("Tools", name, UNKNOWN, out, proof)
+    if rc == 0:
+        return Check("Tools", name, VERIFIED, first_line(out), proof)
+    return Check("Tools", name, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+
+
+def check_codex_cache() -> Check:
+    item = "codex model cache"
+    p = Path.home() / ".codex" / "models_cache.json"
+    if not p.exists():
+        return Check("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+    try:
+        d = json.loads(p.read_text())
+    except (OSError, ValueError) as e:
+        return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+    models = d.get("models")
+    ids: list[str] = []
+    if isinstance(models, list):
+        for m in models:
+            ids.append(str(m.get("id") or m.get("slug") or m.get("name") or "?")
+                       if isinstance(m, dict) else str(m))
+    elif isinstance(models, dict):
+        ids = list(models)
+    age = ""
+    f_at = d.get("fetched_at")
+    if isinstance(f_at, (int, float)):
+        age = f", cache {(datetime.now(timezone.utc).timestamp() - f_at) / 86400:.0f}d old"
+    elif isinstance(f_at, str):
+        age = f", fetched_at {f_at[:10]}"
+    shown = f": {', '.join(ids[:6])}" + (" …" if len(ids) > 6 else "") if ids else ""
+    return Check("Models and logins", item, REPORTED,
+                 f"{len(ids)} model ids{age}{shown} (cache may be stale)", str(p))
+
+
+def check_agy_login(net: bool) -> Check:
+    item = "agy login (model list)"
+    proof = "`agy models` (network)"
+    if not net:
+        return Check("Models and logins", item, UNKNOWN,
+                     "offline run: not provable without `agy models`; rerun with --net", proof)
+    rc, out = run_cmd(["agy", "models"], timeout=NET_TIMEOUT)
+    if rc is None:
+        return Check("Models and logins", item, MISSING, "agy not on PATH", "`agy --version`")
+    if rc == "timeout":
+        return Check("Models and logins", item, UNKNOWN, out, proof)
+    ids = [l.split()[0] for l in out.splitlines()
+           if l.split() and not l.lower().startswith("fetching")]
+    if rc == 0 and ids:
+        return Check("Models and logins", item, VERIFIED,
+                     f"{len(ids)} models: {', '.join(ids[:4])} …", proof)
+    return Check("Models and logins", item, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+
+
+def check_qwen_config(home: Path) -> Check:
+    """Reads ~/.qwen/settings.json only; never prints a key and never calls `qwen`
+    (a bare `qwen <word>` is a one-shot prompt that spends quota)."""
+    item = "qwen config (model, provider)"
+    p = home / ".qwen" / "settings.json"
+    if not p.exists():
+        return Check("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+    try:
+        d = json.loads(p.read_text())
+    except (OSError, ValueError) as e:
+        return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+    model = d.get("model") or {}
+    providers = d.get("modelProviders") or {}
+    n_models = sum(len(v) for v in providers.values() if isinstance(v, list))
+    env = d.get("env") or {}
+    key = "key set in settings env" if any(env.values()) else "no key in settings env"
+    host = str(model.get("baseUrl", "?")).split("/")[2:3]
+    auth = (d.get("security") or {}).get("auth", {}).get("selectedType", "?")
+    return Check("Models and logins", item, REPORTED,
+                 f"default {model.get('name', '?')}, auth {auth}, {n_models} listed models, "
+                 f"endpoint {host[0] if host else '?'}, {key} (file claim; key validity not tested)", str(p))
+
+
+def list_names(p: Path) -> list[str] | None:
+    if not p.is_dir():
+        return None
+    out = []
+    for e in sorted(p.iterdir()):
+        if e.name.startswith("."):
+            continue
+        if e.is_symlink():
+            out.append(f"{e.name} → {os.readlink(e)}")
+        elif e.is_dir() or e.suffix in (".js", ".mjs", ".md"):
+            out.append(e.name)
+    return out
+
+
+def check_dir_listing(group: str, item: str, p: Path, absent_status: str = VERIFIED) -> Check:
+    names = list_names(p)
+    if names is None:
+        return Check(group, item, absent_status, f"absent ({p})", str(p))
+    if not names:
+        return Check(group, item, absent_status, f"empty ({p})", str(p))
+    shown = ", ".join(names[:8]) + (" …" if len(names) > 8 else "")
+    return Check(group, item, VERIFIED, f"{len(names)}: {shown}", str(p))
+
+
+def check_blueprint(p: Path) -> Check:
+    item = f"blueprint ({p})"
+    if not p.is_dir():
+        return Check("Skills and workflows", item, MISSING, "directory not found", str(p))
+    files = sorted(e.name for e in p.iterdir() if e.suffix == ".md")
+    has_map = "README.md" in files
+    return Check("Skills and workflows", item, VERIFIED,
+                 f"{len(files)} sections, map {'present' if has_map else 'MISSING'}: {', '.join(files[:8])}",
+                 str(p))
+
+
+def check_instruction_files(cwd: Path) -> Check:
+    names = ["CLAUDE.md", "AGENTS.md", "QWEN.md", "GEMINI.md"]
+    present = [n for n in names if (cwd / n).exists()]
+    absent = [n for n in names if n not in present]
+    detail = (f"present: {', '.join(present) or 'none'}"
+              + (f"; absent: {', '.join(absent)}" if absent else ""))
+    return Check("Memory", "project instruction files", VERIFIED, detail, str(cwd))
+
+
+def check_qwen_memory(home: Path) -> Check:
+    p = home / ".qwen" / "memories"
+    idx = p / "MEMORY.md"
+    if not p.is_dir():
+        return Check("Memory", "qwen auto-memory (user)", VERIFIED, f"absent ({p})", str(p))
+    try:
+        n = len(idx.read_text(errors="replace").splitlines()) if idx.exists() else 0
+    except OSError as e:
+        return Check("Memory", "qwen auto-memory (user)", UNKNOWN, f"MEMORY.md unreadable: {e}", str(p))
+    return Check("Memory", "qwen auto-memory (user)", VERIFIED,
+                 f"{n} index lines in MEMORY.md; project dirs under ~/.qwen/projects/", str(p))
+
+
+def check_claude_history(home: Path) -> Check:
+    p = home / ".claude" / "projects"
+    if not p.is_dir():
+        return Check("Memory", "claude session history", VERIFIED, f"absent ({p})", str(p))
+    n = sum(1 for e in p.iterdir() if e.is_dir())
+    return Check("Memory", "claude session history", VERIFIED, f"{n} project histories", str(p))
+
+
+def check_mcp(home: Path, cwd: Path) -> list[Check]:
+    out = []
+    sources = [("~/.claude/settings.json", home / ".claude" / "settings.json"),
+               ("~/.claude.json", home / ".claude.json"),
+               ("~/.qwen/settings.json", home / ".qwen" / "settings.json"),
+               (".mcp.json (project)", cwd / ".mcp.json")]
+    for label, p in sources:
+        if not p.exists():
+            out.append(Check("MCP", label, VERIFIED, "file absent → no servers from it", str(p)))
+            continue
+        try:
+            d = json.loads(p.read_text())
+        except (OSError, ValueError) as e:
+            out.append(Check("MCP", label, UNKNOWN, f"unreadable: {e}", str(p)))
+            continue
+        servers = d.get("mcpServers") if isinstance(d, dict) else None
+        if servers:
+            out.append(Check("MCP", label, VERIFIED,
+                             f"{len(servers)} servers: {', '.join(list(servers)[:6])}", str(p)))
+        else:
+            out.append(Check("MCP", label, VERIFIED, "no mcpServers key", str(p)))
+    return out
+
+
+def check_machine(cwd: Path) -> Check:
+    cores = os.cpu_count() or "?"
+    mem_gib = "?"
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            if line.startswith("MemAvailable:"):
+                mem_gib = f"{int(line.split()[1]) / 1048576:.1f} GiB"
+                break
+    except OSError:
+        pass
+    du = shutil.disk_usage(cwd)
+    return Check("Machine", "this machine", VERIFIED,
+                 f"{cores} cores; {mem_gib} RAM available; {du.free / 2**30:.0f} G free on {cwd}",
+                 "`os.cpu_count`, `/proc/meminfo`, `shutil.disk_usage`")
+
+
+def open_unknowns() -> list[Check]:
+    return [
+        Check("Open unknowns", "subagent concurrency limit", UNKNOWN,
+              "runtime policy, not provable from outside. Claude Code docs report 20 concurrent, nesting depth 3 "
+              "(v2.1.217+, env overrides; reported, not measured here); codex/agy: no figure",
+              "docs/EXECUTOR_KINDS.md, Concurrency row"),
+        Check("Open unknowns", "codex/agy/qwen execute a task", UNKNOWN,
+              "canary required (spends quota; needs the person's go-ahead)",
+              "docs/EXECUTOR_KINDS.md canary piece"),
+    ]
+
+
+def gather(args: argparse.Namespace) -> list[Check]:
+    home, cwd = Path.home(), Path.cwd()
+    binaries = list(dict.fromkeys(DEFAULT_BINARIES + list(args.require or [])))
+    with ThreadPoolExecutor(max_workers=max(1, min(8, len(binaries)))) as ex:
+        checks: list[Check] = list(ex.map(check_binary, binaries))
+    checks.append(check_codex_cache())
+    checks.append(check_agy_login(args.net))
+    checks.append(check_qwen_config(home))
+    for label, p in [("claude skills (user)", home / ".claude" / "skills"),
+                     ("agents skills (cross-tool)", home / ".agents" / "skills"),
+                     ("codex skills (user)", home / ".codex" / "skills"),
+                     ("qwen skills (user)", home / ".qwen" / "skills"),
+                     ("project skills", cwd / ".claude" / "skills")]:
+        checks.append(check_dir_listing("Skills and workflows", label, p))
+    checks.append(check_dir_listing("Skills and workflows", "workflow scripts",
+                                    Path(args.workflows) if args.workflows else cwd / ".claude" / "workflows"))
+    if args.blueprint:
+        checks.append(check_blueprint(Path(args.blueprint)))
+    checks.append(check_instruction_files(cwd))
+    checks.append(check_qwen_memory(home))
+    checks.append(check_claude_history(home))
+    checks.extend(check_mcp(home, cwd))
+    checks.append(check_machine(cwd))
+    checks.extend(open_unknowns())
+    checks.sort(key=lambda c: GROUPS.index(c.group))
+    return checks
+
+
+def exit_code(checks: list[Check], requires: list[str]) -> int:
+    missing = {c.item for c in checks if c.status == MISSING}
+    known = {c.item for c in checks}
+    for r in requires:
+        if r in missing or r not in known:
+            return 1
+    for c in checks:  # an explicitly named --blueprint dir that is not there is a hard fail
+        if c.item.startswith("blueprint (") and c.status == MISSING:
+            return 1
+    return 0
+
+
+def cell(text: str) -> str:
+    return text.replace("|", "\\|")
+
+
+def to_markdown(checks: list[Check]) -> str:
+    lines = [f"# Readiness tools check — {date.today().isoformat()} — {socket.gethostname()}", "",
+             "Installed and logged in only; no canary was run, no quota spent.", ""]
+    current = None
+    for c in checks:
+        if c.group != current:
+            if current is not None:
+                lines.append("")
+            current = c.group
+            lines += [f"## {current}", "", "| Item | Status | Detail | Proof |", "|---|---|---|---|"]
+        lines.append(f"| {cell(c.item)} | {c.status} | {cell(c.detail)} | {cell(c.proof)} |")
+    return "\n".join(lines) + "\n"
+
+
+def self_test() -> int:
+    fake = "readiness-selftest-fake-tool"
+    c = check_binary(fake)
+    code = exit_code([c], [fake])
+    if c.status == MISSING and code == 1:
+        print(f"self-test PASS: `{fake}` reported MISSING and --require on it exits 1 — the check can fail.")
+        return 0
+    print(f"self-test FAIL: status={c.status}, exit code={code} (expected MISSING, 1)")
+    return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="Method 3.1 readiness inventory (no quota spent).")
+    ap.add_argument("--net", action="store_true",
+                    help="also run network checks (`agy models`); off by default")
+    ap.add_argument("--json", action="store_true", help="JSON instead of markdown")
+    ap.add_argument("--require", action="append", default=[],
+                    help="tool that must be verified present; exit 1 if MISSING (repeatable)")
+    ap.add_argument("--blueprint", metavar="DIR", help="a product's blueprint directory to include")
+    ap.add_argument("--workflows", metavar="DIR", help="workflow scripts directory (default .claude/workflows)")
+    ap.add_argument("--self-test", action="store_true", help="prove the check can fail, then exit")
+    args = ap.parse_args(argv)
+    if args.self_test:
+        return self_test()
+    checks = gather(args)
+    if args.json:
+        print(json.dumps({"date": date.today().isoformat(), "host": socket.gethostname(),
+                          "checks": [asdict(c) for c in checks]}, indent=1))
+    else:
+        print(to_markdown(checks), end="")
+    return exit_code(checks, args.require)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+exec
+/bin/bash -lc 'cat runs/20261002-readiness-tests/agy.out; git status --short; rg --files -g AGENTS.md -g CLAUDE.md tests .claude; ls tests' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+### Case-by-Case Review (RT-01 to RT-14)
+
+#### RT-01: Sanitized HOME + fake PATH + tmp cwd: full inventory, machine untouched
+- **(a) Implements case:** **YES** ([`test_readiness.py:88-121`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L88-L121)). Validates returncode 0, markdown header format, leak checks for real home and repo path, full 26-row inventory, all 7 fake binary details and proofs, nonexistent configs degrading to `unknown`, 6 nonexistent skill/workflow directories reporting `verified` (`absent`), MCP nonexistent files reporting `verified`, project instruction files, and open unknowns.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:277`](file:///home/smoke01/dev/ancient-games/readiness.py#L277), mutate `home, cwd = Path.home(), Path.cwd()` to `home = Path("/home/smoke01")`. Output will contain real home path, triggering `AssertionError` at [`test_readiness.py:99`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L99). Alternatively, in [`readiness.py:173`](file:///home/smoke01/dev/ancient-games/readiness.py#L173), mutate `absent_status: str = VERIFIED` to `MISSING`, turning the 6 directory checks red at [`test_readiness.py:115`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L115).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:38`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L38)). `env` strictly sets `HOME` and `PATH` to temporary directories; all 7 binaries are stubbed locally.
+
+---
+
+#### RT-02: Broken ~/.qwen/settings.json degrades to 'unreadable', twice, and never aborts
+- **(a) Implements case:** **YES** ([`test_readiness.py:124-135`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L124-L135)). Verifies rc 0, non-aborting 26-row output, exactly two rows marked `unknown` starting with `unreadable:` (both `Models and logins` and `MCP`), missing tool degradation, and absence of tracebacks.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:145`](file:///home/smoke01/dev/ancient-games/readiness.py#L145), narrow `except (OSError, ValueError):` to `except OSError:`. A `json.JSONDecodeError` escapes uncaught, crashing `readiness.py` with exit code 1 and a traceback, tripping [`test_readiness.py:67`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L67) in `json_checks`.
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:124-126`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L124-L126)). `bin_dir` is empty, no real commands can run, and HOME is isolated.
+
+---
+
+#### RT-03: Broken ~/.codex/models_cache.json: syntax error and valid-but-not-an-object
+- **(a) Implements case:** **NO** ([`test_readiness.py:138-164`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138-L164)). The test bundles passing sub-runs (Run A syntax error and Run C permission denied) with failing sub-runs (Run B array) under a single `@pytest.mark.xfail(strict=True, raises=AssertionError)`. Because `cache_result` raises `AssertionError` at [`test_readiness.py:160`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L160), the loop terminates early: `qwen_result` is never asserted, and the syntax error / permission denied assertions are masked under the expected failure wrapper.
+- **(b) CAN IT FAIL:** **YES (on fix/mutation)**. Currently, the test expects to fail and produces `XFAIL`. If [`readiness.py:98`](file:///home/smoke01/dev/ancient-games/readiness.py#L98) and [`readiness.py:147`](file:///home/smoke01/dev/ancient-games/readiness.py#L147) are fixed to guard array payloads (`isinstance(d, dict)`), the test completes without raising `AssertionError`, turning red as `XPASS (strict)` at [`test_readiness.py:138`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138). Without fixing the script, any mutation that crashes Run A or Run C with an `AssertionError` remains green as `XFAIL`.
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:138-164`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138-L164)). Isolated files in `tmp_path`, no network calls.
+
+---
+
+#### RT-04: Well-formed codex cache -> 'reported' row: id fallbacks, cap at 6, cache age
+- **(a) Implements case:** **YES** ([`test_readiness.py:167-182`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L167-L182)). Tests all three variants: fallback chain (`id` -> `slug` -> `name` -> `?`), list capping at 6 with ellipsis, dict-key models, and relative timestamp vs. ISO prefix formatting.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:112`](file:///home/smoke01/dev/ancient-games/readiness.py#L112), mutate `ids[:6]` to `ids[:5]`. Sub-run (ii) outputs 5 models instead of 6, failing the assertion at [`test_readiness.py:182`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L182).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:168`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L168)). Executables are mocked via `sandbox.full()`, HOME is isolated.
+
+---
+
+#### RT-05: A key in ~/.qwen/settings.json is never printed, in either output mode
+- **(a) Implements case:** **YES** ([`test_readiness.py:185-201`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L185-L201)). Injects three distinct UUID sentinels into `env`, `apiKey`, and query string of `model.baseUrl`. Tests both Markdown and JSON modes, verifying that none of the sentinels leak to stdout or stderr while confirming the file was parsed.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:151`](file:///home/smoke01/dev/ancient-games/readiness.py#L151), mutate `key = "key set in settings env" if any(env.values()) else ...` to `key = f"env {env}"`. Sentinels appear in stdout, failing [`test_readiness.py:196`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L196).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:186-193`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L186-L193)). Written to `sandbox.home`, no real qwen invocations.
+
+---
+
+#### RT-06: --require exit-code matrix, dedupe, and the 'inventory reports, require gates' rule
+- **(a) Implements case:** **YES** ([`test_readiness.py:204-222`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L204-L222)). Tests all 5 combinations: passing `--require`, missing `--require`, mixed missing/passing `--require`, un-gated run with missing tools returning 0, and duplicate `--require` flag deduplication in JSON mode.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:309`](file:///home/smoke01/dev/ancient-games/readiness.py#L309), mutate `return 1` to `return 0`. Invocations with missing tools exit 0 instead of 1, failing [`test_readiness.py:212`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L212).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:205-206`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L205-L206)). Only mock binaries `git` and `python3` are created in sandbox.
+
+---
+
+#### RT-07: --require against a binary that exists but exits non-zero (present wart)
+- **(a) Implements case:** **YES** ([`test_readiness.py:225-228`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L225-L228)). Pinpoints the wart where a broken tool exiting non-zero is marked `unknown` with exit code 0 rather than gating out with code 1.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:308`](file:///home/smoke01/dev/ancient-games/readiness.py#L308), mutate `if r in missing or r not in known:` to `if r in missing or r not in known or any(c.status != VERIFIED for c in checks if c.item == r):`. Returncode becomes 1, failing `json_checks` at [`test_readiness.py:227`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L227) via [`test_readiness.py:67`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L67).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:226`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L226)). Binary is a mocked Python script in sandbox bin.
+
+---
+
+#### RT-08: --json output contract: keys, row shape, status vocabulary, group order
+- **(a) Implements case:** **YES** ([`test_readiness.py:231-257`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L231-L257)). Asserts exact top-level keys (`date`, `host`, `checks`), row schema (`group`, `item`, `status`, `detail`, `proof`), status vocabulary, group sorting order, and parity between Markdown and JSON row counts.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:300`](file:///home/smoke01/dev/ancient-games/readiness.py#L300), delete `checks.sort(key=lambda c: GROUPS.index(c.group))`. Group order diverges, failing `assert indices == sorted(indices)` at [`test_readiness.py:248`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L248).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:233`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L233)). Mocked via `sandbox.full()`.
+
+---
+
+#### RT-09: Markdown rendering: single heading per group, pipe escaping, 100-char truncation
+- **(a) Implements case:** **YES** ([`test_readiness.py:260-281`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L260-L281)). Verifies header formatting, group section headings, 100-character truncation for long outputs, and pipe escaping in table cells (`1.0 \| beta` vs `1.0 | beta` in JSON).
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:317`](file:///home/smoke01/dev/ancient-games/readiness.py#L317), mutate `return text.replace("|", "\\|")` to `return text`. Unescaped pipe splits table row into 5 cells instead of 4, failing `assert len(cells) == 4` in `markdown_checks` at [`test_readiness.py:76`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L76).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:261-263`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L261-L263)). Stubbed binaries in sandbox bin.
+
+---
+
+#### RT-10: A hanging binary hits CMD_TIMEOUT instead of hanging the inventory
+- **(a) Implements case:** **YES** ([`test_readiness.py:284-294`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L284-L294)). Executes a mock hanging executable, measures execution time, and verifies the 10-second timeout ceiling (< 25s) with status `unknown` and detail `no answer within 10s`.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:37`](file:///home/smoke01/dev/ancient-games/readiness.py#L37), mutate `CMD_TIMEOUT = 10` to `30`. Execution exceeds 25 seconds, failing `assert 10 <= elapsed < 25` at [`test_readiness.py:290`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L290).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:286`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L286)). In-process `time.sleep` in Python mock script; no external commands executed.
+
+---
+
+#### RT-11: Fake qwen guard: readiness.py may only ever call `qwen --version`
+- **(a) Implements case:** **YES** ([`test_readiness.py:297-310`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L297-L310)). Sets a tripwire in `qwen` stub that exits 9 on any arguments other than `--version`, testing across plain, `--json`, `--require qwen`, and `--self-test` runs.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:283`](file:///home/smoke01/dev/ancient-games/readiness.py#L283), insert `run_cmd(["qwen", "models"])`. Mock script exits 9, logging unexpected invocation and failing [`test_readiness.py:305-307`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L305-L307).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:298-300`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L298-L300)). Isolated stub recording arguments to file.
+
+---
+
+#### RT-12: --net is the only network switch, and `agy models` parsing ignores the banner
+- **(a) Implements case:** **YES** ([`test_readiness.py:313-330`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L313-L330)). Proves offline run never invokes `agy models`, and `--net` run parses model list while filtering out `Fetching models…` banner and blank lines.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:120`](file:///home/smoke01/dev/ancient-games/readiness.py#L120), delete `if not net: return Check(...)`. The offline run executes `agy models`, failing `assert sandbox.calls("agy") == [["--version"]]` at [`test_readiness.py:321`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L321).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:314-319`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L314-L319)). `agy` is stubbed locally; network is never touched.
+
+---
+
+#### RT-13: --blueprint / --workflows flags and argparse usage errors (exit 2)
+- **(a) Implements case:** **YES** ([`test_readiness.py:333-350`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L333-L350)). Tests custom `--blueprint`, missing `--blueprint` directory hard failure (exit 1), custom `--workflows`, and argparse exit 2 errors (`--nope`, missing arg `--blueprint`, and invalid extra arg to `--require`).
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:311`](file:///home/smoke01/dev/ancient-games/readiness.py#L311), mutate `if c.item.startswith("blueprint (") and c.status == MISSING: return 1` to `pass`. The missing blueprint check exits 0 instead of 1, failing [`test_readiness.py:342`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L342).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:334-338`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L334-L338)). Operates solely in sandbox directory.
+
+---
+
+#### RT-14: --self-test proves the gate can fail, and fails honestly when it cannot
+- **(a) Implements case:** **YES** ([`test_readiness.py:353-370`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L353-L370)). Validates PASS condition when fake tool is missing, precedence of `--self-test` over `--json`, and honest FAIL condition (exit 1) when the fake tool binary exists.
+- **(b) CAN IT FAIL:** **YES**. In [`readiness.py:342`](file:///home/smoke01/dev/ancient-games/readiness.py#L342), mutate `return 1` in `self_test()` to `return 0`. Run 2 exits 0, failing `assert result.returncode == 1` at [`test_readiness.py:367`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L367).
+- **(c) Avoids real machine/quota:** **YES** ([`test_readiness.py:354`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L354)). Uses sandbox fakes; verifies zero binary calls during `--self-test` at [`test_readiness.py:361`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L361).
+
+---
+
+### Defects in the Test File
+
+1. **Unreachable assertions and masked failures under `xfail` in `test_rt_03` ([`test_readiness.py:138-164`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138-L164))**:
+   - Marking the whole function with `@pytest.mark.xfail(raises=AssertionError)` masks any potential failure in Run A (truncated JSON, [`test_readiness.py:141-145`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L141-L145)) or Run C (mode 0000, [`test_readiness.py:146-152`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L146-L152)). Both should pass; if either regresses, it raises `AssertionError` and is erroneously recorded as expected failure (`XFAIL`).
+   - In lines [`test_readiness.py:159-164`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L159-L164), `json_checks(cache_result)` raises `AssertionError` on the first iteration. The loop aborts immediately, so `qwen_result` is never asserted, leaving the second defect unverified.
+
+2. **Hardcoded relative path to script ([`test_readiness.py:18`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L18))**:
+   - `SCRIPT = ROOT / ".claude/skills/workflow-design/scripts/readiness.py"` hardcodes an assumed subdirectory path instead of resolving relative to the workspace root or accepting an environment override.
+
+3. **Incomplete process survival assertion in RT-10 ([`test_readiness.py:284-294`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L284-L294))**:
+   - The test spec states "No 'sleep' process from the run survives (assert by scanning the process table for the fake script path or by the elapsed bound alone if the suite forbids ps)". The test does not inspect the process table; it relies solely on the elapsed time bound.
+
+---
+
+### Missing Cases
+
+1. **`check_blueprint` section map missing**:
+   - [`readiness.py:188-190`](file:///home/smoke01/dev/ancient-games/readiness.py#L188-L190): When `.md` files exist in `--blueprint` but `README.md` is absent, detail must report `map MISSING`. Only `map present` is tested in RT-13.
+2. **`check_dir_listing` empty directory handling**:
+   - [`readiness.py:177-178`](file:///home/smoke01/dev/ancient-games/readiness.py#L177-L178): A directory that exists but contains no matching entries must report `empty (<path>)`. Only `absent (<path>)` is tested in RT-01.
+3. **`check_dir_listing` symlink resolution and truncation**:
+   - [`readiness.py:166-167`](file:///home/smoke01/dev/ancient-games/readiness.py#L166-L167), [`readiness.py:179`](file:///home/smoke01/dev/ancient-games/readiness.py#L179): Symlinks formatted as `name → target` and truncation (`…` when > 8 items) in directory listings are never tested.
+4. **`check_mcp` with configured servers**:
+   - [`readiness.py:239-244`](file:///home/smoke01/dev/ancient-games/readiness.py#L239-L244): Valid JSON containing `mcpServers` (reporting server count and names) or containing an empty object (reporting `no mcpServers key`) is never tested. Only absent and malformed files are covered.
+5. **Populated memory and history directories**:
+   - [`readiness.py:209-213`](file:///home/smoke01/dev/ancient-games/readiness.py#L209-L213) (`check_qwen_memory` parsing line count from `MEMORY.md`) and [`readiness.py:220-221`](file:///home/smoke01/dev/ancient-games/readiness.py#L220-L221) (`check_claude_history` counting project subdirectories) are only tested in absent state.
+6. **Populated instruction files**:
+   - [`readiness.py:196-199`](file:///home/smoke01/dev/ancient-games/readiness.py#L196-L199): `check_instruction_files` is only tested when all four instruction files are absent. The `present: ...` branch is never exercised with existing files.
+7. **`check_agy_login` error paths under `--net`**:
+   - [`readiness.py:124-127`](file:///home/smoke01/dev/ancient-games/readiness.py#L124-L127), [`readiness.py:133`](file:///home/smoke01/dev/ancient-games/readiness.py#L133): `agy` not on PATH (`rc is None`), command timeout, and non-zero exit codes during `--net` are never tested.
+
+---
+
+### Is the Strict xfail on RT-03 Justified?
+
+**Verdict: NO**
+
+- **Line References:** [`test_readiness.py:138-140`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138-L140), [`test_readiness.py:141-152`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L141-L152), [`test_readiness.py:159-164`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L159-L164); [`readiness.py:98`](file:///home/smoke01/dev/ancient-games/readiness.py#L98), [`readiness.py:147`](file:///home/smoke01/dev/ancient-games/readiness.py#L147).
+- **Reasoning:**
+  1. **Masks Passing Assertions:** Sub-runs A (syntax error, [`test_readiness.py:141-145`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L141-L145)) and C (mode 0000, [`test_readiness.py:146-152`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L146-L152)) pass on the current script. Applying `xfail` to the entire test function means any regression in Run A or Run C will be silently swallowed as expected failure.
+  2. **Execution Never Reaches Second Defect:** The assertion loop at line 159 fails on `cache_result` at line 160. `qwen_result` is never evaluated. Fixing `check_codex_cache` in the script will keep the test marked `XFAIL` because execution will proceed to `qwen_result` and fail there.
+  3. **Misattributed Exception Type:** The mark expects `raises=AssertionError` ([`test_readiness.py:138`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L138)). The defect is an unhandled `AttributeError` in the target script's child process. The test runner only sees an `AssertionError` because `json_checks` asserts `result.returncode == 0` ([`test_readiness.py:67`](file:///home/smoke01/dev/ancient-games/tests/test_readiness.py#L67)).
+  4. **Correct Architecture:** Run A and Run C must be separated into a standard passing test without `xfail`. The top-level array sub-runs for `codex` and `qwen` must be separated into two isolated, individually marked `xfail` tests.
+?? runs/20261002-readiness-tests/
+?? tests/test_readiness.py
+__pycache__
+cases
+cases.py
+conftest.py
+fixtures
+operator-prompt-list.md
+test_ablation2_fixes.py
+test_ablation3_fixes.py
+test_ablation_fixes.py
+test_ablation_harness.py
+test_autonomy.py
+test_count_sources.py
+test_ctx.py
+test_hybrid_cases.py
+test_hybrid_invariants.py
+test_hybrid_registry.py
+test_index.py
+test_interface_fixes.py
+test_journal.py
+test_lint_backends.py
+test_lint_scoping.py
+test_lints.py
+test_localize_ansi.py
+test_readiness.py
+test_registry.py
+test_review_b_fixes.py
+test_run_scoping.py
+test_schema.py
+test_self_lint.py
+test_supervise.py
+test_task_types.py
+test_tool_boundary.py
+test_traces.py
+workflows
+
+exec
+/bin/bash -lc 'cat .claude/skills/workflow-design/scripts/readiness.py' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+#!/usr/bin/env python3
+"""readiness.py — the standard tool inventory for method 3.1 (readiness).
+
+Proves what is installed and logged in on this machine. It never spends quota:
+no canary is run, so "executes a task" stays unknown here and remains an
+explicit, separately approved step (docs/EXECUTOR_KINDS.md in the Ancient Games
+repo). Every line carries a status and the command or path that proved it:
+
+  verified  a command run just now proved it
+  reported  a local file claims it (may be stale)
+  unknown   not provable on this machine
+  MISSING   expected and not there
+
+Generic by design (the skill is global): nothing hardcodes a project. Project
+extras come in through flags (--blueprint, --workflows).
+
+Usage:
+  readiness.py [--net] [--json] [--require TOOL ...] [--blueprint DIR]
+               [--workflows DIR] [--self-test]
+
+Exit codes: 0 ok · 1 a --require'd tool or an explicit --blueprint dir is MISSING · 2 usage error.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import socket
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict, dataclass
+from datetime import date, datetime, timezone
+from pathlib import Path
+
+CMD_TIMEOUT = 10   # seconds per local command
+NET_TIMEOUT = 30   # seconds for --net commands (agy models talks to the network)
+DEFAULT_BINARIES = ["claude", "codex", "agy", "qwen", "node", "python3", "git"]
+
+VERIFIED = "verified"
+REPORTED = "reported"
+UNKNOWN = "unknown"
+MISSING = "MISSING"
+
+GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
+          "Machine", "Open unknowns"]
+
+
+@dataclass
+class Check:
+    group: str
+    item: str
+    status: str
+    detail: str
+    proof: str
+
+
+def run_cmd(cmd: list[str], timeout: int = CMD_TIMEOUT) -> tuple:
+    """(returncode, stripped output). rc is None if the binary does not exist,
+    'timeout' if it did not answer in time."""
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=timeout)
+    except FileNotFoundError:
+        return None, "not on PATH"
+    except subprocess.TimeoutExpired:
+        return "timeout", f"no answer within {timeout}s"
+    except OSError as e:
+        return None, str(e)
+    return p.returncode, ((p.stdout or "").strip() or (p.stderr or "").strip())
+
+
+def first_line(out: str) -> str:
+    return out.splitlines()[0][:100] if out else "(no output)"
+
+
+def check_binary(name: str) -> Check:
+    rc, out = run_cmd([name, "--version"])
+    proof = f"`{name} --version`"
+    if rc is None:
+        return Check("Tools", name, MISSING, "not on PATH", f"`command -v {name}`")
+    if rc == "timeout":
+        return Check("Tools", name, UNKNOWN, out, proof)
+    if rc == 0:
+        return Check("Tools", name, VERIFIED, first_line(out), proof)
+    return Check("Tools", name, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+
+
+def check_codex_cache() -> Check:
+    item = "codex model cache"
+    p = Path.home() / ".codex" / "models_cache.json"
+    if not p.exists():
+        return Check("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+    try:
+        d = json.loads(p.read_text())
+    except (OSError, ValueError) as e:
+        return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+    models = d.get("models")
+    ids: list[str] = []
+    if isinstance(models, list):
+        for m in models:
+            ids.append(str(m.get("id") or m.get("slug") or m.get("name") or "?")
+                       if isinstance(m, dict) else str(m))
+    elif isinstance(models, dict):
+        ids = list(models)
+    age = ""
+    f_at = d.get("fetched_at")
+    if isinstance(f_at, (int, float)):
+        age = f", cache {(datetime.now(timezone.utc).timestamp() - f_at) / 86400:.0f}d old"
+    elif isinstance(f_at, str):
+        age = f", fetched_at {f_at[:10]}"
+    shown = f": {', '.join(ids[:6])}" + (" …" if len(ids) > 6 else "") if ids else ""
+    return Check("Models and logins", item, REPORTED,
+                 f"{len(ids)} model ids{age}{shown} (cache may be stale)", str(p))
+
+
+def check_agy_login(net: bool) -> Check:
+    item = "agy login (model list)"
+    proof = "`agy models` (network)"
+    if not net:
+        return Check("Models and logins", item, UNKNOWN,
+                     "offline run: not provable without `agy models`; rerun with --net", proof)
+    rc, out = run_cmd(["agy", "models"], timeout=NET_TIMEOUT)
+    if rc is None:
+        return Check("Models and logins", item, MISSING, "agy not on PATH", "`agy --version`")
+    if rc == "timeout":
+        return Check("Models and logins", item, UNKNOWN, out, proof)
+    ids = [l.split()[0] for l in out.splitlines()
+           if l.split() and not l.lower().startswith("fetching")]
+    if rc == 0 and ids:
+        return Check("Models and logins", item, VERIFIED,
+                     f"{len(ids)} models: {', '.join(ids[:4])} …", proof)
+    return Check("Models and logins", item, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+
+
+def check_qwen_config(home: Path) -> Check:
+    """Reads ~/.qwen/settings.json only; never prints a key and never calls `qwen`
+    (a bare `qwen <word>` is a one-shot prompt that spends quota)."""
+    item = "qwen config (model, provider)"
+    p = home / ".qwen" / "settings.json"
+    if not p.exists():
+        return Check("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+    try:
+        d = json.loads(p.read_text())
+    except (OSError, ValueError) as e:
+        return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+    model = d.get("model") or {}
+    providers = d.get("modelProviders") or {}
+    n_models = sum(len(v) for v in providers.values() if isinstance(v, list))
+    env = d.get("env") or {}
+    key = "key set in settings env" if any(env.values()) else "no key in settings env"
+    host = str(model.get("baseUrl", "?")).split("/")[2:3]
+    auth = (d.get("security") or {}).get("auth", {}).get("selectedType", "?")
+    return Check("Models and logins", item, REPORTED,
+                 f"default {model.get('name', '?')}, auth {auth}, {n_models} listed models, "
+                 f"endpoint {host[0] if host else '?'}, {key} (file claim; key validity not tested)", str(p))
+
+
+def list_names(p: Path) -> list[str] | None:
+    if not p.is_dir():
+        return None
+    out = []
+    for e in sorted(p.iterdir()):
+        if e.name.startswith("."):
+            continue
+        if e.is_symlink():
+            out.append(f"{e.name} → {os.readlink(e)}")
+        elif e.is_dir() or e.suffix in (".js", ".mjs", ".md"):
+            out.append(e.name)
+    return out
+
+
+def check_dir_listing(group: str, item: str, p: Path, absent_status: str = VERIFIED) -> Check:
+    names = list_names(p)
+    if names is None:
+        return Check(group, item, absent_status, f"absent ({p})", str(p))
+    if not names:
+        return Check(group, item, absent_status, f"empty ({p})", str(p))
+    shown = ", ".join(names[:8]) + (" …" if len(names) > 8 else "")
+    return Check(group, item, VERIFIED, f"{len(names)}: {shown}", str(p))
+
+
+def check_blueprint(p: Path) -> Check:
+    item = f"blueprint ({p})"
+    if not p.is_dir():
+        return Check("Skills and workflows", item, MISSING, "directory not found", str(p))
+    files = sorted(e.name for e in p.iterdir() if e.suffix == ".md")
+    has_map = "README.md" in files
+    return Check("Skills and workflows", item, VERIFIED,
+                 f"{len(files)} sections, map {'present' if has_map else 'MISSING'}: {', '.join(files[:8])}",
+                 str(p))
+
+
+def check_instruction_files(cwd: Path) -> Check:
+    names = ["CLAUDE.md", "AGENTS.md", "QWEN.md", "GEMINI.md"]
+    present = [n for n in names if (cwd / n).exists()]
+    absent = [n for n in names if n not in present]
+    detail = (f"present: {', '.join(present) or 'none'}"
+              + (f"; absent: {', '.join(absent)}" if absent else ""))
+    return Check("Memory", "project instruction files", VERIFIED, detail, str(cwd))
+
+
+def check_qwen_memory(home: Path) -> Check:
+    p = home / ".qwen" / "memories"
+    idx = p / "MEMORY.md"
+    if not p.is_dir():
+        return Check("Memory", "qwen auto-memory (user)", VERIFIED, f"absent ({p})", str(p))
+    try:
+        n = len(idx.read_text(errors="replace").splitlines()) if idx.exists() else 0
+    except OSError as e:
+        return Check("Memory", "qwen auto-memory (user)", UNKNOWN, f"MEMORY.md unreadable: {e}", str(p))
+    return Check("Memory", "qwen auto-memory (user)", VERIFIED,
+                 f"{n} index lines in MEMORY.md; project dirs under ~/.qwen/projects/", str(p))
+
+
+def check_claude_history(home: Path) -> Check:
+    p = home / ".claude" / "projects"
+    if not p.is_dir():
+        return Check("Memory", "claude session history", VERIFIED, f"absent ({p})", str(p))
+    n = sum(1 for e in p.iterdir() if e.is_dir())
+    return Check("Memory", "claude session history", VERIFIED, f"{n} project histories", str(p))
+
+
+def check_mcp(home: Path, cwd: Path) -> list[Check]:
+    out = []
+    sources = [("~/.claude/settings.json", home / ".claude" / "settings.json"),
+               ("~/.claude.json", home / ".claude.json"),
+               ("~/.qwen/settings.json", home / ".qwen" / "settings.json"),
+               (".mcp.json (project)", cwd / ".mcp.json")]
+    for label, p in sources:
+        if not p.exists():
+            out.append(Check("MCP", label, VERIFIED, "file absent → no servers from it", str(p)))
+            continue
+        try:
+            d = json.loads(p.read_text())
+        except (OSError, ValueError) as e:
+            out.append(Check("MCP", label, UNKNOWN, f"unreadable: {e}", str(p)))
+            continue
+        servers = d.get("mcpServers") if isinstance(d, dict) else None
+        if servers:
+            out.append(Check("MCP", label, VERIFIED,
+                             f"{len(servers)} servers: {', '.join(list(servers)[:6])}", str(p)))
+        else:
+            out.append(Check("MCP", label, VERIFIED, "no mcpServers key", str(p)))
+    return out
+
+
+def check_machine(cwd: Path) -> Check:
+    cores = os.cpu_count() or "?"
+    mem_gib = "?"
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            if line.startswith("MemAvailable:"):
+                mem_gib = f"{int(line.split()[1]) / 1048576:.1f} GiB"
+                break
+    except OSError:
+        pass
+    du = shutil.disk_usage(cwd)
+    return Check("Machine", "this machine", VERIFIED,
+                 f"{cores} cores; {mem_gib} RAM available; {du.free / 2**30:.0f} G free on {cwd}",
+                 "`os.cpu_count`, `/proc/meminfo`, `shutil.disk_usage`")
+
+
+def open_unknowns() -> list[Check]:
+    return [
+        Check("Open unknowns", "subagent concurrency limit", UNKNOWN,
+              "runtime policy, not provable from outside. Claude Code docs report 20 concurrent, nesting depth 3 "
+              "(v2.1.217+, env overrides; reported, not measured here); codex/agy: no figure",
+              "docs/EXECUTOR_KINDS.md, Concurrency row"),
+        Check("Open unknowns", "codex/agy/qwen execute a task", UNKNOWN,
+              "canary required (spends quota; needs the person's go-ahead)",
+              "docs/EXECUTOR_KINDS.md canary piece"),
+    ]
+
+
+def gather(args: argparse.Namespace) -> list[Check]:
+    home, cwd = Path.home(), Path.cwd()
+    binaries = list(dict.fromkeys(DEFAULT_BINARIES + list(args.require or [])))
+    with ThreadPoolExecutor(max_workers=max(1, min(8, len(binaries)))) as ex:
+        checks: list[Check] = list(ex.map(check_binary, binaries))
+    checks.append(check_codex_cache())
+    checks.append(check_agy_login(args.net))
+    checks.append(check_qwen_config(home))
+    for label, p in [("claude skills (user)", home / ".claude" / "skills"),
+                     ("agents skills (cross-tool)", home / ".agents" / "skills"),
+                     ("codex skills (user)", home / ".codex" / "skills"),
+                     ("qwen skills (user)", home / ".qwen" / "skills"),
+                     ("project skills", cwd / ".claude" / "skills")]:
+        checks.append(check_dir_listing("Skills and workflows", label, p))
+    checks.append(check_dir_listing("Skills and workflows", "workflow scripts",
+                                    Path(args.workflows) if args.workflows else cwd / ".claude" / "workflows"))
+    if args.blueprint:
+        checks.append(check_blueprint(Path(args.blueprint)))
+    checks.append(check_instruction_files(cwd))
+    checks.append(check_qwen_memory(home))
+    checks.append(check_claude_history(home))
+    checks.extend(check_mcp(home, cwd))
+    checks.append(check_machine(cwd))
+    checks.extend(open_unknowns())
+    checks.sort(key=lambda c: GROUPS.index(c.group))
+    return checks
+
+
+def exit_code(checks: list[Check], requires: list[str]) -> int:
+    missing = {c.item for c in checks if c.status == MISSING}
+    known = {c.item for c in checks}
+    for r in requires:
+        if r in missing or r not in known:
+            return 1
+    for c in checks:  # an explicitly named --blueprint dir that is not there is a hard fail
+        if c.item.startswith("blueprint (") and c.status == MISSING:
+            return 1
+    return 0
+
+
+def cell(text: str) -> str:
+    return text.replace("|", "\\|")
+
+
+def to_markdown(checks: list[Check]) -> str:
+    lines = [f"# Readiness tools check — {date.today().isoformat()} — {socket.gethostname()}", "",
+             "Installed and logged in only; no canary was run, no quota spent.", ""]
+    current = None
+    for c in checks:
+        if c.group != current:
+            if current is not None:
+                lines.append("")
+            current = c.group
+            lines += [f"## {current}", "", "| Item | Status | Detail | Proof |", "|---|---|---|---|"]
+        lines.append(f"| {cell(c.item)} | {c.status} | {cell(c.detail)} | {cell(c.proof)} |")
+    return "\n".join(lines) + "\n"
+
+
+def self_test() -> int:
+    fake = "readiness-selftest-fake-tool"
+    c = check_binary(fake)
+    code = exit_code([c], [fake])
+    if c.status == MISSING and code == 1:
+        print(f"self-test PASS: `{fake}` reported MISSING and --require on it exits 1 — the check can fail.")
+        return 0
+    print(f"self-test FAIL: status={c.status}, exit code={code} (expected MISSING, 1)")
+    return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="Method 3.1 readiness inventory (no quota spent).")
+    ap.add_argument("--net", action="store_true",
+                    help="also run network checks (`agy models`); off by default")
+    ap.add_argument("--json", action="store_true", help="JSON instead of markdown")
+    ap.add_argument("--require", action="append", default=[],
+                    help="tool that must be verified present; exit 1 if MISSING (repeatable)")
+    ap.add_argument("--blueprint", metavar="DIR", help="a product's blueprint directory to include")
+    ap.add_argument("--workflows", metavar="DIR", help="workflow scripts directory (default .claude/workflows)")
+    ap.add_argument("--self-test", action="store_true", help="prove the check can fail, then exit")
+    args = ap.parse_args(argv)
+    if args.self_test:
+        return self_test()
+    checks = gather(args)
+    if args.json:
+        print(json.dumps({"date": date.today().isoformat(), "host": socket.gethostname(),
+                          "checks": [asdict(c) for c in checks]}, indent=1))
+    else:
+        print(to_markdown(checks), end="")
+    return exit_code(checks, args.require)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+exec
+/bin/bash -lc 'tail -30 tests/test_readiness.py; head -65 tests/test_task_types.py; cat tests/conftest.py' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+    assert_row(checks, f"blueprint ({nope})", "MISSING", "directory not found", nope)
+    result = sandbox.run("--workflows", wf)
+    assert result.returncode == 0, result.stderr
+    assert_row(markdown_checks(result.stdout), "workflow scripts", "verified", "2: a.js, b.js", wf)
+    for args in [("--nope",), ("--blueprint",), ("--require", "a", "b")]:
+        result = sandbox.run(*args)
+        assert result.returncode == 2
+        assert "usage:" in result.stderr and "error:" in result.stderr
+        assert result.stdout == ""
+
+
+def test_rt_14_self_test_pass_fail_and_json_precedence(sandbox):
+    sandbox.full()
+    expected = ("self-test PASS: `readiness-selftest-fake-tool` reported MISSING and --require on it exits 1 "
+                "— the check can fail.\n")
+    for args in [("--self-test",), ("--self-test", "--json")]:
+        result = sandbox.run(*args)
+        assert result.returncode == 0 and result.stdout == expected
+        assert result.stderr == ""
+        assert all(sandbox.calls(name) == [] for name in BINARIES)
+        assert "#" not in result.stdout and "| Item | Status" not in result.stdout
+        with pytest.raises(json.JSONDecodeError):
+            json.loads(result.stdout)
+    sandbox.fake("readiness-selftest-fake-tool", "print('fake 1.0')\n")
+    result = sandbox.run("--self-test")
+    assert result.returncode == 1
+    assert result.stdout == "self-test FAIL: status=verified, exit code=0 (expected MISSING, 1)\n"
+    assert result.stderr == ""
+    assert sandbox.calls("readiness-selftest-fake-tool") == [["--version"]]
+    assert all(sandbox.calls(name) == [] for name in BINARIES)
+"""Tests for the task-types gate: docs/TASK_TYPES.md parsing, design_gate.py rules, and the
+16-prompt corpus (tests/fixtures/task_type_prompts.json).
+
+The corpus expectations are provisional working values (n=0) for EJ to correct; what is enforced
+here is the gate machinery: every good design passes, every sabotaged variant fails named, and the
+checks are known to be able to fail (the house rule).
+"""
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / ".claude" / "skills" / "workflow-design" / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+import design_gate as dg  # noqa: E402
+
+TYPES = dg.parse_types(ROOT / "docs" / "TASK_TYPES.md")
+CORPUS = json.loads((ROOT / "tests" / "fixtures" / "task_type_prompts.json").read_text())
+
+FIVE = sorted(dg.FIVE)
+LOOP_CATS = {"code generation", "debugging", "ui/ux dev", "test script gen"}
+# Test-side engine defaults (concrete ids, per EXECUTOR_KINDS); the table's engine cell is prose.
+ENGINES = {
+    "code generation": "codex gpt-6.1-sol", "code review": "claude sonnet 5.5",
+    "debugging": "codex gpt-6.1-sol", "ui/ux dev": "codex gpt-6.1-sol",
+    "test data gen": "claude sonnet 5.5", "test cases gen": "codex gpt-6.1-sol",
+    "test script gen": "codex gpt-6.1-sol", "repo scanning": "claude sonnet 5.5",
+    "multi step planning": "codex gpt-6-astra", "information extraction": "claude sonnet 5.5",
+    "web search": "codex gpt-6.1-sol", "classification": "agy gemini-3.1-pro-high",
+    "research and reports": "codex gpt-6.1-sol", "others": "claude sonnet 5.5",
+    "document and explain": "claude sonnet 5.5", "grade a run": "claude sonnet 5.5",
+}
+
+
+def builder_cats(cats: list, builds: bool) -> list:
+    known = TYPES["categories"]
+    return [c for c in cats if known.get(c, {}).get("product") == "yes"
+            or (builds and known.get(c, {}).get("product") == "mixed")]
+
+
+def design_for(entry: dict) -> dict:
+    exp = entry["expected"]
+    cats = exp["categories"]
+    nodes, prev = [], None
+    for i, c in enumerate(cats):
+        n = {"id": f"n{i + 1}", "category": c, "engine": ENGINES[c],
+             "check": f"default check for {c} (TASK_TYPES.md)", "five_things": list(FIVE),
+             "needs": [prev] if prev else []}
+        if c in LOOP_CATS:
+            n["loop"] = {"limit": 2, "exit": "fresh node on stronger tier with handoff note",
+                         "feedback": "the check's real output"}
+        nodes.append(n)
+        prev = n["id"]
+    b_cats = builder_cats(cats, exp["builds"])
+    if b_cats:
+        yes_kinds = {dg.engine_kind(ENGINES[c]) for c in b_cats
+                     if TYPES["categories"].get(c, {}).get("product") == "yes"}
+        b_kinds = yes_kinds or {dg.engine_kind(ENGINES[c]) for c in b_cats}
+        rev = "claude sonnet 5.5" if b_kinds == {"codex"} else "codex gpt-6.1-sol"
+        nodes.append({"id": "nr", "category": "code review", "engine": rev,
+                      "check": "fixed checklist; findings with file:line",
+                      "five_things": list(FIVE), "needs": [prev] if prev else []})
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))  # `import cases`
+
+# The whole suite runs the §8 lints in `differential` mode (docs/STORE_DESIGN_DECISION.md §Tests): every
+# case test exercises both the Python oracle and the SQL backend, and any disagreement fails the test with
+# `lints.LintBackendDivergence`. Set at import so CLI subprocesses inherit it too. Tests that need another
+# backend pass `backend=` explicitly or `monkeypatch.delenv("AG_LINT_BACKEND")`.
+os.environ["AG_LINT_BACKEND"] = "differential"
+
+codex
+The review confirms that RT-03’s combined xfail masks regressions and leaves the Qwen result unasserted. I’ll split those cases, add RT-15 through RT-21, and give RT-10 a PID check. I’ll leave the optional network timeout case out.
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p = Path('tests/test_readiness.py')
+s = p.read_text().replace('RT-01–RT-14:', 'RT-01–RT-21:')
+start = s.index('@pytest.mark.xfail(strict=True, raises=AssertionError,')
+end = s.index('\\n\\ndef test_rt_04', start)
+s = s[:start] + '''def test_rt_03a_truncated_and_unreadable_cache(sandbox):
+    cache = write_file(sandbox.home / \".codex/models_cache.json\", '{\"models\": [{\"id\": \"x\"},')
+    cache.chmod(0o644)
+    checks = json_checks(sandbox.run(\"--json\"))
+    assert len(checks) == 26
+    check = row(checks, \"codex model cache\")
+    assert check[\"status\"] == \"unknown\" and check[\"proof\"] == str(cache)
+    assert check[\"detail\"].startswith(\"unreadable:\") and \"Expecting\" in check[\"detail\"]
+    # Root can read mode 0000; exercise permission denial only when it is enforceable.
+    if os.geteuid() "'!= 0:
+        cache.chmod(0o000)
+        try:
+            checks = json_checks(sandbox.run("--json"))
+            assert len(checks) == 26
+            check = row(checks, "codex model cache")
+            assert check["status"] == "unknown" and check["proof"] == str(cache)
+            assert check["detail"].startswith("unreadable:") and "Permission denied" in check["detail"]
+        finally:
+            cache.chmod(0o644)
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="RT-03b: ~/.codex/models_cache.json top-level array raises AttributeError on .get")
+def test_rt_03b_non_object_codex_cache(sandbox):
+    cache = write_file(sandbox.home / ".codex/models_cache.json", '"'[{\"id\": \"gpt-6\"}]')
+    checks = json_checks(sandbox.run(\"--json\"))
+    assert len(checks) == 26
+    check = row(checks, \"codex model cache\")
+    assert check[\"status\"] == \"unknown\" and check[\"proof\"] == str(cache)
+    assert check[\"detail\"].startswith(\"unreadable:\")
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason=\"RT-03c: ~/.qwen/settings.json top-level array raises AttributeError on .get\")
+def test_rt_03c_non_object_qwen_settings(sandbox):
+    settings = write_file(sandbox.home / \".qwen/settings.json\", '[{\"id\": \"gpt-6\"}]')
+    checks = json_checks(sandbox.run(\"--json\"))
+    assert len(checks) == 26
+    check = row(checks, \"qwen config (model, provider)\")
+    assert check[\"status\"] == \"unknown\" and check[\"proof\"] == str(settings)
+    assert check[\"detail\"].startswith(\"unreadable:\")
+''' + s[end:]
+s = s.replace('    sandbox.fake(\"claude\", \"import time\\\\ntime.sleep(60)\\\\n\")', '''    pid_file = sandbox.bin.parent / \"hanging.pid\"
+    sandbox.fake(\"claude\", f\"with open({str(pid_file)"'!r}, '"'w') as pid_file:\\\\n\"
+                 \"    pid_file.write(str(os.getpid()))\\\\nimport time\\\\ntime.sleep(60)\\\\n\")''')
+s = s.replace('    elapsed = time.monotonic() - start\\n    assert 10 <= elapsed < 25', '''    elapsed = time.monotonic() - start
+    pid = int(pid_file.read_text())
+    with pytest.raises(ProcessLookupError):
+        os.kill(pid, 0)
+    assert 10 <= elapsed < 25''')
+s += '''
+
+
+def test_rt_15_blueprint_without_map(sandbox):
+    bp = sandbox.cwd / \"bp\"
+    for name in (\"b.md\", \"a.md\", \"notes.txt\"):
+        write_file(bp / name, \"\")
+    checks = json_checks(sandbox.run(\"--blueprint\", bp, \"--json\"))
+    assert_row(checks, f\"blueprint ({bp})\", \"verified\",
+               \"2 sections, map MISSING: a.md, b.md\", bp, \"Skills and workflows\")
+
+
+def test_rt_16_empty_skill_directory(sandbox):
+    skills = sandbox.home / \".claude/skills\"
+    skills.mkdir(parents=True)
+    assert_row(json_checks(sandbox.run(\"--json\")), \"claude skills (user)\", \"verified\",
+               f\"empty ({skills})\", skills, \"Skills and workflows\")
+
+
+def test_rt_17_skill_symlink_and_listing_cap(sandbox):
+    skills = sandbox.home / \".claude/skills\"
+    skills.mkdir(parents=True)
+    (skills / \"a-link\").symlink_to(\"../target\")
+    (skills.parent / \"target\").mkdir()
+    for i in range(1, 8):
+        (skills / f\"skill-{i}\").mkdir()
+    detail = \"8: a-link → ../target, \" + \", \".join(f\"skill-{i}\" for i in range(1, 8))
+    assert_row(json_checks(sandbox.run(\"--json\")), \"claude skills (user)\", \"verified\",
+               detail, skills, \"Skills and workflows\")
+    (skills / \"skill-8\").mkdir()
+    assert_row(json_checks(sandbox.run(\"--json\")), \"claude skills (user)\", \"verified\",
+               \"9:\" + detail[2:] + \" …\", skills, \"Skills and workflows\")
+
+
+def test_rt_18_mcp_servers_and_empty_object(sandbox):
+    sources = [
+        (\"~/.claude/settings.json\", sandbox.home / \".claude/settings.json\"),
+        (\"~/.claude.json\", sandbox.home / \".claude.json\"),
+        (\"~/.qwen/settings.json\", sandbox.home / \".qwen/settings.json\"),
+        (\".mcp.json (project)\", sandbox.cwd / \".mcp.json\"),
+    ]
+    for data, detail in [({\"mcpServers\": {\"alpha\": {}, \"beta\": {}}}, \"2 servers: alpha, beta\"),
+                         ({}, \"no mcpServers key\")]:
+        for _, path in sources:
+            write_file(path, json.dumps(data))
+        checks = json_checks(sandbox.run(\"--json\"))
+        assert {c[\"item\"] for c in checks if c[\"group\"] == \"MCP\"} == MCP_LABELS
+        for label, path in sources:
+            assert_row(checks, label, \"verified\", detail, path, \"MCP\")
+
+
+def test_rt_19_populated_memory_and_history(sandbox):
+    memories = sandbox.home / \".qwen/memories\"
+    write_file(memories / \"MEMORY.md\", \"first\\\\n\\\\nthird\\\\nlast\")
+    projects = sandbox.home / \".claude/projects\"
+    for name in (\"project-a\", \"project-b\"):
+        (projects / name).mkdir(parents=True)
+    write_file(projects / \"notes.txt\", \"not a project directory\")
+    checks = json_checks(sandbox.run(\"--json\"))
+    assert_row(checks, \"qwen auto-memory (user)\", \"verified\",
+               \"4 index lines in MEMORY.md; project dirs under ~/.qwen/projects/\", memories, \"Memory\")
+    assert_row(checks, \"claude session history\", \"verified\", \"2 project histories\", projects, \"Memory\")
+
+
+def test_rt_20_present_instruction_files(sandbox):
+    for name in (\"CLAUDE.md\", \"QWEN.md\"):
+        write_file(sandbox.cwd / name, \"instructions\")
+    assert_row(json_checks(sandbox.run(\"--json\")), \"project instruction files\", \"verified\",
+               \"present: CLAUDE.md, QWEN.md; absent: AGENTS.md, GEMINI.md\", sandbox.cwd, \"Memory\")
+    for name in (\"AGENTS.md\", \"GEMINI.md\"):
+        write_file(sandbox.cwd / name, \"instructions\")
+    assert_row(json_checks(sandbox.run(\"--json\")), \"project instruction files\", \"verified\",
+               \"present: CLAUDE.md, AGENTS.md, QWEN.md, GEMINI.md\", sandbox.cwd, \"Memory\")
+
+
+def test_rt_21_net_agy_absent_and_nonzero(sandbox):
+    checks = json_checks(sandbox.run(\"--json\", \"--net\"))
+    assert_row(checks, \"agy login (model list)\", \"MISSING\", \"agy not on PATH\",
+               \""'`agy --version`", "Models and logins")
+    assert sandbox.calls("agy") == []
+    sandbox.fake("agy", "if sys.argv[1:] == ['"'--version']:\\\\n\"
+                 \"    print('agy-fake 0.1')\\\\n\"
+                 \"elif sys.argv[1:] == ['models']:\\\\n\"
+                 \"    print('login failed\\\\\\\\nsecond line', file=sys.stderr)\\\\n\"
+                 \"    sys.exit(3)\\\\n\"
+                 \"else:\\\\n    sys.exit(9)\\\\n\")
+    checks = json_checks(sandbox.run(\"--json\", \"--net\"))
+    assert sandbox.calls(\"agy\") == [[\"--version\"], [\"models\"]]
+    assert_row(checks, \"agy\", \"verified\", \"agy-fake 0.1\", \""'`agy --version`", "Tools")
+    assert_row(checks, "agy login (model list)", "unknown", "exit 3: login failed",
+               "`agy models` (network)", "Models and logins")
+'"'''
+p.write_text(s)
+PY
+ env -u NO_COLOR python3 -m pytest -q tests/test_readiness.py" in /home/smoke01/dev/ancient-games
+exec
+/bin/bash -lc "sed -n '135,207p' tests/test_readiness.py; sed -n '300,325p' tests/test_readiness.py; tail -112 tests/test_readiness.py; git status --short; id -u" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+        "workflow scripts": sandbox.cwd / ".claude/workflows",
+    }
+    for item, path in directories.items():
+        assert_row(checks, item, "verified", f"absent ({path})", path)
+    mcp = [c for c in checks if c["group"] == "MCP"]
+    assert {c["item"] for c in mcp} == MCP_LABELS
+    assert all(c["status"] == "verified" and c["detail"] == "file absent → no servers from it" for c in mcp)
+    assert row(checks, "project instruction files")["detail"] == (
+        "present: none; absent: CLAUDE.md, AGENTS.md, QWEN.md, GEMINI.md")
+    unknowns = [c for c in checks if c["group"] == "Open unknowns"]
+    assert len(unknowns) == 2 and all(c["status"] == "unknown" for c in unknowns)
+
+
+def test_rt_02_broken_qwen_json_keeps_inventory(sandbox):
+    path = write_file(sandbox.home / ".qwen/settings.json", '{ "model": {')
+    checks = json_checks(sandbox.run("--json"))
+    assert len(checks) == 26
+    unreadable = [c for c in checks if "unreadable" in c["detail"]]
+    assert {(c["group"], c["item"]) for c in unreadable} == {
+        ("Models and logins", "qwen config (model, provider)"), ("MCP", "~/.qwen/settings.json")}
+    assert all(c["status"] == "unknown" and c["detail"].startswith("unreadable:")
+               and c["proof"] == str(path) for c in unreadable)
+    assert {c["item"] for c in checks if c["group"] == "MCP"} == MCP_LABELS
+    assert len([c for c in checks if c["group"] == "Open unknowns"]) == 2
+    assert all(c["status"] == "MISSING" for c in checks if c["group"] == "Tools")
+
+
+def test_rt_03a_truncated_and_unreadable_cache(sandbox):
+    cache = write_file(sandbox.home / ".codex/models_cache.json", '{"models": [{"id": "x"},')
+    cache.chmod(0o644)
+    checks = json_checks(sandbox.run("--json"))
+    assert len(checks) == 26
+    check = row(checks, "codex model cache")
+    assert check["status"] == "unknown" and check["proof"] == str(cache)
+    assert check["detail"].startswith("unreadable:") and "Expecting" in check["detail"]
+    # Root can read mode 0000; exercise permission denial only when it is enforceable.
+    if os.geteuid() != 0:
+        cache.chmod(0o000)
+        try:
+            checks = json_checks(sandbox.run("--json"))
+            assert len(checks) == 26
+            check = row(checks, "codex model cache")
+            assert check["status"] == "unknown" and check["proof"] == str(cache)
+            assert check["detail"].startswith("unreadable:") and "Permission denied" in check["detail"]
+        finally:
+            cache.chmod(0o644)
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="RT-03b: ~/.codex/models_cache.json top-level array raises AttributeError on .get")
+def test_rt_03b_non_object_codex_cache(sandbox):
+    cache = write_file(sandbox.home / ".codex/models_cache.json", '[{"id": "gpt-6"}]')
+    checks = json_checks(sandbox.run("--json"))
+    assert len(checks) == 26
+    check = row(checks, "codex model cache")
+    assert check["status"] == "unknown" and check["proof"] == str(cache)
+    assert check["detail"].startswith("unreadable:")
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="RT-03c: ~/.qwen/settings.json top-level array raises AttributeError on .get")
+def test_rt_03c_non_object_qwen_settings(sandbox):
+    settings = write_file(sandbox.home / ".qwen/settings.json", '[{"id": "gpt-6"}]')
+    checks = json_checks(sandbox.run("--json"))
+    assert len(checks) == 26
+    check = row(checks, "qwen config (model, provider)")
+    assert check["status"] == "unknown" and check["proof"] == str(settings)
+    assert check["detail"].startswith("unreadable:")
+
+
+def test_rt_04_cache_fallbacks_cap_and_age(sandbox):
+    sandbox.full()
+    examples = [
+    plain = sandbox.run()
+    assert plain.returncode == 0, plain.stderr
+    lines = plain.stdout.splitlines()
+    assert lines[0] in {f"# Readiness tools check — {d} — {socket.gethostname()}"
+                        for d in (before, date.today().isoformat())}
+    assert lines[1:4] == ["", "Installed and logged in only; no canary was run, no quota spent.", ""]
+    assert [line for line in lines if line.startswith("## ")] == [f"## {g}" for g in GROUPS]
+    for group in GROUPS:
+        start = lines.index(f"## {group}")
+        assert lines[start + 1:start + 4] == ["", "| Item | Status | Detail | Proof |", "|---|---|---|---|"]
+    assert lines.count("| Item | Status | Detail | Proof |") == len(GROUPS)
+    assert lines.count("|---|---|---|---|") == len(GROUPS)
+    markdown = markdown_checks(plain.stdout)
+    checks = json_checks(sandbox.run("--json"))
+    assert row(markdown, "claude", "Tools")["detail"] == r"1.0 \| beta"
+    assert row(checks, "claude", "Tools")["detail"] == "1.0 | beta"
+    assert row(markdown, "codex", "Tools")["detail"] == "X" * 100
+    assert row(checks, "codex", "Tools")["detail"] == "X" * 100
+    assert len(markdown) == len(checks)
+
+
+def test_rt_10_hanging_binary_is_bounded(sandbox):
+    # A Python sleeper needs no real sleep binary and is killed directly, without a shell child.
+    pid_file = sandbox.bin.parent / "hanging.pid"
+    sandbox.fake("claude", f"with open({str(pid_file)!r}, 'w') as pid_file:\n"
+                 "    pid_file.write(str(os.getpid()))\nimport time\ntime.sleep(60)\n")
+
+
+def test_rt_14_self_test_pass_fail_and_json_precedence(sandbox):
+    sandbox.full()
+    expected = ("self-test PASS: `readiness-selftest-fake-tool` reported MISSING and --require on it exits 1 "
+                "— the check can fail.\n")
+    for args in [("--self-test",), ("--self-test", "--json")]:
+        result = sandbox.run(*args)
+        assert result.returncode == 0 and result.stdout == expected
+        assert result.stderr == ""
+        assert all(sandbox.calls(name) == [] for name in BINARIES)
+        assert "#" not in result.stdout and "| Item | Status" not in result.stdout
+        with pytest.raises(json.JSONDecodeError):
+            json.loads(result.stdout)
+    sandbox.fake("readiness-selftest-fake-tool", "print('fake 1.0')\n")
+    result = sandbox.run("--self-test")
+    assert result.returncode == 1
+    assert result.stdout == "self-test FAIL: status=verified, exit code=0 (expected MISSING, 1)\n"
+    assert result.stderr == ""
+    assert sandbox.calls("readiness-selftest-fake-tool") == [["--version"]]
+    assert all(sandbox.calls(name) == [] for name in BINARIES)
+
+
+
+def test_rt_15_blueprint_without_map(sandbox):
+    bp = sandbox.cwd / "bp"
+    for name in ("b.md", "a.md", "notes.txt"):
+        write_file(bp / name, "")
+    checks = json_checks(sandbox.run("--blueprint", bp, "--json"))
+    assert_row(checks, f"blueprint ({bp})", "verified",
+               "2 sections, map MISSING: a.md, b.md", bp, "Skills and workflows")
+
+
+def test_rt_16_empty_skill_directory(sandbox):
+    skills = sandbox.home / ".claude/skills"
+    skills.mkdir(parents=True)
+    assert_row(json_checks(sandbox.run("--json")), "claude skills (user)", "verified",
+               f"empty ({skills})", skills, "Skills and workflows")
+
+
+def test_rt_17_skill_symlink_and_listing_cap(sandbox):
+    skills = sandbox.home / ".claude/skills"
+    skills.mkdir(parents=True)
+    (skills / "a-link").symlink_to("../target")
+    (skills.parent / "target").mkdir()
+    for i in range(1, 8):
+        (skills / f"skill-{i}").mkdir()
+    detail = "8: a-link → ../target, " + ", ".join(f"skill-{i}" for i in range(1, 8))
+    assert_row(json_checks(sandbox.run("--json")), "claude skills (user)", "verified",
+               detail, skills, "Skills and workflows")
+    (skills / "skill-8").mkdir()
+    assert_row(json_checks(sandbox.run("--json")), "claude skills (user)", "verified",
+               "9:" + detail[2:] + " …", skills, "Skills and workflows")
+
+
+def test_rt_18_mcp_servers_and_empty_object(sandbox):
+    sources = [
+        ("~/.claude/settings.json", sandbox.home / ".claude/settings.json"),
+        ("~/.claude.json", sandbox.home / ".claude.json"),
+        ("~/.qwen/settings.json", sandbox.home / ".qwen/settings.json"),
+        (".mcp.json (project)", sandbox.cwd / ".mcp.json"),
+    ]
+    for data, detail in [({"mcpServers": {"alpha": {}, "beta": {}}}, "2 servers: alpha, beta"),
+                         ({}, "no mcpServers key")]:
+        for _, path in sources:
+            write_file(path, json.dumps(data))
+        checks = json_checks(sandbox.run("--json"))
+        assert {c["item"] for c in checks if c["group"] == "MCP"} == MCP_LABELS
+        for label, path in sources:
+            assert_row(checks, label, "verified", detail, path, "MCP")
+
+
+def test_rt_19_populated_memory_and_history(sandbox):
+    memories = sandbox.home / ".qwen/memories"
+    write_file(memories / "MEMORY.md", "first\n\nthird\nlast")
+    projects = sandbox.home / ".claude/projects"
+    for name in ("project-a", "project-b"):
+        (projects / name).mkdir(parents=True)
+    write_file(projects / "notes.txt", "not a project directory")
+    checks = json_checks(sandbox.run("--json"))
+    assert_row(checks, "qwen auto-memory (user)", "verified",
+               "4 index lines in MEMORY.md; project dirs under ~/.qwen/projects/", memories, "Memory")
+    assert_row(checks, "claude session history", "verified", "2 project histories", projects, "Memory")
+
+
+def test_rt_20_present_instruction_files(sandbox):
+    for name in ("CLAUDE.md", "QWEN.md"):
+        write_file(sandbox.cwd / name, "instructions")
+    assert_row(json_checks(sandbox.run("--json")), "project instruction files", "verified",
+               "present: CLAUDE.md, QWEN.md; absent: AGENTS.md, GEMINI.md", sandbox.cwd, "Memory")
+    for name in ("AGENTS.md", "GEMINI.md"):
+        write_file(sandbox.cwd / name, "instructions")
+    assert_row(json_checks(sandbox.run("--json")), "project instruction files", "verified",
+               "present: CLAUDE.md, AGENTS.md, QWEN.md, GEMINI.md", sandbox.cwd, "Memory")
+
+
+def test_rt_21_net_agy_absent_and_nonzero(sandbox):
+    checks = json_checks(sandbox.run("--json", "--net"))
+    assert_row(checks, "agy login (model list)", "MISSING", "agy not on PATH",
+               "`agy --version`", "Models and logins")
+    assert sandbox.calls("agy") == []
+    sandbox.fake("agy", "if sys.argv[1:] == ['--version']:\n"
+                 "    print('agy-fake 0.1')\n"
+                 "elif sys.argv[1:] == ['models']:\n"
+                 "    print('login failed\\nsecond line', file=sys.stderr)\n"
+                 "    sys.exit(3)\n"
+                 "else:\n    sys.exit(9)\n")
+    checks = json_checks(sandbox.run("--json", "--net"))
+    assert sandbox.calls("agy") == [["--version"], ["models"]]
+    assert_row(checks, "agy", "verified", "agy-fake 0.1", "`agy --version`", "Tools")
+    assert_row(checks, "agy login (model list)", "unknown", "exit 3: login failed",
+               "`agy models` (network)", "Models and logins")
+?? runs/20261002-readiness-tests/
+?? tests/test_readiness.py
+1000
+
+ succeeded in 12933ms:
+...xx..................                                                  [100%]
+21 passed, 2 xfailed in 12.39s
+
+codex
+Edited only [tests/test_readiness.py](/home/smoke01/dev/ancient-games/tests/test_readiness.py).
+
+Requested pytest command: **21 passed, 2 xfailed** in 12.39s. Mode 0000 was exercised; RT-10 confirmed the hanging PID no longer existed.
+
+Mutations these tests would turn red:
+
+- RT-03a: crash on truncated JSON or permission denial.
+- RT-03b/c: fix each array defect independently → strict XPASS.
+- RT-10: leave the hanging process alive.
+- RT-15: report `map present` without README.md.
+- RT-16: report an empty directory as absent.
+- RT-17: omit the symlink target, change the eight-entry cap, or mishandle `…`.
+- RT-18: misreport configured servers or empty-object results.
+- RT-19: miscount memory lines or count files as project histories.
+- RT-20: misreport present/absent instruction files.
+- RT-21: mishandle absent agy or non-zero `agy models`.
+
+Not done: optional network-timeout coverage or mutation execution. `readiness.py` and its AttributeError defects remain unchanged.
+tokens used
+34,035

@@ -1,0 +1,116 @@
+{
+ "cases": [
+  {
+   "id": "RT-01",
+   "name": "Sanitized HOME + fake PATH + tmp cwd: full inventory, machine untouched",
+   "setup": "Under tmp_path create home/ (empty), bin/ with one executable per DEFAULT_BINARIES (claude, codex, agy, qwen, node, python3, git) printing '<name>-fake 0.1' and exit 0, and proj/ (empty cwd). Write a marker file in bin/ recording every argv so any real-binary escape is visible. Invoke readiness.py by absolute path with sys.executable, env={'HOME': str(home), 'PATH': str(bin)} \u2014 PATH must be *set* to the fake dir, never deleted, because with PATH absent execvp falls back to /usr/bin:/bin and the real claude/agy/qwen would be executed \u2014 cwd=proj.",
+   "action": "Run with no flags; capture stdout, stderr, rc and row list.",
+   "expected": "rc 0. stdout is the markdown table, first line '# Readiness tools check \u2014 <ISO date> \u2014 <host>'. All 7 Tools rows status verified with the '<name>-fake 0.1' detail and proof '`<name> --version`'. Neither the real home path (os.path.expanduser('~') as seen by the test process) nor the repo path '/home/smoke01/dev/ancient-games' appears anywhere in stdout/stderr. 'qwen config (model, provider)' status unknown, detail 'no <tmp home>/.qwen/settings.json'; 'codex model cache' status unknown, detail 'no <tmp home>/.codex/models_cache.json'; the 5 skill/workflow dir rows status verified with detail 'absent (<path>)' (pins today's deliberate-looking choice that an absent dir is reported as *verified*, not MISSING); all 4 MCP rows 'file absent \u2192 no servers from it'; Memory row 'project instruction files' detail 'present: none; absent: CLAUDE.md, AGENTS.md, QWEN.md, GEMINI.md'; 2 Open unknowns rows status unknown; stderr has no 'Traceback'.",
+   "can_fail_because": "In gather(), replace 'home, cwd = Path.home(), Path.cwd()' with 'home = Path(\"/home/smoke01\")' (or make check_qwen_config read the inherited env instead of the passed home): the real HOME is read, rows quote the real home, and the 'no row mentions the real home' assertion goes red. Secondary: flipping check_dir_listing's default absent_status from VERIFIED to MISSING turns the 5 absent-dir rows red \u2014 that is a spec decision, not a bug, and the test is the tripwire that forces it to be made on purpose."
+  },
+  {
+   "id": "RT-02",
+   "name": "Broken ~/.qwen/settings.json degrades to 'unreadable', twice, and never aborts",
+   "setup": "home/.qwen/settings.json containing the truncated text '{ \"model\": {'. bin/ fake PATH (no binaries at all, so every Tools row is MISSING and nothing real runs), HOME=home, cwd=tmp proj.",
+   "action": "Run readiness.py --json and parse stdout.",
+   "expected": "rc 0 \u2014 missing tools alone must not fail the gate, and no --require was passed. Exactly two rows carry status unknown with detail starting 'unreadable:': 'qwen config (model, provider)' in Models and logins (proof = the settings path) and '~/.qwen/settings.json' in the MCP group (proof = the same path) \u2014 one broken file legitimately produces two rows because both readers touch it. The remaining rows are unaffected: all 4 MCP labels still present, 2 Open unknowns, ~30-row inventory complete (the run must not abort mid-gather). stderr contains no 'Traceback'; the word 'unreadable' appears in no other detail.",
+   "can_fail_because": "Narrow 'except (OSError, ValueError)' to 'except OSError' around json.loads in check_qwen_config: JSONDecodeError escapes gather's sequential tail, the subprocess dies with a traceback and rc 1 \u2014 expected rc 0, expected unknown row and the surviving-row count all red (and the MCP '~/.qwen/settings.json' row turns into the 'file absent \u2192 no servers from it' wording, which is the lie this test catches)."
+  },
+  {
+   "id": "RT-03",
+   "name": "Broken ~/.codex/models_cache.json: syntax error and valid-but-not-an-object",
+   "setup": "Two runs against the same sanitized env (HOME=tmp home, fake bin PATH). Run A writes home/.codex/models_cache.json = '{\"models\": [{\"id\": \"x\"},' (truncated). Run B writes the same file as '[{\"id\": \"gpt-6\"}]' \u2014 valid JSON whose top level is an array. Same file mode 0644; a third sub-run chmods it 0000 for the OSError branch (skip if the suite runs as root).",
+   "action": "Run 'readiness.py --json' in each and read the 'codex model cache' row.",
+   "expected": "A: rc 0, status unknown, detail begins 'unreadable:' and quotes the JSON error, proof = the cache path. B: identical expectation \u2014 and this sub-run is RED against the script as it stands: check_codex_cache calls d.get('models') on a list, raising AttributeError, so the process exits 1 with a traceback and no JSON at all. The test exists to pin the fix (guard with 'isinstance(d, dict)' the way check_mcp already does); check_qwen_config has the same unguarded d.get('model') and should be covered by the same mutation of the file. C (mode 0000): rc 0, status unknown, detail 'unreadable: Permission denied\u2026' (the OSError branch).",
+   "can_fail_because": "No mutation needed for B \u2014 it is already red and documents a real defect. For A, deleting the try/except around json.loads (or letting ValueError propagate) replaces the unknown row with a traceback and rc 1; changing the status on this branch from UNKNOWN to MISSING would also make B/A red and, worse, would let --require on a cache file fail the run."
+  },
+  {
+   "id": "RT-04",
+   "name": "Well-formed codex cache \u2192 'reported' row: id fallbacks, cap at 6, cache age",
+   "setup": "Three separate runs, each writing one HOME/.codex/models_cache.json with fake bin PATH and --json: (i) {\"models\": [{\"id\": \"a\"}, {\"slug\": \"b\"}, {\"name\": \"c\"}, {\"note\": 1}, \"raw\"], \"fetched_at\": <now - 10*86400>} ; (ii) {\"models\": [{\"id\": \"m1\"} \u2026 {\"id\": \"m9\"}]} with no fetched_at; (iii) {\"models\": {\"x\": {\"o\": 1}, \"y\": {}}, \"fetched_at\": \"2026-09-01T00:00:00Z\"}.",
+   "action": "Run --json three times, extract the 'codex model cache' detail string.",
+   "expected": "All three status 'reported' (never 'verified' \u2014 a file claim). (i) detail '5 model ids, cache 10d old: a, b, c, ?, raw (cache may be stale)' \u2014 the dict entries fall back id\u2192slug\u2192name\u2192'?' and a non-dict entry is str()'d; 5 ids so no ellipsis. (ii) detail '9 model ids: m1, m2, m3, m4, m5, m6 \u2026 (cache may be stale)' \u2014 exactly 6 ids shown, trailing '\u2026' because len(ids) > 6, and no age clause. (iii) detail '2 model ids, fetched_at 2026-09-01: x, y (cache may be stale)' \u2014 dict form enumerates keys, string fetched_at contributes only its first 10 chars.",
+   "can_fail_because": "Change 'str(m.get(\"id\") or m.get(\"slug\") or m.get(\"name\") or \"?\")' to 'str(m.get(\"id\", \"?\"))' \u2192 (i) becomes 'a, ?, ?, ?, raw' red; or 'ids[:6]' \u2192 'ids[:5]' \u2192 (ii) red; or 'f_at[:10]' \u2192 'f_at' \u2192 (iii) prints the full timestamp red; or REPORTED \u2192 VERIFIED on that return \u2192 all three red."
+  },
+  {
+   "id": "RT-05",
+   "name": "A key in ~/.qwen/settings.json is never printed, in either output mode",
+   "setup": "HOME/.qwen/settings.json with env {\"AG_TEST_KEY\": \"sk-SENTINEL-ONE\", \"EMPTY\": \"\"}, a top-level \"apiKey\": \"sk-SENTINEL-TWO\", security.auth.selectedType \"test-oauth-type\", model.name \"sentinel-model\", model.baseUrl \"https://sentinel-host.invalid/v1\". Fake bin PATH, cwd tmp proj. The two sentinels are unique strings generated by the fixture.",
+   "action": "Run twice \u2014 markdown (no flag) and --json \u2014 and search stdout+stderr concatenated for the sentinels.",
+   "expected": "rc 0 both. Neither 'sk-SENTINEL-ONE' nor 'sk-SENTINEL-TWO' appears anywhere in either output: the row reports only the truthiness of env values. The 'qwen config (model, provider)' detail is exactly 'default sentinel-model, auth test-oauth-type, 0 listed models, endpoint sentinel-host.invalid, key set in settings env (file claim; key validity not tested)' with status reported and proof the path \u2014 the presence of the model name, auth type and endpoint proves the file WAS parsed, so a green sentinel check is not the result of a silent parse failure. Only the host segment of baseUrl is shown (no path/query), so a token smuggled into the URL tail stays hidden.",
+   "can_fail_because": "Turn 'key = \"key set in settings env\" if any(env.values()) else \u2026' into 'key = f\"env {env}\"' (or append 'json.dumps(d)' to the detail, the classic debug leftover) \u2192 SENTINEL-ONE leaks and both modes go red. A quieter mutation: 'any(env.values())' \u2192 'all(env.values())' \u2192 the empty-valued EMPTY key makes the phrase 'no key in settings env' \u2192 the detail assertion red while the secret check stays green, which is exactly the difference the two assertions are there to separate."
+  },
+  {
+   "id": "RT-06",
+   "name": "--require exit-code matrix, dedupe, and the 'inventory reports, require gates' rule",
+   "setup": "bin/ with only two fake executables, 'git' and 'python3', both printing a version and exit 0; no other binaries on PATH. HOME=tmp, cwd=tmp proj.",
+   "action": "Five runs: (a) --require git ; (b) --require nope ; (c) --require git --require nope ; (d) no --require ; (e) --require git --require git --json.",
+   "expected": "(a) rc 0, git row verified. (b) rc 1, a Tools row item 'nope' status MISSING detail 'not on PATH' proof '`command -v nope`' \u2014 a --require'd name that is absent is also *checked*, because gather appends args.require to the binary list. (c) rc 1: a single missing required tool fails the whole gate. (d) rc 0 even though claude/codex/agy/qwen/node rows are all MISSING \u2014 the script only gates what was explicitly asked for; an inventory that always failed would be useless as a preflight. (e) exactly one Tools row for 'git' and 7 Tools rows total (dict.fromkeys dedupe), rc 0.",
+   "can_fail_because": "In exit_code, drop the 'return 1' for the required-missing branch (or 'continue' instead) \u2192 (b) and (c) exit 0 red. The opposite mutation, 'return 1 if missing' (fail on any MISSING row regardless of --require), makes (d) exit 1 red \u2014 pinning that the gate is opt-in is as important as pinning that it fires."
+  },
+  {
+   "id": "RT-07",
+   "name": "--require against a binary that exists but exits non-zero (present wart)",
+   "setup": "bin/broken: a script printing 'boom on stderr' to stderr and exiting 3; everything else fake-or-absent, HOME=tmp.",
+   "action": "Run 'readiness.py --require broken --json'.",
+   "expected": "The Tools row 'broken' has status 'unknown', detail 'exit 3: boom on stderr' (stdout empty, so run_cmd falls back to stderr, first line only), proof '`broken --version`'. rc is **0**, recorded as the script behaves today: exit_code only fails on MISSING, so a present-but-broken tool satisfies --require even though --help promises 'tool that must be verified present'. The test name says WART so nobody mistakes the green for an approval; if EJ tightens --require to verified-only, the expectation flips to rc 1 (and RT-10's hanging tool joins it) \u2014 that edit must come with a note in DECISIONS.md, not silently.",
+   "can_fail_because": "In check_binary, treat any rc that is not None as success (delete the 'if rc == 0' branch) \u2192 the row becomes verified with the wrong detail and this test goes red while the exit-code half stays green \u2014 which is why the case asserts both the status/detail and rc. The tightening mutation ('if c.status != VERIFIED: return 1' inside the requires loop) turns rc 1 and is the other half of the tripwire."
+  },
+  {
+   "id": "RT-08",
+   "name": "--json output contract: keys, row shape, status vocabulary, group order",
+   "setup": "Full sanitized env as in RT-01 (empty HOME, fake bin PATH with all 7 fakes, tmp cwd); one plain run and one '--json' run for the row-count comparison.",
+   "action": "Run --json, json.loads(stdout) \u2014 assert stdout.strip() parses with nothing stripped off the front \u2014 and diff the row sets against the markdown run.",
+   "expected": "Top level has exactly the keys {date, host, checks}; date matches ^\\d{4}-\\d{2}-\\d{2}$ and equals the subprocess's local date (do not hardcode; a UTC-vs-local midnight boundary is the only flake risk); host equals socket.gethostname() as seen by the child (do not assert a literal). 'checks' is a non-empty list; every element has exactly the 5 keys {group, item, status, detail, proof}; every status is in {verified, reported, unknown, MISSING}; every group is in GROUPS; the list is ordered so the first occurrence index of each group is non-decreasing (sorted by GROUPS index); 7 unique Tools items; 4 MCP rows; exactly 2 Open unknowns rows all unknown; 'checks' length equals the number of markdown table rows in the plain run (the two modes must not diverge).",
+   "can_fail_because": "Any print before json.dumps in main (a debug line, or a warning routed to stdout) \u2192 json.loads red. Removing 'checks.sort(key=lambda c: GROUPS.index(c.group))' \u2192 group order red. Adding a field to Check but not to asdict output, or renaming 'proof' \u2192 the per-row key-set assertion red."
+  },
+  {
+   "id": "RT-09",
+   "name": "Markdown rendering: single heading per group, pipe escaping, 100-char truncation",
+   "setup": "bin/ with 'claude' printing '1.0 | beta' and 'codex' printing one 300-char line 'X'*300, the other 5 fakes normal; tmp HOME/cwd.",
+   "action": "Run markdown (no flag) and the same env with --json; compare the two claude details.",
+   "expected": "Line 1 = '# Readiness tools check \u2014 <ISO date> \u2014 <host>'; line 4 = 'Installed and logged in only; no canary was run, no quota spent.'; exactly one '## <Group>' heading per group that has rows, in GROUPS order, each followed by exactly one '| Item | Status | Detail | Proof |' and one '|---|---|---|---|' pair; every data row splits into 4 cells. The claude markdown row cell reads '1.0 \\| beta' (escaped by cell()) while the JSON detail for the same row keeps the raw '1.0 | beta' \u2014 proving escaping lives in to_markdown only. The codex detail is exactly 100 characters, not 300 (first_line truncation).",
+   "can_fail_because": "Make 'cell(text)' return text unchanged (drop .replace('|', '\\\\|')) \u2192 the claude row yields 5 pipe-separated cells and the 'splits into 4 cells' assertion red \u2014 a table that silently shifts columns is the failure mode worth a test for. Alternatively 'out.splitlines()[0][:100]' \u2192 '[:300]' \u2192 the codex length assertion red."
+  },
+  {
+   "id": "RT-10",
+   "name": "A hanging binary hits CMD_TIMEOUT instead of hanging the inventory",
+   "setup": "bin/claude whose whole body is 'exec sleep 60' (exec, so the SIGKILL subprocess.run sends on timeout reaps the sleeper itself and leaves no wrapper shell); the other 6 DEFAULT_BINARIES absent so their rows resolve instantly. HOME=tmp, --require claude.",
+   "action": "Run with a wall-clock measurement around subprocess.run (test-level timeout well above the bound).",
+   "expected": "rc 0 (an UNKNOWN row never trips the gate \u2014 see RT-07). The claude row has status 'unknown', detail 'no answer within 10s', proof '`claude --version`'. 10s \u2264 elapsed < 25s: the lower bound proves the timeout actually fired rather than a fast child, the upper bound proves the run stays bounded and that the other checks still completed via ThreadPoolExecutor. stderr has no Traceback and stdout still contains the full inventory (a timeout must not abort the gather). No 'sleep' process from the run survives (assert by scanning the process table for the fake script path or by the elapsed bound alone if the suite forbids ps).",
+   "can_fail_because": "Drop 'timeout=timeout' from subprocess.run in run_cmd \u2192 the child hangs 60s, elapsed > 25 red and the case hits the test-level timeout. Or 'CMD_TIMEOUT = 10' \u2192 '300' \u2192 detail 'no answer within 300s' red. Or delete 'except subprocess.TimeoutExpired: return \"timeout\", \u2026' \u2192 TimeoutExpired escapes, rc 1 plus traceback, inventory gone."
+  },
+  {
+   "id": "RT-11",
+   "name": "Fake qwen guard: readiness.py may only ever call `qwen --version`",
+   "setup": "bin/qwen is a script that appends '$*' as one line to a log file given by an env var pointing into tmp_path, then: if argv == '--version', print 'qwen-fake 0.0' and exit 0; for ANY other argv print 'UNEXPECTED qwen INVOCATION: $*' and exit 9. This is the quota tripwire: a bare 'qwen <word>' is a one-shot prompt that spends money.",
+   "action": "Four separate runs sharing one fresh log per run: markdown, --json, --require qwen, --self-test.",
+   "expected": "In every run the log holds exactly one line, '--version' (a plain inventory run touches qwen exactly once \u2014 a second call per run is the regression this pins). The qwen Tools row is verified with detail 'qwen-fake 0.0' in the markdown and --json runs. 'UNEXPECTED' never appears in stdout or stderr, and no row reports 'exit 9'. --self-test exits 0 without touching qwen at all (its log is empty).",
+   "can_fail_because": "Add 'run_cmd([\"qwen\", \"models\"])' beside check_agy_login, or change check_binary's probe from [name, '--version'] to [name, '--help'] / [name] \u2014 the log gains a non-'--version' line and exits 9, red. This is the single most valuable case in the file: it is what keeps the docstring promise 'no canary is run, no quota spent' mechanically true rather than aspirational."
+  },
+  {
+   "id": "RT-12",
+   "name": "--net is the only network switch, and `agy models` parsing ignores the banner",
+   "setup": "bin/agy logs '$*' to a tmp file; '--version' \u2192 'agy-fake 1.2.14' exit 0; 'models' \u2192 prints 'Fetching models\u2026' then 'gemini-9-pro', ' gemini-9-flash', an empty line, 'gpt-oss-120b-medium' on stdout, exit 0 (fast, so NET_TIMEOUT 30 is never exercised). Same sanitized HOME; two runs.",
+   "action": "Run --json once WITHOUT --net and once WITH --net; compare logs and the login row.",
+   "expected": "Without --net: Tools row agy verified 'agy-fake 1.2.14'; 'agy login (model list)' row status unknown, detail 'offline run: not provable without `agy models`; rerun with --net', proof '`agy models` (network)'; rc 0; and the log holds exactly one line '--version' \u2014 no network command is issued unless asked. With --net: log holds '--version' and 'models' (two lines only, nothing else \u2014 no qwen/agy prompt); login row status verified with detail '3 models: gemini-9-pro, gemini-9-flash, gpt-oss-120b-medium \u2026' \u2014 the 'Fetching\u2026' banner is filtered by the lower().startswith('fetching') guard and blank/whitespace lines by 'if l.split()', the ids[:4] slice is not reached so no id is dropped, and the trailing '\u2026' is printed unconditionally even for 3 ids (assert it literally). rc 0 both runs.",
+   "can_fail_because": "Delete the 'if not net' early return (run agy models always) \u2192 the offline run's log gains a 'models' line and its row flips to verified \u2192 both halves red, which is the point: this is the second no-network-by-default guard. Or drop the startswith('fetching') filter \u2192 detail becomes '4 models: Fetching\u2026, \u2026' red; or change 'ids[:4]' \u2192 'ids[:2]' \u2192 the shown list truncates red."
+  },
+  {
+   "id": "RT-13",
+   "name": "--blueprint / --workflows flags and argparse usage errors (exit 2)",
+   "setup": "tmp cwd; bp/ holding README.md, a.md, b.md, notes.txt; wf/ holding a.js, b.js, tool.py, .hidden.js; nope/ does not exist. Fake bin PATH (all binaries MISSING) so no real tool runs in any sub-run.",
+   "action": "Six runs: (a) --blueprint bp ; (b) --blueprint nope --json ; (c) --workflows wf ; (d) --nope ; (e) --blueprint (no DIR) ; (f) --require a b.",
+   "expected": "(a) rc 0, row 'blueprint (<abs path of bp>)' status verified, detail '3 sections, map present: README.md, a.md, b.md' (notes.txt excluded by the .md filter, has_map from README.md). (b) status MISSING detail 'directory not found' and rc **1** \u2014 an explicitly named blueprint is a hard fail, unlike an absent default directory, and this is the ONLY non---require path that exits 1. (c) exactly one 'workflow scripts' row, detail '2: a.js, b.js' (list_names keeps dirs and .js/.mjs/.md, skips dotfiles, drops tool.py), proof = the wf path; the default .claude/workflows row is replaced, not added. (d)(e)(f) rc 2, argparse usage text on stderr, and stdout empty \u2014 no inventory, no partial JSON.",
+   "can_fail_because": "Delete the blueprint loop in exit_code, or typo 'c.item.startswith(\"blueprint (\")' to '\"blueprint\"'-less form / 'checks' order so it never matches \u2192 (b) exits 0 red. Or 'if e.suffix == \".md\"' \u2192 '!= \".md\"' \u2192 (a) reports '1 sections, map MISSING' red. Or give --blueprint nargs='?' \u2192 (e) exits 0 instead of 2 red."
+  },
+  {
+   "id": "RT-14",
+   "name": "--self-test proves the gate can fail, and fails honestly when it cannot",
+   "setup": "Run 1: sanitized env, fake bin PATH with the 7 fakes, none named 'readiness-selftest-fake-tool'; make the fakes log argv (reuse the RT-11 logger) so an inventory run can be detected. Run 2: a bin dir that additionally contains an executable named readiness-selftest-fake-tool printing 'fake 1.0' and exit 0.",
+   "action": "Run '--self-test' in both, plus '--self-test --json' in run 1.",
+   "expected": "Run 1: rc 0, stdout is exactly one line containing 'self-test PASS: `readiness-selftest-fake-tool` reported MISSING and --require on it exits 1 \u2014 the check can fail.'; no '#' heading, no '| Item | Status' header, and the fake binaries' log stays empty \u2014 self_test() returns before gather(), so the self-test is cheap and offline. Run 2: rc 1 with 'self-test FAIL: status=verified, exit code=0 (expected MISSING, 1)' \u2014 the self-test must not report PASS on a machine where the fake tool name exists. '--self-test --json': rc 0, the PASS line, and stdout must NOT parse as JSON (the flag wins over the output mode).",
+   "can_fail_because": "In self_test(), check only 'c.status == MISSING' and ignore the exit code (or 'return 0' unconditionally as a stub) \u2192 run 2 exits 0 with no FAIL line red \u2014 that is the whole purpose: it proves the --require gate is live, not decorative. Symmetric mutation in exit_code: 'return 1' \u2192 'return 0' turns run 1's PASS into 'self-test FAIL: status=MISSING, exit code=0' with rc 1 red."
+  }
+ ]
+}
