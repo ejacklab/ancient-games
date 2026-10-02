@@ -1,0 +1,295 @@
+# Findings — Claude Code mods and plugins (full, as returned)
+
+Produced 2026-10-02 by a read-only workflow (4 agents: local sweep, web sweep, fit, critic). Findings carry a source and a label (verified / reported / unknown). WebFetch summaries are labelled reported. Parked by EJ on 2026-10-02: the mods route is skipped for now.
+
+## Local sweep
+- **topic**: Mods and plugins in Claude Code on this machine (Claude Code 2.1.286, checked 2026-10-02)
+- **findings**:
+  -
+    - **id**: F1
+    - **claim**: A mod is a plugin of function hooks: three files written in a child folder of ~/.claude/dev-mods/<session-id>/<mod-name>/. Files: .claude-plugin/plugin.json ({name, version, description}), hooks/hooks.json ({"modules":["./register.tsx"]}, exactly one path relative to that file), hooks/register.tsx or .ts exporting register(on, options). Optional 4th file types/index.d.ts, named in plugin.json as "types", is required if the mod keeps values in $.state.
+    - **label**: verified
+    - **source**: Skill plugin-authoring SKILL.md (loaded); /tmp/claude-1000/bundled-skills/2.1.286/0415db6772a26aaa50fd0d33a877c4b6/plugin-authoring/reference.md
+  -
+    - **id**: F2
+    - **claim**: Module shape: on(event, matcher?, hook) adds a hook; every hook is ($, e, next). $ is the engine interface (ui, model, session, prompt, tool, agent, fs, process, store, state, clock, command, network, settings, env, config rows). e is a frozen plain input. next(e) runs plugins beneath then the engine's behaviour and resolves to the event's result. Returning without next answers for itself; next({...e, x}) rewrites what the rest sees. A hook that throws is skipped and the chain continues, unless the registration's .catch answers in its place. JSX compiles against global h; elements come from const {Box,Text,Button}=$.ui.resolve(e), where e.surface is terminal|desktop|vscode|mobile. Element tables differ per surface (mobile has no Input/Select/Client; vscode no Client; terminal alone has Raster and Image, and no Svg).
+    - **label**: verified
+    - **source**: SKILL.md and reference.md in /tmp/claude-1000/bundled-skills/2.1.286/0415db6772a26aaa50fd0d33a877c4b6/plugin-authoring/
+  -
+    - **id**: F3
+    - **claim**: Hook points the skill's own table names: ui.render (matchers { component: 'Pane', requestId } or { component: 'AbovePrompt' }), tool.call ({ tool }; return { deny }, next({...e}), or await next and act on the result), prompt.submit (next({...e, text})), command.run plus $.command.register (slash commands), session.start, plus $.ui.open/status/toast/invalidate/log/copy, atom/read/update for state. A pane opened by a person's action seats at any width. A pane opened unasked (from session.start or a timer) seats only from 144 terminal columns and waits below that.
+    - **label**: verified
+    - **source**: SKILL.md table 'From the ask to the shape'
+  -
+    - **id**: F4
+    - **claim**: Function-hook event names present in this build's declaration (grep of the 18,060-line d.ts, an EngineEventOf group): agent.offer, agent.spawn, attribution.text, command.describe, command.run, config.describe, config.set, engine.create, plugin.register, prompt.attachment, prompt.compose, prompt.context, prompt.edit, prompt.fill, prompt.section, prompt.submit, prompt.suggest, session.append, session.attach, session.compact, session.detach, session.end, session.measure, session.receive, session.send, session.start, skill.prompt, telemetry.log, telemetry.mark, tool.call, tool.check, tool.describe, turn.complete, turn.start, turn.step, ui.focus, ui.input, ui.message, ui.press, ui.render, ui.resolve, ui.scroll, ui.select. Also named in the prose: process.spawn, state.set, ui.copy. The union is CoreEventOf = EngineEventOf & ClassicEventOf & OpEventOf plus noun events; my grep may have missed some events in OpEventOf.
+    - **label**: verified
+    - **source**: /tmp/claude-1000/bundled-skills/2.1.286/0415db6772a26aaa50fd0d33a877c4b6/plugin-authoring/types/claude-code.d.ts (lines ~3395, 4150-4420); reference.md
+  -
+    - **id**: F5
+    - **claim**: Classic (settings-style) hook events are also hookable from a mod as classic.<Event>. The names in this build's declaration: ConfigChange, CwdChanged, DirectoryAdded, Elicitation, ElicitationResult, FileChanged, InstructionsLoaded, MessageDisplay, Notification, PermissionDenied, PermissionRequest, PostCompact, PostModelSwitch, PostToolBatch, PostToolUse, PostToolUseFailure, PreCompact, PreModelSwitch, PreToolUse, SessionEnd, SessionStart, Setup, Stop, StopFailure, SubagentStart, SubagentStop, TaskCompleted, TaskCreated, TeammateIdle, UserPromptExpansion, UserPromptSubmit, WorktreeCreate, WorktreeRemove (33). They fire whether or not a settings hook is configured. classic.PreToolUse's e is ToolCallEnvelope only. e carries the base fields such as transcript_path.
+    - **label**: verified
+    - **source**: types/claude-code.d.ts (grep of hook_event_name literals; ClassicEventName at ~line 1066) and reference.md
+  -
+    - **id**: F6
+    - **claim**: What a mod can read and change: it can rewrite or deny tool calls and rewrite results. It can rewrite the submitted prompt and the system-prompt sections and first-message context blocks. It can rewrite conversation rows' content via session.append (text blocks, tool_result content/is_error; pinned fields, thinking blocks and tool_use blocks are put back). $.session.append can add a hidden user-role row the model reads, or a notice the model does not. It can draw panes, bands, status line, toasts and tool/message rows through ui.render. It can register tools (listed as mcp__<plugin>__<name>, served by a tool.call hook) and agent types (<plugin>:<name>). It can run model calls ($.model.complete, $.model.fork over the session transcript), read/write/list/stat files ($.fs), run host commands by argv ($.process.run, $.process.spawn), run timers ($.clock.every/after), keep session values ($.state) and cross-session values ($.store), and queue a prompt ($.prompt.submit) that starts its own turn once idle.
+    - **label**: verified
+    - **source**: reference.md sections 'The rows a conversation keeps', 'Work that outlives a dispatch', 'Tools and agent types'
+  -
+    - **id**: F7
+    - **claim**: Hot reload: for a mod folder under ~/.claude/dev-mods/<session-id>, the first file written raises one question to the person ('Enable hot reloading for this session?': How does this work? / Enable for this session / Not now). Only the person's answer is the switch, and no permission mode or rule can answer it. On enable the mod loads when the turn ends, and each later edit reloads when the turn that made it ends (or sooner when a tool or command the mod registered is about to run). A reload is a fresh load: register runs again and session.start fires again. $.state and $.store survive; module variables and old timers are dropped. Outside this session, `claude --plugin-dir <folder>` or CLAUDE_CODE_PLUGIN_DIRS loads a mod; interactive sessions watch those folders, and saves reload after the folder is quiet (quarter second for a lone save). A headless `claude -p` always loads fresh and cannot be asked (hot reload is off there).
+    - **label**: verified
+    - **source**: SKILL.md; reference.md section 'Developing one'
+  -
+    - **id**: F8
+    - **claim**: Limits and caveats: the API is 'early access' and 'moves between releases' (the declaration file is the authority). The module runs in its own environment with no DOM, no Node and no require (ES module whatever the suffix); only .ts/.tsx/.jsx/.js/.mjs/.cjs/.mts/.cts files load. A hook has a time budget per dispatch, and a $.clock.sleep counts against it. next.signal aborts on interrupt. Long work belongs in session.start with $.clock timers. A render hook may not write state (state.set while drawing is denied). A ui.render tree that fails validation is not drawn and the engine draws its own, with a transcript dim line only while hot-reloading and otherwise a debug-log line. A session.append hook cannot refuse a row except in the one documented deny case. A mod is a per-session or per-folder dev artefact unless installed another way. Check with `claude plugin validate <dir>`, `claude plugin test <dir>` and `claude --debug`.
+    - **label**: verified
+    - **source**: reference.md; types/claude-code.d.ts header
+  -
+    - **id**: F9
+    - **claim**: Streaming events turn.step and process.spawn need hooks written as async generators (async function* ($, e, next)). telemetry.* events are hooked by name with a matcher {to: 'collector'|'anthropic'}.
+    - **label**: verified
+    - **source**: reference.md first section
+  -
+    - **id**: F10
+    - **claim**: The skill's 'mod' is distinct from a classic plugin. reference.md says `claude plugin init` scaffolds 'another kind of plugin, one of command hooks under ~/.claude/skills'. A mod is function hooks, in-process, in TypeScript/JS. A classic plugin's hooks are shell commands declared in hooks.json.
+    - **label**: verified
+    - **source**: reference.md 'What a plugin of function hooks is'; /home/smoke01/.claude/plugins/cache/openai-codex/codex/1.0.6/hooks/hooks.json
+  -
+    - **id**: F11
+    - **claim**: Installed plugins (installed_plugins.json, version 2): rust-analyzer-lsp@claude-plugins-official v1.0.0 (user scope, installed 2026-04-06) and codex@openai-codex v1.0.6 (user scope, installed 2026-09-29, gitCommitSha db52e28f4d9ded852ab3942cea316258ae4ef346). Both are enabled in settings.json enabledPlugins. Install paths are under ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>.
+    - **label**: verified
+    - **source**: /home/smoke01/.claude/plugins/installed_plugins.json; /home/smoke01/.claude/settings.json
+  -
+    - **id**: F12
+    - **claim**: Marketplaces (names only): claude-plugins-official (github anthropics/claude-plugins-official; contains plugins/ with 40 entries and external_plugins/ with 14) and openai-codex (github openai/codex-plugin-cc). ~/.claude/plugins also holds blocklist.json, cache, data, known_marketplaces.json, plugin-catalog-cache.json, store and synced. settings.json extraKnownMarketplaces lists only openai-codex.
+    - **label**: verified
+    - **source**: ls of /home/smoke01/.claude/plugins and marketplaces; known_marketplaces.json; settings.json
+  -
+    - **id**: F13
+    - **claim**: ~/.claude/settings.json top-level keys: env, model, enabledPlugins, extraKnownMarketplaces, effortLevel, modelSettings, tui (value 'fullscreen'), skipDangerousModePermissionPrompt, skipWorkflowUsageWarning, agentPushNotifEnabled, autoMode. There is NO hooks key and NO statusLine key in the user settings.json. Project-level or local settings files were not inspected, and env values were not printed.
+    - **label**: verified
+    - **source**: python key listing of /home/smoke01/.claude/settings.json
+  -
+    - **id**: F14
+    - **claim**: The codex plugin 1.0.6 layout (a real classic plugin): .claude-plugin/plugin.json (name, version, description, author only); hooks/hooks.json; commands/ (cancel, transfer, review, status, adversarial-review, result, setup, rescue .md); agents/codex-rescue.md; skills/ (codex-result-handling, codex-cli-runtime, gpt-5-4-prompting, each with SKILL.md; the last also has references/); prompts/ (adversarial-review.md, stop-review-gate.md); schemas/review-output.schema.json; scripts/ (codex-companion.mjs, app-server-broker.mjs, session-lifecycle-hook.mjs, stop-review-gate-hook.mjs, plus lib/*.mjs); CHANGELOG.md, LICENSE, NOTICE. The manifest does not list the components, so they are found by convention-named folders.
+    - **label**: verified
+    - **source**: find in /home/smoke01/.claude/plugins/cache/openai-codex/codex/1.0.6
+  -
+    - **id**: F15
+    - **claim**: The codex plugin's hooks.json uses three classic command hooks, each a node script called through ${CLAUDE_PLUGIN_ROOT}: SessionStart (session-lifecycle-hook.mjs SessionStart, timeout 5), SessionEnd (same script, timeout 5) and Stop (stop-review-gate-hook.mjs, timeout 900). Its description reads 'Optional stop-time review gate for Codex Companion'. Slash commands are markdown files with frontmatter (description, argument-hint, disable-model-invocation, allowed-tools) and a !`node ...codex-companion.mjs <cmd> "$ARGUMENTS"` line. The agent is markdown with frontmatter (name, description, model: sonnet, tools: Bash, skills list).
+    - **label**: verified
+    - **source**: /home/smoke01/.claude/plugins/cache/openai-codex/codex/1.0.6/hooks/hooks.json, commands/status.md, agents/codex-rescue.md
+  -
+    - **id**: F16
+    - **claim**: Two plugin kinds coexist here. Classic plugins (like codex) use manifest, commands, agents, skills and shell-command hooks. Mods use function hooks in a TS/JS module, hot-reloaded and able to draw UI. The skill says a mod's folder is also a plugin (it has .claude-plugin/plugin.json), and `claude --plugin-dir` loads either. Whether a mod can be installed from a marketplace is NOT stated in the skill files I read.
+    - **label**: unknown
+    - **source**: No primary doc read for marketplace distribution of function-hook mods
+  -
+    - **id**: F17
+    - **claim**: The dev-mods folder for this session exists but was empty of mods at inspection: ls /home/smoke01/.claude/dev-mods showed only the session folder 7228935b-add1-463c-b49f-29a9c36f54f7. Nothing was written there, and hot reload was not enabled by me.
+    - **label**: verified
+    - **source**: ls /home/smoke01/.claude/dev-mods
+  -
+    - **id**: F18
+    - **claim**: Not read or run: the example mods (examples/pane.tsx, band.tsx, tool-call.ts) and the exact per-event input/result types beyond names. I did not run `claude plugin validate` or any mod, so I did not observe a mod actually loading, and everything about mod behaviour is read from the skill's text and declaration file, not seen running. The official docs site and web sources were not consulted, so the date and version of public documentation for this feature are unknown.
+    - **label**: unknown
+    - **source**: scope of this read-only pass
+- **gaps**: Not done: no web or docs research on the public status of mods and plugins; no run of `claude plugin validate`/`test`; the example mod files were not read; the per-event input and result shapes and the full list of $ nouns were not extracted; the event list may be missing some OpEventOf and noun events; project-level .claude/settings*.json were not checked for hooks or statusLine; whether function-hook mods can be distributed via marketplaces is unknown. The API is stated to be early access and to move between releases (build 2.1.286), so a design should treat it as unstable.
+
+## Web sweep
+- **topic**: Claude Code plugins, mods, hooks, skills, subagents, marketplace (docs as of 2026-10-02; local claude 2.1.287 verified)
+- **findings**:
+  -
+    - **id**: F1
+    - **claim**: A plugin is a directory loaded as one unit with manifest .claude-plugin/plugin.json. Components: skills (skills/<n>/SKILL.md), commands (commands/*.md), agents (agents/*.md), hooks (hooks/hooks.json, shell/http/prompt/agent), a 'hooks module' (JS/TS functions; a plugin with one is called a mod), MCP servers (.mcp.json), LSP servers, bin/ executables (added to Bash PATH), default settings, themes/output styles, channels, monitors. Plugin skills are namespaced, e.g. /my-plugin:review. Plugin agent files ignore the frontmatter fields permissionMode, hooks, mcpServers, initialPrompt (add those as plugin-level hooks/MCP instead).
+    - **label**: verified
+    - **source**: https://code.claude.com/docs/en/plugins ; https://code.claude.com/docs/en/plugins/components (component headings and the 'Ignored fields' line read in the fetched page)
+  -
+    - **id**: F2
+    - **claim**: Distribution: a marketplace is a repo/dir with .claude-plugin/marketplace.json (required: name, owner, plugins[]; each entry needs name+source). Source types: relative path, github, git-subdir, url (git), archive (zip over HTTPS, optional sha256 pin), npm, command. Install: /plugin (Discover tab) or `claude plugin marketplace add <owner/repo|path>` then `claude plugin install name@marketplace`. Scopes: user, project (committed .claude/settings.json; each collaborator still installs), local. Dev without marketplace: `--plugin-dir`; /reload-plugins after edits. `claude plugin validate`, `plugin details`, `plugin list`, `plugin configure` exist. The official marketplace is auto-added on first interactive start unless managed policy blocks it. Entry name must equal manifest name or install by manifest name fails. Cloud sessions do not load local-settings plugins.
+    - **label**: verified
+    - **source**: https://code.claude.com/docs/en/plugin-marketplaces (fetched copy titled 'Create a marketplace'); https://code.claude.com/docs/en/plugins
+  -
+    - **id**: F3
+    - **claim**: Three marketplace tiers: Official (names like claude-plugins-official, claude-code-plugins, anthropic-agent-skills, knowledge-work-plugins...), Community (claude-community, claude-plugins-community, healthcare), Third-party (everything else). Official/community names are accepted only if sourced from github.com/anthropics/; otherwise Claude Code refuses to load. claude-community pins nearly every entry to a commit SHA and refuses a different commit. The /plugin details pane for official-marketplace plugins shows a 'Context cost' estimate. Enabled plugins add skill/agent/command names+descriptions to context every turn.
+    - **label**: verified
+    - **source**: https://code.claude.com/docs/en/plugins/security ; https://code.claude.com/docs/en/plugins
+  -
+    - **id**: F4
+    - **claim**: Settings-hook events (28+ listed): SessionStart, Setup, UserPromptSubmit, UserPromptExpansion, PreToolUse, PermissionRequest, PermissionDenied, PostToolUse, PostToolUseFailure, PostToolBatch, Stop, SubagentStart, SubagentStop, TaskCreated, TaskCompleted, TeammateIdle, ConfigChange, CwdChanged, DirectoryAdded, FileChanged, InstructionsLoaded, Notification, MessageDisplay, PreCompact, PostCompact, PreModelSwitch, PostModelSwitch, Elicitation, ElicitationResult, WorktreeCreate, WorktreeRemove, SessionEnd (and StopFailure referenced). Hook types: command, http, mcp_tool, prompt, agent (experimental); SessionStart/Setup allow only command and mcp_tool.
+    - **label**: reported
+    - **source**: https://code.claude.com/docs/en/hooks (WebFetch returned a model-written summary table, not raw page text; event list should be re-checked against the raw page before building on it)
+  -
+    - **id**: F5
+    - **claim**: Settings-hook I/O contract: JSON on stdin with common fields session_id, transcript_path, cwd, permission_mode, effort.level, hook_event_name, agent_id/agent_type (scratchpad_dir v2.1.257+). Exit 0 = success (stdout parsed as JSON if valid); exit 2 = blocking error on events that can block; other codes = non-blocking error, action proceeds. JSON output: continue/stopReason/systemMessage/terminalSequence; PreToolUse hookSpecificOutput.permissionDecision allow|deny|ask|defer plus updatedInput; PostToolUse updatedToolOutput; PermissionRequest decision.behavior; top-level decision:'block'+reason on most blocking events; additionalContext capped at 10k chars. Matchers: tool name for tool events, `if` field for permission-rule filters. Defaults: timeout 600s command/http/mcp_tool, 30s prompt, 60s agent; async and asyncRewake options. Placeholders ${CLAUDE_PROJECT_DIR}, ${CLAUDE_PLUGIN_ROOT}, ${CLAUDE_PLUGIN_DATA}.
+    - **label**: reported
+    - **source**: https://code.claude.com/docs/en/hooks (summarized fetch)
+  -
+    - **id**: F6
+    - **claim**: Hook security/trust: command hooks run with full user permissions outside the sandbox. Before workspace trust, user and managed hooks run; project/local/plugin hooks run except command hooks (as summarized). Policy keys: allowManagedHooksOnly, allowedHttpHookUrls, httpHookAllowedEnvVars, disableAllHooks. Managed-settings PreToolUse hooks run before any mod and their block is final.
+    - **label**: reported
+    - **source**: https://code.claude.com/docs/en/hooks (summary); managed-hook ordering verified in https://code.claude.com/docs/en/plugins/mods/events
+  -
+    - **id**: F7
+    - **claim**: Plugin trust model: a plugin 'can execute arbitrary code on your machine with your user privileges' (hooks, mods, MCP/LSP servers, bin/). Skills/commands/agents act as instructions in Claude's context. Permission rules and the sandbox cover Claude's tool calls, not code a plugin runs itself (hooks, MCP servers and mod-started processes run outside the sandbox). Auto-update can change files after review. Anthropic's verbatim warning: 'Make sure you trust a plugin before installing, updating, or using it. Anthropic does not control what MCP servers, files, or other software are included in plugins...'. Review steps: `claude plugin marketplace list`, details pane 'Will install', read hooks/hooks.json, .mcp.json, bin/, `claude --plugin-dir <dir> plugin details <name>`. Uninstall keeps cache 14 days. Org controls: allow/blocklist marketplaces, force-enable, disable --plugin-dir/--plugin-url/CLAUDE_CODE_PLUGIN_DIRS, allowManagedHooksOnly, syncClaudeAiPlugins, pluginTrustMessage.
+    - **label**: verified
+    - **source**: https://code.claude.com/docs/en/plugins/security
+  -
+    - **id**: F8
+    - **claim**: Mods: a plugin whose code (JS/TS 'hooks module') registers function hooks that run INSIDE the Claude Code process. Minimal mod = 3 files: .claude-plugin/plugin.json, hooks/hooks.json ({"modules":["./register.js"]}), hooks/register.js exporting register(on). Handler shape ($, e, next): observe (return next(e)), rewrite (next({...e,...})), or answer (return result without next). Events seen in docs: tool.call, tool.check, prompt.submit, prompt.section, prompt.context, skill.prompt, turn.start/turn.step/turn.complete, session.start, command.run, ui.render, ui.press/ui.input/ui.select, plugin.register, fs.write (API-call hooks), and classic.<SettingsHookEvent> (e.g. classic.Stop). Matchers: string, array or regex on event fields. Failed hook is skipped (fail-open) unless a .catch handler is attached. Events are deeply frozen. Mods API ($): ui, command, store (cross-session JSON in ~/.claude/plugins/store/), state (session reactive), clock, process, fs, http, env, settings, mcp, model, prompt, session, tool, agent.
+    - **label**: verified
+    - **source**: https://code.claude.com/docs/en/plugins/mods/overview ; https://code.claude.com/docs/en/plugins/mods/events ; https://code.claude.com/docs/en/plugins/mods/interface
+  -
+    - **id**: F9
+    - **claim**: Mods that render UI: render sites include Pane (sidebar beside transcript in wide fullscreen terminal, else framed region above prompt; opened via $.ui.open({id,title,focus,closeOnEscape,holdToasts,rows,columns})), AbovePrompt band, toast ($.ui.toast), transcript log line ($.ui.log), status lines under the prompt, and redrawable built-in sites: UserMessage, AssistantMessage, ToolUse, ToolResult, ToolGroup, CommandOutput, AskUserQuestion, Spinner, ToolProgress, TurnDuration, InfoNotice, SessionMode, PromptHint. Elements: Box, Text, Button, Link, Code, Markdown (everywhere); Input, Select (terminal, Desktop); Svg (Desktop); Client; Raster, Image (terminal only). Redraw is not automatic for module variables: call $.ui.invalidate('ui.render') or use $.state atoms; $.clock.every for timers; redraws throttled. A pane opened unasked (timer/turn.start) appears only at >=144 columns (110 after user opened it once); user-opened panes seat at any width. The permission prompt is NOT a render site. Invalid trees fall back to Claude Code's own drawing with a 'refused' line.
+    - **label**: verified
+    - **source**: https://code.claude.com/docs/en/plugins/mods/interface
+  -
+    - **id**: F10
+    - **claim**: Hot reload: with `--plugin-dir`, Claude Code watches the folder and reloads the hooks module on file change; register() reruns and session.start fires again; $.state and $.store persist, module variables reset. Installed-from-shell mods load after /reload-plugins. Where mods draw: terminal CLI (incl. IDE integrated terminal, JetBrains) yes; Desktop Code tab yes (except WSL sessions, where plugins are unavailable and hooks do not run); VS Code chat panel hooks run but nothing draws; `claude -p`/Agent SDK hooks run, no drawing; cloud sessions hooks run, no drawing; Remote Control draws in the terminal on the user's machine.
+    - **label**: verified
+    - **source**: https://code.claude.com/docs/en/plugins/mods/overview (Where mods run table); hot reload also stated in the WebSearch snippet for https://code.claude.com/docs/en/plugins/mods/create and in the local plugin-authoring skill text
+  -
+    - **id**: F11
+    - **claim**: Mods are new: changelog says 2.1.287 (Oct 1, 2026) 'Added Claude Mods'. Docs state mods require Claude Code v2.1.287+ and are ON by default; CLAUDE_CODE_ENABLE_FUNCTION_HOOKS (early-access variable) is ignored from 2.1.287 (setting it to 0 does not turn mods off). The local machine runs claude 2.1.287 (ran `claude --version`). The bundled plugin-authoring skill, built for 2.1.286, still calls the API 'early access' and says 'the API moves between releases: the declaration file is the authority'. Anthropic samples (token-weather, blast-radius, replay-theater) live in anthropics/claude-code-playground under claude-code/mods and are shared 'as they are, without support'. Built-in mods in Claude Code include cc-plugin-agents-md, cc-plugin-diff (/diff pane), cc-plugin-plugin-authoring, cc-plugin-sec-default, cc-plugin-telemetry, cc-plugin-you-should-know (disabled by default); source for several is in github.com/anthropics/claude-code/tree/main/mods.
+    - **label**: verified
+    - **source**: https://code.claude.com/docs/en/plugins/mods/overview ; local `claude --version` = 2.1.287 ; /tmp/claude-1000/bundled-skills/2.1.286/0415db6772a26aaa50fd0d33a877c4b6/plugin-authoring/reference.md ; changelog line itself is reported (see F13)
+  -
+    - **id**: F12
+    - **claim**: Mod security model: a mod is code with the user's permissions, NOT sandboxed. It can read/write files, start processes, make network requests, read env vars and settings (including API keys), see every prompt and tool call, rewrite them, submit prompts as the user, send messages to other sessions, approve a tool call before the user is asked, and spend the user's model usage. It cannot change the permission prompt. Where the built-in guard (sec-default) loads (managed settings present, or Team/Enterprise sign-in), a user mod cannot approve a call that a deny rule refuses and managed PreToolUse blocks are final; but a mod can still approve calls an `ask` rule or a non-managed PreToolUse hook blocked, and mod $.fs/$.process calls bypass Read() deny rules. Admin controls: pluginConfigs['cc-plugin-sec-default@builtin'].options.allowManagedModsOnly, allowModsToOverrideDenyRules, prependPlugins/appendPlugins, allowManagedHooksOnly, disableAllHooks, disableSideloadFlags. Off switches for users: disable plugin in /plugin, `--safe-mode`, `disableAllHooks:true` in settings. Pre-install audit: `claude plugin validate <dir>` prints `hooks:` and `calls:` lines (and env reads/writes). Mods do not load in an untrusted directory until the trust prompt is answered; after 3 worker crashes all non-built-in mods unload until /reload-plugins.
+    - **label**: verified
+    - **source**: https://code.claude.com/docs/en/plugins/mods/overview ; https://code.claude.com/docs/en/plugins/mods/admin
+  -
+    - **id**: F13
+    - **claim**: Recent changelog (as extracted by the fetch tool): 2.1.287 Oct 1 mods + built-in 'You should know' side agent, plugin reload/startup-download corruption fix, managed allowManagedPermissionRulesOnly fix for plugin allowed-tools; 2.1.286 Sep 30 plugin installs refuse npm sources that are git repos/folders; 2.1.285 Sep 29 `claude plugin install --config <server>.<key>=<value>` for .mcpb MCP servers; 2.1.283 Sep 25 `claude plugin configure <plugin>`, `/doctor prompt-audit` (audits CLAUDE.md, skills, agents, commands for old model patterns); 2.1.284 Sep 28 unified /hooks list; 2.1.282 Sep 24 anthropic-skills/claude-ai skill namespaces reserved then reverted in 2.1.283; 2.1.281 Sep 23 MCP checks in `plugin validate`. Subagent items in this period are fixes (worktree isolation, fork subagents, background agent replies). Entries older than Sep 23 were only vaguely summarized ('Earlier mentions June-August').
+    - **label**: reported
+    - **source**: https://code.claude.com/docs/en/changelog (WebFetch summary; versions/dates not checked against the raw page)
+  -
+    - **id**: F14
+    - **claim**: Skills: SKILL.md with YAML frontmatter at ~/.claude/skills/<name>/ (personal), .claude/skills/ (project), plugin skills/, managed (enterprise), or claude.ai sync. Frontmatter: description, name, disable-model-invocation, user-invocable, allowed-tools (pre-approval for that turn), context: fork (+ agent:), arguments. Substitutions $ARGUMENTS, $name, ${CLAUDE_SKILL_DIR}, ${CLAUDE_SESSION_ID}; shell injection with !`cmd`. Deny via permissions Skill(name *). SKILL.md edits are picked up live; plugin hooks/agents need /reload-plugins. Open spec referenced: agentskills.io.
+    - **label**: reported
+    - **source**: https://code.claude.com/docs/en/skills (summarized fetch)
+  -
+    - **id**: F15
+    - **claim**: Subagents: markdown + YAML frontmatter. Scope priority: managed > --agents CLI flag > .claude/agents > ~/.claude/agents > plugin agents/ (lowest). Fields: name, description (required), tools, disallowedTools, model (sonnet/opus/haiku/fable/full id), permissionMode, maxTurns, skills, mcpServers, hooks, memory (user/project/local), background, omitClaudeMd, effort, isolation: worktree. Model resolution: per-call param > definition > CLAUDE_CODE_SUBAGENT_MODEL > main model. Spawn depth default 3 (CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH). Subagents never get AskUserQuestion, Plan-mode tools, Workflow, ScheduleWakeup. Frontmatter hooks need workspace trust. Built-ins: Explore, Plan, general-purpose. SubagentStart/SubagentStop settings-hook events exist; the tool.call mod event also fires for subagent calls, and turn.step carries agentId.
+    - **label**: reported
+    - **source**: https://code.claude.com/docs/en/sub-agents (summarized fetch); mod-side behavior from https://code.claude.com/docs/en/plugins/mods/events
+  -
+    - **id**: F16
+    - **claim**: Third-party write-ups of mods exist (GitHub repos OneWave-AI/claude-code-mods, cskwork/claude-code-mods, konsta95/ClaudeCodeMods, issues in henkisdabro/sandcastle-kit and rjunee/neutron discussing a mod to replace screen-reading with events, plus a claude.dev blog 'Getting started with Claude Code mods'). Their descriptions match the official docs (live panes, bands, status lines, tool-call guards, hot reload). Not opened beyond titles/snippets.
+    - **label**: reported
+    - **source**: WebSearch results: https://github.com/OneWave-AI/claude-code-mods ; https://claude.dev/blog/getting-started-with-claude-code-mods/ ; https://github.com/cskwork/claude-code-mods
+  -
+    - **id**: F17
+    - **claim**: Source disagreements/tensions: (a) 'early access' (local plugin-authoring skill 2.1.286 reference.md) vs 'on by default from 2.1.287' (official mods overview); the docs are newer and the local binary is 2.1.287, so treat mods as newly GA but with an API the skill says may move. (b) Mods overview says 'Mods require v2.1.287 or later' while the hooks doc summary mentions no function-hook details and defers to the mods pages. (c) Hooks doc (summary) says plugin non-command hooks run before workspace trust while mods are held until trust is answered per the admin page; not contradictory but different rules. (d) The sub-agents page lists hooks/mcpServers/permissionMode as agent frontmatter fields, while the plugins components page says plugin-shipped agents ignore them; consistent only if scope-specific, and the sub-agents summary did not state that restriction.
+    - **label**: verified
+    - **source**: https://code.claude.com/docs/en/plugins/mods/overview ; https://code.claude.com/docs/en/plugins/components ; https://code.claude.com/docs/en/sub-agents ; /tmp/claude-1000/bundled-skills/2.1.286/0415db6772a26aaa50fd0d33a877c4b6/plugin-authoring/reference.md
+  -
+    - **id**: F18
+    - **claim**: Relevance to Ancient Games design (inference, not a doc finding): a mod's tool.call/tool.check/prompt.submit/plugin.register hooks with fail-closed .catch handlers can host referee-style gating (deny/ask/allow) in-process, and settings hooks with exit code 2 can do the same via a script. Unverified: whether Ancient Games' Gate/Guard stages map onto these without losing the journal guarantees.
+    - **label**: unknown
+    - **source**: Author inference from F5 and F8; no test was run
+- **gaps**: Read-only run; nothing written or installed. WebFetch returns a model summary, so pages hooks, skills, sub-agents and changelog are labelled reported, not verified; re-read them raw before building on exact event lists or version dates. Not opened: plugins/mods/reference, /api, /create, /troubleshoot, plugins/manifest-reference, marketplace-reference, plugins/org, plugins/loading, the anthropics/claude-code-playground sample mods, or the third-party mod repos and blog (only titles/snippets seen). Not tested: whether mods work under this machine's settings, or what `claude plugin validate` prints. The plugin-authoring skill's engine-side watch on /home/smoke01/.claude/dev-mods/<session> started when the skill loaded, but no file was written there, so no hot-reload prompt should appear. The long reference.md (about 30KB) and components page were only skimmed via saved files in /home/smoke01/.claude/projects/-home-smoke01-dev-ancient-games/7228935b-add1-463c-b49f-29a9c36f54f7/tool-results/. No data on mod install popularity, third-party mod security incidents, or token cost of mods.
+
+## Fit to the method
+- **summary**: Read: method 3.1/3.2/3.5/3.7/4/5, SKILL.md, EXECUTOR_KINDS.md, TASK_TYPES.md, design_gate.py main (exit 1 on findings; prints PASS/FAIL). Nothing run: mod behaviour is reported from the two researchers (mods shipped in 2.1.287, 2026-10-01; local skill still says API early access and moves between releases). Plain answer: a hook helps only where a rule already has a script or file (design_gate.py, readiness.py, state file, ledger); it turns prose into an automatic check. Where no script/file exists, a hook is a distraction. Hooks cover only the main Claude session (and possibly Claude subagents; unverified); Codex, agy and qwen nodes are not covered, so the engine-neutral rule must be script plus state file run by the COO when a node returns (method 3.6). Hook = thin trigger on top. Ranking by value over cost: 1 plugin packaging (classic, not mod); 2 gate-on-write hook for design_gate.py; 3 status line from state file; 4 blueprint guard (script first, hook low); 5 readiness on SessionStart (low); 6 ledger cost recording (premature); 7 live pane/toast (premature). Also premature: mod-form packaging, and any attempt to cover other engines by hook. Unknown, check cheaply first: whether function-hook mods install from a marketplace; what plugin validate prints; whether classic hooks fire for subagent tool calls. Security: plugins and mods run with full user permissions outside the sandbox; use the least powerful form (classic command hook or none). A throwing mod hook fails open unless .catch is attached, so every gate needs a sabotage test (method 3.5 item 5). None of these adds an agent, which fits the whale stance. All n=0.
+- **candidates**:
+  -
+    - **name**: 1. Package workflow-design as a classic plugin (skill+scripts+templates), not a mod
+    - **does**: One installable unit: SKILL.md, scripts/design_gate.py and readiness.py, templates; replaces the single-machine symlink ~/.claude/skills/workflow-design (verified: skills dir holds symlinks only). Problem: the skill's method/templates are links into docs/, so a plugin copy breaks links or duplicates docs (one-copy rule).
+    - **method_step**: All steps; 3.1 script availability; CLAUDE.md one-copy rule
+    - **first_experiment**: Do not publish. claude --plugin-dir <temp dir> with manifest plus skills/workflow-design copy, then claude plugin validate; check links resolve and design_gate.py --self-test passes from CLAUDE_PLUGIN_ROOT. Record whether docs must be bundled (second copy) and decide the source of truth first.
+    - **value**: high
+    - **replaces**: The symlink; hand-copying the folder to another machine.
+    - **cost_risk**: Low-medium. Enabled plugins add skill descriptions to context every turn (reported); this description is about 1,500 characters. Drift between copies; auto-update can change files after review (reported). Repo is public on GitHub, so a marketplace.json in the repo needs no new hosting.
+    - **other_engines**: Skill files are plain markdown/scripts that Codex/agy/qwen can read by path, but they do not load a Claude plugin; only script paths matter to them.
+  -
+    - **name**: 2. Hook that runs design_gate.py when a design or ledger file is written
+    - **does**: After a write to a design JSON or docs/TASK_TYPES_LEDGER.md, run design_gate.py (or --ledger) and return PASS/FAIL findings to the model. Today the run is a manual step the agent must remember.
+    - **method_step**: 3.2 piece labels (G8), 3.4 size / 20% challenger rule, ledger G7
+    - **first_experiment**: A classic PostToolUse command hook (not a mod) in a temp --plugin-dir or local settings, matcher Write|Edit, wrapper runs the script only for matching paths and returns output as additionalContext. Sabotage: mismatched-category design must show FAIL; good design PASS; other files silent. Exit 1 on findings is non-blocking per hook docs (reported), so it informs rather than blocks.
+    - **value**: high
+    - **replaces**: The reminder in SKILL.md step 4; designs reaching review with errors the script catches.
+    - **cost_risk**: Low: pure script, no model call, self-test exists. Risk: design JSON location is not fixed in the method, so the path matcher is a guess; hook output contract is reported only (summarised doc).
+    - **other_engines**: No. Engine-neutral version first: the node contract's Evidence line makes the COO run the same script when the result file lands.
+  -
+    - **name**: 3. Status line showing run id, current step, attempt n/limit, last verdict from the state file
+    - **does**: One line under the prompt from a script that parses runs/<id>/state.md. statusLine is absent from settings.json (verified), so it is a clean addition.
+    - **method_step**: Section 4 state file, 3.5 attempt limit, 3.6 resume point, section 5 debuggability
+    - **first_experiment**: Classic statusLine command via --settings or a temp file (not the mods API); test on the three runs/20261002-* folders. First check that state.md has a parsable current-step field; if not, that gap is itself the finding. Try a pane (ui.render, opened by the person's command) only if the line proves too thin.
+    - **value**: medium
+    - **replaces**: Opening the state file by hand; the COO's monitor duty gets a glance view.
+    - **cost_risk**: Low as a status line; medium as a mod pane (early-access API, unasked panes need 144+ columns, WSL desktop sessions do not run plugins, all reported). It shows the file, not the truth, so a wrong state file is shown confidently. Adds no check.
+    - **other_engines**: Partly: other engines' progress shows once they write the state file; the line itself runs only in the Claude session.
+  -
+    - **name**: 4. Blueprint guard: block a build node before its sections are settled
+    - **does**: Deny/warn on product-code writes when the run's state file lists a building piece whose needed blueprint sections are not settled.
+    - **method_step**: 3.1 blueprint check; step 8 acceptance criteria
+    - **first_experiment**: First a script blueprint_ready.py <state.md> exiting nonzero if any needed section is not settled, with a sabotage fixture. Only if reliable on two real states, wrap it as a PreToolUse hook that asks (not denies) outside runs/, docs/ and scratchpad. Failure signal: no 'active piece' field in state.
+    - **value**: low
+    - **replaces**: Prose rule that blueprint questions are not answered by silence; today only COO discipline.
+    - **cost_risk**: Medium-high. A hook cannot tell a build write without an active-piece/path scope in state; inherits the kind-guard weakness (wrong kind switches check off); false blocks stop edits; fail-open on crash permits what it guards. Rule 6 and the permission system already gate live changes; most Ancient Games work is docs and not a product change, so n is small.
+    - **other_engines**: No hook coverage. Engine-neutral form: COO does not dispatch the build node until the script returns 0; earlier nodes use read-only modes (codex exec -s read-only, agy --mode plan, qwen --approval-mode plan).
+  -
+    - **name**: 5. SessionStart hook running readiness.py
+    - **does**: Run readiness.py at session start or on a slash command and show or write runs/<id>/readiness.md.
+    - **method_step**: 3.1 readiness
+    - **first_experiment**: Start with a slash command (.md command in a temp plugin running readiness.py). Justify a SessionStart hook only if forgotten runs are seen more than once. SessionStart allows only command and mcp_tool hooks (reported).
+    - **value**: low
+    - **replaces**: Skill step 1 instruction, but only when designing.
+    - **cost_risk**: Low-medium. Readiness is per task and per piece, but SessionStart fires every session including trivial ones the method says skip (section 2); --net probes cost time; a stale readiness file is worse than none.
+    - **other_engines**: No. The EXECUTOR_KINDS canary already proves Codex/agy/qwen and is run by the COO; readiness.py is plain Python anyone can run.
+  -
+    - **name**: 6. Hook recording hand-off cost into TASK_TYPES_LEDGER.md
+    - **does**: At SubagentStop/Stop read token/cost and append the ledger's actual-cost column.
+    - **method_step**: 3.4 size (20% challenger), ledger rule 5/G7, section 5 predictability
+    - **first_experiment**: Not a hook. First a read-only script printing tokens per node from a finished run, compared by hand with one known run (intake trial about 300k tokens). Transcript token fields were not inspected, so a cost source is unknown. Automate only if it matches, and append through design_gate.py --ledger so G7 can fail a bad row.
+    - **value**: premature
+    - **replaces**: Hand-written cost figures.
+    - **cost_risk**: High for the benefit. Ledger has no rows (n=0, verified); an automatic writer breaks one-writer-at-a-time (section 4); Codex/agy/qwen costs are invisible to Claude Code, so the column would be silently Claude-only and corrupt the 20% comparison.
+    - **other_engines**: No. codex exec --json and qwen budgets exist, but whether they report cost is unknown (EXECUTOR_KINDS.md).
+  -
+    - **name**: 7. Full live pane or toast for the run (mod UI)
+    - **does**: Sidebar pane with graph, node verdicts and ledger refreshed by timers; toasts on node completion.
+    - **method_step**: 3.6 graph, section 5 debuggability
+    - **first_experiment**: None now. After the status line proves useful over a week of real runs, build one read-only pane opened by a slash command.
+    - **value**: premature
+    - **replaces**: Nothing that is a rule; only a view. Method section 4 forbids graphs nobody queries, and a pane is that trap in UI form.
+    - **cost_risk**: Medium: API one day past early access (2.1.287, 2026-10-01), terminal-only drawing, unasked panes need 144 columns, module state resets on hot reload; competes for attention against EJ's discuss-first stance.
+    - **other_engines**: No; display only, Claude session only.
+
+## Critic
+- **weak_claims**:
+  - WEB F4/F5/F6/F13/F14/F15 are labelled 'reported' (WebFetch model summaries), and the fit analysis then builds its candidate 2 on them: 'exit 1 on findings is non-blocking', 'return output as additionalContext', 'SessionStart allows only command and mcp_tool'. Label is honest, but the dependency is not flagged. Specific trap: a design_gate.py that exits 1 gives the MODEL nothing (stderr/stdout of a non-blocking error is shown to the user or debug log at most). To reach the model the wrapper must exit 0 and print hookSpecificOutput JSON, or exit 2 (blocking). The fit's 'informs rather than blocks' glosses this. [source: unverified here; general hooks contract, re-read raw https://code.claude.com/docs/en/hooks]
+  - WEB F11 and F17 are labelled 'verified' but rest on one primary page (plugins/mods/overview) plus a local `claude --version` = 2.1.287 (I re-ran it: 2.1.287, verified). The claims 'ON by default' and 'CLAUDE_CODE_ENABLE_FUNCTION_HOOKS is ignored from 2.1.287' and the changelog line 'Added Claude Mods' are single-source; the changelog part is itself 'reported' (F13) yet the same F11 is labelled verified. Mixed label, strongest label wins by mistake.
+  - WEB F10 'verified' mixes three sources of different strength: the where-mods-run table (one docs page), 'hot reload with --plugin-dir' (a WebSearch snippet of another page, never opened) and the local skill. The WSL claim ('WSL sessions: plugins unavailable, hooks do not run') is Desktop-app-specific per the text; EJ's machine IS WSL2 (uname: 6.6.87.2-microsoft-standard-WSL2). The fit analysis cites 'WSL desktop sessions do not run plugins' only as a footnote on pane cost; nobody checked whether the CLI inside WSL is affected. Single source, high relevance.
+  - LOCAL F7 hot-reload details (question wording, 'only the person's answer is the switch', quarter-second quiet period) are labelled verified but are only READ from a skill's text; F18 admits nothing was run. 'Verified' here means 'read the primary file', which the task defines as verified, but the behaviour claims (no permission mode can answer it) are the bundled skill's own assertion about a build one version older (2.1.286) than the running binary (2.1.287).
+  - LOCAL F4 event list is verified as 'present in a grep' but the researcher says the grep may have missed OpEventOf events. A verified list that is admitted incomplete cannot support 'event X does not exist'. Also the local d.ts is 2.1.286, web docs are 2.1.287: the two event lists were never diffed (web lists fs.write and plugin.register; local lists plugin.register, no fs.write seen).
+  - WEB F12 (mod security model) is labelled verified from two docs pages, but several of its strongest statements ('cannot change the permission prompt', 'sec-default loads only when managed settings or Team/Enterprise sign-in', 'mod $.fs/$.process bypass Read() deny rules') are exactly the claims that need an independent test, and none was run. EJ is a personal account (userEmail gmail, no managed settings seen), so by the doc's own text the built-in guard likely does NOT load for him: a user mod there has no deny-rule floor. The researcher did not draw that conclusion.
+  - FIT claim 'hooks cover only the main Claude session (and possibly Claude subagents; unverified)' is weaker than the evidence: local reference.md (lines 100, 108, 137, which I read) says session.append fires 'in every subagent's alike (agentId names the subagent's loop)', and web F15 says tool.call fires for subagent calls. For mods this is two-source supported. For CLASSIC hooks the SubagentStart/Stop events exist but whether PreToolUse/PostToolUse fire for subagent tool calls was not verified by anyone. The fit lists it under 'check cheaply' correctly, but should split mod vs classic.
+  - FIT candidate 1 states 'skills dir holds symlinks only (verified)'. I confirmed ~/.claude/skills contains symlinks (head of listing), but the listing I saw was truncated and I did not see workflow-design's line; and the claim that plugin skills keep their name is wrong in direction: web F1 says plugin skills are namespaced (/my-plugin:review), so packaging changes the invocation name and any text that refers to 'workflow-design' (CLAUDE.md, memory, the skill's own description trigger) changes. Not mentioned in the fit.
+  - FIT candidate 1 'description is about 1,500 characters' and 'adds skill descriptions to context every turn' : the 1,500 figure is uncited; the context-cost statement is reported (web F3 from the plugins page) and applies equally to the current symlinked skill, so it is not a cost OF packaging. Misattributed cost.
+  - FIT 'Repo is public on GitHub, so a marketplace.json in the repo needs no new hosting' rests on a memory note (ancient-games-public-repo.md), not on a marketplace doc test; also web F3 says names resembling official/community tiers must be sourced from github.com/anthropics, so naming matters. A public repo as marketplace also means the installed plugin auto-updates from master, which EJ's memory says EJ pushes to from web sessions: an unreviewed push becomes executable code on every machine that installed it (web F7: 'auto-update can change files after review').
+  - WEB F18 and FIT 'mod hooks with fail-closed .catch handlers can host referee-style gating' is correctly marked unknown/inference, but the FIT then treats fail-open as a known property needing a sabotage test. The fail-open claim is verified (local F2 and web F8). The fail-closed-via-.catch behaviour is untested; do not rely on it for a Guard stage.
+- **uncovered**:
+  - Security of running third-party plugins: web F7/F12 cover the trust model, but nobody inspected what is ALREADY installed. codex@openai-codex 1.0.6 registers a Stop hook with timeout 900 that can block session end ('stop-review-gate'), and runs node scripts with full user permissions; rust-analyzer-lsp runs an LSP binary. Nobody read stop-review-gate-hook.mjs, checked whether the stop gate is enabled, or ran `claude plugin validate` to see its hooks:/calls: audit lines. Also not checked: the codex plugin's network and env reads (API keys), and the marketplace pin (installed gitCommitSha is recorded, but is auto-update on?). No data on third-party mod incidents (web gaps admit this), so 'no incidents known' must not be read as 'safe'.
+  - Version churn: web F13 changelog is a summary; fit says 'API one day past early access'. Not covered: how many breaking changes the plugin/hook surface had in the last 3 months (changelog entries older than Sep 23 were only vaguely summarized), whether 2.1.282->2.1.283 skill-namespace reservation-and-revert is a sign of the churn class that would hit a packaged skill, and whether Claude Code auto-updates on EJ's machine mid-run (2.1.286 skill bundle vs 2.1.287 binary is a live example of the skill text lagging the binary by one version). Pinning strategy (contract version field exists on the Artifact tool, nothing equivalent was investigated for plugins) is absent.
+  - What breaks on hot reload: only restated from docs (register reruns, session.start fires again, module variables and timers dropped, $.state/$.store survive). Not covered: a reload in the middle of a Workflow/subagent run, duplicated side effects when session.start fires again (e.g. a hook that appends a ledger row or starts a process on session.start would double-fire on every save), a mod throwing during reload leaving the previous good version or none, and the 'after 3 worker crashes all non-built-in mods unload until /reload-plugins' rule (web F12), which means a gate mod can silently vanish mid-session, i.e. fail-open at the whole-mod level, not just per hook. This is a stronger fail-open than the fit's per-hook note.
+  - Do mods exist in the CLI or only the desktop app: partly answered (web F10: terminal CLI yes, Desktop Code tab yes, VS Code draws nothing, -p/SDK/cloud hooks run without drawing, WSL desktop sessions: none). Not answered: EJ runs the CLI inside WSL2 with tui=fullscreen; whether `claude -p` workflows launched by the COO (Workflow tool, Codex/agy subprocesses) load the user's mods at all, and whether a workflow's subagents inherit them. The ancient-games design runs agents headlessly, so 'hooks in headless sessions' is the case that matters and it was only touched by one table row.
+  - Interaction with EJ's existing setup: user settings.json has skipDangerousModePermissionPrompt, autoMode and no hooks. Nobody checked how mods/classic hooks interact with autoMode/permission modes, or whether `disableAllHooks` / `--safe-mode` are set anywhere. Project-level settings: I checked /home/smoke01/dev/ancient-games/.claude and it contains only skills/ and workflows/ (no settings*.json), which closes the local gap (verified). Not checked: /home/smoke01/.claude/settings.local.json and /home/smoke01/CLAUDE.md-level scoping.
+  - Cost beyond context: a mod can call $.model.complete/fork and spend usage (web F12). Nobody noted that a gate or status mod written in this style could make model calls that bypass the cost-tier rule (memory: plan strong, code cheap), and that Copilot credit budget (30,000 for 30 days) is a different meter from Claude Code usage. Nothing says how mod model usage is metered or shown.
+  - Official-doc recency not independently cross-checked: the local skill says early access, docs say default-on; no one read the raw changelog or the plugins/mods/reference and /troubleshoot pages. The 14-page unread list in web gaps (manifest-reference, marketplace-reference, plugins/org, loading) includes the page that would settle whether a function-hook mod can be marketplace-installed (local F16 'unknown'; web F1 implies plugins-with-hooks-module install like other plugins, F10 says 'installed-from-shell mods load after /reload-plugins', which suggests yes but is not a direct statement).
+  - Rollback and removal path: web F7 says uninstall keeps cache 14 days; not covered: how to fully remove a mod that is misbehaving when the mod itself is what blocks the tool calls (a deny-everything gate bug locking the session; `--safe-mode` is named but untested).
+  - Whether these hooks help at all against the problem EJ actually has. The fit analysis answers 'what could be built', but no one measured how often the manual steps (running design_gate.py, readiness.py) are actually skipped. Repo runs/ has six folders; no evidence in either report of a skipped-gate incident. EJ's stated preference (memory: discuss first, sequential state-file) and the 'no rule changes on n=1' house rule argue for finding one real miss first.
+- **verify_first**:
+  - 1. How a classic PostToolUse/Stop command hook delivers a script result to the MODEL, from the RAW hooks page (not a WebFetch summary) plus one throwaway run in a temp --plugin-dir: exit 0 + JSON additionalContext vs exit 1 vs exit 2, and whether design_gate.py's exit 1 is silent to the model. Every 'hook turns prose into an automatic check' value claim (candidates 2, 4, 5) depends on this, and today it rests only on a model-written summary. Also in the same run: whether classic hooks fire for subagent tool calls (the Codex/Claude-subagent coverage question).
+  - 2. What the already-installed third-party plugin does and what the trust floor really is on EJ's machine: run `claude plugin validate` (hooks:/calls: audit lines) against codex@openai-codex 1.0.6, read stop-review-gate-hook.mjs, and confirm whether managed settings / sec-default are present (docs say the deny-rule floor loads only with managed settings or Team/Enterprise sign-in; EJ looks personal). If no floor, any mod EJ writes or installs can approve tool calls before EJ is asked. This decides 'classic hook vs mod' on security grounds and is not covered by any finding that was actually run.
+  - 3. Whether mods (and plugins generally) load and persist in the exact environment the designs run in: CLI inside WSL2 (the Desktop-app-WSL exception in web F10 must be checked not to apply), and headless `claude -p`/Workflow subagents (hot reload is off; mods load fresh; do the user's mods and the gate fire there). Plus the mod-lifecycle failure mode 'after 3 worker crashes all non-built-in mods unload' (web F12): one sabotage test that crashes a mod hook and observes whether the gate stays on. If mods do not reach the headless workflow path, the whole 'in-process referee' idea (web F18) is out and only script+state-file (method 3.6) remains.
+- **ranking_changes**:
+  - Move candidate 2 (gate-on-write hook for design_gate.py) from 2 to 3, below the status line, until verify_first item 1 is done. Its value hinges on how a non-zero exit reaches the model, the design JSON path is 'a guess' (fit's own admission), and the only evidence of benefit is a hypothetical skipped run. The status line (candidate 3) has a verified clean slot (no statusLine key, verified) and no model-delivery dependency, so it is cheaper to learn from. Counter: its value is also only 'medium', so the swap is about confidence, not payoff.
+  - Demote candidate 1 (package as a classic plugin) from 1 to 'do the one-hour compatibility check first, then decide'. The fit itself notes it breaks the one-copy rule (skill links into docs/) and that plugin skills get namespaced names (web F1), which changes the trigger and every reference to 'workflow-design'; plus the marketplace/auto-update path makes any push to master live code on installed machines (web F7). The gain over the current symlink is only 'works on another machine', and nothing says EJ has a second machine or other users. Rank value 'medium, conditional on a second consumer'.
+  - Candidate 6 and 7 'premature' are right; add the sharper reason for 6: the ledger writer through a hook would also be subject to the 3-crash whole-mod unload and fail-open, so a missing ledger row is silent. Keep both last.
+  - Candidate 5 (SessionStart readiness): keep low but change the form: a slash command is right; additionally note that SessionStart runs during headless workflow sessions, where a readiness probe with --net could add latency or side effects to every COO-launched run. Recommend never putting it on SessionStart.
+  - Candidate 4 (blueprint guard): agree with 'script first, hook low', but its stated value 'low' should be 'none until a real skipped-blueprint incident is logged' per the no-rule-change-on-n=1 house rule. A deny hook with fail-open on crash and false blocks is a net negative for a discuss-first user.
+  - Add one candidate the fit omits: 'do nothing, record one skipped-step incident' (plus read stop-review-gate on the already-installed codex plugin). Given everything is n=0, the baseline option should be ranked explicitly, and the cheapest information-bearing step is the third-party plugin audit (verify_first item 2), not a build.

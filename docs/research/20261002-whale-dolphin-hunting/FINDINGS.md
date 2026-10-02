@@ -1,0 +1,491 @@
+# Findings — orca, humpback, sperm whale and dolphin hunting (full, as returned)
+
+Produced 2026-10-02 by a read-only workflow (7 agents: 4 species researchers, map, combine, critic). Most biological claims are *reported* (secondary sources); about 4 of 22 strategies are *verified*.
+
+## Biology
+-
+  - **species**: Orca (killer whale, Orcinus orca). Ecotype-specialised: resident fish-eaters, transient/Bigg's mammal-eaters, Antarctic types B/C, Crozet and Patagonian pinniped specialists, Norwegian/Icelandic herring specialists, Bremer Canyon (Australia) large-whale hunters. Evidence base here: 4 searches and 4 page fetches. Only the Visser 2008 PDF was read as a primary paper, and only its opening pages. Everything else is secondary (press releases, magazines, aggregator sites, search snippets). Not read: the original papers for Totterdell 2022, Brent 2015, Baird and Dill 1996, Similä and Ugarte 1993, Guinet and Bouvier 1995, Hoelzel 1991, Ford, Filatova.
+  - **strategies**:
+    -
+      - **name**: Wave-washing of seals off ice floes (Antarctic type B)
+      - **how**: Whales find seals on floes by spy-hopping. They line up abreast and swim at the floe together, beating flukes in sync, to make a wave that washes the seal into the water. Then they grab it. Visser et al. confirm coordinated attacks that wash hauled-out seals (crabeater, Weddell, leopard) off floes, and one penguin. Kills were confirmed by body parts, blood or fat. Dislodged seals were sometimes carried in a whale's mouth and then released, escaped or were put alive on another floe. The authors suggest this might serve as training or social learning (their wording is tentative).
+      - **roles**: Whales act in a coordinated line. Visser et al. did not give detailed roles in the pages I read. The first documented event (Smith et al. 1981) involved 7 whales.
+      - **when_used**: Seals hauled out on pack ice, Antarctic Peninsula. Some events involved several attacks.
+      - **source**: https://www.orcaresearch.org/wp-content/uploads/2024/12/Visser-et-al-2008-Antarctic-killer-whales-use-waves.pdf (Visser et al. 2008, Marine Mammal Science 24(1):225-234; only the first pages were readable). Success figures: https://www.livescience.com/13498-killer-whales-weddell-seal-attacks.html and https://oceanwide-expeditions.com/blog-amp/orca-whales-the-killer-shockwave-hunters-of-the-high-seas
+      - **label**: verified
+    -
+      - **name**: Wave-washing success numbers (conflicting secondary figures)
+      - **how**: Two secondary sources give different numbers. A search snippet from a LiveScience-type summary says 14 Weddell seal attacks, 12 of them cooperative wave-washing, about 4 waves per successful attack, about 30 minutes. A tour-operator blog (Oceanwide) says 86% of seals taken involved wave-washing and 75% of Weddell seals attacked were taken. I could not reconcile these against the paper's tables. Treat all of them as unconfirmed.
+      - **roles**: n/a
+      - **when_used**: n/a
+      - **source**: https://www.livescience.com/13498-killer-whales-weddell-seal-attacks.html ; https://oceanwide-expeditions.com/blog-amp/orca-whales-the-killer-shockwave-hunters-of-the-high-seas
+      - **label**: reported
+    -
+      - **name**: Carousel feeding on herring (Norway, Iceland)
+      - **how**: Whales circle a herring school and dive under it. They blow bubbles, vocalise and flash white bellies, so the herring pack tighter. One whale then slaps the edge of the school with its tail, which stuns many fish. The whales eat the stunned fish one at a time. Icelandic whales also use a pulsed call that may suit manipulating herring schooling (Simon et al. 2006); this was not read.
+      - **roles**: Described as role-based, with whales taking turns diving under and circling the school and one striking with its tail. Detailed role allocation is a journalist's description, not read in a paper.
+      - **when_used**: Dense herring schools in fjords or coastal waters. Group feeding, with fish eaten individually afterwards.
+      - **source**: https://www.nationalgeographic.com/magazine/article/orcas-feeding-cooperative-hunting-killer-whales ; citations list via https://en.wikipedia.org/wiki/Carousel_feeding (Similä and Ugarte 1993, Can. J. Zool.; Simon et al. 2006, Bioacoustics)
+      - **label**: reported
+    -
+      - **name**: Coordinated attacks on large whales (Bremer Canyon, Western Australia)
+      - **how**: In the first event, at least 14 orcas attacked an adult blue whale, about 3x their size, over a long chase. Females led, ramming the sides while others attacked the head. One female lunged head-first into the blue whale's mouth, presumably to feed on the tongue. They stripped skin and blubber and removed the dorsal fin. The blue whale weakened from blood loss and slowed, then died. About 50 orcas then fed and shared the carcass. Two further events involved juvenile blue whales, in which males also took part. At least 16 of the same animals took part across all three events.
+      - **roles**: Females led and rammed the flank. Others attacked the head and mouth. Males took part in the calf attacks. A large group shared the carcass.
+      - **when_used**: Rare. Three kills documented in 2019 and 2021 (Bremer Canyon). Earlier harassment of blue whales was recorded without kills.
+      - **source**: https://news.flinders.edu.au/blog/2022/02/01/first-records-of-orcas-hunting-largest-animals-on-earth/ (Totterdell et al. 2022, Marine Mammal Science, not read)
+      - **label**: reported
+    -
+      - **name**: Intentional stranding on beaches (Punta Norte Argentina; Crozet Islands)
+      - **how**: The whales rush to the shore with enough speed to haul about two-thirds of the body out, keeping the tail in the water so a wave can carry them back. They take sea lion pups and elephant seal prey at the water's edge. Echolocation is reportedly used first, and vocal communication stops during the approach (from a content site, not verified). Adults reportedly demonstrate beaching to juveniles without prey so calves can practise (single secondary source).
+      - **roles**: Individual pod members beach themselves. Calves learn from adult females. Whether the others help is unknown from what I read.
+      - **when_used**: High tide and waves, on pinniped rookeries. The risk of failure is real: a whale that cannot get back faces beaching, muscle compression, breathing trouble and heat stress.
+      - **source**: https://a-z-animals.com/articles/orcas-beach-themselves-to-hunt-and-it-works-about-half-the-time/ (weak source). Elephant seals as the primary prey at Crozet: Guinet 1991; Guinet and Bouvier 1995, via search snippet only.
+      - **label**: reported
+    -
+      - **name**: Small-group hunting of marine mammals (Bigg's/transient orcas, Vancouver Island)
+      - **how**: Stealthy, small-group hunts, mostly of harbour seals. In Baird and Dill (1996), 138 attacks on five marine-mammal species were seen in 434 observation hours, 130 of them on harbour seals. Intake was more than sufficient for the whales' needs, and per-capita energy intake was highest in groups of three. Typical group size was larger than three, so group size reflects more than intake alone, such as social factors.
+      - **roles**: Not described in what I read.
+      - **when_used**: Seals as the main prey, with the group size that maximises per-capita intake for foraging adults and subadults.
+      - **source**: https://acnpsearch.tweb-dev.unibo.it/singlejournalindex/160195 (abstract summary, Baird and Dill 1996, Behavioral Ecology). Original paper not read.
+      - **label**: reported
+    -
+      - **name**: Leader-led salmon foraging (resident orcas)
+      - **how**: This is movement leadership, not a capture tactic. Post-reproductive females lead groups through salmon foraging grounds. Their leadership is especially prominent in years of low salmon abundance. Females lead sons more than daughters.
+      - **roles**: Post-reproductive females lead. Other pod members follow.
+      - **when_used**: Salmon grounds, particularly in poor years.
+      - **source**: https://ore.exeter.ac.uk/repository/handle/10871/16488 (Brent et al. 2015, Current Biology; paper itself returned 403, so only the abstract and summary pages were seen)
+      - **label**: reported
+  - **strengths**:
+    - Cooperative group tactics let them take prey much larger than themselves, including a blue whale (Flinders / Totterdell 2022, reported).
+    - Ecotype specialisation matches tactics to prey: wave-washing on ice, carousel on herring, stranding on beaches, mass attack on large whales (all reported; Visser 2008 verified for wave-washing).
+    - Foraging knowledge is held by older individuals; leadership by post-reproductive females is strongest in poor salmon years (Brent et al. 2015, reported from abstract).
+    - Group hunting is energetically adequate: in transient orcas, intake exceeded needs and was highest at group size three (Baird and Dill 1996, reported).
+  - **weaknesses**:
+    - Failure rates are real. Intentional stranding is reported at about 50% success (weak secondary source), and a whale that cannot return risks a fatal beaching. In the Visser paper, some washed seals escaped, were released, or were put alive on another floe.
+    - Large-whale kills are rare: only three were documented. They took a long chase and caused heavy injuries to the prey, and kills depend on a large group of experienced individuals. Many attacks on large whales were previously recorded as harassment without a kill.
+    - Specialisation is a trap. Each ecotype hunts one prey type with one learned technique, so a prey collapse (for example low salmon) hurts that group directly, which is why leadership matters most in poor years.
+    - Most of the evidence is opportunistic tourist-ship or short-term observation, and most success figures here are secondary and unreconciled (the 86%/75% versus 12 of 14 figures), so effect sizes should not be trusted.
+    - Costs of the large-whale kill are not measured: the blue whale attacks produced injuries to the attackers only as far as I know, but none was reported in what I read (unknown).
+  - **cooperate_vs_solo**: I did not find a source that states a rule for what decides cooperating versus hunting alone. What the sources support is only these inferences. (1) Prey type and size: seals on floes, herring schools and large whales are hunted by groups, and Bigg's seal hunts are done in small groups of about three (reported, Baird and Dill 1996). (2) Per-capita energy intake: this peaks at group size three for transients, yet typical group size is larger than three, so non-foraging factors such as social bonds also set group size (reported). (3) Kin structure: calves hunt and learn within their matriline, so cooperation is largely within the pod. (4) Environmental stress: leadership by older females increases in low-abundance years (reported). A trigger such as a decision threshold or the exact number needed for each tactic is unknown. I would not write one into a design without a source.
+  - **communication_and_memory**: Pods share a call repertoire (dialect), and calves adopt their matriline's calls through social learning. Resident matrilines with at least 50% association time form pods. Residents live in stable matrilines, with no emigration of either sex observed. Pods that share part of a repertoire form an acoustic clan. A search summary says repertoires remained stable over nearly five decades, while another says change happens at different speeds in different call components, and divergence is not just matriline fission plus random drift. (Sources: https://www.zoology.ubc.ca/~barrett/documents/CulturaltranmissionwithinmaternallineagesAnimalBehaviour63_000.pdf ; https://zoology.ubc.ca/~consort/pdfs/Deecke%20et%20al.%202000.pdf ; https://insight.cumbria.ac.uk/id/eprint/1829 ; all seen only through search snippets, so reported.) Memory is carried by older females: post-reproductive females act as repositories of ecological knowledge (Brent et al. 2015, reported; this is the authors' hypothesis, supported by the leadership pattern). Hunting skills are taught: adults reportedly demonstrate beaching to calves (single weak source) and manipulate prey in ways that may serve as training (Visser 2008, authors' tentative suggestion, verified as a suggestion only). Stable pods vary by ecotype. Resident groups are very stable. Transient groups are small and flexible (reported). During stranding approaches vocalisation reportedly stops (weak source).
+  - **cost_limits**: Little hard data was found, so this part is thin. Intake: transient groups' intake exceeded their needs, highest per head at group size three (Baird and Dill 1996, reported). Stranding is high-risk, with about a 50% success rate (weak source) and a risk of fatal beaching. The blue whale attack was long and ended only when the prey lost blood and slowed, and about 50 whales fed afterwards, which indicates sharing (Flinders, reported). Energy cost per hunt, calories per kill and injury rates to the attackers were not found (unknown). Limits on how long a tactic can run, such as the roughly 30-minute wave-washing events, are a single secondary figure (reported).
+  - **gaps**: The primary papers were not read except the first pages of Visser 2008. Not verified from the originals: Totterdell 2022, Brent 2015 (403), Baird and Dill 1996, Similä and Ugarte 1993, Guinet and Bouvier 1995, Hoelzel 1991, Ford and Deecke dialect papers. Missing: stranding success figures from a peer-reviewed source, energy cost per hunt, injury and mortality data, formal evidence of teaching (as opposed to observed demonstration), and any quantified rule for cooperating versus solo. The search tool returned several low-quality sites (content farms, tour blogs); I used only a few of them and labelled them reported. The 86%/75% and 12-of-14 wave-washing figures disagree and are unresolved. No dolphin, sperm whale or humpback research was done; those belong to other agents or runs.
+-
+  - **species**: Humpback whale (Megaptera novaeangliae). Evidence base: only the Mastick et al. 2022 abstract and the PMC rorqual-energetics paper were read as primary sources; everything else is reported through press releases, news and summaries. Sources are labelled accordingly.
+  - **strategies**:
+    -
+      - **name**: Lunge feeding (the base mechanism under every other tactic)
+      - **how**: One whale accelerates toward a prey patch, opens its mouth and engulfs prey-laden water. The ventral groove blubber lets the mouth cavity expand greatly. It then filters the water out through the baleen. A foraging dive typically has a gliding descent, up to about 15 lunges at depth, and an ascent powered by steady swimming. Each lunge costs up to roughly 20 MJ in the largest rorquals and returns up to about 30 times that in energy at the largest body sizes (about 27 m). The 30x and 20 MJ figures are rorqual-wide model results, not humpback-specific measurements, and humpbacks are smaller than the 27 m blue-whale case, so their ratio is probably lower.
+      - **roles**: Solo. Every whale does this, even inside a group.
+      - **when_used**: Dense, shallow prey such as krill or herring. Lunges per hour were highest when prey was shallowest, and whales fed in the densest part of the krill layer (Southeast Alaska).
+      - **source**: https://pmc.ncbi.nlm.nih.gov/articles/PMC8179629/ (energetics); search-result summaries of Southeast Alaska krill density work (primary paper not opened)
+      - **label**: verified
+    -
+      - **name**: Cooperative bubble-net feeding (group, with role division)
+      - **how**: Some whales dive below a fish school and release bubbles in a ring or spiral, forming a rising curtain. The surface blocks escape from above. Other whales herd the fish, and one or more whales make loud, low-frequency 'feeding calls'. The whole group then surges upward and lunges together. Reported group size averages about 10 whales, and up to about 15 are described.
+      - **roles**: Reported roles: bubble blowers (the net), herders or callers (feeding call, hold the school together) and divers or lungers. Reported positions are stable between events, with whales taking the same order each time. Role specialization is inferred from repeated behaviour within a bout, not tested directly.
+      - **when_used**: Schooling fish (Pacific herring) and krill in Southeast Alaska, and a subset of humpbacks elsewhere. Fewer than 10 percent (about 100 individuals) of the 2,000 to 2,500 whales visiting Southeast Alaska each year do it, and about 60 to 80 are described as known bubble-netters.
+      - **source**: https://www.expeditionsalaska.com/ramblings/bubble-net-feeding-humpback-whales/ (tour-operator blog, weak); https://www.kuow.org/stories/humpback-whales-make-custom-fishing-nets-out-of-bubbles (NPR syndication via search snippet; the page itself returned 404 on fetch); https://www.earth.com/news/learning-to-hunt-together-may-help-save-humpback-whales (roles, reported)
+      - **label**: reported
+    -
+      - **name**: Individual-level bubble-net kinematics in groups
+      - **how**: Multisensor tags on 26 whales in the southern Gulf of Maine showed that individuals performed consistent bubble-net behaviours regardless of group size. The exception was upward spirals, where dive complexity decreased as group size increased. The authors suggest that in larger groups each member needs to move less and spend less energy to corral prey.
+      - **roles**: Not resolved into named roles by this study.
+      - **when_used**: Gulf of Maine bubble-net bouts
+      - **source**: https://scholars.unh.edu/ccom/1543 (Mastick et al. 2022, Marine Mammal Science, DOI 10.1111/mms.12905; I read the abstract only, not the full text)
+      - **label**: verified
+    -
+      - **name**: Solitary bubble-netting and double-loop with lobtail
+      - **how**: A single whale makes its own bubble net. One reported variant is an upward spiral to contain prey, then a tail slap on the surface (lobtail), then a second upward lunge. The tail slap is thought to help concentrate or startle the prey. Press coverage compares this to ape tool use, which is a journalist's framing, not a measurement. The press summary I fetched was garbled and contradicted itself on 'solitary' versus 'teams of at least two', so treat the detail as weak.
+      - **roles**: One whale does all three jobs.
+      - **when_used**: Gulf of Maine, sand lance prey (Wiley et al. 2011, Behaviour, via news summary)
+      - **source**: https://www.sciencedaily.com/releases/2011/06/110624083516.htm
+      - **label**: reported
+    -
+      - **name**: Lobtail feeding (a cultural variant, spread by social learning)
+      - **how**: A whale slaps its tail on the surface, then blows bubbles around prey and lunges. It emerged around 1980 off New England after the herring collapse, when whales switched to sand lance. Network-based diffusion analysis over 27 years found support for models with a social-transmission component that was 6 to 23 orders of magnitude greater than for models without. Nearly 40 percent of the population had adopted it by 2007. It is concentrated around Stellwagen Bank sand lance grounds.
+      - **roles**: Mostly an individual technique. It spread through social ties.
+      - **when_used**: After the preferred prey became unavailable. Sand lance at Stellwagen Bank.
+      - **source**: https://news.st-andrews.ac.uk/archive/whales-able-to-learn-from-others/ ; https://marineinfo.org/doc/publication/225467 (Allen, Weinrich, Hoppitt & Rendell 2013, Science; abstract-level only)
+      - **label**: reported
+    -
+      - **name**: Cultural spread and loss of bubble-netting (British Columbia)
+      - **how**: Over 20 years in the Kitimat Fjord System, 526 whales were tracked and bubble-net feeding was recorded in 254 individuals on 635 occasions. New bubble-netters were better predicted by their social neighbours than by independent discovery. Immigrant whales are reported to have introduced the technique.
+      - **roles**: Not applicable.
+      - **when_used**: Recovering population in British Columbia
+      - **source**: https://www.earth.com/news/learning-to-hunt-together-may-help-save-humpback-whales ; https://news.st-andrews.ac.uk/archive/bubble-netting-knowledge-spread-by-immigrant-humpback-whales/ (Proc. R. Soc. B, via press). The two pages list slightly different framing; I did not open the paper.
+      - **label**: reported
+    -
+      - **name**: Feeding call as a prey-manipulation and coordination signal
+      - **how**: Loud, low-frequency 'food' calls are produced during herring bubble-netting. Playback experiments (Sharpe 2001, reported) found that fish moved closer together and crowded toward the surface. Proposed functions are group coordination ('ready, set, go'), startling herring into a tighter school, and recruiting whales. Lone whales have also been recorded using the call, which weakens the pure-coordination explanation. The authors acknowledge the function is unresolved.
+      - **roles**: Caller, within a group or alone
+      - **when_used**: Herring feeding in Southeast Alaska
+      - **source**: https://www.nps.gov/glba/blogs/humpback-whale-feeding-call-it-s-not-just-for-groups-anymore.htm ; https://oceania.org.au/soundnet/features/sharpe.html (Sharpe playback claim as relayed in search snippet only)
+      - **label**: reported
+  - **strengths**:
+    - Bulk lunge feeding gives a high energy return per unit cost. The ratio is up to about 30 in the largest rorquals (verified from the rorqual energetics paper; the humpback-specific ratio is not established).
+    - Flexible toolkit. Humpbacks switch among lunge feeding, bubble-nets, lobtail and double-loop variants and tune tactics to prey (reported).
+    - Behaviour spreads through social learning, so a population can adapt after the prey changes. Lobtail feeding reached about 40 percent of the New England population in about 27 years (reported).
+    - Whales pick the densest part of a prey layer and the shallowest prey, which cuts search and dive cost (reported, Southeast Alaska krill work).
+    - In larger groups individuals may move less to corral prey (the Mastick authors' suggestion, not a measured fitness gain).
+    - Role stability is reported. Whales are said to return to the same positions each summer, which would reduce coordination overhead (reported, weak).
+  - **weaknesses**:
+    - Cooperative bubble-netting is rare and local. Fewer than 10 percent of whales in Southeast Alaska do it, and many populations do not (reported).
+    - Efficiency drops with speed. The rorqual energetics paper reports feeding efficiency falling by as much as 50 percent across the documented speed range, yet whales routinely engulf at 2.5 to 5 m/s, which is above the efficient speed. This looks like a trade-off for more lunges per dive, not an optimum (verified for rorquals generally).
+    - Lunge feeding needs dense prey. Whales feed mainly when prey is shallow and concentrated, and fish can collectively avoid engulfment. The paper suggests this limits the slowest harvest speeds (verified, rorqual-wide).
+    - Success rates for any tactic are mostly not measured. The Mastick study looked at kinematics, not prey capture success or fitness. I found no source giving a bubble-net failure rate, so this is unknown.
+    - Kleptoparasitism is mentioned in a press summary (whales stealing prey from others' nets) but I did not confirm it from a primary source (unknown).
+    - Dependence on prey and on learned knowledge. The behaviour appeared only after a prey collapse, and press commentary warns that cultural loss can happen when populations or key individuals decline (reported).
+    - Roles, 'division of labor' and 'coordination' language comes mainly from observation and inference. Many popular accounts say 'chosen partnerships maintained across decades'. I did not find a primary source for decades-long partnerships, so treat that as unverified.
+  - **communication_and_memory**: Communication. Feeding calls are produced during herring bubble-netting (reported; function disputed between coordination and prey manipulation, lone callers exist). Sharpe's playback experiment is reported to show fish tighten and rise toward the surface (reported via snippet; paper not read). Memory and culture. Techniques spread through social ties and persist across years: lobtail feeding over 27 years and bubble-netting in British Columbia over 20 years (reported; Allen et al. 2013 Science and Proc. R. Soc. B, read only through press releases and abstract-level pages). Role memory (whales taking the same position each year) is reported by Alaska researchers via NPR syndication and is unverified.
+  - **cooperate_vs_solo**: What I can source: (1) Prey type and behaviour. Bubble-netting is tied to schooling prey (herring, krill, sand lance) that can be corralled. Lunge feeding alone suffices when prey is dense and shallow (reported). (2) Prey density and depth. Krill density and depth drive lunge occurrence, and feeding is concentrated in the densest, shallowest layers (reported, Antarctic and Southeast Alaska tag and acoustic studies). (3) Group size in the Gulf of Maine. Individual behaviour was mostly unaffected by group size, except that spiral complexity fell with more whales (verified, abstract only). In Tenakee Inlet group size grew over a week as herring aggregated (reported). (4) Social knowledge. Whales that bubble-net are those with experienced associates (reported). (5) Local culture. Many populations do not do it at all. Unknown or unproven: I found no source that gives a numeric prey-density threshold at which whales switch from solo to cooperative feeding. I did not verify the claim that prey density is the single deciding factor, and the user task's framing ('what decides it, prey density') is not supported as stated. The best-supported statement is that prey density and prey type set whether any bulk feeding pays, while social learning and local tradition decide whether a whale uses cooperative bubble-netting at all. Solo bubble-netting and solo feeding calls exist, so cooperation is not required for the tactic.
+  - **cost_limits**: Verified for rorquals generally (https://pmc.ncbi.nlm.nih.gov/articles/PMC8179629/): engulfment power output is up to about 50 times land-mammal basal metabolic rate; about 8 MJ per lunge for a 27 m whale at 3 m/s, roughly doubling to tripling at 5 m/s; efficiency falls by up to 50 percent over the documented speed range. Deeper prey means fewer lunges per hour (reported). Cooperation costs: unknown. No source I found quantifies the energy cost of building a bubble net or of calling. The only claim is that larger groups let each whale move less, which is the Mastick authors' suggestion.
+  - **gaps**: No success or failure rates for bubble-netting versus solo lunging. No numeric prey-density switch point. No primary read of Allen et al. 2013, the Kitimat Proc. R. Soc. B paper, the Wiley et al. 2011 Behaviour paper, Sharpe's playback work, or Szabo's Alaska role-specialization work, so those stay 'reported'. The decades-long partnership claim is unsourced. The sciencedaily summary I fetched was internally inconsistent. The NOAA PDF (noaa_54009) was not extractable. The Duke thesis on Southeast Alaska fine-scale foraging was listed but not opened. Search was US-only and WebFetch summarizes through a small model, so details like the exact numbers should be rechecked against the papers before anything is built on them.
+-
+  - **species**: Sperm whale (Physeter macrocephalus). Research note: all facts below come from WebSearch result summaries and WebFetch summaries of abstracts/pages. I did not read full primary papers; one PDF (Aguilar Soto) failed to parse and one fetch (babysitting abstract) failed. So no claim is marked verified; most are "reported" (peer-reviewed abstract or summary seen) or "unknown".
+  - **strategies**:
+    -
+      - **name**: Solo deep-dive echolocation hunt for squid
+      - **how**: Each whale dives alone to forage. It clicks for most of the dive (about 91% of dive time in one male dataset), using highly directional clicks with source levels above 235 dB re 1 uPa. Clicks serve as long-range echolocation to find prey. Near prey the clicks change to rapid buzzes, read as the final approach and capture attempt.
+      - **when_used**: Every foraging dive. Females and immatures: stereotyped dives of about 45 min to 400-1200 m, followed by about 9 min at the surface (average dive cycle, Watwood 2006, 198 dives from 37 whales). Males: 6-60 min dives, 14-1860 m, median 175 m, and shallower dives in some regions.
+      - **roles**: Every whale is both searcher and capturer. There is no division of labour at the point of capture.
+      - **source**: https://link.springer.com/article/10.1038/srep28562 ; https://research-portal.st-andrews.ac.uk/en/publications/deep-diving-foraging-behaviour-of-the-sperm-whale-emphyseter-macr/ ; https://research-portal.st-andrews.ac.uk/en/publications/shallow-food-for-deep-divers-dynamic-foraging-behavior-of-male-sp/
+      - **label**: reported
+    -
+      - **name**: Spaced group foraging with information sharing (eavesdropping on buzzes)
+      - **how**: Whales forage in loose groups, spaced about 100-1000 m apart. Each dives alone but gains information on patchy prey from group members, probably by hearing nearby whales' buzzes. A study of male whales in Nemuro Strait, Japan, found they stay at a distance close enough to hear others' buzzes. The Galapagos/Chile study ruled out coordinated capture, and its summary notes the prey are small and slow.
+      - **when_used**: When prey is patchy. In the 88-day Galapagos/Chile study, feeding success rose about fourfold going from one social unit (about 10 animals) to 4-5 units. It fell in the largest groups. The optimum was about 40-50 animals off the Galapagos and 30-40 off Chile.
+      - **roles**: No assigned roles. All are searchers who give away information passively, by their own foraging sounds.
+      - **source**: https://www.citedrive.com/en/discovery/costs-and-benefits-of-group-size-for-sperm-whales-of-the-open-ocean/ (Royal Society Biology Letters, DOI 10.1098/rsbl.2026.0129) ; https://www.frontiersin.org/journals/marine-science/articles/10.3389/fmars.2023.1150308/full
+      - **label**: reported
+    -
+      - **name**: Staggered diving with calf babysitting (alloparental care)
+      - **how**: Adult females cannot take calves on deep dives. Calves cannot dive as long or as deep. So other females stay near the calf at the surface while some of the group dive, and females may also nurse each other's calves (allonursing). Care varies between groups. In the Caribbean one female gave most of the allocare without nursing the calf, while in the Sargasso several females gave care and nursed. In 16 calves from 7 eastern Caribbean units, babysitting and allonursing were frequent, especially for calves under one year, and babysitting rates within units correlated with relatedness.
+      - **when_used**: Whenever calves are present, mostly in the first year. The summary of the babysitting study mentioned dive synchrony, but I could not read its abstract (fetch failed). So I have no sourced numbers on how well dives are staggered.
+      - **roles**: Divers forage. Babysitters stay at or near the surface with the calf.
+      - **source**: https://research-portal.st-andrews.ac.uk/en/publications/who-cares-between-group-variation-in-alloparental-care-giving-in-/ ; https://devlists.uvic.ca/archives/list/marmam@devlists.uvic.ca/thread/J33B2WSSCPRQBMS5GA4LTWGUS57L2WDM/ ; https://latam-cl.demo.elsevierpure.com/es/publications/babysitting-dive-synchrony-and-indications-of-alloparental-care-i
+      - **label**: reported
+    -
+      - **name**: Group defence: marguerite (rosette) formation
+      - **how**: Under killer whale attack the sperm whales form a rosette, heads together and tails out, with calves in the centre. When killer whales pulled one whale out, one or two others left the rosette, flanked the isolated animal and led it back, which exposed them to more attack.
+      - **when_used**: Predator attack. This is defence, not hunting, but it belongs in any model of what a sperm whale group does together. Source observation: about 35 killer whales attacked a pod of 9 sperm whales off California in October 1997, with attackers in waves of 4-5 in a 'wound and withdraw' pattern.
+      - **roles**: Adults form the ring, with calves inside. One or two 'rescuers' retrieve strays.
+      - **source**: https://bec.ucla.edu/wp-content/uploads/sites/108/archive/papers/MesnickPaper2.pdf (search summary only; the paper was not read)
+      - **label**: reported
+  - **strengths**:
+    - Extreme sensing: clicks of 235 dB or more, directional, used for long-range echolocation, with buzzes for the final approach (reported).
+    - Deep access: dives of about 45 min to 400-1200 m in females and to 1860 m recorded in males, so they reach prey that most predators cannot (reported).
+    - Dives stay within the calculated aerobic dive limit, so they are repeatable with a short 9 min surface interval (reported, Watwood 2006 summary).
+    - Group living gives a real foraging gain from information sharing: about fourfold feeding success from one unit to 4-5 units (reported).
+    - Cultural clans: foraging strategy and vocal patterns are inherited culturally, and clan membership has fitness consequences (reported, secondary summary).
+    - Communal calf care lets mothers dive deep while calves stay guarded (reported).
+    - Collective defence against killer whales (reported).
+  - **weaknesses**:
+    - No evidence found for coordinated cooperative capture. The group-size study ruled it out, and the Nemuro Strait study found no structured group foraging or babysitting in males (reported).
+    - The benefit of group size is a patchy-prey information effect and it peaks. Success fell in the largest groups, so there is a competition or coordination cost (reported).
+    - Calves cannot follow deep dives, so adult foraging time is bounded by the need to leave calves with babysitters. Babysitting varies a lot between groups, so it is not reliable (reported).
+    - Vulnerable to killer whales despite the rosette defence. Rescuers expose themselves to more attack (reported).
+    - Depredation of longlines is a documented behaviour, which suggests fishing gear is a risk. I have no evidence about injury rates (reported, very thin).
+    - Large clan-level differences in feeding success (different defecation rates) mean some clans hunt worse than others (reported).
+    - Whaling history is not sourced here. I did not research it and it is unknown for this report.
+  - **cooperate_vs_solo**: What I could source: every capture is solo. Cooperation is spacing, eavesdropping and calf care. Group size benefits come from information on patchy prey over 100-1000 m, with an optimum of about 40-50 animals (Galapagos) or 30-40 (Chile). Calf presence decides babysitting, and the pattern depends on kin relationships in the unit (babysitting correlated with relatedness). Predator presence decides group defence. Beyond this, I did not find a sourced rule or trigger for what decides cooperating versus hunting alone. Whether whales move toward groups that are feeding successfully was not supported ('the data did not suggest recruitment into successful groups', reported). Adult males become solitary at 40+ years (reported). I could not source a precise decision rule, so that part is unknown.
+  - **communication_and_memory**: Codas are patterned click sequences, distinct from echolocation clicks. Clans (matrilineal, averaging roughly 20,000 females per clan per one secondary source) have distinct coda dialects, and these differences are learned culturally, because no nuclear gene differences between clans were seen (reported; Cantor and Whitehead modelling of 18 years of data, via news summaries; for example https://zmescience.com/science/biology/sperm-whale-dialect-language-043242 and https://www.rcinet.ca/en/2015/09/30/whales-too-have-culture/). A calf learns from its mother and other females. Sharma et al. 2024 (Nature Communications, https://pmc.ncbi.nlm.nih.gov/articles/PMC11076547) report that codas are built from rhythm and tempo (context-independent) combined with rubato and ornamentation (context-sensitive), giving a large inventory (reported from search abstract). Coordination at the surface: I did not find a sourced description of what happens at the surface beyond babysitting and the 9 min recovery. For memory, the only sourced items are cultural transmission of coda dialect and foraging strategy. I found no sourced data on long-term spatial memory.
+  - **cost_limits**: Sourced numbers: females dive about 45 min then about 9 min at the surface; dives are within the calculated aerobic dive limit; body mass and myoglobin together explained only 36% of variance in maximum dive duration (Watwood 2006 summary at https://research-portal.st-andrews.ac.uk/en/publications/deep-diving-foraging-behaviour-of-the-sperm-whale-emphyseter-macr/). Clicking takes up about 91% of dive time in males (reported). In Nemuro Strait males made about two round trips a day (one shallow, one deep) with dives of 300-400 m by day and 500-800 m by night (reported). Group costs: success falls in the largest groups. Unknown: energy per dive, calories per squid, oxygen store numbers, and the cost of babysitting.
+  - **gaps**: 1) No full primary papers were read; the Aguilar Soto PDF would not parse and the babysitting abstract fetch failed with ECONNREFUSED. Everything is reported, not verified. 2) The dolphin and other whale species are out of scope for this task. 3) No sourced value for squid capture rate, success per buzz, or energy balance. 4) Conflict to note: the term 'cooperative' is used loosely in news summaries. The primary-looking sources say capture is not coordinated, and I follow them. 5) Clan size of 20,000 females is from a single secondary summary and is unverified. 6) Whaling and fishery impacts were not sourced. 7) Dive synchrony between babysitters and divers has no numbers from me.
+-
+  - **species**: Dolphins (mainly common bottlenose, Tursiops truncatus / aduncus; Guiana dolphin for one mud-ring record)
+  - **strategies**:
+    -
+      - **name**: Driver and barrier herding (Cedar Key, Florida)
+      - **how**: One dolphin (driver) circles a fish school and slaps flukes to herd it toward a tight line of barrier dolphins less than a body length apart. Fish that leap are caught by both roles. Groups of 2-6.
+      - **roles**: Driver: herds. Barriers: block and catch jumpers. Role consistency was very high: one dolphin drove all 60 bouts in Group A and another all 66 in Group B. A solo dolphin was also seen driving alone.
+      - **when_used**: Shallow water, fish schools. Group A drivers caught significantly more fish than their barriers. Group B showed no significant difference. The authors could not show whether barriers gain more than scraps, because submerged fins and shifting positions prevented individual tracking.
+      - **source**: https://pmc.ncbi.nlm.nih.gov/articles/PMC1634948 (read in full via fetch). A secondary summary: https://hakaimagazine.com/news/tricky-hunting-tactics-dolphins/
+      - **label**: verified
+    -
+      - **name**: Mud-ring feeding (Florida Keys, also reported in Belize, Mexico and Guiana dolphins)
+      - **how**: One dolphin swims in a circle and flicks its tail along the bottom to raise a mud plume that acts as a net around fish. Disoriented fish jump over the barrier and are caught by other dolphins waiting at the surface.
+      - **roles**: One plume-maker (ring-maker). Others wait and catch.
+      - **when_used**: Shallow, muddy-bottom water. I did not read the primary papers. The search returned only Wikipedia, Hakai Magazine and a Cambridge abstract link (the Guiana dolphin record), which I did not open. The spread to Belize, Mexico and Guiana dolphins is reported, not verified.
+      - **source**: https://en.wikipedia.org/wiki/Mud_ring_feeding ; https://hakaimagazine.com/news/tricky-hunting-tactics-dolphins/ ; https://www.cambridge.org/core/journals/journal-of-the-marine-biological-association-of-the-united-kingdom/article/rings-of-power-evidence-of-mud-ring-feeding-performed-by-guiana-dolphins/F00A7267496459CCD749181F0E75B267
+      - **label**: reported
+    -
+      - **name**: Strand feeding (South Carolina and Georgia salt marshes; also reported in Mexico and Portugal)
+      - **how**: Two or more dolphins herd mullet toward a mudbank. They rush the bank together, pushing a wave and fish ahead of them, and heave up to about two-thirds of their bodies out of the water to take the stranded fish.
+      - **roles**: Herders and strand-rushers. Role detail is not established in what I read.
+      - **when_used**: Low tide, muddy banks. Performed daily only in the SC/GA population. This is a risky behavior (stranding). I read only a summary, not a primary paper (Hoese 1971 and Duffy-Echevarria 2008 are cited but not opened).
+      - **source**: https://tos.org/oceanography/article/high-stakes-mudbank-chase-at-low-tide-us-southeast-dolphins-beach-their-prey ; https://www.nwf.org/Magazines/National-Wildlife/2005/Stranded-on-Porpoise
+      - **label**: reported
+    -
+      - **name**: Cooperative fishing with humans (Laguna, Brazil)
+      - **how**: Dolphins herd mullet toward artisanal fishers standing in the water with cast nets. A dolphin cue (reported as a roll or dive) tells fishers when to throw, and fish scatter, which benefits both parties. The practice is reported to date from 1847 and to span at least three generations.
+      - **roles**: Dolphins drive fish. Humans cast nets on the cue. About 45% of the roughly 55 local dolphins are reported to interact with fishers.
+      - **when_used**: Murky lagoon water. The study (Daura-Jorge et al. 2012) reported that cooperating dolphins form tighter social ties with each other, and that the behavior is learned, not genetic. A reported 13% survival benefit comes from press coverage of the study. I did not read the paper's own figures.
+      - **source**: https://livescience.com/20027-dolphins-work-fishermen.html ; https://www.mpg.de/19793111/0125-ornr-cooperation-between-dolphins-and-humans-987453-x ; https://discovermagazine.com/planet-earth/dolphins-that-help-humans-to-catch-fish-form-tighter-social-networks
+      - **label**: reported
+    -
+      - **name**: Sponging (tool use, Shark Bay, Australia)
+      - **how**: A dolphin tears off a marine sponge and wears it over the rostrum, apparently to protect the snout while probing the seafloor for prey. This is solitary foraging.
+      - **roles**: Individual only. It is not cooperative.
+      - **when_used**: Mainly (not exclusively) deep channels of 8 m or more. It is time-consuming and solitary. It is significantly sex-biased to females (all but one adult sponger observed was female; 15 of 141 known mothers). At least four non-sponging females forage in the same channels without a sponge, so habitat alone does not explain it. All but one sponger share mtDNA haplotype H (found in 11.35% of females), and nuclear relatedness is above chance, which points to a recent common ancestor ('Sponging Eve'). The authors infer social learning within a single matriline. This is an inference from genetic and ecological patterns, not direct observation of teaching.
+      - **source**: https://pmc.ncbi.nlm.nih.gov/articles/PMC1157020 (read via fetch; Krützen et al. 2005, PNAS)
+      - **label**: verified
+    -
+      - **name**: Echolocation-based solo foraging (individual searching and pursuit)
+      - **how**: The dolphin produces clicks to detect and track prey and chases individual fish, including in open water and around vegetation. This is the baseline hunting mode on which the group tactics are layered.
+      - **roles**: Individual.
+      - **when_used**: Whenever hunting is not done as a group. The search results contain no primary-source detail on echolocation range or performance in the field. Energetics (see cost_limits): reported low cost of echolocation, and rapid maneuvering in Sarasota Bay chases of fish more than ten times smaller than the dolphin.
+      - **source**: https://wwhandbook.iwc.int/en/downloadable-resources/searchable-database-of-scientific-literature/echolocation-is-cheap-for-some-mammals-dolphins-conserve-oxygen-while-producing-high-intensity-clicks ; https://repository.library.noaa.gov/view/noaa/62746
+      - **label**: reported
+  - **strengths**:
+    - Flexibility: one species uses herding, mud rings, strand feeding, human partnerships, sponging and solo pursuit, with the choice varying by local habitat. Most of these are local traditions, not species-wide behaviors (reported/verified as above).
+    - Division of labor with stable, specialised roles (Cedar Key drivers were consistent across 60 and 66 bouts). Verified at the Cedar Key sites.
+    - Cheap sensing: echolocation clicks cost little extra metabolically (metabolic rate about 1.1x that of silent dolphins; whistles under 17 mJ). Reported via abstracts and a mailing-list summary, not read in full.
+    - Social learning and culture: sponging persists in a matriline, and cooperation with fishers continues across generations. Sponging: verified inference. Fisher cooperation: reported.
+    - Long social memory: a captive dolphin recognised a former tank-mate's signature whistle after 20 years and 6 months (Bruck, Proc. R. Soc. B). Reported via a University of Chicago/Royal Society press release; I did not read the paper.
+    - Fission-fusion societies let dolphins match party size to the task and the habitat (reported, Shark Bay, Connor group).
+  - **weaknesses**:
+    - Techniques are local, not universal. Strand feeding is routine only in SC/GA, sponging is confined to one matriline, and fisher cooperation to one lagoon. A combined design cannot assume every dolphin can do every technique.
+    - Benefits are often unequal or unquantified. At Cedar Key, drivers out-caught barriers in one group and not the other, and barrier incentives could not be measured. This is an honest limit of the evidence, not proof of equal sharing.
+    - Strand feeding carries real risk (stranding), and sponging is slow and solitary, so it competes with social time (the study notes a possible conflict with male alliance duties; this is the authors' suggestion).
+    - Sponging spreads slowly. Only one matriline and nearly all females use it even though the group is socially open and males are with their mothers early on. Cultural transmission is not automatic or fast.
+    - I did not find sources on hunting failure rates (the proportion of unsuccessful bouts). Failure rate is unknown for every technique in this report.
+    - The human-cooperation benefits (catch and survival) rest on press summaries here, and the 13% figure should be treated as unconfirmed until the paper is read.
+  - **cooperate_vs_solo**: Evidence in this report gives conditions, not a rule, and it never shows a single decisive trigger. What the sources support: (1) Prey and habitat. Cooperative techniques are tied to particular settings (shallow muddy water, mudbanks, murky lagoons with fishers) and to schooling fish like mullet, which herding can exploit. Sponging occurs mainly in deep channels. Mostly reported, partly inferred. (2) Local tradition and learning. Which technique a dolphin uses depends on which techniques its group or matriline has learned (sponging within a matriline; fisher cooperation learned, not genetic). Verified for sponging, reported for the fisher case. (3) Role fit. At Cedar Key the same individual drove every bout, so who cooperates, and as what, is individual and stable. Verified for those two groups only. (4) Payoff. The Brazilian cooperators are reported to catch more and survive better, while barrier gains at Cedar Key are unproven, so I cannot say that individuals defect when payoffs are low. Unknown: any measured threshold, such as prey density or party size, at which a dolphin switches from solo to group hunting. I did not find one, and I will not invent one.
+  - **communication_and_memory**: Signature whistles act like individual names: a dolphin recognised a former companion's whistle after 20 years and 6 months, the longest non-human social memory reported (Bruck 2013; press summaries at https://news.uchicago.edu/story/dolphins-keep-lifelong-social-memories-longest-non-human-species and https://royalsociety.org/news/2013/dophins-social-memory; label reported). Whistling costs little (under 17 mJ per whistle, reported). Fission-fusion structure: party size and membership vary, and no one party contains the whole network (reported). Shark Bay males nest alliances: first-order pairs and trios lasting up to about 20 years, second-order teams of 4-14 lasting over 15 years, and temporary third-order groupings (reported via https://phys.org/news/2012-03-male-dolphins-complex-teams-social.html and https://www.wilddolphinproject.org/life-in-a-dolphin-pod-male-social-structure/). I found no source showing whistles are used to coordinate hunting. How Cedar Key or Laguna dolphins signal each other during a hunt is unknown here. I did not open any primary whistle paper (Sayigh, Janik).
+  - **cost_limits**: Reported (abstracts and press, not read in full): echolocation costs little (submerged clicking about 1.1x the silent metabolic rate) and whistling is cheap, so sensing is not what limits dolphin hunting. Pursuing and handling prey at depth costs more, yet overall estimated metabolic rate stayed comparable across dive types (Sarasota Bay work, https://repository.library.noaa.gov/view/noaa/62746). Strand feeding risks stranding. Sponging takes time and is solitary, with possible opportunity cost against social activity (authors' suggestion, https://pmc.ncbi.nlm.nih.gov/articles/PMC1157020, verified as the authors' statement). Unknown: total energy cost or net energy gain per technique, travel and coordination costs of herding, and failure rates. I did not find numbers for these.
+  - **gaps**: Not read as primary sources: mud-ring papers, strand-feeding papers (Hoese 1971; Duffy-Echevarria 2008), Daura-Jorge 2012 itself, the Bruck memory paper, whistle papers (Sayigh, Janik), the echolocation energetics paper, and Connor's alliance papers. Verified here means only the Cedar Key paper (PMC1634948) and the sponging paper (PMC1157020), both read through WebFetch, which returns a summary from a small model. Unknown: failure rates, solo-versus-group switching rules, how hunting is coordinated acoustically, and echolocation range in the field. No source disagreements were found, but I also did not look for contradicting papers (for example on whether the Laguna cooperation raises survival). Dolphin social network results are mainly from Shark Bay and may not generalise to other populations. Note for the plugin design: dolphins are best treated as a model of role-specialised, learned and local group tactics, not of one fixed algorithm."
+
+## Mapping to agent work
+- **species**:
+  -
+    - **species**: Orca (ecotype-specialised; evidence mostly secondary, only Visser 2008 opening pages read)
+    - **strengths_as_mechanisms**:
+      -
+        - **biology**: Each ecotype is matched to one prey type and one learned tactic: wave-washing on ice (verified, Visser 2008), carousel on herring, intentional stranding, mass attack on large whales (all reported). Plain analogy.
+        - **agent_mechanism**: Technique chosen per kind of work, not one universal pattern: each labelled piece looks up its own row (pattern, engine, check) instead of a single house style.
+        - **method_touchpoint**: Method 3.2 piece labels + 3.4 default-first lookup; TASK_TYPES category table (one row per deliverable kind).
+      -
+        - **biology**: Mass group attack took prey about 3x the attackers' size, a blue whale (reported, Flinders press release; Totterdell 2022 not read). Plain analogy.
+        - **agent_mechanism**: A hand-off is justified when the piece is larger than one session can carry (context room). Otherwise stay solo. The orca case supports only 'large prey needs a group', not any agent count.
+        - **method_touchpoint**: Method 3.2 'a label is not a node' (hand-off must buy context room, a different kind, or an objective check); 3.4 'split only if it changes the route'.
+      -
+        - **biology**: Post-reproductive females hold foraging knowledge and lead more in low-salmon years (reported from abstract only, Brent 2015; the 'repository' reading is the authors' hypothesis). Plain analogy.
+        - **agent_mechanism**: When the check keeps failing (a poor year), authority passes to the holder of the long memory: a fresh stronger node that receives the handoff note and state file, rather than the failing worker trying again.
+        - **method_touchpoint**: Method 3.5 item 4 tier exit (fresh node, stronger tier, handoff note); method 4 state file as the carrier of memory.
+      -
+        - **biology**: Transient (Bigg's) orcas: per-capita intake highest at group size three, though typical groups are larger, so non-intake factors also set size (reported, Baird and Dill 1996 abstract only). Plain analogy.
+        - **agent_mechanism**: Group size should be justified by a measured per-unit return, and other forces (social, here: coordination and joins) also act. At most a reason to keep the existing cap of 3 unmeasured and not to raise it without data.
+        - **method_touchpoint**: Method 3.4 (anchor 'cap is 3', registry.py:24); 3.7 item 5 (time saved must be worth the join). Seals-intake figure says nothing about agents; n=0.
+    - **weaknesses_as_failure_modes**:
+      -
+        - **biology**: Intentional stranding: about 50% success (weak secondary source) and a fatal-beaching risk if the whale cannot return.
+        - **failure_mode**: An irreversible or hard-to-retreat step taken with no rollback or approval: a node that writes or deploys without a way back. Contract 'must not change' and the Guard stage exist for this.
+      -
+        - **biology**: Large-whale attacks were often recorded as harassment with no kill; kills rare, three documented (reported).
+        - **failure_mode**: A loop that keeps attacking with no objective close condition (planner/critic loop 6 to 5 to 4 problems, never closes). Needs attempt limit plus objective check (3.5).
+      -
+        - **biology**: Specialisation trap: one ecotype, one prey, one technique; prey collapse hurts directly (reported).
+        - **failure_mode**: Over-fitting to the default row: a default pattern applied to an instance it does not fit. The label-vs-facts check and the checklist question 'is the default wrong for this instance' address it.
+      -
+        - **biology**: Success figures from two secondary sources disagree (12 of 14 vs 86%/75%), unreconciled; effect sizes untrustworthy.
+        - **failure_mode**: Two sources contradict and the design averages them. Rule: a join contradiction is a stop; label stays 'reported', never upgraded.
+    - **decision_rule**: No sourced rule: the orca report states none and warns not to write a threshold. Candidate rule only as an inference from the listed conditions (plain analogy, n=0, labelled INFERRED not sourced): stay solo by default; hand off to a group only if the piece exceeds one session's context room or needs a different kind of worker, and size the group by a number measured in the ledger, not by the biology. Dive/stay: not addressed by the source.
+  -
+    - **species**: Humpback whale (lunge feeding verified rorqual-wide; group behaviour mostly reported via press)
+    - **strengths_as_mechanisms**:
+      -
+        - **biology**: Lunge feeding is the solo base under every tactic; every whale does it, even inside a group (verified for rorquals generally, PMC8179629; humpback-specific ratio not established). Plain analogy.
+        - **agent_mechanism**: The main agent in one session is the base worker that does every piece; group structure is layered on only where it pays. Supports the existing default, adds nothing new.
+        - **method_touchpoint**: Method 3.2 same-engine pieces merge into one main-agent node; 3.7 sequential first.
+      -
+        - **biology**: Bubble-net bouts reportedly split into net-blowers, herders/callers and lungers (reported, tour blog and press; roles inferred from repeated behaviour, not tested). Plain analogy.
+        - **agent_mechanism**: Role split is worth it only where each role is a different kind of work with its own output, e.g. scan, then build, then blind review. The weak sourcing means it adds no pattern beyond TASK_TYPES combination pipelines.
+        - **method_touchpoint**: TASK_TYPES combination pipelines (codegen -> tests -> review); method 3.6 edges = earlier node's returns become later node's context.
+      -
+        - **biology**: Lobtail feeding appeared after the herring collapse and spread through social ties to about 40% of the population in about 27 years (reported, Allen 2013 abstract-level). Plain analogy.
+        - **agent_mechanism**: When the default fails, a new technique spreads by being observed in others' results, slowly. A challenger design that beats its projection twice becomes a candidate default, recorded in the ledger.
+        - **method_touchpoint**: TASK_TYPES rule 3 (challenger, 20% margin) and rule 5 (TASK_TYPES_LEDGER.md; two beats make a candidate default).
+    - **weaknesses_as_failure_modes**:
+      -
+        - **biology**: Efficiency falls up to 50% across the speed range, yet whales engulf above the efficient speed to fit more lunges per dive (verified for rorquals generally; reads as a trade-off).
+        - **failure_mode**: Fan-out buys clock time at the price of per-unit efficiency, predictability and joins. Parallel throughput is not a free win (3.7).
+      -
+        - **biology**: Cooperative bubble-netting is rare and local: under 10% of Southeast Alaska whales; solo bubble-netting and solo feeding calls also exist (reported).
+        - **failure_mode**: Importing a group pattern where the local condition (schooling, splittable, known recipe) is absent; cooperation is not required for the task. Default stays solo.
+      -
+        - **biology**: Behaviour depends on prey and on key experienced individuals; cultural loss is possible when they decline (reported, press commentary).
+        - **failure_mode**: Knowledge held only in one session's context disappears at its end. It must be written to the state file or a saved skill (Rule 11, method 4).
+      -
+        - **biology**: Success or failure rates of bubble-netting vs solo: not found. Decades-long partnerships and kleptoparasitism: unsourced/unknown.
+        - **failure_mode**: Citing an unmeasured advantage as if known. These stay 'unknown'; nothing is designed on them (n=0).
+    - **decision_rule**: Sourced: prey type and density decide whether bulk feeding pays at all; social learning and local tradition decide whether a whale uses cooperative bubble-netting. No numeric switch point exists, and the framing 'prey density alone decides' is not supported (report's own statement). Candidate rule (plain analogy, n=0): default solo; add roles only when the work is splittable into distinct kinds AND a recipe already exists in the ledger or skills; otherwise solo. Dive/stay: not sourced.
+  -
+    - **species**: Sperm whale (all reported; no primary paper read, nothing verified)
+    - **strengths_as_mechanisms**:
+      -
+        - **biology**: Each whale dives alone, stays within its aerobic dive limit (about 45 min to 400-1200 m for females), then recovers about 9 min at the surface; every whale is both searcher and capturer (reported, Watwood 2006 summary). Plain analogy.
+        - **agent_mechanism**: One long solo session bounded by its context budget, then a checkpoint: write the state file, then resume. The limit is a reason to hand off, not an inconvenience.
+        - **method_touchpoint**: Method 3.2 (context would not fit = valid reason for a hand-off); method 4 state file (read, one step, write back).
+      -
+        - **biology**: Whales forage spaced 100-1000 m apart, each diving alone but learning about patchy prey passively from others' buzzes; feeding success rose about fourfold from one social unit to 4-5 units, then fell in the largest groups; coordinated capture was ruled out (reported). Plain analogy.
+        - **agent_mechanism**: Independent read-only workers that share only through outputs/state files, not by directing one another; useful when targets are patchy. The group-size optimum is a whale feeding number and is not carried over.
+        - **method_touchpoint**: TASK_TYPES 'repo scanning' (parallel sectioning, read-only fan-out, coverage manifest); method 3.7 five independence conditions; 3.6 role subagents do not choose the next node.
+      -
+        - **biology**: Staggered diving with babysitting: calves cannot follow deep dives, so some adults stay at the surface with the calf while others dive (reported; dive-synchrony numbers not found). Plain analogy.
+        - **agent_mechanism**: The main agent stays at the surface holding state and the conversation with EJ while a subagent goes to a depth it cannot carry back (large context, other engine). Subagent returns a bounded result plus evidence.
+        - **method_touchpoint**: Method 3.2 hand-off must buy context room or a different kind; 3.6 node contract (return shape, evidence); EXECUTOR_KINDS COO contract.
+    - **weaknesses_as_failure_modes**:
+      -
+        - **biology**: Group success falls in the largest groups: a competition or coordination cost (reported).
+        - **failure_mode**: Too many parallel workers: shared-resource contention and join cost exceed the gain. Argues for the existing cap and for measuring before raising it.
+      -
+        - **biology**: Calves cannot follow, so adult foraging is bounded by babysitter availability, and babysitting varies a lot between groups (reported).
+        - **failure_mode**: Hand-off depends on a reliable holder of the surface state; if the holder's state file is thin or absent the dive cannot resume or be checked. Context lost at every hand-off.
+      -
+        - **biology**: Clans differ in feeding success; some hunt worse (reported, secondary).
+        - **failure_mode**: Engine kinds perform unequally and nobody has measured it; assigning by reputation (model-role assignments, unmeasured) is a guess until the ledger fills.
+      -
+        - **biology**: News summaries use 'cooperative' loosely while primary-looking sources say capture is not coordinated (the report's own conflict note).
+        - **failure_mode**: Terminology drift: calling independent parallel work 'coordinated'. Keep the stronger source and flag the other.
+    - **decision_rule**: Sourced (reported): every capture is solo; group effects are spacing, passive information sharing on patchy prey, and calf care. Conditions: calf present means some stay at the surface; predator present means group defence; patchy prey means spaced foraging helps. No sourced trigger beyond that (unknown). Candidate rule (plain analogy, n=0): each worker owns its whole piece end to end; share only via outputs and the state file; the main session stays at the surface (state, EJ) whenever the dive goes beyond what can be carried back.
+  -
+    - **species**: Dolphin (Cedar Key and sponging papers read via a summarising fetch, labelled verified; all else reported)
+    - **strengths_as_mechanisms**:
+      -
+        - **biology**: Driver and barrier herding at Cedar Key: one dolphin drove all 60 bouts in one group and another all 66 in the other; barriers block and catch jumpers (verified). Barrier payoff could not be measured. Plain analogy.
+        - **agent_mechanism**: A fixed role pairing where one worker pushes work forward and another catches what escapes: maker and checker with stable roles over a run. Checker incentives and gains are unproven in the biology, so the analogy supports only role stability.
+        - **method_touchpoint**: TASK_TYPES 'code review' (maker-checker, fresh blind session); G6 reviewer-kind rule; 3.6 node contract names role.
+      -
+        - **biology**: Sponging: a tool technique confined to one matriline, learned socially, spreading slowly (verified inference, Krutzen 2005; 'Sponging Eve' is an inference from genetics, not observed teaching). Plain analogy.
+        - **agent_mechanism**: A capability held by one lineage cannot be assumed in another: each node's Tools must be proved working on that engine, and a saved skill is how a technique spreads to other sessions.
+        - **method_touchpoint**: Method 3.6 node 'Tools: each proved working'; CLAUDE.md Rule 11 (save skills); EXECUTOR_KINDS per-engine capabilities.
+      -
+        - **biology**: Fission-fusion societies: party size and membership vary with task and habitat (reported, Shark Bay).
+        - **agent_mechanism**: Group size is chosen per piece, default one, not fixed per project.
+        - **method_touchpoint**: Method 3.4 size; 3.2 merge rule.
+      -
+        - **biology**: Echolocation and whistling cost little extra (about 1.1x metabolic rate); sensing is not what limits hunting; pursuit and handling cost more (reported, abstracts). Plain analogy, weak.
+        - **agent_mechanism**: Cheap tier for scanning and sensing, stronger tier saved for handling the hard part.
+        - **method_touchpoint**: Method 3.5 cheapest tier first; TASK_TYPES 'repo scanning' default engine = cheap tier; cost-tiered stages memory (n=0).
+      -
+        - **biology**: Laguna dolphins herd fish and give a cue; human fishers cast nets on the cue (reported; the 13% survival figure is press-only and unconfirmed). Plain analogy.
+        - **agent_mechanism**: A different kind of actor, a human, acts on the agent's cue at a defined point: the human acceptance checkpoint.
+        - **method_touchpoint**: TASK_TYPES 'ui/ux dev' (EJ's acceptance last, per 3.5 item 1 'last EJ's own judgment').
+    - **weaknesses_as_failure_modes**:
+      -
+        - **biology**: Techniques are local, not universal: strand feeding routine only in SC/GA, sponging one matriline, fisher cooperation one lagoon (verified/reported).
+        - **failure_mode**: A combined design assumes every worker can do every technique. Capabilities must be per-engine and verified, not inherited.
+      -
+        - **biology**: Strand feeding has real stranding risk (reported, summary only).
+        - **failure_mode**: Same shape as the orca stranding: high-risk action without retreat; needs approval or rollback.
+      -
+        - **biology**: Failure rates unknown for every technique; benefits unequal or unquantified (Cedar Key barriers); human-cooperation benefits rest on press (all labelled unknown/reported).
+        - **failure_mode**: Reporting a tactic as better with no measured effect. Nothing here is a design input beyond n=0.
+      -
+        - **biology**: No source shows whistles coordinate hunting; how the hunters signal each other is unknown.
+        - **failure_mode**: Assuming a coordination channel exists. Handoffs must name their channel (state file) explicitly.
+    - **decision_rule**: No sourced trigger; the report itself says conditions, not a rule, and no solo-vs-group threshold was found. Conditions: prey and habitat, locally learned technique, stable role fit, payoff (payoff reported for Laguna, unproven at Cedar Key). Candidate rule (plain analogy, n=0): solo baseline; use a role pair only where each role has its own check and the engine has proved it can do that role; otherwise stay solo. Dive/stay: not addressed.
+- **dropped_as_decorative**:
+  - Orca wave-washing synchronised line: simultaneous action on one target is the opposite of 3.7 independence; no design consequence.
+  - Orca carousel stun-then-eat-individually and bubbles/flashing bellies: no agent mechanism.
+  - Orca teaching calves to beach (single weak source) and 'training' with live seals (authors' tentative suggestion): no concrete consequence beyond the already-kept skill-saving point; not upgraded.
+  - Orca dialects and clan call repertoires: no design consequence beyond the state file.
+  - Humpback Mastick finding (individual behaviour consistent across group size; spiral complexity falls with group size): authors' suggestion, not a measured fitness gain; no concrete consequence.
+  - Humpback feeding call: function unresolved, lone callers contradict coordination.
+  - Humpback kleptoparasitism (unknown) and decades-long partnerships and same-position-each-year role stability (unverified): kept out; not upgraded.
+  - Humpback 30x energy return and densest-layer choice: rorqual-wide, folded into the decision rule only.
+  - Sperm whale click source level, 91% clicking time, buzz echolocation: decorative.
+  - Sperm whale rosette defence and rescuers exposed to attack: defence, not hunting; no design consequence.
+  - Sperm whale coda dialects and clan culture: kept only as the engine-performance weakness.
+  - Dolphin mud-ring feeding: duplicate of driver/barrier role split, reported only.
+  - Dolphin signature-whistle memory (20 years): no consequence beyond the existing state file.
+  - Dolphin Shark Bay male alliance nesting: decorative.
+  - Any numeric optimum (group of 3, 40-50 whales, 4-5 units): biology figures, not carried to agent counts.
+
+## Combination (mode selector)
+- **name**: Whale Pod mode selector (n=0, a design hypothesis)
+- **features_read**:
+  - F1 merge result: after method 3.2 labelling, the number of nodes the pieces merge into and the engine kind of each piece (from the state file's piece table).
+  - F2 builds flag per piece: does the deliverable change product or test surface (TASK_TYPES rule 5; method 3.2 facts check).
+  - F3 check type of the piece: script, fixed checklist, or EJ's judgment (TASK_TYPES row 'Default check'; method 3.5 item 1), and whether its sabotage has been shown to fail.
+  - F4 context room: estimated tokens the piece must read (file count and size from readiness) against the main session's remaining window. The threshold T is a working value, n=0.
+  - F5 independence: the five conditions of method 3.7, each yes or no (no needed result, no shared files, does not change the other, own check, saved time is worth the join).
+  - F6 attempt state: attempts used against the row's limit, and whether the last feedback differed from the one before (method 3.5 items 2-3).
+  - F7 risk and reversibility: step is irreversible or hard to undo, or EJ flagged high risk (method 3.4 risk, Guard stage).
+  - F8 engine proof: readiness result 'tool proved working on this engine for this role' (method 3.6 Tools; EXECUTOR_KINDS canary).
+  - F9 budget: the cost ceiling and the spend so far in the state file (method 5, cost estimate before the run).
+- **default_cost**: When the answer is the default (Mode 0, the main agent in one session), the selector adds no agent call, no subagent and no join. It reads F1-F9, which the method already writes (piece table, readiness, state file), and writes one 'mode' cell per piece row plus the one feature that decided it. That is a few lines of state-file text, a handful of yes/no lookups by the main agent, and no extra tokens beyond writing those lines. Not measured; the claim 'nearly free' is a design property (no new agent), not a measurement, and the first ledger rows must confirm it.
+- **modes**:
+  -
+    - **mode**: 0 LUNGE (default): main agent, one session, same-engine pieces merged into one node
+    - **species_origin**: Humpback lunge feeding: the solo base under every tactic, even inside a group (verified for rorquals generally; humpback-specific ratio not established). Supports the existing default and adds nothing new; the biology says the base is solo and group layers are local and rare (under 10% in Southeast Alaska, reported).
+    - **use_when**: Nothing below fires. In practice: the piece fits the session (F4 low), has a script check the main agent can run itself (F3), is not irreversible (F7), and its attempts are not exhausted (F6). Also: a seeded combination pipeline (codegen, tests, review) whose pieces share an engine and have no independent check between them runs as ONE node. Humpback 'bubble-net roles' add no pattern beyond the TASK_TYPES pipelines, so they are not a separate mode; a role split is allowed only where a seeded pipeline or a ledger recipe already exists.
+    - **agent_form**: COO (main Claude session) executes the piece itself; node recorded with engine 'COO' (EXECUTOR_KINDS, small task). Reads state file, does one step, writes it back (method 4).
+    - **check**: The row's own check from TASK_TYPES (script first), run by the main agent; loop-ready per 3.5 (check, attempt limit, real feedback, exit, sabotage).
+    - **budget_and_return**: Budget = the row's attempt limit (TASK_TYPES: two repair attempts on script failure). Stop = check passes or the limit is hit. Way back: nothing to return from; state file written after each step, so any later mode starts from it.
+    - **weakness_guard**: Fan-out buys clock time at the price of efficiency, predictability and joins (rorqual speed-efficiency trade-off, verified; method 3.7), so parallel is never the default. Knowledge held only in this session's context vanishes, so conclusions are written to the state file or a saved skill (Rule 11).
+  -
+    - **mode**: 1 DIVE (surface-and-dive): main agent stays at the surface, a subagent dives alone, 1 to 3 divers
+    - **species_origin**: Sperm whale: each whale dives alone within a limit, then surfaces; every whale is searcher and capturer; others stay at the surface with the calf (babysitting); foragers spaced apart share information only passively through each other's output; success fell in the largest groups. All reported, no primary paper read. Plain analogy; the group-size optimum (40-50, 4-5 units) is a whale number and is NOT carried over.
+    - **use_when**: F4 high: the piece's inputs would not fit the main session's remaining room (method 3.2, 'its context would not fit'), OR it needs a different kind of worker (another engine, F8 proved). Several divers (max 3, the existing cap, registry.py:24) only if all five 3.7 conditions hold (F5) and the row is read-only sectioning such as repo scanning; otherwise exactly one diver. Do not use for pieces that merely feel big.
+    - **agent_form**: One role subagent per dive owning its whole piece end to end; engine = the row's default (cheap tier for repo scanning; Codex or agy when a different kind is the reason). The main agent keeps the state file and the conversation with EJ, and does not direct the diver mid-dive. Divers share only through output files and the state file, never by messaging each other. Contract names return shape and evidence file (method 3.6).
+    - **check**: On surfacing the main agent (never the diver) checks the return against the contract: coverage manifest and file:line findings for scans, row check otherwise; the diver's reasoning is not read (3.6 Evidence). A seeded marker must be found (row sabotage). Join of several dives: contradiction = stop, never average (3.3).
+    - **budget_and_return**: Declared before the dive and written to the state file: one attempt, a token ceiling taken from the cost estimate, and a bounded return (about one page plus an evidence file path). Dive ends at the earliest of: result returned, ceiling hit (returns partial plus NOT_ESTABLISHED), or checkpoint. Way back: the state file must already hold the piece, its check and the last known state BEFORE the dive starts (a thin state file means the dive cannot be resumed or checked, so no dive); on return the main agent writes the result and verdict, then selects the next mode. A failed return counts as a failed attempt, handled by Mode 3, not a re-dive with the same prompt.
+    - **weakness_guard**: Group size cost: more than 3 divers is refused (contention and join cost; the biology's drop at the largest group size is a reason to measure before raising the cap). Thin surface state: dive refused until the state file is written. Engine inequality (clans hunt unequally, reported): no engine is chosen by reputation; F8 proof is required and the model-role assignments stay 'unmeasured' until the ledger says otherwise. Terminology: independent parallel work is not called 'coordinated'.
+  -
+    - **mode**: 2 DRIVER-AND-BARRIER (maker with a stable, blind checker)
+    - **species_origin**: Dolphin Cedar Key herding: one driver pushes, barriers block and catch what escapes; role consistency was very high (one dolphin drove all 60 bouts in one group, another all 66 in the other) (verified). Barrier payoff and incentives could not be measured, so the analogy supports ONLY stable roles, not that a checker gains or is motivated. Sponging (one matriline only, verified inference) supports 'a capability is local, prove it per engine'.
+    - **use_when**: The piece builds (F2) or EJ flagged high risk (F7), the row's check is judged rather than scripted (code review, document and explain, ui/ux acceptance) or the row demands a reviewer of a different kind (EXECUTOR_KINDS rule 5, gate G6), AND the checker engine is proved for that role (F8) AND the checker can be shown to fail (planted defect, F3). If a script check exists and the main agent can run it, stay in Mode 0: a hand-off must buy an objective check, a different kind, or context room (method 3.2).
+    - **agent_form**: Two nodes, roles fixed for the whole piece: maker (the main agent in Mode 0 form, or the row's builder engine) and checker (fresh session, blind to the maker's reasoning, different engine kind where it can be; if the checker is called through a Claude wrapper, the wrapper is never the verifier, EXECUTOR_KINDS rule 8). The checker is read-only. Roles do not swap mid-piece.
+    - **check**: Maker: the row's script (tests/build). Checker: a fixed checklist of the 3.6 three-part stop (criteria pass, baseline still passes, 'must not change' holds), findings with file:line, binary verdicts with evidence refs, never 'try to reject it' (n=1 loop that never closed). Sabotage: a planted defect must be caught before the checker's verdict is trusted.
+    - **budget_and_return**: Loop limit 2 attempts (TASK_TYPES: two repair attempts), feedback to the maker is the checker's real findings. Stop = checklist all pass, or limit hit, then Mode 3. Way back: the verdict file and the diff go into the state file; the maker continues from the verdict, not from the checker's reasoning.
+    - **weakness_guard**: Unequal or unproven checker gain: the checker's incentive is not assumed, only its blindness and its proven ability to fail. Local capability: no node is assumed able to do a role on an engine without a canary (F8). A checker with no objective way to fail is ceremony, so the mode is refused. Never trade coverage for speed (20% rule).
+  -
+    - **mode**: 3 ELDER TAKEOVER (escalation after repeated check failure)
+    - **species_origin**: Orca: post-reproductive females lead more in low-salmon years, carrying foraging knowledge (Brent 2015, reported from the abstract only; 'repository of knowledge' is the authors' hypothesis). Orca ecotype-per-prey also underlies the selector's first step, the per-piece row lookup. Honest note: this mode is the EXISTING tier exit (method 3.5 item 4) with an orca name; the biology adds no new mechanism, and no orca source gives a threshold.
+    - **use_when**: F6: the attempts of any mode reached the row's limit with the check still red (a poor year). Not before. Also refused when the failure is ambiguity rather than capability (the same feedback twice, or the check itself disputed): then the piece returns to the unclear-spots list or to EJ ('it was not as clear as it looked', 3.5 item 4).
+    - **agent_form**: One fresh node of the next stronger tier or another kind (order set by EJ per task, EXECUTOR_KINDS rule 4) given only a short handoff note: the piece, its check, the last real feedback, plus the state file. It does not inherit the failed session (a tier switch inside a session voids the cache and anchors on the same dead ends, 3.5).
+    - **check**: The same check as the failed attempts, unchanged and not editable by the worker (3.5 item 5).
+    - **budget_and_return**: Own limit of 1 to 2 attempts, written in the state file before it starts. If the limit is spent too, or there is no stronger tier, the piece goes to EJ or back to the unclear list and only that part of the graph is replanned (3.6). Way back: result and verdict written to the state file; the selector restarts at Mode 0 for the next piece.
+    - **weakness_guard**: Loop that attacks forever with no close (large-whale hunts recorded as harassment, no kill): attempt limit plus an objective check, or no loop. Irreversible 'stranding' steps: any irreversible or hard-to-retreat action needs approval or a rollback first (F7, Guard stage), in EVERY mode, including this one. Specialisation trap: before escalating, re-run the label-versus-facts check, because a wrong label is a stop and replan, not a repair. Conflicting reports are never averaged.
+- **selector_procedure**: Run per piece, after method 3.2 has labelled the pieces and merged same-engine ones. First match wins; the result is ONE mode for that piece, never a blend (Rule 7). The selector only reads F1-F9; it calls no agent.
+
+S0 (orca lookup, always): look up the piece's row in TASK_TYPES (pattern, engine, check, sabotage). Label contradicts what the piece writes (F2) -> STOP and replan, no mode.
+S1 (guard, always): the step is irreversible or hard to undo (F7) with no approval or rollback -> STOP and ask EJ; no mode may run it. Budget already spent beyond the ceiling (F9) -> STOP and report.
+S2 (switch, only mid-run): attempts at the row's limit with the check red and the feedback changing (F6) -> Mode 3 ELDER. Same feedback twice, or the check is disputed -> back to the unclear list or EJ, not Mode 3.
+S3: F4 high (inputs exceed the room), or a different kind of worker is needed and proved (F8) -> Mode 1 DIVE; 1 diver, or up to 3 only if all five 3.7 conditions hold (F5) and the row is read-only sectioning. State file must be written first.
+S4: F2 builds or F7 high risk, AND the check is judged or the row demands a different-kind reviewer, AND the checker is proved and its sabotage can fail (F3, F8) -> Mode 2 DRIVER-AND-BARRIER.
+S5: else -> Mode 0 LUNGE, merged into one main-agent node.
+
+Switch conditions: Mode 0 -> 1 when, at a checkpoint, remaining room drops below what the next step needs (write the state file, then dive). Mode 0 -> 2 when a builds piece closes its own script check and a judged review is due. Any mode -> 3 only through S2. Mode 1 or 2 -> 0 on return, after the main agent checks the return. No switch to a mode that the next rerun of S0-S5 would not choose; the selector is re-run at each piece boundary and each failed attempt, nowhere else.
+
+Fact-check against the biology: none of the sources tests a combination or ranks one hunting species above another; no source gives a solo-versus-group threshold for any species (each report says so). Every threshold here (T for F4, token ceilings, return size) is a working value to be set by the ledger, not by biology. 'The combination is best' is EJ's hypothesis; the biology supports only the four separate strengths and weaknesses above.
+- **measurement**: Uses docs/TASK_TYPES_LEDGER.md as it is; no new column is required (adding a 'mode' column is EJ's decision, not assumed). One row per run, appended by the existing rule (TASK_TYPES rule 5; validated by design_gate.py --ledger, G7). Encode the selector in existing fields:
+- Category: the piece's label (per piece row if several).
+- Design source: 'default' when the selector reproduced the TASK_TYPES default; 'challenger' only where the selector OVERRODE a table default, mainly Mode 0 merging pieces the table shows as separate nodes (e.g. codegen+tests in one node). Claimed margin (>=0.20) and Basis are then mandatory and written BEFORE the run, at equal coverage (same criteria ids, same checks, same blindness).
+- Basis text carries 'mode=<0|1|2|3>; feature=<F-id that fired>; threshold=<value used>' so rows can be grouped by mode.
+- Projected cost / Actual cost / Coverage outcome / Reconciled: as defined. Mode 1-3 hand-offs are justified by feasibility, an objective check or a failed attempt, not by a cost saving, so for them the field that matters is Coverage outcome (equal or better) and Actual vs Projected cost, not the 20% margin.
+Falsifiers (all n=0, to be pre-registered per house rules): (a) Mode 0 rows: Actual cost > Projected cost of the table default, or Coverage outcome not equal -> the merge claim is false; two such rows rewrite the merge rule. (b) Mode 1 rows: Actual cost > Projected cost by more than a pre-registered tolerance, or the return fails its contract on first attempt in 2 of the first 3 rows -> F4's threshold T is wrong; raise T (fewer dives). A Mode 1 row where the same piece would have fit and the main agent would have been cheaper (shown by a Mode 0 row of the same Category) falsifies the trigger. (c) Mode 2 rows: the checker misses its planted defect (sabotage), or Coverage outcome shows a defect the checker passed -> the mode is refused for that engine pair. (d) Mode 3 rows: the fresh node also fails on the same check -> escalation was pointless; the piece belonged on the unclear list; count such rows, and when most Mode 3 rows end at EJ, S2 is rewritten to go straight to EJ. (e) Whole design: compare, per Category, mean Actual cost and Coverage outcome of Mode 0 rows against Mode 1-3 rows; if the non-default modes do not earn their cost in any Category after the ledger has rows from at least 2 runs per mode, the selector collapses to Mode 0 plus the existing tier exit, and the whale framing is dropped. A challenger that beats its projection twice becomes a candidate default (rule 5); that is the only way the selector promotes itself. With n=0 today the ledger is empty, so every row above is unmeasured; the sabotage of this selector is a planted piece whose features say 'Mode 1' while it fits the session: the selector must return Mode 0.
+- **does_not_beat_default_when**: The combination does NOT beat 'the main agent in one session' when: (1) the piece fits the session and has a script check the main agent can run (most code generation, debugging, test-case and test-script rows): any hand-off adds a fixed cost per agent, context lost at the split, and a join, and buys nothing (method 3.2, 3.4; EJ's unmeasured experience that a one-agent finish is faster). (2) The task is tiny or its restatement is one sentence each: the selector is overhead. (3) There is no objective way for a checker to fail (no sabotage possible): Mode 2 is ceremony. (4) The failure is ambiguity, not capability: Mode 3 only repeats the same wrong turn at higher price; the piece goes back to the unclear list. (5) The pieces share files or one needs the other's result: the five 3.7 conditions fail, so Mode 1 fan-out is refused and parallel buys only clock time at the cost of predictability. (6) The engine has not been proved for the role (F8) or shares the blind spot of the maker: the different-kind benefit is claimed across blogs and measured nowhere (EXECUTOR_KINDS rule 5). (7) The thresholds are guesses: no biological source gives a solo-versus-group threshold and the ledger is empty, so the selector can be wrong in either direction and is only as good as the numbers the first rows set. (8) It is a hypothesis: none of the species sources compares combinations, so 'combining all four is best' has no support in the biology; the selector is justified only if the ledger shows it, and its honest worst case is that it reduces to Mode 0 plus the existing tier exit of method 3.5."}
+
+## Critic
+- **weak_biology**:
+  - The orca report flags the wave-washing numbers as 'conflicting and unreconciled'. They are not. I checked by search: Visser 2008 gives 12 of 16 Weddell seals attacked taken (75%), and 12 of 14 seals killed taken by wave-washing (86%). The report's '14 attacks, 12 cooperative' is a garbled version of the same 12/14. So this one figure is fine, and the 'sources disagree' item (and the MAP's 'two sources contradict' failure mode built on it) is a research-quality error, not a biology finding. It also shows that most of the pages were not read closely.
+  - Nearly all orca, humpback, sperm and dolphin claims are 'reported' from press releases, tour-operator blogs, a-z-animals and search snippets. Only 4 of about 22 strategies are 'verified' (Visser opening pages, the rorqual energetics paper, Cedar Key, sponging), and 'verified' there means a small-model summary of a fetch, not a read of the paper. The MAP's 'verified' tags inherit that weakness.
+  - Intentional-stranding success of about 50% comes from a content-farm site. Teaching of beaching to calves is a single weak source. Neither should appear in the MAP at all, and the MAP still uses stranding as a 'failure mode'.
+  - Humpback roles (bubble blowers, callers, lungers, same positions each year) rest on a tour blog and press syndication. The report itself says roles are inferred and decade-long partnerships are unsourced. The Mode 2 and bubble-net role split leans on this.
+  - The Laguna dolphin figures: search confirms fishers catching about 4x more and cooperating dolphins surviving better, but the '13%' number is unconfirmed, as the report says. The 'survival benefit' is also correlational with a tiny population (about 55 dolphins).
+  - Sperm whale 'cooperation' is mostly not cooperation. The report says capture is solo and coordinated capture was ruled out. The 'fourfold success' and optimum group size of 40-50 come from one paper seen only through a citation aggregator (a 2026 DOI). The 20,000 females per clan figure is real in secondary press (Whitehead estimate), but it is an estimate that 'almost certainly varies enormously'. It is irrelevant to design.
+  - Cedar Key barriers: the report correctly says barrier payoff is not shown. Role consistency of the driver (60 and 66 bouts) comes from two groups only. The MAP builds Mode 2 on 'stable roles' from n=2 groups.
+  - The orca elder-leadership claim (Brent 2015) is read from an abstract (paper returned 403). Leadership in a foraging-movement sense is not hunting knowledge handed to a stronger worker. The authors' hypothesis is presented as a mechanism.
+- **analogy_breaks**:
+  - Unit economics are inverted. A whale's body is a fixed cost, and an extra whale in a pod costs nothing new to the pod, and the marginal cost of a hunt is calories. An agent hand-off costs tokens, a context rebuild, a join and lost nuance every time. The biology explains why animals cooperate when cooperation is cheap relative to prey size. It says nothing about when paying a hand-off cost is worth it.
+  - Shared body and ocean. Whales share a physical environment, sense each other's buzzes and bubbles, and see the same prey. Agents share only what is written to a file. Sperm whale 'eavesdropping' has no counterpart in a design where subagents are isolated by contract. The analogy cannot supply the one thing that is hard in agent design, which is the content of the handoff.
+  - Learned versus coded. Every behaviour cited (sponging, lobtail, beaching, dialects) is learned over years through social transmission and lost when carriers die. A mode selector is coded and fixed on day one. The only part of the biology that transfers is 'a technique is local and cannot be assumed everywhere', which is already in the method as 'prove the tool on that engine'.
+  - Selection versus design. Evolution and cultural selection kept what paid, in real environments, over generations. The selector's four modes were written in one sitting with no selection pressure. Surviving tactics tell you that those tactics work for those animals, not that a human-chosen union works. The report itself says no source compares or combines hunting species, so 'combine and it will be best' has no support. Species hunt different prey in different places, so their strengths are not additive: orcas' large-prey mass attack and dolphins' shallow mudbank herding never compete for the same job.
+  - Every mapped 'agent mechanism' already existed in the method before the biology was read. The MAP's own touchpoint column shows it: lunge = the main-agent default, sperm dive = context-room hand-off (method 3.2), dolphin barrier = maker-checker (TASK_TYPES code review), orca elder = tier exit (method 3.5 item 4). The biology is a relabelling, not a source of new decisions. The combination text admits Mode 3 'adds no new mechanism' and Mode 0 'adds nothing new'.
+  - No source gives a solo-versus-group trigger for any species. The decision rules are the report authors' inference. The decision value the selector claims is therefore not from the biology at all.
+- **combination_verdict**: As written it is mostly decoration and it fails the Rule 2 test. Mode 0 is the existing default. Mode 1 is the existing rule 'hand off only for context room or a different kind' (method 3.2). Mode 2 is the existing maker-checker row for review. Mode 3 is the existing tier exit (3.5 item 4). The nine features F1-F9 and the S0-S5 ladder are a restatement of checks the method already runs, plus a new 'mode' cell and a 'mode=...; feature=...' string stuffed into the Basis field. The only genuinely new element is the first-match ordering across them, which is the one thing that could add decision value (it forces a single named reason per piece), and that is a checklist, not a whale design. Conflict: it does not blend rules, since first match wins and the result is one mode, so that part is clean. But it silently adds a second source of truth next to TASK_TYPES (a hidden fourth table), has working thresholds (T for F4, token ceilings) with no basis, and re-runs at every failed attempt, which adds writes with no decision they could change. Measurable: weakly. Falsifiers (a)-(e) are well written, but the ledger has n=0, and a ledger row is one whole run, so a per-piece mode comparison needs many runs to detect anything. The selector's own admitted worst case ('collapses to Mode 0 plus the existing tier exit') is also its most likely outcome. A senior engineer would call it overcomplicated. Honest answer: drop the four-mode selector and the whale framing. Keep, as plain method text if wanted, the two things that are not already there, if any: an explicit rule that a hand-off must write the piece, check and last state to the state file first (thin-state refusal), and a cap that parallelism is only for read-only sectioning. Both are one-line additions to existing sections, not a plugin. Note also that the 'plugin concept' EJ asked for was to combine whale strengths into one; the research shows the strengths do not combine, because each is tied to its own prey and place, so the honest finding for that question is 'no support for the combination hypothesis'.
+- **overcomplicated**: True
+- **smallest_experiment**: Take 3 to 5 past or planned pieces of different categories (for example one fits-in-session code change, one big read-only repo scan, one judged review, one that failed its check twice). For each, write the plain default decision using only existing method 3.2 and 3.5 (no whale names, no selector), and separately run the S0-S5 selector on the same facts. Do this before running anything, and pre-register it. If the selector gives a different mode than the plain method for none of them, drop the selector: it is a relabelling. If it differs for one or more, run only those pieces both ways once (selector's choice versus plain default) at equal coverage, with a planted defect to prove the checker can fail, and record actual cost and coverage in docs/TASK_TYPES_LEDGER.md. The selector survives only if a differing choice wins on cost or coverage by the 20% rule on at least 2 rows, which is the ledger's own promotion rule. Cost is about an hour of reading and a handful of small runs, with no plugin built. Given the MAP itself says all four modes reduce to existing rules, expect the first step to end it, and the expected answer is: drop it."]
