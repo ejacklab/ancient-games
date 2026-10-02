@@ -1,0 +1,14 @@
+# Digest — workflow feedback system (2026-10-02)
+Full findings: `FINDINGS.md` (same folder). Status: **open** (nothing built or tested, n=0).
+
+**Answer.** Five options; the engines already write most numbers to disk (Workflow run JSON, Claude/codex/qwen transcripts), but none records node, round, check verdict or hand-off.
+- A. Harvester: one stdlib script reads the existing engine records after a run into runs/<id>/feedback.jsonl. No config change; cannot see verdicts, brief variant or hand-offs.
+- B. Run-written event log (A plus a runlog wrapper on engine calls and one verdict line per node check). The only option that answers retries per node, first-try validity and design vs actual.
+- C. Local OTel collector (otelcol file exporter, CLI-native telemetry). Detail below node level; adds a daemon and 3 live-config edits (Rule 6); agy has no telemetry.
+- D. Self-hosted Phoenix or Langfuse. UI, evals, annotation; worth it after tens of runs, fed from B's file.
+- E. Analysis layer: script-triggered after-action review, failure coding (MAST), later PM4Py and DSPy/GEPA, each gated on a data threshold.
+Recommendation (narrowed per critic): A then B, minimal. Harvest only Workflow run JSON plus codex rollouts; count retries from the '#n' label suffix and logs[], not attempt (always 1); mark cached agents 'cost unknown'. B writes one verdict line per node (run, node, round, check, pass) and passes run_id into codex calls; qwen/agy wrappers and hand-off fields wait until a run needs them. First consumer: the ledger's Actual cost column. C and D deferred; E's AAR trigger only once runs exist.
+**Confidence.** 52 findings: 33 verified, 17 reported, 2 unknown (both option syntheses). All local records verified; Claude Code and codex OTel config (C rests on it) and the 14.2% attribution figure are reported, single source, abstract or summarizing fetch.
+**Cautions.** Repo is public and runs/ is tracked (453 files): write ids, numbers, paths and status only, never prompts, previews or stdout. All parsed formats are internal and can break on a CLI upgrade; each parser must fail loudly. Do not trial on wf_fc2ffa51-890 (4 of 6 agents cached, two thirds of cost missing); a tokens-sum-to-totalTokens check is true by construction.
+**Gaps.** Whether a killed or failed Workflow run writes a run JSON at all; whether codex/qwen/agy streams print a session id (no model call made); agy tokens (protobuf); Gemini CLI and Copilot are in no option.
+**Decision it triggers.** EJ: approve A+B minimal and its first measurement — one run without cached agents (wf_0349f318-dcc or wf_c59cf053-175 for the harvester), per-node tokens and time across rounds plus first-try pass, matched to agent-<id>.jsonl and codex token_usage_record within a pre-stated tolerance, entered as the first ledger row against a projection written before the run. Also approve adding runs/*/raw/ to .gitignore (shown to EJ first).
