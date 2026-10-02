@@ -156,6 +156,36 @@ existed; every disagreement class traced to a missing definition, not to a weak 
 
 New combinations earn a row here only after the ledger shows the ad-hoc version ran twice.
 
+### Candidate pipelines (not rows yet — each earns its row after two real runs in the ledger)
+
+**build a feature (use case #4)** — EJ, 2026-10-02; n=0.
+
+1. **Research — the main agent (COO) herself**, with a research skill, writing findings and a digest to
+   `docs/research/` (method 3.8 item 9). Research agents only when there are many main sources (context room) or a
+   source needs a different kind (web versus repo).
+2. **Design and small examples — the COO.** The design, the acceptance criteria in scope, and the briefs for the
+   next two nodes, each with a template, a worked example and the standard (method 3.8 item 8).
+3. **Dev ∥ tester, in parallel** (passes the five tests of method 3.7: one shared input, different deliverables,
+   separate paths).
+   - *Dev* (the row's coder, Codex `gpt-6.1-sol`): implements and writes unit tests.
+   - *Tester* (a different kind from the dev, EXECUTOR_KINDS rule 5): writes the test plan and test cases from
+     the design and acceptance criteria only, blind to the dev's code. Its cases are first run against a
+     deliberately broken build and must fail there (sabotage), or they are not used.
+4. **COO review, one round, before the tester runs.** A fixed checklist, not an open read: the dev's unit tests
+   pass; the baseline still passes; nothing in "must not change" changed; the result matches the design's
+   examples. She may read the diff only when the feature is small by her small-node conditions.
+5. **Tests run → findings to the COO.** A small issue (her small-node conditions and 8-tool-call cap,
+   `docs/EXECUTOR_KINDS.md`) she fixes herself and sends back to the tester to rerun. A big issue goes back to the
+   dev, at most **2 rounds**, then the tier exit or EJ. Findings outside the acceptance criteria go to the
+   backlog, not into this run.
+
+Join check: the tester's cases (proven able to fail) pass, the baseline still passes, "must not change" holds —
+the three-part stop of method 3.6. Feedback: `runlog.py` wraps the dev and tester calls and logs each verdict
+(method 3.8 item 10).
+
+**combine sources into an algorithm (use case #1)** — extract → reconcile → algorithm → verify, as described under
+"Use cases in focus"; n=0.
+
 **Recheck verbs get their own node.** When the prompt says "then regrade", "rerun afterwards", "verify after
 the fix", the design must show the recheck as its own node (or an explicit loop) — a design that folds it into
 the fix node was rejected by the round-3 blind review (p279). The script gate cannot see this; the checklist
