@@ -96,7 +96,7 @@ over.
 Otherwise she dispatches it. It is recorded in the state file as a node with engine "COO", like any other.
 
 **The cap.** If she passes **8 tool calls** on one node, she stops and dispatches it. The 8 is my provisional number,
-not measured; EJ sets it, as he sets the cost ceiling. The guard exists because doing everything herself feels faster and turns the design back
+not measured; EJ sets it, like the cost ceiling. The guard exists because doing everything herself feels faster and turns the design back
 into one large session.
 
 ## How a failure shows
