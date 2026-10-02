@@ -10,20 +10,20 @@ the engine is named in the node, never left to a default. This file says what ea
 to, how it is called, how its failure shows, and the rules that keep mixed runs predictable. The method's
 readiness step (3.1) proves each tool works; the canary below is that proof for these three.
 
-## The three kinds
+## The four kinds (qwen added 2026-10-02; its canary has not run)
 
-| | Claude subagent | Codex (GPT-6.1-sol) | Antigravity `agy` (Gemini) |
-|---|---|---|---|
-| Assigned to (EJ's view 2026-09-29, unmeasured) | orchestration, cheap research fan-out, glue | research and reports, coding and code generation, code review, finance, data extraction, workflow planning and design, web search | classification (Gemini 3.1 Pro) |
-| Called by | the Agent or Workflow tool | plugin `codex@openai-codex` v1.0.6: `/codex:rescue`, `/codex:review`, `/codex:adversarial-review`; or `codex exec` from Bash | `agy -p "<prompt>"` from Bash |
-| Installed here | yes | yes, `codex` logged in with ChatGPT (*verified*; the canary records the version, it is not pinned here) | yes, `agy` at `~/.local/bin/agy` (*verified*); `agy models` returned a list, which suggests a working login (*inferred*) |
-| Default write access | per agent type | the plugin defaults to approvals "never" and sandbox read-only (`scripts/lib/codex.mjs:67-68`); rescue writes only because its agent adds `--write` (`agents/codex-rescue.md:34`) (*verified*) | workspace writes auto-allowed, shell soft-denied (*reported*) |
-| Read-only form | read-only agent types | `codex exec -s read-only` (*verified* in `--help`). `-a/--ask-for-approval` exists only on top-level `codex`, not on `exec`, so put it before `exec` or omit it; untested | `--mode plan`; `--sandbox` for OS isolation (*reported*, flags *verified* in `--help`) |
-| Structured result | report returned to the caller | `--output-schema <file>`, `-o/--output-last-message <file>`, `--json` (*verified* in `--help`) | `--output-format json`, `--json-schema` (flags *verified*) |
-| Resume | SendMessage to the agent | `--resume-last` in rescue; `codex exec resume --last` (*verified* in `--help`) | `-c` or `--conversation <id>` (*verified* in `--help`) |
-| Reads which instruction file | `CLAUDE.md` | `AGENTS.md` (and `~/.codex/config.toml`) | `AGENTS.md` and `GEMINI.md`, third-party source only; `CLAUDE.md` not found (*uncertain*) |
-| Model source | the agent's `model` setting | `--model`/`--effort` (rescue, `exec -m`); `~/.codex/config.toml` when none is passed: `gpt-6.1-sol`, effort medium, plan-mode effort high (*verified* 2026-09-30). Do not rely on it; see "Model and effort" | `--model`; `agy models` lists what the plan offers, and it includes Claude models as well as Gemini, so "agy = Gemini" is a choice |
-| Concurrency and native machinery | 20 concurrent subagents, nesting depth 3 (*reported* in Claude Code docs, v2.1.217+, env overrides exist; not measured here). Native: `--json-schema` (contract), `--max-budget-usd` (budget), `-w` (worktree isolation) (*reported*) | not recorded (*unknown*) | not recorded (*unknown*) |
+| | Claude subagent | Codex (GPT-6.1-sol) | Antigravity `agy` (Gemini) | Qwen Code `qwen` (OpenAI-compatible provider) |
+|---|---|---|---| --- |
+| Assigned to (EJ's view 2026-09-29, unmeasured) | orchestration, cheap research fan-out, glue | research and reports, coding and code generation, code review, finance, data extraction, workflow planning and design, web search | classification (Gemini 3.1 Pro) | nothing yet: EJ has not assigned it a role (no entry in the role map below) |
+| Called by | the Agent or Workflow tool | plugin `codex@openai-codex` v1.0.6: `/codex:rescue`, `/codex:review`, `/codex:adversarial-review`; or `codex exec` from Bash | `agy -p "<prompt>"` from Bash | `qwen "<prompt>"` from Bash: the positional prompt is a one-shot run (`-p` is deprecated). **Any bare word is a prompt, not a subcommand**: `qwen models` sent a prompt (2026-10-02). Real subcommands: `auth` (removed), `batch`, `board`, `channel`, `extensions`, `hooks`, `mcp`, `review`, `sandbox`, `serve`, `sessions`, `update` (*verified* in `--help`) |
+| Installed here | yes | yes, `codex` logged in with ChatGPT (*verified*; the canary records the version, it is not pinned here) | yes, `agy` at `~/.local/bin/agy` (*verified*); `agy models` returned a list, which suggests a working login (*inferred*) | yes, 0.24.7 at `~/.npm-global/bin/qwen` (*verified*). `~/.qwen/settings.json`: provider `openai` on an Alibaba token-plan endpoint, default `qwen3.8-max`, a key set (*reported*; validity and quota untested) |
+| Default write access | per agent type | the plugin defaults to approvals "never" and sandbox read-only (`scripts/lib/codex.mjs:67-68`); rescue writes only because its agent adds `--write` (`agents/codex-rescue.md:34`) (*verified*) | workspace writes auto-allowed, shell soft-denied (*reported*) | approval mode `default`: file edits and shell need approval; headless, a tool needing approval fails (*reported*, docs) |
+| Read-only form | read-only agent types | `codex exec -s read-only` (*verified* in `--help`). `-a/--ask-for-approval` exists only on top-level `codex`, not on `exec`, so put it before `exec` or omit it; untested | `--mode plan`; `--sandbox` for OS isolation (*reported*, flags *verified* in `--help`) | `--approval-mode plan`, "analyze only" (flag *verified* in `--help`; that it blocks writes is untested); `--sandbox` (*verified* flag) |
+| Structured result | report returned to the caller | `--output-schema <file>`, `-o/--output-last-message <file>`, `--json` (*verified* in `--help`) | `--output-format json`, `--json-schema` (flags *verified*) | `--output-format json\|stream-json`; `--json-schema <json\|@file>` (headless; ends on the first valid `structured_output` call) (flags *verified* in `--help`; output shape untested) |
+| Resume | SendMessage to the agent | `--resume-last` in rescue; `codex exec resume --last` (*verified* in `--help`) | `-c` or `--conversation <id>` (*verified* in `--help`) | `-c`, `-r <id>`, `--session-id`, `--fork-session` (*verified* in `--help`) |
+| Reads which instruction file | `CLAUDE.md` | `AGENTS.md` (and `~/.codex/config.toml`) | `AGENTS.md` and `GEMINI.md`, third-party source only; `CLAUDE.md` not found (*uncertain*) | `QWEN.md` and `AGENTS.md` (constants in the installed 0.24.7 source; behaviour untested). `CLAUDE.md` is not among the filenames I found |
+| Model source | the agent's `model` setting | `--model`/`--effort` (rescue, `exec -m`); `~/.codex/config.toml` when none is passed: `gpt-6.1-sol`, effort medium, plan-mode effort high (*verified* 2026-09-30). Do not rely on it; see "Model and effort" | `--model`; `agy models` lists what the plan offers, and it includes Claude models as well as Gemini, so "agy = Gemini" is a choice | `-m/--model`; otherwise `model.name` in `~/.qwen/settings.json` (`qwen3.8-max`, `reasoningEffort` xhigh, *reported*). `--fallback-model` for 429/503/529. A per-call effort flag was not found in `--help` (*unknown*), so effort comes from settings |
+| Concurrency and native machinery | 20 concurrent subagents, nesting depth 3 (*reported* in Claude Code docs, v2.1.217+, env overrides exist; not measured here). Native: `--json-schema` (contract), `--max-budget-usd` (budget), `-w` (worktree isolation) (*reported*) | not recorded (*unknown*) | not recorded (*unknown*) | not recorded (*unknown*). Budgets: `--max-wall-time`, `--max-tool-calls`, `--max-session-turns` (exit 55 when exceeded), `--max-subagent-depth` default 5, `--worktree` (*verified* in `--help`) |
 
 The assignment column is EJ's stated preference, recorded as such. The research found no head-to-head evidence for
 or against it. The design treats it as a default that a node can override with a reason, and the first runs are
@@ -103,12 +103,13 @@ never the check on its own.
 | Claude subagent | error or no report | quota behaviour not seen yet (*unknown*) |
 | Codex | exit code and stderr from `codex exec`; `/codex:status` for jobs | the rescue subagent returns nothing if Codex fails to start; a missing turn id can hang a job forever (plugin issue #781); quota-exhausted behaviour not seen (*unknown*) |
 | `agy` | exit 0 ok, 1 error, 2 cancelled; json `status` | a tool needing approval is soft-denied and the run still exits 0 (stderr notice only); `-p` can hang with no TTY (issue #318); it stops on quota, spend cap or credits with no known code (*unknown*) |
+| `qwen` | exit code (55 = a `--max-*` budget hit); json result under `--output-format json` | a bare word is a one-shot prompt that spends quota; headless, a tool needing approval fails; other exit codes, quota-exhausted behaviour and hang-without-TTY not seen (*unknown*) |
 
 So every external call gets an outside timeout (for `agy` also `--print-timeout`, default 0 = wait forever), and an empty or missing result file counts as a failure.
 
 ## The canary piece
 
-A preparation piece at the front of any run that uses Codex or `agy` (readiness, method 3.1). One tiny task per
+A preparation piece at the front of any run that uses Codex, `agy` or `qwen` (readiness, method 3.1). One tiny task per
 kind, with an answer that can be checked:
 
 1. Ask for a fixed thing: write `OK` to `runs/<runId>/canary/<kind>.txt`, or return `{"ok": true}` with the schema
@@ -121,6 +122,12 @@ kind, with an answer that can be checked:
    Format, one Log line per kind: `canary <kind> <version> pass|fail|timeout: <reason>`.
 5. Sabotage check (house rule): once, run an impossible task and confirm the canary reports `fail`. Until that has
    been done, the canary is not known to be able to fail.
+
+**`qwen` form (written 2026-10-02, not run).** `qwen --approval-mode plan --max-tool-calls 0 --max-wall-time 90s
+--json-schema '{"type":"object","required":["ok"],"properties":{"ok":{"const":true}}}' --output-format json -m <model>
+"Return ok true."` Pass: exit 0, a valid structured result with `ok: true`, no tool call made, stderr without an
+approval or quota notice, and the model the tool reports equals `<model>`. Sabotage: the same call with
+`--max-wall-time 1s` must end exit 55 and the canary must report `fail` or `timeout`. Never probe qwen with a bare word.
 
 It does not prove quota left, output quality, or that the tool stays inside its workspace. Each canary spends a
 little usage, so it runs once per run, and the person's go-ahead for the run covers it. Open: whether to re-check
@@ -163,8 +170,10 @@ Log line for each: `<node> executor-fail <kind>: <reason>`.
   Additional Terms, asked on the Google AI developer forum, unanswered). Resolve before automating on it.
 - Web search is assigned to Codex, but `--search` is listed only on top-level `codex`, not on `codex exec`. How to
   enable it non-interactively is unknown.
-- Remaining usage cannot be read by the workflow for any of the three kinds; only failure is visible. Design for
+- Remaining usage cannot be read by the workflow for any of the four kinds; only failure is visible. Design for
   clean stops, not for percentages. Unchecked: Codex `/status` in the TUI, `agy` `/credits`.
+- `qwen`: the canary above is written, not run. Open: whether `--json-schema` returns valid output on this token plan,
+  whether `plan` mode blocks writes, whether `AGENTS.md` is read, what it costs per call, and whether the key is valid.
 - `agy` headless behaviour on quota exhaustion, and whether `agy` logs in non-interactively here, are untested.
 - Pricing for `agy` comes only from SEO pages that disagree; model lists conflict between blogs (trust `agy
   models`).
