@@ -14,12 +14,13 @@ fallback, runs the script gate, logs every event, and writes the state file — 
 and the decisions that are hers.
 
 **In scope.** Engine calls through Codex, `qwen`, `agy`, and Claude headless (`claude -p`); the pass-back contract;
-the caps; the feedback log; an optional routing fork (who acts next) that a local decision model may answer.
+the caps; the feedback log.
 
 **Out of scope.** Choosing the design (the COO does); judging quality (the verifier and the script gate do);
 changing `ancient_games/` (its `SPEC.md` and `DECISIONS.md` are EJ's — the dispatcher lives beside it, in the
 skill's `scripts/`, and is engine- and project-neutral); Workflow-tool subagents (the Workflow tool already
-schedules those; the dispatcher covers the external engines and headless Claude).
+schedules those; the dispatcher covers the external engines and headless Claude); deciding at run time who acts
+next — that is fixed in the plan (§5).
 
 **Six whys, short.** Why: rules in prose get skipped, and the COO's context fills with orchestration (EJ's
 experience, method 3.2). Why now: the pieces exist — `runlog.py`, `validate_result.py`, `harvest_run.py`,
@@ -39,7 +40,7 @@ its own tests with sabotage, then one real build-a-feature run whose feedback la
 | `harvest_run.py` | the engines' own records into `feedback.jsonl`; the ledger's Actual cost | feedback research option A |
 | Engine facts | inner timers (`qwen --max-wall-time`, `agy --print-timeout`), exit codes (qwen 1/52/55), traps (qwen exit 0 with no file; a wrong `-m` silently runs another model) | `docs/EXECUTOR_KINDS.md`, verified 2026-10-02 |
 
-Missing: the loop that joins them, a plan format, the state-file writer, and the routing fork.
+Missing: the loop that joins them, a plan format and the state-file writer.
 
 ## 3. The algorithm (method 3.2)
 
@@ -47,8 +48,7 @@ Missing: the loop that joins them, a plan format, the state-file writer, and the
 read plan.json and state.md                         # resume: nodes already `done` are skipped
 check caps: roles ≤ 5, parallel group ≤ 3            # a plan over the cap is refused, not trimmed (method 3.7)
 for each ready node (needs satisfied), in plan order; a parallel group only if the plan marks it:
-    route   — the node's engine comes from the plan; the routing fork may only choose among the
-              candidates the plan lists, and only above a confidence threshold (§5)
+    engine  — exactly the one the plan names; the dispatcher makes no routing choice (§5)
     brief   — refuse to start if the brief lacks a template, an example or a standard (method 3.8 item 8)
     run     — runlog.py exec with the inner timer flag and the outer timeout from the plan
     check   — validate_result.py on the result file (model must equal the plan's)
@@ -90,27 +90,14 @@ node, a small-issue fix (build-a-feature step 6), a budget ceiling, or `UNCLEAR:
 needs (engine command, timers, fallback, result path). A G-check for plans (caps, timers present, fallback
 present, brief has its three parts) belongs in `design_gate.py`, not in the dispatcher.
 
-## 5. The routing fork — optional, local, fail-open
+## 5. Who acts next is decided before the run, not during it
 
-**What it may decide.** Only *which listed candidate* runs a node, never what the node does and never whether a
-result passes. Example: a "small fix" node lists `[COO, coder]`; the fork answers which, from the issue text.
-Jev's own sources say the answer inside the guaranteed shape may be wrong and routing accuracy is unpublished
-(J9, J10), so the fork never replaces a check.
-
-**How.** A pluggable `decide(state, question, options) → (choice, confidence)` with three backends:
-1. **rules** — the default: a fixed table in the plan (no model). Ships first.
-2. **local model** — JevK5 (Apache-2.0, Qwen 4B, accepts the Jev request shape, about 9 GB VRAM, J15) on this
-   machine's 16 GB RTX 4070 Ti SUPER (J20), or Laya / Von for a CPU-light option (J16, J17). Nothing leaves the
-   machine.
-3. **hosted Jev** — only if EJ agrees to send state to TypeSafe (J6).
-
-**Guards** (from the one real plugin found, J11, J12): a confidence threshold (start at 0.7, as that plugin does,
-*model knowledge* that it suits us); below it, or on any error or timeout, fall back to the plan's first listed
-candidate (fail-open to the default, never to "skip"); every fork answer is logged with its confidence, so the
-feedback log shows whether the fork earns its cost.
-
-**Before it is switched on.** A local trial on the 300-prompt corpus with `corpus_check.py` (codex 96%, agy 76%
-strict on category labels) — the backend must beat the rules table on our own labels, or it stays off.
+Forks, splits and who does what are decided at design time by the COO on the strongest model, with the method and
+Ancient Games (the Gate decides how many agents and splits a list above three, `ancient_games/stages.py:109`, and
+journals each decision). The plan carries the result; the dispatcher only executes it. There is no run-time routing
+fork and no decision model (EJ, 2026-10-03). A decision model such as Jev pays off for high-volume, per-turn routing
+(J11); a run of ours has at most five roles, a strong model decides them once, and a Gate rule is auditable where a
+model's probability is not (J9, J10). The research is kept in `docs/research/20261003-jev/` and is not adopted.
 
 ## 6. Failure handling, per method
 
@@ -133,18 +120,15 @@ strict on category labels) — the backend must beat the rules table on our own 
    a bad header, write the wrong model) — every row of §6 has a test that fails without its handling.
 4. **Gate and feedback hooks**: `feature_gate.py` as a node check; `harvest_run.py` at the end. Check: an
    end-to-end run on fake engines produces `feedback.jsonl` and the digest.
-5. **Routing fork, rules backend only.** Check: tests.
-6. **First real run**: one small build-a-feature (case C) with a projection written before it; the ledger gets its
+5. **First real run**: one small build-a-feature (case C) with a projection written before it; the ledger gets its
    first row (feedback research, first measurement).
-7. **Local decision model** — only after step 6, and only if the corpus trial beats the rules table.
 
-Steps 1–5 need no quota; 2's canaries and 6 need EJ's go-ahead.
+Steps 1–4 need no quota; 2's canaries and 5 need EJ's go-ahead.
 
-## 8. Decisions for EJ
+## 8. Decisions for EJ (decided: no run-time routing fork, no decision model — §5)
 
 1. Where it lives: in the skill's `scripts/` (global, engine-neutral; my recommendation) or inside
    `ancient_games/` (its journal and Gate would apply, but it changes the framework's contract, which is EJ's).
 2. Claude nodes: headless `claude -p` from the dispatcher, or keep Claude subagents with the Workflow tool and let
    the dispatcher drive only Codex / `qwen` / `agy`.
-3. The routing fork: rules only for now (recommended), or trial JevK5 locally on the corpus first.
-4. The default inner and outer timers per role (method 3.8 item 2 gives provisional sizes).
+3. The default inner and outer timers per role (method 3.8 item 2 gives provisional sizes).
