@@ -1,0 +1,23 @@
+{
+  "run_id": "20261003-node-workdir",
+  "budget": {"max_roles": 5, "max_parallel": 3, "max_rounds": 2, "max_calls": 14},
+  "nodes": [
+    {"id": "dev", "role": "coder", "engine": "codex", "model": "gpt-6.1-sol", "effort": "medium", "mode": "write",
+     "brief": "runs/20261003-node-workdir/briefs/dev.md", "inner_timer": "900s", "outer_timeout_s": 1200,
+     "parallel_group": "build"},
+    {"id": "cases", "role": "verifier", "engine": "agy", "model": "gemini-3.8-flash-medium",
+     "brief": "runs/20261003-node-workdir/briefs/cases.md", "inner_timer": "300s", "outer_timeout_s": 360,
+     "parallel_group": "build"},
+    {"id": "sabotage", "role": "script", "engine": "script", "passback": false, "outer_timeout_s": 120,
+     "cmd": ["echo", "cases ready"], "needs": ["cases"], "repair": "cases",
+     "check": {"name": "cases-fail-on-old", "cmd": ["bash", "runs/20261003-node-workdir/extract_and_sabotage.sh"], "timeout_s": 300}},
+    {"id": "checkpoint", "role": "script", "engine": "script", "passback": false, "outer_timeout_s": 60,
+     "cmd": ["bash", "runs/20261003-node-workdir/checkpoint.sh"], "needs": ["sabotage"]},
+    {"id": "gate", "role": "script", "engine": "script", "passback": false, "outer_timeout_s": 60,
+     "cmd": ["echo", "gate"], "needs": ["dev", "checkpoint"], "repair": "dev",
+     "check": {"name": "feature-gate", "cmd": ["bash", "runs/20261003-node-workdir/gate.sh"], "timeout_s": 900}},
+    {"id": "review", "role": "verifier", "engine": "agy", "model": "gemini-3.8-flash-medium",
+     "brief": "runs/20261003-node-workdir/briefs/review.md", "inner_timer": "300s", "outer_timeout_s": 360,
+     "needs": ["gate"]}
+  ]
+}
