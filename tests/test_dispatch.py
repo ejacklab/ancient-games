@@ -207,3 +207,19 @@ print("[agy] print timeout after 1s with turn in progress; returning partial out
          "outer_timeout_s": 30}
     r = run(tmp_path, "run", setup(tmp_path, [g]), env=env)
     assert r.returncode == 1 and "executor failure on agy: timeout" in r.stderr
+
+
+def test_timeout_kills_the_whole_process_group(tmp_path):
+    # qwen is a wrapper whose node child outlived a plain kill (seen live 2026-10-03)
+    marker = tmp_path / "grandchild-still-alive"
+    env = fake_bin(tmp_path, "qwen", rf'''
+import subprocess, sys, time
+subprocess.Popen([sys.executable, "-c", "import time, pathlib; time.sleep(3); pathlib.Path({str(marker)!r}).write_text('x')"])
+time.sleep(30)
+''')
+    q = {"id": "q", "role": "classifier", "engine": "qwen", "model": "m", "brief": "brief.md", "inner_timer": "60s",
+         "outer_timeout_s": 1}
+    r = run(tmp_path, "run", setup(tmp_path, [q]), env=env)
+    assert r.returncode == 1 and "timeout" in r.stderr
+    import time; time.sleep(4)
+    assert not marker.exists(), "a grandchild survived the timeout"

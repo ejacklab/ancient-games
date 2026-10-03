@@ -2,7 +2,8 @@
 
 **Status: steps 1–4 built** as `.claude/skills/workflow-design/scripts/dispatch.py` (tests: `tests/test_dispatch.py`,
 fake engines only, no quota). Live canary passed for Codex and agy on 2026-10-03, with sabotage failing as required
-(`runs/20261003-dispatch-canary/README.md`); `qwen` through the dispatcher not yet run live. Not yet done: step 5,
+(`runs/20261003-dispatch-canary/README.md`); `qwen` passed the same day with its model verified from its own output, after a timeout fix (the whole process
+group is killed). Not yet done: step 5,
 the first real run.
 
 The layer that spawns and supervises agents, so the method's rules about running a node (method 3.7–3.8) are code
@@ -150,6 +151,8 @@ Steps 1–4 need no quota; 2's canaries and 5 need EJ's go-ahead.
   so the next node reads a file either way.
 - The Codex and `agy` command lines are verified by the live canary (n=1 each). The canary also changed the
   dispatcher: it fills `started`/`ended` itself, gives engines `stdin=DEVNULL`, keeps output printed before a
-  timeout, and treats `agy`'s exit-0 print-timeout notice as a timeout. `--dry-run` prints them for review.
+  timeout, treats `agy`'s exit-0 print-timeout notice as a timeout, and kills the whole process group on a timeout
+  (qwen's child process survived a plain kill). Open: a per-node working folder, so a `qwen` node does not load
+  the repo's context (about 198k tokens for a one-line answer). `--dry-run` prints them for review.
 - The dispatcher writes `runs/<id>/dispatch.json` and `events.jsonl` and never edits the COO's `state.md` (one writer
   at a time, method 4).

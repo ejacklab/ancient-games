@@ -13,3 +13,17 @@
 Model check: neither Codex (`-o` last message) nor agy (text output) reports its model in what the dispatcher reads,
 so both nodes are logged "model unverified"; the result headers carry the model the brief gave. Codex's real model
 is in its rollout (`harvest_run.py`).
+
+## qwen (qwen 0.24.7, `qwen3.8-flash`, plan mode) — `plan-qwen.json`
+
+| Run | Result |
+|---|---|
+| 1st | **timed out** at the 120 s outer timer although `--max-wall-time 90s` was set, with nothing printed. Worse: the dispatcher killed only the `qwen` wrapper, and its `node` child **kept running** (still alive at 2 min 45 s, ignored SIGTERM, needed SIGKILL). **Fixed:** each call now runs in its own process group and a timeout kills the whole group (test: a grandchild must not survive). Why the first call hung is **not known** (one occurrence). |
+| 2nd | **pass**: `CANARY OK`, valid header, check passed, and the **model verified** — qwen's own `system` event reported `qwen3.8-flash`, the plan's model (the first engine the dispatcher can verify). 101 s wall, 1 turn, **197,871 tokens**. No stray process afterwards. |
+| Sabotage | `inner_timer: 1s` → qwen's own budget fired: exit 55, `FatalBudgetExceededError` → blocked: **can fail**. No stray process. |
+
+Two qwen lessons: (1) run from the repo root, qwen loads the project's context (AGENTS.md, skills, memory) and a
+one-line answer cost about 198k tokens, against 18–27k from an empty folder on 2026-10-02 — so a qwen node should
+run in a clean working folder, or try `--safe-mode` (documented to disable context files, skills and MCP; untested);
+(2) the call ran 101 s with `--max-wall-time 90s` and still exited 0, so qwen's own budget does not cover the whole
+wall time — the outer timer stays the real limit.

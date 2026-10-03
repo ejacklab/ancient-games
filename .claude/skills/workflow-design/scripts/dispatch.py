@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -161,6 +163,24 @@ def final_answer(engine: str, stdout: str, out_file: Path) -> tuple[str, str | N
 
 
 # ---------------------------------------------------------------- one call
+def run_group(cmd: list[str], timeout: float, cwd: Path) -> tuple[int, str, str]:
+    """Run cmd in its own process group; on timeout kill the whole group, not only the first process: `qwen` is a
+    wrapper whose node child survived a plain kill and kept running (seen 2026-10-03). No stdin: an engine must
+    never wait on ours. Raises TimeoutExpired carrying whatever was printed before the timer fired."""
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, text=True,
+                         cwd=cwd, start_new_session=True)
+    try:
+        out, err = p.communicate(timeout=timeout)
+        return p.returncode, out, err
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        out, err = p.communicate()
+        raise subprocess.TimeoutExpired(cmd, timeout, output=out, stderr=err)
+
+
 def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine: str, model: str,
          feedback: str | None, dry: bool) -> dict:
     """Run one engine call; return {'outcome': ok|executor|unclear, 'why', 'result'}."""
@@ -186,11 +206,9 @@ def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine
     t0 = time.monotonic()
     status, code, stdout, stderr = "ok", 0, "", ""
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=node["outer_timeout_s"], cwd=base,
-                           stdin=subprocess.DEVNULL)         # an engine must never wait on our stdin
-        code, stdout, stderr = p.returncode, p.stdout, p.stderr
-        (raw / f"{nid}-{attempt}-{engine}.stdout").write_text(p.stdout)
-        (raw / f"{nid}-{attempt}-{engine}.stderr").write_text(p.stderr)
+        code, stdout, stderr = run_group(cmd, node["outer_timeout_s"], base)
+        (raw / f"{nid}-{attempt}-{engine}.stdout").write_text(stdout)
+        (raw / f"{nid}-{attempt}-{engine}.stderr").write_text(stderr)
         status = "ok" if code == 0 else "fail"
         if status == "ok" and any(m in stderr for m in SILENT_FAILURES.get(engine, [])):
             status = "timeout"                             # agy's own timer fired: exit 0, partial output
