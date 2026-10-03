@@ -1,4 +1,7 @@
-# Dispatcher layer — design (2026-10-03; n=0; not built)
+# Dispatcher layer — design (2026-10-03; n=0)
+
+**Status: steps 1–4 built** as `.claude/skills/workflow-design/scripts/dispatch.py` (tests: `tests/test_dispatch.py`,
+fake engines only, no quota). Not yet done: the live canary per engine adapter and step 5, the first real run.
 
 The layer that spawns and supervises agents, so the method's rules about running a node (method 3.7–3.8) are code
 that cannot be skipped, and the COO keeps planning, algorithm design, decisions, monitoring and quick fixes
@@ -111,7 +114,8 @@ model's probability is not (J9, J10). The research is kept in `docs/research/202
 
 ## 7. Pieces to build, in order (each with its own check)
 
-1. **Plan check** in `design_gate.py` (the next free G number): caps, timers, fallback, brief parts. Check: self-test with sabotage.
+1. **Plan check** — built as `dispatch.py check PLAN` rather than in `design_gate.py`, so the runner refuses a bad
+   plan itself: caps, timers, fallback, brief parts. Check: self-test with sabotage.
 2. **Engine adapters**: one small function per engine that turns a node into the command line with its inner timer
    and model flag (Codex `exec -m … -c model_reasoning_effort=…`, `qwen --max-wall-time … -m …`,
    `agy --print-timeout … --model …`, `claude -p … --model …`). Check: a dry-run mode that prints commands; a test
@@ -125,10 +129,23 @@ model's probability is not (J9, J10). The research is kept in `docs/research/202
 
 Steps 1–4 need no quota; 2's canaries and 5 need EJ's go-ahead.
 
-## 8. Decisions for EJ (decided: no run-time routing fork, no decision model — §5)
+## 8. Decisions for EJ (decided: no run-time routing fork, no decision model — §5; it lives in the skill's
+`scripts/` — EJ, 2026-10-03)
 
-1. Where it lives: in the skill's `scripts/` (global, engine-neutral; my recommendation) or inside
-   `ancient_games/` (its journal and Gate would apply, but it changes the framework's contract, which is EJ's).
-2. Claude nodes: headless `claude -p` from the dispatcher, or keep Claude subagents with the Workflow tool and let
+1. Claude nodes: headless `claude -p` from the dispatcher, or keep Claude subagents with the Workflow tool and let
    the dispatcher drive only Codex / `qwen` / `agy`.
-3. The default inner and outer timers per role (method 3.8 item 2 gives provisional sizes).
+2. The default inner and outer timers per role (method 3.8 item 2 gives provisional sizes).
+
+## 9. What the build settled, and what is still unverified
+
+- Each node's result is the engine's final answer, so read-only engines need not write files: Codex via `-o`,
+  `qwen` from the `result` event of `--output-format json`, `agy` from stdout, Claude from `--output-format json`.
+- The model check uses what the *tool* reports (`qwen`'s `system` event; Claude's `modelUsage` when it names one
+  model), never the worker's own header line; Codex and `agy` report none here, so their nodes are logged
+  "model unverified" and `harvest_run.py` reads the Codex model from its rollout afterwards.
+- Timers have no hidden defaults: a plan without `inner_timer` and `outer_timeout_s` is refused (decision 2 stays
+  EJ's).
+- Unverified until a live canary: the Claude adapter's JSON fields (`result`, `modelUsage`) and the exact `agy` and
+  Codex command lines under the dispatcher. `--dry-run` prints them for review.
+- The dispatcher writes `runs/<id>/dispatch.json` and `events.jsonl` and never edits the COO's `state.md` (one writer
+  at a time, method 4).
