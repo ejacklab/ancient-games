@@ -318,3 +318,15 @@ def test_check_refuses_workdir_that_is_a_file(tmp_path, fallback):
     r = run(tmp_path, "check", setup(tmp_path, [n]))
     assert r.returncode == 1, r.stdout + r.stderr
     assert "a: workdir 'x.txt' is not a folder" in r.stdout
+
+
+def test_agy_auto_denied_tool_with_exit_0_is_a_failure(tmp_path):
+    # seen in run 20261003-node-workdir: agy exits 0, empty stdout, stderr names the auto-denied permission
+    env = fake_bin(tmp_path, "agy", r'''
+import sys
+print('jetski: no output produced — a tool required the "command" permission that headless mode cannot prompt for, so it was auto-denied.', file=sys.stderr)
+''')
+    g = {"id": "g", "role": "verifier", "engine": "agy", "model": "m", "brief": "brief.md", "inner_timer": "60s",
+         "outer_timeout_s": 30}
+    r = run(tmp_path, "run", setup(tmp_path, [g]), env=env)
+    assert r.returncode == 1 and "executor failure on agy: denied (exit 0)" in r.stderr

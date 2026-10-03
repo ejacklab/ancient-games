@@ -37,7 +37,8 @@ BRIEF_PARTS = ["## Template", "## Example", "## Standard"]
 LOCK = threading.Lock()
 FILLED = "(filled by the dispatcher)"
 # stderr notices that mean the call did not finish although the exit code is 0 (verified 2026-10-03)
-SILENT_FAILURES = {"agy": ["print timeout"]}
+SILENT_FAILURES = {"agy": {"print timeout": "timeout", "auto-denied": "denied"}}   # also: a tool needing a permission headless
+# mode cannot grant ("jetski: no output produced — ... was auto-denied"), seen in run 20261003-node-workdir
 DEFAULT_BUDGET = {"max_roles": 5, "max_parallel": 3, "max_rounds": 2, "max_calls": 30}
 
 
@@ -218,8 +219,8 @@ def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine
         (raw / f"{nid}-{attempt}-{engine}.stdout").write_text(stdout)
         (raw / f"{nid}-{attempt}-{engine}.stderr").write_text(stderr)
         status = "ok" if code == 0 else "fail"
-        if status == "ok" and any(m in stderr for m in SILENT_FAILURES.get(engine, [])):
-            status = "timeout"                             # agy's own timer fired: exit 0, partial output
+        if status == "ok":                                 # exit 0, yet the tool says it did not finish
+            status = next((st for m, st in SILENT_FAILURES.get(engine, {}).items() if m in stderr), status)
     except subprocess.TimeoutExpired as e:
         status, code = "timeout", 124                      # keep whatever it printed before the timer fired
         for name, data in (("stdout", e.stdout), ("stderr", e.stderr)):
