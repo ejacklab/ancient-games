@@ -171,7 +171,9 @@ New combinations earn a row here only after the ledger shows the ad-hoc version 
    - *Verifier, phase 1* (a different kind from the dev, EXECUTOR_KINDS rule 5): writes the test plan and the
      acceptance cases from the design and acceptance criteria only, **before it has seen any code**. Its cases are
      first run against a deliberately broken build and must fail there (sabotage), or they are not used.
-4. **Script gate** (no model): the dev's unit tests pass; the per-test baseline still passes; every file in the
+4. **Script gate** (no model; `.claude/skills/workflow-design/scripts/feature_gate.py` — `baseline` from two
+   JUnit runs of the full suite before anything builds, `check` against the COO's `plan.json` of may-change,
+   must-not-change and protected globs): the dev's new unit tests pass; the per-test baseline still passes; every file in the
    diff is planned or has a listed reason (scope); nothing in "must not change" changed; the verifier's cases and
    any goldens are untouched (tamper guard). A failure goes straight back to the dev; it costs no review.
 5. **Verifier, phase 2** — the same verifier, its cases already fixed, so seeing the code cannot bend them: reviews
