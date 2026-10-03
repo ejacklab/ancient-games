@@ -216,8 +216,9 @@ def test_ledger_row_rules():
 
 
 def test_ledger_markdown_parses_and_validates(tmp_path):
-    # the shipped ledger: header only, zero rows, must parse clean
-    assert dg.parse_ledger(ROOT / "docs" / "TASK_TYPES_LEDGER.md") == []
+    # the shipped ledger: every row it holds must validate (row 1 is the first real run, 2026-10-03)
+    shipped = dg.parse_ledger(ROOT / "docs" / "TASK_TYPES_LEDGER.md")
+    assert shipped and all(dg.validate_ledger_row(r) == [] for r in shipped)
     good = "| 2026-10-02 | 20261002-x | code generation | challenger | 0.25 | one node instead of three | 130k | 95k | criteria pass | yes |"
     bad = "| 2026-10-02 | 20261002-y | debugging | challenger | 0.3 | — | 100k |  | criteria pass | yes |"
     p = tmp_path / "ledger.md"
