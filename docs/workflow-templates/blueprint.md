@@ -89,8 +89,8 @@ lines, dated, and carries a requirement id or a path so it can be found by `grep
 
 `decisions.md`
 
-| Date | Decision | Why | Alternatives rejected | Serves (R/N ids) |
-|---|---|---|---|---|
+| Date | Decision | Why | Alternatives rejected | Serves (R/N ids) | Source (finding ids, or *model knowledge*) |
+|---|---|---|---|---|---|
 
 `changelog.md`
 

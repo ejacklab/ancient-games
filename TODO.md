@@ -16,3 +16,12 @@ challenge verbatim and never asks for a restatement. Agreed shape (not scheduled
 - a sabotage case in `tests/workflows/intake_harness.mjs`: an empty or one-sided restatement must fail the check;
 - then drop "Not yet encoded in `intake.js`" from `docs/WORKFLOW_DESIGN_METHOD.md` §3.0 and the n=0 row note in
   `docs/WORKFLOW_DESIGN_DIAGRAM.md` §6.
+
+## Dispatcher layer (direction adopted 2026-10-03, not built)
+
+EJ adopted a friend's design idea: a layer, not the COO, spawns and supervises agents, so the method's prose rules
+become code that cannot be skipped. It would join the scripts already built — `runlog.py` (two timers, events),
+`validate_result.py` (pass-back), `harvest_run.py` (feedback), `quote_check.py` (explorer) — and enforce the caps
+(5 roles per run, 3 at once), the executor-failure retry on the fallback, and the model check. Ancient Games (a
+referee that decides how many agents and journals every decision) is the natural home. The COO keeps planning and
+algorithm design. Not scheduled; design it with the method before building.

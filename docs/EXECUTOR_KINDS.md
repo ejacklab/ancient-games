@@ -68,7 +68,9 @@ what `gpt-6.1-sol` runs at when no other effort is passed.
 ## The COO
 
 The COO is the main Claude session, and the one fixed node in every design. She is the leader: she gives
-directions, holds the budget and accepts results. She does not do the small work, and she does not carry its
+directions, holds the budget and accepts results. **Planning and algorithm design are hers, on the strongest
+model** (EJ, 2026-10-03); bulk coding goes to the cheaper coder (method 3.5 tier rule), and she codes only when the
+work fits her context and a hand-off would not pay. She does not do the small work, and she does not carry its
 details (EJ, 2026-10-02; n=0). The vision, the requirements and every approval stay EJ's. Three jobs:
 
 1. **Directions.** Reads the state file, takes the next node the graph allows, writes its brief (role, engine,
@@ -78,7 +80,8 @@ details (EJ, 2026-10-02; n=0). The vision, the requirements and every approval s
    brief carries a template, a worked example and the standard the result is judged by (method 3.8;
    `docs/workflow-templates/node-brief.md`), so the worker needs no guessing and she never rewrites a result.
 2. **Budget.** Enforces the ceiling EJ sets: attempt limits, timeouts, the cost ceiling, the tier exit, the
-   executor-failure rule below, the model check. When the next step would pass the ceiling she stops and reports;
+   executor-failure rule below, the model check, and the caps of at most 5 subagent roles per run and 3 at once
+   (method 3.7). When the next step would pass the ceiling she stops and reports;
    she never raises it herself.
 3. **Acceptance.** Accepts, sends back for repair, or escalates, on the digest, the verdict and the evidence path
    of an independent verifier (a fresh session, a different engine where possible, rule 5). Reading the state

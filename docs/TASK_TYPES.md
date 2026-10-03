@@ -233,6 +233,9 @@ It is method 3.3's bounded explore loop for a technical unknown; the age of the 
   for EJ to decide behaviour or UI, then deleted.
 - **Shape.** One named question; a pass/fail answer written before it starts; a time or token limit; it ends
   deleted, or explicitly promoted into the walking skeleton. A throwaway POC is not the skeleton.
+- **Roles.** The researcher proposes the candidate approaches from current sources; a coder (cheap tier)
+  builds each POC; a script checks each against the pass/fail written first; the COO decides. The researcher
+  does not build POCs: reading and building need different tools and different evidence.
 - **Strategy.** Round 1: list the genuinely different approaches (library A versus library B versus hand-written,
   or different engines — not copies: one model asked for many candidates converges on two or three ideas) and run
   **at most 3 in parallel** (independent: separate folders, own check; method 3.7). All get the same check and

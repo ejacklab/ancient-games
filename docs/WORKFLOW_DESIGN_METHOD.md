@@ -330,6 +330,11 @@ Only when the design is complete, look for tasks that are **really independent**
 Parallel buys only clock time, and it costs predictability, debuggability and extra joins. Independence of
 verifiers is about what they see, not when they run: two verifiers can run one after another and stay independent.
 
+**Caps (EJ, 2026-10-03; n=0 — a friend's practice plus reasoning, not measured).** At most **5 subagent roles per
+run** and at most **3 running at once** (`ancient_games/registry.py:24`); a retry of the same node is not a new
+subagent. A design that needs more is too big: cut it into slices or separate runs, never raise the cap. The
+feedback log (3.8 item 11) records calls per run, so the cap is revised from data.
+
 ### 3.8 Running a node: executors are tools, timers, pass-back, no polling
 
 (Added 2026-10-02 at EJ's request. n=0: every number below is a provisional working value that the ledger replaces
@@ -409,6 +414,12 @@ malformed), and every exchange with them costs the COO a turn that re-reads her 
    digest whose last line is the ledger's Actual cost. Tokens are kept in parts (new input, cache read, output):
    cache reads are often ten times the new input. Only ids, numbers, paths and status are written; the repo is
    public. Every parser fails loudly when an engine changes its format.
+12. **Design decisions cite their evidence** (EJ, 2026-10-03; n=0). Model memory goes stale, so every design
+   decision cites the finding ids it rests on — research (item 9) or exploration (item 10). A decision with no
+   source is marked *model knowledge* and treated like a `read` claim: it may not drive a node that builds until it
+   is checked against a source or by running code. The researcher and explorer gather; the COO designs, so their
+   picks do not become the design without a second look. Which source comes first depends on the case: the
+   codebase for a feature in an existing system (TASK_TYPES case C), current docs for a new stack (case D).
 
 ## 4. State and memory
 
@@ -440,7 +451,7 @@ query (the rule above: no store without a query):
 
 | File (`docs/blueprint/`) | Answers | Entry (kept to about 5 lines) | Written by, when |
 |---|---|---|---|
-| `decisions.md` | "Why did we choose X? What did we reject?" | date · decision · why · alternatives rejected · the R/N ids it serves | the COO, when a decision spot is answered (3.3) or a design choice is made; EJ's answers are the decisions |
+| `decisions.md` | "Why did we choose X? What did we reject?" | date · decision · why · alternatives rejected · the R/N ids it serves · source (finding ids, or *model knowledge*, 3.8 item 12) | the COO, when a decision spot is answered (3.3) or a design choice is made; EJ's answers are the decisions |
 | `changelog.md` | "What did run N change, and did it pass?" | date · run id · what changed · criteria covered (R1.1…) · commits · baseline result · optional `release note:` line for users | the COO, once at the end of each run that builds, from the state file |
 | `lessons.md` | "What goes wrong around module Y?" | date · where (path or module) · the trap · how it was found · recheck by (a date or a trigger) | any node proposes, the COO appends; an entry past its recheck is marked stale, never silently trusted |
 
