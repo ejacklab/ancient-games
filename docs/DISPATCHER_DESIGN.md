@@ -16,13 +16,14 @@ engine with its brief, enforces timers and caps, validates what comes back, retr
 fallback, runs the script gate, logs every event, and writes the state file — and returns to the COO only a digest
 and the decisions that are hers.
 
-**In scope.** Engine calls through Codex, `qwen`, `agy`, and Claude headless (`claude -p`); the pass-back contract;
+**In scope.** Engine calls through Codex, `qwen` and `agy`; the pass-back contract;
 the caps; the feedback log.
 
 **Out of scope.** Choosing the design (the COO does); judging quality (the verifier and the script gate do);
 changing `ancient_games/` (its `SPEC.md` and `DECISIONS.md` are EJ's — the dispatcher lives beside it, in the
 skill's `scripts/`, and is engine- and project-neutral); Workflow-tool subagents (the Workflow tool already
-schedules those; the dispatcher covers the external engines and headless Claude); deciding at run time who acts
+schedules those, and Claude nodes stay with it — EJ, 2026-10-03; the dispatcher covers only the external engines);
+deciding at run time who acts
 next — that is fixed in the plan (§5).
 
 **Six whys, short.** Why: rules in prose get skipped, and the COO's context fills with orchestration (EJ's
@@ -76,15 +77,15 @@ node, a small-issue fix (build-a-feature step 6), a budget ceiling, or `UNCLEAR:
   "run_id": "20261004-feature-x",
   "budget": {"max_roles": 5, "max_parallel": 3, "max_rounds": 2, "token_ceiling": 2000000},
   "nodes": [
-    {"id": "explore", "role": "explorer", "engine": "claude", "model": "claude-opus-5-5",
+    {"id": "classify", "role": "classifier", "engine": "agy", "model": "gemini-3.1-pro-high",
      "brief": "runs/<id>/briefs/explore.md", "result": "runs/<id>/nodes/explore-{attempt}.result.md",
-     "inner_timer": "600s", "outer_timeout_s": 660, "fallback": {"engine": "codex", "model": "gpt-6.1-sol"},
-     "check": {"kind": "script", "cmd": "quote_check.py runs/<id>/explore.md --root ."}, "needs": []},
-    {"id": "dev", "role": "coder", "engine": "codex", "model": "gpt-6.1-sol", "needs": ["explore"],
+     "inner_timer": "120s", "outer_timeout_s": 150, "fallback": {"engine": "qwen", "model": "qwen3.8-flash"},
+     "check": {"name": "schema", "cmd": ["python3", "validate_result.py", "{result}"]}, "needs": []},
+    {"id": "dev", "role": "coder", "engine": "codex", "model": "gpt-6.1-sol", "needs": ["classify"],
      "parallel_group": "build", "check": {"kind": "gate", "plan": "runs/<id>/gate-plan.json"},
      "repair": "dev", "...": "..."},
     {"id": "verify-cases", "role": "verifier", "engine": "agy", "model": "gemini-3.8-flash-medium",
-     "needs": ["explore"], "parallel_group": "build", "...": "..."}
+     "needs": ["classify"], "parallel_group": "build", "...": "..."}
   ]
 }
 ```
@@ -118,7 +119,7 @@ model's probability is not (J9, J10). The research is kept in `docs/research/202
    plan itself: caps, timers, fallback, brief parts. Check: self-test with sabotage.
 2. **Engine adapters**: one small function per engine that turns a node into the command line with its inner timer
    and model flag (Codex `exec -m … -c model_reasoning_effort=…`, `qwen --max-wall-time … -m …`,
-   `agy --print-timeout … --model …`, `claude -p … --model …`). Check: a dry-run mode that prints commands; a test
+   `agy --print-timeout … --model …`). Check: a dry-run mode that prints commands; a test
    per adapter. One live canary per engine, which spends quota — EJ's go-ahead (EXECUTOR_KINDS canary).
 3. **The loop** (§3) with the state-file writer and resume. Check: fake engines (scripts that sleep, crash, write
    a bad header, write the wrong model) — every row of §6 has a test that fails without its handling.
@@ -130,22 +131,21 @@ model's probability is not (J9, J10). The research is kept in `docs/research/202
 Steps 1–4 need no quota; 2's canaries and 5 need EJ's go-ahead.
 
 ## 8. Decisions for EJ (decided: no run-time routing fork, no decision model — §5; it lives in the skill's
-`scripts/` — EJ, 2026-10-03)
+`scripts/`; Claude nodes stay with the Workflow tool — EJ, 2026-10-03)
 
-1. Claude nodes: headless `claude -p` from the dispatcher, or keep Claude subagents with the Workflow tool and let
-   the dispatcher drive only Codex / `qwen` / `agy`.
-2. The default inner and outer timers per role (method 3.8 item 2 gives provisional sizes).
+1. The default inner and outer timers per role (method 3.8 item 2 gives provisional sizes).
 
 ## 9. What the build settled, and what is still unverified
 
 - Each node's result is the engine's final answer, so read-only engines need not write files: Codex via `-o`,
-  `qwen` from the `result` event of `--output-format json`, `agy` from stdout, Claude from `--output-format json`.
-- The model check uses what the *tool* reports (`qwen`'s `system` event; Claude's `modelUsage` when it names one
-  model), never the worker's own header line; Codex and `agy` report none here, so their nodes are logged
+  `qwen` from the `result` event of `--output-format json`, `agy` from stdout.
+- The model check uses what the *tool* reports (`qwen`'s `system` event), never the worker's own header line; Codex and `agy` report none here, so their nodes are logged
   "model unverified" and `harvest_run.py` reads the Codex model from its rollout afterwards.
-- Timers have no hidden defaults: a plan without `inner_timer` and `outer_timeout_s` is refused (decision 2 stays
+- Timers have no hidden defaults: a plan without `inner_timer` and `outer_timeout_s` is refused (decision 1 stays
   EJ's).
-- Unverified until a live canary: the Claude adapter's JSON fields (`result`, `modelUsage`) and the exact `agy` and
-  Codex command lines under the dispatcher. `--dry-run` prints them for review.
+- A run that mixes Claude and external nodes is split by engine: the COO runs the Claude nodes with the Workflow
+  tool and the external ones with `dispatch.py`, in the design's order; both write results to `runs/<id>/nodes/`,
+  so the next node reads a file either way.
+- Unverified until a live canary: the exact `agy` and Codex command lines under the dispatcher. `--dry-run` prints them for review.
 - The dispatcher writes `runs/<id>/dispatch.json` and `events.jsonl` and never edits the COO's `state.md` (one writer
   at a time, method 4).

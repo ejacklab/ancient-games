@@ -8,7 +8,8 @@ node's engine is the one the plan names (design §5). Stdlib only; it calls no m
   dispatch.py check PLAN              validate the plan (caps, timers, briefs, edges); exit 0/1
   dispatch.py run PLAN [--dry-run]    run it; resumes from runs/<id>/dispatch.json; prints the digest
 
-Engines: codex · qwen · agy · claude (headless `claude -p`) · script (a local command, for tests and checks).
+Engines: codex · qwen · agy · script (a local command, for tests and checks). Claude nodes are not dispatched here:
+they run with the Workflow tool (EJ, 2026-10-03), and a plan naming engine `claude` is refused.
 The node's result file is the engine's final answer: header + body (docs/workflow-templates/result-file.md).
 The dispatcher writes runs/<id>/dispatch.json (its own state) and events.jsonl; it never edits the COO's state.md.
 Exit (run): 0 all done · 1 stopped on a blocked node, an UNCLEAR question or a budget limit · 2 plan or usage error.
@@ -29,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from runlog import append, now                      # noqa: E402  (same folder)
 from validate_result import check_result            # noqa: E402
 
-ENGINES = {"codex", "qwen", "agy", "claude", "script"}
+ENGINES = {"codex", "qwen", "agy", "script"}
 BRIEF_PARTS = ["## Template", "## Example", "## Standard"]
 LOCK = threading.Lock()
 DEFAULT_BUDGET = {"max_roles": 5, "max_parallel": 3, "max_rounds": 2, "max_calls": 30}
@@ -61,7 +62,9 @@ def check_plan(plan: dict, base: Path) -> list[str]:
         nid = n.get("id", "?")
         if n.get("parallel_group"):
             groups[n["parallel_group"]] = groups.get(n["parallel_group"], 0) + 1
-        if n.get("engine") not in ENGINES:
+        if n.get("engine") == "claude":
+            f.append(f"{nid}: Claude nodes run with the Workflow tool, not the dispatcher (EJ, 2026-10-03)")
+        elif n.get("engine") not in ENGINES:
             f.append(f"{nid}: engine {n.get('engine')!r} is not one of {sorted(ENGINES)}")
         if n.get("engine") != "script":
             if not n.get("model"):
@@ -132,9 +135,6 @@ def build_command(node: dict, engine: str, model: str, prompt: str, out_file: Pa
     if engine == "agy":
         return ["agy", "-p", prompt, "--mode", "accept-edits" if mode == "write" else "plan", "--model", model,
                 "--print-timeout", t, "--output-format", "text"]
-    if engine == "claude":
-        return ["claude", "-p", prompt, "--model", model, "--output-format", "json",
-                "--permission-mode", "acceptEdits" if mode == "write" else "plan"]
     return [str(x).replace("{prompt_file}", str(out_file.with_suffix(".prompt"))).replace("{out}", str(out_file))
             .replace("{attempt}", str(attempt)) for x in node["cmd"]]
 
@@ -150,10 +150,6 @@ def final_answer(engine: str, stdout: str, out_file: Path) -> tuple[str, str | N
         if res is None:
             raise ValueError("qwen stream has no result event")
         return res.get("result") or "", init.get("model")
-    if engine == "claude":
-        d = json.loads(stdout)
-        models = list((d.get("modelUsage") or {}).keys())
-        return d.get("result") or "", (models[0] if len(models) == 1 else None)
     if engine == "script" and out_file.exists():
         return out_file.read_text(), None
     return stdout, None

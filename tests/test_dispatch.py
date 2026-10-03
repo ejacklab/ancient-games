@@ -120,6 +120,9 @@ def test_plan_refusals(tmp_path):
     cyc = [node("a", "ok", needs=["b"]), node("b", "ok", needs=["a"])]
     assert "dependency cycle" in run(tmp_path, "check", setup(tmp_path, cyc)).stdout
     assert run(tmp_path, "run", setup(tmp_path, many)).returncode == 2
+    cl = [{"id": "x", "role": "explorer", "engine": "claude", "model": "claude-opus-5-5", "brief": "brief.md",
+           "inner_timer": "600s", "outer_timeout_s": 660}]
+    assert "Claude nodes run with the Workflow tool" in run(tmp_path, "check", setup(tmp_path, cl)).stdout
 
 
 def test_resume_skips_done_nodes(tmp_path):
@@ -160,13 +163,12 @@ print(json.dumps([{"type": "system", "model": "qwen3.7-plus"}, {"type": "result"
 def test_dry_run_prints_engine_commands_without_running(tmp_path):
     nodes = [{"id": e, "role": e, "engine": e, "model": "m", "brief": "brief.md", "inner_timer": "90s",
               "outer_timeout_s": 100, "mode": "write" if e == "codex" else "read-only"}
-             for e in ["codex", "qwen", "agy", "claude"]]
+             for e in ["codex", "qwen", "agy"]]
     r = run(tmp_path, "run", setup(tmp_path, nodes), "--dry-run")
     assert r.returncode == 0, r.stderr
     assert "codex exec -m m -s workspace-write" in r.stdout
     assert "qwen --approval-mode plan --max-wall-time 90s -m m --output-format json" in r.stdout
     assert "--mode plan --model m --print-timeout 90s" in r.stdout
-    assert "--permission-mode plan" in r.stdout
     assert not (tmp_path / "runs/r1/events.jsonl").exists()
 
 
