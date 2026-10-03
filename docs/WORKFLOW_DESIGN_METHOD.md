@@ -392,7 +392,8 @@ malformed), and every exchange with them costs the COO a turn that re-reads her 
    claim is checked (`docs/EXECUTOR_KINDS.md`, roles). Its contract:
    - **Read-only**, under a stated budget (tool calls or tokens), favouring recall inside the affected area and
      never a repo-wide overview (TASK_TYPES, case C).
-   - **Every claim carries file:line and a short verbatim quote**, so a script can confirm the quote is at that line.
+   - **Every claim carries file:line and a short verbatim quote**, and `scripts/quote_check.py` confirms each quote
+     is at its line (`docs/workflow-templates/explorer-file.md`); a quote that fails is a failed finding, not a typo.
    - **Every behaviour claim is marked `read` or `ran`.** `read` = inferred from the code; `ran` = confirmed by
      running it (a test, a differential run, `~/skills/verify-extraction`). Only `ran` claims may feed a node that
      builds; a `read` claim a build depends on is an unclear spot until it is run.
