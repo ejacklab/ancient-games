@@ -183,18 +183,45 @@ Join check: the tester's cases (proven able to fail) pass, the baseline still pa
 the three-part stop of method 3.6. Feedback: `runlog.py` wraps the dev and tester calls and logs each verdict
 (method 3.8 item 10).
 
-**Lead-in by case (EJ, 2026-10-03; n=0).** Steps 3–5 above are the same in every case. Steps 1–2 and the
-tester's oracle depend on where the truth comes from:
+**Lead-in by case (EJ, 2026-10-03; restructured the same day from `docs/research/20261003-feature-cases/`,
+critic's keep/shrink list adopted; n=0 — candidate text, none becomes a rule before two real runs).** Steps 3–5
+above are the same in every case. Two questions, in this order, pick the lead-in:
+
+1. **Are the requirements clear?** No → case **A** first, then the second question.
+2. **What system exists?** An old one being replaced → **B**; an existing one getting a feature → **C**; none →
+   **D**. A migration whose target does not exist yet is **B + D**.
+
+Hand-off: **B and D end as C** — their last step records the per-test baseline, so the next feature on that system
+is case C. A run names its case(s) in the restatement (method 3.0) and checks them against the facts at readiness:
+an existing codebase is never D, and a B run that cannot run the old system is not ready.
+
+**Shared in every case.**
+
+1. Every acceptance criterion carries at least one concrete example (input → expected). The blind tester works from
+   it. (A new rule: neither the method nor the blueprint template asked for examples before.)
+2. Every dev and tester brief has a stop-on-unclear clause: return `UNCLEAR: <question> / <best guess>` instead of
+   guessing.
+3. Conventions and invariants are executable checks (lint, tests, hooks) wherever possible; the context file
+   (`CLAUDE.md`, `AGENTS.md`) is short and hand-written; no agent-written overview file.
+4. Tamper guard: golden files and the tester's cases are read-only to the dev; the join fails if a case disappears
+   or the case count drops.
+5. Scope check in the COO's review checklist: every file in the diff is planned, or has a listed reason.
+6. Where code exists, the baseline is the full suite recorded per test id before anything builds (run twice; a
+   test that flips is listed as flaky, not as a failure).
+7. Requirements are settled per slice: a very unclear or large feature is cut into thin end-to-end slices, each
+   run through the pipeline.
+8. Behavioural equivalence and regressions are judged only by running code, never by an LLM reading it.
 
 | Case | Source of truth | Lead-in (before anything builds) | Tester's oracle | Main risk |
 |---|---|---|---|---|
-| A. Requirements not clear | EJ, through questions | Requirements discovery: one batch of questions, each with a provisional answer; the COO drafts R-blocks with acceptance criteria; EJ accepts them. Examples or a throwaway prototype may help EJ decide. No piece builds until requirements are settled (method 3.1, blueprint check). | The criteria EJ accepted | Building the wrong thing |
-| B. Clear, migrating from an old system | The old system's behaviour | Extract the old behaviour (use case #1): its algorithm from the old code, confirmed by a differential test against the old system, never by re-reading (`~/skills/verify-extraction`); record golden input/output pairs from the old system. | Parity: the same inputs give the same outputs on old and new, plus data-migration checks | A plausible but wrong description of the old system |
-| C. Clear, new feature on an existing system | The existing code plus the new requirement | Scan and understand the system (use case #2 at scale): a map of the affected areas and extension points, and the regression baseline recorded before any change. | The new criteria, plus "the baseline still passes" | Breaking something not known to be connected |
-| D. Feature for a new system | EJ's blueprint | All eight blueprint sections settled first (vision, requirements, domain, logic, architecture, data, UI, non-functional), then scaffolding. | The criteria; there is no baseline yet | Architecture decided too early or too vaguely |
+| A. Requirements not clear | EJ, through questions | "Not now" is a valid exit of the restatement (method 3.0). At most 5 questions, ranked by impact × uncertainty, each multiple-choice or answerable in a few words, with a recommended answer; anything findable in the code is research, not a question. Everything not asked goes on an assumptions list that EJ accepts with the R-blocks; the questions and answers are logged in `decisions.md`. A throwaway prototype only for a question EJ cannot answer in words; EJ accepts the list of requirements taken from it, never the prototype. Nothing builds until the slice's requirements are settled. | The criteria EJ accepted, with their examples | Building the wrong thing |
+| B. Migration from an old system | The old system's recorded behaviour | One port / drop / change list of the old behaviours; EJ marks each, and intended differences are tracked there. The oracle is the old system's recorded output (golden input → output pairs, or old-versus-new runs), never the extracted description. Readiness: the old system can be run to record outputs. The tester aims golden inputs at the measured bug classes (types and precision, parsing and formatting, boundaries, error paths). Only when old-versus-old runs differ: a noise ignore list with reasons. Only when data moves: schema, then counts per column, then a hash per row. Small pieces in dependency order. | Parity on the goldens, plus the data checks when data moves | A plausible but wrong description of the old system; old bug workarounds ported as requirements |
+| C. New feature in an existing system | The existing code plus the new requirement | The scan is systematic inside the affected area, under a budget, favouring recall; never a repo-wide overview. It produces a 4-item impact map with file:line: where the change goes; what calls it and what it calls; the nearby conventions; what must not change. Load-bearing behaviour claims are checked by running code (shared 8). Characterization tests only for "must not change" entries that have no test; they join the baseline. The tester gets only the "must not change" list. Language and conventions are read, not asked. | The new criteria, plus the per-test baseline still passing | Breaking something not known to be connected; agents going beyond the request |
+| D. Feature for a new system | EJ's blueprint | Stack and standards questions (below); a mainstream stack, its reason in `decisions.md`. Blueprint: all eight sections present, four settled before scaffolding (method 3.1). A walking-skeleton node before dev ∥ tester: lint, tests, one end-to-end test, and a deliberate layer break the checks must catch. A few structural checks: a secret scan, an authorization test if there is auth, one layer rule. | The criteria, the skeleton's end-to-end test and the structural checks (no behavioural baseline yet) | Architecture fixed too early or too vaguely; agents writing everything in one file |
 
-A run names its case in the restatement (method 3.0) and checks it against the facts at readiness: an existing
-codebase is never case D, and a case-B run with no access to the old system is not ready.
+Deferred (evidence too thin or not EJ's single-developer case): shadow or dark launch (B); a repo map or code graph
+(C); a larger retry budget for mechanical translation (it conflicts with the 2-round cap); a duplication limit and a
+security rescan after every fix round (D).
 
 **Proof of concept (POC) — when and how (EJ, 2026-10-03; n=0).** A POC answers one technical risk that nobody
 can settle by reading or asking (will this library do X, is it fast enough, does this API behave as documented).

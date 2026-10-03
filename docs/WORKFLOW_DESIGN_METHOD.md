@@ -131,7 +131,7 @@ feature.
 | Not a product change (research, a question, an analysis, an edit to documentation only) | none; record why, and the check ends here. It carries no acceptance criteria |
 | Fix: restores behaviour the requirements already describe (if they do not describe it, it is a feature) | the requirement it restores, and the sections the fix touches |
 | Feature: adds or changes behaviour | vision, requirements, and every section the feature changes |
-| New product | all eight |
+| New product | all eight present; four settled before anything builds — vision, the first slice's requirements, the hard-to-reverse architecture choices as short decision records, the non-functional targets with runnable checks; the other four settled for the slice only, unknowns marked (EJ, 2026-10-03; was "all eight settled"; n=0) |
 
 The kind of task is itself checked against the challenge: a task that changes the product's code, schema, UI or
 configuration is never "not a product change". A wrong kind switches the whole check off, so it is a stop, not

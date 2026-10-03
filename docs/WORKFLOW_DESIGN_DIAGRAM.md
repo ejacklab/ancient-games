@@ -62,7 +62,7 @@ flowchart TD
   K -->|"not a product change:<br/>research, a question, an analysis,<br/>an edit to documentation only"| NONE["no sections needed, and no acceptance criteria.<br/>record why; the check ends here"]
   K -->|"fix: restores behaviour the<br/>requirements already describe"| SEC1["needed: the requirement it restores,<br/>and the sections the fix touches.<br/>if the requirements do not describe it,<br/>it is a feature, not a fix"]
   K -->|"feature: adds or changes behaviour"| SEC2["needed: vision, requirements,<br/>and every section the feature changes"]
-  K -->|"new product"| SEC3["all eight sections"]
+  K -->|"new product"| SEC3["all eight present,<br/>four settled first"]
   K -.->|"the guard on this classification itself"| GUARD["GUARD: a task that changes the product's code, schema, UI or<br/>configuration is NEVER not a product change. a wrong kind switches<br/>the whole check off, so it is a STOP, not something a later step can repair"]
   SEC1 --> ST
   SEC2 --> ST

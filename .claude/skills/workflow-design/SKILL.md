@@ -55,7 +55,8 @@ agent can read; a subagent starts with nothing but its prompt.
    `docs/blueprint/` (layout: `blueprint.md`): vision, core requirements with acceptance criteria, domain model,
    business logic, architecture, data model and schema decisions, UI/UX, non-functional requirements. The kind of task
    decides which sections are needed (a fix: the requirement it restores and what it touches; a feature: vision,
-   requirements and what it changes; a new product: all eight; not a product change: none, and no acceptance
+   requirements and what it changes; a new product: all eight present, four settled first (vision, first slice's requirements,
+   hard-to-reverse architecture, non-functional targets), the rest per slice; not a product change: none, and no acceptance
    criteria). A task that changes code, schema, UI or configuration is never "not a product change"; a wrong kind
    switches the check off, so it is a stop. Each needed section is
    settled (EJ accepted it and it covers the task), draft (covers the task, not accepted), incomplete (does not cover
