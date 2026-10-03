@@ -44,8 +44,15 @@ pass, none flaky. Taken with `env -u NO_COLOR`, as CLAUDE.md says.
 | # | Step | Status | Output |
 |---|---|---|---|
 | 0 | Restatement, explore, baseline, projection | done | this file, explore.md, baseline/ |
-| 1 | Dispatch plan.json | todo | dispatch.json, events.jsonl, nodes/ |
-| 2 | COO review of findings, docs, ledger row | todo | ledger, feedback.jsonl |
+| 1 | Dispatch plan.json | done | dispatch.json, events.jsonl, nodes/ |
+| 2 | COO review of findings, docs, ledger row | done | ledger, feedback.jsonl, README.md |
 
 ## Log
 - 2026-10-03 explore.md quote-checked: 8/8 after one fix (X8 cited line 31; the quote is at 25).
+- 2026-10-03 run 1: dev ∥ cases ok; sabotage ok (cases 7/8 failed on db1fad2); checkpoint 0a5b88b; gate round 1
+  FAILED (R4: dry-run cut long args, so `-C <long path>` was hidden), dev round 2 fixed it, gate passed; review blocked:
+  agy exit 0, empty, stderr "a tool required the command permission … auto-denied".
+- 2026-10-03 run 2 (resume): review brief made self-contained (diff and criteria embedded, no tools); review: No findings,
+  Verdict: accept. 6/6 nodes done.
+- 2026-10-03 COO: full suite 482 passed; harvest — Codex model gpt-6.1-sol confirmed from its rollout; harvester fixed
+  (codex input includes cache); dispatcher hardened (agy auto-denied = failure); ledger row 1 written.

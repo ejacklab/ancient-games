@@ -17,7 +17,7 @@ challenge verbatim and never asks for a restatement. Agreed shape (not scheduled
 - then drop "Not yet encoded in `intake.js`" from `docs/WORKFLOW_DESIGN_METHOD.md` §3.0 and the n=0 row note in
   `docs/WORKFLOW_DESIGN_DIAGRAM.md` §6.
 
-## Dispatcher layer (direction adopted 2026-10-03, not built)
+## Dispatcher layer (adopted and built 2026-10-03)
 
 EJ adopted a friend's design idea: a layer, not the COO, spawns and supervises agents, so the method's prose rules
 become code that cannot be skipped. It would join the scripts already built — `runlog.py` (two timers, events),

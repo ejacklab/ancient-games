@@ -152,7 +152,7 @@ Steps 1–4 need no quota; 2's canaries and 5 need EJ's go-ahead.
 - The Codex and `agy` command lines are verified by the live canary (n=1 each). The canary also changed the
   dispatcher: it fills `started`/`ended` itself, gives engines `stdin=DEVNULL`, keeps output printed before a
   timeout, treats `agy`'s exit-0 print-timeout notice as a timeout, and kills the whole process group on a timeout
-  (qwen's child process survived a plain kill). Open: a per-node working folder, so a `qwen` node does not load
-  the repo's context (about 198k tokens for a one-line answer). `--dry-run` prints them for review.
+  (qwen's child process survived a plain kill). A per-node `workdir` now exists (built in the first real run,
+  `runs/20261003-node-workdir`): give a `qwen` node an empty working folder so it does not load the repo's context. `--dry-run` prints them for review.
 - The dispatcher writes `runs/<id>/dispatch.json` and `events.jsonl` and never edits the COO's `state.md` (one writer
   at a time, method 4).
