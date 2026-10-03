@@ -95,6 +95,11 @@ def check_plan(plan: dict, base: Path) -> list[str]:
         fb = n.get("fallback")
         if fb and (fb.get("engine") not in ENGINES or (fb.get("engine") != "script" and not fb.get("model"))):
             f.append(f"{nid}: fallback needs a known engine and a model")
+        for target in [n, fb] if fb else [n]:
+            if "workdir" in target:
+                workdir = base / target["workdir"]
+                if workdir.exists() and not workdir.is_dir():
+                    f.append(f"{nid}: workdir {target['workdir']!r} is not a folder")
     for g, k in groups.items():
         if k > b["max_parallel"]:
             f.append(f"parallel group {g!r} has {k} nodes > cap {b['max_parallel']}")
@@ -194,19 +199,22 @@ def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine
             prompt += f"\n## Feedback from the last attempt (the check's real output)\n{feedback}\n"
     else:
         out_file.with_suffix(".prompt").write_text(feedback or "")
-    cmd = build_command(node, engine, model, prompt, out_file, base, attempt)
+    cwd = (base / node["workdir"]).resolve() if "workdir" in node else base
+    cmd = build_command(node, engine, model, prompt, out_file, cwd, attempt)
     if dry:
-        print(f"[dry-run] {nid} attempt {attempt}: " + " ".join(c if len(c) < 60 else c[:57] + "..." for c in cmd))
+        print(f"[dry-run] {nid} attempt {attempt}: " + " ".join(
+            c if len(c) < 60 or ("workdir" in node and c == str(cwd)) else c[:57] + "..." for c in cmd))
         return {"outcome": "dry", "why": "", "result": ""}
+    cwd.mkdir(parents=True, exist_ok=True)
     raw = run_dir / "raw"; raw.mkdir(exist_ok=True)
     ev = {"run_id": plan["run_id"], "node_id": nid, "attempt": attempt, "engine": engine, "model": model,
-          "cwd": str(base)}
+          "cwd": str(cwd)}
     started = now()
     append(run_dir, {**ev, "event": "start", "ts": started})
     t0 = time.monotonic()
     status, code, stdout, stderr = "ok", 0, "", ""
     try:
-        code, stdout, stderr = run_group(cmd, node["outer_timeout_s"], base)
+        code, stdout, stderr = run_group(cmd, node["outer_timeout_s"], cwd)
         (raw / f"{nid}-{attempt}-{engine}.stdout").write_text(stdout)
         (raw / f"{nid}-{attempt}-{engine}.stderr").write_text(stderr)
         status = "ok" if code == 0 else "fail"

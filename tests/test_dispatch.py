@@ -223,3 +223,98 @@ time.sleep(30)
     assert r.returncode == 1 and "timeout" in r.stderr
     import time; time.sleep(4)
     assert not marker.exists(), "a grandchild survived the timeout"
+
+
+@pytest.mark.parametrize("absolute", [False, True])
+def test_workdir_is_the_engine_cwd(tmp_path, absolute):
+    folder = tmp_path / "w/q"
+    folder.mkdir(parents=True)
+    n = node("a", "ok", workdir=str(folder) if absolute else "w/q", passback=False,
+             cmd=[sys.executable, "-c", "import os; print(os.getcwd())"])
+    r = run(tmp_path, "run", setup(tmp_path, [n]))
+    assert r.returncode == 0, r.stdout + r.stderr
+    result = Path(state(tmp_path)["nodes"]["a"]["result"])
+    assert result.read_text().strip() == str(folder)
+    events = [json.loads(l) for l in (tmp_path / "runs/r1/events.jsonl").read_text().splitlines()]
+    assert all(e["cwd"] == str(folder) for e in events if e["event"] in {"start", "end"})
+
+
+def test_workdir_created_relative_to_root(tmp_path):
+    folder = tmp_path / "w/new"
+    n = node("a", "ok", workdir="w/new", passback=False,
+             cmd=[sys.executable, "-c", "import os; print(os.getcwd())"])
+    p = setup(tmp_path, [n])
+    assert not folder.exists()
+    r = subprocess.run([sys.executable, str(SCRIPT), "--root", str(tmp_path), "run", str(p)],
+                       capture_output=True, text=True, cwd=tmp_path.parent)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert folder.is_dir()
+    assert Path(state(tmp_path)["nodes"]["a"]["result"]).read_text().strip() == str(folder)
+
+
+def test_without_workdir_uses_repo_root(tmp_path):
+    n = node("a", "ok", passback=False, cmd=[sys.executable, "-c", "import os; print(os.getcwd())"])
+    r = run(tmp_path, "run", setup(tmp_path, [n]))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert Path(state(tmp_path)["nodes"]["a"]["result"]).read_text().strip() == str(tmp_path)
+
+
+@pytest.mark.parametrize("workdir", ["w", "w/" + "long-folder-" * 8])
+def test_codex_workdir_is_the_C_argument(tmp_path, workdir):
+    c = {"id": "c", "role": "coder", "engine": "codex", "model": "m", "brief": "brief.md",
+         "inner_timer": "60s", "outer_timeout_s": 70, "workdir": workdir}
+    r = run(tmp_path, "run", setup(tmp_path, [c]), "--dry-run")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert f"-C {tmp_path / workdir} -o " in r.stdout
+
+
+def test_workdir_keeps_brief_result_and_check_at_root(tmp_path):
+    env = fake_bin(tmp_path, "qwen", r'''
+import json, os, sys
+assert "Do x." in sys.argv[-1]
+head = "---\nnode: q\nattempt: 1\nengine: qwen\nmodel: m\nstatus: ok\nstarted: t\nended: t\nevidence: e\n---\n"
+print(json.dumps([{"type": "system", "model": "m"}, {"type": "result", "result": head + os.getcwd()}]))
+''')
+    (tmp_path / "check.py").write_text(
+        "import pathlib, sys\n"
+        "root = pathlib.Path.cwd()\n"
+        "result = pathlib.Path(sys.argv[1])\n"
+        "assert (root / 'brief.md').is_file()\n"
+        "assert result.parent == root / 'runs/r1/nodes'\n"
+        "assert result.read_text().splitlines()[-1] == str(root / 'w')\n")
+    q = {"id": "q", "role": "coder", "engine": "qwen", "model": "m", "brief": "brief.md",
+         "inner_timer": "60s", "outer_timeout_s": 70, "workdir": "w",
+         "check": {"cmd": [sys.executable, "check.py", "{result}"]}}
+    r = run(tmp_path, "run", setup(tmp_path, [q]), env=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    rec = state(tmp_path)["nodes"]["q"]
+    assert rec["status"] == "done" and rec["rounds"] == 0
+    assert Path(rec["result"]) == tmp_path / "runs/r1/nodes/q-1.result.md"
+
+
+@pytest.mark.parametrize("override", [False, True])
+def test_fallback_inherits_or_overrides_workdir(tmp_path, override):
+    fb = {"engine": "script", "cmd": [sys.executable, "-c", "import os; print(os.getcwd())"]}
+    if override:
+        fb["workdir"] = "b"
+    n = node("a", "exit3", workdir="a", passback=False, fallback=fb,
+             cmd=[sys.executable, "-c", "raise SystemExit(3)"])
+    r = run(tmp_path, "run", setup(tmp_path, [n]))
+    assert r.returncode == 0, r.stdout + r.stderr
+    rec = state(tmp_path)["nodes"]["a"]
+    assert rec["calls"] == 2
+    assert Path(rec["result"]).read_text().strip() == str(tmp_path / ("b" if override else "a"))
+
+
+@pytest.mark.parametrize("fallback", [False, True])
+def test_check_refuses_workdir_that_is_a_file(tmp_path, fallback):
+    (tmp_path / "x.txt").write_text("not a folder")
+    n = node("a", "ok")
+    target = n
+    if fallback:
+        n["fallback"] = {"engine": "script", "cmd": [sys.executable, "-c", "print('ok')"]}
+        target = n["fallback"]
+    target["workdir"] = "x.txt"
+    r = run(tmp_path, "check", setup(tmp_path, [n]))
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "a: workdir 'x.txt' is not a folder" in r.stdout
