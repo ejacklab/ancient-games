@@ -135,8 +135,11 @@ def codex_rollout(path: Path) -> dict:
     if meta is None:
         raise FormatChanged(f"{short(path)}: no session_meta")
     s = lambda k: sum((u.get(k) or 0) for u in usage)
+    # codex's input_tokens INCLUDES the cached ones (Claude counts them apart): new input = input - cached
+    # (verified 2026-10-03: input 312,526 with cached 282,880 in one rollout)
     return {"start": parse_ts(meta["timestamp"]), "cwd": meta["cwd"], "model": model, "status": status,
-            "engine_duration_ms": dur, "tokens_in": s("input_tokens"), "tokens_cache_read": s("cached_input_tokens"),
+            "engine_duration_ms": dur, "tokens_in": s("input_tokens") - s("cached_input_tokens"),
+            "tokens_cache_read": s("cached_input_tokens"),
             "tokens_out": s("output_tokens"), "tokens_reasoning": s("reasoning_output_tokens")}
 
 

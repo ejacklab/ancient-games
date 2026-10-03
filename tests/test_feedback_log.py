@@ -119,6 +119,7 @@ def test_runlog_exec_verdict_and_codex_join(tmp_path):
     assert h.returncode == 0, h.stderr
     row = json.loads((runs / "r2/feedback.jsonl").read_text().splitlines()[0])
     assert row["cost_known"] and row["model"] == "gpt-6.1-sol" and row["tokens_cache_read"] == 60
+    assert row["tokens_in"] == 40          # codex input_tokens 100 includes the 60 cached: new input is 40
     assert row["brief_variant"] == "with-example"
     assert "checks: 1/1 pass; first-try 1/1" in h.stdout
     blob = (runs / "r2/feedback.jsonl").read_text() + h.stdout
