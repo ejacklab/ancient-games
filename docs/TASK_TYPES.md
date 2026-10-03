@@ -165,26 +165,33 @@ New combinations earn a row here only after the ledger shows the ad-hoc version 
    source needs a different kind (web versus repo).
 2. **Design and small examples — the COO.** The design, the acceptance criteria in scope, and the briefs for the
    next two nodes, each with a template, a worked example and the standard (method 3.8 item 8).
-3. **Dev ∥ tester, in parallel** (passes the five tests of method 3.7: one shared input, different deliverables,
-   separate paths).
-   - *Dev* (the row's coder, Codex `gpt-6.1-sol`): implements and writes unit tests.
-   - *Tester* (a different kind from the dev, EXECUTOR_KINDS rule 5): writes the test plan and test cases from
-     the design and acceptance criteria only, blind to the dev's code. Its cases are first run against a
-     deliberately broken build and must fail there (sabotage), or they are not used.
-4. **COO review, one round, before the tester runs.** A fixed checklist, not an open read: the dev's unit tests
-   pass; the baseline still passes; nothing in "must not change" changed; the result matches the design's
-   examples. She may read the diff only when the feature is small by her small-node conditions.
-5. **Tests run → findings to the COO.** A small issue (her small-node conditions and 8-tool-call cap,
-   `docs/EXECUTOR_KINDS.md`) she fixes herself and sends back to the tester to rerun. A big issue goes back to the
-   dev, at most **2 rounds**, then the tier exit or EJ. Findings outside the acceptance criteria go to the
-   backlog, not into this run.
+3. **Dev ∥ verifier phase 1, in parallel** (passes the five tests of method 3.7: one shared input, different
+   deliverables, separate paths).
+   - *Dev* (the row's coder, Codex `gpt-6.1-sol`): implements and writes **unit tests only**.
+   - *Verifier, phase 1* (a different kind from the dev, EXECUTOR_KINDS rule 5): writes the test plan and the
+     acceptance cases from the design and acceptance criteria only, **before it has seen any code**. Its cases are
+     first run against a deliberately broken build and must fail there (sabotage), or they are not used.
+4. **Script gate** (no model): the dev's unit tests pass; the per-test baseline still passes; every file in the
+   diff is planned or has a listed reason (scope); nothing in "must not change" changed; the verifier's cases and
+   any goldens are untouched (tamper guard). A failure goes straight back to the dev; it costs no review.
+5. **Verifier, phase 2** — the same verifier, its cases already fixed, so seeing the code cannot bend them: reviews
+   the diff (quality, conventions, design fit, security, scope) and runs its cases. One result file, its findings
+   split into *behaviour* (a case failed) and *review* (a code issue).
+6. **Findings → the COO.** A small issue (her small-node conditions and 8-tool-call cap,
+   `docs/EXECUTOR_KINDS.md`) she fixes herself, quickly, and the verifier reruns. A big issue goes back to the dev,
+   at most **2 rounds**, then the tier exit or EJ. Findings outside the acceptance criteria go to the backlog, not
+   into this run.
 
-Join check: the tester's cases (proven able to fail) pass, the baseline still passes, "must not change" holds —
-the three-part stop of method 3.6. Feedback: `runlog.py` wraps the dev and tester calls and logs each verdict
-(method 3.8 item 11).
+The COO does not review (EJ, 2026-10-03, from a friend's practice): she plans, decides, monitors and makes quick
+fixes; the mechanical part of review is the script gate and the judgment part is the verifier. Roles per run:
+researcher or explorer, dev, verifier — 3 or 4, inside the cap of 5 (method 3.7).
+
+Join check: the verifier's cases (proven able to fail) pass, the baseline still passes, "must not change" holds —
+the three-part stop of method 3.6 — and the verifier's review has no open finding inside the criteria. Feedback:
+`runlog.py` wraps the dev and verifier calls and logs each verdict, gate included (method 3.8 item 11).
 
 **Lead-in by case (EJ, 2026-10-03; restructured the same day from `docs/research/20261003-feature-cases/`,
-critic's keep/shrink list adopted; n=0 — candidate text, none becomes a rule before two real runs).** Steps 3–5
+critic's keep/shrink list adopted; n=0 — candidate text, none becomes a rule before two real runs).** Steps 3–6
 above are the same in every case. Two questions, in this order, pick the lead-in:
 
 1. **Are the requirements clear?** No → case **A** first, then the second question.
@@ -197,27 +204,27 @@ an existing codebase is never D, and a B run that cannot run the old system is n
 
 **Shared in every case.**
 
-1. Every acceptance criterion carries at least one concrete example (input → expected). The blind tester works from
+1. Every acceptance criterion carries at least one concrete example (input → expected). The blind verifier works from
    it. (A new rule: neither the method nor the blueprint template asked for examples before.)
-2. Every dev and tester brief has a stop-on-unclear clause: return `UNCLEAR: <question> / <best guess>` instead of
+2. Every dev and verifier brief has a stop-on-unclear clause: return `UNCLEAR: <question> / <best guess>` instead of
    guessing.
 3. Conventions and invariants are executable checks (lint, tests, hooks) wherever possible; the context file
    (`CLAUDE.md`, `AGENTS.md`) is short and hand-written; no agent-written overview file.
-4. Tamper guard: golden files and the tester's cases are read-only to the dev; the join fails if a case disappears
+4. Tamper guard: golden files and the verifier's cases are read-only to the dev; the join fails if a case disappears
    or the case count drops.
-5. Scope check in the COO's review checklist: every file in the diff is planned, or has a listed reason.
+5. Scope check in the script gate: every file in the diff is planned, or has a listed reason.
 6. Where code exists, the baseline is the full suite recorded per test id before anything builds (run twice; a
    test that flips is listed as flaky, not as a failure).
 7. Requirements are settled per slice: a very unclear or large feature is cut into thin end-to-end slices, each
    run through the pipeline.
 8. Behavioural equivalence and regressions are judged only by running code, never by an LLM reading it.
 
-| Case | Source of truth | Lead-in (before anything builds) | Tester's oracle | Main risk |
+| Case | Source of truth | Lead-in (before anything builds) | Verifier's oracle | Main risk |
 |---|---|---|---|---|
 | A. Requirements not clear | EJ, through questions | "Not now" is a valid exit of the restatement (method 3.0). At most 5 questions, ranked by impact × uncertainty, each multiple-choice or answerable in a few words, with a recommended answer; anything findable in the code is research, not a question. Everything not asked goes on an assumptions list that EJ accepts with the R-blocks; the questions and answers are logged in `decisions.md`. A throwaway prototype only for a question EJ cannot answer in words; EJ accepts the list of requirements taken from it, never the prototype. Nothing builds until the slice's requirements are settled. | The criteria EJ accepted, with their examples | Building the wrong thing |
-| B. Migration from an old system | The old system's recorded behaviour | One port / drop / change list of the old behaviours; EJ marks each, and intended differences are tracked there. The oracle is the old system's recorded output (golden input → output pairs, or old-versus-new runs), never the extracted description. Readiness: the old system can be run to record outputs. The tester aims golden inputs at the measured bug classes (types and precision, parsing and formatting, boundaries, error paths). Only when old-versus-old runs differ: a noise ignore list with reasons. Only when data moves: schema, then counts per column, then a hash per row. Small pieces in dependency order. | Parity on the goldens, plus the data checks when data moves | A plausible but wrong description of the old system; old bug workarounds ported as requirements |
-| C. New feature in an existing system | The existing code plus the new requirement | The scan is systematic inside the affected area, under a budget, favouring recall; never a repo-wide overview. It produces a 4-item impact map with file:line: where the change goes; what calls it and what it calls; the nearby conventions; what must not change. Load-bearing behaviour claims are checked by running code (shared 8). Characterization tests only for "must not change" entries that have no test; they join the baseline. The tester gets only the "must not change" list. Language and conventions are read, not asked. | The new criteria, plus the per-test baseline still passing | Breaking something not known to be connected; agents going beyond the request |
-| D. Feature for a new system | EJ's blueprint | Stack and standards questions (below); a mainstream stack, its reason in `decisions.md`. Blueprint: all eight sections present, four settled before scaffolding (method 3.1). A walking-skeleton node before dev ∥ tester: lint, tests, one end-to-end test, and a deliberate layer break the checks must catch. A few structural checks: a secret scan, an authorization test if there is auth, one layer rule. | The criteria, the skeleton's end-to-end test and the structural checks (no behavioural baseline yet) | Architecture fixed too early or too vaguely; agents writing everything in one file |
+| B. Migration from an old system | The old system's recorded behaviour | One port / drop / change list of the old behaviours; EJ marks each, and intended differences are tracked there. The oracle is the old system's recorded output (golden input → output pairs, or old-versus-new runs), never the extracted description. Readiness: the old system can be run to record outputs. The verifier aims golden inputs at the measured bug classes (types and precision, parsing and formatting, boundaries, error paths). Only when old-versus-old runs differ: a noise ignore list with reasons. Only when data moves: schema, then counts per column, then a hash per row. Small pieces in dependency order. | Parity on the goldens, plus the data checks when data moves | A plausible but wrong description of the old system; old bug workarounds ported as requirements |
+| C. New feature in an existing system | The existing code plus the new requirement | The scan is systematic inside the affected area, under a budget, favouring recall; never a repo-wide overview. It produces a 4-item impact map with file:line: where the change goes; what calls it and what it calls; the nearby conventions; what must not change. Load-bearing behaviour claims are checked by running code (shared 8). Characterization tests only for "must not change" entries that have no test; they join the baseline. In phase 1 the verifier gets only the "must not change" list from the map. Language and conventions are read, not asked. | The new criteria, plus the per-test baseline still passing | Breaking something not known to be connected; agents going beyond the request |
+| D. Feature for a new system | EJ's blueprint | Stack and standards questions (below); a mainstream stack, its reason in `decisions.md`. Blueprint: all eight sections present, four settled before scaffolding (method 3.1). A walking-skeleton node before dev ∥ verifier: lint, tests, one end-to-end test, and a deliberate layer break the checks must catch. A few structural checks: a secret scan, an authorization test if there is auth, one layer rule. | The criteria, the skeleton's end-to-end test and the structural checks (no behavioural baseline yet) | Architecture fixed too early or too vaguely; agents writing everything in one file |
 
 Deferred (evidence too thin or not EJ's single-developer case): shadow or dark launch (B); a repo map or code graph
 (C); a larger retry budget for mechanical translation (it conflicts with the 2-round cap); a duplication limit and a

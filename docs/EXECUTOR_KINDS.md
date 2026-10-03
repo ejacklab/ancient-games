@@ -88,8 +88,8 @@ details (EJ, 2026-10-02; n=0). The vision, the requirements and every approval s
    file is part of this, and she never polls (method 3.8). She does not read raw Codex or `agy` output, research
    findings or diffs: workers write their full results to files and return a digest and a path (method 4,
    project memory; 3.8, pass-back). For a risky node she may spot-check the evidence, one finding at a time.
-   One exception: in the candidate "build a feature" pipeline (`docs/TASK_TYPES.md`) she runs a fixed-checklist
-   review of the dev's result before testing starts, and may read the diff only when the feature is small.
+   She does not review code herself (EJ, 2026-10-03): the mechanical checks are a script gate and the judgment is a
+   verifier's, which reviews the diff only after writing its cases blind (`docs/TASK_TYPES.md`, build a feature).
 
 Role subagents only report status. Her picture of the run lives in the state file, so a fresh session can take
 over.
