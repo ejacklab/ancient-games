@@ -193,3 +193,17 @@ print(json.dumps([{"type": "system", "model": "m"}, {"type": "result", "result":
 def test_call_budget_stops_the_run(tmp_path):
     r = run(tmp_path, "run", setup(tmp_path, [node("a", "ok"), node("b", "ok", needs=["a"])], budget={"max_calls": 1}))
     assert r.returncode == 1 and "budget: 1 calls reached before b" in r.stdout
+
+
+def test_agy_inner_timer_with_exit_0_is_a_timeout(tmp_path):
+    # agy --print-timeout fires: exit 0, partial output, a stderr notice (seen live 2026-10-03)
+    env = fake_bin(tmp_path, "agy", r'''
+import sys
+head = "---\nnode: g\nattempt: 1\nengine: agy\nmodel: m\nstatus: ok\nstarted: t\nended: t\nevidence: e\n---\npartial\n"
+print(head)
+print("[agy] print timeout after 1s with turn in progress; returning partial output", file=sys.stderr)
+''')
+    g = {"id": "g", "role": "classifier", "engine": "agy", "model": "m", "brief": "brief.md", "inner_timer": "1s",
+         "outer_timeout_s": 30}
+    r = run(tmp_path, "run", setup(tmp_path, [g]), env=env)
+    assert r.returncode == 1 and "executor failure on agy: timeout" in r.stderr

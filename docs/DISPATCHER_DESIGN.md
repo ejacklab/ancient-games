@@ -1,7 +1,9 @@
 # Dispatcher layer — design (2026-10-03; n=0)
 
 **Status: steps 1–4 built** as `.claude/skills/workflow-design/scripts/dispatch.py` (tests: `tests/test_dispatch.py`,
-fake engines only, no quota). Not yet done: the live canary per engine adapter and step 5, the first real run.
+fake engines only, no quota). Live canary passed for Codex and agy on 2026-10-03, with sabotage failing as required
+(`runs/20261003-dispatch-canary/README.md`); `qwen` through the dispatcher not yet run live. Not yet done: step 5,
+the first real run.
 
 The layer that spawns and supervises agents, so the method's rules about running a node (method 3.7–3.8) are code
 that cannot be skipped, and the COO keeps planning, algorithm design, decisions, monitoring and quick fixes
@@ -146,6 +148,8 @@ Steps 1–4 need no quota; 2's canaries and 5 need EJ's go-ahead.
 - A run that mixes Claude and external nodes is split by engine: the COO runs the Claude nodes with the Workflow
   tool and the external ones with `dispatch.py`, in the design's order; both write results to `runs/<id>/nodes/`,
   so the next node reads a file either way.
-- Unverified until a live canary: the exact `agy` and Codex command lines under the dispatcher. `--dry-run` prints them for review.
+- The Codex and `agy` command lines are verified by the live canary (n=1 each). The canary also changed the
+  dispatcher: it fills `started`/`ended` itself, gives engines `stdin=DEVNULL`, keeps output printed before a
+  timeout, and treats `agy`'s exit-0 print-timeout notice as a timeout. `--dry-run` prints them for review.
 - The dispatcher writes `runs/<id>/dispatch.json` and `events.jsonl` and never edits the COO's `state.md` (one writer
   at a time, method 4).

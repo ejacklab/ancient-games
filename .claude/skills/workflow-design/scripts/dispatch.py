@@ -33,6 +33,9 @@ from validate_result import check_result            # noqa: E402
 ENGINES = {"codex", "qwen", "agy", "script"}
 BRIEF_PARTS = ["## Template", "## Example", "## Standard"]
 LOCK = threading.Lock()
+FILLED = "(filled by the dispatcher)"
+# stderr notices that mean the call did not finish although the exit code is 0 (verified 2026-10-03)
+SILENT_FAILURES = {"agy": ["print timeout"]}
 DEFAULT_BUDGET = {"max_roles": 5, "max_parallel": 3, "max_rounds": 2, "max_calls": 30}
 
 
@@ -114,8 +117,10 @@ def _cycle(nodes: list[dict]) -> bool:
 def passback_note(node: dict, engine: str, model: str, attempt: int) -> str:
     return (f"\n\n## Pass-back (from the dispatcher)\nYour final answer must be the result file itself and nothing else:\n"
             f"a header between two lines of `---` with exactly these keys, then the body the Template asks for.\n"
-            f"node: {node['id']}\nattempt: {attempt}\nengine: {engine}\nmodel: <the model you are running as>\n"
-            f"status: ok | fail | partial\nstarted: <UTC time>\nended: <UTC time>\nevidence: <path to your proof>\n"
+            f"node: {node['id']}\nattempt: {attempt}\nengine: {engine}\nmodel: {model}\n"
+            f"status: ok | fail | partial\nstarted: {FILLED}\nended: {FILLED}\nevidence: <path to your proof, or none>\n"
+            f"Copy node, attempt, engine, model, started and ended exactly as written; the dispatcher fills the times and\n"
+            f"checks the model with the tool itself.\n"
             f"If something is unclear, do not guess: write a body line `UNCLEAR: <question> / <best guess>`.\n")
 
 
@@ -176,17 +181,25 @@ def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine
     raw = run_dir / "raw"; raw.mkdir(exist_ok=True)
     ev = {"run_id": plan["run_id"], "node_id": nid, "attempt": attempt, "engine": engine, "model": model,
           "cwd": str(base)}
-    append(run_dir, {**ev, "event": "start", "ts": now()})
+    started = now()
+    append(run_dir, {**ev, "event": "start", "ts": started})
     t0 = time.monotonic()
-    status, code, stdout = "ok", 0, ""
+    status, code, stdout, stderr = "ok", 0, "", ""
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=node["outer_timeout_s"], cwd=base)
-        code, stdout = p.returncode, p.stdout
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=node["outer_timeout_s"], cwd=base,
+                           stdin=subprocess.DEVNULL)         # an engine must never wait on our stdin
+        code, stdout, stderr = p.returncode, p.stdout, p.stderr
         (raw / f"{nid}-{attempt}-{engine}.stdout").write_text(p.stdout)
         (raw / f"{nid}-{attempt}-{engine}.stderr").write_text(p.stderr)
         status = "ok" if code == 0 else "fail"
-    except subprocess.TimeoutExpired:
-        status, code = "timeout", 124
+        if status == "ok" and any(m in stderr for m in SILENT_FAILURES.get(engine, [])):
+            status = "timeout"                             # agy's own timer fired: exit 0, partial output
+    except subprocess.TimeoutExpired as e:
+        status, code = "timeout", 124                      # keep whatever it printed before the timer fired
+        for name, data in (("stdout", e.stdout), ("stderr", e.stderr)):
+            if data:
+                (raw / f"{nid}-{attempt}-{engine}.{name}").write_text(
+                    data if isinstance(data, str) else data.decode(errors="replace"))
     except OSError as e:
         status, code = "fail", 127
         (raw / f"{nid}-{attempt}-{engine}.stderr").write_text(str(e))
@@ -202,6 +215,8 @@ def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine
         return {"outcome": "executor", "why": f"tool reports model {reported!r}, plan says {model!r}", "result": ""}
     if not text.strip():
         return {"outcome": "executor", "why": "empty result (exit 0 with no answer)", "result": ""}
+    ended = now()
+    text = text.replace(f"started: {FILLED}", f"started: {started}").replace(f"ended: {FILLED}", f"ended: {ended}")
     out_file.write_text(text if text.endswith("\n") else text + "\n")
     if node.get("passback") is False:                 # a plain script step: no result header expected
         return {"outcome": "ok", "why": "", "result": str(out_file)}
