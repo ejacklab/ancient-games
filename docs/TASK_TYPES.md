@@ -181,7 +181,7 @@ New combinations earn a row here only after the ledger shows the ad-hoc version 
 
 Join check: the tester's cases (proven able to fail) pass, the baseline still passes, "must not change" holds —
 the three-part stop of method 3.6. Feedback: `runlog.py` wraps the dev and tester calls and logs each verdict
-(method 3.8 item 10).
+(method 3.8 item 11).
 
 **Lead-in by case (EJ, 2026-10-03; restructured the same day from `docs/research/20261003-feature-cases/`,
 critic's keep/shrink list adopted; n=0 — candidate text, none becomes a rule before two real runs).** Steps 3–5

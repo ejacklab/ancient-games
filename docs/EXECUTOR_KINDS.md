@@ -42,7 +42,8 @@ what `gpt-6.1-sol` runs at when no other effort is passed.
 | Planner, and any node whose contract asks for high thinking | Codex | `gpt-6-astra` (the high-thinking model) |
 | Coder | Codex | `gpt-6.1-sol`, default effort |
 | Reviewer, verifier | Codex, fresh session, never the coder's | `gpt-6.1-sol`, default effort; `gpt-6-astra` when the review is a high-thinking one |
-| Researcher | Codex (web search: see Open) | `gpt-6.1-sol`, default effort |
+| Researcher — docs, papers, web (method 3.8 item 9) | Claude subagent, which has WebSearch and WebFetch today; Codex once its headless web search is proven (see Open) | the session model, effort medium (what every research node of 2026-10-02/03 ran on) |
+| Explorer — existing code, read-only (method 3.8 item 10) | the COO herself when the affected area is small; otherwise a Claude subagent: the built-in `Explore` type to *locate* code (it reads excerpts and does not audit), a general-purpose subagent to *understand* it, and running code to confirm behaviour | the session model, effort medium; EJ, 2026-10-03, n=0 |
 | Any other `agy` node | `agy` | `gemini-3.8-flash-medium` |
 | Classifier | `agy` | `gemini-3.1-pro-high` (EJ's earlier assignment of classification to 3.1 Pro kept; see below) |
 | Small task | the COO herself | her own model |

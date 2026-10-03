@@ -381,12 +381,26 @@ malformed), and every exchange with them costs the COO a turn that re-reads her 
    (`docs/workflow-templates/node-brief.md`), instead of correcting the result afterwards: it cuts unstable
    returns, retries and her own review reading. A brief with no template, no example or no standard is not
    dispatched; a part she cannot write is an unclear spot (3.3).
-9. **Research is written to files.** A research node writes the full findings to
+9. **Research is written to files.** The *researcher* reads docs, papers and the web (WebSearch, WebFetch). A
+   research node writes the full findings to
    `docs/research/<date>-<topic>/FINDINGS.md` (each finding with an id, a source and a label) and returns only a
    digest of about 15 lines, no more than 20, plus the path (`docs/workflow-templates/research-file.md`). The COO
    reads the digest; to settle a doubt she reads one finding by id, or sends a small verify node. A design decided
    from the research goes to `decisions.md` (4).
-10. **Every run leaves a feedback record** (added 2026-10-02; n=0; `docs/research/20261002-workflow-feedback`).
+10. **Exploring existing code is its own role** (EJ, 2026-10-03; n=0). The *explorer* reads the existing system —
+   code, tests, configs, git history — never the web. The two roles differ in source, tools, evidence and how a
+   claim is checked (`docs/EXECUTOR_KINDS.md`, roles). Its contract:
+   - **Read-only**, under a stated budget (tool calls or tokens), favouring recall inside the affected area and
+     never a repo-wide overview (TASK_TYPES, case C).
+   - **Every claim carries file:line and a short verbatim quote**, so a script can confirm the quote is at that line.
+   - **Every behaviour claim is marked `read` or `ran`.** `read` = inferred from the code; `ran` = confirmed by
+     running it (a test, a differential run, `~/skills/verify-extraction`). Only `ran` claims may feed a node that
+     builds; a `read` claim a build depends on is an unclear spot until it is run.
+   - It returns a digest and the path, like research: the impact map (case C), the old system's behaviours and
+     golden outputs (case B), or the findings for use cases #1 and #2.
+   - The COO explores herself when the affected area is small and fits her context (whale rule); an explorer node
+     is for a large or unfamiliar codebase.
+11. **Every run leaves a feedback record** (added 2026-10-02; n=0; `docs/research/20261002-workflow-feedback`).
    During the run, `scripts/runlog.py exec` wraps each Codex, `qwen` or `agy` call (start, end, exit, duration;
    raw output to the gitignored `runs/<id>/raw/`) and `runlog.py verdict` writes one line per node check. After
    it, `scripts/harvest_run.py` reads what the engines already recorded (Workflow run JSON and agent transcripts,
