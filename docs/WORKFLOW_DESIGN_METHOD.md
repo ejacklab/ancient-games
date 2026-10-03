@@ -238,7 +238,7 @@ design builds or EJ flagged high risk), and every run reconciles its claim in `d
 that ledger is how the defaults earn their n. (Added 2026-10-01 at EJ's request; n=0.)
 
 Anchors for the number 3: Gate splits capability lists over three (`ancient_games/stages.py:109`) and the
-concurrency cap is 3 (`ancient_games/registry.py:24`).
+the plan-wide cap of 3 dispatched corroborating sources (`ancient_games/registry.py:24`, used at `stages.py:309`; it caps dispatches per plan, not agents running at once — corrected 2026-10-03).
 
 ### 3.5 Clear pieces run as loops
 
@@ -331,7 +331,8 @@ Parallel buys only clock time, and it costs predictability, debuggability and ex
 verifiers is about what they see, not when they run: two verifiers can run one after another and stay independent.
 
 **Caps (EJ, 2026-10-03; n=0 — a friend's practice plus reasoning, not measured).** At most **5 subagent roles per
-run** and at most **3 running at once** (`ancient_games/registry.py:24`); a retry of the same node is not a new
+run** and at most **3 running at once** (our own number; the code's 3 at `ancient_games/registry.py:24` caps
+corroborating dispatches per plan, not concurrency); a retry of the same node is not a new
 subagent. A design that needs more is too big: cut it into slices or separate runs, never raise the cap. The
 feedback log (3.8 item 11) records calls per run, so the cap is revised from data.
 

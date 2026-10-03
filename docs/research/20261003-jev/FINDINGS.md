@@ -33,6 +33,28 @@ sources are a vendor-adjacent site, a third-party blog and a plugin README. Noth
   `tests/workflows/corpus_check.py` already scored codex at 96% and agy at 76% strict agreement on category labels.
   Running Jev on the same corpus with the same labelling rules would give a direct comparison.
 
+## Open-source and local alternatives (added 2026-10-03, second round)
+
+Same caveat: every row comes through WebFetch summaries, so all are **reported**. Star counts and dates are as the
+pages state them and were not checked; one summary dated a JevK5 release "September 2024", which cannot be right
+for a project that copies a 2026 model, so treat dates from these summaries as unreliable.
+
+| id | Finding | Label | Source |
+|---|---|---|---|
+| J14 | There is no open-source Jev itself; there are many open alternatives (directories list dozens). | reported | https://madewithjev.com/open-source-jev ; https://systemonemodels.org/examples/alternatives/ |
+| J15 | **JevK5** (Apache-2.0): Qwen3.5-4B or 9B; a softmax over the answer letters' next-token logits, one forward pass, no generated tokens; noul / choice / score. About 9 GB VRAM for 4B (bf16), 19 GB for 9B; GGUF builds run on CPU at about 0.25 s (2B) and 0.6 s (4B) per short decision; a DeBERTa-v3 "Lite" for CPU. Its server **accepts the TypeSafe-style `/v1/systemone` request shape**. Stated: JevBench hard tier 0.784 accuracy, ECE 0.054 (v0.3); H100 p50 13.2 ms; judging answers got worse (0.76 → 0.65); English only; refuses inputs over 16,384 tokens; weak at multi-step, temporal and numeric reasoning. | reported | https://github.com/allebee/jevk5 |
+| J16 | **Laya** (Apache-2.0): a 421M fine-tuned encoder with a decision head (322M multilingual); T4 GPU 33–40 ms, CPU 193–464 ms; Jev-style choice/score/noul in one forward pass; "ECE 0.081 after temperature fitting, from 0.466 as shipped". | reported | https://systemonemodels.org/examples/alternatives/ ; https://shop.zimaspace.com/blogs/tech-ai-hub/laya-open-source-decision-model-local-ai |
+| J17 | **Von** (Apache-2.0): a 395M encoder scoring each option, non-autoregressive, about 23 ms on an A10G, "sealed ECE 0.107", described as a local drop-in alternative. | reported | https://github.com/wfzyx/von ; https://systemonemodels.org/examples/alternatives/ |
+| J18 | **open-alternative-jev** (`so1`, Apache-2.0): a library, not a model — reads option probabilities from any open Qwen model's next-token logits; HF and vLLM; **not** API-compatible (in-process Python). Stated on a shared 400-case benchmark: Qwen3.6-27B 73.7% at 582 ms per case versus Jev's reported 72.7% at 710 ms; raw probabilities over-confident (temperature scaling needed); reversing options moved a 4B model's yes/no accuracy by 13.5 points; below 4B, 2–8 points worse; it documents its own earlier flawed speed claim. | reported | https://github.com/ikermoel/open-alternative-jev |
+| J19 | Other entries: Kev (LoRA on Qwen3.5-Base, 0.8B/4B/9B), NanoJev (0.6B from scratch, no metrics), CLM (Qwen3-8B encoder plus a head), OpenDecision (CPU zero-shot NLI wrapper; "confidence measures concentration, not correctness"), mini-jev (frozen Qwen3-4B logit reader, "not calibrated"), and Jevstiller, which distils Jev's outputs into a local model. | reported | https://systemonemodels.org/examples/alternatives/ ; https://www.theregister.com/ai-and-ml/2026/09/29/open-source-tool-distills-jev-so-you-can-run-it-locally/5299856 |
+| J20 | This machine has an NVIDIA RTX 4070 Ti SUPER with 16 GB, 9 CPU cores and 25 GB RAM (WSL): enough for JevK5-4B in bf16, Laya or Von on GPU or CPU, and so1 with a Qwen model up to about 7B. | verified | `nvidia-smi`, `nproc`, `free -g` on 2026-10-03 |
+
+**For the dispatcher (COO inference).** JevK5 is the closest drop-in: open weights, the Jev request shape, fits the
+16 GB GPU. Laya or Von are the light option (CPU-capable, tens of ms on GPU). so1 is the most honest about its
+weaknesses (position bias, over-confidence) and those weaknesses apply to every logit-reading alternative. None has
+been measured on our task labels; the 300-prompt corpus with `corpus_check.py` is the test, run locally, so no prompt
+leaves the machine.
+
 ## Gaps
 
 No primary TypeSafe documentation was read, only summaries. Accuracy on our labels is unknown. Whether the

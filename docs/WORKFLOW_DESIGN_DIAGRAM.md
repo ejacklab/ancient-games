@@ -166,7 +166,7 @@ in `.claude/workflows/` imports or calls the framework, and the skill never name
 | Tools, and the graph itself | nothing | — |
 
 The number is **3**, and it is anchored in code, not chosen: Gate splits capability lists over three
-(`ancient_games/stages.py:109`) and the concurrency cap is three (`ancient_games/registry.py:24`).
+(`ancient_games/stages.py:109`) and the plan-wide cap of 3 dispatched corroborating sources (`ancient_games/registry.py:24`, used at `stages.py:309`; it caps dispatches per plan, not agents running at once — corrected 2026-10-03).
 
 The framework's five algorithms (C Gate, D Guard, B Corroborate, E Filter, A Prove — `SPEC.md` §4) are **run-time**
 decision procedures inside one governed task. This method is a **design-time** procedure that runs before any agent

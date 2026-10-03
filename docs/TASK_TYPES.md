@@ -253,8 +253,8 @@ It is method 3.3's bounded explore loop for a technical unknown; the age of the 
   is fully automatic and the approaches are truly different; never 10. The winner is deleted or promoted; each
   loser gets one line in `decisions.md` saying why it lost.
 - **Why 3.** Building candidates is cheap; judging them is the bottleneck (the COO's context, EJ's attention).
-  It matches the repo's anchors: Gate splits above 3 (`ancient_games/stages.py:109`), concurrency cap 3
-  (`ancient_games/registry.py:24`). Reasoning, not measurement: the feedback log records per round how many
+  It matches the repo's anchors: Gate splits above 3 (`ancient_games/stages.py:109`) and the plan-wide cap of 3
+  corroborating dispatches (`ancient_games/registry.py:24` — not a concurrency cap). Reasoning, not measurement: the feedback log records per round how many
   candidates ran and which round produced the winner, and the number is revised from that.
 
 **Stack and standards questions — whenever the target is new (EJ, 2026-10-03; n=0).**
