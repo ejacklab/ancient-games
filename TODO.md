@@ -24,4 +24,5 @@ become code that cannot be skipped. It would join the scripts already built — 
 `validate_result.py` (pass-back), `harvest_run.py` (feedback), `quote_check.py` (explorer) — and enforce the caps
 (5 roles per run, 3 at once), the executor-failure retry on the fallback, and the model check. Ancient Games (a
 referee that decides how many agents and journals every decision) is the natural home. The COO keeps planning and
-algorithm design. Not scheduled; design it with the method before building.
+algorithm design. Design written 2026-10-03: `docs/DISPATCHER_DESIGN.md` (four decisions open for EJ, §8);
+not built.
