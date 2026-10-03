@@ -196,6 +196,39 @@ tester's oracle depend on where the truth comes from:
 A run names its case in the restatement (method 3.0) and checks it against the facts at readiness: an existing
 codebase is never case D, and a case-B run with no access to the old system is not ready.
 
+**Proof of concept (POC) — when and how (EJ, 2026-10-03; n=0).** A POC answers one technical risk that nobody
+can settle by reading or asking (will this library do X, is it fast enough, does this API behave as documented).
+It is method 3.3's bounded explore loop for a technical unknown; the age of the system is not the reason for it.
+
+- **When, by case.** D: usually, for the riskiest unknown before the stack is locked. B: never for behaviour (the
+  old system defines it); only for a risky part of the target platform (volume, one tricky conversion). C: only
+  when the feature brings in something the codebase has never used. A: a different kind — a throwaway prototype
+  for EJ to decide behaviour or UI, then deleted.
+- **Shape.** One named question; a pass/fail answer written before it starts; a time or token limit; it ends
+  deleted, or explicitly promoted into the walking skeleton. A throwaway POC is not the skeleton.
+- **Strategy.** Round 1: list the genuinely different approaches (library A versus library B versus hand-written,
+  or different engines — not copies: one model asked for many candidates converges on two or three ideas) and run
+  **at most 3 in parallel** (independent: separate folders, own check; method 3.7). All get the same check and
+  measurement, written before any starts; the decision follows the written criteria, not impression. None passes →
+  round 2 with what was learned, again at most 3; after 2 rounds → EJ. **Up to 5** in a round only when the check
+  is fully automatic and the approaches are truly different; never 10. The winner is deleted or promoted; each
+  loser gets one line in `decisions.md` saying why it lost.
+- **Why 3.** Building candidates is cheap; judging them is the bottleneck (the COO's context, EJ's attention).
+  It matches the repo's anchors: Gate splits above 3 (`ancient_games/stages.py:109`), concurrency cap 3
+  (`ancient_games/registry.py:24`). Reasoning, not measurement: the feedback log records per round how many
+  candidates ran and which round produced the winner, and the number is revised from that.
+
+**Stack and standards questions — whenever the target is new (EJ, 2026-10-03; n=0).**
+
+- **Target is new** (D, and B when the target system does not exist yet — a "B + D" run, where the old system
+  says *what* and these questions decide *how*): ask the language and framework, coding standard and lint, test
+  framework, repo layout, data store, auth, deployment target, CI, and the performance and security targets. They
+  are the hard-to-reverse decisions: short decision records in blueprint sections 05 (architecture) and 08
+  (non-functional) and in `decisions.md`; coding standards go into the conventions file; all settled before
+  scaffolding.
+- **Target exists** (C): do not ask, read — the scan finds the language, conventions and patterns already in use.
+  Ask only where the codebase is inconsistent or the feature needs something new.
+
 **combine sources into an algorithm (use case #1)** — extract → reconcile → algorithm → verify, as described under
 "Use cases in focus"; n=0.
 
