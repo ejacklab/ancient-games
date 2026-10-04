@@ -85,7 +85,7 @@ promises on every building node.
 | 5.4 | The promise that a run **ends at the acceptance criteria** is broken for the whole non-product-change class | `METHOD.md:131` | agy, opencode | ✓ |
 | 5.5 | **The tiny-task exit skips readiness**, so a small product change builds with no blueprint criteria and no baseline | `METHOD.md:24-25`, `DIAGRAM.md:19` | codex, claude | ✓ |
 | 5.6 | **`others` has no engine**, yet 3.2 sends every unmatched piece there and 3.6 requires every node to name one | `EXECUTOR_KINDS.md:164` | agy, claude | ✓ |
-| 5.7 | The 5-role/3-at-once caps and item 12's "no finding id → may not drive a building node" gate exist only in the method | `METHOD.md:333,426` | claude, opencode | |
+| 5.7 | ~~The 5-role/3-at-once caps and item 12's gate exist only in the method~~ **CORRECTED 2026-10-05:** `dispatch.py:41,63-64,108-109` enforces both caps on a *dispatch plan*, so the caps are not method-only. What is missing is a cap rule in `design_gate.py`, which validates a design and sees no caps at all. Item 12's gate is still method-only | `METHOD.md:333,426` | claude, opencode | |
 
 ## 6. Decisions the algorithm never makes — 5 issues
 
@@ -104,7 +104,7 @@ promises on every building node.
 | 7.1 | Dispatches readiness **before method 3.0**, skipping the text-only understanding step and the restatement-based tiny test | `intake.js:623` | codex | ✓ |
 | 7.2 | Its only baseline is a `git status` snapshot, not the test command **and output** the stop condition requires | `intake.js:507` | opencode | |
 | 7.3 | Refuses any loop exit that does not mention "unclear" or "EJ", though 3.5 item 4's first exit is a fresh node on a stronger tier | `intake.js:381` | claude | |
-| 7.4 | The checks it emits are placeholders pointing back at the table, not the row's real check | `testlog.md:72` | claude | |
+| 7.4 | ~~The checks it emits are placeholders pointing back at the table~~ **MIS-FILED:** the emitter was never `intake.js` — it was `tests/workflows/corpus_check.py:68` and `tests/test_task_types.py:44`, both fixed on 2026-10-04. Filing it under the runnable form sent two experts to the wrong file | `testlog.md:72` | claude | |
 
 ## 8. My own construction, observed failing — 3 issues
 
@@ -139,6 +139,14 @@ Checked by me: 29 of 45. Engine-only: 16.
   and giving the corpus negative controls.
 - **The unreviewed engines' behaviour**: agy produced nothing when the evidence was on disk and everything when it
   was inlined. That is a fact about agy, filed in the run READMEs rather than as a defect of the algorithm.
+
+## Corrections found by running the workflow (2026-10-05)
+
+Two rows here were wrong, and it took a workflow to find them: `5.7` claimed the caps were method-only when
+`dispatch.py` enforces them on a dispatch plan (the *gate* has no cap rule — that is the real gap), and `7.4` was
+filed under the runnable form when the emitter was the corpus harness, which sent two experts to edit the wrong file.
+Both are corrected above. `runs/20261004-domain-fix-review/` has the three surveys, the chair that caught them, and
+the verifier that then corrected the chair's own corrections.
 
 ## Where to start
 
