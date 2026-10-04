@@ -36,6 +36,7 @@ LEDGER_KEYS = ["date", "run_id", "category", "design_source", "claimed_margin", 
                "projected_cost", "actual_cost", "coverage_result", "reconciled"]
 LEDGER_FIELDS = LEDGER_KEYS
 _KINDS = (("codex", "codex"), ("gpt", "codex"), ("opencode", "opencode"), ("minimax", "opencode"),
+          ("deepseek", "deepseek"), ("dsh", "deepseek"),
           ("claude", "claude"), ("sonnet", "claude"), ("opus", "claude"), ("haiku", "claude"),
           ("agy", "agy"), ("gemini", "agy"), ("qwen", "qwen"))
 
