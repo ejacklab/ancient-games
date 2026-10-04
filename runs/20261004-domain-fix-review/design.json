@@ -1,0 +1,69 @@
+{
+  "categories": ["code review"],
+  "builds": false,
+  "touched_paths": [],
+  "pipeline": null,
+  "design_source": "default",
+  "nodes": [
+    {
+      "id": "n1-claude",
+      "category": "code review",
+      "engine": "claude-opus-5-5",
+      "check": "emit-check: areas-survey.py requires all 8 areas and a verdict per issue from DIRECT|DECISION|SCHEMA|DOC|LATER",
+      "five_things": ["tools", "context", "contract", "evidence", "state"],
+      "needs": [],
+      "loop": {
+        "limit": 1,
+        "exit": "the same engine, handed the check's real output, repairs the file; a second failure blocks the node",
+        "feedback": "the check's real output, verbatim"
+      }
+    },
+    {
+      "id": "n2-minimax",
+      "category": "code review",
+      "engine": "minimax-m3.1-flash",
+      "check": "emit-check: areas-survey.py requires all 8 areas and a verdict per issue from DIRECT|DECISION|SCHEMA|DOC|LATER",
+      "five_things": ["tools", "context", "contract", "evidence", "state"],
+      "needs": [],
+      "loop": {
+        "limit": 1,
+        "exit": "the same engine, handed the check's real output, repairs the file; a second failure blocks the node",
+        "feedback": "the check's real output, verbatim"
+      }
+    },
+    {
+      "id": "n3-deepseek",
+      "category": "code review",
+      "engine": "deepseek-v4-pro",
+      "check": "emit-check: areas-survey.py requires all 8 areas and a verdict per issue from DIRECT|DECISION|SCHEMA|DOC|LATER",
+      "five_things": ["tools", "context", "contract", "evidence", "state"],
+      "needs": [],
+      "loop": {
+        "limit": 1,
+        "exit": "the same engine, handed the check's real output, repairs the file; a second failure blocks the node",
+        "feedback": "the check's real output, verbatim"
+      }
+    },
+    {
+      "id": "n4-chair",
+      "category": "code review",
+      "engine": "deepseek-v4-pro",
+      "check": "join-check: every register id appears in FIX_PLAN.md with a verdict, and every DIRECT verdict names a check that could fail",
+      "five_things": ["tools", "context", "contract", "evidence", "state"],
+      "needs": ["n1-claude", "n2-minimax", "n3-deepseek"]
+    },
+    {
+      "id": "n5-verifier",
+      "category": "code review",
+      "engine": "claude-opus-5-5",
+      "check": "verifier-check: blind re-read of the three surveys against the register; every DIRECT verdict must be traceable to a test that can fail",
+      "five_things": ["tools", "context", "contract", "evidence", "state"],
+      "needs": ["n4-chair"]
+    }
+  ],
+  "estimate": {
+    "tokens": "3 survey calls + 1 join + 1 verification, each reading the notes and the register",
+    "wall_clock": "about 30 minutes",
+    "basis": "measured: the 孫子兵法 notes are 70 KB, the register 20 KB; today's comparable calls ran 60-560 s"
+  }
+}
