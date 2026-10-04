@@ -1,0 +1,946 @@
+You are reviewing a complete workflow-design algorithm IN ONE PASS. The whole thing is inlined below;
+do not try to read anything from disk, and do not call any tool — the evidence you need is here.
+
+The algorithm exists as three documents that are supposed to be three renderings of one thing:
+  * `docs/WORKFLOW_DESIGN_METHOD.md` — the method (sections 3.0 to 3.8, then 4 and 5)
+  * `.claude/skills/workflow-design/SKILL.md` — the same algorithm packaged as a skill
+  * `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams, plus a step-numbering table
+
+You are reviewing the ALGORITHM, not the prose. Specifically:
+
+A. COMPOSITION. Do the steps compose? Does each step's output become the next step's input? Name any join where
+   it does not.
+B. DUPLICATION AND GAPS. Is any work specified in two places, or required in one and missing in another?
+C. UNREACHABLE WORK. Is any section, step or rule present in one rendering and absent from another? The three
+   documents are numbered differently (the method has 3.0-3.8; the skill has steps 1-8) — does the mapping hold?
+D. SILENCES. What does the algorithm never decide that it must decide for a run to succeed? This is the most
+   valuable question. Be concrete: name the decision and the step where it should be made.
+E. SELF-CONSISTENCY. The algorithm makes promises about itself — that every check can fail, that every node carries
+   five things, that a run ends at the acceptance criteria, that an engine is named for every category. Does each
+   hold across all steps, or is one broken somewhere?
+F. ORDER. Are the steps in the right order? Is any step doing work that belongs to a later one?
+
+Output EXACTLY this format, nothing else — no preamble, no summary, no headings:
+
+FINDING 1: <file>:<line> | <A|B|C|D|E|F> | <high|med|low> | <one sentence: what is wrong> | QUOTE: <the exact text of that line, copied verbatim from below>
+FINDING 2: ...
+VERDICT: <one sentence on whether the algorithm holds together>
+
+Rules, enforced mechanically after you answer:
+* Every finding needs a file, a line number, a letter A-F, and a QUOTE copied verbatim from the inlined text. A
+  finding missing any of these is discarded unread.
+* Cite only the inlined text below.
+* Three sharp findings beat ten vague ones. Do not report wording or formatting preferences.
+* An empty findings list is an acceptable answer if the algorithm holds.
+
+########## the method: 3.0 understand, 3.1-3.8 the steps, 4 state, 5 the qualities
+
+===== FILE: docs/WORKFLOW_DESIGN_METHOD.md (482 lines) =====
+  1: # Workflow design method
+  2: 
+  3: Agreed between EJ and Claude on 2026-09-20. This is the method this folder uses to turn an incoming challenge into
+  4: either a prompt file or a workflow design. It has been tried on nothing yet: every number and every piece of
+  5: "evidence" below comes from one session (n=1) and is not to be built on as a rule until it has been used on real
+  6: challenges. The tier rule in 3.5 was added on 2026-09-22, and the restatement step 3.0 on 2026-10-01; neither has
+  7: had a run at all (n=0).
+  8: 
+  9: Runnable form: `.claude/workflows/intake.js`. Templates: `docs/workflow-templates/`. Runs: `runs/<run id>/`.
+ 10: 
+ 11: ## 1. The ideas behind it
+ 12: 
+ 13: - Real tasks are rarely one pattern. Except when a task is tiny, it needs a hybrid. The mix comes from choosing a
+ 14:   pattern **per piece**, not one pattern for the whole task.
+ 15: - A piece that is too big fits no single pattern. A piece that is too small costs more than it is worth: every agent
+ 16:   has a fixed cost, every split loses context, more pieces mean more connections, and a very small piece has
+ 17:   nothing that can be verified on its own.
+ 18: - A tiny task needs no workflow, only a prompt file. A workflow is prompts plus the wiring between them.
+ 19: - Do not assume the model knows what it needs. Every agent starts with only its prompt.
+ 20: 
+ 21: ## 2. When not to use this method
+ 22: 
+ 23: Understand the challenge first (3.0); the test reads the restatement, not the raw text. If you can state the
+ 24: restated problem, the fix and the check in one sentence each, and being wrong would show itself at once: write the
+ 25: prompt file by hand from `docs/workflow-templates/prompt-file.md`, or just do the task. Running the intake
+ 26: workflow on such a task costs more than the task.
+ 27: 
+ 28: ## 3. The steps
+ 29: 
+ 30: ### 3.0 Understand the challenge — before anything
+ 31: 
+ 32: (Added 2026-10-01 at EJ's request; extended the same day with the six whys and categorization; not tried on a
+ 33: real challenge, n=0. Not yet encoded in `intake.js`; see `TODO.md`.)
+ 34: 
+ 35: From the challenge text alone — no tools, no agents, no repository browsing — state three things:
+ 36: 
+ 37: - the **objective**: what is true when the task is done;
+ 38: - **in scope**: what the task touches;
+ 39: - **out of scope**: what it must not touch.
+ 40: 
+ 41: Then answer the **six whys**, each feeding one design field. Stop early on any why whose answer no longer
+ 42: changes the design — six is the ceiling, never a target:
+ 43: 
+ 44: | # | Why | Feeds | Unanswerable ⇒ |
+ 45: |---|---|---|---|
+ 46: | 1 | Why does EJ want this — what problem is behind the ask? | the objective (the XY-problem guard) | unclear spot, decision |
+ 47: | 2 | Why now — what triggered it? | priority; whether a cheaper fix exists | noted; rarely blocking |
+ 48: | 3 | Why this shape of solution — why the requested approach over alternatives? | the provisional category and its default pattern (`docs/TASK_TYPES.md`) | decision spot, batched |
+ 49: | 4 | Why would it fail — what breaks if we get it wrong? | the risk tier → review depth and independent checks | assume the higher tier |
+ 50: | 5 | Why does it stop where it stops? | in scope / out of scope | decision spot |
+ 51: | 6 | Why would we believe it is done? | the stop condition and check kind (script, checklist, EJ) | the piece is not loop-ready (3.5) |
+ 52: 
+ 53: End with a **provisional category** (multi-label, marked *inferred*) from `docs/TASK_TYPES.md`. It is a guess
+ 54: from the text alone: it feeds the tiny test (§2) and a first default lookup, and 3.2 relabels it from the
+ 55: algorithm (since 2026-10-02; before, the category was fixed here and only checked against the facts).
+ 56: 
+ 57: A part that cannot be written, or a challenge that allows two readings, is the first **unclear spot** (kind:
+ 58: decision, 3.3): a question for EJ with the restatement as the provisional assumption. No new blocking rule is
+ 59: added: a prompt file's restatement stands on its provisional assumption like any decision, and a design's
+ 60: question batch reaches EJ before anything runs.
+ 61: 
+ 62: The tiny test (§2) reads the restatement, not the raw text: tiny means the *restated* problem, fix and check are
+ 63: one sentence each. A big-sounding challenge with a narrow objective stays small; a vague one ("improve
+ 64: performance") cannot slip through as tiny.
+ 65: 
+ 66: The restatement, the why-answers and the provisional category go at the top of the output, beside the verbatim challenge in
+ 67: the state file, so EJ sees and can correct what the run understood before tokens are spent.
+ 68: 
+ 69: Cost guard (trial 1, 3.4): this step is one paragraph and six short answers in the same session, never an
+ 70: agent, never a tool call. On a tiny task it is the prompt file's first lines, so the cheap path stays cheap.
+ 71: 
+ 72: ### 3.1 Readiness — always first
+ 73: 
+ 74: For the task, and later for each piece, list:
+ 75: 
+ 76: - **Tools**: the commands, scripts and connections needed, each with the command that proved it works. Run it; do
+ 77:   not assume. The skill's inventory script (`.claude/skills/workflow-design/scripts/readiness.py`) proves the
+ 78:   standard set in one pass and marks every line verified / reported / unknown; what it cannot prove stays unknown.
+ 79:   For a node run by Codex or `agy`, the proof is the canary piece in `docs/EXECUTOR_KINDS.md`, which
+ 80:   also says which kind a node is assigned to and how its failure shows.
+ 81: - **Skills** that already cover part of the work.
+ 82: - **Information**: is the knowledge there; what structure is it in (a state file, a root map, a hierarchy of md
+ 83:   files, a memory folder, a journal or index, a graph, only the web); and which agents and tools can actually use
+ 84:   that structure.
+ 85: 
+ 86: What the information check finds changes the flow:
+ 87: 
+ 88: | Found | Effect |
+ 89: |---|---|
+ 90: | Well-structured files with a map | Fast path: each agent's brief points at exact files |
+ 91: | There, but unstructured | Add a piece at the front that extracts and organises it |
+ 92: | Readable by one tool only | Route that piece to that tool, or export what is needed to a plain file |
+ 93: | There, but not verified | Add a small piece that checks it against the source |
+ 94: | Missing | Research becomes a piece of the flow; only the pieces that need it wait for it |
+ 95: 
+ 96: Anything missing becomes a preparation piece at the front. Each task should leave the knowledge better structured
+ 97: than it found it, so the next task gets the fast path.
+ 98: 
+ 99: #### Blueprint check — part of readiness
+100: 
+101: (Added 2026-09-25 after EJ found that several projects never ended: their workflows built without a fixed target,
+102: so every verify or review step could find more to do. Not yet tried on a real challenge; n=0.)
+103: 
+104: A stop condition means something only against a fixed target. For a task that changes a product, that target is the
+105: product's **blueprint**: what the product is for and what it must do, written down and accepted by EJ. The tools and
+106: information checks above do not ask for it, so this check does.
+107: 
+108: The blueprint lives in the product's repository, in `docs/blueprint/`, one file per section, with a map
+109: (`docs/blueprint/README.md`) that says where each section is. Where a project already keeps a section elsewhere, the
+110: map points there and that project's rules on who may change it still hold. Layout and headings:
+111: `docs/workflow-templates/blueprint.md`.
+112: 
+113: | # | Section | Whose decision |
+114: |---|---|---|
+115: | 1 | Product vision | EJ's. An agent may only write down what EJ has said |
+116: | 2 | Core requirements, each with checkable acceptance criteria (R1, R1.1, …) | EJ's. An agent may draft from the vision |
+117: | 3 | Domain model | drafted by an agent from sections 1–2, accepted by EJ |
+118: | 4 | Business logic | drafted by an agent from sections 2–3, accepted by EJ |
+119: | 5 | System architecture | drafted by an agent from sections 2–4 and 8, accepted by EJ |
+120: | 6 | Data model, schema design and its decisions | drafted by an agent from sections 3–5, accepted by EJ |
+121: | 7 | UI / UX design | drafted by an agent from sections 2–4, accepted by EJ |
+122: | 8 | Non-functional requirements (performance, security, cost, limits) | EJ's. An agent may draft from the vision |
+123: 
+124: Each section traces to the sections it is drawn from: a line that serves nothing above it is a finding, not a
+125: feature.
+126: 
+127: **Which sections a task needs** depends on what kind of task it is:
+128: 
+129: | Kind of task | Sections needed |
+130: |---|---|
+131: | Not a product change (research, a question, an analysis, an edit to documentation only) | none; record why, and the check ends here. It carries no acceptance criteria |
+132: | Fix: restores behaviour the requirements already describe (if they do not describe it, it is a feature) | the requirement it restores, and the sections the fix touches |
+133: | Feature: adds or changes behaviour | vision, requirements, and every section the feature changes |
+134: | New product | all eight present; four settled before anything builds — vision, the first slice's requirements, the hard-to-reverse architecture choices as short decision records, the non-functional targets with runnable checks; the other four settled for the slice only, unknowns marked (EJ, 2026-10-03; was "all eight settled"; n=0) |
+135: 
+136: The kind of task is itself checked against the challenge: a task that changes the product's code, schema, UI or
+137: configuration is never "not a product change". A wrong kind switches the whole check off, so it is a stop, not
+138: something a later step can repair.
+139: 
+140: **Status of each needed section, judged for this task** (not the status line in the file, which only says whether
+141: EJ accepted it):
+142: 
+143: - **settled** — EJ has accepted it (the file says so, with a date) and it covers what this task needs;
+144: - **draft** — it covers what this task needs, but EJ has not accepted it;
+145: - **incomplete** — it exists, accepted or not, but does not cover this task (for example the feature has no
+146:   requirement yet, or the change needs a table the data model does not have);
+147: - **missing** — there is no such section.
+148: 
+149: **What each status does to the flow:**
+150: 
+151: | Status | Effect |
+152: |---|---|
+153: | settled | nothing; the fast path |
+154: | draft | an unclear spot of kind **decision**: a question for EJ ("accept this section as written?"), the draft being the provisional assumption |
+155: | incomplete | an unclear spot of kind **information**: a blueprint piece at the front drafts the missing part into the section (for requirements: the new R-blocks with their acceptance criteria), and EJ accepts it (the piece's check is EJ's) |
+156: | missing | an unclear spot of kind **information**: a blueprint piece at the front drafts the section from the sections above it, and EJ accepts it (the piece's check is EJ's) |
+157: 
+158: **Blueprint confirmations are not answered by silence.** In a prompt file other questions stand on their provisional
+159: assumption unless EJ corrects them (3.3); blueprint questions do not. A piece that **builds** — changes the
+160: product's code, schema, UI or configuration — does not start until every section it depends on is settled, so a
+161: blueprint question must be answered, and a blueprint piece accepted, before such a piece runs. Pieces that only
+162: research or design may run on draft sections, without waiting for the answer; their output names the draft sections
+163: they assumed. Any piece that depends on an incomplete or missing section needs the blueprint piece that drafts it,
+164: because until then there is nothing to read. Each unsettled section has exactly one blueprint spot.
+165: 
+166: This check is per task. Per piece, the design records which sections the piece depends on (3.6).
+167: 
+168: ### 3.2 Write the algorithm
+169: 
+170: Try to write the steps that would solve the task. A **step** is one action with a result that can be checked.
+171: 
+172: - Steps can be written clearly, each with its check → a strictly defined problem. The number of steps is the size,
+173:   and the steps show what must be in order and what repeats.
+174: - A step cannot be written clearly → the problem is ambiguous there. It is an **unclear spot**.
+175: - A step with no check you can name counts as unclear, however tidy it looks. This guards against a confident
+176:   algorithm for a problem that is not understood.
+177: 
+178: **Label the pieces (added 2026-10-02 at EJ's request; n=0).** Once the steps are written, group them into
+179: **pieces** — consecutive steps that end in one deliverable — and give each piece a category from
+180: `docs/TASK_TYPES.md`, with its default pattern, engine and check beside it. The labels come from the algorithm, not
+181: from the prompt text: a prompt that reads as one category often holds several (fix a test, then document it).
+182: 
+183: - Label deliverables, not raw steps. File IO, shell execution and workflow execution stay inside the piece they
+184:   serve (TASK_TYPES.md, "Step-level, not categories"); its labelling rules 1–9 apply per piece.
+185: - A piece with no matching row is `others` and gets the full method from first principles. Steps that cannot be
+186:   grouped into one deliverable are an unclear spot.
+187: - The piece labels replace the provisional category from 3.0. Where they differ, the pieces win and the
+188:   difference is a Log line.
+189: - Facts check, per piece: a piece that changes product code, schema, UI or configuration is never labelled
+190:   read-only, and a label that contradicts what the piece writes is a **stop and replan**, not a repair (the
+191:   blueprint kind-guard's shape).
+192: - **A label is not a node.** Labelling says what kind of work a piece is; it does not say it needs its own agent.
+193:   Pieces that share an engine and have no independent check between them merge into one node run by the main
+194:   agent in one session — the default. A hand-off to a subagent must pay for itself: it has its own objective
+195:   check, or needs a different kind (a blind reviewer, another engine), or its context would not fit. EJ's
+196:   experience (2026-10-02, unmeasured here): a prompt finished by the main agent is faster than the same work split
+197:   over three subagents going back and forth, from the waiting and from context lost at every hand-off. Same
+198:   warning as 3.4: fixed cost per agent, context lost at every split, more joins.
+199: - Output: one row per piece in the state file — steps · deliverable · category · default pattern, engine and check
+200:   from the table · and the node it merges into. The node contract still names the exact model and effort.
+201: 
+202: ### 3.3 List all the unclear spots before resolving any
+203: 
+204: For each spot record:
+205: 
+206: | | |
+207: |---|---|
+208: | Kind | missing **information** → a research piece · a **decision** → ask EJ · **unknown** → a bounded explore loop |
+209: | Blocks | which steps cannot start until it is resolved; everything else can start |
+210: | Depends on | another spot whose answer might remove or change this one |
+211: 
+212: Questions for EJ go out as one batch, each with a provisional assumption so it can be answered in a few words.
+213: In a prompt file a provisional assumption stands unless EJ corrects it; a workflow design's questions are answered
+214: before the designed workflow runs, except blueprint questions, which hold back only the pieces that build on them.
+215: Blueprint questions are the exception in a prompt file too: they need an explicit
+216: answer before any step that builds on them runs (3.1, blueprint check). Where spots are resolved separately, one
+217: joining step compares the answers. A contradiction is a stop: pick one and say why, never average.
+218: 
+219: ### 3.4 Size
+220: 
+221: - Up to 3 steps and nothing unclear except decisions that have a provisional assumption → one piece → a prompt
+222:   file, with those decisions listed at the top as questions for EJ. A spot of kind information or unknown always
+223:   means a workflow design. (Changed 2026-09-20 after trial 1, where three decisions with obvious defaults helped
+224:   push a one-line fix out of "small"; n=1.) Blueprint spots follow the same rule: a missing or incomplete section
+225:   always means a workflow design; a draft section alone does not.
+226: - More than 3 steps → consider a new piece. Split only if each part keeps its own check **and** splitting changes
+227:   how the work is done ("Split iff it changes the route", `challenge-mediation` skill).
+228: - Risk is judged separately from size: how late a mistake would be noticed, whether it can be undone, how many
+229:   things it touches. Tiny but risky → the prompt file gets one independent check.
+230: 
+231: **Default-first design.** When the size decision says workflow design, the design starts from a lookup, not a
+232: blank page: each piece's category row (labelled in 3.2) or combination pipeline in `docs/TASK_TYPES.md` supplies the default pattern,
+233: engine, check and sabotage; `others` gets the full method from first principles. A bespoke (challenger) design
+234: replaces a default only on a written claim of ≥20% lower projected run cost **at equal coverage** (same
+235: criteria ids, same checks, same blindness — coverage is a gate, never an axis). The decision is reviewed by the
+236: script gate (`design_gate.py`) plus one blind fixed-checklist pass (Sonnet 5.5; a different kind when the
+237: design builds or EJ flagged high risk), and every run reconciles its claim in `docs/TASK_TYPES_LEDGER.md` —
+238: that ledger is how the defaults earn their n. (Added 2026-10-01 at EJ's request; n=0.)
+239: 
+240: Anchors for the number 3: Gate splits capability lists over three (`ancient_games/stages.py:109`) and the
+241: the plan-wide cap of 3 dispatched corroborating sources (`ancient_games/registry.py:24`, used at `stages.py:309`; it caps dispatches per plan, not agents running at once — corrected 2026-10-03).
+242: 
+243: ### 3.5 Clear pieces run as loops
+244: 
+245: While the unclear spots are being resolved, the pieces that are already clear and not blocked run as loops: a
+246: defined output, the agent attempts, the check runs, pass → close the loop, fail → the feedback goes back to the agent.
+247: 
+248: A piece is loop-ready only if it has all five:
+249: 
+250: 1. A check. Best is a script; next a fixed checklist judged by a separate agent; last EJ's own judgment.
+251: 2. A limit on attempts.
+252: 3. Specific feedback: the script's real output, not just "failed".
+253: 4. An exit for when the limit is hit. If the attempts ran on a cheap tier, the exit is a fresh node on a stronger
+254:    tier with a short handoff note (the piece, its check, the last feedback) and its own limit. When that limit is
+255:    hit too, or there is no stronger tier, the piece goes back to the unclear list or to EJ. It was not as clear as
+256:    it looked. (Tier exit added 2026-09-22 at EJ's request; n=0.)
+257: 5. A check the worker cannot edit, and that is known to be able to fail (the house sabotage check).
+258: 
+259: A loop only closes when its check is objective. (n=1: a planner/critic loop whose check was "try to reject it" ran
+260: three rounds, 6 → 5 → 4 problems, and never closed. See `20260919-plan-critic-issues.md`.)
+261: 
+262: Attempts start on the cheapest tier that could plausibly do the piece; a stronger tier, which costs many times more
+263: per token, is bought only for what the cheap one could not finish. Escalation is a fresh node, never a tier switch
+264: inside the running session: a switch voids the prompt cache, so the stronger tier re-reads the whole context at its
+265: fresh input rate, and a session in which the cheap tier flailed is mostly wrong turns that would anchor the stronger
+266: tier towards the same dead ends. (Added 2026-09-22 at EJ's request; n=0.)
+267: 
+268: ### 3.6 The rest is a graph
+269: 
+270: When the spots are resolved and the clear loops have closed, the algorithm is fully defined:
+271: 
+272: - nodes = right-sized pieces (a node may hold its own loop);
+273: - edges = "this piece needs that piece's result";
+274: - gates = a result is verified before anything that depends on it starts;
+275: - a joining node where branches meet.
+276: 
+277: Every node carries five things, so that it can be run, checked and resumed without asking anyone:
+278: 
+279: | | What it says | Borrowed from Ancient Games |
+280: |---|---|---|
+281: | **Tools** | what the agent uses, each proved working | — |
+282: | **Context** | exactly what the agent is given, and what is withheld | `KNOWN_FACTS`, `READ_SCOPE.deny` |
+283: | **Contract** | the intent, the stop condition, what comes back and in what shape (given to the worker as a template, an example and a standard, 3.8), what may and must not change | `INTENT`, `STOP`, `OUTPUT`, `SCOPE` (`ancient_games/schema.py`) |
+284: | **Evidence** | the proof that comes back with the result and the file it is saved in; a verifier reads the evidence, never the reasoning | `CLAIMS`, `VERIFY_OUTPUT`, `NOT_ESTABLISHED` (the return contract) |
+285: | **State** | what the node reads from the state file and what it writes back | the journal, read before every step |
+286: 
+287: An edge is then more than "needs": it is the earlier node's *returns* and *evidence* becoming the later node's context.
+288: 
+289: A node that **builds** also names the blueprint sections it depends on and the acceptance criteria it covers
+290: (R1.1, …, and non-functional N1.1, …; ids in exactly that form). Every criterion in scope is covered by at least one
+291: node that builds; a node that does not build carries no criteria, except a blueprint piece, which names the criteria
+292: it is expected to propose. The stop condition of a node that builds has three parts, all objective:
+293: 
+294: 1. the acceptance criteria it covers pass;
+295: 2. what passed before still passes — everything recorded as passing in the **baseline**: the product's test command
+296:    and its output, written to the state file before the first node that builds starts;
+297: 3. its contract's "must not change" holds.
+298: 
+299: A failure of any of the three is a failed attempt, not a backlog item. If its check is judged, it is a fixed
+300: checklist of those three parts, never an open-ended review. The node `needs` the blueprint piece for any of its
+301: sections that was missing or incomplete, and for any criterion that piece is to propose; it does not start while any
+302: of its sections is unsettled (3.1, blueprint check). Criteria a blueprint piece proposes are fixed when EJ accepts
+303: the piece, before any node that builds starts; if EJ accepts different criteria than the design expected, the nodes
+304: that cover them are planned again, as when a node hits its attempt limit.
+305: 
+306: Anything else a worker, a verifier or the final "what is missing" pass finds — a new wish, an improvement, a
+307: problem that neither the criteria in scope nor the baseline covers — is written to the product's
+308: `docs/blueprint/backlog.md` with the date and the run id (a suspected break of something the baseline does not cover
+309: is marked as such, for EJ); it does not become a new piece or a new attempt in this run. This is what lets a run end.
+310: 
+311: With everything known, the design's edges decide who works next: a Workflow script, or the COO (the main Claude
+312: session) following the graph. A node's role subagents do not choose the next node. Each node names its role, engine,
+313: model and effort; the COO's contract, and when she does a small node herself, are in `docs/EXECUTOR_KINDS.md`. If a node hits its attempt limit
+314: and its tier exit is spent, it returns to the unclear list and only that part of the graph is planned again.
+315: 
+316: Whole picture: graph on the outside, loops inside the nodes, exploration only inside the unknown-spot nodes. This is
+317: what `20260919-state.md` calls combined execution.
+318: 
+319: ### 3.7 Sequential first; parallel is the last decision
+320: 
+321: Design the whole flow as sequential, state-based steps: read the state file → do one step → write the state back.
+322: Only when the design is complete, look for tasks that are **really independent** — all five must hold:
+323: 
+324: 1. neither needs the other's result;
+325: 2. no shared files or resources;
+326: 3. doing one would not change how the other is done;
+327: 4. each has its own check;
+328: 5. the time saved is worth the extra joining step.
+329: 
+330: Parallel buys only clock time, and it costs predictability, debuggability and extra joins. Independence of
+331: verifiers is about what they see, not when they run: two verifiers can run one after another and stay independent.
+332: 
+333: **Caps (EJ, 2026-10-03; n=0 — a friend's practice plus reasoning, not measured).** At most **5 subagent roles per
+334: run** and at most **3 running at once** (our own number; the code's 3 at `ancient_games/registry.py:24` caps
+335: corroborating dispatches per plan, not concurrency); a retry of the same node is not a new
+336: subagent. A design that needs more is too big: cut it into slices or separate runs, never raise the cap. The
+337: feedback log (3.8 item 11) records calls per run, so the cap is revised from data.
+338: 
+339: ### 3.8 Running a node: executors are tools, timers, pass-back, no polling
+340: 
+341: (Added 2026-10-02 at EJ's request. n=0: every number below is a provisional working value that the ledger replaces
+342: with measured ones. Not yet encoded in `design_gate.py` or `intake.js`.)
+343: 
+344: The COO (the main Claude session) is the leader and holds the thinking. Codex, `agy`, `qwen` and role subagents are
+345: **tools** she calls: agents are not yet stable (a call may stop half-way, return nothing, or return something
+346: malformed), and every exchange with them costs the COO a turn that re-reads her whole context. So:
+347: 
+348: **Before any of it: know which binary will make the call, and what version it is.** A provider can bundle its own
+349: copy of an engine, older than the copy on `PATH`, and the two do not accept the same model names — the error blames
+350: the model or the account, never the version. Check the catalog of the binary that will actually run, and record that
+351: version in the canary. `docs/EXECUTOR_KINDS.md`, "The bundled-runtime trap", has the three instances that cost this
+352: project three diagnoses in two days.
+353: 
+354: 1. **One small task per call.** A call has one deliverable, one command line and an expected finish inside its
+355:    timeout. A loop is not inside the call: if a piece loops, the COO or the script runs the loop and each attempt is
+356:    a fresh small call (3.5). A piece too big for one bounded call is not handed over whole; the COO splits it only
+357:    where 3.2's "a label is not a node" allows (own check, different kind, or context room).
+358: 2. **Two timers per call, both named in the node.** The *inner* timer is the tool's own (`qwen --max-wall-time`,
+359:    `agy --print-timeout`; `codex exec` has none verified, so it relies on the outer one). The *outer* timer is a
+360:    `timeout` around the whole command, a little longer than the inner. Timeout values scale with the task; the
+361:    provisional sizes are: classification or lookup 60–90 s (the canary's figure), one-file change or one-file test
+362:    set about 5 min, diff review about 5 min, research about 10 min. The design lists them with its cost estimate,
+363:    and the ledger records actual wall time so the numbers get replaced.
+364: 3. **No polling.** The COO never repeats "is it done?" and never sleeps in a loop; each check is a turn. She waits
+365:    in one of three ways: a blocking call under the outer timeout; a background run that notifies her when it
+366:    exits; or a small script that waits and prints one line `done|fail|timeout <result path>`. A progress file the
+367:    tool writes is read only after a timeout, to see how far it got. The design states the COO turns it expects per
+368:    node (provisional: two, dispatch and accept) and the total.
+369: 4. **Pass-back contract.** Every call writes one result file in the node's own path
+370:    (`runs/<id>/nodes/<node>-<attempt>.result.*`), written to a temp name and renamed, with a fixed header: node,
+371:    attempt, engine, model as the tool reports it, `status: ok|fail|partial`, start and end time, evidence path;
+372:    then the body (`docs/workflow-templates/result-file.md`). A **script** (no model,
+373:    `.claude/skills/workflow-design/scripts/validate_result.py`) validates it: the file exists and is not empty, the
+374:    header parses, the status is present, the reported model, node and attempt equal the contract's, the evidence
+375:    path exists. The COO reads the capped summary (provisional: the
+376:    header and the first 40 lines) and the path, never the raw output.
+377: 5. **An unstable return is a failure of the executor, not of the work.** All of these count: no file, empty file,
+378:    unparseable header, wrong model, a timeout, and a clean exit with no result (`qwen` headless exits 0 with no file
+379:    when its write tools are withheld; a wrong `-m` exits 0 and silently runs another model — both seen
+380:    2026-10-02, `docs/EXECUTOR_KINDS.md`). `partial` is a status the COO decides on: retry only the remainder as a
+381:    new small call. Executor failures follow the existing rule: they do not count against the attempt limit, the
+382:    node reruns once fresh on its fallback with a short handoff note, and a second failure blocks it and goes to EJ.
+383: 6. **A half-finished node must not leave a mess.** A node that builds writes only inside its contract's "may
+384:    change" paths, and runs from a clean commit or a worktree, so a failed call is discarded whole. The COO never
+385:    reverts files by hand to "tidy up": a revert of anything but a discarded worktree is a Rule 6 confirmation.
+386: 7. **Keep the COO's reading small.** Results by path, one-line Log entries, only the state rows the next step
+387:    needs. Raw tool output never enters her context.
+388: 8. **The stronger model gives the worker a template, an example and a standard** (EJ, 2026-10-02: this is the
+389:    COO's real work). The COO is the smarter model and the worker is a tool, often a cheaper one; so every brief
+390:    carries (a) the **template** the result must follow, (b) one worked **example** of a good result, small and
+391:    real, and (c) the **standard** it will be judged by: the check as the worker can run it, what failing looks
+392:    like, and the sabotage the check is known to catch. The COO writes these once, in the brief
+393:    (`docs/workflow-templates/node-brief.md`), instead of correcting the result afterwards: it cuts unstable
+394:    returns, retries and her own review reading. A brief with no template, no example or no standard is not
+395:    dispatched; a part she cannot write is an unclear spot (3.3).
+396: 9. **Research is written to files.** The *researcher* reads docs, papers and the web (WebSearch, WebFetch). A
+397:    research node writes the full findings to
+398:    `docs/research/<date>-<topic>/FINDINGS.md` (each finding with an id, a source and a label) and returns only a
+399:    digest of about 15 lines, no more than 20, plus the path (`docs/workflow-templates/research-file.md`). The COO
+400:    reads the digest; to settle a doubt she reads one finding by id, or sends a small verify node. A design decided
+401:    from the research goes to `decisions.md` (4).
+402: 10. **Exploring existing code is its own role** (EJ, 2026-10-03; n=0). The *explorer* reads the existing system —
+403:    code, tests, configs, git history — never the web. The two roles differ in source, tools, evidence and how a
+404:    claim is checked (`docs/EXECUTOR_KINDS.md`, roles). Its contract:
+405:    - **Read-only**, under a stated budget (tool calls or tokens), favouring recall inside the affected area and
+406:      never a repo-wide overview (TASK_TYPES, case C).
+407:    - **Every claim carries file:line and a short verbatim quote**, and `scripts/quote_check.py` confirms each quote
+408:      is at its line (`docs/workflow-templates/explorer-file.md`); a quote that fails is a failed finding, not a typo.
+409:    - **Every behaviour claim is marked `read` or `ran`.** `read` = inferred from the code; `ran` = confirmed by
+410:      running it (a test, a differential run, `~/skills/verify-extraction`). Only `ran` claims may feed a node that
+411:      builds; a `read` claim a build depends on is an unclear spot until it is run.
+412:    - It returns a digest and the path, like research: the impact map (case C), the old system's behaviours and
+413:      golden outputs (case B), or the findings for use cases #1 and #2.
+414:    - The COO explores herself when the affected area is small and fits her context (whale rule); an explorer node
+415:      is for a large or unfamiliar codebase.
+416: 11. **Every run leaves a feedback record** (added 2026-10-02; n=0; `docs/research/20261002-workflow-feedback`).
+417:    During the run, `scripts/runlog.py exec` wraps each Codex, `qwen` or `agy` call (start, end, exit, duration;
+418:    raw output to the gitignored `runs/<id>/raw/`) and `runlog.py verdict` writes one line per node check. After
+419:    it, `scripts/harvest_run.py` reads what the engines already recorded (Workflow run JSON and agent transcripts,
+420:    Codex rollouts joined by time window and cwd, never guessed) into `runs/<id>/feedback.jsonl` and prints a
+421:    digest whose last line is the ledger's Actual cost. Tokens are kept in parts (new input, cache read, output):
+422:    cache reads are often ten times the new input. Only ids, numbers, paths and status are written; the repo is
+423:    public. Every parser fails loudly when an engine changes its format.
+424: 12. **Design decisions cite their evidence** (EJ, 2026-10-03; n=0). Model memory goes stale, so every design
+425:    decision cites the finding ids it rests on — research (item 9) or exploration (item 10). A decision with no
+426:    source is marked *model knowledge* and treated like a `read` claim: it may not drive a node that builds until it
+427:    is checked against a source or by running code. The researcher and explorer gather; the COO designs, so their
+428:    picks do not become the design without a second look. Which source comes first depends on the case: the
+429:    codebase for a feature in an existing system (TASK_TYPES case C), current docs for a new stack (case D).
+430: 
+431: ## 4. State and memory
+432: 
+433: The state lives in a file (`docs/workflow-templates/state.md`). Each agent reads it, does one step, writes the new
+434: state back; the next agent, or another tool, continues from there, and a broken run resumes from the last written
+435: state. One writer at a time. The state file holds progress and results, never a worker's reasoning; a worker's
+436: detailed notes go in its own output file, so a verifier can be kept blind to them.
+437: 
+438: Kinds of memory when running in Claude Code or Codex with subagents:
+439: 
+440: | Memory | Limit |
+441: |---|---|
+442: | Context window | Temporary; a subagent starts with only its prompt; long sessions get summarised |
+443: | `CLAUDE.md` / `AGENTS.md` | Loaded every session, so keep them short and let them point to the rest |
+444: | Claude Code auto-memory | Only Claude Code reads it |
+445: | **Files in the repo** | The one memory every tool and every agent can read — use it for anything that must last |
+446: | Skills | How to do things, not facts about a task |
+447: | Run records (workflow `journal.jsonl`, the Ancient Games journal) | Nobody reads them unless asked |
+448: | A subagent's final report | All that comes back; the rest is lost unless written to a file |
+449: 
+450: Working rules: each agent gets a brief with only what its piece needs (with a template, an example and a standard, 3.8) and writes its full result to a file; research and decided designs are files too (3.8, `docs/research/`, `decisions.md`); the
+451: main agent keeps conclusions, not details; stored knowledge carries a date and is rechecked before it is relied on;
+452: knowledge (stable) is kept apart from state (changes every run).
+453: 
+454: **Project memory for software work (added 2026-10-02 at EJ's request; n=0).** A release note is written for users
+455: after the fact; it tells an agent what shipped, not why or what to avoid, so it is an output here, not the
+456: memory. A product keeps three small append-only files beside its blueprint, each existing to answer one listed
+457: query (the rule above: no store without a query):
+458: 
+459: | File (`docs/blueprint/`) | Answers | Entry (kept to about 5 lines) | Written by, when |
+460: |---|---|---|---|
+461: | `decisions.md` | "Why did we choose X? What did we reject?" | date · decision · why · alternatives rejected · the R/N ids it serves · source (finding ids, or *model knowledge*, 3.8 item 12) | the COO, when a decision spot is answered (3.3) or a design choice is made; EJ's answers are the decisions |
+462: | `changelog.md` | "What did run N change, and did it pass?" | date · run id · what changed · criteria covered (R1.1…) · commits · baseline result · optional `release note:` line for users | the COO, once at the end of each run that builds, from the state file |
+463: | `lessons.md` | "What goes wrong around module Y?" | date · where (path or module) · the trap · how it was found · recheck by (a date or a trigger) | any node proposes, the COO appends; an entry past its recheck is marked stale, never silently trusted |
+464: 
+465: Working rules: append only, never rewritten (a reversal is a new entry that points at the old one); every entry
+466: carries a date and, where it applies, a requirement id or a path, so an agent finds it by `grep`, not by reading the
+467: file; readiness (3.1, information) and the design read only the entries for the sections, ids and paths the task
+468: touches; the blueprint's `README.md` map lists the files so an agent knows they exist. A release note, when one is
+469: needed, is generated from the `release note:` lines of the changelog, not written separately. The qwen findings of
+470: 2026-10-02 (silent model substitution, exit 0 with no file) are examples of lessons.
+471: 
+472: Caution on graphs: this repo built two graphs nobody queried and then deferred a third. Its rule — "no node or edge
+473: type without a listed query" — applies here too (`docs/KNOWLEDGE_GRAPH_DESIGN.md` §1, `docs/STORE_DESIGN_DECISION.md`).
+474: Not verified: Codex's memory and subagent features beyond `AGENTS.md`.
+475: 
+476: ## 5. Three qualities every design must show
+477: 
+478: | Quality | What must be there |
+479: |---|---|
+480: | **Predictability** | The design's edges schedule (script or COO); fixed bounds on attempts, pieces and concurrency; structured outputs; stop conditions and success criteria written before the run — for a product change, the acceptance criteria in scope; a cost estimate before the run |
+481: | **Debuggability** | Every agent labelled; each step's input and output saved to a file; pieces small enough to rerun alone; resume from the failed point; feedback kept per attempt; state in one place |
+482: | **Quality control** | A check per piece; a verifier that does not see the worker's reasoning; proof the check can fail; a contradiction check at joins; a final "what is missing" pass, measured against the three-part stop of 3.6 (a failure there is a failed attempt; anything else it finds goes to the backlog); skipped or unrun checks reported |
+
+########## the skill: the same algorithm packaged, with its trigger
+
+===== FILE: .claude/skills/workflow-design/SKILL.md (201 lines) =====
+  1: ---
+  2: name: workflow-design
+  3: description: "Designing a workflow for an incoming task or challenge — or deciding that none is needed — before any agents are dispatched: understand the challenge (objective, scope, six whys, category and its default pattern), check readiness (including the product blueprint: vision, requirements with acceptance criteria, domain, architecture, data, UI, non-functional), write the algorithm first, list every unclear spot, size the pieces, run clear pieces as loops with objective checks, then wire the rest as a graph whose nodes each carry tools, context, a contract, evidence and state; sequential and state-file driven first, parallel decided last. Use whenever someone asks to design, plan, create, improve or review a workflow, an agent pipeline, an orchestration or a multi-agent / subagent setup; asks how many agents a task needs, whether to parallelise or loop, or how agents should pass information; brings a task too big for one prompt; or when you are about to write a Workflow script or dispatch several subagents without a written design. NOT for: a task of one to three obvious steps (just do it), the Workflow script API (use workflow-authoring), or running an already designed workflow."
+  4: ---
+  5: 
+  6: # Workflow design
+  7: 
+  8: The job: turn a challenge into **a prompt file** (small task) or **a workflow design** (bigger task). You are
+  9: designing, not executing. The full method with its reasons is `references/method.md`; the five templates are in
+ 10: `assets/templates/`. Read the method once before your first design in a session.
+ 11: 
+ 12: Why this exists: agents left alone pick a pattern first ("let's fan out five subagents") and discover later that
+ 13: they lacked information, that a loop had no way to close, or that two parallel workers collided. This method makes
+ 14: the cheap discoveries first.
+ 15: 
+ 16: ## First: understand the challenge (method 3.0)
+ 17: 
+ 18: From the challenge text alone — no tools, no agents. State the **objective** (what is true when the task is
+ 19: done), what is **in scope**, what is **out of scope**. Then the **six whys**, each feeding one design field:
+ 20: why does the person want this (objective) · why now (priority) · why this shape of solution (category + default
+ 21: pattern) · why would it fail (risk tier → review depth) · why does it stop where it stops (scope) · why would
+ 22: we believe it is done (check kind). Stop early when an answer no longer changes the design — six is a ceiling,
+ 23: never a target. End with a **provisional category** (multi-label, marked inferred) from `references/task-types.md`: a guess
+ 24: that feeds the tiny test and a first default lookup; step 2 relabels it from the algorithm. A part that cannot be written, or a challenge that allows two readings, is the first unclear
+ 25: spot (kind: decision) — a question for the person with the restatement as the provisional assumption. The
+ 26: restatement goes at the top of the output, beside the verbatim challenge in the state file. One paragraph in
+ 27: the same session, never an agent, never a tool call. (Added 2026-10-01 at EJ's request; six whys and
+ 28: categorization the same day; n=0.)
+ 29: 
+ 30: ## Then: is it tiny?
+ 31: 
+ 32: The test reads the restatement, not the raw text. If the restated problem, the fix and the check are one sentence
+ 33: each, and a mistake would show itself at once, do not design a workflow. Do the task, or fill in
+ 34: `assets/templates/prompt-file.md`. A process that costs more than the task is a failure of the method, not a
+ 35: success. (Trial 1, n=1: a one-line README fix went through the full process and cost about 309k tokens, partly
+ 36: because checks and handover were counted as steps. Count only the steps the challenge itself needs.)
+ 37: 
+ 38: ## The steps
+ 39: 
+ 40: Work through these in order. Each step's output is a file, because files are the one memory every tool and every
+ 41: agent can read; a subagent starts with nothing but its prompt.
+ 42: 
+ 43: 1. **Readiness.** List the tools (run a command to prove each works — do not assume), the skills that already cover
+ 44:    part of the work, and the information: is it there, what structure is it in, is it verified against its source,
+ 45:    and which agents and tools can read it. The bundled `scripts/readiness.py` runs the standard inventory in one
+ 46:    pass — binaries, model caches, skill/workflow/memory locations, MCP config, machine — each line marked
+ 47:    verified/reported/unknown; what it cannot prove stays unknown and needs the canary. Anything missing becomes a
+ 48:    preparation piece at the front of the flow.
+ 49:    Template: `readiness.md`. A node run by Codex or `agy` (not a Claude subagent): read `references/executor-kinds.md`
+ 50:    first — the canary that proves the tool, read-only versus write, the fallback rule (n=0).
+ 51:    **Prove the binary that will make the call, and record its version** — not the version on `PATH`. A provider can
+ 52:    bundle an older copy of an engine and the two do not accept the same model names; the error names the model or
+ 53:    the account, never the version. `references/executor-kinds.md`, "The bundled-runtime trap".
+ 54:    **Call the CLI first and the provider tool second** (EJ, 2026-10-04): the binary on `PATH` is the one that
+ 55:    updates, while a provider pins an older bundled copy and will not use `PATH` even if asked. Reach for the
+ 56:    provider when the CLI is unavailable, or when a role must be read-only or blind and needs the harness-enforced
+ 57:    `toolFilter` — a CLI call has no such mask.
+ 58:    Every node names its role, engine, exact model and effort (never a default; the Codex plugin's example models are
+ 59:    stale). The COO is the main Claude session: she distributes by the graph, monitors the state file, reviews
+ 60:    verdicts, and may do a small node herself under four conditions and a tool-call cap — same file.
+ 61:    **Blueprint check** (part of readiness). If the task changes a product, check the product's blueprint in
+ 62:    `docs/blueprint/` (layout: `blueprint.md`): vision, core requirements with acceptance criteria, domain model,
+ 63:    business logic, architecture, data model and schema decisions, UI/UX, non-functional requirements. The kind of task
+ 64:    decides which sections are needed (a fix: the requirement it restores and what it touches; a feature: vision,
+ 65:    requirements and what it changes; a new product: all eight present, four settled first (vision, first slice's requirements,
+ 66:    hard-to-reverse architecture, non-functional targets), the rest per slice; not a product change: none, and no acceptance
+ 67:    criteria). A task that changes code, schema, UI or configuration is never "not a product change"; a wrong kind
+ 68:    switches the check off, so it is a stop. Each needed section is
+ 69:    settled (EJ accepted it and it covers the task), draft (covers the task, not accepted), incomplete (does not cover
+ 70:    the task, e.g. no requirement for the feature yet) or missing. Draft → a question for the person; incomplete or
+ 71:    missing → a blueprint piece at the front that drafts the missing part for the person to accept. A piece that
+ 72:    builds does not start until every section it depends on is settled — blueprint questions are not answered by
+ 73:    silence. Research and design pieces may run on drafts and name the drafts they assumed; any piece that depends on
+ 74:    an incomplete or missing section needs the piece that drafts it. Why: without a fixed
+ 75:    target every review finds more to do, and the run never ends.
+ 76: 2. **Write the algorithm.** Try to write the steps that would solve the task. A step is one action with a result
+ 77:    that can be checked, and each step names its check. The attempt is the evaluation: steps that write clearly mean
+ 78:    a defined problem; a step you cannot write clearly, or whose check you cannot name, is an **unclear spot**.
+ 79:    Then **label the pieces**: group the steps into pieces that each end in one deliverable and give each a category
+ 80:    from `references/task-types.md` (file IO, shell and workflow execution stay inside their piece; no matching row =
+ 81:    `others`, full method). The piece labels replace the provisional category and the difference is a Log line.
+ 82:    A piece that changes product code, schema, UI or configuration is never read-only: a contradicting label is a
+ 83:    stop and replan. One state-file row per piece: steps · deliverable · category · default pattern, engine, check · node it merges
+ 84:    into. **A label is not a node**: pieces with the same engine and no independent check between them merge into
+ 85:    one main-agent session, the default; a subagent hand-off must buy an objective check, a different kind, or
+ 86:    context room (EJ's experience: splitting one prompt over three subagents is slower — waiting and lost context).
+ 87: 3. **List every unclear spot before resolving any.** For each: its kind (missing *information* → a research piece ·
+ 88:    a *decision* → a question for the person · *unknown* → a bounded explore loop), which steps it blocks, and whether
+ 89:    it depends on another spot. Listing first matters because one answer often removes another spot. Questions go to
+ 90:    the person as one batch, each with a provisional assumption so it can be answered in a few words. A draft
+ 91:    blueprint section is a decision spot; an incomplete or missing one is an information spot, so the task is a
+ 92:    workflow design.
+ 93: 4. **Size.** Up to 3 steps with nothing unclear except decisions that have a default → a prompt file, questions at
+ 94:    the top. More than 3 steps → consider a new piece, but split only if each part keeps its own check and the split
+ 95:    changes how the work is done. A workflow design starts **default-first**: each piece's category row (labelled in step 2) or combination
+ 96:    pipeline in `references/task-types.md` supplies the default pattern, engine, check and sabotage; a challenger
+ 97:    design replaces a default only on a written ≥20%-lower-projected-cost claim at equal coverage, reviewed by
+ 98:    `scripts/design_gate.py` plus one blind fixed-checklist pass (a different kind when it builds), and reconciled
+ 99:    in the ledger (n=0). Too-small pieces cost more than they give: fixed cost per agent, context lost at
+100:    every split, more joins. Judge risk separately from size (noticed late? cannot be undone? touches many things?);
+101:    tiny but risky gets one independent check.
+102: 5. **Clear pieces run as loops** while the unclear spots are being resolved. A piece is loop-ready only with: a check
+103:    (a script is best; next a fixed checklist judged by a separate agent; last the person's judgment), an attempt
+104:    limit, specific feedback (the check's real output), an exit for when the limit is hit, and a check the worker
+105:    cannot edit and that is known to be able to fail. A loop closes only on an objective check — an open-ended
+106:    "find problems" reviewer always finds one more, so that loop never ends. Attempts start on the cheapest tier that
+107:    could plausibly do the piece. When its limit is hit, the exit is a fresh node on a stronger tier with a short
+108:    handoff note (the piece, its check, the last feedback) and its own limit, never a tier switch inside the running
+109:    session: a switch voids the prompt cache, so the stronger tier re-reads the whole context at its fresh input rate,
+110:    and the cheap tier's wrong turns would anchor it towards the same dead ends. When that limit is hit too, or there
+111:    is no stronger tier, the piece goes back to the unclear list or to the person. (Added 2026-09-22 at EJ's request;
+112:    n=0.)
+113: 6. **The rest is a graph.** Nodes are right-sized pieces, edges are "needs the result of", a result is verified before
+114:    anything that depends on it starts, and branches meet at a joining step where contradictions are a stop, never
+115:    averaged. The design's edges schedule (a script, or the COO following the graph); role agents do not decide who works next. A node that hits its limit with its tier
+116:    exit spent goes back to the unclear list and only that part is planned again.
+117: 7. **Sequential first; parallel is the last decision.** Design everything as sequential, state-file-driven steps.
+118:    Only when the design is complete, look for really independent pieces — all five must hold: neither needs the
+119:    other's result; no shared files or resources; doing one would not change how the other is done; each has its own
+120:    check; the time saved is worth the extra join. Parallel buys only clock time and costs predictability and
+121:    debuggability. Independent verifiers need to be blind to each other, not simultaneous. When running, executors are
+122:    tools (method 3.8): one small bounded task per call, an inner and an outer timer named in the node, no polling
+123:    (every status check is a turn), one atomically written result file with a fixed header that a script validates,
+124:    and any missing, empty, malformed, wrong-model or timed-out return is a failure of the executor, not of the work.
+125:    The stronger model's work is the brief: every one carries a template, a worked example and the standard the result
+126:    is judged by (`references/method.md` 3.8; `docs/workflow-templates/node-brief.md`). Research goes to files
+127:    (`docs/research/<date>-<topic>/`) and only a digest of about 15 lines returns to the COO. To run a designed
+128:    workflow, `scripts/dispatch.py run PLAN` enforces caps, timers, the brief's three parts, the pass-back and model
+129:    checks and the retry rules in code (`--dry-run` first; `docs/DISPATCHER_DESIGN.md`). Two reading roles: the
+130:    *researcher* reads docs, papers and the web; the *explorer* reads existing code read-only, cites file:line with a
+131:    quote, and marks each behaviour claim `read` or `ran` — only `ran` claims feed a build (method 3.8 item 10).
+132: 8. **The run ends at the acceptance criteria.** A piece that builds names the blueprint sections it depends on and the
+133:    acceptance criteria it covers (ids like R1.1 or N1.1); every criterion in scope is covered by a piece that builds.
+134:    Its stop: those criteria pass, everything the baseline recorded as passing still passes (the test command and its
+135:    output, written to the state file before the first piece that builds), and its "must not change" holds; a failure
+136:    of any of these is a failed attempt. A judged check is a fixed checklist of those three, never an open-ended
+137:    review. Criteria a blueprint piece proposes are fixed when the person accepts it; if they differ from what the
+138:    design expected, the pieces covering them are planned again. Anything else found — a new wish, an improvement, a
+139:    problem neither the criteria nor the baseline covers — by a worker, a verifier or the final "what is missing" pass
+140:    goes to `docs/blueprint/backlog.md` with the date and run id, never into the current run.
+141:    A product also keeps three append-only memory files beside it: `decisions.md` (why, what was rejected),
+142:    `changelog.md` (one entry per run that builds; release notes come from it) and `lessons.md` (dated traps with a
+143:    recheck); each answers one listed query and is found by id or path, never read whole (method §4).
+144: 
+145: ## Every node carries five things
+146: 
+147: | | What to write |
+148: |---|---|
+149: | **Tools** | what the agent uses, each proved working |
+150: | **Context** | exactly what it is given, and what is withheld (a verifier never sees the worker's reasoning) |
+151: | **Contract** | the intent, the observable stop condition (for a piece that builds: its acceptance criteria pass, the baseline still passes, "must not change" holds), what it returns and in what shape, what it may and must not change |
+152: | **Evidence** | the proof that comes back with the result (a command and its output, or file:line) and the file it is saved in |
+153: | **State** | what it reads from the state file before starting and what it writes back |
+154: 
+155: An edge is then concrete: the earlier node's returns and evidence become the later node's context.
+156: 
+157: ## State file
+158: 
+159: The state lives in a file (`assets/templates/state.md`): each agent reads it, does one step, writes the new state
+160: back. One writer at a time. It holds progress and results, never reasoning — notes go in the worker's own output
+161: file. This is what lets another agent, another tool, or tomorrow's session continue the run.
+162: 
+163: ## Before calling a design finished
+164: 
+165: Check it shows all three, and say so in the design:
+166: 
+167: - **Predictability** — the design's edges schedule (script or COO); limits on attempts, pieces and concurrency; structured outputs; success
+168:   criteria written before the run (for a product change: the acceptance criteria in scope); an agent count and a
+169:   cost estimate with its basis.
+170: - **Debuggability** — labelled agents; every step's input and output in a file; pieces small enough to rerun alone;
+171:   a resume point after a failure.
+172: - **Quality control** — a check per piece; blind verifiers; proof each script check can fail; a contradiction check
+173:   at joins; a final "what is missing" pass measured against the three-part stop of step 8 (a failure there is a
+174:   failed attempt; anything else goes to the backlog); skipped or unrun checks reported as such.
+175: - **Engine split** — for build work, run `scripts/workload.py --plan <plan> --write` before the run starts. It gives **opencode priority** (EJ, 2026-10-04) by **module**, crossing each module's code and tests so the tests are written by the engine that did not write the code. The default is the *smallest* lead that counts as priority — which at five modules is exactly 60/40, costing one module its independent tests; demanding 60% on a larger plan costs far more, so `--share` is there when the bigger lead is wanted. Never split dev and tests independently: that gives half the modules their code *and* their tests from one engine. `check()` refuses a plan where opencode does not lead, that self-tests more than its lead costs, or whose verifier shares its node's engine. `docs/EXECUTOR_KINDS.md` has the rule and the arithmetic.
+176: 
+177: ## Output
+178: 
+179: - Small task → `assets/templates/prompt-file.md`, filled in.
+180: - Bigger task → `assets/templates/workflow-design.md`, filled in, with `state.md` and `readiness.md` beside it.
+181: - A blueprint piece writes into the product's `docs/blueprint/`, following `assets/templates/blueprint.md`.
+182: - Put a run's files in one folder (in the Ancient Games repo: `runs/<YYYYMMDD-slug>/`).
+183: - Give the person the questions batch and the cost estimate before anything is run. Designing is cheap; running
+184:   agents is not, so a run needs their go-ahead.
+185: 
+186: ## Running the method as a script
+187: 
+188: `~/dev/ancient-games/.claude/workflows/intake.js` walks a challenge through steps 1–4 with one agent per step and
+189: fixed yes/no checks in script code (args `{challenge, runId}`). It is a multi-agent run — about 300k tokens in its
+190: one trial — so use it only when the person asks for it. Its offline test: `node tests/workflows/intake_harness.mjs`.
+191: 
+192: ## Related skills
+193: 
+194: `challenge-mediation` types a challenge and rates the cost of being wrong — useful input to the risk judgment in
+195: step 4. `task-decomposition-strategies` helps with splitting; where it leans parallel, this method's sequential-first
+196: rule wins. `agent-loop` enforces a test loop for step 5. `chronos-ledger` tracks state across sessions.
+197: `workflow-authoring` is the script API for turning a finished design into a Workflow script.
+198: 
+199: Everything here comes from one working session and one trial (n=1); the restate step and the tier rule in step 5
+200: have had none (n=0). Treat the numbers — the 3-step rule, the cost figures — as working values to be tested, and
+201: tell the person when a real task contradicts them.
+
+########## the same algorithm as diagrams, plus its own step-numbering table
+
+===== FILE: docs/WORKFLOW_DESIGN_DIAGRAM.md (216 lines) =====
+  1: # The workflow-design algorithm, in diagrams
+  2: 
+  3: Drawn 2026-10-01 from `docs/WORKFLOW_DESIGN_METHOD.md` and `.claude/skills/workflow-design/SKILL.md`. This file
+  4: changes nothing about the method; it is the same algorithm as a picture. Section numbers refer to the method (3.0 …
+  5: 3.7); the skill numbers its steps 1 … 8, with the restatement before them, and the mapping is at the end.
+  6: 
+  7: This is the folder's own subject. Per `CLAUDE.md`, designing workflows is what this folder is for, and the Ancient
+  8: Games code serves that purpose. Diagram 5 says exactly what the method takes from that code — vocabulary and one
+  9: number, nothing more.
+ 10: 
+ 11: ---
+ 12: 
+ 13: ## 1. The whole algorithm
+ 14: 
+ 15: ```mermaid
+ 16: flowchart TD
+ 17:   A["a challenge arrives"] --> R0["0 UNDERSTAND THE CHALLENGE, 3.0<br/>from the challenge text alone, no tools, no agents:<br/>OBJECTIVE — what is true when done; IN SCOPE; OUT OF SCOPE.<br/>then the SIX WHYS, each feeding a design field:<br/>why wanted · why now · why this shape · why would it fail ·<br/>why stop here · why believe it's done. a ceiling, never a target.<br/>end with a PROVISIONAL CATEGORY (multi-label, inferred, TASK_TYPES.md):<br/>a guess for the tiny test and a first lookup; 3.2 relabels it.<br/>a part you cannot write, or two readings,<br/>is the first UNCLEAR SPOT (decision)"]
+ 18:   R0 --> B{"method 2: is it tiny?<br/>the RESTATED problem, fix and check<br/>one sentence each, and being wrong<br/>would show itself at once"}
+ 19:   B -->|"yes"| PF["fill in prompt-file.md, or just do the task.<br/>a process that costs more than the task<br/>is a failure of the method, not a success"]
+ 20:   B -->|"no"| S1["1 READINESS, 3.1<br/>tools, each proved by running it, not assumed<br/>skills that already cover part of the work<br/>information: is it there, in what structure,<br/>verified against its source, readable by whom"]
+ 21:   S1 --> BP["the BLUEPRINT CHECK, 3.1<br/>diagram 2: the fixed target a run can end against"]
+ 22:   BP --> MISS{"anything missing<br/>or unverified?"}
+ 23:   MISS -->|"yes"| PREP["a preparation piece at the front of the flow.<br/>each task leaves the knowledge better<br/>structured than it found it"]
+ 24:   MISS -->|"no"| S2
+ 25:   PREP --> S2["2 WRITE THE ALGORITHM, 3.2<br/>the steps that would solve the task.<br/>a step is one action with a result that can be checked.<br/>then LABEL THE PIECES: group steps into pieces that each end in one<br/>deliverable, give each a TASK_TYPES.md category (replaces the guess).<br/>touches product code → never read-only; a wrong label is a STOP and replan.<br/>a label is NOT a node: same-engine pieces with no independent<br/>check between them merge into one main-agent session"]
+ 26:   S2 --> SPOT{"does every step write clearly,<br/>and can you name its check?"}
+ 27:   SPOT -->|"a step does not"| U["an UNCLEAR SPOT.<br/>a step with no check you can name counts<br/>as unclear, however tidy it looks"]
+ 28:   SPOT -->|"all of them do"| S3
+ 29:   U --> S3["3 LIST EVERY SPOT BEFORE RESOLVING ANY, 3.3<br/>kind, what it blocks, what it depends on.<br/>listing first matters: one answer often<br/>removes another spot"]
+ 30:   S3 --> K{"kind of spot?"}
+ 31:   K -->|"missing information"| RES["a research piece"]
+ 32:   K -->|"a decision"| ASK["one batch of questions to EJ,<br/>each with a provisional assumption<br/>so it can be answered in a few words"]
+ 33:   K -->|"unknown"| EXP["a bounded explore loop"]
+ 34:   RES --> JOIN["a joining step compares answers resolved separately.<br/>a contradiction is a STOP:<br/>pick one and say why, never average"]
+ 35:   ASK --> JOIN
+ 36:   EXP --> JOIN
+ 37:   JOIN --> S4{"4 SIZE, 3.4<br/>up to 3 steps, and nothing unclear<br/>except decisions that have a default?"}
+ 38:   S4 -->|"yes"| PF2["a prompt file, questions at the top.<br/>risk is judged separately from size:<br/>tiny but risky gets one independent check"]
+ 39:   S4 -->|"more than 3 steps"| SPLIT["consider a new piece. split only if each part<br/>keeps its own check AND the split changes<br/>how the work is done"]
+ 40:   S4 -->|"a spot of kind information or unknown,<br/>or a blueprint section missing or incomplete"| DESIGN["a workflow design, always"]
+ 41:   SPLIT --> S5
+ 42:   DESIGN --> DF["DEFAULT-FIRST, 3.4<br/>each piece's category row or pipeline in TASK_TYPES.md supplies<br/>pattern, engine, check, sabotage. a CHALLENGER design replaces it<br/>only on a written ≥20%-lower-projected-cost claim AT EQUAL COVERAGE<br/>(coverage is a gate, never an axis). reviewed by design_gate.py (script)<br/>+ one blind checklist pass (sonnet 5.5; different kind when it builds).<br/>every run reconciles its claim in TASK_TYPES_LEDGER.md — n=0 until it fills"]
+ 43:   DF --> S5["5 CLEAR PIECES RUN AS LOOPS, 3.5<br/>diagram 3. they run WHILE the unclear<br/>spots are still being resolved"]
+ 44:   S3 -.->|"pieces already clear and not blocked<br/>start here, without waiting"| S5
+ 45:   S5 --> S6["6 THE REST IS A GRAPH, 3.6<br/>nodes are right-sized pieces, a node may hold its own loop<br/>edges are: this piece needs that piece's result<br/>a result is verified before anything that depends on it starts<br/>branches meet at a joining node. diagram 4"]
+ 46:   S6 --> S7["7 SEQUENTIAL FIRST, 3.7<br/>read the state file, do one step, write the state back.<br/>parallel is the LAST decision: all five independence<br/>tests must hold, and it buys only clock time"]
+ 47:   S7 --> S8["8 THE RUN ENDS AT THE ACCEPTANCE CRITERIA, 3.6<br/>a node that builds names its blueprint sections and its R/N ids.<br/>its stop has three parts, all objective.<br/>anything else found goes to the product's<br/>docs/blueprint/backlog.md with the date and the run id,<br/>never into this run. this is what lets a run end"]
+ 48:   S8 --> OUT["output: workflow-design.md, state.md, readiness.md<br/>in runs/ID/, plus the questions batch and a cost estimate<br/>to EJ BEFORE anything is run"]
+ 49:   OUT --> SCHED["the design's edges decide who works next:<br/>a Workflow script, or the COO following the graph.<br/>a node's role subagents never choose the next node"]
+ 50: ```
+ 51: 
+ 52: ---
+ 53: 
+ 54: ## 2. The blueprint check (3.1)
+ 55: 
+ 56: Added 2026-09-25, after EJ found that several projects never ended: their workflows built without a fixed target, so
+ 57: every verify or review step could find more to do. **Not yet tried on a real challenge; n=0.**
+ 58: 
+ 59: ```mermaid
+ 60: flowchart TD
+ 61:   K{"what kind of task is it?<br/>checked against the challenge,<br/>not against how it was phrased"}
+ 62:   K -->|"not a product change:<br/>research, a question, an analysis,<br/>an edit to documentation only"| NONE["no sections needed, and no acceptance criteria.<br/>record why; the check ends here"]
+ 63:   K -->|"fix: restores behaviour the<br/>requirements already describe"| SEC1["needed: the requirement it restores,<br/>and the sections the fix touches.<br/>if the requirements do not describe it,<br/>it is a feature, not a fix"]
+ 64:   K -->|"feature: adds or changes behaviour"| SEC2["needed: vision, requirements,<br/>and every section the feature changes"]
+ 65:   K -->|"new product"| SEC3["all eight present,<br/>four settled first"]
+ 66:   K -.->|"the guard on this classification itself"| GUARD["GUARD: a task that changes the product's code, schema, UI or<br/>configuration is NEVER not a product change. a wrong kind switches<br/>the whole check off, so it is a STOP, not something a later step can repair"]
+ 67:   SEC1 --> ST
+ 68:   SEC2 --> ST
+ 69:   SEC3 --> ST
+ 70:   ST{"status of each needed section, judged for THIS task,<br/>not the status line in the file, which only says<br/>whether EJ accepted it"}
+ 71:   ST -->|"settled: EJ accepted it<br/>and it covers this task"| FAST["nothing. the fast path"]
+ 72:   ST -->|"draft: covers this task,<br/>not accepted"| DEC["an unclear spot of kind DECISION.<br/>a question for EJ, the draft being<br/>the provisional assumption"]
+ 73:   ST -->|"incomplete: exists, but does<br/>not cover this task"| INF1["an unclear spot of kind INFORMATION.<br/>a blueprint piece at the front drafts the missing<br/>part into the section, and EJ accepts it.<br/>the piece's check is EJ's"]
+ 74:   ST -->|"missing: there is no<br/>such section"| INF2["an unclear spot of kind INFORMATION.<br/>a blueprint piece at the front drafts the section<br/>from the sections above it, and EJ accepts it"]
+ 75:   DEC --> HOLD{"does the piece BUILD?<br/>code, schema, UI, configuration"}
+ 76:   INF1 --> HOLD
+ 77:   INF2 --> HOLD
+ 78:   HOLD -->|"yes, it builds"| WAIT["it does not start until every section it depends on<br/>is settled. blueprint questions are NOT answered<br/>by silence, unlike every other question in 3.3"]
+ 79:   HOLD -->|"no: research or design only"| MAY["may run on draft sections without waiting for the<br/>answer; its output names the drafts it assumed.<br/>but a piece that depends on an incomplete or missing<br/>section still needs the blueprint piece that drafts it,<br/>because until then there is nothing to read"]
+ 80:   WAIT --> ONE["exactly one blueprint spot per unsettled section.<br/>the blueprint lives in the product's repo, docs/blueprint/,<br/>one file per section, with a map at docs/blueprint/README.md.<br/>layout and headings: docs/workflow-templates/blueprint.md"]
+ 81:   MAY --> ONE
+ 82: ```
+ 83: 
+ 84: The eight sections, and whose decision each is:
+ 85: 
+ 86: | # | Section | Whose decision |
+ 87: |---|---|---|
+ 88: | 1 | Product vision | EJ's. An agent may only write down what EJ has said |
+ 89: | 2 | Core requirements, each with checkable acceptance criteria | EJ's. An agent may draft from the vision |
+ 90: | 3 | Domain model | drafted by an agent from 1–2, accepted by EJ |
+ 91: | 4 | Business logic | drafted by an agent from 2–3, accepted by EJ |
+ 92: | 5 | System architecture | drafted by an agent from 2–4 and 8, accepted by EJ |
+ 93: | 6 | Data model, schema design and its decisions | drafted by an agent from 3–5, accepted by EJ |
+ 94: | 7 | UI / UX design | drafted by an agent from 2–4, accepted by EJ |
+ 95: | 8 | Non-functional requirements | EJ's. An agent may draft from the vision |
+ 96: 
+ 97: Each section traces to the sections it is drawn from: a line that serves nothing above it is a finding, not a feature.
+ 98: 
+ 99: ---
+100: 
+101: ## 3. A clear piece as a loop, and its tier exit (3.5)
+102: 
+103: The tier exit was added 2026-09-22 at EJ's request; **n=0**. The loop rule itself is n=1, and the one trial is the
+104: reason for it: a planner/critic loop whose check was "try to reject it" ran three rounds, 6 then 5 then 4 problems,
+105: and never closed (`20260919-plan-critic-issues.md`).
+106: 
+107: ```mermaid
+108: flowchart TD
+109:   P["a piece that is clear and not blocked"] --> R{"loop-ready? ALL FIVE must be there, 3.5<br/>1 a check: a script is best, next a fixed checklist<br/>judged by a separate agent, last EJ's own judgment<br/>2 a limit on attempts<br/>3 specific feedback: the check's real output<br/>4 an exit for when the limit is hit<br/>5 a check the worker cannot edit, and that is<br/>known to be able to fail: the sabotage check"}
+110:   R -->|"any of the five missing"| NOT["it is not a loop yet.<br/>it stays on the unclear list"]
+111:   R -->|"all five"| T["start on the CHEAPEST tier that could<br/>plausibly do the piece. a stronger tier costs<br/>many times more per token and is bought only<br/>for what the cheap one could not finish"]
+112:   T --> ATT["the agent attempts"]
+113:   ATT --> CHK["the check runs"]
+114:   CHK -->|"pass"| CLOSE["close the loop.<br/>a loop closes only when its check is objective"]
+115:   CHK -->|"fail"| FB["specific feedback goes back:<br/>the script's real output, not just failed"]
+116:   FB --> LIM{"attempts left?"}
+117:   LIM -->|"yes"| ATT
+118:   LIM -->|"no"| EXIT{"is there a stronger tier,<br/>and is its exit unspent?"}
+119:   EXIT -->|"yes"| FRESH["a FRESH node on the stronger tier, with a short<br/>handoff note: the piece, its check, the last feedback,<br/>and its own limit. never a tier switch inside the<br/>running session"]
+120:   FRESH --> ATT2["attempts on the stronger tier"]
+121:   ATT2 --> CHK2["the same check runs"]
+122:   CHK2 -->|"pass"| CLOSE
+123:   CHK2 -->|"fail"| LIM2{"its limit hit, or is there<br/>no stronger tier?"}
+124:   LIM2 -->|"no"| ATT2
+125:   LIM2 -->|"yes"| UNC["the piece goes back to the unclear list, or to EJ.<br/>it was not as clear as it looked"]
+126:   EXIT -->|"no"| UNC
+127:   WHY["why a fresh node and not a switch: a switch voids the prompt cache,<br/>so the stronger tier re-reads the whole context at its fresh input rate,<br/>and a session in which the cheap tier flailed is mostly wrong turns<br/>that would anchor the stronger tier towards the same dead ends"]
+128:   FRESH -.-> WHY
+129: ```
+130: 
+131: ---
+132: 
+133: ## 4. A node, an edge, and the three-part stop (3.6)
+134: 
+135: ```mermaid
+136: flowchart LR
+137:   subgraph NODE["every node carries five things, so it can be run, checked and resumed without asking anyone"]
+138:     direction TB
+139:     T["TOOLS: what the agent uses, each proved working.<br/>plus role, engine, exact model and effort, never a default"]
+140:     C["CONTEXT: exactly what the agent is given, and what is withheld.<br/>a verifier never sees the worker's reasoning"]
+141:     K["CONTRACT: the intent, the observable stop condition, what comes<br/>back and in what shape, what may and must not change"]
+142:     E["EVIDENCE: the proof that comes back with the result, and the file<br/>it is saved in. a verifier reads the evidence, never the reasoning"]
+143:     S["STATE: what the node reads from the state file before starting,<br/>and what it writes back"]
+144:   end
+145:   NODE -->|"an edge is more than needs:<br/>the earlier node's RETURNS and EVIDENCE<br/>become the later node's CONTEXT"| V{"the result is verified<br/>before anything that<br/>depends on it starts"}
+146:   V -->|"verified"| NEXT["the next node the graph allows"]
+147:   V -->|"failed, attempts left"| NODE
+148:   V -->|"limit hit and the tier exit spent"| REPLAN["the piece goes back to the unclear list,<br/>and ONLY that part of the graph is planned again"]
+149:   STOP["a node that BUILDS also names the blueprint sections it depends on<br/>and the acceptance criteria it covers, R1.1 and N1.1, ids in exactly<br/>that form. every criterion in scope is covered by at least one node<br/>that builds. its stop has three parts, all objective:<br/>1 the acceptance criteria it covers pass<br/>2 what passed before still passes: everything recorded as passing in<br/>the BASELINE, the product's test command and its output, written to<br/>the state file before the first node that builds starts<br/>3 its contract's must-not-change holds<br/>a failure of any of the three is a FAILED ATTEMPT, not a backlog item.<br/>if its check is judged, it is a fixed checklist of those three,<br/>never an open-ended review"]
+150:   NODE -.-> STOP
+151: ```
+152: 
+153: ---
+154: 
+155: ## 5. What these diagrams take from the framework, and what they do not
+156: 
+157: The method borrows **names** from `ancient_games/`, and one **number**. There is no code path between them: nothing
+158: in `.claude/workflows/` imports or calls the framework, and the skill never names its five algorithms.
+159: 
+160: | Node carries | Borrowed from Ancient Games | Where |
+161: |---|---|---|
+162: | Context | `KNOWN_FACTS`, `READ_SCOPE.deny` | `ancient_games/schema.py` |
+163: | Contract | `INTENT`, `STOP`, `OUTPUT`, `SCOPE` | `ancient_games/schema.py` |
+164: | Evidence | `CLAIMS`, `VERIFY_OUTPUT`, `NOT_ESTABLISHED` | the return contract, `SPEC.md` §6 |
+165: | State | the journal, read before every step | `ancient_games/journal.py` |
+166: | Tools, and the graph itself | nothing | — |
+167: 
+168: The number is **3**, and it is anchored in code, not chosen: Gate splits capability lists over three
+169: (`ancient_games/stages.py:109`) and the plan-wide cap of 3 dispatched corroborating sources (`ancient_games/registry.py:24`, used at `stages.py:309`; it caps dispatches per plan, not agents running at once — corrected 2026-10-03).
+170: 
+171: The framework's five algorithms (C Gate, D Guard, B Corroborate, E Filter, A Prove — `SPEC.md` §4) are **run-time**
+172: decision procedures inside one governed task. This method is a **design-time** procedure that runs before any agent
+173: is dispatched and produces a document. The framework does not choose graph versus loop versus swarm, sequential
+174: versus parallel, or a communication mechanism — `20260919-state.md` establishes that, with the code references. This
+175: method is the answer at the level of documents, not of code. Note the overloaded word: in `SPEC.md` §4 "the five
+176: algorithms" means C/D/B/E/A; in step 2 above, "write the algorithm" means write the steps that would solve the task.
+177: 
+178: ---
+179: 
+180: ## 6. How much of this has been run
+181: 
+182: | Part | Evidence | n |
+183: |---|---|---|
+184: | Steps 1–7 as a whole | `runs/20260920-readme-test-count/` (intake trial 1, design only, ~309k tokens for a one-line README fix — the size rule was wrong and was changed because of it), `runs/20260921-ablation7/` (designed **and executed** end to end: 6 pieces, blind verifier, join, pre-registration, and a final "what is missing" pass that retracted the run's own headline), `runs/20260930-blueprint-review/` (designed, nothing run, blocked on Q1) | 3 designs, 1 executed |
+185: | The loop rule and its objective check | `20260919-plan-critic-issues.md`: the planner/critic loop that never closed | 1 |
+186: | The restatement step (3.0) | added 2026-10-01 at EJ's request; not encoded in intake.js yet (`TODO.md`) | **0** |
+187: | Task types, the 20% rule, the design gate | added 2026-10-01 at EJ's request; `design_gate.py` + 16-prompt corpus green offline | **0** |
+188: | The tier exit (3.5) | added 2026-09-22, after ablation 7 ran | **0** |
+189: | The blueprint check (3.1, diagram 2) | added 2026-09-25, after ablation 7 ran | **0** |
+190: | Executor kinds, models, the COO contract | `docs/EXECUTOR_KINDS.md`, 2026-09-29/30 | **0** |
+191: 
+192: The method's own header still says it "has been tried on nothing yet … (n=1)". That was true when it was written on
+193: 2026-09-20; `runs/20260921-ablation7/` postdates it and was executed. The n=0 rows above are unaffected — all three
+194: were added after that run.
+195: 
+196: Runnable form of steps 1–4: `.claude/workflows/intake.js`, args `{challenge, runId}`, one agent per step, fixed
+197: yes/no checks in script code, writes only under `runs/<runId>/`. Offline test: `node tests/workflows/intake_harness.mjs`.
+198: It is a multi-agent run, so it is used only when EJ asks for it.
+199: 
+200: ---
+201: 
+202: ## Step numbering: method versus skill
+203: 
+204: | Diagram | `docs/WORKFLOW_DESIGN_METHOD.md` | `.claude/skills/workflow-design/SKILL.md` |
+205: |---|---|---|
+206: | 1, top | 3.0 understand the challenge (six whys, provisional category), §2's tiny test reads it | "First: understand the challenge", then "Then: is it tiny?" |
+207: | 1 | 3.1 readiness, 3.2 algorithm and piece labels, 3.3 spots, 3.4 size, 3.5 loops, 3.6 graph, 3.7 sequential first | steps 1–7, same order |
+208: | 1, at DESIGN | 3.4 "Default-first design" and the 20% ledger | step 4's default-first sentences; `references/task-types.md` |
+209: | 1, bottom | 3.6, the node that builds, the baseline, the backlog | step 8, "the run ends at the acceptance criteria" |
+210: | 2 | 3.1, "Blueprint check — part of readiness" | inside step 1 |
+211: | 3 | 3.5 | step 5 |
+212: | 4 | 3.6, the five-things table | "Every node carries five things" |
+213: | — | **3.8** "Running a node: executors are tools, timers, pass-back, no polling" (added 2026-10-02) | **no step.** Node running is execution detail, not a design decision, so the skill keeps it as reference: step 1 sends the reader to `references/executor-kinds.md` for the canary, read-only vs write, and the fallback rule. This row exists because the table above once omitted 3.8 silently, which reads as if the method had 8 sections and the skill 8 steps, one each |
+214: 
+215: The diagrams were written from the documents above and checked against them; they were not render-verified (no
+216: mermaid renderer on this machine). If a diagram disagrees with the method, the method wins and the diagram is wrong.
+
