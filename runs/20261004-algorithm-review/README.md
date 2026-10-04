@@ -139,3 +139,103 @@ Nothing was fixed, including my own two errors. The algorithm review has produce
 files and at least three renderings; which of them to change, and in what order, is a decision rather than a
 cleanup, and several (the ordering of steps 5-7, the ownership of the baseline) change the algorithm rather than
 correct a mistake in it.
+
+---
+
+# Pass 2 — the FULL algorithm, 2026-10-04
+
+Pass 1 reviewed 899 lines: the method, the skill and the diagram. **That is under a third of the algorithm.** EJ
+pointed at the gap, and it is real — the method *delegates*:
+
+- per-category pattern, engine, check and sabotage → `TASK_TYPES.md`
+- who may run a node, the canary, the fallback, the routing → `EXECUTOR_KINDS.md`
+- the shape of every artefact a design must produce → `docs/workflow-templates/*.md`
+- its own enforceable rules → `design_gate.py`, which is the thing that actually refuses a design
+- the algorithm as a script → `.claude/workflows/intake.js`
+
+A reviewer cannot check "the step says X" against a table it cannot see. Pass 2 inlines **3,202 lines across 14
+artefacts** — the 899 plus 2,405 — and adds three questions that only make sense with them present: **G** enforcement
+(does the gate enforce what the steps require?), **H** delegation (do the tables supply what the steps assume?) and
+**I** templates (does each template carry the fields a step demands?).
+
+| engine | model | time | findings |
+|---|---|---|---|
+| agy | `gemini-3.8-flash-high` | 107 s | 6 |
+| claude | `claude-opus-5-5` | 101 s | 8 |
+| codex | `gpt-6.1-sol` | 195 s | 6 |
+| opencode | `MiniMax-M3.1-Flash-Preview` | 280 s | 5 |
+
+**25 findings, 24 located, 1 discarded** (a quote too short to check). Every engine took part.
+
+Two mechanics worth recording, because both were blocking:
+
+- **259 KB does not fit in argv.** Linux caps a single argument at 128 KB (`MAX_ARG_STRLEN`), so an argv call fails
+  with E2BIG before the model sees anything. Every engine had to be fed on **stdin**, and each needed its own way:
+  `claude -p` and `opencode run` read stdin; `codex exec` reads stdin given a trusted `-C`; **agy has no stdin in
+  text mode** — `--input-format stream-json` takes one NDJSON message per line and the message needs an `"event"`
+  field, which took four probes to find: `{"event":"user","message":{...}}`. agy then read all 3,202 lines and
+  answered with `"status":"SUCCESS"`.
+- Both passes are kept: pass 1's raw output is in `*.out`, pass 2's in `*-full.out` (`claude`/`opencode` wrote to the
+  same names, so pass 2's were renamed and pass 1's restored from git).
+
+## What the wider scope found that pass 1 could not
+
+**The runnable form and the gate do not connect — 3/4** (claude, codex, agy).
+
+```
+claude  intake.js:178  The runnable form produces "pieces" with no category, engine, model, effort or
+                       design_source. design_gate.py reads "nodes" with category and engine. Nothing converts
+                       one into the other.
+```
+
+`intake.js` says "pieces" 25 times; `design_gate.py` validates `nodes`. So the algorithm's script and the
+algorithm's gate speak different schemas, and nothing joins them. **Verified.**
+
+**The 3.8 mapping row is wrong in both directions — 4/4.** All four engines cite
+`WORKFLOW_DESIGN_DIAGRAM.md:213`, the row I added earlier today. opencode: *"wrong in both directions — the skill
+does carry 3.8's rules inside steps 1 and 7 (timers, no polling, the fixed result header, executor failure)."* My
+row said 3.8 has no step; claude and opencode both point out it also appears in **step 1**, not only step 7.
+**Verified.**
+
+**`intake.js` dispatches readiness before method 3.0** (codex, high) — the runnable form never performs the
+text-only "understand the challenge" step nor the restatement-based tiny test. **Verified by reading `intake.js:623`.**
+
+**`classification` is still routed to `agy` in one place — 2/4** (codex, claude). `EXECUTOR_KINDS.md:63` (the role
+map) reads *"Classifier | `agy` | `gemini-3.1-pro-high` (EJ's earlier assignment of classification to 3.1 Pro kept;
+see below)"* while line 156 of the same file says `deepseek-flash` per EJ's 2026-10-04 answer. **Verified** — I
+settled that row and left the role map untouched.
+
+**The skill's checklist says "all three" and lists four** (opencode, high): `SKILL.md:165` *"Check it shows all
+three"*, then four bullets — the fourth being the engine split I added. Same defect pass 1 found from the method's
+side (`§5 Three qualities`), now caught inside the skill. **Verified: four `- **` items.**
+
+**"Every node carries five things" is checked as five *names*** — 2/4 (claude, codex), both citing
+`design_gate.py:146`. G3 accepts the five field names without their contents, so a node with empty tools, context,
+contract, evidence and state passes. **Verified by reading G3.**
+
+**My fallback table can break rule 5** (codex, high): a Codex worker's default fallback is
+`claude/claude-sonnet-5-5`, so if its appointed verifier is also Claude, different-kind verification is silently
+lost after a fallback — and no rule restores it. **Verified by construction**: `DEFAULT_FALLBACKS["codex"]` is
+Claude, and rule 5 holds the verifier to a different kind from the worker.
+
+**The baseline, again and deeper** (opencode, high): `intake.js:507`'s only baseline is a `git status` snapshot,
+not the product's test command *and its output* that the three-part stop's second leg requires. Pass 1 found the
+baseline has no owner; pass 2 finds the runnable form substituted a different thing.
+
+**`others` still has no engine** (agy, high), yet 3.2 sends every unmatched piece there and 3.6 requires every node
+to name its engine.
+
+## The result on the two questions that came back empty
+
+**G (enforcement), H (delegation) and I (templates) produced no findings at all** — from any engine, on 365 lines of
+gate, 323 of category table and 330 of templates. That is a result, not a gap: on this evidence the gate does not
+enforce rules the steps never state, the tables do not omit a field a step assumes, and no template is missing a
+field a step demands. Pass 1 had no way to ask.
+
+## Files added by pass 2
+
+- `build_brief_full.py` — assembles the 14-artefact inlined brief; reusable for any whole-algorithm review
+- `run_full.sh` — the four calls, each engine's stdin mechanism including agy's stream-json workaround
+- `verify.py` — now takes a filename suffix (`-full`) and letters A-I
+- `agy-full.out`, `claude-full.out`, `codex-full.md`, `opencode-full.out` — raw, unedited
+- `.gitignore` — the briefs and logs are regenerable; the answers are tracked

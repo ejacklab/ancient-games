@@ -25,8 +25,11 @@ FINDING = re.compile(
     r"(?P<sev>high|med|low)\s*\|\s*(?P<what>.+?)\s*\|\s*QUOTE:\s*(?P<quote>.+)", re.I)
 
 
+SUFFIX = sys.argv[1] if len(sys.argv) > 1 else ""
+
+
 def text_of(engine: str) -> str:
-    for name in (f"{engine}.md", f"{engine}.out"):
+    for name in (f"{engine}{SUFFIX}.md", f"{engine}{SUFFIX}.out"):
         p = HERE / name
         if p.exists() and p.stat().st_size:
             return p.read_text(errors="replace")
@@ -77,7 +80,9 @@ def main() -> int:
     for f in findings:
         by_letter[f["letter"]].append(f)
     names = {"A": "composition", "B": "duplication/gaps", "C": "unreachable work",
-             "D": "silences", "E": "self-consistency", "F": "order"}
+             "D": "silences", "E": "self-consistency", "F": "order",
+             "G": "enforcement (gate vs steps)", "H": "delegation (tables vs steps)",
+             "I": "templates vs steps"}
     for letter in sorted(by_letter):
         hits = by_letter[letter]
         engs = {h["engine"] for h in hits}
