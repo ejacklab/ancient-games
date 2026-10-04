@@ -1,0 +1,1055 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a10740-00c6-7782-b33a-fc9edbe68c12
+--------
+user
+You are reviewing ONE step of a workflow-design method. This is a READ-ONLY review: do not create, edit or delete
+any file, and do not run anything that writes.
+
+The step under review is **step 1, "Readiness"**. It consists of exactly these five artifacts, and nothing else:
+
+1. `.claude/skills/workflow-design/SKILL.md`, lines 43-75 (the skill's step 1)
+2. `docs/WORKFLOW_DESIGN_METHOD.md`, lines 72-167 (method section 3.1)
+3. `.claude/skills/workflow-design/scripts/readiness.py`
+4. `docs/WORKFLOW_DESIGN_DIAGRAM.md`, lines 54-99 (the blueprint check)
+5. `docs/workflow-templates/readiness.md`
+
+Read all five before answering.
+
+Answer these questions:
+
+A. Does step 1 say everything a person needs to actually *do* readiness? Name anything missing.
+B. Do the five artifacts contradict each other? Name every contradiction, with both sides quoted.
+C. Is every instruction executable or checkable as written? Name any instruction that cannot be carried out or
+   cannot be verified.
+D. Two sentences were added to step 1 recently. Are they correct, and consistent with the rest?
+   - "Prove the binary that will make the call, and record its version — not the version on `PATH`."
+   - "Call the CLI first and the provider tool second."
+E. Anything else wrong, stale or misleading in step 1.
+
+Output EXACTLY this format and nothing else — no preamble, no summary, no markdown headings:
+
+FINDING 1: <file>:<line> | <high|med|low> | <one sentence saying what is wrong> | QUOTE: <the exact text of that line, copied verbatim>
+FINDING 2: ...
+VERDICT: <one sentence>
+
+Rules, enforced mechanically after you answer:
+
+* Every finding MUST carry a file path, a line number, and a QUOTE copied verbatim from that line. A finding missing
+  any of the three is discarded unread, however good it is.
+* Use only the five artifacts listed above as evidence. A finding about any other file is discarded.
+* Three sharp, checkable findings beat ten vague ones. Do not report formatting or wording preferences.
+* If step 1 is sound on a question, say nothing about it — an empty findings list is an acceptable answer.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the repository instructions and all five artifacts, then check readiness for gaps, contradictions, and instructions that can’t be verified.
+
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/coding-discipline/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+---
+name: coding-discipline
+description: Baseline engineering discipline for any hands-on task in a repository. Use when writing, editing, refactoring, debugging or reviewing code, when running builds, tests or linters, when adding a dependency, or when preparing a git commit.
+---
+
+# Coding discipline
+
+Baseline rules for working in a repository. They apply regardless of language,
+framework or project.
+
+## Before changing anything
+
+- Read the actual file first. Never write or edit from an assumption about its contents.
+- Read a neighbouring example of the same kind of thing — a sibling module, an existing
+  test, an existing endpoint — and match it. The repository's own conventions outrank
+  your preferences on naming, formatting, typing, file layout and error style.
+- Confirm a dependency is already in use in the project, via its manifest, existing
+  imports or neighbouring code, before reaching for it. Do not add a new dependency to
+  solve something the existing ones already cover.
+
+## Keep the change minimal
+
+- Do the task that was asked. Not the adjacent task, not the cleanup you noticed on the
+  way past, not the refactor that would leave this nicer than you found it.
+- No speculative abstraction. Three similar lines beat a helper with one caller.
+- No error handling, fallbacks or validation for conditions that cannot occur. Validate
+  at boundaries only: user input, external APIs, data arriving from outside the process.
+- Comments explain *why*, and only where the code cannot carry it. No comment that
+  narrates what the next line does, and never a comment addressed to the reader about
+  the changes you are making.
+- Existing code you did not expect to find is someone's in-progress work. Leave it alone
+  unless the task requires otherwise, and stop to ask if it conflicts with what you were
+  asked to do.
+
+## Verify instead of assuming
+
+- Find the project's real check commands from its README, Makefile or package manifest.
+  Never assume `npm test`, `pytest` or `make build` is correct for this repo.
+- Run them after the change. A change you did not run is a change you did not finish.
+- Report what actually happened. If a check failed, show the failure. If you could not
+  run a check, say so and say why. Never describe unverified work as working, and never
+  skip, suppress or weaken a failing check to produce a clean result.
+
+## Git
+
+- Before committing, run `git status`, `git diff HEAD` and `git log -n 3` — to separate
+  your change from what was already in the working tree, and to match the repository's
+  commit message style.
+- Stage only the paths that belong to this change. No `git add -A` while unrelated
+  modifications are present.
+- Draft the commit message yourself, weighted toward why rather than what.
+- Never push, force-push, amend a published commit, delete a branch, or rewrite history
+  unless explicitly asked to in this conversation. Prior approval does not carry over to
+  a later commit.
+- Do not revert work that is not yours. Revert your own change only if it caused a
+  failure or you are asked to.
+- For history questions, `git log` and `git blame` are authoritative. Run the command
+  rather than reasoning from memory of the codebase.
+
+## When blocked or unsure
+
+- Ask one focused question when only the user can decide, and keep it to a single round.
+- Otherwise choose the safe default, do the work, and state which default you chose so
+  it can be corrected.
+- Investigate before working around an obstacle: read the error, check your assumption,
+  address the root cause. Do not bypass a guard, a lock or a failing check just to make
+  the obstacle go away.
+- Clean up scratch files you created. Leave the working tree containing only the change
+  you were asked for.
+
+exec
+/bin/bash -lc 'cat CLAUDE.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The main product is `.claude/skills/workflow-design/`: a skill that designs workflows, symlinked to
+`~/.claude/skills/workflow-design` so it works in every project. The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the Ancient Games code serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the Ancient Games code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the three engines (Claude subagent, Codex,
+  Antigravity `agy`), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the framework: a referee for agent work. Fixed rules, no LLM calls, a journal of every decision.
+  Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the framework's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/workflow-design/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+---
+name: workflow-design
+description: "Designing a workflow for an incoming task or challenge — or deciding that none is needed — before any agents are dispatched: understand the challenge (objective, scope, six whys, category and its default pattern), check readiness (including the product blueprint: vision, requirements with acceptance criteria, domain, architecture, data, UI, non-functional), write the algorithm first, list every unclear spot, size the pieces, run clear pieces as loops with objective checks, then wire the rest as a graph whose nodes each carry tools, context, a contract, evidence and state; sequential and state-file driven first, parallel decided last. Use whenever someone asks to design, plan, create, improve or review a workflow, an agent pipeline, an orchestration or a multi-agent / subagent setup; asks how many agents a task needs, whether to parallelise or loop, or how agents should pass information; brings a task too big for one prompt; or when you are about to write a Workflow script or dispatch several subagents without a written design. NOT for: a task of one to three obvious steps (just do it), the Workflow script API (use workflow-authoring), or running an already designed workflow."
+---
+
+# Workflow design
+
+The job: turn a challenge into **a prompt file** (small task) or **a workflow design** (bigger task). You are
+designing, not executing. The full method with its reasons is `references/method.md`; the five templates are in
+`assets/templates/`. Read the method once before your first design in a session.
+
+Why this exists: agents left alone pick a pattern first ("let's fan out five subagents") and discover later that
+they lacked information, that a loop had no way to close, or that two parallel workers collided. This method makes
+the cheap discoveries first.
+
+## First: understand the challenge (method 3.0)
+
+From the challenge text alone — no tools, no agents. State the **objective** (what is true when the task is
+done), what is **in scope**, what is **out of scope**. Then the **six whys**, each feeding one design field:
+why does the person want this (objective) · why now (priority) · why this shape of solution (category + default
+pattern) · why would it fail (risk tier → review depth) · why does it stop where it stops (scope) · why would
+we believe it is done (check kind). Stop early when an answer no longer changes the design — six is a ceiling,
+never a target. End with a **provisional category** (multi-label, marked inferred) from `references/task-types.md`: a guess
+that feeds the tiny test and a first default lookup; step 2 relabels it from the algorithm. A part that cannot be written, or a challenge that allows two readings, is the first unclear
+spot (kind: decision) — a question for the person with the restatement as the provisional assumption. The
+restatement goes at the top of the output, beside the verbatim challenge in the state file. One paragraph in
+the same session, never an agent, never a tool call. (Added 2026-10-01 at EJ's request; six whys and
+categorization the same day; n=0.)
+
+## Then: is it tiny?
+
+The test reads the restatement, not the raw text. If the restated problem, the fix and the check are one sentence
+each, and a mistake would show itself at once, do not design a workflow. Do the task, or fill in
+`assets/templates/prompt-file.md`. A process that costs more than the task is a failure of the method, not a
+success. (Trial 1, n=1: a one-line README fix went through the full process and cost about 309k tokens, partly
+because checks and handover were counted as steps. Count only the steps the challenge itself needs.)
+
+## The steps
+
+Work through these in order. Each step's output is a file, because files are the one memory every tool and every
+agent can read; a subagent starts with nothing but its prompt.
+
+1. **Readiness.** List the tools (run a command to prove each works — do not assume), the skills that already cover
+   part of the work, and the information: is it there, what structure is it in, is it verified against its source,
+   and which agents and tools can read it. The bundled `scripts/readiness.py` runs the standard inventory in one
+   pass — binaries, model caches, skill/workflow/memory locations, MCP config, machine — each line marked
+   verified/reported/unknown; what it cannot prove stays unknown and needs the canary. Anything missing becomes a
+   preparation piece at the front of the flow.
+   Template: `readiness.md`. A node run by Codex or `agy` (not a Claude subagent): read `references/executor-kinds.md`
+   first — the canary that proves the tool, read-only versus write, the fallback rule (n=0).
+   **Prove the binary that will make the call, and record its version** — not the version on `PATH`. A provider can
+   bundle an older copy of an engine and the two do not accept the same model names; the error names the model or
+   the account, never the version. `references/executor-kinds.md`, "The bundled-runtime trap".
+   **Call the CLI first and the provider tool second** (EJ, 2026-10-04): the binary on `PATH` is the one that
+   updates, while a provider pins an older bundled copy and will not use `PATH` even if asked. Reach for the
+   provider when the CLI is unavailable, or when a role must be read-only or blind and needs the harness-enforced
+   `toolFilter` — a CLI call has no such mask.
+   Every node names its role, engine, exact model and effort (never a default; the Codex plugin's example models are
+   stale). The COO is the main Claude session: she distributes by the graph, monitors the state file, reviews
+   verdicts, and may do a small node herself under four conditions and a tool-call cap — same file.
+   **Blueprint check** (part of readiness). If the task changes a product, check the product's blueprint in
+   `docs/blueprint/` (layout: `blueprint.md`): vision, core requirements with acceptance criteria, domain model,
+   business logic, architecture, data model and schema decisions, UI/UX, non-functional requirements. The kind of task
+   decides which sections are needed (a fix: the requirement it restores and what it touches; a feature: vision,
+   requirements and what it changes; a new product: all eight present, four settled first (vision, first slice's requirements,
+   hard-to-reverse architecture, non-functional targets), the rest per slice; not a product change: none, and no acceptance
+   criteria). A task that changes code, schema, UI or configuration is never "not a product change"; a wrong kind
+   switches the check off, so it is a stop. Each needed section is
+   settled (EJ accepted it and it covers the task), draft (covers the task, not accepted), incomplete (does not cover
+   the task, e.g. no requirement for the feature yet) or missing. Draft → a question for the person; incomplete or
+   missing → a blueprint piece at the front that drafts the missing part for the person to accept. A piece that
+   builds does not start until every section it depends on is settled — blueprint questions are not answered by
+   silence. Research and design pieces may run on drafts and name the drafts they assumed; any piece that depends on
+   an incomplete or missing section needs the piece that drafts it. Why: without a fixed
+   target every review finds more to do, and the run never ends.
+2. **Write the algorithm.** Try to write the steps that would solve the task. A step is one action with a result
+   that can be checked, and each step names its check. The attempt is the evaluation: steps that write clearly mean
+   a defined problem; a step you cannot write clearly, or whose check you cannot name, is an **unclear spot**.
+   Then **label the pieces**: group the steps into pieces that each end in one deliverable and give each a category
+   from `references/task-types.md` (file IO, shell and workflow execution stay inside their piece; no matching row =
+   `others`, full method). The piece labels replace the provisional category and the difference is a Log line.
+   A piece that changes product code, schema, UI or configuration is never read-only: a contradicting label is a
+   stop and replan. One state-file row per piece: steps · deliverable · category · default pattern, engine, check · node it merges
+   into. **A label is not a node**: pieces with the same engine and no independent check between them merge into
+   one main-agent session, the default; a subagent hand-off must buy an objective check, a different kind, or
+   context room (EJ's experience: splitting one prompt over three subagents is slower — waiting and lost context).
+3. **List every unclear spot before resolving any.** For each: its kind (missing *information* → a research piece ·
+   a *decision* → a question for the person · *unknown* → a bounded explore loop), which steps it blocks, and whether
+   it depends on another spot. Listing first matters because one answer often removes another spot. Questions go to
+   the person as one batch, each with a provisional assumption so it can be answered in a few words. A draft
+   blueprint section is a decision spot; an incomplete or missing one is an information spot, so the task is a
+   workflow design.
+4. **Size.** Up to 3 steps with nothing unclear except decisions that have a default → a prompt file, questions at
+   the top. More than 3 steps → consider a new piece, but split only if each part keeps its own check and the split
+   changes how the work is done. A workflow design starts **default-first**: each piece's category row (labelled in step 2) or combination
+   pipeline in `references/task-types.md` supplies the default pattern, engine, check and sabotage; a challenger
+   design replaces a default only on a written ≥20%-lower-projected-cost claim at equal coverage, reviewed by
+   `scripts/design_gate.py` plus one blind fixed-checklist pass (a different kind when it builds), and reconciled
+   in the ledger (n=0). Too-small pieces cost more than they give: fixed cost per agent, context lost at
+   every split, more joins. Judge risk separately from size (noticed late? cannot be undone? touches many things?);
+   tiny but risky gets one independent check.
+5. **Clear pieces run as loops** while the unclear spots are being resolved. A piece is loop-ready only with: a check
+   (a script is best; next a fixed checklist judged by a separate agent; last the person's judgment), an attempt
+   limit, specific feedback (the check's real output), an exit for when the limit is hit, and a check the worker
+   cannot edit and that is known to be able to fail. A loop closes only on an objective check — an open-ended
+   "find problems" reviewer always finds one more, so that loop never ends. Attempts start on the cheapest tier that
+   could plausibly do the piece. When its limit is hit, the exit is a fresh node on a stronger tier with a short
+   handoff note (the piece, its check, the last feedback) and its own limit, never a tier switch inside the running
+   session: a switch voids the prompt cache, so the stronger tier re-reads the whole context at its fresh input rate,
+   and the cheap tier's wrong turns would anchor it towards the same dead ends. When that limit is hit too, or there
+   is no stronger tier, the piece goes back to the unclear list or to the person. (Added 2026-09-22 at EJ's request;
+   n=0.)
+6. **The rest is a graph.** Nodes are right-sized pieces, edges are "needs the result of", a result is verified before
+   anything that depends on it starts, and branches meet at a joining step where contradictions are a stop, never
+   averaged. The design's edges schedule (a script, or the COO following the graph); role agents do not decide who works next. A node that hits its limit with its tier
+   exit spent goes back to the unclear list and only that part is planned again.
+7. **Sequential first; parallel is the last decision.** Design everything as sequential, state-file-driven steps.
+   Only when the design is complete, look for really independent pieces — all five must hold: neither needs the
+   other's result; no shared files or resources; doing one would not change how the other is done; each has its own
+   check; the time saved is worth the extra join. Parallel buys only clock time and costs predictability and
+   debuggability. Independent verifiers need to be blind to each other, not simultaneous. When running, executors are
+   tools (method 3.8): one small bounded task per call, an inner and an outer timer named in the node, no polling
+   (every status check is a turn), one atomically written result file with a fixed header that a script validates,
+   and any missing, empty, malformed, wrong-model or timed-out return is a failure of the executor, not of the work.
+   The stronger model's work is the brief: every one carries a template, a worked example and the standard the result
+   is judged by (`references/method.md` 3.8; `docs/workflow-templates/node-brief.md`). Research goes to files
+   (`docs/research/<date>-<topic>/`) and only a digest of about 15 lines returns to the COO. To run a designed
+   workflow, `scripts/dispatch.py run PLAN` enforces caps, timers, the brief's three parts, the pass-back and model
+   checks and the retry rules in code (`--dry-run` first; `docs/DISPATCHER_DESIGN.md`). Two reading roles: the
+   *researcher* reads docs, papers and the web; the *explorer* reads existing code read-only, cites file:line with a
+   quote, and marks each behaviour claim `read` or `ran` — only `ran` claims feed a build (method 3.8 item 10).
+8. **The run ends at the acceptance criteria.** A piece that builds names the blueprint sections it depends on and the
+   acceptance criteria it covers (ids like R1.1 or N1.1); every criterion in scope is covered by a piece that builds.
+   Its stop: those criteria pass, everything the baseline recorded as passing still passes (the test command and its
+   output, written to the state file before the first piece that builds), and its "must not change" holds; a failure
+   of any of these is a failed attempt. A judged check is a fixed checklist of those three, never an open-ended
+   review. Criteria a blueprint piece proposes are fixed when the person accepts it; if they differ from what the
+   design expected, the pieces covering them are planned again. Anything else found — a new wish, an improvement, a
+   problem neither the criteria nor the baseline covers — by a worker, a verifier or the final "what is missing" pass
+   goes to `docs/blueprint/backlog.md` with the date and run id, never into the current run.
+   A product also keeps three append-only memory files beside it: `decisions.md` (why, what was rejected),
+   `changelog.md` (one entry per run that builds; release notes come from it) and `lessons.md` (dated traps with a
+   recheck); each answers one listed query and is found by id or path, never read whole (method §4).
+
+## Every node carries five things
+
+| | What to write |
+|---|---|
+| **Tools** | what the agent uses, each proved working |
+| **Context** | exactly what it is given, and what is withheld (a verifier never sees the worker's reasoning) |
+| **Contract** | the intent, the observable stop condition (for a piece that builds: its acceptance criteria pass, the baseline still passes, "must not change" holds), what it returns and in what shape, what it may and must not change |
+| **Evidence** | the proof that comes back with the result (a command and its output, or file:line) and the file it is saved in |
+| **State** | what it reads from the state file before starting and what it writes back |
+
+An edge is then concrete: the earlier node's returns and evidence become the later node's context.
+
+## State file
+
+The state lives in a file (`assets/templates/state.md`): each agent reads it, does one step, writes the new state
+back. One writer at a time. It holds progress and results, never reasoning — notes go in the worker's own output
+file. This is what lets another agent, another tool, or tomorrow's session continue the run.
+
+## Before calling a design finished
+
+Check it shows all three, and say so in the design:
+
+- **Predictability** — the design's edges schedule (script or COO); limits on attempts, pieces and concurrency; structured outputs; success
+  criteria written before the run (for a product change: the acceptance criteria in scope); an agent count and a
+  cost estimate with its basis.
+- **Debuggability** — labelled agents; every step's input and output in a file; pieces small enough to rerun alone;
+  a resume point after a failure.
+- **Quality control** — a check per piece; blind verifiers; proof each script check can fail; a contradiction check
+  at joins; a final "what is missing" pass measured against the three-part stop of step 8 (a failure there is a
+  failed attempt; anything else goes to the backlog); skipped or unrun checks reported as such.
+- **Engine split** — for build work, run `scripts/workload.py --plan <plan> --write` before the run starts. It gives **opencode priority** (EJ, 2026-10-04) by **module**, crossing each module's code and tests so the tests are written by the engine that did not write the code. The default is the *smallest* lead that counts as priority — which at five modules is exactly 60/40, costing one module its independent tests; demanding 60% on a larger plan costs far more, so `--share` is there when the bigger lead is wanted. Never split dev and tests independently: that gives half the modules their code *and* their tests from one engine. `check()` refuses a plan where opencode does not lead, that self-tests more than its lead costs, or whose verifier shares its node's engine. `docs/EXECUTOR_KINDS.md` has the rule and the arithmetic.
+
+## Output
+
+- Small task → `assets/templates/prompt-file.md`, filled in.
+- Bigger task → `assets/templates/workflow-design.md`, filled in, with `state.md` and `readiness.md` beside it.
+- A blueprint piece writes into the product's `docs/blueprint/`, following `assets/templates/blueprint.md`.
+- Put a run's files in one folder (in the Ancient Games repo: `runs/<YYYYMMDD-slug>/`).
+- Give the person the questions batch and the cost estimate before anything is run. Designing is cheap; running
+  agents is not, so a run needs their go-ahead.
+
+## Running the method as a script
+
+`~/dev/ancient-games/.claude/workflows/intake.js` walks a challenge through steps 1–4 with one agent per step and
+fixed yes/no checks in script code (args `{challenge, runId}`). It is a multi-agent run — about 300k tokens in its
+one trial — so use it only when the person asks for it. Its offline test: `node tests/workflows/intake_harness.mjs`.
+
+## Related skills
+
+`challenge-mediation` types a challenge and rates the cost of being wrong — useful input to the risk judgment in
+step 4. `task-decomposition-strategies` helps with splitting; where it leans parallel, this method's sequential-first
+rule wins. `agent-loop` enforces a test loop for step 5. `chronos-ledger` tracks state across sessions.
+`workflow-authoring` is the script API for turning a finished design into a Workflow script.
+
+Everything here comes from one working session and one trial (n=1); the restate step and the tier rule in step 5
+have had none (n=0). Treat the numbers — the 3-step rule, the cost figures — as working values to be tested, and
+tell the person when a real task contradicts them.
+
+codex
+I’m using the workflow-design and coding-discipline skills for this review. I’ll keep the evidence within the five listed artifacts and use only read-only commands.
+
+exec
+/bin/bash -lc "nl -ba docs/WORKFLOW_DESIGN_METHOD.md | sed -n '72,167p'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+    72	### 3.1 Readiness — always first
+    73	
+    74	For the task, and later for each piece, list:
+    75	
+    76	- **Tools**: the commands, scripts and connections needed, each with the command that proved it works. Run it; do
+    77	  not assume. The skill's inventory script (`.claude/skills/workflow-design/scripts/readiness.py`) proves the
+    78	  standard set in one pass and marks every line verified / reported / unknown; what it cannot prove stays unknown.
+    79	  For a node run by Codex or `agy`, the proof is the canary piece in `docs/EXECUTOR_KINDS.md`, which
+    80	  also says which kind a node is assigned to and how its failure shows.
+    81	- **Skills** that already cover part of the work.
+    82	- **Information**: is the knowledge there; what structure is it in (a state file, a root map, a hierarchy of md
+    83	  files, a memory folder, a journal or index, a graph, only the web); and which agents and tools can actually use
+    84	  that structure.
+    85	
+    86	What the information check finds changes the flow:
+    87	
+    88	| Found | Effect |
+    89	|---|---|
+    90	| Well-structured files with a map | Fast path: each agent's brief points at exact files |
+    91	| There, but unstructured | Add a piece at the front that extracts and organises it |
+    92	| Readable by one tool only | Route that piece to that tool, or export what is needed to a plain file |
+    93	| There, but not verified | Add a small piece that checks it against the source |
+    94	| Missing | Research becomes a piece of the flow; only the pieces that need it wait for it |
+    95	
+    96	Anything missing becomes a preparation piece at the front. Each task should leave the knowledge better structured
+    97	than it found it, so the next task gets the fast path.
+    98	
+    99	#### Blueprint check — part of readiness
+   100	
+   101	(Added 2026-09-25 after EJ found that several projects never ended: their workflows built without a fixed target,
+   102	so every verify or review step could find more to do. Not yet tried on a real challenge; n=0.)
+   103	
+   104	A stop condition means something only against a fixed target. For a task that changes a product, that target is the
+   105	product's **blueprint**: what the product is for and what it must do, written down and accepted by EJ. The tools and
+   106	information checks above do not ask for it, so this check does.
+   107	
+   108	The blueprint lives in the product's repository, in `docs/blueprint/`, one file per section, with a map
+   109	(`docs/blueprint/README.md`) that says where each section is. Where a project already keeps a section elsewhere, the
+   110	map points there and that project's rules on who may change it still hold. Layout and headings:
+   111	`docs/workflow-templates/blueprint.md`.
+   112	
+   113	| # | Section | Whose decision |
+   114	|---|---|---|
+   115	| 1 | Product vision | EJ's. An agent may only write down what EJ has said |
+   116	| 2 | Core requirements, each with checkable acceptance criteria (R1, R1.1, …) | EJ's. An agent may draft from the vision |
+   117	| 3 | Domain model | drafted by an agent from sections 1–2, accepted by EJ |
+   118	| 4 | Business logic | drafted by an agent from sections 2–3, accepted by EJ |
+   119	| 5 | System architecture | drafted by an agent from sections 2–4 and 8, accepted by EJ |
+   120	| 6 | Data model, schema design and its decisions | drafted by an agent from sections 3–5, accepted by EJ |
+   121	| 7 | UI / UX design | drafted by an agent from sections 2–4, accepted by EJ |
+   122	| 8 | Non-functional requirements (performance, security, cost, limits) | EJ's. An agent may draft from the vision |
+   123	
+   124	Each section traces to the sections it is drawn from: a line that serves nothing above it is a finding, not a
+   125	feature.
+   126	
+   127	**Which sections a task needs** depends on what kind of task it is:
+   128	
+   129	| Kind of task | Sections needed |
+   130	|---|---|
+   131	| Not a product change (research, a question, an analysis, an edit to documentation only) | none; record why, and the check ends here. It carries no acceptance criteria |
+   132	| Fix: restores behaviour the requirements already describe (if they do not describe it, it is a feature) | the requirement it restores, and the sections the fix touches |
+   133	| Feature: adds or changes behaviour | vision, requirements, and every section the feature changes |
+   134	| New product | all eight present; four settled before anything builds — vision, the first slice's requirements, the hard-to-reverse architecture choices as short decision records, the non-functional targets with runnable checks; the other four settled for the slice only, unknowns marked (EJ, 2026-10-03; was "all eight settled"; n=0) |
+   135	
+   136	The kind of task is itself checked against the challenge: a task that changes the product's code, schema, UI or
+   137	configuration is never "not a product change". A wrong kind switches the whole check off, so it is a stop, not
+   138	something a later step can repair.
+   139	
+   140	**Status of each needed section, judged for this task** (not the status line in the file, which only says whether
+   141	EJ accepted it):
+   142	
+   143	- **settled** — EJ has accepted it (the file says so, with a date) and it covers what this task needs;
+   144	- **draft** — it covers what this task needs, but EJ has not accepted it;
+   145	- **incomplete** — it exists, accepted or not, but does not cover this task (for example the feature has no
+   146	  requirement yet, or the change needs a table the data model does not have);
+   147	- **missing** — there is no such section.
+   148	
+   149	**What each status does to the flow:**
+   150	
+   151	| Status | Effect |
+   152	|---|---|
+   153	| settled | nothing; the fast path |
+   154	| draft | an unclear spot of kind **decision**: a question for EJ ("accept this section as written?"), the draft being the provisional assumption |
+   155	| incomplete | an unclear spot of kind **information**: a blueprint piece at the front drafts the missing part into the section (for requirements: the new R-blocks with their acceptance criteria), and EJ accepts it (the piece's check is EJ's) |
+   156	| missing | an unclear spot of kind **information**: a blueprint piece at the front drafts the section from the sections above it, and EJ accepts it (the piece's check is EJ's) |
+   157	
+   158	**Blueprint confirmations are not answered by silence.** In a prompt file other questions stand on their provisional
+   159	assumption unless EJ corrects them (3.3); blueprint questions do not. A piece that **builds** — changes the
+   160	product's code, schema, UI or configuration — does not start until every section it depends on is settled, so a
+   161	blueprint question must be answered, and a blueprint piece accepted, before such a piece runs. Pieces that only
+   162	research or design may run on draft sections, without waiting for the answer; their output names the draft sections
+   163	they assumed. Any piece that depends on an incomplete or missing section needs the blueprint piece that drafts it,
+   164	because until then there is nothing to read. Each unsettled section has exactly one blueprint spot.
+   165	
+   166	This check is per task. Per piece, the design records which sections the piece depends on (3.6).
+   167	
+
+exec
+/bin/bash -lc "nl -ba .claude/skills/workflow-design/SKILL.md | sed -n '43,75p'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+    43	1. **Readiness.** List the tools (run a command to prove each works — do not assume), the skills that already cover
+    44	   part of the work, and the information: is it there, what structure is it in, is it verified against its source,
+    45	   and which agents and tools can read it. The bundled `scripts/readiness.py` runs the standard inventory in one
+    46	   pass — binaries, model caches, skill/workflow/memory locations, MCP config, machine — each line marked
+    47	   verified/reported/unknown; what it cannot prove stays unknown and needs the canary. Anything missing becomes a
+    48	   preparation piece at the front of the flow.
+    49	   Template: `readiness.md`. A node run by Codex or `agy` (not a Claude subagent): read `references/executor-kinds.md`
+    50	   first — the canary that proves the tool, read-only versus write, the fallback rule (n=0).
+    51	   **Prove the binary that will make the call, and record its version** — not the version on `PATH`. A provider can
+    52	   bundle an older copy of an engine and the two do not accept the same model names; the error names the model or
+    53	   the account, never the version. `references/executor-kinds.md`, "The bundled-runtime trap".
+    54	   **Call the CLI first and the provider tool second** (EJ, 2026-10-04): the binary on `PATH` is the one that
+    55	   updates, while a provider pins an older bundled copy and will not use `PATH` even if asked. Reach for the
+    56	   provider when the CLI is unavailable, or when a role must be read-only or blind and needs the harness-enforced
+    57	   `toolFilter` — a CLI call has no such mask.
+    58	   Every node names its role, engine, exact model and effort (never a default; the Codex plugin's example models are
+    59	   stale). The COO is the main Claude session: she distributes by the graph, monitors the state file, reviews
+    60	   verdicts, and may do a small node herself under four conditions and a tool-call cap — same file.
+    61	   **Blueprint check** (part of readiness). If the task changes a product, check the product's blueprint in
+    62	   `docs/blueprint/` (layout: `blueprint.md`): vision, core requirements with acceptance criteria, domain model,
+    63	   business logic, architecture, data model and schema decisions, UI/UX, non-functional requirements. The kind of task
+    64	   decides which sections are needed (a fix: the requirement it restores and what it touches; a feature: vision,
+    65	   requirements and what it changes; a new product: all eight present, four settled first (vision, first slice's requirements,
+    66	   hard-to-reverse architecture, non-functional targets), the rest per slice; not a product change: none, and no acceptance
+    67	   criteria). A task that changes code, schema, UI or configuration is never "not a product change"; a wrong kind
+    68	   switches the check off, so it is a stop. Each needed section is
+    69	   settled (EJ accepted it and it covers the task), draft (covers the task, not accepted), incomplete (does not cover
+    70	   the task, e.g. no requirement for the feature yet) or missing. Draft → a question for the person; incomplete or
+    71	   missing → a blueprint piece at the front that drafts the missing part for the person to accept. A piece that
+    72	   builds does not start until every section it depends on is settled — blueprint questions are not answered by
+    73	   silence. Research and design pieces may run on drafts and name the drafts they assumed; any piece that depends on
+    74	   an incomplete or missing section needs the piece that drafts it. Why: without a fixed
+    75	   target every review finds more to do, and the run never ends.
+
+exec
+/bin/bash -lc 'nl -ba .claude/skills/workflow-design/scripts/readiness.py' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+     1	#!/usr/bin/env python3
+     2	"""readiness.py — the standard tool inventory for method 3.1 (readiness).
+     3	
+     4	Proves what is installed and logged in on this machine. It never spends quota:
+     5	no canary is run, so "executes a task" stays unknown here and remains an
+     6	explicit, separately approved step (docs/EXECUTOR_KINDS.md in the Ancient Games
+     7	repo). Every line carries a status and the command or path that proved it:
+     8	
+     9	  verified  a command run just now proved it
+    10	  reported  a local file claims it (may be stale)
+    11	  unknown   not provable on this machine
+    12	  MISSING   expected and not there
+    13	
+    14	Generic by design (the skill is global): nothing hardcodes a project. Project
+    15	extras come in through flags (--blueprint, --workflows).
+    16	
+    17	Usage:
+    18	  readiness.py [--net] [--json] [--require TOOL ...] [--blueprint DIR]
+    19	               [--workflows DIR] [--self-test]
+    20	
+    21	Exit codes: 0 ok · 1 a --require'd tool or an explicit --blueprint dir is MISSING · 2 usage error.
+    22	"""
+    23	from __future__ import annotations
+    24	
+    25	import argparse
+    26	import json
+    27	import os
+    28	import shutil
+    29	import socket
+    30	import subprocess
+    31	import sys
+    32	from concurrent.futures import ThreadPoolExecutor
+    33	from dataclasses import asdict, dataclass
+    34	from datetime import date, datetime, timezone
+    35	from pathlib import Path
+    36	
+    37	CMD_TIMEOUT = 10   # seconds per local command
+    38	NET_TIMEOUT = 30   # seconds for --net commands (agy models talks to the network)
+    39	DEFAULT_BINARIES = ["claude", "codex", "agy", "qwen", "node", "python3", "git"]
+    40	
+    41	VERIFIED = "verified"
+    42	REPORTED = "reported"
+    43	UNKNOWN = "unknown"
+    44	MISSING = "MISSING"
+    45	
+    46	GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
+    47	          "Machine", "Open unknowns"]
+    48	
+    49	
+    50	@dataclass
+    51	class Check:
+    52	    group: str
+    53	    item: str
+    54	    status: str
+    55	    detail: str
+    56	    proof: str
+    57	
+    58	
+    59	def run_cmd(cmd: list[str], timeout: int = CMD_TIMEOUT) -> tuple:
+    60	    """(returncode, stripped output). rc is None if the binary does not exist,
+    61	    'timeout' if it did not answer in time."""
+    62	    try:
+    63	        p = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=timeout)
+    64	    except FileNotFoundError:
+    65	        return None, "not on PATH"
+    66	    except subprocess.TimeoutExpired:
+    67	        return "timeout", f"no answer within {timeout}s"
+    68	    except OSError as e:
+    69	        return None, str(e)
+    70	    return p.returncode, ((p.stdout or "").strip() or (p.stderr or "").strip())
+    71	
+    72	
+    73	def first_line(out: str) -> str:
+    74	    return out.splitlines()[0][:100] if out else "(no output)"
+    75	
+    76	
+    77	def check_binary(name: str) -> Check:
+    78	    """The version of the binary **on PATH**.
+    79	
+    80	    That is NOT necessarily the binary that will make a call: a provider can bundle its own, older copy of an
+    81	    engine, and the two do not accept the same model names (docs/EXECUTOR_KINDS.md, "The bundled-runtime trap").
+    82	    This line is the most likely thing in the inventory to be misread as proof for a provider call, so the canary
+    83	    records the version of the binary that actually ran.
+    84	    """
+    85	    rc, out = run_cmd([name, "--version"])
+    86	    proof = f"`{name} --version`"
+    87	    if rc is None:
+    88	        return Check("Tools", name, MISSING, "not on PATH", f"`command -v {name}`")
+    89	    if rc == "timeout":
+    90	        return Check("Tools", name, UNKNOWN, out, proof)
+    91	    if rc == 0:
+    92	        return Check("Tools", name, VERIFIED, first_line(out), proof)
+    93	    return Check("Tools", name, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+    94	
+    95	
+    96	def check_codex_cache() -> Check:
+    97	    item = "codex model cache"
+    98	    p = Path.home() / ".codex" / "models_cache.json"
+    99	    if not p.exists():
+   100	        return Check("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+   101	    try:
+   102	        d = json.loads(p.read_text())
+   103	    except (OSError, ValueError) as e:
+   104	        return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+   105	    if not isinstance(d, dict):
+   106	        return Check("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
+   107	    models = d.get("models")
+   108	    ids: list[str] = []
+   109	    if isinstance(models, list):
+   110	        for m in models:
+   111	            ids.append(str(m.get("id") or m.get("slug") or m.get("name") or "?")
+   112	                       if isinstance(m, dict) else str(m))
+   113	    elif isinstance(models, dict):
+   114	        ids = list(models)
+   115	    age = ""
+   116	    f_at = d.get("fetched_at")
+   117	    if isinstance(f_at, (int, float)):
+   118	        age = f", cache {(datetime.now(timezone.utc).timestamp() - f_at) / 86400:.0f}d old"
+   119	    elif isinstance(f_at, str):
+   120	        age = f", fetched_at {f_at[:10]}"
+   121	    shown = f": {', '.join(ids[:6])}" + (" …" if len(ids) > 6 else "") if ids else ""
+   122	    return Check("Models and logins", item, REPORTED,
+   123	                 f"{len(ids)} model ids{age}{shown} (cache may be stale)", str(p))
+   124	
+   125	
+   126	def check_agy_login(net: bool) -> Check:
+   127	    item = "agy login (model list)"
+   128	    proof = "`agy models` (network)"
+   129	    if not net:
+   130	        return Check("Models and logins", item, UNKNOWN,
+   131	                     "offline run: not provable without `agy models`; rerun with --net", proof)
+   132	    rc, out = run_cmd(["agy", "models"], timeout=NET_TIMEOUT)
+   133	    if rc is None:
+   134	        return Check("Models and logins", item, MISSING, "agy not on PATH", "`agy --version`")
+   135	    if rc == "timeout":
+   136	        return Check("Models and logins", item, UNKNOWN, out, proof)
+   137	    ids = [l.split()[0] for l in out.splitlines()
+   138	           if l.split() and not l.lower().startswith("fetching")]
+   139	    if rc == 0 and ids:
+   140	        return Check("Models and logins", item, VERIFIED,
+   141	                     f"{len(ids)} models: {', '.join(ids[:4])} …", proof)
+   142	    return Check("Models and logins", item, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+   143	
+   144	
+   145	def check_qwen_config(home: Path) -> Check:
+   146	    """Reads ~/.qwen/settings.json only; never prints a key and never calls `qwen`
+   147	    (a bare `qwen <word>` is a one-shot prompt that spends quota)."""
+   148	    item = "qwen config (model, provider)"
+   149	    p = home / ".qwen" / "settings.json"
+   150	    if not p.exists():
+   151	        return Check("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+   152	    try:
+   153	        d = json.loads(p.read_text())
+   154	    except (OSError, ValueError) as e:
+   155	        return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+   156	    if not isinstance(d, dict):
+   157	        return Check("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
+   158	    model = d.get("model") or {}
+   159	    providers = d.get("modelProviders") or {}
+   160	    n_models = sum(len(v) for v in providers.values() if isinstance(v, list))
+   161	    env = d.get("env") or {}
+   162	    key = "key set in settings env" if any(env.values()) else "no key in settings env"
+   163	    host = str(model.get("baseUrl", "?")).split("/")[2:3]
+   164	    auth = (d.get("security") or {}).get("auth", {}).get("selectedType", "?")
+   165	    return Check("Models and logins", item, REPORTED,
+   166	                 f"default {model.get('name', '?')}, auth {auth}, {n_models} listed models, "
+   167	                 f"endpoint {host[0] if host else '?'}, {key} (file claim; key validity not tested)", str(p))
+   168	
+   169	
+   170	def list_names(p: Path) -> list[str] | None:
+   171	    if not p.is_dir():
+   172	        return None
+   173	    out = []
+   174	    for e in sorted(p.iterdir()):
+   175	        if e.name.startswith("."):
+   176	            continue
+   177	        if e.is_symlink():
+   178	            out.append(f"{e.name} → {os.readlink(e)}")
+   179	        elif e.is_dir() or e.suffix in (".js", ".mjs", ".md"):
+   180	            out.append(e.name)
+   181	    return out
+   182	
+   183	
+   184	def check_dir_listing(group: str, item: str, p: Path, absent_status: str = VERIFIED) -> Check:
+   185	    try:
+   186	        names = list_names(p)
+   187	    except OSError as e:
+   188	        return Check(group, item, UNKNOWN, f"unreadable: {e}", str(p))
+   189	    if names is None:
+   190	        return Check(group, item, absent_status, f"absent ({p})", str(p))
+   191	    if not names:
+   192	        return Check(group, item, absent_status, f"empty ({p})", str(p))
+   193	    shown = ", ".join(names[:8]) + (" …" if len(names) > 8 else "")
+   194	    return Check(group, item, VERIFIED, f"{len(names)}: {shown}", str(p))
+   195	
+   196	
+   197	def check_blueprint(p: Path) -> Check:
+   198	    item = f"blueprint ({p})"
+   199	    if not p.is_dir():
+   200	        return Check("Skills and workflows", item, MISSING, "directory not found", str(p))
+   201	    files = sorted(e.name for e in p.iterdir() if e.suffix == ".md")
+   202	    has_map = "README.md" in files
+   203	    return Check("Skills and workflows", item, VERIFIED,
+   204	                 f"{len(files)} sections, map {'present' if has_map else 'MISSING'}: {', '.join(files[:8])}",
+   205	                 str(p))
+   206	
+   207	
+   208	def check_instruction_files(cwd: Path) -> Check:
+   209	    names = ["CLAUDE.md", "AGENTS.md", "QWEN.md", "GEMINI.md"]
+   210	    present = [n for n in names if (cwd / n).exists()]
+   211	    absent = [n for n in names if n not in present]
+   212	    detail = (f"present: {', '.join(present) or 'none'}"
+   213	              + (f"; absent: {', '.join(absent)}" if absent else ""))
+   214	    return Check("Memory", "project instruction files", VERIFIED, detail, str(cwd))
+   215	
+   216	
+   217	def check_qwen_memory(home: Path) -> Check:
+   218	    p = home / ".qwen" / "memories"
+   219	    idx = p / "MEMORY.md"
+   220	    if not p.is_dir():
+   221	        return Check("Memory", "qwen auto-memory (user)", VERIFIED, f"absent ({p})", str(p))
+   222	    try:
+   223	        n = len(idx.read_text(errors="replace").splitlines()) if idx.exists() else 0
+   224	    except OSError as e:
+   225	        return Check("Memory", "qwen auto-memory (user)", UNKNOWN, f"MEMORY.md unreadable: {e}", str(p))
+   226	    return Check("Memory", "qwen auto-memory (user)", VERIFIED,
+   227	                 f"{n} index lines in MEMORY.md; project dirs under ~/.qwen/projects/", str(p))
+   228	
+   229	
+   230	def check_claude_history(home: Path) -> Check:
+   231	    p = home / ".claude" / "projects"
+   232	    if not p.is_dir():
+   233	        return Check("Memory", "claude session history", VERIFIED, f"absent ({p})", str(p))
+   234	    try:
+   235	        n = sum(1 for e in p.iterdir() if e.is_dir())
+   236	    except OSError as e:
+   237	        return Check("Memory", "claude session history", UNKNOWN, f"unreadable: {e}", str(p))
+   238	    return Check("Memory", "claude session history", VERIFIED, f"{n} project histories", str(p))
+   239	
+   240	
+   241	def check_mcp(home: Path, cwd: Path) -> list[Check]:
+   242	    out = []
+   243	    sources = [("~/.claude/settings.json", home / ".claude" / "settings.json"),
+   244	               ("~/.claude.json", home / ".claude.json"),
+   245	               ("~/.qwen/settings.json", home / ".qwen" / "settings.json"),
+   246	               (".mcp.json (project)", cwd / ".mcp.json")]
+   247	    for label, p in sources:
+   248	        if not p.exists():
+   249	            out.append(Check("MCP", label, VERIFIED, "file absent → no servers from it", str(p)))
+   250	            continue
+   251	        try:
+   252	            d = json.loads(p.read_text())
+   253	        except (OSError, ValueError) as e:
+   254	            out.append(Check("MCP", label, UNKNOWN, f"unreadable: {e}", str(p)))
+   255	            continue
+   256	        servers = d.get("mcpServers") if isinstance(d, dict) else None
+   257	        if servers:
+   258	            out.append(Check("MCP", label, VERIFIED,
+   259	                             f"{len(servers)} servers: {', '.join(list(servers)[:6])}", str(p)))
+   260	        else:
+   261	            out.append(Check("MCP", label, VERIFIED,
+   262	                             "no mcpServers key" if servers is None else "mcpServers present but empty", str(p)))
+   263	    return out
+   264	
+   265	
+   266	def check_machine(cwd: Path) -> Check:
+   267	    cores = os.cpu_count() or "?"
+   268	    mem_gib = "?"
+   269	    try:
+   270	        for line in Path("/proc/meminfo").read_text().splitlines():
+   271	            if line.startswith("MemAvailable:"):
+   272	                mem_gib = f"{int(line.split()[1]) / 1048576:.1f} GiB"
+   273	                break
+   274	    except OSError:
+   275	        pass
+   276	    du = shutil.disk_usage(cwd)
+   277	    return Check("Machine", "this machine", VERIFIED,
+   278	                 f"{cores} cores; {mem_gib} RAM available; {du.free / 2**30:.0f} G free on {cwd}",
+   279	                 "`os.cpu_count`, `/proc/meminfo`, `shutil.disk_usage`")
+   280	
+   281	
+   282	def open_unknowns() -> list[Check]:
+   283	    return [
+   284	        Check("Open unknowns", "subagent concurrency limit", UNKNOWN,
+   285	              "runtime policy, not provable from outside. Claude Code docs report 20 concurrent, nesting depth 3 "
+   286	              "(v2.1.217+, env overrides; reported, not measured here); codex/agy: no figure",
+   287	              "docs/EXECUTOR_KINDS.md, Concurrency row"),
+   288	        Check("Open unknowns", "codex/agy/qwen execute a task", UNKNOWN,
+   289	              "canary required (spends quota; needs the person's go-ahead)",
+   290	              "docs/EXECUTOR_KINDS.md canary piece"),
+   291	    ]
+   292	
+   293	
+   294	def gather(args: argparse.Namespace) -> list[Check]:
+   295	    home, cwd = Path.home(), Path.cwd()
+   296	    binaries = list(dict.fromkeys(DEFAULT_BINARIES + list(args.require or [])))
+   297	    with ThreadPoolExecutor(max_workers=max(1, min(8, len(binaries)))) as ex:
+   298	        checks: list[Check] = list(ex.map(check_binary, binaries))
+   299	    checks.append(check_codex_cache())
+   300	    checks.append(check_agy_login(args.net))
+   301	    checks.append(check_qwen_config(home))
+   302	    for label, p in [("claude skills (user)", home / ".claude" / "skills"),
+   303	                     ("agents skills (cross-tool)", home / ".agents" / "skills"),
+   304	                     ("codex skills (user)", home / ".codex" / "skills"),
+   305	                     ("qwen skills (user)", home / ".qwen" / "skills"),
+   306	                     ("project skills", cwd / ".claude" / "skills")]:
+   307	        checks.append(check_dir_listing("Skills and workflows", label, p))
+   308	    checks.append(check_dir_listing("Skills and workflows", "workflow scripts",
+   309	                                    Path(args.workflows) if args.workflows else cwd / ".claude" / "workflows"))
+   310	    if args.blueprint:
+   311	        checks.append(check_blueprint(Path(args.blueprint)))
+   312	    checks.append(check_instruction_files(cwd))
+   313	    checks.append(check_qwen_memory(home))
+   314	    checks.append(check_claude_history(home))
+   315	    checks.extend(check_mcp(home, cwd))
+   316	    checks.append(check_machine(cwd))
+   317	    checks.extend(open_unknowns())
+   318	    checks.sort(key=lambda c: GROUPS.index(c.group))
+   319	    return checks
+   320	
+   321	
+   322	def exit_code(checks: list[Check], requires: list[str]) -> int:
+   323	    missing = {c.item for c in checks if c.status == MISSING}
+   324	    known = {c.item for c in checks}
+   325	    for r in requires:
+   326	        if r in missing or r not in known:
+   327	            return 1
+   328	    for c in checks:  # an explicitly named --blueprint dir that is not there is a hard fail
+   329	        if c.item.startswith("blueprint (") and c.status == MISSING:
+   330	            return 1
+   331	    return 0
+   332	
+   333	
+   334	def cell(text: str) -> str:
+   335	    return text.replace("|", "\\|")
+   336	
+   337	
+   338	def to_markdown(checks: list[Check]) -> str:
+   339	    lines = [f"# Readiness tools check — {date.today().isoformat()} — {socket.gethostname()}", "",
+   340	             "Installed and logged in only; no canary was run, no quota spent.", ""]
+   341	    current = None
+   342	    for c in checks:
+   343	        if c.group != current:
+   344	            if current is not None:
+   345	                lines.append("")
+   346	            current = c.group
+   347	            lines += [f"## {current}", "", "| Item | Status | Detail | Proof |", "|---|---|---|---|"]
+   348	        lines.append(f"| {cell(c.item)} | {c.status} | {cell(c.detail)} | {cell(c.proof)} |")
+   349	    return "\n".join(lines) + "\n"
+   350	
+   351	
+   352	def self_test() -> int:
+   353	    fake = "readiness-selftest-fake-tool"
+   354	    c = check_binary(fake)
+   355	    code = exit_code([c], [fake])
+   356	    if c.status == MISSING and code == 1:
+   357	        print(f"self-test PASS: `{fake}` reported MISSING and --require on it exits 1 — the check can fail.")
+   358	        return 0
+   359	    print(f"self-test FAIL: status={c.status}, exit code={code} (expected MISSING, 1)")
+   360	    return 1
+   361	
+   362	
+   363	def main(argv: list[str] | None = None) -> int:
+   364	    ap = argparse.ArgumentParser(description="Method 3.1 readiness inventory (no quota spent).")
+   365	    ap.add_argument("--net", action="store_true",
+   366	                    help="also run network checks (`agy models`); off by default")
+   367	    ap.add_argument("--json", action="store_true", help="JSON instead of markdown")
+   368	    ap.add_argument("--require", action="append", default=[],
+   369	                    help="tool that must be verified present; exit 1 if MISSING (repeatable)")
+   370	    ap.add_argument("--blueprint", metavar="DIR", help="a product's blueprint directory to include")
+   371	    ap.add_argument("--workflows", metavar="DIR", help="workflow scripts directory (default .claude/workflows)")
+   372	    ap.add_argument("--self-test", action="store_true", help="prove the check can fail, then exit")
+   373	    args = ap.parse_args(argv)
+   374	    if args.self_test:
+   375	        return self_test()
+   376	    checks = gather(args)
+   377	    if args.json:
+   378	        print(json.dumps({"date": date.today().isoformat(), "host": socket.gethostname(),
+   379	                          "checks": [asdict(c) for c in checks]}, indent=1))
+   380	    else:
+   381	        print(to_markdown(checks), end="")
+   382	    return exit_code(checks, args.require)
+   383	
+   384	
+   385	if __name__ == "__main__":
+   386	    sys.exit(main())
+
+exec
+/bin/bash -lc 'nl -ba docs/workflow-templates/readiness.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+     1	# Readiness — <run id>
+     2	
+     3	Anything marked missing becomes a preparation piece at the front of the flow.
+     4	
+     5	## Tools
+     6	
+     7	Run each one; do not assume.
+     8	
+     9	| Tool | Needed for | Command that proved it works | Result (works / missing) |
+    10	|---|---|---|---|
+    11	
+    12	## Skills that apply
+    13	
+    14	| Skill | What it covers here |
+    15	|---|---|
+    16	
+    17	## Information
+    18	
+    19	| What is needed | Where it is | Structure (state file / map / md hierarchy / memory folder / journal or index / graph / web / none) | Verified against the source? | Which agents and tools can read it |
+    20	|---|---|---|---|---|
+    21	
+    22	## Blueprint
+    23	
+    24	Method §3.1, blueprint check. Layout: `docs/workflow-templates/blueprint.md`.
+    25	
+    26	- Product and where its blueprint map is: <path to docs/blueprint/README.md, or "none">
+    27	- Kind of task: <not a product change | fix | feature | new product> — <one line why>
+    28	- If not a product change: no sections are needed; say why and leave the table out.
+    29	
+    30	Section names, exactly: vision, requirements, domain model, business logic, architecture, data model, ui/ux,
+    31	non-functional.
+    32	
+    33	| Section | Needed for this task? | Status for this task (settled / draft / incomplete / missing) | File | Effect (none / question for EJ / blueprint piece) |
+    34	|---|---|---|---|---|
+    35	
+    36	Settled: EJ accepted it and it covers this task. Draft: it covers this task, but EJ has not accepted it → a question
+    37	for EJ. Incomplete: it does not cover this task → a blueprint piece drafts the missing part. Missing → a blueprint
+    38	piece drafts the section. A piece that builds does not start until every section it depends on is settled.
+    39	
+    40	## Missing or unverified
+    41	
+    42	| Item | Effect on the flow (organise piece / verify piece / research piece / export to a file / ask EJ) |
+    43	|---|---|
+
+exec
+/bin/bash -lc "nl -ba docs/WORKFLOW_DESIGN_DIAGRAM.md | sed -n '54,99p'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+    54	## 2. The blueprint check (3.1)
+    55	
+    56	Added 2026-09-25, after EJ found that several projects never ended: their workflows built without a fixed target, so
+    57	every verify or review step could find more to do. **Not yet tried on a real challenge; n=0.**
+    58	
+    59	```mermaid
+    60	flowchart TD
+    61	  K{"what kind of task is it?<br/>checked against the challenge,<br/>not against how it was phrased"}
+    62	  K -->|"not a product change:<br/>research, a question, an analysis,<br/>an edit to documentation only"| NONE["no sections needed, and no acceptance criteria.<br/>record why; the check ends here"]
+    63	  K -->|"fix: restores behaviour the<br/>requirements already describe"| SEC1["needed: the requirement it restores,<br/>and the sections the fix touches.<br/>if the requirements do not describe it,<br/>it is a feature, not a fix"]
+    64	  K -->|"feature: adds or changes behaviour"| SEC2["needed: vision, requirements,<br/>and every section the feature changes"]
+    65	  K -->|"new product"| SEC3["all eight present,<br/>four settled first"]
+    66	  K -.->|"the guard on this classification itself"| GUARD["GUARD: a task that changes the product's code, schema, UI or<br/>configuration is NEVER not a product change. a wrong kind switches<br/>the whole check off, so it is a STOP, not something a later step can repair"]
+    67	  SEC1 --> ST
+    68	  SEC2 --> ST
+    69	  SEC3 --> ST
+    70	  ST{"status of each needed section, judged for THIS task,<br/>not the status line in the file, which only says<br/>whether EJ accepted it"}
+    71	  ST -->|"settled: EJ accepted it<br/>and it covers this task"| FAST["nothing. the fast path"]
+    72	  ST -->|"draft: covers this task,<br/>not accepted"| DEC["an unclear spot of kind DECISION.<br/>a question for EJ, the draft being<br/>the provisional assumption"]
+    73	  ST -->|"incomplete: exists, but does<br/>not cover this task"| INF1["an unclear spot of kind INFORMATION.<br/>a blueprint piece at the front drafts the missing<br/>part into the section, and EJ accepts it.<br/>the piece's check is EJ's"]
+    74	  ST -->|"missing: there is no<br/>such section"| INF2["an unclear spot of kind INFORMATION.<br/>a blueprint piece at the front drafts the section<br/>from the sections above it, and EJ accepts it"]
+    75	  DEC --> HOLD{"does the piece BUILD?<br/>code, schema, UI, configuration"}
+    76	  INF1 --> HOLD
+    77	  INF2 --> HOLD
+    78	  HOLD -->|"yes, it builds"| WAIT["it does not start until every section it depends on<br/>is settled. blueprint questions are NOT answered<br/>by silence, unlike every other question in 3.3"]
+    79	  HOLD -->|"no: research or design only"| MAY["may run on draft sections without waiting for the<br/>answer; its output names the drafts it assumed.<br/>but a piece that depends on an incomplete or missing<br/>section still needs the blueprint piece that drafts it,<br/>because until then there is nothing to read"]
+    80	  WAIT --> ONE["exactly one blueprint spot per unsettled section.<br/>the blueprint lives in the product's repo, docs/blueprint/,<br/>one file per section, with a map at docs/blueprint/README.md.<br/>layout and headings: docs/workflow-templates/blueprint.md"]
+    81	  MAY --> ONE
+    82	```
+    83	
+    84	The eight sections, and whose decision each is:
+    85	
+    86	| # | Section | Whose decision |
+    87	|---|---|---|
+    88	| 1 | Product vision | EJ's. An agent may only write down what EJ has said |
+    89	| 2 | Core requirements, each with checkable acceptance criteria | EJ's. An agent may draft from the vision |
+    90	| 3 | Domain model | drafted by an agent from 1–2, accepted by EJ |
+    91	| 4 | Business logic | drafted by an agent from 2–3, accepted by EJ |
+    92	| 5 | System architecture | drafted by an agent from 2–4 and 8, accepted by EJ |
+    93	| 6 | Data model, schema design and its decisions | drafted by an agent from 3–5, accepted by EJ |
+    94	| 7 | UI / UX design | drafted by an agent from 2–4, accepted by EJ |
+    95	| 8 | Non-functional requirements | EJ's. An agent may draft from the vision |
+    96	
+    97	Each section traces to the sections it is drawn from: a line that serves nothing above it is a finding, not a feature.
+    98	
+    99	---
+
+codex
+All five artifacts are read. I found that `--require` can pass an unverified tool, and the missing-section rule lacks an input for drafting a missing product vision. I’m checking these with isolated in-memory probes that won’t call a CLI or write files.
+
+exec
+/bin/bash -lc "python3 -B - <<'PY'
+from pathlib import Path
+from unittest.mock import patch
+namespace = {'__name__': 'readiness_review'}
+source_path = '.claude/skills/workflow-design/scripts/readiness.py'
+import types, sys
+module = types.ModuleType('readiness_review')
+sys.modules[module.__name__] = module
+exec(compile(Path(source_path).read_text(), source_path, 'exec'), module.__dict__)
+for rc, output in [('timeout', 'no answer within 10s'), (1, 'unsupported --version')]:
+    with patch.object(module, 'run_cmd', return_value=(rc, output)):
+        check = module.check_binary('required-engine')
+    print({'probe': 'required tool', 'status': check.status, 'exit_code': module.exit_code([check], ['required-engine'])})
+with patch.object(Path, 'exists', return_value=True), patch.object(Path, 'read_text', return_value='{\"model\":\"configured-model\"}'):
+    try:
+        module.check_qwen_config(Path('/review-home'))
+    except Exception as error:
+        print({'probe': 'qwen config nested type', 'error': type(error).__name__, 'detail': str(error)})
+with patch.object(module, 'run_cmd', return_value=(0, 'Please log in')):
+    check = module.check_agy_login(True)
+print({'probe': 'non-model output', 'status': check.status, 'detail': check.detail})
+PY" in /home/smoke01/dev/ancient-games
+ succeeded in 6ms:
+{'probe': 'required tool', 'status': 'unknown', 'exit_code': 0}
+{'probe': 'required tool', 'status': 'unknown', 'exit_code': 0}
+{'probe': 'qwen config nested type', 'error': 'AttributeError', 'detail': "'str' object has no attribute 'get'"}
+{'probe': 'non-model output', 'status': 'verified', 'detail': '1 models: Please …'}
+
+codex
+FINDING 1: docs/WORKFLOW_DESIGN_METHOD.md:156 | med | For a missing product vision, “drafts the section from the sections above it” has no source and omits obtaining EJ's vision, although line 115 requires “An agent may only write down what EJ has said”. | QUOTE: | missing | an unclear spot of kind **information**: a blueprint piece at the front drafts the section from the sections above it, and EJ accepts it (the piece's check is EJ's) |
+FINDING 2: .claude/skills/workflow-design/scripts/readiness.py:326 | med | Despite line 369 promising a “tool that must be verified present”, this condition lets an UNKNOWN required tool exit successfully after a timeout or failed version probe. | QUOTE:         if r in missing or r not in known:
+FINDING 3: .claude/skills/workflow-design/scripts/readiness.py:139 | med | Any successful command with nonempty output is treated as verified login and model availability without validating model records, so an output such as “Please log in” becomes one verified model. | QUOTE:     if rc == 0 and ids:
+FINDING 4: .claude/skills/workflow-design/scripts/readiness.py:163 | med | A settings file containing a non-object model value raises an uncaught AttributeError here, aborting the inventory instead of reporting UNKNOWN. | QUOTE:     host = str(model.get("baseUrl", "?")).split("/")[2:3]
+VERDICT: Step 1 needs corrections to its missing-vision procedure and inventory checks before its readiness results can be trusted.
+tokens used
+55,869
