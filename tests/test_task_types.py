@@ -185,6 +185,38 @@ def test_node_and_edge_rules():
     assert any(x.startswith("G1") for x in dg.validate_design(d, TYPES))
 
 
+def routing_rows() -> list[str]:
+    """The category labels in EXECUTOR_KINDS.md's routing table, split on commas only.
+
+    Commas only, because category names contain "and" (`document and explain`, `research and reports`).
+    """
+    text = (ROOT / "docs" / "EXECUTOR_KINDS.md").read_text().splitlines()
+    starts = [i for i, l in enumerate(text) if l.startswith("| Category | Engine | Basis |")]
+    assert len(starts) == 1, f"expected one category-keyed routing table, found {len(starts)}"
+    labels = []
+    for line in text[starts[0] + 1:]:
+        if not line.startswith("|"):
+            break
+        if line.startswith("|---"):
+            continue
+        labels += [c.strip().strip("*").strip("`") for c in line.split("|")[1].split(",") if c.strip()]
+    return labels
+
+
+def test_the_routing_table_is_keyed_by_category_and_nothing_else():
+    """One row per TASK_TYPES category: the same 16, no more and no fewer.
+
+    This is the structural fix for a real confusion. EXECUTOR_KINDS' routing table had four rows naming things that
+    are **not** categories — "complex debugging and root-cause analysis" and "algorithm and solution design" (rule 3
+    phrases), "configuration files, folder structure" (rule 2), and a daily-work catch-all — and it had no row for
+    `others`. Because `algorithm and solution design` shared a row with `multi step planning`, EJ's instruction that
+    planning runs on deepseek-flash read as if it overrode rule 3. Two vocabularies in one table is the defect; this
+    assertion keeps them apart.
+    """
+    assert sorted(routing_rows()) == sorted(TYPES["categories"]), (
+        "the routing table must name every TASK_TYPES category exactly once, and nothing else")
+
+
 def test_every_row_in_the_table_has_a_classifiable_engine():
     """No row may be invisible to the kind rules.
 

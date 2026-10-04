@@ -146,19 +146,40 @@ depends on who built the thing rather than on the category, which is why it cann
 classification and grading are cheap work — they go to the DeepSeek-native roles, not to a Codex or Claude Code
 call.
 
+**One row per `TASK_TYPES.md` category — the same 16, no more and no fewer.** The table is keyed by category so
+an engine decision cannot be confused with a rule phrase again. Until 2026-10-04 four of its rows named things that
+are **not** categories, which is exactly how EJ's instruction about `multi step planning` came to read as an override
+of rule 3.
+
 | Category | Engine | Basis |
 |---|---|---|
-| code generation, debugging, test cases gen, test script gen, ui/ux dev | opencode **and** codex, assigned by `scripts/workload.py` | EJ's rule 1 says these are coding, and until 2026-10-04 one engine owned them. The split now allocates them: opencode priority, 60/40 at five modules, crossing each module's code and its tests so the tests come from the engine that did not write the code. No single engine owns these rows any more — see "Built 2026-10-04" above |
-| test data gen | `subagent_claude_code_sonnet` (Sonnet 5.5) | `TASK_TYPES.md` already assigns this row to the cheap tier (Sonnet 5.5 / `gemini-3.8-flash`), not to Codex. The first version of this table put it on Codex by extension from "test surface", contradicting that table — corrected 2026-10-03. It is also the single change that moves the load: Codex falls from 33.8% to 28.5% of category claims over the 300-prompt corpus, with Claude at 29.6% |
-| complex debugging and root-cause analysis | `subagent_claude_code` (Opus 5.5) | EJ's rule 3 |
-| **code review** | the engine that did **not** build it | rule 5 above; resolves the ×20 collision |
-| multi step planning | DeepSeek `deepseek-flash` (the model the catalog names DeepSeek-V41-Flash) | EJ, 2026-10-04: *"multi step planning ... is using Deepseek v4.1 flash"*. This is a **TASK_TYPES category** — planning a workflow, pattern "plan + gate" — and it is not the design tier |
-| algorithm and solution design | `subagent_claude_code` (Opus 5.5) | EJ's rule 3, 2026-10-03, unchanged. **Not a TASK_TYPES category**: the phrase comes from rule 3 alone. It shared one row with `multi step planning` until 2026-10-04, which made a change to *planning* read like a change to *design* — the two are now separate rows and can be changed independently |
-| daily Claude work that rule 3 does not claim: reports, prose, routine review, summaries | `subagent_claude_code_sonnet` (Sonnet 5.5) | EJ, 2026-10-03: *"other more daily tasks use Sonnet 5.5"* |
-| repo scanning, web search, research and reports | `agy` **via `dispatch.py`** | EJ, 2026-10-04 confirmed all three here — `web search` and `research and reports` against `TASK_TYPES.md`, which had both on Codex, and `repo scanning`, which named no engine at all (a bare "cheap tier"); rule 2. No DSH subagent provider for `agy` exists — the published providers cover Codex and Claude Code only — so this is the CLI route |
-| document and explain, grade a run | `subagent_claude_code_sonnet` (Sonnet 5.5) | the three sentences do not name them, but `TASK_TYPES.md` already assigns both categories to Sonnet 5.5 — aligned to that table rather than to a DeepSeek role |
-| information extraction, classification | `subagent_researcher` (`deepseek-flash`, low) | EJ, 2026-10-04 settled both against `TASK_TYPES.md`, which had `classification` on `agy gemini-3.1-pro-high` and `information extraction` on a bare "cheap tier"; uncovered, read-only, structured and cheap — the work is mechanical, so the cheapest tier that can do it |
-| configuration files, folder structure | **no row in `TASK_TYPES.md`** | EJ's rule 2 puts these on `agy`, but the category table has no row for them: *design* is `multi step planning` and *generation* is `code generation`, so it is two pieces, and the missing row is a gap in that table rather than a routing decision |
+| `classification` | `subagent_researcher` — DeepSeek `deepseek-flash`, low | EJ, 2026-10-04 |
+| `code generation` | opencode **and** codex, split by `scripts/workload.py` | rule 1; the split gives opencode priority |
+| `code review` | the engine that did **not** build it | rule 5; risk-tiered — Sonnet 5.5 when nothing builds |
+| `debugging` | opencode **and** codex split for the fix; **Opus 5.5** when it is complex debugging or root-cause analysis | rule 1, plus rule 3's escalation. The phrase *"complex debugging and root-cause analysis"* is rule 3's wording, not a category, and it lives in **this** row |
+| `document and explain` | `subagent_claude_code_sonnet` — Sonnet 5.5 | `TASK_TYPES.md` assigns it there |
+| `grade a run` | `subagent_claude_code_sonnet` — Sonnet 5.5 | same |
+| `information extraction` | `subagent_researcher` — `deepseek-flash`, low | EJ, 2026-10-04 |
+| `multi step planning` | DeepSeek `deepseek-flash` | EJ, 2026-10-04 |
+| `others` | **nothing chosen** — the catch-all names no engine in `TASK_TYPES.md` and has no routing decision | **open**; 12 claims, 3.4% of the corpus |
+| `repo scanning` | `agy` **via `dispatch.py`** | rule 2, *"exploring a codebase"*; EJ, 2026-10-04 |
+| `research and reports` | `agy` **via `dispatch.py`** | rule 2; EJ, 2026-10-04 |
+| `test cases gen` | opencode **and** codex, split | rule 1; the split |
+| `test data gen` | `subagent_claude_code_sonnet` — Sonnet 5.5 | `TASK_TYPES.md`'s own cheap-tier row |
+| `test script gen` | opencode **and** codex, split | rule 1; the split |
+| `ui/ux dev` | opencode **and** codex, split | rule 1; the split |
+| `web search` | `agy` **via `dispatch.py`** | rule 2; EJ, 2026-10-04 |
+
+**Phrases from the three sentences that are *not* categories.** Rule 3 and rule 2 name work that `TASK_TYPES.md` has
+no row for. It is kept here rather than given a row above, because a phrase sitting in the category table is what
+caused the confusion in the first place:
+
+| Phrase (source) | What it attaches to | Engine |
+|---|---|---|
+| *"algorithm and solution design"* (rule 3) | **no category.** `multi step planning` is the nearest and EJ put that on `deepseek-flash` (2026-10-04), so this phrase has nowhere to land | Opus 5.5 when it is invoked — **open** |
+| *"configuration files, folder structure"* (rule 2) | **no category.** It is two pieces: *design* (`multi step planning`) and *generation* (`code generation`) | `agy` by rule 2 — **open** |
+| *"other more daily tasks use Sonnet 5.5"* (EJ, 2026-10-03) | a **tier rule, not work**: anything Claude does that rule 3 does not claim runs on Sonnet 5.5 | `subagent_claude_code_sonnet` |
+
 
 **The split is already near even, and a run-time balance is not available anyway.** EJ asked on 2026-10-03 whether
 heavy Codex use could divert about 30% of the work to Sonnet 5.5. Measured over the 300-prompt corpus, this table
