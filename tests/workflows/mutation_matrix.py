@@ -1,0 +1,201 @@
+"""The mutation matrix — does the gate actually reject a design that breaks a rule?
+
+Recommendation that both domain experts converged on, and the one change the register calls cheapest and most
+decisive: take a design the gate **passes**, inject one known-bad change at a time, and observe whether the rule
+that should fire does. A rule that never fires on a design built to break it is not a rule.
+
+Four outcomes, and they mean different things:
+
+  CAUGHT      the expected rule fired — the gate has this rule and it works
+  MISSED      the expected rule did not fire — a **gate bug**; the rule is dead code
+  HOLE        the algorithm requires something the gate has no rule for, and nothing fired. Not a bug in the
+              gate's code but in its coverage — this is the number that says how much of the gate is real
+  ALARM       nothing should have fired and something did — my understanding of the gate was wrong
+
+Mutations are injected into one design the gate passes (`runs/20261004-corpus-fulltest/designs/p050.json`), one at a
+time, on a deep copy. No model calls.
+
+Run: python3 mutation_matrix.py            exit 1 if any MISSED or ALARM
+"""
+from __future__ import annotations
+
+import copy
+import json
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / ".claude/skills/workflow-design/scripts"))
+import design_gate as dg  # noqa: E402
+
+TYPES = dg.parse_types(ROOT / "docs" / "TASK_TYPES.md")
+GOOD = json.loads((ROOT / "runs/20261004-corpus-fulltest/designs/p050.json").read_text())
+
+
+def review_node(d: dict) -> dict | None:
+    return next((n for n in d["nodes"] if n.get("category") == "code review"), None)
+
+
+# ---- mutations that SHOULD trip a named rule ------------------------------------------------
+def m_unknown_category(d):
+    d["categories"] = ["frobnicate"]
+    d["nodes"][0]["category"] = "frobnicate"
+
+
+def m_builds_without_product_touch(d):
+    d["touched_paths"] = []
+
+
+def m_node_without_check(d):
+    del d["nodes"][0]["check"]
+
+
+def m_node_missing_a_five_thing(d):
+    d["nodes"][0]["five_things"] = [x for x in d["nodes"][0]["five_things"] if x != "contract"]
+
+
+def m_loop_without_limit(d):
+    del d["nodes"][0]["loop"]["limit"]
+
+
+def m_loop_without_exit(d):
+    del d["nodes"][0]["loop"]["exit"]
+
+
+def m_loop_without_feedback(d):
+    del d["nodes"][0]["loop"]["feedback"]
+
+
+def m_needs_unknown_node(d):
+    d["nodes"][0]["needs"] = ["does-not-exist"]
+
+
+def m_dependency_cycle(d):
+    r = review_node(d)
+    d["nodes"][0]["needs"] = [r["id"]]
+
+
+def m_unknown_pipeline(d):
+    d["pipeline"] = "no such pipeline"
+
+
+def m_challenger_below_twenty_percent(d):
+    d["design_source"] = {"type": "challenger", "claim": 0.10, "basis": "x"}
+
+
+def m_challenger_without_basis(d):
+    d["design_source"] = {"type": "challenger", "claim": 0.30}
+
+
+def m_drop_the_reviewer(d):
+    d["nodes"] = [n for n in d["nodes"] if n.get("category") != "code review"]
+
+
+def m_reviewer_is_the_same_kind(d):
+    r = review_node(d)
+    r["engine"] = d["nodes"][0]["engine"].split("+")[0].strip()      # same leading engine as the builder
+
+
+def m_node_category_not_claimed(d):
+    d["nodes"].append({"id": "x1", "category": "web search", "engine": "agy", "check": "c",
+                       "five_things": sorted(dg.FIVE), "needs": []})
+
+
+def m_claimed_category_without_a_node(d):
+    d["categories"] = sorted(set(d["categories"]) | {"web search"})
+
+
+# ---- what the ALGORITHM requires and the gate has no rule for ---------------------------------
+def m_no_baseline(d):
+    """Method 3.6: a building node's stop needs a baseline recorded before the first node that builds."""
+    d.pop("baseline", None)                     # already absent — the point is that nothing notices
+
+
+def m_no_three_part_stop(d):
+    """Method 3.6: the stop has three parts. There is nowhere in the schema to put them."""
+    for n in d["nodes"]:
+        n.pop("stop", None)
+
+
+def m_placeholder_check_rather_than_the_rows_check(d):
+    """The row's check is "tests/build pass (script)"; the design may say anything non-empty."""
+    d["nodes"][0]["check"] = "see TASK_TYPES.md"
+
+
+def m_five_things_names_with_nothing_behind_them(d):
+    """The five names are present; there is no content field and no rule that could look for one."""
+    d["nodes"][0]["five_things"] = sorted(dg.FIVE)
+
+
+def m_no_sabotage_proof(d):
+    """G9: a building node must carry the proof its check can fail. The matrix's base design carries one."""
+    for n in d["nodes"]:
+        n.pop("sabotage", None)
+
+
+MATRIX = [
+    # (name, mutation, rule that must fire, note)
+    ("unknown category", m_unknown_category, "G1", ""),
+    ("builds, no product path", m_builds_without_product_touch, "G2", ""),
+    ("node without a check", m_node_without_check, "G3", ""),
+    ("five_things missing one name", m_node_missing_a_five_thing, "G3", ""),
+    ("loop without a limit", m_loop_without_limit, "G3", ""),
+    ("loop without an exit", m_loop_without_exit, "G3", ""),
+    ("loop without feedback", m_loop_without_feedback, "G3", ""),
+    ("needs an unknown node", m_needs_unknown_node, "G4", ""),
+    ("dependency cycle", m_dependency_cycle, "G4", ""),
+    ("unknown pipeline", m_unknown_pipeline, "G4", ""),
+    ("challenger claim 10%", m_challenger_below_twenty_percent, "G5", ""),
+    ("challenger without basis", m_challenger_without_basis, "G5", ""),
+    ("drop the reviewer", m_drop_the_reviewer, "G6", ""),
+    ("reviewer of the same kind", m_reviewer_is_the_same_kind, "G6", ""),
+    ("node category not claimed", m_node_category_not_claimed, "G8", ""),
+    ("claimed category, no node", m_claimed_category_without_a_node, "G8", ""),
+    ("check points at the table", m_placeholder_check_rather_than_the_rows_check, "G3", ""),
+    ("no sabotage proof", m_no_sabotage_proof, "G9", ""),
+    # no rule exists for these — the measurement
+    ("no baseline", m_no_baseline, None, "method 3.6 requires one; no G-rule exists"),
+    ("no three-part stop", m_no_three_part_stop, None, "method 3.6; no schema field, no rule"),
+    ("five_things names only", m_five_things_names_with_nothing_behind_them, None,
+     "no content field exists to check"),
+]
+
+
+def main(self_check: bool = False) -> int:
+    """`self_check` neuters every mutation, so no rule can fire. If the matrix cannot then report MISSED for the
+    rules it claims to test, it is not a check and its green run means nothing."""
+    rows, missed, alarms = [], 0, 0
+    for name, mutate, expect, note in MATRIX:
+        d = copy.deepcopy(GOOD)
+        if not self_check:
+            mutate(d)
+        findings = dg.validate_design(d, TYPES)
+        fired = sorted({f.split(":")[0] for f in findings})
+        if expect is None:
+            outcome = "HOLE" if not fired else "ALARM"
+            alarms += fired != []
+        else:
+            outcome = "CAUGHT" if expect in fired else "MISSED"
+            missed += outcome == "MISSED"
+        rows.append((outcome, name, expect or "—", ",".join(fired) or "—", note))
+
+    width = max(len(r[1]) for r in rows)
+    for outcome, name, expect, fired, note in rows:
+        flag = {"CAUGHT": "  ", "MISSED": "!!", "HOLE": "  ", "ALARM": "!!"}[outcome]
+        print(f"  {flag} {outcome:6} {name:{width}}  want {expect:4} got {fired:10} {note}")
+
+    caught = sum(1 for r in rows if r[0] == "CAUGHT")
+    total_should = sum(1 for r in rows if r[2] != "—")
+    holes = sum(1 for r in rows if r[0] == "HOLE")
+    print(f"\n  gate catches {caught}/{total_should} mutations aimed at its rules")
+    print(f"  and cannot see {holes} mutations that break what the algorithm requires")
+    print(f"  missed rules: {missed}   false alarms: {alarms}")
+    if self_check:
+        able = missed > 0
+        print(f"\n  MUTATION MATRIX CAN FAIL: {able}  (with every mutation neutered, {missed} rules went unfired)")
+        return 0 if able else 1
+    return 1 if (missed or alarms) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main("--self-check" in sys.argv[1:]))

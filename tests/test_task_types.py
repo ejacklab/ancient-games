@@ -38,10 +38,12 @@ def builder_cats(cats: list, builds: bool) -> list:
 def design_for(entry: dict) -> dict:
     exp = entry["expected"]
     cats = exp["categories"]
+    known = TYPES["categories"]
     nodes, prev = [], None
     for i, c in enumerate(cats):
         n = {"id": f"n{i + 1}", "category": c, "engine": ENGINES[c],
-             "check": f"default check for {c} (TASK_TYPES.md)", "five_things": list(FIVE),
+             "check": (known[c].get("check") or f"a check for {c}"),
+             "sabotage": known[c].get("sabotage") or "", "five_things": list(FIVE),
              "needs": [prev] if prev else []}
         if c in LOOP_CATS:
             n["loop"] = {"limit": 2, "exit": "fresh node on stronger tier with handoff note",
@@ -109,7 +111,8 @@ def test_mixed_category_semantics():
     assert known["code generation"]["product"] == "yes"
     d = {"categories": ["debugging"], "builds": False, "touched_paths": [],
          "nodes": [{"id": "n1", "category": "debugging", "engine": "codex gpt-6.1-sol",
-                    "check": "repro test red before, green after", "five_things": list(FIVE), "needs": [],
+                    "check": "repro test red before, green after",
+                     "sabotage": "revert the fix → red again", "five_things": list(FIVE), "needs": [],
                     "loop": {"limit": 2, "exit": "fresh node stronger tier", "feedback": "test output"}}],
          "design_source": "default"}
     assert dg.validate_design(d, TYPES) == []
@@ -298,7 +301,9 @@ def test_building_document_needs_different_kind_review():
     # round-3 regression (p073): a document piece that builds gets its review-against-source
     # node from a different kind than the writer
     writer = {"id": "n1", "category": "document and explain", "engine": "claude sonnet 5.5",
-              "check": "checklist against source; LF endings", "five_things": list(FIVE), "needs": []}
+              "check": "checklist against source; LF endings",
+              "sabotage": "plant a wrong command → the checklist rejects it",
+              "five_things": list(FIVE), "needs": []}
     same = {"id": "n1r", "category": "code review", "engine": "claude sonnet 5.5",
             "check": "review against source", "five_things": list(FIVE), "needs": ["n1"]}
     other = dict(same, engine="codex gpt-6.1-sol")
@@ -315,9 +320,11 @@ def test_reviewer_kind_not_diluted_by_mixed_builders():
          "touched_paths": ["tests/x"], "pipeline": None,
          "nodes": [
              {"id": "n1", "category": "test data gen", "engine": "claude sonnet 5.5",
-              "check": "schema validation", "five_things": list(FIVE), "needs": []},
+              "check": "schema validation", "sabotage": "corrupt a field → the schema rejects it",
+               "five_things": list(FIVE), "needs": []},
              {"id": "n2", "category": "test script gen", "engine": "codex gpt-6.1-sol",
-              "check": "seeded failure detected", "five_things": list(FIVE), "needs": ["n1"],
+              "check": "seeded failure detected", "sabotage": "seed a failure → the script exits non-zero",
+               "five_things": list(FIVE), "needs": ["n1"],
               "loop": {"limit": 2, "exit": "stronger tier", "feedback": "output"}},
              {"id": "nr", "category": "code review", "engine": "codex gpt-6-astra",
               "check": "fixed checklist", "five_things": list(FIVE), "needs": ["n2"]}],

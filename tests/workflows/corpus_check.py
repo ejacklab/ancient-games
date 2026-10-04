@@ -62,10 +62,12 @@ def builder_cats(cats: list[str], builds: bool, types: dict) -> list[str]:
 
 def build_design(cats: list[str], builds: bool, pipeline: str | None, types: dict,
                  tiny: bool = False) -> dict:
+    known = types["categories"]
     nodes, prev = [], None
     for i, c in enumerate(cats):
         n = {"id": f"n{i + 1}", "category": c, "engine": ENGINES.get(c, "claude sonnet 5.5"),
-             "check": f"default check for {c} (TASK_TYPES.md)", "five_things": list(FIVE),
+             "check": (known[c].get("check") or f"a check for {c}"),
+             "sabotage": known[c].get("sabotage") or "", "five_things": list(FIVE),
              "needs": [prev] if prev else []}
         if c in LOOP_CATS:
             n["loop"] = {"limit": 2, "exit": "fresh node on stronger tier with handoff note",

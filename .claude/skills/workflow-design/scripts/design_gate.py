@@ -7,12 +7,14 @@ high-risk). The category table's single source is docs/TASK_TYPES.md — parsed 
 
 Findings are named:
   G1 category unknown
-  G2 category-vs-facts guard (wrong category is a stop, not a repair; "others" is exempt)
+  G2 category-vs-facts guard (wrong category is a stop, not a repair; "others" is exempt), and the
+     claim/evidence pair: a design that says it builds must name a product path it touches
   G3 node rules: a check, the five things, loops with limit+exit+feedback
   G4 edges: needs must exist, no cycles, pipeline name valid
   G5 challenger: claim >= 20%, arithmetic matches the estimates, coverage equal to the default
   G6 a design with building nodes carries a reviewer; single-kind builders get a different-kind reviewer
   G7 ledger rows carry every field the reconciliation needs
+  G9 a building node carries the sabotage that proves its check can fail
   G8 labels agree: the design's categories equal the categories its nodes carry (method 3.2: the piece
      labels replace the provisional category, so a claimed category no node carries, or a node category
      the design does not claim, means the relabelling did not happen; the in-run `code review` node that G6
@@ -28,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -137,12 +140,23 @@ def validate_design(d: dict, types: dict) -> list[str]:
     if pure_yes and not builds and not touched:
         f.append(f"G2: category {pure_yes[0]!r} always writes product, but the design claims it touches "
                  f"none (a mixed category may run read-only; a yes category may not)")
+    if builds and not touched:
+        # Found by the mutation matrix (2026-10-04): a design may claim `builds: true` and name nothing it
+        # touches. The three G2 clauses above and below each look at one field; none compared the claim with its
+        # evidence, so the two could contradict each other and pass. 1 of 16 targeted mutations escaped this way.
+        f.append("G2: the design claims it builds, but names no product path in touched_paths — the claim and its "
+                 "evidence contradict each other, so the gate cannot tell what it would write")
     nodes = d.get("nodes") or []
     ids = {n.get("id") for n in nodes}
     for n in nodes:
         nid = n.get("id", "?")
         if not (n.get("check") or "").strip():
             f.append(f"G3: node {nid} has no check")
+        elif re.search(r"TASK_TYPES", str(n.get("check")), re.I):
+            # Found by the mutation matrix (2026-10-04). The corpus and the fixtures both emitted
+            # "default check for <cat> (TASK_TYPES.md)", so 150 building nodes "had a check" that named no check.
+            # Any reference to the table is that defect, not just the one wording the matrix first used.
+            f.append(f"G3: node {nid}'s check points at the category table instead of stating what is checked")
         missing = FIVE - {str(x).lower() for x in n.get("five_things", [])}
         if missing:
             f.append(f"G3: node {nid} is missing {sorted(missing)}")
@@ -209,6 +223,13 @@ def validate_design(d: dict, types: dict) -> list[str]:
                     f.append(f"G6: reviewer engine {r.get('engine')!r} is not a different kind from "
                              f"what it reviews ({sorted(constraint)})")
     node_cats = {_cat(n) for n in nodes if _cat(n)}
+    for n in nodes:
+        # G9, found by the mutation matrix (2026-10-04): the table's `sabotage` column was parsed and never read,
+        # so a design could not carry the proof its check can fail — and the algorithm requires exactly that.
+        row = known.get(_cat(n), {})
+        if _cat(n) in known and row.get("product") in ("yes", "mixed") and not n.get("sabotage"):
+            f.append(f"G9: building node {n.get('id')!r} carries no sabotage proof — the table's sabotage column "
+                     f"is the evidence its check can fail, and a check that cannot fail is not a check")
     if cats and node_cats:
         for c in sorted(set(cats) - node_cats):
             f.append(f"G8: category {c!r} is claimed but no node carries it — relabel from the algorithm (3.2)")
@@ -259,7 +280,8 @@ def _good_design() -> dict:
             {"id": "n1", "category": "research and reports", "engine": "codex gpt-6.1-sol",
              "check": "questions answered (fixed checklist)", "five_things": five, "needs": []},
             {"id": "n2", "category": "code generation", "engine": "codex gpt-6.1-sol",
-             "check": "pytest -q green", "five_things": five, "needs": ["n1"],
+             "check": "pytest -q green", "sabotage": "break the code → the check goes red",
+             "five_things": five, "needs": ["n1"],
              "loop": {"limit": 2, "exit": "fresh node on stronger tier", "feedback": "the check's real output"}},
             {"id": "n3", "category": "code review", "engine": "claude sonnet 5.5",
              "check": "fixed checklist; findings with file:line", "five_things": five, "needs": ["n2"]}],
