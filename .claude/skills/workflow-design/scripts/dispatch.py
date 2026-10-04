@@ -8,8 +8,10 @@ node's engine is the one the plan names (design §5). Stdlib only; it calls no m
   dispatch.py check PLAN              validate the plan (caps, timers, briefs, edges); exit 0/1
   dispatch.py run PLAN [--dry-run]    run it; resumes from runs/<id>/dispatch.json; prints the digest
 
-Engines: codex · qwen · agy · script (a local command, for tests and checks). Claude nodes are not dispatched here:
-they run with the Workflow tool (EJ, 2026-10-03), and a plan naming engine `claude` is refused.
+Engines: codex · qwen · agy · claude · dsh · script — one adapter each in `engines.py`, so adding or re-enabling an
+engine is one entry there rather than four edits here. `claude` was refused while the dispatcher ran inside Claude
+Code (the Workflow tool already served Claude nodes); that reason does not hold on another harness. `dsh` runs a node
+on the DeepSeek Harness itself (`dsh headless`, one task, answer to stdout).
 The node's result file is the engine's final answer: header + body (docs/workflow-templates/result-file.md).
 The dispatcher writes runs/<id>/dispatch.json (its own state) and events.jsonl; it never edits the COO's state.md.
 Exit (run): 0 all done · 1 stopped on a blocked node, an UNCLEAR question or a budget limit · 2 plan or usage error.
@@ -31,14 +33,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from runlog import append, now                      # noqa: E402  (same folder)
 from validate_result import check_result            # noqa: E402
+from engines import REGISTRY as ENGINES             # noqa: E402  (the engine adapters live in engines.py)
 
-ENGINES = {"codex", "qwen", "agy", "script"}
 BRIEF_PARTS = ["## Template", "## Example", "## Standard"]
 LOCK = threading.Lock()
 FILLED = "(filled by the dispatcher)"
-# stderr notices that mean the call did not finish although the exit code is 0 (verified 2026-10-03)
-SILENT_FAILURES = {"agy": {"print timeout": "timeout", "auto-denied": "denied"}}   # also: a tool needing a permission headless
-# mode cannot grant ("jetski: no output produced — ... was auto-denied"), seen in run 20261003-node-workdir
 DEFAULT_BUDGET = {"max_roles": 5, "max_parallel": 3, "max_rounds": 2, "max_calls": 30}
 
 
@@ -68,13 +67,12 @@ def check_plan(plan: dict, base: Path) -> list[str]:
         nid = n.get("id", "?")
         if n.get("parallel_group"):
             groups[n["parallel_group"]] = groups.get(n["parallel_group"], 0) + 1
-        if n.get("engine") == "claude":
-            f.append(f"{nid}: Claude nodes run with the Workflow tool, not the dispatcher (EJ, 2026-10-03)")
-        elif n.get("engine") not in ENGINES:
+        adapter = ENGINES.get(n.get("engine"))
+        if adapter is None:
             f.append(f"{nid}: engine {n.get('engine')!r} is not one of {sorted(ENGINES)}")
+        elif adapter.needs_model and not n.get("model"):
+            f.append(f"{nid}: no model (every node names its model, EXECUTOR_KINDS)")
         if n.get("engine") != "script":
-            if not n.get("model"):
-                f.append(f"{nid}: no model (every node names its model, EXECUTOR_KINDS)")
             if not n.get("inner_timer"):
                 f.append(f"{nid}: no inner_timer (method 3.8 item 2)")
             brief = base / n.get("brief", "")
@@ -93,9 +91,14 @@ def check_plan(plan: dict, base: Path) -> list[str]:
                 f.append(f"{nid}: needs unknown node {d!r}")
         if n.get("repair") and n["repair"] not in ids:
             f.append(f"{nid}: repair node {n['repair']!r} not in the plan")
-        fb = n.get("fallback")
-        if fb and (fb.get("engine") not in ENGINES or (fb.get("engine") != "script" and not fb.get("model"))):
-            f.append(f"{nid}: fallback needs a known engine and a model")
+        # A node's own fallback wins; failing that the engine's default is what would actually run, so it is the
+        # resolved value that gets checked. No "must differ from the node" rule: a `script` fallback legitimately
+        # shares the engine and differs only in `cmd`, and a node may want the same engine with a longer timer.
+        fb = n.get("fallback") or (adapter.default_fallback if adapter is not None else None)
+        if fb:
+            fb_adapter = ENGINES.get(fb.get("engine"))
+            if fb_adapter is None or (fb_adapter.needs_model and not fb.get("model")):
+                f.append(f"{nid}: fallback needs a known engine and a model")
         for target in [n, fb] if fb else [n]:
             if "workdir" in target:
                 workdir = base / target["workdir"]
@@ -132,40 +135,8 @@ def passback_note(node: dict, engine: str, model: str, attempt: int) -> str:
             f"If something is unclear, do not guess: write a body line `UNCLEAR: <question> / <best guess>`.\n")
 
 
-def build_command(node: dict, engine: str, model: str, prompt: str, out_file: Path, cwd: Path,
-                  attempt: int = 1) -> list[str]:
-    t = node.get("inner_timer", "")
-    mode = node.get("mode", "read-only")
-    if engine == "codex":
-        cmd = ["codex", "exec", "-m", model, "-s", "workspace-write" if mode == "write" else "read-only",
-               "-C", str(cwd), "-o", str(out_file)]
-        if node.get("effort"):
-            cmd += ["-c", f"model_reasoning_effort={node['effort']}"]
-        return cmd + [prompt]
-    if engine == "qwen":
-        return ["qwen", "--approval-mode", "auto-edit" if mode == "write" else "plan", "--max-wall-time", t,
-                "-m", model, "--output-format", "json", prompt]
-    if engine == "agy":
-        return ["agy", "-p", prompt, "--mode", "accept-edits" if mode == "write" else "plan", "--model", model,
-                "--print-timeout", t, "--output-format", "text"]
-    return [str(x).replace("{prompt_file}", str(out_file.with_suffix(".prompt"))).replace("{out}", str(out_file))
-            .replace("{attempt}", str(attempt)) for x in node["cmd"]]
-
-
-def final_answer(engine: str, stdout: str, out_file: Path) -> tuple[str, str | None]:
-    """(result text, the model the tool itself reported, or None). Raises ValueError on an unreadable stream."""
-    if engine == "codex":
-        return (out_file.read_text() if out_file.exists() else ""), None
-    if engine == "qwen":
-        events = json.loads(stdout)
-        res = next((e for e in events if e.get("type") == "result"), None)
-        init = next((e for e in events if e.get("type") == "system"), {})
-        if res is None:
-            raise ValueError("qwen stream has no result event")
-        return res.get("result") or "", init.get("model")
-    if engine == "script" and out_file.exists():
-        return out_file.read_text(), None
-    return stdout, None
+# build_command and final_answer now live in engines.py, one adapter per engine. This module keeps only what is
+# engine-neutral: the plan check, the loop, the timers, the process group, the pass-back and model checks.
 
 
 # ---------------------------------------------------------------- one call
@@ -191,6 +162,7 @@ def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine
          feedback: str | None, dry: bool) -> dict:
     """Run one engine call; return {'outcome': ok|executor|unclear, 'why', 'result'}."""
     nid = node["id"]
+    adapter = ENGINES[engine]
     nodes_dir = run_dir / "nodes"; nodes_dir.mkdir(parents=True, exist_ok=True)
     out_file = nodes_dir / f"{nid}-{attempt}.result.md"
     prompt = ""
@@ -201,7 +173,7 @@ def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine
     else:
         out_file.with_suffix(".prompt").write_text(feedback or "")
     cwd = (base / node["workdir"]).resolve() if "workdir" in node else base
-    cmd = build_command(node, engine, model, prompt, out_file, cwd, attempt)
+    cmd = adapter.build(node, model, prompt, out_file, cwd, attempt)
     if dry:
         print(f"[dry-run] {nid} attempt {attempt}: " + " ".join(
             c if len(c) < 60 or ("workdir" in node and c == str(cwd)) else c[:57] + "..." for c in cmd))
@@ -220,7 +192,7 @@ def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine
         (raw / f"{nid}-{attempt}-{engine}.stderr").write_text(stderr)
         status = "ok" if code == 0 else "fail"
         if status == "ok":                                 # exit 0, yet the tool says it did not finish
-            status = next((st for m, st in SILENT_FAILURES.get(engine, {}).items() if m in stderr), status)
+            status = next((st for m, st in adapter.silent_failures.items() if m in stderr), status)
     except subprocess.TimeoutExpired as e:
         status, code = "timeout", 124                      # keep whatever it printed before the timer fired
         for name, data in (("stdout", e.stdout), ("stderr", e.stderr)):
@@ -235,7 +207,7 @@ def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine
     if status != "ok":
         return {"outcome": "executor", "why": f"{status} (exit {code})", "result": ""}
     try:
-        text, reported = final_answer(engine, stdout, out_file)
+        text, reported = adapter.parse(stdout, out_file)
     except (ValueError, json.JSONDecodeError) as e:
         return {"outcome": "executor", "why": f"unreadable output: {e}", "result": ""}
     if engine != "script" and reported and reported != model:
@@ -294,10 +266,15 @@ def run_node(plan, node, by_id, state, run_dir, base, dry, log) -> None:
         r = call(plan, target, attempt, run_dir, base, engine, model, feedback, dry)
         if r["outcome"] == "executor":
             log(f"{node['id']} a{attempt}: executor failure on {engine}: {r['why']}")
-            fb = target.get("fallback")
+            # The plan's own fallback wins; otherwise the engine's default (EXECUTOR_KINDS, "When a kind fails
+            # mid-run"). Logged with its source either way, so a defaulted hop is visible and never silent.
+            fb, src = target.get("fallback"), "the plan"
+            if not fb:
+                fb, src = dict(ENGINES[engine].default_fallback), "the engine default"
             if not fb or rec.get("fell_back"):
                 rec["status"] = "blocked"; raise Stop(f"{node['id']} blocked: executor failed ({r['why']})")
             rec["fell_back"] = True
+            log(f"{node['id']}: falling back to {fb.get('engine')}/{fb.get('model')} ({src})")
             target = {**target, **fb, "id": node["id"], "fallback": None}
             feedback = (feedback or "") + f"\nHandoff: the previous call on {engine} failed: {r['why']}."
             continue

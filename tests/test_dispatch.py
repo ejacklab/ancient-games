@@ -78,6 +78,25 @@ def test_executor_failures_block_without_fallback(tmp_path, mode, why):
     assert why in r.stderr + r.stdout
 
 
+def test_external_engine_uses_its_default_fallback_when_the_plan_names_none(tmp_path):
+    """A plan that names no fallback is not a dead end for an external engine (EXECUTOR_KINDS, "When a kind
+    fails mid-run"): the engine's own default is tried once, and the log says the default was the source.
+
+    `script` has no default, which is why a script node with no fallback still blocks — the case the test above
+    pins.
+    """
+    head = ("---\nnode: a\nattempt: 2\nengine: claude\nmodel: claude-sonnet-5-5\n"
+            "status: ok\nstarted: t\nended: t\nevidence: e\n---\nok\n")
+    env = fake_bin(tmp_path, "codex", "import sys; sys.exit(3)")
+    fake_bin(tmp_path, "claude", "print(%r)" % head)
+    c = {"id": "a", "role": "coder", "engine": "codex", "model": "gpt-6.1-sol", "brief": "brief.md",
+         "inner_timer": "60s", "outer_timeout_s": 70}
+    r = run(tmp_path, "run", setup(tmp_path, [c]), env=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert state(tmp_path)["nodes"]["a"]["calls"] == 2
+    assert "falling back to claude/claude-sonnet-5-5 (the engine default)" in r.stderr
+
+
 def test_check_failure_repairs_with_real_feedback_then_passes(tmp_path):
     check = {"name": "has-FIXED", "cmd": [sys.executable, "-c",
              "import sys; t=open(sys.argv[1]).read(); print('fail-marker: no FIXED'); sys.exit(0 if 'FIXED' in t else 1)",
@@ -120,9 +139,42 @@ def test_plan_refusals(tmp_path):
     cyc = [node("a", "ok", needs=["b"]), node("b", "ok", needs=["a"])]
     assert "dependency cycle" in run(tmp_path, "check", setup(tmp_path, cyc)).stdout
     assert run(tmp_path, "run", setup(tmp_path, many)).returncode == 2
+    unknown = [{"id": "x", "role": "explorer", "engine": "gemini", "model": "m", "brief": "brief.md",
+                "inner_timer": "600s", "outer_timeout_s": 660}]
+    assert "engine 'gemini' is not one of" in run(tmp_path, "check", setup(tmp_path, unknown)).stdout
+
+
+def test_claude_and_dsh_engines_are_accepted(tmp_path):
+    """Re-enabled 2026-10-03, via the adapter seam.
+
+    The `claude` refusal was a Claude-Code-only rule: there the Workflow tool already served Claude nodes, so
+    dispatching them again was pointless. On another harness that reason does not hold, and `claude -p` is the
+    only route to a Claude executor. `dsh` runs a node on the harness itself, and takes its model from the
+    headless profile rather than a flag — so a plan may omit the model for `dsh` and must not for `codex`.
+    """
     cl = [{"id": "x", "role": "explorer", "engine": "claude", "model": "claude-opus-5-5", "brief": "brief.md",
            "inner_timer": "600s", "outer_timeout_s": 660}]
-    assert "Claude nodes run with the Workflow tool" in run(tmp_path, "check", setup(tmp_path, cl)).stdout
+    r = run(tmp_path, "check", setup(tmp_path, cl))
+    assert r.returncode == 0, r.stdout + r.stderr
+
+    d = [{"id": "y", "role": "classifier", "engine": "dsh", "brief": "brief.md",
+          "inner_timer": "120s", "outer_timeout_s": 150}]
+    assert run(tmp_path, "check", setup(tmp_path, d)).returncode == 0
+
+    c = [{"id": "z", "role": "coder", "engine": "codex", "brief": "brief.md",
+          "inner_timer": "120s", "outer_timeout_s": 150}]
+    assert "no model" in run(tmp_path, "check", setup(tmp_path, c)).stdout
+
+
+def test_dry_run_shows_the_new_engine_commands(tmp_path):
+    nodes = [{"id": "c", "role": "explorer", "engine": "claude", "model": "claude-opus-5-5", "brief": "brief.md",
+              "inner_timer": "600s", "outer_timeout_s": 660, "mode": "read-only"},
+             {"id": "d", "role": "classifier", "engine": "dsh", "brief": "brief.md",
+              "inner_timer": "120s", "outer_timeout_s": 150}]
+    r = run(tmp_path, "run", setup(tmp_path, nodes), "--dry-run")
+    assert r.returncode == 0, r.stderr
+    assert "claude -p" in r.stdout and "--permission-mode plan" in r.stdout
+    assert "dsh headless" in r.stdout
 
 
 def test_resume_skips_done_nodes(tmp_path):

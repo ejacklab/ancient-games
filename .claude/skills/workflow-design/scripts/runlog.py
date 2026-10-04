@@ -23,7 +23,13 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-ENGINES = ["claude-main", "claude-sub", "codex", "qwen", "agy", "script"]
+from engines import REGISTRY as _ADAPTERS   # same folder: a script run puts it on sys.path, and dispatch.py
+                                            # inserts it there before importing this module
+
+# The engines `--engine` may name are the CLI adapters dispatch.py can actually run, plus the two Claude Code
+# provenance labels. Those two are not adapters: they say WHO ran a node (the COO herself or a subagent), and no
+# command line builds them. Deriving the rest means a new adapter is never a second edit here.
+ENGINES = ["claude-main", "claude-sub", *sorted(_ADAPTERS)]
 
 
 def now() -> str:
