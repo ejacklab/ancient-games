@@ -171,34 +171,40 @@ see the next paragraph. The corpus is also only a proxy — billing-domain promp
 research and scanning — so Codex's real share depends on what the work actually is, and `events.jsonl` records
 every node's engine so the real mix can be reconciled per run.
 
-**Built 2026-10-04: the design-time split is `scripts/workload.py`, at 60% opencode / 40% codex.** EJ's share, for
-build work. Engines are assigned while the plan is written, so the plan still names one engine per node and §5's
-"no run-time routing fork" is untouched. The split is by **module**, not by node count — a module's code and its
-tests are placed together:
+**Built 2026-10-04: the design-time split is `scripts/workload.py` — opencode has priority on build work.**
+Engines are assigned while the plan is written, so the plan still names one engine per node and §5's "no run-time
+routing fork" is untouched. The split is by **module**, not by node count: a module's code and its tests are placed
+together, and the tests go to the engine that did *not* write the code wherever the budget allows. That is
+independent test authoring, which today's single-engine runs do not get at all.
 
-| module | code | tests | independent |
-|---|---|---|---|
-| 1 | opencode | codex | yes |
-| 2 | opencode | codex | yes |
-| 3 | opencode | opencode | **no** — the price of the share |
-| 4 | codex | opencode | yes |
-| 5 | codex | opencode | yes |
+**The default is the smallest lead that counts as priority, not a fixed ratio** (EJ, 2026-10-04: *"I know it is
+very hard to be like 60% 40%, so give priority the opencode more will do"*). Each self-tested module moves two nodes
+to the primary engine, so the minimum lead is (N+1)/2N:
 
-A module's tests being written by the engine that did *not* write its code is the point: it is independent test
-authoring, which today's single-engine runs do not get, and it is free wherever the budget allows. But crossing is
-also the constraint — **crossing every pair forces exactly 50/50**, because each pair then sends one node to each
-engine, whatever pattern the primary modules follow. So 60/40 is only reachable by letting **2s−1 = 20%** of modules
-test themselves, and that is the *maximum* independence available at this share rather than a compromise chosen by
-hand. At 50/50 the budget is zero and every module is independently tested; `--share` moves between the two.
+| modules | opencode | self-tested |
+|---|---|---|
+| 3 | 67% | 1 of 3 |
+| 5 | **60%** | 1 of 5 |
+| 10 | 55% | 1 of 10 |
+| 20 | 52.5% | 1 of 20 |
+
+So the 60/40 first asked for is not hard to hit — **at five modules it *is* the minimum lead**, and it costs a
+single module its independent tests. Demanding 60% on a 20-module plan would cost 4 of 20 rather than 1 of 20, so
+the default takes the cheap end and `--share` forces the larger lead when it is wanted.
+
+**Full independence is available at exactly 50/50 and nowhere else** — crossing every pair sends one node to each
+engine, whatever pattern the primaries follow. An even split therefore has *no* priority, which is the trade the
+default chooses against, and `check()` reports it rather than letting it pass silently.
 
 `workload.py` is deterministic (sorted by module id, so a re-serialized plan does not silently move a node),
 `--write` records the engines into the plan with an `engine_assigned_by` note so a reader can tell an assigned
-engine from a chosen one, and `check()` refuses a plan whose share is off by more than five points, that self-tests
-more modules than the share forces, or whose verifier runs the same engine as the node it verifies (rule 5).
+engine from a chosen one, and `check()` requires that opencode **leads**, then judges self-testing against the lead
+actually achieved — so a plan that self-tests more than its lead costs is refused, as is one whose verifier runs the
+same engine as the node it verifies (rule 5).
 
-**The 60% rests on n=1.** One POC run of opencode scored 19/19 (`runs/20261004-opencode-poc/README.md`) — strong,
-but one run, on a toy repo. This is a policy, not a measurement. The first split run's ledger row is what compares
-codex and opencode on the same work; until that row exists the share is provisional.
+**The basis is n=1.** One POC run of opencode scored 19/19 (`runs/20261004-opencode-poc/README.md`) — strong, but
+one run, on a toy repo. This is a policy, not a measurement. The first split run's ledger row is what compares codex
+and opencode on the same work.
 
 **Where each engine lives on the DeepSeek Harness** (main environment as of 2026-10-03). **The CLI comes first and
 the provider tool is the fallback** — see the rule under the table.

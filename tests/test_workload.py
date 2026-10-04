@@ -1,4 +1,8 @@
-"""workload.py — the design-time engine split (EJ, 2026-10-04: 60% opencode, 40% codex)."""
+"""workload.py — the design-time engine split. EJ, 2026-10-04: give opencode priority.
+
+The default is the *smallest lead that counts as priority*, because that is also the most independence available.
+A forced share is supported and is bought with more self-testing, at 2s-1 of the modules.
+"""
 import sys
 from pathlib import Path
 
@@ -17,66 +21,95 @@ def modules(names):
     return out
 
 
-def names(n):
-    return [f"m{i:02d}" for i in range(n)]
+def numbered(n):
+    return modules([f"m{i:02d}" for i in range(n)])
 
 
-@pytest.mark.parametrize("count", [5, 10, 20, 50])
-def test_share_is_exactly_sixty_forty(count):
-    nodes = modules(names(count))
-    engines = workload.assign(nodes)
-    primary = sum(1 for e in engines.values() if e == "opencode")
-    assert len(engines) == 2 * count
-    assert primary == round(0.6 * 2 * count)
-
-
-@pytest.mark.parametrize("count", [5, 10, 20, 50])
-def test_self_tested_fraction_is_two_s_minus_one(count):
-    """At s=0.6 exactly one module in five grades its own tests — the price of the share, not an accident.
-
-    Crossing every pair would give 50/50 and full independence; a 60/40 share is only reachable by letting
-    2s-1 = 20% of modules test themselves. So this pins the *optimum*, not a chosen compromise.
-    """
-    nodes = modules(names(count))
-    engines = workload.assign(nodes)
+def self_tested(nodes, engines):
     by_module = {}
     for n in nodes:
         by_module.setdefault(workload.module_of(n), set()).add(engines[n["id"]])
-    self_tested = sum(1 for engines_used in by_module.values() if len(engines_used) == 1)
-    assert self_tested == round(0.2 * count)
+    return sum(1 for e in by_module.values() if len(e) == 1)
 
 
-def test_the_periodic_pattern_for_five_modules():
-    """The worked example from the docstring, so the documented table cannot drift from the code."""
+@pytest.mark.parametrize("count", [3, 5, 10, 20, 50])
+def test_default_gives_priority_at_the_lowest_cost(count):
+    """Opencode leads, and exactly one module self-tests — the least possible while still leading.
+
+    Each self-tested module moves two nodes to the primary engine, so the minimum lead is (N+1)/2N and costs a
+    single module its independent tests, whatever the plan size.
+    """
+    nodes = numbered(count)
+    engines = workload.assign(nodes)
+    primary = sum(1 for e in engines.values() if e == "opencode")
+    assert primary > len(engines) / 2, "opencode must have priority"
+    assert primary == count + 1
+    assert self_tested(nodes, engines) == 1
+    assert workload.check(nodes, engines) == []
+
+
+def test_five_modules_is_exactly_sixty_forty():
+    """EJ's target is not hard to hit — at five modules it is the *minimum* lead, so it comes out for free."""
+    nodes = numbered(5)
+    engines = workload.assign(nodes)
+    assert sum(1 for e in engines.values() if e == "opencode") == 6
+    assert sum(1 for e in engines.values() if e == "codex") == 4
+
+
+def test_the_documented_five_module_pattern():
+    """The worked example in the docstring, so the documented table cannot drift from the code."""
     nodes = modules(["ingest", "parse", "store", "report", "notify"])
     engines = workload.assign(nodes)
     got = {m: (engines[f"{m}-dev"], engines[f"{m}-test"]) for m in
            ("ingest", "notify", "parse", "report", "store")}
     assert got["ingest"] == ("opencode", "codex")
     assert got["notify"] == ("opencode", "codex")
-    assert got["parse"] == ("opencode", "opencode")      # the one self-tested module
+    assert got["parse"] == ("opencode", "opencode")      # the one module that self-tests
     assert got["report"] == ("codex", "opencode")
     assert got["store"] == ("codex", "opencode")
 
 
+def test_forcing_a_bigger_lead_costs_self_testing():
+    """A 60% share across 20 modules self-tests 4 of them; the minimum lead self-tests 1."""
+    nodes = numbered(20)
+    forced = workload.assign(nodes, share=0.6)
+    assert sum(1 for e in forced.values() if e == "opencode") == 24
+    assert self_tested(nodes, forced) == 4
+    assert self_tested(nodes, workload.assign(nodes)) == 1
+    assert workload.check(nodes, forced) == []
+
+
+def test_fifty_fifty_is_fully_independent_but_has_no_priority():
+    """The whole trade in one test: full independence is available, and it costs the priority EJ asked for.
+
+    This is why the default takes the minimum lead instead of splitting evenly.
+    """
+    nodes = numbered(10)
+    engines = workload.assign(nodes, share=0.5)
+    assert self_tested(nodes, engines) == 0, "an even split crosses every pair"
+    assert any("no priority" in f for f in workload.check(nodes, engines))
+
+
 def test_assignment_is_independent_of_input_order():
     """A resumed or re-serialized plan must not silently move a node to another engine."""
-    nodes = modules(names(20))
+    nodes = numbered(20)
     assert workload.assign(nodes) == workload.assign(list(reversed(nodes)))
 
 
-def test_check_is_clean_on_a_correct_plan():
-    for count in (5, 20, 50):
-        nodes = modules(names(count))
-        assert workload.check(nodes, workload.assign(nodes)) == []
+def test_check_flags_a_plan_with_no_priority():
+    nodes = numbered(10)
+    engines = workload.assign(nodes, share=0.5)
+    assert any("no priority" in f for f in workload.check(nodes, engines))
 
 
-def test_check_catches_a_plan_that_self_tests_everything():
-    nodes = modules(["a", "b", "c", "d", "e"])
-    engines = {n["id"]: "opencode" for n in nodes}
+def test_check_flags_self_testing_beyond_what_the_lead_costs():
+    """Half the modules wholly opencode and half wholly codex: an even split that self-tests everything."""
+    nodes = numbered(10)
+    engines = {}
+    for n in nodes:
+        engines[n["id"]] = "opencode" if workload.module_of(n).endswith(("0", "2", "4", "6", "8")) else "codex"
     findings = workload.check(nodes, engines)
     assert any("grade their own tests" in f for f in findings)
-    assert any("share is 100%" in f for f in findings)
 
 
 def test_check_catches_a_rule_5_breach():
@@ -86,20 +119,25 @@ def test_check_catches_a_rule_5_breach():
     assert any("rule 5" in f for f in workload.check(nodes, engines))
 
 
-def test_at_fifty_fifty_nothing_need_self_test():
-    """The other end of the same trade: full independence is available at 50/50 and at no other share."""
-    nodes = modules(names(10))
-    engines = workload.assign(nodes, share=0.5)
-    by_module = {}
-    for n in nodes:
-        by_module.setdefault(workload.module_of(n), set()).add(engines[n["id"]])
-    assert all(len(v) == 2 for v in by_module.values())
-    assert workload.check(nodes, engines, share=0.5) == []
-
-
 def test_module_and_kind_can_be_declared_explicitly():
-    nodes = [{"id": "n1", "role": "builder", "module": "auth", "kind": "code"},
-             {"id": "n2", "role": "builder", "module": "auth", "kind": "test"}]
-    engines = workload.assign(nodes)
-    assert set(engines) == {"n1", "n2"}
+    """Explicit `module` and `kind` beat the id/role heuristics."""
+    two = [{"id": "n1", "role": "builder", "module": "auth", "kind": "code"},
+           {"id": "n2", "role": "builder", "module": "auth", "kind": "test"},
+           {"id": "n3", "role": "builder", "module": "billing", "kind": "code"},
+           {"id": "n4", "role": "builder", "module": "billing", "kind": "test"}]
+    engines = workload.assign(two)
+    assert set(engines) == {"n1", "n2", "n3", "n4"}
     assert engines["n1"] != engines["n2"], "a declared pair must still be crossed"
+
+
+def test_a_single_module_takes_priority_over_independence():
+    """With one pair, priority and crossing are mutually exclusive and priority wins (EJ's instruction).
+
+    Two nodes can go 2-0 to the primary engine, or 1-1 and leave it with no lead at all. So a one-module plan
+    self-tests, which is correct rather than a bug — and the check agrees, because a 100% share costs exactly the
+    one module of self-testing it gets.
+    """
+    nodes = [{"id": "only-dev", "role": "coder"}, {"id": "only-test", "role": "tester"}]
+    engines = workload.assign(nodes)
+    assert set(engines.values()) == {"opencode"}
+    assert workload.check(nodes, engines) == []

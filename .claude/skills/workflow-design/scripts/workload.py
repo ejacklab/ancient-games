@@ -39,6 +39,11 @@ Evidence for the basis
 The share is EJ's decision on n=1: one POC run of opencode + MiniMax-M3.1-Flash-Preview passed 19/19 objective
 checks (`runs/20261004-opencode-poc/README.md`). It is a policy, not a measurement. Record the split in the
 ledger so the next run compares the engines on the same work instead of trusting this number.
+The share is an **aim, not a contract** (EJ, 2026-10-04: *"I know it is very hard to be like 60% 40%, so give
+priority the opencode more will do"*). `assign()` therefore defaults to the *smallest* lead that counts as
+priority, which is also the most independence available — and at five modules that minimum lead is exactly 60/40.
+`check()` asks only that opencode leads, and measures self-testing against the lead actually achieved.
+
 """
 from __future__ import annotations
 
@@ -66,20 +71,36 @@ def kind_of(node: dict) -> str:
     return "test" if any(m in hay for m in TEST_MARKERS) else "code"
 
 
-def assign(nodes: list[dict], share: float = 0.6, primary: str = "opencode",
+def assign(nodes: list[dict], share: float | None = None, primary: str = "opencode",
            other: str = "codex") -> dict[str, str]:
     """Return {node id: engine} for the build nodes. Deterministic: same nodes in, same map out.
+
+    `share=None` (the default) gives the primary engine the **smallest lead that still counts as priority**: cross
+    every module, then self-test only as many as it takes to put it ahead. That is the most independence available
+    while keeping priority, and on a small plan it is 60/40 anyway — each self-tested module moves two nodes to the
+    primary engine, so the minimum lead is (N+1)/2N:
+
+    | modules | share   | self-tested |
+    |---------|---------|-------------|
+    | 3       | 67%     | 1 of 3      |
+    | 5       | **60%** | 1 of 5      |
+    | 10      | 55%     | 1 of 10     |
+    | 20      | 52.5%   | 1 of 20     |
+
+    Pass a `share` to demand a bigger lead; it is bought with more self-testing, at 2s-1 of the modules.
 
     Sorted by module id, so the assignment does not depend on the plan's node order — adding a node does not
     silently re-shuffle every other one's engine.
     """
-    if not 0.0 <= share <= 1.0:
-        raise ValueError("share must be between 0 and 1")
     modules: dict[str, dict[str, dict]] = {}
     for n in nodes:
         modules.setdefault(module_of(n), {})[kind_of(n)] = n
     order = sorted(modules)
     n_mod = len(order)
+    if share is None:
+        share = (n_mod + 1) / (2 * n_mod) if n_mod else 0.5
+    if not 0.0 <= share <= 1.0:
+        raise ValueError("share must be between 0 and 1")
 
     # `p` is the share of modules whose *code* goes to the primary engine. It is not the node share: the node
     # share also counts the tests, and the primary engine picks up tests from every other-primary module.
@@ -114,30 +135,35 @@ def assign(nodes: list[dict], share: float = 0.6, primary: str = "opencode",
     return out
 
 
-def check(nodes: list[dict], engines: dict[str, str], share: float = 0.6, primary: str = "opencode",
+def check(nodes: list[dict], engines: dict[str, str], primary: str = "opencode",
           other: str = "codex") -> list[str]:
-    """Findings about a proposal. Empty means the split is balanced and no module grades its own tests."""
+    """Findings about a proposal. Empty means opencode has priority and no module over-tests itself.
+
+    The share is an **aim, not a contract** (EJ, 2026-10-04: *"I know it is very hard to be like 60% 40%, so give
+    priority the opencode more will do"*). So this does not demand 60% ±5: it demands that the primary engine
+    leads, and then asks whether the plan self-tests more modules than that lead actually costs. The budget comes
+    from the *achieved* share, because that is what forces self-testing — over-tests above it are waste, not error.
+    """
     f: list[str] = []
     build = {n["id"]: engines[n["id"]] for n in nodes if n["id"] in engines}
     if not build:
         return ["no build nodes to assign"]
     n_primary = sum(1 for e in build.values() if e == primary)
-    got = n_primary / len(build)
-    if abs(got - share) > 0.05:
-        f.append(f"share is {got:.0%} on {primary}, wanted {share:.0%} (±5 points)")
+    share = n_primary / len(build)
+    if share <= 0.5:
+        f.append(f"{primary} has {share:.0%} of build nodes — no priority over {other}")
 
     modules: dict[str, dict[str, str]] = {}
     for n in nodes:
         if n["id"] in engines:
             modules.setdefault(module_of(n), {})[kind_of(n)] = engines[n["id"]]
-    # A module may grade its own tests only up to the budget the share forces: 2s-1 of them. At 60/40 that is one
-    # module in five, so a correct plan is clean and a plan that self-tests everything is not.
+    # For a given lead, a = 2s-1 is the *minimum* self-testing it costs, so that is the budget.
     self_tested = [m for m, g in sorted(modules.items())
                    if g.get("code") and g.get("code") == g.get("test")]
-    budget = round((2 * share - 1) * len(modules))
+    budget = round(max(0.0, 2 * share - 1) * len(modules))
     if len(self_tested) > budget:
         f.append(f"{len(self_tested)} module(s) grade their own tests ({', '.join(self_tested)}); a "
-                 f"{share:.0%} share forces at most {budget}")
+                 f"{share:.0%} share for {primary} costs at most {budget}")
     # rule 5: a node's verifier must be a different kind from the node's worker
     for n in nodes:
         v = n.get("verified_by") or n.get("verifier")
@@ -173,7 +199,8 @@ def render(nodes: list[dict], engines: dict[str, str]) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--plan", required=True, help="plan JSON with a `nodes` array")
-    ap.add_argument("--share", type=float, default=0.6, help="primary engine's share (default 0.6)")
+    ap.add_argument("--share", type=float, default=None,
+                    help="force a bigger lead than the minimum (default: minimum lead, which is 60%% at 5 modules)")
     ap.add_argument("--primary", default="opencode")
     ap.add_argument("--other", default="codex")
     ap.add_argument("--write", action="store_true", help="write the engines back into the plan")
@@ -184,7 +211,7 @@ def main(argv: list[str] | None = None) -> int:
     nodes = plan["nodes"]
     engines = assign(nodes, args.share, args.primary, args.other)
     print(render(nodes, engines))
-    findings = check(nodes, engines, args.share, args.primary, args.other)
+    findings = check(nodes, engines, args.primary, args.other)
     for finding in findings:
         print(f"  FINDING: {finding}")
     if args.write:
