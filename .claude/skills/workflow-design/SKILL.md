@@ -172,6 +172,13 @@ Check it shows all three, and say so in the design:
 - **Quality control** — a check per piece; blind verifiers; proof each script check can fail; a contradiction check
   at joins; a final "what is missing" pass measured against the three-part stop of step 8 (a failure there is a
   failed attempt; anything else goes to the backlog); skipped or unrun checks reported as such.
+- **Engine split** — for build work, run `scripts/workload.py --plan <plan> --write` before the run starts. It
+  assigns 60% of build nodes to opencode and 40% to codex (EJ, 2026-10-04) by **module**, crossing each module's
+  code and tests so the tests are written by the engine that did not write the code. Crossing every pair would
+  force 50/50, so 20% of modules test themselves — that is the maximum independence available at 60/40, not an
+  oversight. Never split dev and tests independently: that gives half the modules their code *and* their tests from
+  one engine. `check()` refuses a plan that is off-share, over the self-test budget, or whose verifier shares its
+  node's engine. `docs/EXECUTOR_KINDS.md` has the rule and the arithmetic.
 
 ## Output
 

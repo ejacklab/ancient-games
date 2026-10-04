@@ -166,10 +166,39 @@ the mix is close to even before any balancing rule, and a rule would move little
 version: remaining usage **cannot be read** for any engine (see "Open before relying on this"), so "when Codex is
 heavily used" is not a condition anything can evaluate; and `DISPATCHER_DESIGN.md` §5 records EJ's decision that
 there is **no run-time routing fork** — the plan names one engine per node and the dispatcher makes no choice. A
-deterministic design-time split, a stable hash of the node id written into the plan, would fit those rules if the
-mix ever needs forcing; it is not built. The corpus is also only a proxy — billing-domain prompts skewed toward
+deterministic design-time split, written into the plan, does fit those rules — and as of 2026-10-04 it is built:
+see the next paragraph. The corpus is also only a proxy — billing-domain prompts skewed toward
 research and scanning — so Codex's real share depends on what the work actually is, and `events.jsonl` records
 every node's engine so the real mix can be reconciled per run.
+
+**Built 2026-10-04: the design-time split is `scripts/workload.py`, at 60% opencode / 40% codex.** EJ's share, for
+build work. Engines are assigned while the plan is written, so the plan still names one engine per node and §5's
+"no run-time routing fork" is untouched. The split is by **module**, not by node count — a module's code and its
+tests are placed together:
+
+| module | code | tests | independent |
+|---|---|---|---|
+| 1 | opencode | codex | yes |
+| 2 | opencode | codex | yes |
+| 3 | opencode | opencode | **no** — the price of the share |
+| 4 | codex | opencode | yes |
+| 5 | codex | opencode | yes |
+
+A module's tests being written by the engine that did *not* write its code is the point: it is independent test
+authoring, which today's single-engine runs do not get, and it is free wherever the budget allows. But crossing is
+also the constraint — **crossing every pair forces exactly 50/50**, because each pair then sends one node to each
+engine, whatever pattern the primary modules follow. So 60/40 is only reachable by letting **2s−1 = 20%** of modules
+test themselves, and that is the *maximum* independence available at this share rather than a compromise chosen by
+hand. At 50/50 the budget is zero and every module is independently tested; `--share` moves between the two.
+
+`workload.py` is deterministic (sorted by module id, so a re-serialized plan does not silently move a node),
+`--write` records the engines into the plan with an `engine_assigned_by` note so a reader can tell an assigned
+engine from a chosen one, and `check()` refuses a plan whose share is off by more than five points, that self-tests
+more modules than the share forces, or whose verifier runs the same engine as the node it verifies (rule 5).
+
+**The 60% rests on n=1.** One POC run of opencode scored 19/19 (`runs/20261004-opencode-poc/README.md`) — strong,
+but one run, on a toy repo. This is a policy, not a measurement. The first split run's ledger row is what compares
+codex and opencode on the same work; until that row exists the share is provisional.
 
 **Where each engine lives on the DeepSeek Harness** (main environment as of 2026-10-03). **The CLI comes first and
 the provider tool is the fallback** — see the rule under the table.
