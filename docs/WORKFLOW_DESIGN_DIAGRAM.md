@@ -210,6 +210,7 @@ It is a multi-agent run, so it is used only when EJ asks for it.
 | 2 | 3.1, "Blueprint check — part of readiness" | inside step 1 |
 | 3 | 3.5 | step 5 |
 | 4 | 3.6, the five-things table | "Every node carries five things" |
+| — | **3.8** "Running a node: executors are tools, timers, pass-back, no polling" (added 2026-10-02) | **no step.** Node running is execution detail, not a design decision, so the skill keeps it as reference: step 1 sends the reader to `references/executor-kinds.md` for the canary, read-only vs write, and the fallback rule. This row exists because the table above once omitted 3.8 silently, which reads as if the method had 8 sections and the skill 8 steps, one each |
 
 The diagrams were written from the documents above and checked against them; they were not render-verified (no
 mermaid renderer on this machine). If a diagram disagrees with the method, the method wins and the diagram is wrong.
