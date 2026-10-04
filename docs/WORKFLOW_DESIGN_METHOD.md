@@ -345,6 +345,12 @@ The COO (the main Claude session) is the leader and holds the thinking. Codex, `
 **tools** she calls: agents are not yet stable (a call may stop half-way, return nothing, or return something
 malformed), and every exchange with them costs the COO a turn that re-reads her whole context. So:
 
+**Before any of it: know which binary will make the call, and what version it is.** A provider can bundle its own
+copy of an engine, older than the copy on `PATH`, and the two do not accept the same model names — the error blames
+the model or the account, never the version. Check the catalog of the binary that will actually run, and record that
+version in the canary. `docs/EXECUTOR_KINDS.md`, "The bundled-runtime trap", has the three instances that cost this
+project three diagnoses in two days.
+
 1. **One small task per call.** A call has one deliverable, one command line and an expected finish inside its
    timeout. A loop is not inside the call: if a piece loops, the COO or the script runs the loop and each attempt is
    a fresh small call (3.5). A piece too big for one bounded call is not handed over whole; the COO splits it only

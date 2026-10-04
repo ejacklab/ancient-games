@@ -75,6 +75,13 @@ def first_line(out: str) -> str:
 
 
 def check_binary(name: str) -> Check:
+    """The version of the binary **on PATH**.
+
+    That is NOT necessarily the binary that will make a call: a provider can bundle its own, older copy of an
+    engine, and the two do not accept the same model names (docs/EXECUTOR_KINDS.md, "The bundled-runtime trap").
+    This line is the most likely thing in the inventory to be misread as proof for a provider call, so the canary
+    records the version of the binary that actually ran.
+    """
     rc, out = run_cmd([name, "--version"])
     proof = f"`{name} --version`"
     if rc is None:

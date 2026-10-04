@@ -48,6 +48,9 @@ agent can read; a subagent starts with nothing but its prompt.
    preparation piece at the front of the flow.
    Template: `readiness.md`. A node run by Codex or `agy` (not a Claude subagent): read `references/executor-kinds.md`
    first — the canary that proves the tool, read-only versus write, the fallback rule (n=0).
+   **Prove the binary that will make the call, and record its version** — not the version on `PATH`. A provider can
+   bundle an older copy of an engine and the two do not accept the same model names; the error names the model or
+   the account, never the version. `references/executor-kinds.md`, "The bundled-runtime trap".
    Every node names its role, engine, exact model and effort (never a default; the Codex plugin's example models are
    stale). The COO is the main Claude session: she distributes by the graph, monitors the state file, reviews
    verdicts, and may do a small node herself under four conditions and a tool-call cap — same file.

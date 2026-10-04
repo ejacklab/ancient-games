@@ -77,12 +77,42 @@ paths genuinely differ and the DSH row is the exception. **Lesson: when a model 
 - The node's result records the model the tool reports. The COO fails the node if it is not the one the contract
   named. How `codex exec` and `agy` report the model in their output is not yet checked; the canary settles it
   (*unknown*).
-- The names go stale, and this section has now recorded one: `gpt-6-sol`. A second alarm on 2026-10-03 turned out
-  **not** to be staleness — `gpt-6.1-sol` was fine and an old bundled Codex client was asking for it, which is the
-  trap this bullet is really about. **Check `codex debug models` for the binary that will actually make the
-  call**, not for Codex in general: the CLI and a bundled provider copy can advertise different catalogs, and a
-  400 names the model and the account while the cause is the client version. For `agy`, `agy models`. The names live
-  in the design's node blocks and the canary log, so a change is one edit and the canary shows what actually ran.
+- The names go stale — `gpt-6-sol` did. But a 400 is not proof of staleness: see **"The bundled-runtime trap"**
+  below before changing a name. The names live in the design's node blocks and the canary log, so a change is one
+  edit and the canary shows what actually ran.
+
+## The bundled-runtime trap
+
+**A model that fails may be failing because of the client — not the model, the account or the permission mode. Ask
+which binary made the call, and what version it is.** An engine reached through a provider may be a *bundled* copy,
+older than the copy on `PATH`, and the two do not accept the same model names. The error names the model, or the
+account, and never the version, so it sends you to fix the wrong thing. This has cost three diagnoses in two days:
+
+| When | What actually ran | On `PATH` | Symptom | Cause |
+|---|---|---|---|---|
+| 2026-09-30 | `gpt-6-sol`, named in this file | — | the name did not exist | a stale name — the plain case |
+| 2026-10-03 | the DSH Codex provider's bundled `@openai/codex@0.153.4` | `codex-cli 0.160.0` | 400 *"The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account"* | the bundled catalog has seven models and lacks it; the CLI's has ten and runs it with high effort |
+| 2026-10-03 | the DSH Claude Code provider's bundled Claude Code **2.1.263** (via `@anthropic-ai/claude-agent-sdk@0.3.263`) | Claude Code **2.1.289** | 400 *"Claude Code 2.1.263 does not support this model; version 2.1.280 or later required"* | Opus 5.5 needs CC ≥ 2.1.280. Sonnet 5.5 runs on 2.1.263, so this is per-model version gating, not a blanket "too old" |
+
+Both DSH cases first read as *"the model is dead"*. Neither model was dead. In the Codex case this file's sibling
+table in `TASK_TYPES.md` was edited to a different model before the real cause was found; that edit is reverted,
+and it is why this section exists.
+
+**The checks, in order.**
+
+1. Run the engine's own catalog command **for the binary that will make the call** — `codex debug models`,
+   `agy models`, `claude --version`. Not for the engine in general: a bundled provider copy answers differently,
+   and its answer is the one that matters.
+2. Read the error for a *version*, not only for a model or an account. "does not support this model; version X or
+   later required" is a version statement wearing a model's clothes.
+3. Before concluding a model is dead, run the same id on the CLI. **If the CLI works, the bundled client is the
+   problem.**
+4. The fix is normally to align the bundled client — the provider's pinned dependency — not to change the model.
+   Until it is aligned, the CLI route (`dispatch.py`) can use the model the provider cannot, which is how Opus 5.5
+   is reachable today.
+
+**A canary must record the version of the binary that ran**, not the version on `PATH`, or the two are
+indistinguishable in the log — which is how a provider's stale client stays invisible across runs.
 
 ## Routing: which category goes to which engine
 
@@ -226,8 +256,9 @@ kind, with an answer that can be checked:
 1. Ask for a fixed thing: write `OK` to `runs/<runId>/canary/<kind>.txt`, or return `{"ok": true}` with the schema
    flag.
 2. Run it under a 60–90 second timeout.
-3. Record the tool's version in the state file. Pass only if the exit code is right, the file exists with exactly that content, stderr has no approval-denied
-   or quota notice, and for `agy` the json `status` is success.
+3. Record the version of the **binary that ran** — for a provider, its bundled copy, not the CLI on `PATH` (see
+   "The bundled-runtime trap"). Pass only if the exit code is right, the file exists with exactly that content,
+   stderr has no approval-denied or quota notice, and for `agy` the json `status` is success.
 4. The canary node returns `pass`, `fail` or `timeout` with the reason to the script, and the state file records it.
    The scheduler (the script or the COO), not the state file, decides which kinds the graph may use.
    Format, one Log line per kind: `canary <kind> <version> pass|fail|timeout: <reason>`.
