@@ -1,0 +1,83 @@
+# corpus_check — 100 prompts, results results_codex_r2.jsonl
+
+bugs: 79 {"MISMATCH": 79}
+
+- [MISMATCH] p101: no result row
+- [MISMATCH] p102: no result row
+- [MISMATCH] p103: no result row
+- [MISMATCH] p104: no result row
+- [MISMATCH] p105: no result row
+- [MISMATCH] p106: no result row
+- [MISMATCH] p107: no result row
+- [MISMATCH] p108: no result row
+- [MISMATCH] p109: no result row
+- [MISMATCH] p110: no result row
+- [MISMATCH] p111: no result row
+- [MISMATCH] p112: no result row
+- [MISMATCH] p113: no result row
+- [MISMATCH] p114: no result row
+- [MISMATCH] p115: no result row
+- [MISMATCH] p116: no result row
+- [MISMATCH] p117: no result row
+- [MISMATCH] p118: no result row
+- [MISMATCH] p119: no result row
+- [MISMATCH] p120: no result row
+- [MISMATCH] p121: no result row
+- [MISMATCH] p122: no result row
+- [MISMATCH] p123: no result row
+- [MISMATCH] p124: no result row
+- [MISMATCH] p125: no result row
+- [MISMATCH] p130: builds result=False expected=True
+- [MISMATCH] p139: cats result=['test script gen'] expected=['test cases gen']
+- [MISMATCH] p141: cats result=['code review'] expected=['research and reports']
+- [MISMATCH] p143: cats result=['test script gen'] expected=['test cases gen']
+- [MISMATCH] p151: no result row
+- [MISMATCH] p152: no result row
+- [MISMATCH] p153: no result row
+- [MISMATCH] p154: no result row
+- [MISMATCH] p155: no result row
+- [MISMATCH] p156: no result row
+- [MISMATCH] p157: no result row
+- [MISMATCH] p158: no result row
+- [MISMATCH] p159: no result row
+- [MISMATCH] p160: no result row
+- [MISMATCH] p161: no result row
+- [MISMATCH] p162: no result row
+- [MISMATCH] p163: no result row
+- [MISMATCH] p164: no result row
+- [MISMATCH] p165: no result row
+- [MISMATCH] p166: no result row
+- [MISMATCH] p167: no result row
+- [MISMATCH] p168: no result row
+- [MISMATCH] p169: no result row
+- [MISMATCH] p170: no result row
+- [MISMATCH] p171: no result row
+- [MISMATCH] p172: no result row
+- [MISMATCH] p173: no result row
+- [MISMATCH] p174: no result row
+- [MISMATCH] p175: no result row
+- [MISMATCH] p176: no result row
+- [MISMATCH] p177: no result row
+- [MISMATCH] p178: no result row
+- [MISMATCH] p179: no result row
+- [MISMATCH] p180: no result row
+- [MISMATCH] p181: no result row
+- [MISMATCH] p182: no result row
+- [MISMATCH] p183: no result row
+- [MISMATCH] p184: no result row
+- [MISMATCH] p185: no result row
+- [MISMATCH] p186: no result row
+- [MISMATCH] p187: no result row
+- [MISMATCH] p188: no result row
+- [MISMATCH] p189: no result row
+- [MISMATCH] p190: no result row
+- [MISMATCH] p191: no result row
+- [MISMATCH] p192: no result row
+- [MISMATCH] p193: no result row
+- [MISMATCH] p194: no result row
+- [MISMATCH] p195: no result row
+- [MISMATCH] p196: no result row
+- [MISMATCH] p197: no result row
+- [MISMATCH] p198: no result row
+- [MISMATCH] p199: no result row
+- [MISMATCH] p200: no result row

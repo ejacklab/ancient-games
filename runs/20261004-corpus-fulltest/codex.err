@@ -1,0 +1,1145 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a10790-dad7-7ce1-823c-a12a8598f97b
+--------
+user
+You are reviewing a TEST LOG, not a specification. A workflow-design algorithm was run over a 300-prompt
+corpus, and the log below records what actually happened. Your job is to say what the log reveals about the
+algorithm. The evidence is inlined; do not read from disk and do not call any tool.
+
+The algorithm under test: for a prompt it (1) decides the task's categories, (2) looks up each category's default
+pattern, engine, check and sabotage in `docs/TASK_TYPES.md`, (3) builds the design those defaults imply, and
+(4) runs `design_gate.py` over the design, which is supposed to refuse a bad one.
+
+Three things follow the log and you should use them:
+
+* `design_gate.py` in full — the gate whose findings the log counts. "0 findings" can only be judged against what
+  the gate actually checks.
+* `docs/TASK_TYPES.md` in full — the table that supplies the categories and defaults, and where the classification
+  disagreements would be resolved.
+* Six of the 300 designs that passed the gate, verbatim.
+
+Answer these, labelling each finding with the letter:
+
+A. VERDICT ON THE NULL RESULT. With correct categories, 300 of 300 designs pass the gate, and across 150 real runs
+   the gate fires twice. Is that evidence the designs are good, or evidence the gate cannot reject? Read
+   `design_gate.py` and decide, naming the specific rule or the specific gap that settles it. This is the most
+   important question.
+B. CLASSIFICATION OR DEFINITION. 73 of 150 real designs disagree with the expected categories. A model can simply
+   be wrong — but four different models disagree in different places. Where the disagreements cluster on one
+   category, is that the model's error or an ambiguous definition in `TASK_TYPES.md`? Name the category and the
+   wording.
+C. WHAT THE DESIGN SAMPLE SHOWS. Do the six designs that passed actually satisfy the algorithm's own promises —
+   every node carrying five things with contents, a baseline before the first node that builds, a three-part stop
+   on every node that builds, a different-kind reviewer for every building node? Name any promise the sample
+   breaks while passing the gate.
+D. WHAT THE LOG CANNOT SEE. Which rules of the algorithm does this test never exercise at all? Name them — a rule
+   the corpus cannot falsify is unmeasured however green the log looks.
+E. WHAT WOULD MAKE THIS TEST DECISIVE. One or two concrete changes to the test that would turn a green log into
+   evidence. Be specific about the input or the check.
+
+Output EXACTLY this format, nothing else:
+
+FINDING 1: <file>:<line> | <A-E> | <high|med|low> | <one sentence: what is wrong> | QUOTE: <exact text of that line, copied verbatim from the inlined evidence>
+FINDING 2: ...
+VERDICT: <one sentence: is the green log evidence or a null result>
+
+Rules, enforced mechanically after you answer:
+* Every finding needs a file, a line number, a letter A-E, and a QUOTE copied verbatim from the inlined evidence.
+  A finding missing any of these is discarded unread.
+* Cite only the inlined evidence. When you cite the log itself, use `testlog.md:<line>`.
+* Three sharp findings beat ten vague ones. An empty list is acceptable if the test is sound.
+
+
+===== FILE: testlog.md (the test log under review) =====
+
+  1: # Test log — the workflow-design algorithm run over the 300-prompt corpus
+  2: 
+  3: ## What was run
+  4: 
+  5: `tests/workflows/corpus_check.py`: corpus (300 prompts, `tests/fixtures/operator_prompts_r{1,2,3}.jsonl`)
+  6: x results x `docs/TASK_TYPES.md` x `design_gate.py`. For each prompt it builds the default design the
+  7: TASK_TYPES rows imply and runs the gate over it, then classifies each disagreement as a bug.
+  8: 
+  9: ## Run 1 — perfect labels (300 prompts, no model calls, tests the MACHINERY only)
+ 10: 
+ 11: The results file is built from the corpus's own `exp` labels, so the classification step is taken as correct
+ 12: by construction. Every bug here would be the algorithm's own fault.
+ 13: 
+ 14: ```
+ 15: bugs: 0 (none)
+ 16: designs emitted: 300
+ 17: ```
+ 18: So with correct categories, all 300 designs pass the gate.
+ 19: 
+ 20: ## Run 2 — real classifier output (150 of 300 prompts; the campaign covered 25 per round per engine)
+ 21: 
+ 22: | engine | round | prompts classified | `no result row` | genuine mismatches | GATE findings |
+ 23: |---|---|---|---|---|---|
+ 24: | codex | r1 | 25 | 75 | 25 | 2 |
+ 25: | codex | r2 | 25 | 75 | 4 | 0 |
+ 26: | codex | r3 | 25 | 75 | 1 | 0 |
+ 27: | agy | r1 | 25 | 75 | 21 | 0 |
+ 28: | agy | r2 | 25 | 75 | 12 | 0 |
+ 29: | agy | r3 | 25 | 75 | 10 | 0 |
+ 30: 
+ 31: **73 genuine mismatches across 150 classified prompts; 2 gate findings across all of
+ 32: them.** Every `no result row` is a coverage artifact — the results file covers 25 of that round's 100
+ 33: prompts — not a failure. Classification accuracy was measured separately on the two clean rounds:
+ 34: sonnet-5.5 94%, codex 90%, agy 74%.
+ 35: 
+ 36: ### What the mismatches are about
+ 37: 
+ 38: A sample of the actual reasons, verbatim from the logs:
+ 39: 
+ 40: ```
+ 41: codex r1: [MISMATCH] p001: cats result=['repo scanning', 'information extraction'] expected=['repo scanning']
+ 42: codex r1: [MISMATCH] p002: cats result=['information extraction', 'document and explain'] expected=['research and reports']
+ 43: codex r2: [MISMATCH] p130: builds result=False expected=True
+ 44: codex r2: [MISMATCH] p139: cats result=['test script gen'] expected=['test cases gen']
+ 45: codex r3: [MISMATCH] p231: cats result=['research and reports'] expected=['web search']
+ 46: agy r1: [MISMATCH] p051: cats result=['debugging', 'information extraction'] expected=['debugging']
+ 47: agy r1: [MISMATCH] p052: cats result=['code review', 'information extraction'] expected=['research and reports']
+ 48: agy r2: [MISMATCH] p187: cats result=['research and reports', 'code generation', 'test script gen'] expected=['research and re
+ 49: agy r2: [MISMATCH] p187: pipeline result=None expected='research → codegen'
+ 50: agy r3: [MISMATCH] p271: pipeline result=None expected='research → codegen'
+ 51: agy r3: [MISMATCH] p273: cats result=['debugging', 'code generation', 'grade a run', 'document and explain'] expected=['debugg
+ 52: ```
+ 53: 
+ 54: ## Run 3 — a sample of the 300 designs that passed
+ 55: 
+ 56: The gate not firing is only good news if the designs are real. Six of the 300, chosen across categories:
+ 57: 
+ 58: ### `p001`
+ 59: ```json
+ 60: {
+ 61:  "categories": [
+ 62:   "repo scanning"
+ 63:  ],
+ 64:  "builds": false,
+ 65:  "touched_paths": [],
+ 66:  "pipeline": null,
+ 67:  "nodes": [
+ 68:   {
+ 69:    "id": "n1",
+ 70:    "category": "repo scanning",
+ 71:    "engine": "agy (EJ, 2026-10-04)",
+ 72:    "check": "default check for repo scanning (TASK_TYPES.md)",
+ 73:    "five_things": [
+ 74:     "context",
+ 75:     "contract",
+ 76:     "evidence",
+ 77:     "state",
+ 78:     "tools"
+ 79:    ],
+ 80:    "needs": []
+ 81:   }
+ 82:  ],
+ 83:  "design_source": "default",
+ 84:  "estimate": {
+ 85:   "tokens": 100000
+ 86:  }
+ 87: }
+ 88: ```
+ 89: 
+ 90: ### `p050`
+ 91: ```json
+ 92: {
+ 93:  "categories": [
+ 94:   "code generation"
+ 95:  ],
+ 96:  "builds": true,
+ 97:  "touched_paths": [
+ 98:   "product/x"
+ 99:  ],
+100:  "pipeline": null,
+101:  "nodes": [
+102:   {
+103:    "id": "n1",
+104:    "category": "code generation",
+105:    "engine": "opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority)",
+106:    "check": "default check for code generation (TASK_TYPES.md)",
+107:    "five_things": [
+108:     "context",
+109:     "contract",
+110:     "evidence",
+111:     "state",
+112:     "tools"
+113:    ],
+114:    "needs": [],
+115:    "loop": {
+116:     "limit": 2,
+117:     "exit": "fresh node on stronger tier with handoff note",
+118:     "feedback": "the check's real output"
+119:    }
+120:   },
+121:   {
+122:    "id": "nr1",
+123:    "category": "code review",
+124:    "engine": "codex gpt-6.1-sol",
+125:    "check": "fixed checklist; findings with file:line",
+126:    "five_things": [
+127:     "context",
+128:     "contract",
+129:     "evidence",
+130:     "state",
+131:     "tools"
+132:    ],
+133:    "needs": [
+134:     "n1"
+135:    ],
+136:    "reviews": [
+137:     "n1"
+138:    ]
+139:   }
+140:  ],
+141:  "design_source": "default",
+142:  "estimate": {
+143:   "tokens": 100000
+144:  }
+145: }
+146: ```
+147: 
+148: ### `p095`
+149: ```json
+150: {
+151:  "categories": [
+152:   "research and reports",
+153:   "code generation"
+154:  ],
+155:  "builds": true,
+156:  "touched_paths": [
+157:   "product/x"
+158:  ],
+159:  "pipeline": "research \u2192 codegen",
+160:  "nodes": [
+161:   {
+162:    "id": "n1",
+163:    "category": "research and reports",
+164:    "engine": "agy (EJ, 2026-10-04)",
+165:    "check": "default check for research and reports (TASK_TYPES.md)",
+166:    "five_things": [
+167:     "context",
+168:     "contract",
+169:     "evidence",
+170:     "state",
+171:     "tools"
+172:    ],
+173:    "needs": []
+174:   },
+175:   {
+176:    "id": "n2",
+177:    "category": "code generation",
+178:    "engine": "opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority)",
+179:    "check": "default check for code generation (TASK_TYPES.md)",
+180:    "five_things": [
+181:     "context",
+182:     "contract",
+183:     "evidence",
+184:     "state",
+185:     "tools"
+186:    ],
+187:    "needs": [
+188:     "n1"
+189:    ],
+190:    "loop": {
+191:     "limit": 2,
+192:     "exit": "fresh node on stronger tier with handoff note",
+193:     "feedback": "the check's real output"
+194:    }
+195:   },
+196:   {
+197:    "id": "nr1",
+198:    "category": "code review",
+199:    "engine": "codex gpt-6.1-sol",
+200:    "check": "fixed checklist; findings with file:line",
+201:    "five_things": [
+202:     "context",
+203:     "contract",
+204:     "evidence",
+205:     "state",
+206:     "tools"
+207:    ],
+208:    "needs": [
+209:     "n2"
+210:    ],
+211:    "reviews": [
+212:     "n2"
+213:    ]
+214:   }
+215:  ],
+216:  "design_source": "default",
+217:  "estimate": {
+218:   "tokens": 100000
+219:  }
+220: }
+221: ```
+222: 
+223: ### `p150`
+224: ```json
+225: {
+226:  "categories": [
+227:   "document and explain"
+228:  ],
+229:  "builds": false,
+230:  "touched_paths": [],
+231:  "pipeline": null,
+232:  "nodes": [
+233:   {
+234:    "id": "n1",
+235:    "category": "document and explain",
+236:    "engine": "Sonnet 5.5",
+237:    "check": "default check for document and explain (TASK_TYPES.md)",
+238:    "five_things": [
+239:     "context",
+240:     "contract",
+241:     "evidence",
+242:     "state",
+243:     "tools"
+244:    ],
+245:    "needs": []
+246:   },
+247:   {
+248:    "id": "n1r",
+249:    "category": "code review",
+250:    "engine": "claude sonnet 5.5",
+251:    "check": "review against source: fixed checklist, facts traceable",
+252:    "five_things": [
+253:     "context",
+254:     "contract",
+255:     "evidence",
+256:     "state",
+257:     "tools"
+258:    ],
+259:    "needs": [
+260:     "n1"
+261:    ],
+262:    "reviews": [
+263:     "n1"
+264:    ]
+265:   }
+266:  ],
+267:  "design_source": "default",
+268:  "estimate": {
+269:   "tokens": 100000
+270:  }
+271: }
+272: ```
+273: 
+274: ### `p200`
+275: ```json
+276: {
+277:  "categories": [
+278:   "research and reports"
+279:  ],
+280:  "builds": false,
+281:  "touched_paths": [],
+282:  "pipeline": null,
+283:  "nodes": [
+284:   {
+285:    "id": "n1",
+286:    "category": "research and reports",
+287:    "engine": "agy (EJ, 2026-10-04)",
+288:    "check": "default check for research and reports (TASK_TYPES.md)",
+289:    "five_things": [
+290:     "context",
+291:     "contract",
+292:     "evidence",
+293:     "state",
+294:     "tools"
+295:    ],
+296:    "needs": []
+297:   }
+298:  ],
+299:  "design_source": "default",
+300:  "estimate": {
+301:   "tokens": 100000
+302:  }
+303: }
+304: ```
+305: 
+306: ### `p271`
+307: ```json
+308: {
+309:  "categories": [
+310:   "research and reports",
+311:   "code generation",
+312:   "test cases gen"
+313:  ],
+314:  "builds": true,
+315:  "touched_paths": [
+316:   "product/x"
+317:  ],
+318:  "pipeline": "research \u2192 codegen",
+319:  "nodes": [
+320:   {
+321:    "id": "n1",
+322:    "category": "research and reports",
+323:    "engine": "agy (EJ, 2026-10-04)",
+324:    "check": "default check for research and reports (TASK_TYPES.md)",
+325:    "five_things": [
+326:     "context",
+327:     "contract",
+328:     "evidence",
+329:     "state",
+330:     "tools"
+331:    ],
+332:    "needs": []
+333:   },
+334:   {
+335:    "id": "n2",
+336:    "category": "code generation",
+337:    "engine": "opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority)",
+338:    "check": "default check for code generation (TASK_TYPES.md)",
+339:    "five_things": [
+340:     "context",
+341:     "contract",
+342:     "evidence",
+343:     "state",
+344:     "tools"
+345:    ],
+346:    "needs": [
+347:     "n1"
+348:    ],
+349:    "loop": {
+350:     "limit": 2,
+351:     "exit": "fresh node on stronger tier with handoff note",
+352:     "feedback": "the check's real output"
+353:    }
+354:   },
+355:   {
+356:    "id": "n3",
+357:    "category": "test cases gen",
+358:    "engine": "opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority)",
+359:    "check": "default check for test cases gen (TASK_TYPES.md)",
+360:    "five_things": [
+361:     "context",
+362:     "contract",
+363:     "evidence",
+364:     "state",
+365:     "tools"
+366:    ],
+367:    "needs": [
+368:     "n2"
+369:    ]
+370:   },
+371:   {
+372:    "id": "nr1",
+373:    "category": "code review",
+374:  
+375: ```
+
+
+
+===== FILE: docs/TASK_TYPES.md (323 lines) =====
+  1: # Task types — default patterns, combination pipelines, and the 20% rule
+  2: 
+  3: Agreed with EJ 2026-10-01. **n=0**: every default here is a working value until `TASK_TYPES_LEDGER.md` has
+  4: runs in it. Engines cite `docs/EXECUTOR_KINDS.md` defaults and **suggest, never override** the node contract;
+  5: every node still names its exact model and effort.
+  6: 
+  7: The machine-readable form of the tables is *this file*: the skill's `scripts/design_gate.py` parses it. Do not
+  8: copy the table into code or another doc — change it here, the gate follows.
+  9: 
+ 10: **Correction, 2026-10-03 — the Codex default is unchanged at `gpt-6.1-sol`.** A brief edit here swapped it for
+ 11: `gpt-5.6-sol` after a Codex call failed with *"The 'gpt-6.1-sol' model is not supported when using Codex with a
+ 12: ChatGPT account"*. That reading was wrong: the failure came from a **bundled old Codex** (the DeepSeek Harness's
+ 13: subagent provider pins `@openai/codex@0.153.4`, whose catalog lacks the model), while the CLI on this machine is
+ 14: `codex-cli 0.160.0` and runs **`gpt-6.1-sol` with high effort normally** (*verified* 2026-10-03). The swap is
+ 15: reverted. See `docs/EXECUTOR_KINDS.md`, "Model and effort", for the full account and for the one path — the DSH
+ 16: subagent provider — that still needs its own pin.
+ 17: 
+ 18: ## How this is used (the design rule)
+ 19: 
+ 20: 1. **Guess at §3.0, label at §3.2.** The six why-questions (method 3.0) end with a *provisional* category — a
+ 21:    guess from the prompt text that feeds the tiny test and a first lookup. After the algorithm is written (method
+ 22:    3.2) its steps are grouped into pieces, one deliverable each, and **each piece is labelled** from this table
+ 23:    (changed 2026-10-02 at EJ's request; n=0). The piece labels replace the guess; a difference is a Log line.
+ 24:    A label says what kind of work a piece is, not that it needs its own agent: same-engine pieces with no independent
+ 25:    check between them merge into one node (method 3.2, "a label is not a node").
+ 26:    Checked against facts per piece: a piece that touches product code, schema, UI or config is never labelled
+ 27:    read-only. A wrong label is a **stop and replan**, not a repair (the blueprint kind-guard's shape).
+ 28: 2. **Default-first.** For each labelled piece look up its row (or the combination's pipeline), adapt it to the
+ 29:    specifics, then run the normal gates. Steps 2–4 of the method still run. `others` has no default: the full
+ 30:    method from first principles.
+ 31: 3. **Challenger (the 20% rule).** A bespoke design replaces the default only with a written claim **before the
+ 32:    run**: ≥20% lower projected run cost (tokens / agents / wall time) **at equal coverage** — same acceptance
+ 33:    criteria ids, same checks, same blindness. Coverage is a gate, never an axis; nobody trades completeness for
+ 34:    speed. "Ask three times, get three different answers" is variance, not signal — the default stands unless
+ 35:    the margin is claimed and proven on paper first.
+ 36: 4. **Two-layer review of the decision.**
+ 37:    - **Script layer (free, deterministic):** `scripts/design_gate.py` — structure, category-vs-facts, label agreement (G8: the design's
+ 38:      categories equal the categories its nodes carry; the in-run review node is exempt), the
+ 39:      margin arithmetic, coverage equality, pipeline well-formedness, the reviewer-kind rule, ledger rows.
+ 40:    - **Checklist layer (cheap judgment):** a Sonnet 5.5 subagent, fresh session, blind to the designer's
+ 41:      reasoning, judges a fixed 4-item checklist **in one pass**: does the category fit the challenge's intent?
+ 42:      is the default pattern wrong for this instance, and why? does the claimed margin have a real basis? is
+ 43:      anything needed absent from both designs? Verdicts binary with evidence refs — never "try to reject it".
+ 44:      Two repair attempts on script failure; a checklist "no" escalates per the tier exit (fresh stronger node
+ 45:      or EJ), never a third round. **Risk tier:** when the design builds or EJ flagged high risk, the checklist
+ 46:      reviewer is a different kind from the designer (Codex `gpt-6.1-sol`) instead of Sonnet 5.5.
+ 47:    - This reviews the *design decision*. The design's own in-run review nodes are separate and follow the
+ 48:      `code review` row below.
+ 49: 5. **Ledger.** Every run appends one row to `docs/TASK_TYPES_LEDGER.md`: date, run id, category,
+ 50:    default-or-challenger, claimed margin + basis, actual cost, coverage outcome, reconciled. A challenger that
+ 51:    beats its projection twice becomes a candidate new default; a default repeatedly overridden gets its row
+ 52:    rewritten. This is how the table earns its n.
+ 53: 
+ 54: ## Use cases in focus (EJ, 2026-10-02)
+ 55: 
+ 56: What a software developer does daily, ranked for EJ's work. A use case is usually a pipeline of the categories
+ 57: below, not one row. Evidence: the 90 real prompts of the 2026-10-02 corpus campaign, labelled by the COO (not
+ 58: independent); #8 has no prompt in that corpus and is ranked on ordinary practice. n=0 for every default here.
+ 59: 
+ 60: | # | Use case | Real prompts (of 90) | Category rows it uses | Default ready? |
+ 61: |---|---|---|---|---|
+ 62: | 1 | Combine several sources into an algorithm | most of the ~50 "understanding" prompts | research and reports, information extraction | candidate pipeline extract → reconcile → algorithm → verify; a row only after two real runs |
+ 63: | 2 | Answer a question about existing code ("where is X", "explain Y", "is Z still true") | the rest of those ~50 | repo scanning, information extraction | yes |
+ 64: | 3 | Fix a bug (logs, reproduce, root cause, fix, rerun) | 7 | debugging, code generation | yes, `debugging` pipeline |
+ 65: | 4 | Build a feature (plan, design, implement) | 9 | multi step planning, code generation, ui/ux dev | yes |
+ 66: | 5 | Verify (tests, test data, double-confirm against the spec, grade a run) | 10 | test cases gen, test script gen, test data gen, grade a run | yes |
+ 67: | 6 | Report and document (status, meeting notes, explain for others) | 5 | document and explain | yes |
+ 68: | 7 | Review code (own, a teammate's, an agent's) | 3 | code review | yes |
+ 69: | 8 | Learn something new (outside docs, libraries, tools) | 0 | web search, research and reports | yes |
+ 70: 
+ 71: Out of focus for now (EJ): ship and operate (deploy, CI, environment, incidents) and maintenance (refactor,
+ 72: dependency upgrades). Neither has a row; one is added when a real task of that kind arrives. Session-control
+ 73: directives (status, commit, stop) are not a use case: they stay tiny.
+ 74: 
+ 75: #1 is the most frequent and the riskiest: an extracted description is a hypothesis until checked against its
+ 76: source, and a second LLM read is not a check (`~/skills/verify-extraction`, where a one-line summary of a 70-line
+ 77: function was wrong in 5 of 6 differential rounds). Its verify step is a differential test for code and a blind
+ 78: checklist with a planted wrong fact for prose; two disagreeing sources are reconciled with a reason, never averaged.
+ 79: 
+ 80: ## Categories
+ 81: 
+ 82: `Touches product` is tri-state: **yes** (every piece writes product), **mixed** (the category runs read-only as
+ 83: a diagnosis/validation *or* writes as a fix/generation — the design's `builds` flag says which), **no**
+ 84: (read-only). Round-1 lesson: a binary column made every diagnostic debugging design look like a lie.
+ 85: 
+ 86: | Category | Touches product | Default pattern | Default engine | Default check | Sabotage (proof the check can fail) |
+ 87: |---|---|---|---|---|---|
+ 88: | code generation | yes | evaluator–optimizer loop | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | tests/build pass (script) | break the code → the check goes red |
+ 89: | code review | no | maker–checker, fresh blind session | risk-tiered: Sonnet 5.5 when nothing builds; different kind from the worker when it builds (EXECUTOR_KINDS rule 5) | fixed checklist; findings with file:line | plant a known defect → the reviewer must find it |
+ 90: | ui/ux dev | yes | codegen loop + human acceptance checkpoint | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | build/render script + EJ's acceptance (last per 3.5) | break a component → the build fails |
+ 91: | debugging | mixed | loop with the failing test as objective check (a diagnosis-only run is read-only research with a repro) | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | repro test: red before, green after | revert the fix → red again |
+ 92: | test data gen | mixed | single node, schema-validated (a validation-only run is read-only) | Sonnet 5.5 / `gemini-3.8-flash` (cheap tier) | schema validation + edge-case coverage list | corrupt a row → the validator rejects |
+ 93: | test cases gen | yes | single node + review | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | generated tests fail on a broken implementation | a seeded mutant must be caught |
+ 94: | test script gen | yes | codegen loop | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | script detects a seeded failure | seeded failure → non-zero exit |
+ 95: | repo scanning | no | parallel sectioning, read-only fan-out | agy (EJ, 2026-10-04) | coverage manifest; findings with paths | plant a marker file → the scan reports it |
+ 96: | multi step planning | no | plan + gate (this method) | DeepSeek `deepseek-flash` (EJ, 2026-10-04 — the model the catalog names DeepSeek-V41-Flash) | script schema gate + checklist review | an unresolved spot → the gate fails |
+ 97: | information extraction | no | single node, structured output | DeepSeek `deepseek-flash` (EJ, 2026-10-04) | JSON-schema validation + spot-check vs source | a corrupt source field → flagged, never hallucinated |
+ 98: | web search | no | single node; voting on contested facts | agy (EJ, 2026-10-04) | dated sources with URLs; claims traceable | ask a nonexistent fact → must return not-found |
+ 99: | classification | no | routing node | DeepSeek `deepseek-flash` (EJ, 2026-10-04) | schema-valid label + agreement on a labeled sample | an ambiguous sample → unknown/escalate, not a forced label |
+100: | research and reports | no | single node, or sectioning + join | agy (EJ, 2026-10-04) | answers the question; every finding carries both-side citations and a CONFIRMED/INFERRED/GAP/UNPROVEN label; missing proof never reads as PASS; join contradiction = stop | seed a known divergence → it must appear as a row with both citations; seed conflicting sources → the join stops |
+101: | document and explain | mixed | single node + review against source | Sonnet 5.5 | fixed checklist against the source; format constraints honored (audience, .txt vs markdown, LF) | remove a fact from the source → the review flags it missing |
+102: | grade a run | no | single node, fixed rubric | Sonnet 5.5 | rubric verdicts kept separate per dimension; run-directory evidence only; missing proof = UNKNOWN/INVALID_RUN, never PASS | grade an empty run directory → INVALID_RUN, not PASS |
+103: | others | — | no default — the full method from first principles | — | — | — |
+104: 
+105: Step-level, not categories (they are steps inside pieces, or the scheduler itself): **file IO, shell
+106: execution, workflow execution**. Finance is an EXECUTOR_KINDS engine assignment, not a pattern row.
+107: 
+108: ## Labelling rules (round-1 lessons, 2026-10-02)
+109: 
+110: Measured on 50 executor samples (codex 25, agy 25): strict agreement was 12% / 24% before these rules
+111: existed; every disagreement class traced to a missing definition, not to a weak model.
+112: 
+113: 1. **One label per distinct deliverable — list the deliverables first, then label each.** The primary category
+114:    is the one that answers the ask. Do not add a secondary label for work that is *inside* the primary: a
+115:    research task reads (not also "information extraction"); a debugging diagnosis cites logs (not also
+116:    "research and reports"). Multi-label only when the prompt asks for several *separately delivered* outputs
+117:    ("extract the rules, write them up, then generate test cases" = three deliverables). Dropping a deliverable's
+118:    label is as wrong as adding a passenger label (round-2: combo prompts lost their web-search and
+119:    test-script labels).
+120: 2. **Information extraction** applies only when the deliverable *is* the structured data (a table, a schema-
+121:    validated list, field values) — never as a passenger label.
+122: 3. **Code review vs research and reports**: review = a verdict on the quality/correctness of work against a
+123:    standard, delivered as an issue report; research = an answer or a findings list. "Compare A to B, list
+124:    divergences with citations" is research; "review this file against the spec, write an issue report" is
+125:    review. **Re-validating an existing finding** against current code ("still open, resolved, or wrong?") is
+126:    research — it updates a findings list, it does not grade work.
+127: 4. **Grade a run vs debugging**: grading applies a fixed rubric to a finished run's evidence and stops;
+128:    debugging seeks a root cause. "Which check fired and why" is debugging; "keep the verdicts separate,
+129:    missing proof = UNKNOWN" is grading.
+130: 5. **builds=true means the deliverable changes product or test surface** — code, schema, configuration, UI,
+131:    test files, **and generated fixture/seed data that feeds tests or environments** (round-2: fixtures are test
+132:    surface). Findings lists, reports, notes, diaries, command sheets are **not** builds — and neither are
+133:    **deliverable data outputs** (a CSV/JSON table that *is* the answer): a report in data shape is still a
+134:    report (round-3: the gate caught this mislabel on its own corpus author). A `document and explain` piece
+135:    that writes only prose is builds=false even though it writes a file.
+136: 6. **tiny + cats=[] is for session-control directives** (status, stop, restate, commit, one-step advice) and
+137:    one-sentence tasks **whose restatement succeeds**: tiny requires the restated problem, fix and check to be
+138:    one sentence each. A prompt you cannot restate ("make it faster", "look into the thing from yesterday") is
+139:    **never tiny** — it is `others` with decision spots. Classifying vague as tiny is the fail-unsafe error: it
+140:    skips the whole method (round-2: the flash tier made exactly this error on 3/3 vague prompts). A standing
+141:    invariant ("do not add fields unless…") is also tiny/[] — it constrains future work, it is not itself a task.
+142: 7. **Test cases gen vs test script gen** (round-2, 4 confusions in 50 samples): *cases* = the assertions —
+143:    what behavior is checked, including that content as test code ("extend the unit tests to modules 815–817",
+144:    "add a sabotage case"). *Script* = the machinery that runs things — runners, injectors, drivers, harness
+145:    CLIs, their flags and error reporting ("extend run_e2e.sh with --retry"). If the deliverable would still
+146:    make sense with a different runner, it is cases; if it is about the runner, it is script.
+147: 8. **Web search vs research and reports** (round-3): the divider is the *source locus*, not the deliverable
+148:    shape. External sources (the web, vendor docs, "dated sources" from outside) → `web search`, even when the
+149:    output is a report. Material inside the repo → `research and reports`.
+150: 9. **Document and explain vs research and reports / code generation** (round-3): when the deliverable is prose
+151:    for a human audience, it is `document and explain` — even when sources must be read first, and even when the
+152:    prose lands in a knowledge file of the repo (writing rules into EXECUTOR_KINDS.md is document and explain,
+153:    not code generation). Research answers a question; a document is made to be read.
+154: 
+155: ## Combination pipelines (seeded)
+156: 
+157: | Pipeline | Nodes (in order) | Loop sits at | Join check |
+158: |---|---|---|---|
+159: | research → codegen | research, codegen | codegen node | research answered its questions (checklist); else codegen does not start |
+160: | codegen → tests → review | codegen, tests gen, review | codegen node | review checklist against the acceptance criteria |
+161: | debugging | repro, fix, rerun | the whole piece | the repro test |
+162: | scan → report | scan sections, report join | none | coverage manifest complete; contradictions = stop |
+163: | grade → fix → regrade | grade, fix, regrade | the fix node | the regrade verdict on the same rubric; a FAIL surviving the regrade goes to EJ |
+164: 
+165: New combinations earn a row here only after the ledger shows the ad-hoc version ran twice.
+166: 
+167: ### Candidate pipelines (not rows yet — each earns its row after two real runs in the ledger)
+168: 
+169: **build a feature (use case #4)** — EJ, 2026-10-02; n=0.
+170: 
+171: 1. **Research — the main agent (COO) herself**, with a research skill, writing findings and a digest to
+172:    `docs/research/` (method 3.8 item 9). Research agents only when there are many main sources (context room) or a
+173:    source needs a different kind (web versus repo).
+174: 2. **Design and small examples — the COO.** The design, the acceptance criteria in scope, and the briefs for the
+175:    next two nodes, each with a template, a worked example and the standard (method 3.8 item 8).
+176: 3. **Dev ∥ verifier phase 1, in parallel** (passes the five tests of method 3.7: one shared input, different
+177:    deliverables, separate paths).
+178:    - *Dev* (the row's coder, Codex `gpt-6.1-sol`): implements and writes **unit tests only**.
+179:    - *Verifier, phase 1* (a different kind from the dev, EXECUTOR_KINDS rule 5): writes the test plan and the
+180:      acceptance cases from the design and acceptance criteria only, **before it has seen any code**. Its cases are
+181:      first run against a deliberately broken build and must fail there (sabotage), or they are not used.
+182: 4. **Script gate** (no model; `.claude/skills/workflow-design/scripts/feature_gate.py` — `baseline` from two
+183:    JUnit runs of the full suite before anything builds, `check` against the COO's `plan.json` of may-change,
+184:    must-not-change and protected globs): the dev's new unit tests pass; the per-test baseline still passes; every file in the
+185:    diff is planned or has a listed reason (scope); nothing in "must not change" changed; the verifier's cases and
+186:    any goldens are untouched (tamper guard). A failure goes straight back to the dev; it costs no review.
+187: 5. **Verifier, phase 2** — the same verifier, its cases already fixed, so seeing the code cannot bend them: reviews
+188:    the diff (quality, conventions, design fit, security, scope) and runs its cases. One result file, its findings
+189:    split into *behaviour* (a case failed) and *review* (a code issue).
+190: 6. **Findings → the COO.** A small issue (her small-node conditions and 8-tool-call cap,
+191:    `docs/EXECUTOR_KINDS.md`) she fixes herself, quickly, and the verifier reruns. A big issue goes back to the dev,
+192:    at most **2 rounds**, then the tier exit or EJ. Findings outside the acceptance criteria go to the backlog, not
+193:    into this run.
+194: 
+195: The COO does not review (EJ, 2026-10-03, from a friend's practice): she plans, decides, monitors and makes quick
+196: fixes; the mechanical part of review is the script gate and the judgment part is the verifier. Roles per run:
+197: researcher or explorer, dev, verifier — 3 or 4, inside the cap of 5 (method 3.7).
+198: 
+199: Join check: the verifier's cases (proven able to fail) pass, the baseline still passes, "must not change" holds —
+200: the three-part stop of method 3.6 — and the verifier's review has no open finding inside the criteria. Feedback:
+201: `runlog.py` wraps the dev and verifier calls and logs each verdict, gate included (method 3.8 item 11).
+202: 
+203: **Lead-in by case (EJ, 2026-10-03; restructured the same day from `docs/research/20261003-feature-cases/`,
+204: critic's keep/shrink list adopted; n=0 — candidate text, none becomes a rule before two real runs).** Steps 3–6
+205: above are the same in every case. Two questions, in this order, pick the lead-in:
+206: 
+207: 1. **Are the requirements clear?** No → case **A** first, then the second question.
+208: 2. **What system exists?** An old one being replaced → **B**; an existing one getting a feature → **C**; none →
+209:    **D**. A migration whose target does not exist yet is **B + D**.
+210: 
+211: Hand-off: **B and D end as C** — their last step records the per-test baseline, so the next feature on that system
+212: is case C. A run names its case(s) in the restatement (method 3.0) and checks them against the facts at readiness:
+213: an existing codebase is never D, and a B run that cannot run the old system is not ready.
+214: 
+215: **Shared in every case.**
+216: 
+217: 1. Every acceptance criterion carries at least one concrete example (input → expected). The blind verifier works from
+218:    it. (A new rule: neither the method nor the blueprint template asked for examples before.)
+219: 2. Every dev and verifier brief has a stop-on-unclear clause: return `UNCLEAR: <question> / <best guess>` instead of
+220:    guessing.
+221: 3. Conventions and invariants are executable checks (lint, tests, hooks) wherever possible; the context file
+222:    (`CLAUDE.md`, `AGENTS.md`) is short and hand-written; no agent-written overview file.
+223: 4. Tamper guard: golden files and the verifier's cases are read-only to the dev; the join fails if a case disappears
+224:    or the case count drops.
+225: 5. Scope check in the script gate: every file in the diff is planned, or has a listed reason.
+226: 6. Where code exists, the baseline is the full suite recorded per test id before anything builds (run twice; a
+227:    test that flips is listed as flaky, not as a failure).
+228: 7. Requirements are settled per slice: a very unclear or large feature is cut into thin end-to-end slices, each
+229:    run through the pipeline.
+230: 8. Behavioural equivalence and regressions are judged only by running code, never by an LLM reading it.
+231: 
+232: | Case | Source of truth | Lead-in (before anything builds) | Verifier's oracle | Main risk |
+233: |---|---|---|---|---|
+234: | A. Requirements not clear | EJ, through questions | "Not now" is a valid exit of the restatement (method 3.0). At most 5 questions, ranked by impact × uncertainty, each multiple-choice or answerable in a few words, with a recommended answer; anything findable in the code is research, not a question. Everything not asked goes on an assumptions list that EJ accepts with the R-blocks; the questions and answers are logged in `decisions.md`. A throwaway prototype only for a question EJ cannot answer in words; EJ accepts the list of requirements taken from it, never the prototype. Nothing builds until the slice's requirements are settled. | The criteria EJ accepted, with their examples | Building the wrong thing |
+235: | B. Migration from an old system | The old system's recorded behaviour | One port / drop / change list of the old behaviours; EJ marks each, and intended differences are tracked there. The oracle is the old system's recorded output (golden input → output pairs, or old-versus-new runs), never the extracted description. Readiness: the old system can be run to record outputs. The verifier aims golden inputs at the measured bug classes (types and precision, parsing and formatting, boundaries, error paths). Only when old-versus-old runs differ: a noise ignore list with reasons. Only when data moves: schema, then counts per column, then a hash per row. Small pieces in dependency order. | Parity on the goldens, plus the data checks when data moves | A plausible but wrong description of the old system; old bug workarounds ported as requirements |
+236: | C. New feature in an existing system | The existing code plus the new requirement | The scan is systematic inside the affected area, under a budget, favouring recall; never a repo-wide overview. It produces a 4-item impact map with file:line: where the change goes; what calls it and what it calls; the nearby conventions; what must not change. Load-bearing behaviour claims are checked by running code (shared 8). Characterization tests only for "must not change" entries that have no test; they join the baseline. In phase 1 the verifier gets only the "must not change" list from the map. Language and conventions are read, not asked. | The new criteria, plus the per-test baseline still passing | Breaking something not known to be connected; agents going beyond the request |
+237: | D. Feature for a new system | EJ's blueprint | Stack and standards questions (below); a mainstream stack, its reason in `decisions.md`. Blueprint: all eight sections present, four settled before scaffolding (method 3.1). A walking-skeleton node before dev ∥ verifier: lint, tests, one end-to-end test, and a deliberate layer break the checks must catch. A few structural checks: a secret scan, an authorization test if there is auth, one layer rule. | The criteria, the skeleton's end-to-end test and the structural checks (no behavioural baseline yet) | Architecture fixed too early or too vaguely; agents writing everything in one file |
+238: 
+239: Deferred (evidence too thin or not EJ's single-developer case): shadow or dark launch (B); a repo map or code graph
+240: (C); a larger retry budget for mechanical translation (it conflicts with the 2-round cap); a duplication limit and a
+241: security rescan after every fix round (D).
+242: 
+243: **Proof of concept (POC) — when and how (EJ, 2026-10-03; n=0).** A POC answers one technical risk that nobody
+244: can settle by reading or asking (will this library do X, is it fast enough, does this API behave as documented).
+245: It is method 3.3's bounded explore loop for a technical unknown; the age of the system is not the reason for it.
+246: 
+247: - **When, by case.** D: usually, for the riskiest unknown before the stack is locked. B: never for behaviour (the
+248:   old system defines it); only for a risky part of the target platform (volume, one tricky conversion). C: only
+249:   when the feature brings in something the codebase has never used. A: a different kind — a throwaway prototype
+250:   for EJ to decide behaviour or UI, then deleted.
+251: - **Shape.** One named question; a pass/fail answer written before it starts; a time or token limit; it ends
+252:   deleted, or explicitly promoted into the walking skeleton. A throwaway POC is not the skeleton.
+253: - **Roles.** The researcher proposes the candidate approaches from current sources; a coder (cheap tier)
+254:   builds each POC; a script checks each against the pass/fail written first; the COO decides. The researcher
+255:   does not build POCs: reading and building need different tools and different evidence.
+256: - **Strategy.** Round 1: list the genuinely different approaches (library A versus library B versus hand-written,
+257:   or different engines — not copies: one model asked for many candidates converges on two or three ideas) and run
+258:   **at most 3 in parallel** (independent: separate folders, own check; method 3.7). All get the same check and
+259:   measurement, written before any starts; the decision follows the written criteria, not impression. None passes →
+260:   round 2 with what was learned, again at most 3; after 2 rounds → EJ. **Up to 5** in a round only when the check
+261:   is fully automatic and the approaches are truly different; never 10. The winner is deleted or promoted; each
+262:   loser gets one line in `decisions.md` saying why it lost.
+263: - **Why 3.** Building candidates is cheap; judging them is the bottleneck (the COO's context, EJ's attention).
+264:   It matches the repo's anchors: Gate splits above 3 (`ancient_games/stages.py:109`) and the plan-wide cap of 3
+265:   corroborating dispatches (`ancient_games/registry.py:24` — not a concurrency cap). Reasoning, not measurement: the feedback log records per round how many
+266:   candidates ran and which round produced the winner, and the number is revised from that.
+267: 
+268: **Stack and standards questions — whenever the target is new (EJ, 2026-10-03; n=0).**
+269: 
+270: - **Target is new** (D, and B when the target system does not exist yet — a "B + D" run, where the old system
+271:   says *what* and these questions decide *how*): ask the language and framework, coding standard and lint, test
+272:   framework, repo layout, data store, auth, deployment target, CI, and the performance and security targets. They
+273:   are the hard-to-reverse decisions: short decision records in blueprint sections 05 (architecture) and 08
+274:   (non-functional) and in `decisions.md`; coding standards go into the conventions file; all settled before
+275:   scaffolding.
+276: - **Target exists** (C): do not ask, read — the scan finds the language, conventions and patterns already in use.
+277:   Ask only where the codebase is inconsistent or the feature needs something new.
+278: 
+279: **combine sources into an algorithm (use case #1)** — extract → reconcile → algorithm → verify, as described under
+280: "Use cases in focus"; n=0.
+281: 
+282: **Recheck verbs get their own node.** When the prompt says "then regrade", "rerun afterwards", "verify after
+283: the fix", the design must show the recheck as its own node (or an explicit loop) — a design that folds it into
+284: the fix node was rejected by the round-3 blind review (p279). The script gate cannot see this; the checklist
+285: layer exists for exactly this class.
+286: 
+287: ## The design JSON the gate reads
+288: 
+289: ```json
+290: {
+291:   "categories": ["research and reports", "code generation"],
+292:   "builds": true,
+293:   "touched_paths": ["ancient_games/x.py"],
+294:   "pipeline": "research → codegen",
+295:   "nodes": [{
+296:     "id": "n1", "category": "code generation", "engine": "codex gpt-6.1-sol",
+297:     "check": "pytest -q green", "needs": [],
+298:     "loop": {"limit": 2, "exit": "fresh node, stronger tier, handoff note", "feedback": "the check's real output"},
+299:     "five_things": ["tools", "context", "contract", "evidence", "state"]
+300:   }],
+301:   "design_source": "default",
+302:   "estimate": {"tokens": 100000},
+303:   "default_estimate": {"tokens": 130000},
+304:   "coverage": {"criteria": ["R1.1"], "checks": ["pytest -q"]},
+305:   "default_coverage": {"criteria": ["R1.1"], "checks": ["pytest -q"]}
+306: }
+307: ```
+308: 
+309: `design_source` is `"default"` or `{"type": "challenger", "claim_margin": 0.25, "basis": "..."}`.
+310: `default_estimate`/`default_coverage` are required for challengers only. A review node may carry
+311: `"reviews": ["<worker id>", …]` pairing it with the workers it verifies — G6 then demands a different engine
+312: kind from *those* workers (a reviewer of a multi-kind group is checked against the pure builders). Without
+313: the field, a reviewer is checked against every builder. A build group spanning engine kinds **splits its
+314: review**: one reviewer per kind group, since no single reviewer can be different-kind from both (round-3,
+315: p195/p273). Gate findings are named G1–G7;
+316: run `python3 .claude/skills/workflow-design/scripts/design_gate.py design.json` (or `--self-test`).
+317: 
+318: ## Provenance
+319: 
+320: Added 2026-10-01 at EJ's request: categorize at intake, default pattern per category, the 20% challenger rule
+321: after "ask 3 times get 3 different answers", script gate + Sonnet 5.5 checklist review of the decision. n=0 —
+322: the ledger is how it earns evidence. Test corpus: `tests/fixtures/task_type_prompts.json` (16 prompts in EJ's
+323: voice, expectations are provisional working values for EJ to correct).
+
+
+===== FILE: .claude/skills/workflow-design/scripts/design_gate.py (365 lines) =====
+  1: #!/usr/bin/env python3
+  2: """design_gate.py — the script layer of the default-first design rule (docs/TASK_TYPES.md).
+  3: 
+  4: Deterministic checks on a workflow design JSON. Judgment is NOT done here: the second layer is a
+  5: fixed-checklist reviewer (Sonnet 5.5; a different kind from the designer when the design builds or is
+  6: high-risk). The category table's single source is docs/TASK_TYPES.md — parsed here, never copied.
+  7: 
+  8: Findings are named:
+  9:   G1 category unknown
+ 10:   G2 category-vs-facts guard (wrong category is a stop, not a repair; "others" is exempt)
+ 11:   G3 node rules: a check, the five things, loops with limit+exit+feedback
+ 12:   G4 edges: needs must exist, no cycles, pipeline name valid
+ 13:   G5 challenger: claim >= 20%, arithmetic matches the estimates, coverage equal to the default
+ 14:   G6 a design with building nodes carries a reviewer; single-kind builders get a different-kind reviewer
+ 15:   G7 ledger rows carry every field the reconciliation needs
+ 16:   G8 labels agree: the design's categories equal the categories its nodes carry (method 3.2: the piece
+ 17:      labels replace the provisional category, so a claimed category no node carries, or a node category
+ 18:      the design does not claim, means the relabelling did not happen; the in-run `code review` node that G6
+ 19:      requires is exempt from the second direction)
+ 20: 
+ 21: Usage:
+ 22:   design_gate.py design.json [--types PATH]
+ 23:   design_gate.py --ledger-row row.json [--types PATH]
+ 24:   design_gate.py --self-test
+ 25: Exit: 0 no findings, 1 findings, 2 usage error.
+ 26: """
+ 27: from __future__ import annotations
+ 28: 
+ 29: import argparse
+ 30: import json
+ 31: import sys
+ 32: from pathlib import Path
+ 33: 
+ 34: FIVE = {"tools", "context", "contract", "evidence", "state"}
+ 35: LEDGER_KEYS = ["date", "run_id", "category", "design_source", "claimed_margin", "basis",
+ 36:                "projected_cost", "actual_cost", "coverage_result", "reconciled"]
+ 37: LEDGER_FIELDS = LEDGER_KEYS
+ 38: _KINDS = (("codex", "codex"), ("gpt", "codex"), ("opencode", "opencode"), ("minimax", "opencode"),
+ 39:           ("deepseek", "deepseek"), ("dsh", "deepseek"),
+ 40:           ("claude", "claude"), ("sonnet", "claude"), ("opus", "claude"), ("haiku", "claude"),
+ 41:           ("agy", "agy"), ("gemini", "agy"), ("qwen", "qwen"))
+ 42: 
+ 43: 
+ 44: def repo_root() -> Path:
+ 45:     return Path(__file__).resolve().parents[4]
+ 46: 
+ 47: 
+ 48: def engine_kind(engine: str) -> str:
+ 49:     """The kind of engine a cell names. A **leading** name wins over an embedded one.
+ 50: 
+ 51:     Two passes because a cell may name more than one engine — the build rows read "opencode ... + Codex ...", and
+ 52:     the engine named first is the primary one. Matching embedded tokens in one pass returned `codex` for those
+ 53:     cells (the "+ Codex" matches before the loop reaches `opencode`), which would have told the G6 different-kind
+ 54:     rule the wrong thing about 60% of the build work.
+ 55:     """
+ 56:     e = (engine or "").lower()
+ 57:     for tok, kind in _KINDS:
+ 58:         if e.startswith(tok):
+ 59:             return kind
+ 60:     for tok, kind in _KINDS:
+ 61:         if f" {tok}" in e:
+ 62:             return kind
+ 63:     return "unknown"
+ 64: 
+ 65: 
+ 66: def _table_rows(md: list[str], header_first_cell: str) -> list[list[str]]:
+ 67:     rows: list[list[str]] = []
+ 68:     in_tbl = False
+ 69:     for line in md:
+ 70:         s = line.strip()
+ 71:         if not in_tbl:
+ 72:             if s.startswith("|") and s.lstrip("|").strip().lower().startswith(header_first_cell.lower()):
+ 73:                 in_tbl = True
+ 74:             continue
+ 75:         if not s.startswith("|"):
+ 76:             break
+ 77:         if set(s) <= set("|-: "):
+ 78:             continue
+ 79:         rows.append([c.strip() for c in s.strip("|").split("|")])
+ 80:     return rows
+ 81: 
+ 82: 
+ 83: def parse_types(path: Path) -> dict:
+ 84:     md = Path(path).read_text(errors="replace").splitlines()
+ 85:     cats: dict[str, dict] = {}
+ 86:     for r in _table_rows(md, "Category"):
+ 87:         if len(r) < 6:
+ 88:             continue
+ 89:         name = r[0].strip().strip("*").lower()
+ 90:         prod = r[1].strip().lower()
+ 91:         product = "yes" if prod.startswith("yes") else ("mixed" if prod.startswith("mixed") else "no")
+ 92:         cats[name] = {"product": product, "touches_product": product == "yes",
+ 93:                       "pattern": r[2], "engine": r[3], "check": r[4], "sabotage": r[5]}
+ 94:     pipes: dict[str, dict] = {}
+ 95:     for r in _table_rows(md, "Pipeline"):
+ 96:         if len(r) < 4:
+ 97:             continue
+ 98:         pipes[r[0].strip().lower()] = {"nodes": r[1], "loop": r[2], "join": r[3]}
+ 99:     return {"categories": cats, "pipelines": pipes, "path": str(path)}
+100: 
+101: 
+102: def _has_cycle(nodes: list[dict]) -> bool:
+103:     by_id = {n.get("id"): n for n in nodes}
+104:     color = {i: 0 for i in by_id}
+105: 
+106:     def dfs(u: str) -> bool:
+107:         color[u] = 1
+108:         for v in by_id[u].get("needs", []) or []:
+109:             if v not in color:
+110:                 continue
+111:             if color[v] == 1 or (color[v] == 0 and dfs(v)):
+112:                 return True
+113:         color[u] = 2
+114:         return False
+115: 
+116:     return any(color[i] == 0 and dfs(i) for i in color)
+117: 
+118: 
+119: def _cat(node: dict) -> str:
+120:     return (node.get("category") or "").strip().lower()
+121: 
+122: 
+123: def validate_design(d: dict, types: dict) -> list[str]:
+124:     f: list[str] = []
+125:     known = types["categories"]
+126:     cats = [c.strip().lower() for c in d.get("categories", [])]
+127:     for c in cats:
+128:         if c not in known:
+129:             f.append(f"G1: unknown category {c!r}")
+130:     builds = bool(d.get("builds"))
+131:     touched = d.get("touched_paths") or []
+132:     building_cats = [c for c in cats if known.get(c, {}).get("product") in ("yes", "mixed")]
+133:     if (builds or touched) and cats and not building_cats and "others" not in cats:
+134:         f.append("G2: category-vs-facts: the design builds or touches product paths but carries no "
+135:                  "building category — a wrong category is a stop, not a repair")
+136:     pure_yes = [c for c in cats if known.get(c, {}).get("product") == "yes"]
+137:     if pure_yes and not builds and not touched:
+138:         f.append(f"G2: category {pure_yes[0]!r} always writes product, but the design claims it touches "
+139:                  f"none (a mixed category may run read-only; a yes category may not)")
+140:     nodes = d.get("nodes") or []
+141:     ids = {n.get("id") for n in nodes}
+142:     for n in nodes:
+143:         nid = n.get("id", "?")
+144:         if not (n.get("check") or "").strip():
+145:             f.append(f"G3: node {nid} has no check")
+146:         missing = FIVE - {str(x).lower() for x in n.get("five_things", [])}
+147:         if missing:
+148:             f.append(f"G3: node {nid} is missing {sorted(missing)}")
+149:         lp = n.get("loop")
+150:         if lp is not None:
+151:             if not isinstance(lp.get("limit"), int) or lp["limit"] < 1:
+152:                 f.append(f"G3: node {nid} loop has no attempt limit")
+153:             if not (lp.get("exit") or "").strip():
+154:                 f.append(f"G3: node {nid} loop has no exit for the limit")
+155:             if not (lp.get("feedback") or "").strip():
+156:                 f.append(f"G3: node {nid} loop has no specific feedback")
+157:     for n in nodes:
+158:         for dep in n.get("needs", []) or []:
+159:             if dep not in ids:
+160:                 f.append(f"G4: node {n.get('id')} needs unknown node {dep!r}")
+161:     if _has_cycle(nodes):
+162:         f.append("G4: dependency cycle")
+163:     pipe = (d.get("pipeline") or "").strip().lower()
+164:     if pipe and pipe not in types["pipelines"]:
+165:         f.append(f"G4: unknown pipeline {pipe!r}")
+166:     src = d.get("design_source", "default")
+167:     if isinstance(src, dict):
+168:         if src.get("type") != "challenger":
+169:             f.append("G5: a design_source object must be type 'challenger'")
+170:         claim = src.get("claim_margin")
+171:         if not isinstance(claim, (int, float)) or isinstance(claim, bool) or claim < 0.20:
+172:             f.append("G5: challenger claim must be a number >= 0.20")
+173:         if not (src.get("basis") or "").strip():
+174:             f.append("G5: challenger claim has no basis")
+175:         est = (d.get("estimate") or {}).get("tokens")
+176:         dest = (d.get("default_estimate") or {}).get("tokens")
+177:         if isinstance(est, (int, float)) and isinstance(dest, (int, float)) and dest > 0:
+178:             recomputed = (dest - est) / dest
+179:             if recomputed < 0.20:
+180:                 f.append(f"G5: recomputed margin {recomputed:.2f} < 0.20")
+181:             elif isinstance(claim, (int, float)) and abs(claim - recomputed) > 0.01:
+182:                 f.append(f"G5: margin arithmetic: claim {claim} != recomputed {recomputed:.3f}")
+183:         else:
+184:             f.append("G5: challenger without estimate/default_estimate tokens — the arithmetic cannot be checked")
+185:         cov, dcov = d.get("coverage") or {}, d.get("default_coverage") or {}
+186:         if (set(cov.get("criteria", [])) != set(dcov.get("criteria", []))
+187:                 or set(cov.get("checks", [])) != set(dcov.get("checks", []))):
+188:             f.append("G5: coverage differs from the default — coverage is a gate, not an axis")
+189:     builders = [n for n in nodes
+190:                 if known.get(_cat(n), {}).get("product") == "yes"
+191:                 or (builds and known.get(_cat(n), {}).get("product") == "mixed")]
+192:     if builders:
+193:         reviewers = [n for n in nodes if _cat(n) == "code review"]
+194:         if not reviewers:
+195:             f.append("G6: a design with building nodes has no review node")
+196:         else:
+197:             builder_ids = [b.get("id") for b in builders]
+198:             for r in reviewers:
+199:                 rk = engine_kind(r.get("engine", ""))
+200:                 targets = r.get("reviews") or builder_ids  # no pairing → reviewed against all builders
+201:                 t_nodes = [n for n in nodes if n.get("id") in set(targets)]
+202:                 t_kinds = {engine_kind(t.get("engine", "")) for t in t_nodes}
+203:                 yes_kinds = {engine_kind(t.get("engine", "")) for t in t_nodes
+204:                              if known.get(_cat(t), {}).get("product") == "yes"}
+205:                 # a reviewer must be a different kind from what it reviews; when its targets span
+206:                 # kinds, the pure builders are the constraint (round-3, p195)
+207:                 constraint = t_kinds if len(t_kinds) == 1 else (yes_kinds or t_kinds)
+208:                 if rk == "unknown" or rk in constraint:
+209:                     f.append(f"G6: reviewer engine {r.get('engine')!r} is not a different kind from "
+210:                              f"what it reviews ({sorted(constraint)})")
+211:     node_cats = {_cat(n) for n in nodes if _cat(n)}
+212:     if cats and node_cats:
+213:         for c in sorted(set(cats) - node_cats):
+214:             f.append(f"G8: category {c!r} is claimed but no node carries it — relabel from the algorithm (3.2)")
+215:         # the in-run review node G6 demands is not a deliverable of the prompt, so it may be unlisted
+216:         for c in sorted(node_cats - set(cats) - {"code review"}):
+217:             f.append(f"G8: a node carries category {c!r} that the design does not list")
+218:     return f
+219: 
+220: 
+221: def parse_ledger(path: Path) -> list[dict]:
+222:     """Read the markdown ledger table into row dicts (columns = LEDGER_KEYS, in order)."""
+223:     rows = []
+224:     for r in _table_rows(Path(path).read_text(errors="replace").splitlines(), "Date"):
+225:         if len(r) < len(LEDGER_KEYS):
+226:             continue
+227:         row = dict(zip(LEDGER_KEYS, r))
+228:         try:
+229:             row["claimed_margin"] = float(row["claimed_margin"])
+230:         except ValueError:
+231:             pass  # "—" for a default row stays a string
+232:         row["reconciled"] = row["reconciled"].strip().lower() in ("yes", "true")
+233:         rows.append(row)
+234:     return rows
+235: 
+236: 
+237: def validate_ledger_row(row: dict) -> list[str]:
+238:     f = [f"G7: ledger row is missing {k!r}" for k in LEDGER_FIELDS if k not in row]
+239:     ds = row.get("design_source")
+240:     if ds is not None and ds not in ("default", "challenger"):
+241:         f.append("G7: design_source must be 'default' or 'challenger'")
+242:     if ds == "challenger":
+243:         if not str(row.get("basis") or "").strip() or row.get("basis") == "—":
+244:             f.append("G7: a challenger row without a basis")
+245:         cm = row.get("claimed_margin")
+246:         if not isinstance(cm, (int, float)) or isinstance(cm, bool) or cm < 0.20:
+247:             f.append("G7: a challenger row needs a claimed margin >= 0.20")
+248:     if row.get("reconciled") in (True, "yes") and not str(row.get("actual_cost") or "").strip():
+249:         f.append("G7: a reconciled row without an actual cost")
+250:     return f
+251: 
+252: 
+253: def _good_design() -> dict:
+254:     five = sorted(FIVE)
+255:     return {
+256:         "categories": ["research and reports", "code generation"],
+257:         "builds": True, "touched_paths": ["x.py"], "pipeline": "research → codegen",
+258:         "nodes": [
+259:             {"id": "n1", "category": "research and reports", "engine": "codex gpt-6.1-sol",
+260:              "check": "questions answered (fixed checklist)", "five_things": five, "needs": []},
+261:             {"id": "n2", "category": "code generation", "engine": "codex gpt-6.1-sol",
+262:              "check": "pytest -q green", "five_things": five, "needs": ["n1"],
+263:              "loop": {"limit": 2, "exit": "fresh node on stronger tier", "feedback": "the check's real output"}},
+264:             {"id": "n3", "category": "code review", "engine": "claude sonnet 5.5",
+265:              "check": "fixed checklist; findings with file:line", "five_things": five, "needs": ["n2"]}],
+266:         "design_source": "default", "estimate": {"tokens": 100000},
+267:     }
+268: 
+269: 
+270: def self_test(types_path: Path) -> int:
+271:     types = parse_types(types_path)
+272:     if len(types["categories"]) < 14 or "others" not in types["categories"]:
+273:         print(f"self-test FAIL: parsed {len(types['categories'])} categories from {types_path}")
+274:         return 1
+275:     import copy
+276:     ok = True
+277: 
+278:     def expect(label, design, want_prefix):
+279:         nonlocal ok
+280:         findings = validate_design(design, types)
+281:         hit = (not findings) if want_prefix is None else any(x.startswith(want_prefix) for x in findings)
+282:         print(f"{'ok  ' if hit else 'FAIL'} self-test: {label}")
+283:         ok = ok and hit
+284: 
+285:     expect("a good design passes clean", _good_design(), None)
+286:     d = copy.deepcopy(_good_design()); d["categories"] = ["research and reports"]
+287:     expect("research-only categories on a building design -> G2", d, "G2")
+288:     d = copy.deepcopy(_good_design()); d["categories"] = ["others"]
+289:     for n in d["nodes"]:
+290:         if n["category"] != "code review":
+291:             n["category"] = "others"
+292:     expect("others may build (exempt) -> clean", d, None)
+293:     d = copy.deepcopy(_good_design()); d["categories"] = ["research and reports"]
+294:     d["nodes"][0]["category"] = "research and reports"; d["nodes"][1]["category"] = "code generation"
+295:     expect("a node category the design does not list -> G8", d, "G8")
+296:     d = copy.deepcopy(_good_design()); d["categories"] = ["research and reports", "code generation", "classification"]
+297:     expect("a claimed category no node carries -> G8", d, "G8")
+298:     d = copy.deepcopy(_good_design()); d["nodes"][1]["check"] = ""
+299:     expect("a node without a check -> G3", d, "G3")
+300:     d = copy.deepcopy(_good_design()); d["nodes"][1]["loop"] = {"exit": "x", "feedback": "y"}
+301:     expect("a loop without a limit -> G3", d, "G3")
+302:     d = copy.deepcopy(_good_design()); d["nodes"][2]["needs"] = ["nope"]
+303:     expect("an edge to a missing node -> G4", d, "G4")
+304:     d = copy.deepcopy(_good_design()); d["nodes"][0]["needs"] = ["n3"]
+305:     expect("a cycle -> G4", d, "G4")
+306:     d = copy.deepcopy(_good_design()); d["nodes"][2]["engine"] = "codex gpt-6-astra"
+307:     expect("a same-kind reviewer on builders -> G6", d, "G6")
+308:     d = copy.deepcopy(_good_design()); d["nodes"] = d["nodes"][:2]
+309:     expect("builders without a reviewer -> G6", d, "G6")
+310:     d = copy.deepcopy(_good_design())
+311:     d["design_source"] = {"type": "challenger", "claim_margin": 0.19, "basis": "b"}
+312:     d["default_estimate"] = {"tokens": 100000}
+313:     d["coverage"] = d["default_coverage"] = {"criteria": ["R1.1"], "checks": ["pytest -q"]}
+314:     expect("a 19% claim -> G5", d, "G5")
+315:     d["design_source"] = {"type": "challenger", "claim_margin": 0.30, "basis": "b"}
+316:     d["estimate"] = {"tokens": 90000}
+317:     expect("margin arithmetic lie (claim .30, recomputed .10) -> G5", d, "G5")
+318:     d = copy.deepcopy(_good_design())
+319:     d["design_source"] = {"type": "challenger", "claim_margin": 0.25, "basis": "b"}
+320:     d["estimate"] = {"tokens": 75000}; d["default_estimate"] = {"tokens": 100000}
+321:     d["coverage"] = {"criteria": ["R1.1"], "checks": ["pytest -q"]}
+322:     d["default_coverage"] = {"criteria": ["R1.1", "R1.2"], "checks": ["pytest -q"]}
+323:     expect("coverage not equal -> G5 even with a real margin", d, "G5")
+324:     row = {k: "x" for k in LEDGER_FIELDS}
+325:     row.update({"design_source": "challenger", "claimed_margin": 0.25, "reconciled": True})
+326:     findings = validate_ledger_row(row)
+327:     print(f"{'ok  ' if not findings else 'FAIL'} self-test: a full challenger ledger row passes")
+328:     ok = ok and not findings
+329:     row2 = dict(row); row2["basis"] = "—"
+330:     hit = any(x.startswith("G7") for x in validate_ledger_row(row2))
+331:     print(f"{'ok  ' if hit else 'FAIL'} self-test: a challenger row without a basis -> G7")
+332:     ok = ok and hit
+333:     print("self-test:", "PASS — the gate can fail" if ok else "FAIL")
+334:     return 0 if ok else 1
+335: 
+336: 
+337: def main(argv: list[str] | None = None) -> int:
+338:     ap = argparse.ArgumentParser(description="Script layer of the default-first design rule.")
+339:     ap.add_argument("design", nargs="?", help="design JSON file")
+340:     ap.add_argument("--types", default=str(repo_root() / "docs" / "TASK_TYPES.md"))
+341:     ap.add_argument("--ledger-row", metavar="JSON", help="validate one ledger row JSON file")
+342:     ap.add_argument("--ledger", metavar="FILE", help="validate every row of a markdown ledger table")
+343:     ap.add_argument("--self-test", action="store_true")
+344:     a = ap.parse_args(argv)
+345:     if a.self_test:
+346:         return self_test(Path(a.types))
+347:     if not a.design and not a.ledger_row and not a.ledger:
+348:         ap.error("pass a design JSON, --ledger-row, --ledger, or --self-test")
+349:     types = parse_types(Path(a.types))
+350:     findings: list[str] = []
+351:     if a.ledger_row:
+352:         findings += validate_ledger_row(json.loads(Path(a.ledger_row).read_text()))
+353:     if a.ledger:
+354:         for i, row in enumerate(parse_ledger(Path(a.ledger)), 1):
+355:             findings += [f"row {i}: {x}" for x in validate_ledger_row(row)]
+356:     if a.design:
+357:         findings += validate_design(json.loads(Path(a.design).read_text()), types)
+358:     for x in findings:
+359:         print("finding:", x)
+360:     print("PASS" if not findings else f"FAIL: {len(findings)} finding(s)")
+361:     return 1 if findings else 0
+362: 
+363: 
+364: if __name__ == "__main__":
+365:     sys.exit(main())
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+FINDING 1: .claude/skills/workflow-design/scripts/design_gate.py:146 | A | high | G3 checks five names rather than their contents, and validate_design has no baseline or three-part-stop check, so the gate can reject structural defects while accepting substantively incomplete designs. | QUOTE:         missing = FIVE - {str(x).lower() for x in n.get("five_things", [])}
+FINDING 2: docs/TASK_TYPES.md:153 | B | med | The research and reports boundary with document and explain is ambiguous because an answer to a question can also be a document made to be read, so disagreements at that boundary cannot automatically be counted as model errors. | QUOTE:    not code generation). Research answers a question; a document is made to be read.
+FINDING 3: testlog.md:106 | C | high | The passing p050 design provides a placeholder check and five names without contents, starts its builder without a baseline, and supplies retry controls rather than a stop requiring acceptance, preserved baseline and protected invariants. | QUOTE:     "check": "default check for code generation (TASK_TYPES.md)",
+FINDING 4: testlog.md:105 | C | high | The passing p050 builder names both opencode and Codex but its reviewer is Codex, violating different-kind review for the Codex work because engine_kind recognizes only the leading engine. | QUOTE:     "engine": "opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority)",
+FINDING 5: testlog.md:7 | D | med | Generating default designs and running the script never exercises challenger margin and coverage rules, ledger reconciliation and default promotion, fresh blind checklist review, actual sabotage and baseline execution, or failure-triggered replanning and escalation. | QUOTE: TASK_TYPES rows imply and runs the gate over it, then classifies each disagreement as a bug.
+FINDING 6: .claude/skills/workflow-design/scripts/design_gate.py:285 | E | high | The corpus needs negative controls made by independently removing node contents, baseline dependencies, stop conditions and individual builders' different-kind reviewers, with explicit rejection checks and required findings for each mutation. | QUOTE:     expect("a good design passes clean", _good_design(), None)
+FINDING 7: docs/TASK_TYPES.md:41 | E | med | The test omits the judgment layer needed for semantic validity and should run its fresh blind checklist against each original prompt and instantiated design, using adjudicated labels and concrete acceptance criteria. | QUOTE:      reasoning, judges a fixed 4-item checklist **in one pass**: does the category fit the challenge's intent?
+VERDICT: The green log is a null result for design quality: it demonstrates acceptance of generated templates by a limited structural gate, including designs that break the algorithm's promises.
+tokens used
+23,166

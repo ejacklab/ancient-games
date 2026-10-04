@@ -1,0 +1,100 @@
+# corpus_check — 100 prompts, results results_agy_r1.jsonl
+
+bugs: 96 {"MISMATCH": 96}
+
+- [MISMATCH] p001: no result row
+- [MISMATCH] p002: no result row
+- [MISMATCH] p003: no result row
+- [MISMATCH] p004: no result row
+- [MISMATCH] p005: no result row
+- [MISMATCH] p006: no result row
+- [MISMATCH] p007: no result row
+- [MISMATCH] p008: no result row
+- [MISMATCH] p009: no result row
+- [MISMATCH] p010: no result row
+- [MISMATCH] p011: no result row
+- [MISMATCH] p012: no result row
+- [MISMATCH] p013: no result row
+- [MISMATCH] p014: no result row
+- [MISMATCH] p015: no result row
+- [MISMATCH] p016: no result row
+- [MISMATCH] p017: no result row
+- [MISMATCH] p018: no result row
+- [MISMATCH] p019: no result row
+- [MISMATCH] p020: no result row
+- [MISMATCH] p021: no result row
+- [MISMATCH] p022: no result row
+- [MISMATCH] p023: no result row
+- [MISMATCH] p024: no result row
+- [MISMATCH] p025: no result row
+- [MISMATCH] p026: no result row
+- [MISMATCH] p027: no result row
+- [MISMATCH] p028: no result row
+- [MISMATCH] p029: no result row
+- [MISMATCH] p030: no result row
+- [MISMATCH] p031: no result row
+- [MISMATCH] p032: no result row
+- [MISMATCH] p033: no result row
+- [MISMATCH] p034: no result row
+- [MISMATCH] p035: no result row
+- [MISMATCH] p036: no result row
+- [MISMATCH] p037: no result row
+- [MISMATCH] p038: no result row
+- [MISMATCH] p039: no result row
+- [MISMATCH] p040: no result row
+- [MISMATCH] p041: no result row
+- [MISMATCH] p042: no result row
+- [MISMATCH] p043: no result row
+- [MISMATCH] p044: no result row
+- [MISMATCH] p045: no result row
+- [MISMATCH] p046: no result row
+- [MISMATCH] p047: no result row
+- [MISMATCH] p048: no result row
+- [MISMATCH] p049: no result row
+- [MISMATCH] p051: cats result=['debugging', 'information extraction'] expected=['debugging']
+- [MISMATCH] p052: cats result=['code review', 'information extraction'] expected=['research and reports']
+- [MISMATCH] p054: cats result=['information extraction'] expected=['research and reports']
+- [MISMATCH] p055: cats result=['multi step planning', 'code review'] expected=['multi step planning']
+- [MISMATCH] p058: cats result=['document and explain', 'information extraction'] expected=['research and reports']
+- [MISMATCH] p059: cats result=['code review', 'information extraction'] expected=['information extraction']
+- [MISMATCH] p060: cats result=['document and explain', 'information extraction'] expected=['research and reports']
+- [MISMATCH] p061: cats result=[] expected=['code generation']
+- [MISMATCH] p061: tiny result=True expected=False
+- [MISMATCH] p061: builds result=False expected=True
+- [MISMATCH] p062: cats result=['test script gen', 'test cases gen'] expected=['test script gen']
+- [MISMATCH] p063: cats result=['multi step planning', 'repo scanning'] expected=['multi step planning']
+- [MISMATCH] p064: cats result=['information extraction', 'repo scanning'] expected=['repo scanning']
+- [MISMATCH] p065: cats result=['test script gen', 'code generation'] expected=['test script gen']
+- [MISMATCH] p066: builds result=False expected=True
+- [MISMATCH] p067: cats result=['debugging', 'information extraction'] expected=['test data gen']
+- [MISMATCH] p068: cats result=['test cases gen', 'test script gen'] expected=['test cases gen']
+- [MISMATCH] p069: cats result=['test data gen', 'debugging'] expected=['test data gen']
+- [MISMATCH] p070: cats result=['test script gen', 'code generation'] expected=['test script gen']
+- [MISMATCH] p072: cats result=['test script gen', 'code generation'] expected=['test data gen']
+- [MISMATCH] p074: cats result=['document and explain', 'research and reports'] expected=['document and explain']
+- [MISMATCH] p075: no result row
+- [MISMATCH] p076: no result row
+- [MISMATCH] p077: no result row
+- [MISMATCH] p078: no result row
+- [MISMATCH] p079: no result row
+- [MISMATCH] p080: no result row
+- [MISMATCH] p081: no result row
+- [MISMATCH] p082: no result row
+- [MISMATCH] p083: no result row
+- [MISMATCH] p084: no result row
+- [MISMATCH] p085: no result row
+- [MISMATCH] p086: no result row
+- [MISMATCH] p087: no result row
+- [MISMATCH] p088: no result row
+- [MISMATCH] p089: no result row
+- [MISMATCH] p090: no result row
+- [MISMATCH] p091: no result row
+- [MISMATCH] p092: no result row
+- [MISMATCH] p093: no result row
+- [MISMATCH] p094: no result row
+- [MISMATCH] p095: no result row
+- [MISMATCH] p096: no result row
+- [MISMATCH] p097: no result row
+- [MISMATCH] p098: no result row
+- [MISMATCH] p099: no result row
+- [MISMATCH] p100: no result row

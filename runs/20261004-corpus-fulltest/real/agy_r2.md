@@ -1,0 +1,91 @@
+# corpus_check — 100 prompts, results results_agy_r2.jsonl
+
+bugs: 87 {"MISMATCH": 87}
+
+- [MISMATCH] p101: no result row
+- [MISMATCH] p102: no result row
+- [MISMATCH] p103: no result row
+- [MISMATCH] p104: no result row
+- [MISMATCH] p105: no result row
+- [MISMATCH] p106: no result row
+- [MISMATCH] p107: no result row
+- [MISMATCH] p108: no result row
+- [MISMATCH] p109: no result row
+- [MISMATCH] p110: no result row
+- [MISMATCH] p111: no result row
+- [MISMATCH] p112: no result row
+- [MISMATCH] p113: no result row
+- [MISMATCH] p114: no result row
+- [MISMATCH] p115: no result row
+- [MISMATCH] p116: no result row
+- [MISMATCH] p117: no result row
+- [MISMATCH] p118: no result row
+- [MISMATCH] p119: no result row
+- [MISMATCH] p120: no result row
+- [MISMATCH] p121: no result row
+- [MISMATCH] p122: no result row
+- [MISMATCH] p123: no result row
+- [MISMATCH] p124: no result row
+- [MISMATCH] p125: no result row
+- [MISMATCH] p126: no result row
+- [MISMATCH] p127: no result row
+- [MISMATCH] p128: no result row
+- [MISMATCH] p129: no result row
+- [MISMATCH] p130: no result row
+- [MISMATCH] p131: no result row
+- [MISMATCH] p132: no result row
+- [MISMATCH] p133: no result row
+- [MISMATCH] p134: no result row
+- [MISMATCH] p135: no result row
+- [MISMATCH] p136: no result row
+- [MISMATCH] p137: no result row
+- [MISMATCH] p138: no result row
+- [MISMATCH] p139: no result row
+- [MISMATCH] p140: no result row
+- [MISMATCH] p141: no result row
+- [MISMATCH] p142: no result row
+- [MISMATCH] p143: no result row
+- [MISMATCH] p144: no result row
+- [MISMATCH] p145: no result row
+- [MISMATCH] p146: no result row
+- [MISMATCH] p147: no result row
+- [MISMATCH] p148: no result row
+- [MISMATCH] p149: no result row
+- [MISMATCH] p150: no result row
+- [MISMATCH] p151: no result row
+- [MISMATCH] p152: no result row
+- [MISMATCH] p153: no result row
+- [MISMATCH] p154: no result row
+- [MISMATCH] p155: no result row
+- [MISMATCH] p156: no result row
+- [MISMATCH] p157: no result row
+- [MISMATCH] p158: no result row
+- [MISMATCH] p159: no result row
+- [MISMATCH] p160: no result row
+- [MISMATCH] p161: no result row
+- [MISMATCH] p162: no result row
+- [MISMATCH] p163: no result row
+- [MISMATCH] p164: no result row
+- [MISMATCH] p165: no result row
+- [MISMATCH] p166: no result row
+- [MISMATCH] p167: no result row
+- [MISMATCH] p168: no result row
+- [MISMATCH] p169: no result row
+- [MISMATCH] p170: no result row
+- [MISMATCH] p171: no result row
+- [MISMATCH] p172: no result row
+- [MISMATCH] p173: no result row
+- [MISMATCH] p174: no result row
+- [MISMATCH] p175: no result row
+- [MISMATCH] p187: cats result=['research and reports', 'code generation', 'test script gen'] expected=['research and reports', 'code generation', 'test cases gen']
+- [MISMATCH] p187: pipeline result=None expected='research → codegen'
+- [MISMATCH] p190: cats result=['multi step planning', 'code generation', 'test script gen'] expected=['multi step planning', 'code generation', 'test cases gen']
+- [MISMATCH] p193: cats result=['information extraction', 'code generation'] expected=['web search', 'information extraction', 'code generation']
+- [MISMATCH] p195: cats result=['document and explain', 'test data gen'] expected=['document and explain', 'test data gen', 'test script gen']
+- [MISMATCH] p196: cats result=[] expected=['others']
+- [MISMATCH] p196: tiny result=True expected=False
+- [MISMATCH] p197: cats result=[] expected=['others']
+- [MISMATCH] p197: tiny result=True expected=False
+- [MISMATCH] p199: cats result=[] expected=['others']
+- [MISMATCH] p199: tiny result=True expected=False
+- [MISMATCH] p199: builds result=False expected=True

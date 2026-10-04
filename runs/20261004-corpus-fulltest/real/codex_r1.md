@@ -1,0 +1,106 @@
+# corpus_check — 100 prompts, results results_codex_r1.jsonl
+
+bugs: 102 {"MISMATCH": 100, "GATE": 2}
+
+- [MISMATCH] p001: cats result=['repo scanning', 'information extraction'] expected=['repo scanning']
+- [MISMATCH] p002: cats result=['information extraction', 'document and explain'] expected=['research and reports']
+- [MISMATCH] p003: cats result=['repo scanning', 'information extraction'] expected=['repo scanning']
+- [MISMATCH] p004: cats result=['repo scanning', 'information extraction'] expected=['research and reports']
+- [MISMATCH] p005: cats result=['repo scanning', 'information extraction'] expected=['repo scanning']
+- [MISMATCH] p006: cats result=['information extraction'] expected=['repo scanning']
+- [MISMATCH] p007: cats result=['information extraction'] expected=['research and reports']
+- [MISMATCH] p008: cats result=['information extraction'] expected=['research and reports']
+- [MISMATCH] p009: cats result=['repo scanning', 'information extraction'] expected=['repo scanning']
+- [MISMATCH] p011: cats result=['code review'] expected=['research and reports']
+- [MISMATCH] p012: cats result=['code review'] expected=['research and reports']
+- [MISMATCH] p013: cats result=['information extraction', 'code review'] expected=['research and reports']
+- [MISMATCH] p014: cats result=['debugging', 'code review'] expected=['research and reports']
+- [MISMATCH] p015: cats result=['code review'] expected=['research and reports']
+- [MISMATCH] p016: cats result=['code review'] expected=['research and reports']
+- [MISMATCH] p017: cats result=['document and explain'] expected=['research and reports']
+- [MISMATCH] p017: builds result=True expected=False
+- [MISMATCH] p018: cats result=['code review'] expected=['research and reports']
+- [MISMATCH] p020: cats result=['grade a run'] expected=['research and reports']
+- [MISMATCH] p021: cats result=['information extraction', 'code review', 'document and explain'] expected=['information extraction', 'research and reports']
+- [MISMATCH] p021: builds result=True expected=False
+- [GATE] p021: G6: reviewer engine 'risk-tiered: Sonnet 5.5 when nothing builds; different kind from the worker when it builds (EXECUTOR_KINDS rule 5)' is not a different kind from what it reviews (['claude'])
+- [MISMATCH] p022: cats result=['code review'] expected=['research and reports']
+- [MISMATCH] p022: builds result=True expected=False
+- [GATE] p022: G2: category-vs-facts: the design builds or touches product paths but carries no building category — a wrong category is a stop, not a repair
+- [MISMATCH] p023: builds result=True expected=False
+- [MISMATCH] p024: cats result=['information extraction'] expected=['research and reports']
+- [MISMATCH] p026: no result row
+- [MISMATCH] p027: no result row
+- [MISMATCH] p028: no result row
+- [MISMATCH] p029: no result row
+- [MISMATCH] p030: no result row
+- [MISMATCH] p031: no result row
+- [MISMATCH] p032: no result row
+- [MISMATCH] p033: no result row
+- [MISMATCH] p034: no result row
+- [MISMATCH] p035: no result row
+- [MISMATCH] p036: no result row
+- [MISMATCH] p037: no result row
+- [MISMATCH] p038: no result row
+- [MISMATCH] p039: no result row
+- [MISMATCH] p040: no result row
+- [MISMATCH] p041: no result row
+- [MISMATCH] p042: no result row
+- [MISMATCH] p043: no result row
+- [MISMATCH] p044: no result row
+- [MISMATCH] p045: no result row
+- [MISMATCH] p046: no result row
+- [MISMATCH] p047: no result row
+- [MISMATCH] p048: no result row
+- [MISMATCH] p049: no result row
+- [MISMATCH] p050: no result row
+- [MISMATCH] p051: no result row
+- [MISMATCH] p052: no result row
+- [MISMATCH] p053: no result row
+- [MISMATCH] p054: no result row
+- [MISMATCH] p055: no result row
+- [MISMATCH] p056: no result row
+- [MISMATCH] p057: no result row
+- [MISMATCH] p058: no result row
+- [MISMATCH] p059: no result row
+- [MISMATCH] p060: no result row
+- [MISMATCH] p061: no result row
+- [MISMATCH] p062: no result row
+- [MISMATCH] p063: no result row
+- [MISMATCH] p064: no result row
+- [MISMATCH] p065: no result row
+- [MISMATCH] p066: no result row
+- [MISMATCH] p067: no result row
+- [MISMATCH] p068: no result row
+- [MISMATCH] p069: no result row
+- [MISMATCH] p070: no result row
+- [MISMATCH] p071: no result row
+- [MISMATCH] p072: no result row
+- [MISMATCH] p073: no result row
+- [MISMATCH] p074: no result row
+- [MISMATCH] p075: no result row
+- [MISMATCH] p076: no result row
+- [MISMATCH] p077: no result row
+- [MISMATCH] p078: no result row
+- [MISMATCH] p079: no result row
+- [MISMATCH] p080: no result row
+- [MISMATCH] p081: no result row
+- [MISMATCH] p082: no result row
+- [MISMATCH] p083: no result row
+- [MISMATCH] p084: no result row
+- [MISMATCH] p085: no result row
+- [MISMATCH] p086: no result row
+- [MISMATCH] p087: no result row
+- [MISMATCH] p088: no result row
+- [MISMATCH] p089: no result row
+- [MISMATCH] p090: no result row
+- [MISMATCH] p091: no result row
+- [MISMATCH] p092: no result row
+- [MISMATCH] p093: no result row
+- [MISMATCH] p094: no result row
+- [MISMATCH] p095: no result row
+- [MISMATCH] p096: no result row
+- [MISMATCH] p097: no result row
+- [MISMATCH] p098: no result row
+- [MISMATCH] p099: no result row
+- [MISMATCH] p100: no result row
