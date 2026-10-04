@@ -171,16 +171,44 @@ mix ever needs forcing; it is not built. The corpus is also only a proxy — bil
 research and scanning — so Codex's real share depends on what the work actually is, and `events.jsonl` records
 every node's engine so the real mix can be reconciled per run.
 
-**Where each engine lives on the DeepSeek Harness** (main environment as of 2026-10-03):
+**Where each engine lives on the DeepSeek Harness** (main environment as of 2026-10-03). **The CLI comes first and
+the provider tool is the fallback** — see the rule under the table.
 
-| Engine | Model, effort | How it is called |
-|---|---|---|
-| Codex | `gpt-5.6-sol` — **not the CLI default**, see the correction above | `subagent_codex` — a subagent provider, one-shot. Its bundled Codex is 0.153.4 and cannot serve `gpt-6.1-sol`; the pin is a workaround, not a preference |
-| Claude Code, strong tier | `claude-opus-5-5` | `subagent_claude_code` — a subagent provider, one-shot. EJ, 2026-10-03: *"Opus 5.5 for high complex tasks specially for designing things"* |
-| Claude Code, daily tier | `claude-sonnet-5-5` | `subagent_claude_code_sonnet` — the same provider package as a second row under its own `providerName`, because a provider row carries one model |
-| DeepSeek flash tier | `deepseek-flash`, low | `subagent_researcher`, `subagent_explorer` |
-| DeepSeek strong tier | `deepseek-v4-pro`, high | `subagent_coder`, `subagent_verifier` |
-| `agy` | `gemini-3.8-flash-medium` and up | `dispatch.py`, engine `agy` |
+| Engine | Model, effort | First choice | Fallback |
+|---|---|---|---|
+| Codex | `gpt-6.1-sol`, high for building | `dispatch.py`, engine `codex` — the PATH `codex-cli` serves the model | `subagent_codex`, whose bundled Codex 0.153.4 cannot, so that row pins `gpt-5.6-sol` |
+| Claude Code, design tier | `claude-opus-5-5` | `dispatch.py`, engine `claude` — **the only route that reaches Opus 5.5 today** | `subagent_claude_code` cannot: bundled Claude Code 2.1.263, and Opus 5.5 needs ≥ 2.1.280 |
+| Claude Code, daily tier | `claude-sonnet-5-5` | `dispatch.py`, engine `claude` | `subagent_claude_code_sonnet` — works on 2.1.263 |
+| DeepSeek flash tier | `deepseek-flash`, low | `subagent_researcher`, `subagent_explorer` — **the exception**: a spawn role is the only form whose `toolFilter` the harness enforces | `dispatch.py`, engine `dsh` (`dsh headless`) |
+| DeepSeek strong tier | `deepseek-v4-pro`, high | `subagent_coder`, `subagent_verifier` — same reason | `dispatch.py`, engine `dsh` |
+| `agy` | `gemini-3.8-flash-medium` and up | `dispatch.py`, engine `agy` | none — no provider exists, so this is CLI-only |
+
+**CLI first, provider call as the fallback (EJ, 2026-10-04).** *"AI changes fast, same as all these AI tools, so
+better use the cli call."* The binary on `PATH` is the one that updates — `codex-cli 0.160.0`, Claude Code
+2.1.289 — while a provider pins an older bundled copy (0.153.4, 2.1.263) and will not use `PATH` even if asked.
+That is deliberate, not an oversight: the Codex provider's own docstring says *"Fixed package-local app-server
+command, independent of the host `PATH`"*, and the Claude Agent SDK resolves its own native binary unless
+`pathToClaudeCodeExecutable` is passed — which the provider never does, and no environment variable redirects it
+(checked: the `CLAUDE_CODE_*` surface carries certs, entrypoint, OAuth and plugin paths, no executable). So the CLI
+is not merely preferred; it is the route whose version tracks the tool, which is what makes it the safer default
+while these tools move this fast.
+
+**Is there anything only a provider call can do?** Nothing that cannot be shelled out at all — `bash` can always
+run the CLI. But three things it does materially better, which is why it stays as the fallback rather than being
+dropped:
+
+1. **No wrapper turn.** A CLI node costs the COO a turn that re-reads her whole context (method 3.8; §8's wrapper
+   cost). A provider call is a direct delegation.
+2. **The child is a real harness session.** It appears in the session list, carries a session log, and its
+   projection cache is what `harvest_run.py` reads for the ledger's Actual cost. A CLI call leaves only
+   `dispatch.py`'s own runlog, so its cost stays invisible to the ledger unless that engine harvests it separately.
+3. **Harness-enforced properties** — `toolFilter` per role, `ctx.tools.restrict` per agent, and cancellation tied
+   to the turn rather than to a timer the caller owns.
+
+**One case where this is correctness, not preference:** a node that must be **read-only or blind** — a verifier
+above all — belongs in a **spawn provider call**, because its `toolFilter` is enforced by the harness. A CLI call
+has no such mask: whatever `bash` can reach, that node can run. So the rule is *CLI by default, spawn tool where
+blindness has to be structural*.
 
 **Evidence per row, and what is not evidence.** The two external rows each passed one canary on 2026-10-03 — a
 two-line answer with no tools, which shows the provider authenticates and completes a turn, nothing more. The

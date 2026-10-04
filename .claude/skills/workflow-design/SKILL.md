@@ -51,6 +51,10 @@ agent can read; a subagent starts with nothing but its prompt.
    **Prove the binary that will make the call, and record its version** — not the version on `PATH`. A provider can
    bundle an older copy of an engine and the two do not accept the same model names; the error names the model or
    the account, never the version. `references/executor-kinds.md`, "The bundled-runtime trap".
+   **Call the CLI first and the provider tool second** (EJ, 2026-10-04): the binary on `PATH` is the one that
+   updates, while a provider pins an older bundled copy and will not use `PATH` even if asked. Reach for the
+   provider when the CLI is unavailable, or when a role must be read-only or blind and needs the harness-enforced
+   `toolFilter` — a CLI call has no such mask.
    Every node names its role, engine, exact model and effort (never a default; the Codex plugin's example models are
    stale). The COO is the main Claude session: she distributes by the graph, monitors the state file, reviews
    verdicts, and may do a small node herself under four conditions and a tool-call cap — same file.
