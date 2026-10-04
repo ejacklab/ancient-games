@@ -1,0 +1,4 @@
+# Workflow design method
+docs/WORKFLOW_DESIGN_METHOD.md
+docs/WORKFLOW_DESIGN_DIAGRAM.md
+.claude/skills/workflow-design/SKILL.md

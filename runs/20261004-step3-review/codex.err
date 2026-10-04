@@ -1,0 +1,457 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a10746-666c-7010-90a3-8ae72e9d23b1
+--------
+user
+You are reviewing ONE step of a workflow-design method. This is a READ-ONLY review: do not create, edit or delete
+any file, and do not run anything that writes.
+
+The step under review is **step 3, "List every unclear spot before resolving any"**. It consists of exactly these
+three artifacts, and nothing else:
+
+1. `.claude/skills/workflow-design/SKILL.md`, lines 87-92 (the skill's step 3)
+2. `docs/WORKFLOW_DESIGN_METHOD.md`, lines 202-217 (method section 3.3)
+3. `docs/WORKFLOW_DESIGN_DIAGRAM.md`, lines 26-44 (flowchart nodes `SPOT`, `U`, `S3`, `K`, `RES`, `ASK`, `EXP`,
+   `JOIN`)
+
+Read all three before answering.
+
+Answer these questions:
+
+A. Does step 3 say everything a person needs to actually *do* it — find the spots, record the three fields, batch
+   the questions, and resolve them? Name anything missing.
+B. Do the three artifacts contradict each other? Name every contradiction, with both sides quoted.
+C. Is every instruction executable or checkable as written? Name any instruction that cannot be carried out or
+   cannot be verified. In particular: is there anything that checks a spot list is complete, and can
+   "which steps it blocks" or "depends on another spot" be determined at this point in the method?
+D. The three kinds are `missing information`, `decision` and `unknown`. Is the difference between "missing
+   information" (a research piece) and "unknown" (a bounded explore loop) defined anywhere in step 3, or can the
+   same spot be labelled either way by two people?
+E. "List every spot BEFORE resolving any" is the rule. Does anything enforce or check that order, and does
+   resolving a spot — or discovering a new one later — have a route back into the list?
+F. Anything else wrong, stale or misleading in step 3.
+
+Output EXACTLY this format and nothing else — no preamble, no summary, no markdown headings:
+
+FINDING 1: <file>:<line> | <high|med|low> | <one sentence saying what is wrong> | QUOTE: <the exact text of that line, copied verbatim>
+FINDING 2: ...
+VERDICT: <one sentence>
+
+Rules, enforced mechanically after you answer:
+
+* Every finding MUST carry a file path, a line number, and a QUOTE copied verbatim from that line. A finding missing
+  any of the three is discarded unread, however good it is.
+* Use only the three artifacts listed above as evidence. A finding about any other file is discarded.
+* Three sharp, checkable findings beat ten vague ones. Do not report formatting or wording preferences.
+* If step 3 is sound on a question, say nothing about it — an empty findings list is an acceptable answer.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the repository instructions and all three specified excerpts, then review step 3 without changing anything.
+exec
+/bin/bash -lc 'cat CLAUDE.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The main product is `.claude/skills/workflow-design/`: a skill that designs workflows, symlinked to
+`~/.claude/skills/workflow-design` so it works in every project. The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the Ancient Games code serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the Ancient Games code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the three engines (Claude subagent, Codex,
+  Antigravity `agy`), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the framework: a referee for agent work. Fixed rules, no LLM calls, a journal of every decision.
+  Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the framework's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/workflow-design/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+---
+name: workflow-design
+description: "Designing a workflow for an incoming task or challenge — or deciding that none is needed — before any agents are dispatched: understand the challenge (objective, scope, six whys, category and its default pattern), check readiness (including the product blueprint: vision, requirements with acceptance criteria, domain, architecture, data, UI, non-functional), write the algorithm first, list every unclear spot, size the pieces, run clear pieces as loops with objective checks, then wire the rest as a graph whose nodes each carry tools, context, a contract, evidence and state; sequential and state-file driven first, parallel decided last. Use whenever someone asks to design, plan, create, improve or review a workflow, an agent pipeline, an orchestration or a multi-agent / subagent setup; asks how many agents a task needs, whether to parallelise or loop, or how agents should pass information; brings a task too big for one prompt; or when you are about to write a Workflow script or dispatch several subagents without a written design. NOT for: a task of one to three obvious steps (just do it), the Workflow script API (use workflow-authoring), or running an already designed workflow."
+---
+
+# Workflow design
+
+The job: turn a challenge into **a prompt file** (small task) or **a workflow design** (bigger task). You are
+designing, not executing. The full method with its reasons is `references/method.md`; the five templates are in
+`assets/templates/`. Read the method once before your first design in a session.
+
+Why this exists: agents left alone pick a pattern first ("let's fan out five subagents") and discover later that
+they lacked information, that a loop had no way to close, or that two parallel workers collided. This method makes
+the cheap discoveries first.
+
+## First: understand the challenge (method 3.0)
+
+From the challenge text alone — no tools, no agents. State the **objective** (what is true when the task is
+done), what is **in scope**, what is **out of scope**. Then the **six whys**, each feeding one design field:
+why does the person want this (objective) · why now (priority) · why this shape of solution (category + default
+pattern) · why would it fail (risk tier → review depth) · why does it stop where it stops (scope) · why would
+we believe it is done (check kind). Stop early when an answer no longer changes the design — six is a ceiling,
+never a target. End with a **provisional category** (multi-label, marked inferred) from `references/task-types.md`: a guess
+that feeds the tiny test and a first default lookup; step 2 relabels it from the algorithm. A part that cannot be written, or a challenge that allows two readings, is the first unclear
+spot (kind: decision) — a question for the person with the restatement as the provisional assumption. The
+restatement goes at the top of the output, beside the verbatim challenge in the state file. One paragraph in
+the same session, never an agent, never a tool call. (Added 2026-10-01 at EJ's request; six whys and
+categorization the same day; n=0.)
+
+## Then: is it tiny?
+
+The test reads the restatement, not the raw text. If the restated problem, the fix and the check are one sentence
+each, and a mistake would show itself at once, do not design a workflow. Do the task, or fill in
+`assets/templates/prompt-file.md`. A process that costs more than the task is a failure of the method, not a
+success. (Trial 1, n=1: a one-line README fix went through the full process and cost about 309k tokens, partly
+because checks and handover were counted as steps. Count only the steps the challenge itself needs.)
+
+## The steps
+
+Work through these in order. Each step's output is a file, because files are the one memory every tool and every
+agent can read; a subagent starts with nothing but its prompt.
+
+1. **Readiness.** List the tools (run a command to prove each works — do not assume), the skills that already cover
+   part of the work, and the information: is it there, what structure is it in, is it verified against its source,
+   and which agents and tools can read it. The bundled `scripts/readiness.py` runs the standard inventory in one
+   pass — binaries, model caches, skill/workflow/memory locations, MCP config, machine — each line marked
+   verified/reported/unknown; what it cannot prove stays unknown and needs the canary. Anything missing becomes a
+   preparation piece at the front of the flow.
+   Template: `readiness.md`. A node run by Codex or `agy` (not a Claude subagent): read `references/executor-kinds.md`
+   first — the canary that proves the tool, read-only versus write, the fallback rule (n=0).
+   **Prove the binary that will make the call, and record its version** — not the version on `PATH`. A provider can
+   bundle an older copy of an engine and the two do not accept the same model names; the error names the model or
+   the account, never the version. `references/executor-kinds.md`, "The bundled-runtime trap".
+   **Call the CLI first and the provider tool second** (EJ, 2026-10-04): the binary on `PATH` is the one that
+   updates, while a provider pins an older bundled copy and will not use `PATH` even if asked. Reach for the
+   provider when the CLI is unavailable, or when a role must be read-only or blind and needs the harness-enforced
+   `toolFilter` — a CLI call has no such mask.
+   Every node names its role, engine, exact model and effort (never a default; the Codex plugin's example models are
+   stale). The COO is the main Claude session: she distributes by the graph, monitors the state file, reviews
+   verdicts, and may do a small node herself under four conditions and a tool-call cap — same file.
+   **Blueprint check** (part of readiness). If the task changes a product, check the product's blueprint in
+   `docs/blueprint/` (layout: `blueprint.md`): vision, core requirements with acceptance criteria, domain model,
+   business logic, architecture, data model and schema decisions, UI/UX, non-functional requirements. The kind of task
+   decides which sections are needed (a fix: the requirement it restores and what it touches; a feature: vision,
+   requirements and what it changes; a new product: all eight present, four settled first (vision, first slice's requirements,
+   hard-to-reverse architecture, non-functional targets), the rest per slice; not a product change: none, and no acceptance
+   criteria). A task that changes code, schema, UI or configuration is never "not a product change"; a wrong kind
+   switches the check off, so it is a stop. Each needed section is
+   settled (EJ accepted it and it covers the task), draft (covers the task, not accepted), incomplete (does not cover
+   the task, e.g. no requirement for the feature yet) or missing. Draft → a question for the person; incomplete or
+   missing → a blueprint piece at the front that drafts the missing part for the person to accept. A piece that
+   builds does not start until every section it depends on is settled — blueprint questions are not answered by
+   silence. Research and design pieces may run on drafts and name the drafts they assumed; any piece that depends on
+   an incomplete or missing section needs the piece that drafts it. Why: without a fixed
+   target every review finds more to do, and the run never ends.
+2. **Write the algorithm.** Try to write the steps that would solve the task. A step is one action with a result
+   that can be checked, and each step names its check. The attempt is the evaluation: steps that write clearly mean
+   a defined problem; a step you cannot write clearly, or whose check you cannot name, is an **unclear spot**.
+   Then **label the pieces**: group the steps into pieces that each end in one deliverable and give each a category
+   from `references/task-types.md` (file IO, shell and workflow execution stay inside their piece; no matching row =
+   `others`, full method). The piece labels replace the provisional category and the difference is a Log line.
+   A piece that changes product code, schema, UI or configuration is never read-only: a contradicting label is a
+   stop and replan. One state-file row per piece: steps · deliverable · category · default pattern, engine, check · node it merges
+   into. **A label is not a node**: pieces with the same engine and no independent check between them merge into
+   one main-agent session, the default; a subagent hand-off must buy an objective check, a different kind, or
+   context room (EJ's experience: splitting one prompt over three subagents is slower — waiting and lost context).
+3. **List every unclear spot before resolving any.** For each: its kind (missing *information* → a research piece ·
+   a *decision* → a question for the person · *unknown* → a bounded explore loop), which steps it blocks, and whether
+   it depends on another spot. Listing first matters because one answer often removes another spot. Questions go to
+   the person as one batch, each with a provisional assumption so it can be answered in a few words. A draft
+   blueprint section is a decision spot; an incomplete or missing one is an information spot, so the task is a
+   workflow design.
+4. **Size.** Up to 3 steps with nothing unclear except decisions that have a default → a prompt file, questions at
+   the top. More than 3 steps → consider a new piece, but split only if each part keeps its own check and the split
+   changes how the work is done. A workflow design starts **default-first**: each piece's category row (labelled in step 2) or combination
+   pipeline in `references/task-types.md` supplies the default pattern, engine, check and sabotage; a challenger
+   design replaces a default only on a written ≥20%-lower-projected-cost claim at equal coverage, reviewed by
+   `scripts/design_gate.py` plus one blind fixed-checklist pass (a different kind when it builds), and reconciled
+   in the ledger (n=0). Too-small pieces cost more than they give: fixed cost per agent, context lost at
+   every split, more joins. Judge risk separately from size (noticed late? cannot be undone? touches many things?);
+   tiny but risky gets one independent check.
+5. **Clear pieces run as loops** while the unclear spots are being resolved. A piece is loop-ready only with: a check
+   (a script is best; next a fixed checklist judged by a separate agent; last the person's judgment), an attempt
+   limit, specific feedback (the check's real output), an exit for when the limit is hit, and a check the worker
+   cannot edit and that is known to be able to fail. A loop closes only on an objective check — an open-ended
+   "find problems" reviewer always finds one more, so that loop never ends. Attempts start on the cheapest tier that
+   could plausibly do the piece. When its limit is hit, the exit is a fresh node on a stronger tier with a short
+   handoff note (the piece, its check, the last feedback) and its own limit, never a tier switch inside the running
+   session: a switch voids the prompt cache, so the stronger tier re-reads the whole context at its fresh input rate,
+   and the cheap tier's wrong turns would anchor it towards the same dead ends. When that limit is hit too, or there
+   is no stronger tier, the piece goes back to the unclear list or to the person. (Added 2026-09-22 at EJ's request;
+   n=0.)
+6. **The rest is a graph.** Nodes are right-sized pieces, edges are "needs the result of", a result is verified before
+   anything that depends on it starts, and branches meet at a joining step where contradictions are a stop, never
+   averaged. The design's edges schedule (a script, or the COO following the graph); role agents do not decide who works next. A node that hits its limit with its tier
+   exit spent goes back to the unclear list and only that part is planned again.
+7. **Sequential first; parallel is the last decision.** Design everything as sequential, state-file-driven steps.
+   Only when the design is complete, look for really independent pieces — all five must hold: neither needs the
+   other's result; no shared files or resources; doing one would not change how the other is done; each has its own
+   check; the time saved is worth the extra join. Parallel buys only clock time and costs predictability and
+   debuggability. Independent verifiers need to be blind to each other, not simultaneous. When running, executors are
+   tools (method 3.8): one small bounded task per call, an inner and an outer timer named in the node, no polling
+   (every status check is a turn), one atomically written result file with a fixed header that a script validates,
+   and any missing, empty, malformed, wrong-model or timed-out return is a failure of the executor, not of the work.
+   The stronger model's work is the brief: every one carries a template, a worked example and the standard the result
+   is judged by (`references/method.md` 3.8; `docs/workflow-templates/node-brief.md`). Research goes to files
+   (`docs/research/<date>-<topic>/`) and only a digest of about 15 lines returns to the COO. To run a designed
+   workflow, `scripts/dispatch.py run PLAN` enforces caps, timers, the brief's three parts, the pass-back and model
+   checks and the retry rules in code (`--dry-run` first; `docs/DISPATCHER_DESIGN.md`). Two reading roles: the
+   *researcher* reads docs, papers and the web; the *explorer* reads existing code read-only, cites file:line with a
+   quote, and marks each behaviour claim `read` or `ran` — only `ran` claims feed a build (method 3.8 item 10).
+8. **The run ends at the acceptance criteria.** A piece that builds names the blueprint sections it depends on and the
+   acceptance criteria it covers (ids like R1.1 or N1.1); every criterion in scope is covered by a piece that builds.
+   Its stop: those criteria pass, everything the baseline recorded as passing still passes (the test command and its
+   output, written to the state file before the first piece that builds), and its "must not change" holds; a failure
+   of any of these is a failed attempt. A judged check is a fixed checklist of those three, never an open-ended
+   review. Criteria a blueprint piece proposes are fixed when the person accepts it; if they differ from what the
+   design expected, the pieces covering them are planned again. Anything else found — a new wish, an improvement, a
+   problem neither the criteria nor the baseline covers — by a worker, a verifier or the final "what is missing" pass
+   goes to `docs/blueprint/backlog.md` with the date and run id, never into the current run.
+   A product also keeps three append-only memory files beside it: `decisions.md` (why, what was rejected),
+   `changelog.md` (one entry per run that builds; release notes come from it) and `lessons.md` (dated traps with a
+   recheck); each answers one listed query and is found by id or path, never read whole (method §4).
+
+## Every node carries five things
+
+| | What to write |
+|---|---|
+| **Tools** | what the agent uses, each proved working |
+| **Context** | exactly what it is given, and what is withheld (a verifier never sees the worker's reasoning) |
+| **Contract** | the intent, the observable stop condition (for a piece that builds: its acceptance criteria pass, the baseline still passes, "must not change" holds), what it returns and in what shape, what it may and must not change |
+| **Evidence** | the proof that comes back with the result (a command and its output, or file:line) and the file it is saved in |
+| **State** | what it reads from the state file before starting and what it writes back |
+
+An edge is then concrete: the earlier node's returns and evidence become the later node's context.
+
+## State file
+
+The state lives in a file (`assets/templates/state.md`): each agent reads it, does one step, writes the new state
+back. One writer at a time. It holds progress and results, never reasoning — notes go in the worker's own output
+file. This is what lets another agent, another tool, or tomorrow's session continue the run.
+
+## Before calling a design finished
+
+Check it shows all three, and say so in the design:
+
+- **Predictability** — the design's edges schedule (script or COO); limits on attempts, pieces and concurrency; structured outputs; success
+  criteria written before the run (for a product change: the acceptance criteria in scope); an agent count and a
+  cost estimate with its basis.
+- **Debuggability** — labelled agents; every step's input and output in a file; pieces small enough to rerun alone;
+  a resume point after a failure.
+- **Quality control** — a check per piece; blind verifiers; proof each script check can fail; a contradiction check
+  at joins; a final "what is missing" pass measured against the three-part stop of step 8 (a failure there is a
+  failed attempt; anything else goes to the backlog); skipped or unrun checks reported as such.
+- **Engine split** — for build work, run `scripts/workload.py --plan <plan> --write` before the run starts. It gives **opencode priority** (EJ, 2026-10-04) by **module**, crossing each module's code and tests so the tests are written by the engine that did not write the code. The default is the *smallest* lead that counts as priority — which at five modules is exactly 60/40, costing one module its independent tests; demanding 60% on a larger plan costs far more, so `--share` is there when the bigger lead is wanted. Never split dev and tests independently: that gives half the modules their code *and* their tests from one engine. `check()` refuses a plan where opencode does not lead, that self-tests more than its lead costs, or whose verifier shares its node's engine. `docs/EXECUTOR_KINDS.md` has the rule and the arithmetic.
+
+## Output
+
+- Small task → `assets/templates/prompt-file.md`, filled in.
+- Bigger task → `assets/templates/workflow-design.md`, filled in, with `state.md` and `readiness.md` beside it.
+- A blueprint piece writes into the product's `docs/blueprint/`, following `assets/templates/blueprint.md`.
+- Put a run's files in one folder (in the Ancient Games repo: `runs/<YYYYMMDD-slug>/`).
+- Give the person the questions batch and the cost estimate before anything is run. Designing is cheap; running
+  agents is not, so a run needs their go-ahead.
+
+## Running the method as a script
+
+`~/dev/ancient-games/.claude/workflows/intake.js` walks a challenge through steps 1–4 with one agent per step and
+fixed yes/no checks in script code (args `{challenge, runId}`). It is a multi-agent run — about 300k tokens in its
+one trial — so use it only when the person asks for it. Its offline test: `node tests/workflows/intake_harness.mjs`.
+
+## Related skills
+
+`challenge-mediation` types a challenge and rates the cost of being wrong — useful input to the risk judgment in
+step 4. `task-decomposition-strategies` helps with splitting; where it leans parallel, this method's sequential-first
+rule wins. `agent-loop` enforces a test loop for step 5. `chronos-ledger` tracks state across sessions.
+`workflow-authoring` is the script API for turning a finished design into a Workflow script.
+
+Everything here comes from one working session and one trial (n=1); the restate step and the tier rule in step 5
+have had none (n=0). Treat the numbers — the 3-step rule, the cost figures — as working values to be tested, and
+tell the person when a real task contradicts them.
+
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/coding-discipline/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+---
+name: coding-discipline
+description: Baseline engineering discipline for any hands-on task in a repository. Use when writing, editing, refactoring, debugging or reviewing code, when running builds, tests or linters, when adding a dependency, or when preparing a git commit.
+---
+
+# Coding discipline
+
+Baseline rules for working in a repository. They apply regardless of language,
+framework or project.
+
+## Before changing anything
+
+- Read the actual file first. Never write or edit from an assumption about its contents.
+- Read a neighbouring example of the same kind of thing — a sibling module, an existing
+  test, an existing endpoint — and match it. The repository's own conventions outrank
+  your preferences on naming, formatting, typing, file layout and error style.
+- Confirm a dependency is already in use in the project, via its manifest, existing
+  imports or neighbouring code, before reaching for it. Do not add a new dependency to
+  solve something the existing ones already cover.
+
+## Keep the change minimal
+
+- Do the task that was asked. Not the adjacent task, not the cleanup you noticed on the
+  way past, not the refactor that would leave this nicer than you found it.
+- No speculative abstraction. Three similar lines beat a helper with one caller.
+- No error handling, fallbacks or validation for conditions that cannot occur. Validate
+  at boundaries only: user input, external APIs, data arriving from outside the process.
+- Comments explain *why*, and only where the code cannot carry it. No comment that
+  narrates what the next line does, and never a comment addressed to the reader about
+  the changes you are making.
+- Existing code you did not expect to find is someone's in-progress work. Leave it alone
+  unless the task requires otherwise, and stop to ask if it conflicts with what you were
+  asked to do.
+
+## Verify instead of assuming
+
+- Find the project's real check commands from its README, Makefile or package manifest.
+  Never assume `npm test`, `pytest` or `make build` is correct for this repo.
+- Run them after the change. A change you did not run is a change you did not finish.
+- Report what actually happened. If a check failed, show the failure. If you could not
+  run a check, say so and say why. Never describe unverified work as working, and never
+  skip, suppress or weaken a failing check to produce a clean result.
+
+## Git
+
+- Before committing, run `git status`, `git diff HEAD` and `git log -n 3` — to separate
+  your change from what was already in the working tree, and to match the repository's
+  commit message style.
+- Stage only the paths that belong to this change. No `git add -A` while unrelated
+  modifications are present.
+- Draft the commit message yourself, weighted toward why rather than what.
+- Never push, force-push, amend a published commit, delete a branch, or rewrite history
+  unless explicitly asked to in this conversation. Prior approval does not carry over to
+  a later commit.
+- Do not revert work that is not yours. Revert your own change only if it caused a
+  failure or you are asked to.
+- For history questions, `git log` and `git blame` are authoritative. Run the command
+  rather than reasoning from memory of the codebase.
+
+## When blocked or unsure
+
+- Ask one focused question when only the user can decide, and keep it to a single round.
+- Otherwise choose the safe default, do the work, and state which default you chose so
+  it can be corrected.
+- Investigate before working around an obstacle: read the error, check your assumption,
+  address the root cause. Do not bypass a guard, a lock or a failing check just to make
+  the obstacle go away.
+- Clean up scratch files you created. Leave the working tree containing only the change
+  you were asked for.
+
+codex
+I’m applying the workflow-design skill to this review. I’ll keep the findings limited to the three excerpts you named.
+exec
+/bin/bash -lc "nl -ba .claude/skills/workflow-design/SKILL.md | sed -n '87,92p'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+    87	3. **List every unclear spot before resolving any.** For each: its kind (missing *information* → a research piece ·
+    88	   a *decision* → a question for the person · *unknown* → a bounded explore loop), which steps it blocks, and whether
+    89	   it depends on another spot. Listing first matters because one answer often removes another spot. Questions go to
+    90	   the person as one batch, each with a provisional assumption so it can be answered in a few words. A draft
+    91	   blueprint section is a decision spot; an incomplete or missing one is an information spot, so the task is a
+    92	   workflow design.
+
+exec
+/bin/bash -lc "nl -ba docs/WORKFLOW_DESIGN_METHOD.md | sed -n '202,217p'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+   202	### 3.3 List all the unclear spots before resolving any
+   203	
+   204	For each spot record:
+   205	
+   206	| | |
+   207	|---|---|
+   208	| Kind | missing **information** → a research piece · a **decision** → ask EJ · **unknown** → a bounded explore loop |
+   209	| Blocks | which steps cannot start until it is resolved; everything else can start |
+   210	| Depends on | another spot whose answer might remove or change this one |
+   211	
+   212	Questions for EJ go out as one batch, each with a provisional assumption so it can be answered in a few words.
+   213	In a prompt file a provisional assumption stands unless EJ corrects it; a workflow design's questions are answered
+   214	before the designed workflow runs, except blueprint questions, which hold back only the pieces that build on them.
+   215	Blueprint questions are the exception in a prompt file too: they need an explicit
+   216	answer before any step that builds on them runs (3.1, blueprint check). Where spots are resolved separately, one
+   217	joining step compares the answers. A contradiction is a stop: pick one and say why, never average.
+
+exec
+/bin/bash -lc "nl -ba docs/WORKFLOW_DESIGN_DIAGRAM.md | sed -n '26,44p'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+    26	  S2 --> SPOT{"does every step write clearly,<br/>and can you name its check?"}
+    27	  SPOT -->|"a step does not"| U["an UNCLEAR SPOT.<br/>a step with no check you can name counts<br/>as unclear, however tidy it looks"]
+    28	  SPOT -->|"all of them do"| S3
+    29	  U --> S3["3 LIST EVERY SPOT BEFORE RESOLVING ANY, 3.3<br/>kind, what it blocks, what it depends on.<br/>listing first matters: one answer often<br/>removes another spot"]
+    30	  S3 --> K{"kind of spot?"}
+    31	  K -->|"missing information"| RES["a research piece"]
+    32	  K -->|"a decision"| ASK["one batch of questions to EJ,<br/>each with a provisional assumption<br/>so it can be answered in a few words"]
+    33	  K -->|"unknown"| EXP["a bounded explore loop"]
+    34	  RES --> JOIN["a joining step compares answers resolved separately.<br/>a contradiction is a STOP:<br/>pick one and say why, never average"]
+    35	  ASK --> JOIN
+    36	  EXP --> JOIN
+    37	  JOIN --> S4{"4 SIZE, 3.4<br/>up to 3 steps, and nothing unclear<br/>except decisions that have a default?"}
+    38	  S4 -->|"yes"| PF2["a prompt file, questions at the top.<br/>risk is judged separately from size:<br/>tiny but risky gets one independent check"]
+    39	  S4 -->|"more than 3 steps"| SPLIT["consider a new piece. split only if each part<br/>keeps its own check AND the split changes<br/>how the work is done"]
+    40	  S4 -->|"a spot of kind information or unknown,<br/>or a blueprint section missing or incomplete"| DESIGN["a workflow design, always"]
+    41	  SPLIT --> S5
+    42	  DESIGN --> DF["DEFAULT-FIRST, 3.4<br/>each piece's category row or pipeline in TASK_TYPES.md supplies<br/>pattern, engine, check, sabotage. a CHALLENGER design replaces it<br/>only on a written ≥20%-lower-projected-cost claim AT EQUAL COVERAGE<br/>(coverage is a gate, never an axis). reviewed by design_gate.py (script)<br/>+ one blind checklist pass (sonnet 5.5; different kind when it builds).<br/>every run reconciles its claim in TASK_TYPES_LEDGER.md — n=0 until it fills"]
+    43	  DF --> S5["5 CLEAR PIECES RUN AS LOOPS, 3.5<br/>diagram 3. they run WHILE the unclear<br/>spots are still being resolved"]
+    44	  S3 -.->|"pieces already clear and not blocked<br/>start here, without waiting"| S5
+
+codex
+FINDING 1: docs/WORKFLOW_DESIGN_DIAGRAM.md:26 | med | Discovery checks only whether written steps are clear and have checks, with no procedure for finding omitted assumptions or verifying list completeness before resolution starts. | QUOTE:   S2 --> SPOT{"does every step write clearly,<br/>and can you name its check?"}
+FINDING 2: docs/WORKFLOW_DESIGN_METHOD.md:208 | med | No classification criterion distinguishes missing information from unknown, so two people can route the same spot to research or exploration. | QUOTE: | Kind | missing **information** → a research piece · a **decision** → ask EJ · **unknown** → a bounded explore loop |
+FINDING 3: docs/WORKFLOW_DESIGN_METHOD.md:210 | med | The required dependency field has no procedure for identifying dependencies before answers are available, no representation for uncertain dependencies or blockers, and no required recheck after resolution. | QUOTE: | Depends on | another spot whose answer might remove or change this one |
+FINDING 4: docs/WORKFLOW_DESIGN_DIAGRAM.md:33 | med | The explore loop is called bounded without specifying its bound, success check or exit when the bound is reached, so step 3 alone does not specify an executable resolution loop. | QUOTE:   K -->|"unknown"| EXP["a bounded explore loop"]
+FINDING 5: docs/WORKFLOW_DESIGN_METHOD.md:209 | med | Allowing all unblocked steps to start contradicts the workflow-wide question gate in docs/WORKFLOW_DESIGN_METHOD.md:213-214, “In a prompt file a provisional assumption stands unless EJ corrects it; a workflow design's questions are answered” and “before the designed workflow runs, except blueprint questions, which hold back only the pieces that build on them.” | QUOTE: | Blocks | which steps cannot start until it is resolved; everything else can start |
+FINDING 6: docs/WORKFLOW_DESIGN_DIAGRAM.md:37 | med | Routing research, questions and exploration through JOIN before sizing requires answers before choosing a prompt file, contradicting the deferred-answer rule in docs/WORKFLOW_DESIGN_METHOD.md:213, “In a prompt file a provisional assumption stands unless EJ corrects it; a workflow design's questions are answered”. | QUOTE:   JOIN --> S4{"4 SIZE, 3.4<br/>up to 3 steps, and nothing unclear<br/>except decisions that have a default?"}
+FINDING 7: docs/WORKFLOW_DESIGN_DIAGRAM.md:34 | med | Resolution flows forward to JOIN without a route back to the spot list or an instruction to update it when an answer removes, changes or reveals another spot. | QUOTE:   RES --> JOIN["a joining step compares answers resolved separately.<br/>a contradiction is a STOP:<br/>pick one and say why, never average"]
+VERDICT: Step 3 names the fields and question batch, but lacks completeness and update checks, leaves classification and resolution underspecified, and gives conflicting scheduling rules.
+tokens used
+14,101
