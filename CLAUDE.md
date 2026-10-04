@@ -1,11 +1,19 @@
 # CLAUDE.md — Ancient Games
 
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
 ## What this folder is for
 
 This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
 
-The main product is `.claude/skills/workflow-design/`: a skill that designs workflows, symlinked to
-`~/.claude/skills/workflow-design` so it works in every project. The knowledge below is what that skill uses.
+The main product is `.claude/skills/workflow-design/`: a skill that designs workflows. It is linked into both
+harness roots so it works in every project — `~/.agents/skills/workflow-design` (the user-global root the DeepSeek
+Harness and Codex scan) and `~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that
+skill uses.
 
 Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
 runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
