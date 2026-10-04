@@ -22,7 +22,7 @@ readiness step (3.1) proves each tool works; the canary below is that proof for 
 | Structured result | report returned to the caller | `--output-schema <file>`, `-o/--output-last-message <file>`, `--json` (*verified* in `--help`) | `--output-format json`, `--json-schema` (flags *verified*) | `--output-format json\|stream-json`; `--json-schema <json\|@file>` (headless; ends on the first valid `structured_output` call) (flags *verified* in `--help`; output shape untested) |
 | Resume | SendMessage to the agent | `--resume-last` in rescue; `codex exec resume --last` (*verified* in `--help`) | `-c` or `--conversation <id>` (*verified* in `--help`) | `-c`, `-r <id>`, `--session-id`, `--fork-session` (*verified* in `--help`) |
 | Reads which instruction file | `CLAUDE.md` | `AGENTS.md` (and `~/.codex/config.toml`) | `AGENTS.md` and `GEMINI.md`, third-party source only; `CLAUDE.md` not found (*uncertain*) | `QWEN.md` and `AGENTS.md` (*verified* 2026-10-02: each planted marker was answered with no tool call). `CLAUDE.md`: the probe got an off-task reply, so *unknown*; it is not among the filenames in the 0.24.7 source |
-| Model source | the agent's `model` setting | `--model`/`--effort` (rescue, `exec -m`); `~/.codex/config.toml` when none is passed: `gpt-6.1-sol`, effort medium, plan-mode effort high (*verified* 2026-09-30). Do not rely on it; see "Model and effort" | `--model`; `agy models` lists what the plan offers, and it includes Claude models as well as Gemini, so "agy = Gemini" is a choice | `-m/--model`; otherwise `model.name` in `~/.qwen/settings.json` (`qwen3.8-max`, `reasoningEffort` xhigh, *reported*). `--fallback-model` for 429/503/529. A per-call effort flag was not found in `--help` (*unknown*), so effort comes from settings |
+| Model source | the agent's `model` setting | `--model`/`--effort` (rescue, `exec -m`); `~/.codex/config.toml` when none is passed: `gpt-6.1-sol`, effort medium, plan-mode effort high (*verified* 2026-09-30; still the working default — see the correction below for the one path where it fails) | `--model`; `agy models` lists what the plan offers, and it includes Claude models as well as Gemini, so "agy = Gemini" is a choice | `-m/--model`; otherwise `model.name` in `~/.qwen/settings.json` (`qwen3.8-max`, `reasoningEffort` xhigh, *reported*). `--fallback-model` for 429/503/529. A per-call effort flag was not found in `--help` (*unknown*), so effort comes from settings |
 | Concurrency and native machinery | 20 concurrent subagents, nesting depth 3 (*reported* in Claude Code docs, v2.1.217+, env overrides exist; not measured here). Native: `--json-schema` (contract), `--max-budget-usd` (budget), `-w` (worktree isolation) (*reported*) | not recorded (*unknown*) | not recorded (*unknown*) | not recorded (*unknown*). Budgets: `--max-wall-time`, `--max-tool-calls`, `--max-session-turns` (exit 55 when exceeded), `--max-subagent-depth` default 5, `--worktree` (*verified* in `--help`) |
 
 The assignment column is EJ's stated preference, recorded as such. The research found no head-to-head evidence for
@@ -33,17 +33,32 @@ where it gets tested.
 
 Provisional map from EJ's assignments (unmeasured, n=0; a node may override with a reason). EJ, 2026-09-30:
 **Codex defaults to `gpt-6.1-sol`; high thinking uses `gpt-6-astra`. `agy` defaults to Gemini 3.8 Flash; high
-thinking uses Gemini 3.1 Pro.** Both names *verified* to exist here: `gpt-6-astra` in `~/.codex/models_cache.json`,
-and the `agy models` ids below. Thinking level is chosen by picking the model, so the coder's "medium" effort is
-what `gpt-6.1-sol` runs at when no other effort is passed.
+thinking uses Gemini 3.1 Pro.** Thinking level is chosen by picking the model, so the coder's "medium" effort is
+what the default runs at when no other effort is passed.
+
+**Correction, 2026-10-03 — the DSH Codex provider bundles an old Codex, and that alone is why a model failed.** A
+first reading of this section claimed `gpt-6.1-sol` was dead and had gone stale. **That was wrong.** `codex exec
+-m gpt-6.1-sol -c model_reasoning_effort=high` answers normally on the CLI here (*verified* 2026-10-03,
+`codex-cli 0.160.0`), and that CLI's own `codex debug models` lists ten models including `gpt-6.1-sol` at
+`visibility: list`. The failure came from a *different binary*: the DeepSeek Harness's Codex subagent provider
+spawns its own bundled `@openai/codex@0.153.4`, whose catalog has seven models and no `gpt-6.1-sol`. Naming it
+there answers HTTP 400 *"The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account"* —
+**the error blames the account when the real cause is the client version.** `~/.codex/models_cache.json` agreed
+with the CLI, so it is not a lagging source either; the bundled binary was the stale thing.
+
+Two consequences. On the **CLI and `dispatch.py`** the defaults stand unchanged: `gpt-6.1-sol`, high thinking on
+`gpt-6-astra`. On the **DSH subagent provider** the model is currently pinned to `gpt-5.6-sol`, because that is
+what its bundled 0.153.4 can serve — `subagent_codex` runs, and its canary reported *"GPT-5 Codex"*. The real fix
+is to align the provider's bundled Codex version, after which the pin returns to the default; until then the two
+paths genuinely differ and the DSH row is the exception. **Lesson: when a model 400s, check which binary asked.**
 
 | Role | Engine | Model, effort |
 |---|---|---|
 | Planner, and any node whose contract asks for high thinking | Codex | `gpt-6-astra` (the high-thinking model) |
-| Coder | Codex | `gpt-6.1-sol`, default effort |
+| Coder | Codex | `gpt-6.1-sol`, high effort (*verified* 2026-10-03 on the CLI) |
 | Reviewer, verifier | Codex, fresh session, never the coder's | `gpt-6.1-sol`, default effort; `gpt-6-astra` when the review is a high-thinking one |
-| Researcher — docs, papers, web (method 3.8 item 9) | Claude subagent, which has WebSearch and WebFetch today; Codex once its headless web search is proven (see Open) | the session model, effort medium (what every research node of 2026-10-02/03 ran on) |
-| Explorer — existing code, read-only (method 3.8 item 10) | the COO herself when the affected area is small; otherwise a Claude subagent: the built-in `Explore` type to *locate* code (it reads excerpts and does not audit), a general-purpose subagent to *understand* it, and running code to confirm behaviour | the session model, effort medium; EJ, 2026-10-03, n=0 |
+| Researcher — docs, papers, web (method 3.8 item 9) | `subagent_researcher` on the DeepSeek Harness (web search and fetch in its tool filter); `agy` by rule 2 above; a Claude subagent on Claude Code | `deepseek-flash`, low; `agy` per its own row; the session model on Claude Code |
+| Explorer — existing code, read-only (method 3.8 item 10) | `subagent_explorer` on the DeepSeek Harness: read-only, `bash` allowed so a claim can be marked `ran`, no `write` or `edit`; the COO herself when the affected area is small | `deepseek-flash`, low; EJ, 2026-10-03, n=0 |
 | Any other `agy` node | `agy` | `gemini-3.8-flash-medium` |
 | Classifier | `agy` | `gemini-3.1-pro-high` (EJ's earlier assignment of classification to 3.1 Pro kept; see below) |
 | Small task | the COO herself | her own model |
@@ -62,12 +77,94 @@ what `gpt-6.1-sol` runs at when no other effort is passed.
 - The node's result records the model the tool reports. The COO fails the node if it is not the one the contract
   named. How `codex exec` and `agy` report the model in their output is not yet checked; the canary settles it
   (*unknown*).
-- The names go stale (`gpt-6-sol` in this file already had; the list changes, so check `~/.codex/models_cache.json` and `agy models`). They live in the design's node blocks and the canary
-  log, so a change is one edit and the canary shows what actually ran.
+- The names go stale, and this section has now recorded one: `gpt-6-sol`. A second alarm on 2026-10-03 turned out
+  **not** to be staleness — `gpt-6.1-sol` was fine and an old bundled Codex client was asking for it, which is the
+  trap this bullet is really about. **Check `codex debug models` for the binary that will actually make the
+  call**, not for Codex in general: the CLI and a bundled provider copy can advertise different catalogs, and a
+  400 names the model and the account while the cause is the client version. For `agy`, `agy models`. The names live
+  in the design's node blocks and the canary log, so a change is one edit and the canary shows what actually ran.
+
+## Routing: which category goes to which engine
+
+Agreed with EJ, 2026-10-03, in three sentences: **Codex** for coding, debugging, code review and unit tests;
+**`agy`** for research (web and document fetch), exploring a codebase, and generating configuration files and
+folder structure; **Claude Code** for complex debugging and root-cause analysis, code review, and algorithm and
+solution design. This section is those sentences turned into a table — and then measured against the prompt corpus
+that already exists, because three sentences do not say what happens to the work they never mention.
+
+**What the sentences cover** (`tests/fixtures/operator_prompts_r1–r3.jsonl`, 300 labelled prompts, measured
+2026-10-03; the labels are the COO's own, provisional per `TASK_TYPES.md`):
+
+| | Prompts | Share |
+|---|---|---|
+| **Clean** — every category in the prompt maps to exactly one engine | 160 | 53% |
+| **One true collision** — `code review`, claimed by both Codex and Claude Code | 20 | 7% |
+| **Uncovered** — a category no sentence names, with no collision | 108 | 36% |
+| **No category** (tiny) — correctly routed nowhere | 12 | 4% |
+
+Every other apparent overlap was a legitimate pipeline: `agy` then Codex (×10) and Claude Code then Codex (×4)
+route piece by piece, which is what a combination pipeline is for. Only a *single* category claimed by two engines
+is a real collision, and there is exactly one.
+
+**The collision is resolved by rule 5, not by picking a winner.** `code review` is claimed by both Codex and
+Claude Code. Rule 5 above already says the independent verifier is a *different kind* from the worker, so the
+reviewer is the other engine: Codex-built work is reviewed by Claude Code, Claude-Code-built work by Codex. That
+depends on who built the thing rather than on the category, which is why it cannot collide.
+
+**The gaps, and who takes them.** Of the 110 prompts containing at least one uncovered category (the 108 above plus
+2 that also carry a collision), 78 are read-only (`builds: false`) and 32 write. Read-only prose, extraction,
+classification and grading are cheap work — they go to the DeepSeek-native roles, not to a Codex or Claude Code
+call.
+
+| Category | Engine | Basis |
+|---|---|---|
+| code generation, debugging, test cases gen, test script gen, ui/ux dev | `subagent_codex` | EJ's rule 1; UI and generated tests are test surface and product, so they build |
+| test data gen | `subagent_claude_code_sonnet` (Sonnet 5.5) | `TASK_TYPES.md` already assigns this row to the cheap tier (Sonnet 5.5 / `gemini-3.8-flash`), not to Codex. The first version of this table put it on Codex by extension from "test surface", contradicting that table — corrected 2026-10-03. It is also the single change that moves the load: Codex falls from 33.8% to 28.5% of category claims over the 300-prompt corpus, with Claude at 29.6% |
+| complex debugging and root-cause analysis | `subagent_claude_code` (Opus 5.5) | EJ's rule 3 |
+| **code review** | the engine that did **not** build it | rule 5 above; resolves the ×20 collision |
+| multi step planning, algorithm and solution design | `subagent_claude_code` (Opus 5.5) | EJ's rule 3 — the design tier |
+| daily Claude work that rule 3 does not claim: reports, prose, routine review, summaries | `subagent_claude_code_sonnet` (Sonnet 5.5) | EJ, 2026-10-03: *"other more daily tasks use Sonnet 5.5"* |
+| repo scanning, web search, research and reports | `agy` **via `dispatch.py`** | EJ's rule 2. No DSH subagent provider for `agy` exists — the published providers cover Codex and Claude Code only — so this is the CLI route |
+| document and explain, grade a run | `subagent_claude_code_sonnet` (Sonnet 5.5) | the three sentences do not name them, but `TASK_TYPES.md` already assigns both categories to Sonnet 5.5 — aligned to that table rather than to a DeepSeek role |
+| information extraction, classification | `subagent_researcher` (`deepseek-flash`, low) | uncovered, read-only, structured and cheap — the work is mechanical, so the cheapest tier that can do it |
+| configuration files, folder structure | **no row in `TASK_TYPES.md`** | EJ's rule 2 puts these on `agy`, but the category table has no row for them: *design* is `multi step planning` and *generation* is `code generation`, so it is two pieces, and the missing row is a gap in that table rather than a routing decision |
+
+**The split is already near even, and a run-time balance is not available anyway.** EJ asked on 2026-10-03 whether
+heavy Codex use could divert about 30% of the work to Sonnet 5.5. Measured over the 300-prompt corpus, this table
+with `test data gen` corrected puts **Codex at 28.5%, Claude at 29.6% and `agy` at 27.6%** of category claims — so
+the mix is close to even before any balancing rule, and a rule would move little. Two things block the run-time
+version: remaining usage **cannot be read** for any engine (see "Open before relying on this"), so "when Codex is
+heavily used" is not a condition anything can evaluate; and `DISPATCHER_DESIGN.md` §5 records EJ's decision that
+there is **no run-time routing fork** — the plan names one engine per node and the dispatcher makes no choice. A
+deterministic design-time split, a stable hash of the node id written into the plan, would fit those rules if the
+mix ever needs forcing; it is not built. The corpus is also only a proxy — billing-domain prompts skewed toward
+research and scanning — so Codex's real share depends on what the work actually is, and `events.jsonl` records
+every node's engine so the real mix can be reconciled per run.
+
+**Where each engine lives on the DeepSeek Harness** (main environment as of 2026-10-03):
+
+| Engine | Model, effort | How it is called |
+|---|---|---|
+| Codex | `gpt-5.6-sol` — **not the CLI default**, see the correction above | `subagent_codex` — a subagent provider, one-shot. Its bundled Codex is 0.153.4 and cannot serve `gpt-6.1-sol`; the pin is a workaround, not a preference |
+| Claude Code, strong tier | `claude-opus-5-5` | `subagent_claude_code` — a subagent provider, one-shot. EJ, 2026-10-03: *"Opus 5.5 for high complex tasks specially for designing things"* |
+| Claude Code, daily tier | `claude-sonnet-5-5` | `subagent_claude_code_sonnet` — the same provider package as a second row under its own `providerName`, because a provider row carries one model |
+| DeepSeek flash tier | `deepseek-flash`, low | `subagent_researcher`, `subagent_explorer` |
+| DeepSeek strong tier | `deepseek-v4-pro`, high | `subagent_coder`, `subagent_verifier` |
+| `agy` | `gemini-3.8-flash-medium` and up | `dispatch.py`, engine `agy` |
+
+**Evidence per row, and what is not evidence.** The two external rows each passed one canary on 2026-10-03 — a
+two-line answer with no tools, which shows the provider authenticates and completes a turn, nothing more. The
+flash/v4-pro tiers were verified from the harness's own session records (`modelSelection.lastUsed`), and the
+read-only filter by asking a child what it had. **None of this table has been exercised on real work**: it is a
+measured policy, not a measured outcome. Two specific unknowns: whether an external provider honours a `persona` or
+a `toolFilter` is untested, so those rows carry neither; and a `toolFilter` cannot remove a *scoped* registration,
+so a child still has the `subagent` tool and depth is held by `maxDepth` instead — also untested.
 
 ## The COO
 
-The COO is the main Claude session, and the one fixed node in every design. She is the leader: she gives
+The COO is the main session of whichever harness is running — the DeepSeek Harness as of 2026-10-03, Claude Code
+before that — and the one fixed node in every design. Planning and monitoring stay hers: a delegated child returns
+only its final result, so no engine below ever takes the lead. She is the leader: she gives
 directions, holds the budget and accepts results. **Planning and algorithm design are hers, on the strongest
 model** (EJ, 2026-10-03); bulk coding goes to the cheaper coder (method 3.5 tier rule), and she codes only when the
 work fits her context and a hand-off would not pay. She does not do the small work, and she does not carry its
@@ -158,6 +255,29 @@ A timeout, an empty result or a quota stop is a failure of the executor, not a f
 against the node's attempt limit. The node reruns once as a fresh node on the fallback kind named in its design,
 with a short handoff note. With no fallback, or on a second failure, the node is blocked and goes to EJ. Write a
 Log line for each: `<node> executor-fail <kind>: <reason>`.
+
+**Since 2026-10-03 a plan that names no fallback still gets one.** The design's own fallback wins; failing that the
+engine's default applies, so a Codex node is no longer a dead end the moment Codex runs out of credit. The
+dispatcher logs the source it used — `(the plan)` or `(the engine default)` — so a defaulted hop is visible in the
+digest and never silent.
+
+| Engine | Falls back to |
+|---|---|
+| `codex` | `claude` / `claude-sonnet-5-5` — EJ's "other more daily tasks use Sonnet 5.5" |
+| `agy`, `claude`, `qwen`, `dsh` | `codex` / `gpt-6.1-sol` |
+| `script` | **none** — a local command has no other engine that could run it, so a script node with no fallback still blocks |
+
+One hop only: the dispatcher refuses a second fallback, so no pair can ping-pong. The map is `DEFAULT_FALLBACKS` in
+`scripts/engines.py`, one entry beside each adapter, and `check_plan` validates the **resolved** fallback — so a bad
+default is caught before the run rather than after a failure. No "must differ from the node" rule: a `script`
+fallback legitimately shares the engine and differs only in `cmd`.
+
+**The unknown this rule leans on: how Codex shows exhaustion.** The failure table above still says
+"quota-exhausted behaviour not seen (*unknown*)", and that matters here — a quota stop that exits 0 with a notice is
+read as *success*, so it never reaches the fallback at all. `agy` is the engine known to behave that way, and it is
+listed under `silent_failures` in `engines.py`; Codex gets no entry until its signature is recorded. So the fallback
+covers Codex failures that *look* like failures (a non-zero exit, an empty result, a timeout) and is unproven
+against the other kind.
 
 ## Rules for mixed runs
 

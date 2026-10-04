@@ -7,6 +7,14 @@ every node still names its exact model and effort.
 The machine-readable form of the tables is *this file*: the skill's `scripts/design_gate.py` parses it. Do not
 copy the table into code or another doc — change it here, the gate follows.
 
+**Correction, 2026-10-03 — the Codex default is unchanged at `gpt-6.1-sol`.** A brief edit here swapped it for
+`gpt-5.6-sol` after a Codex call failed with *"The 'gpt-6.1-sol' model is not supported when using Codex with a
+ChatGPT account"*. That reading was wrong: the failure came from a **bundled old Codex** (the DeepSeek Harness's
+subagent provider pins `@openai/codex@0.153.4`, whose catalog lacks the model), while the CLI on this machine is
+`codex-cli 0.160.0` and runs **`gpt-6.1-sol` with high effort normally** (*verified* 2026-10-03). The swap is
+reverted. See `docs/EXECUTOR_KINDS.md`, "Model and effort", for the full account and for the one path — the DSH
+subagent provider — that still needs its own pin.
+
 ## How this is used (the design rule)
 
 1. **Guess at §3.0, label at §3.2.** The six why-questions (method 3.0) end with a *provisional* category — a
