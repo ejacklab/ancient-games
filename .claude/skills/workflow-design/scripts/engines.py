@@ -106,6 +106,24 @@ def build_claude(node, model, prompt, out_file, cwd, attempt) -> list[str]:
             "--permission-mode", "acceptEdits" if _mode(node) == "write" else "plan"]
 
 
+def build_opencode(node, model, prompt, out_file, cwd, attempt) -> list[str]:
+    """`opencode run` — headless, verified on opencode 1.18.34 (2026-10-04).
+
+    The message MUST come before any `--file=`: `-f` is a greedy array option that swallows the following
+    positional, so a file-first call makes opencode read the *prompt* as the attachment path and fail with
+    "File not found: <the prompt>". Verified both ways with a one-line file.
+
+    `--agent plan` is read-only and enforces it: asked to write a file it declined and created nothing.
+    `--agent build` writes. Model ids are namespaced by provider (`minimax-coding-plan/MiniMax-M3.1-Flash-Preview`).
+
+    No `-f` is emitted on purpose. An attachment opencode cannot read (a video) makes it exit 1 *even when the
+    task then succeeds* — it recovered by extracting frames with ffmpeg and answering correctly — and the
+    dispatcher reads a non-zero exit as an executor failure before it ever parses stdout. A node reads its own
+    inputs instead.
+    """
+    return ["opencode", "run", "-m", model, "--agent", "build" if _mode(node) == "write" else "plan", prompt]
+
+
 # ---------------------------------------------------------------- the harness itself
 def build_dsh(node, model, prompt, out_file, cwd, attempt) -> list[str]:
     # `dsh headless "<task>"` boots one harness session, answers, prints the answer to stdout and exits
@@ -142,6 +160,8 @@ DEFAULT_FALLBACKS = {
     "claude": {"engine": "codex", "model": "gpt-6.1-sol"},
     "qwen": {"engine": "codex", "model": "gpt-6.1-sol"},
     "dsh": {"engine": "codex", "model": "gpt-6.1-sol"},
+    # Same tier as codex's: a fast daily coder hands off to the other fast daily coder, one hop, no cycle.
+    "opencode": {"engine": "claude", "model": "claude-sonnet-5-5"},
 }
 
 REGISTRY: dict[str, Engine] = {e.name: e for e in (
@@ -154,6 +174,8 @@ REGISTRY: dict[str, Engine] = {e.name: e for e in (
            note="exit 0 can still mean timeout or an auto-denied tool in headless mode"),
     Engine("claude", build_claude, parse_stdout, default_fallback=DEFAULT_FALLBACKS["claude"],
            note="claude -p; permission mode plan (read-only) or acceptEdits (write), never bypassPermissions"),
+    Engine("opencode", build_opencode, parse_stdout, default_fallback=DEFAULT_FALLBACKS["opencode"],
+           note="opencode run; --agent plan (read-only) or build (write). Answer on stdout, banner on stderr"),
     Engine("dsh", build_dsh, parse_stdout, needs_model=False, default_fallback=DEFAULT_FALLBACKS["dsh"],
            note="dsh headless; the model is the headless profile's, so a plan's model is recorded, not passed"),
     Engine("script", build_script, parse_script, needs_model=False,

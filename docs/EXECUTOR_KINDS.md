@@ -182,6 +182,7 @@ the provider tool is the fallback** — see the rule under the table.
 | DeepSeek flash tier | `deepseek-flash`, low | `subagent_researcher`, `subagent_explorer` — **the exception**: a spawn role is the only form whose `toolFilter` the harness enforces | `dispatch.py`, engine `dsh` (`dsh headless`) |
 | DeepSeek strong tier | `deepseek-v4-pro`, high | `subagent_coder`, `subagent_verifier` — same reason | `dispatch.py`, engine `dsh` |
 | `agy` | `gemini-3.8-flash-medium` and up | `dispatch.py`, engine `agy` | none — no provider exists, so this is CLI-only |
+| `opencode` + MiniMax | `minimax-coding-plan/MiniMax-M3.1-Flash-Preview` | `dispatch.py`, engine `opencode` | `claude` / `claude-sonnet-5-5` — the engine default; no DSH provider for opencode exists |
 
 **CLI first, provider call as the fallback (EJ, 2026-10-04).** *"AI changes fast, same as all these AI tools, so
 better use the cli call."* The binary on `PATH` is the one that updates — `codex-cli 0.160.0`, Claude Code
@@ -209,6 +210,27 @@ dropped:
 above all — belongs in a **spawn provider call**, because its `toolFilter` is enforced by the harness. A CLI call
 has no such mask: whatever `bash` can reach, that node can run. So the rule is *CLI by default, spawn tool where
 blindness has to be structural*.
+
+**`opencode` with MiniMax-M3.1-Flash-Preview: the strongest frontend and long-context results measured here so
+far.** Added 2026-10-04, n=1 (one run: `runs/20261004-opencode-poc/README.md`). **19/19 objective checks** across
+six POCs — a self-contained ARIA-tabbed page with an inline SVG chart, rendered in Chrome to confirm it (9/9,
+29 s); three needles across a **197k-token** file with their sum, exact, in **14 s**; a bar chart read correctly
+from an image; a failing pytest suite diagnosed to `calc.py:6`, fixed, and the tests passing; and `--agent plan`
+refusing to write at all.
+
+**Two traps, both silent, both verified.** The message must come before any `--file=`: `-f` is a greedy array
+option that swallows the next positional, so a file-first call makes opencode read the *prompt* as the attachment
+path (`File not found: <the prompt>`). And an attachment it cannot read makes it **exit 1 even when the task then
+succeeds** — P4 answered correctly and still returned 1, reproducibly — which `dispatch.py` reads as an executor
+failure *before* it parses stdout. The adapter therefore emits no `-f`, and a node reads its own inputs.
+
+Video is advertised in the model catalog but the read path answers `Cannot read binary file`; the agent recovered
+by running `ffprobe` then `ffmpeg -vsync 0` to extract frames and reading those. `--format json` reports real
+`tokens` and `cost` per step — the best cost source wired in so far, and a candidate for the ledger's Actual cost
+column, which currently says "not instrumented" for DSH runs. Not built.
+
+Routing is **not** changed by this: the evidence argues for `ui/ux dev`, `document and explain` and long-document
+`information extraction`, but moving a category is EJ's call, and one run is n=1.
 
 **Evidence per row, and what is not evidence.** The two external rows each passed one canary on 2026-10-03 — a
 two-line answer with no tools, which shows the provider authenticates and completes a turn, nothing more. The

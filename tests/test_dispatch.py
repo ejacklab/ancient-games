@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / ".claude/skills/workflow-design/scripts/dispatch.py"
+sys.path.insert(0, str(SCRIPT.parent))          # engines.py sits beside dispatch.py
+import engines                                   # noqa: E402  (path is set just above)
 BRIEF = "# Brief\n## Task\nDo x.\n## Template\nresult-file.md\n## Example\none row\n## Standard\nthe check passes\n"
 
 FAKE = r'''
@@ -95,6 +97,36 @@ def test_external_engine_uses_its_default_fallback_when_the_plan_names_none(tmp_
     assert r.returncode == 0, r.stdout + r.stderr
     assert state(tmp_path)["nodes"]["a"]["calls"] == 2
     assert "falling back to claude/claude-sonnet-5-5 (the engine default)" in r.stderr
+
+
+def test_opencode_engine_builds_the_verified_argv(tmp_path):
+    """`opencode run`, verified against the real CLI on 2026-10-04.
+
+    Two things are pinned here because both were got wrong first and both are silent:
+
+    * the message must precede any `--file=`, because `-f` is a greedy array option that swallows the next
+      positional — file-first makes opencode read the *prompt* as the attachment path;
+    * `--agent` is the read-only/write switch (`plan` refuses writes, verified by asking it to write), and the
+      model is provider-namespaced, which is why it is passed through verbatim.
+    """
+    node = {"id": "x", "role": "coder", "engine": "opencode",
+            "model": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview", "brief": "brief.md",
+            "inner_timer": "600s", "outer_timeout_s": 660, "mode": "write"}
+    r = run(tmp_path, "check", setup(tmp_path, [node]))
+    assert r.returncode == 0, r.stdout + r.stderr
+
+    argv = engines.build_opencode(node, node["model"], "PROMPT", None, tmp_path, 1)
+    assert argv[:2] == ["opencode", "run"]
+    assert argv[-1] == "PROMPT", "the message must be the last positional, after every flag"
+    assert "build" in argv and "plan" not in argv
+
+    read_only = {**node, "mode": "read-only"}
+    assert "plan" in engines.build_opencode(read_only, node["model"], "P", None, tmp_path, 1)
+
+
+def test_opencode_falls_back_to_the_daily_claude_tier(tmp_path):
+    """A plan that names no fallback for `opencode` gets one, like every other external engine."""
+    assert engines.DEFAULT_FALLBACKS["opencode"] == {"engine": "claude", "model": "claude-sonnet-5-5"}
 
 
 def test_check_failure_repairs_with_real_feedback_then_passes(tmp_path):
