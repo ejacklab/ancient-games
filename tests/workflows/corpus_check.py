@@ -30,16 +30,10 @@ import design_gate as dg  # noqa: E402
 
 FIVE = sorted(dg.FIVE)
 # Builder defaults per category (concrete engine ids per EXECUTOR_KINDS; the table's cell is prose).
-ENGINES = {
-    "code generation": "codex gpt-6.1-sol", "code review": "claude sonnet 5.5",
-    "debugging": "codex gpt-6.1-sol", "ui/ux dev": "codex gpt-6.1-sol",
-    "test data gen": "claude sonnet 5.5", "test cases gen": "codex gpt-6.1-sol",
-    "test script gen": "codex gpt-6.1-sol", "repo scanning": "claude sonnet 5.5",
-    "multi step planning": "codex gpt-6-astra", "information extraction": "claude sonnet 5.5",
-    "web search": "codex gpt-6.1-sol", "classification": "agy gemini-3.1-pro-high",
-    "research and reports": "codex gpt-6.1-sol", "others": "claude sonnet 5.5",
-    "document and explain": "claude sonnet 5.5", "grade a run": "claude sonnet 5.5",
-}
+# Derived from docs/TASK_TYPES.md via design_gate, not hand-kept: this file and test_task_types.py held
+# the same 16-entry copy until 2026-10-04, and both had drifted from the table they were meant to mirror.
+TYPES = dg.parse_types(ROOT / "docs" / "TASK_TYPES.md")
+ENGINES = {c: v.get("engine", "") for c, v in TYPES["categories"].items()}
 LOOP_CATS = {"code generation", "debugging", "ui/ux dev", "test script gen"}
 
 
@@ -205,6 +199,8 @@ def main(argv=None) -> int:
     ap.add_argument("--out", metavar="FILE")
     a = ap.parse_args(argv)
     types = dg.parse_types(Path(a.types))
+    global ENGINES
+    ENGINES = {c: v.get("engine", "") for c, v in types["categories"].items()}
     corpus = [e for f in a.corpus for e in load_jsonl(Path(f))]
     results = index_by_id(load_jsonl(Path(a.results)))
     emit = Path(a.emit_designs) if a.emit_designs else None

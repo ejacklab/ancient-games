@@ -85,13 +85,13 @@ a diagnosis/validation *or* writes as a fix/generation — the design's `builds`
 
 | Category | Touches product | Default pattern | Default engine | Default check | Sabotage (proof the check can fail) |
 |---|---|---|---|---|---|
-| code generation | yes | evaluator–optimizer loop | Codex `gpt-6.1-sol` | tests/build pass (script) | break the code → the check goes red |
+| code generation | yes | evaluator–optimizer loop | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | tests/build pass (script) | break the code → the check goes red |
 | code review | no | maker–checker, fresh blind session | risk-tiered: Sonnet 5.5 when nothing builds; different kind from the worker when it builds (EXECUTOR_KINDS rule 5) | fixed checklist; findings with file:line | plant a known defect → the reviewer must find it |
-| ui/ux dev | yes | codegen loop + human acceptance checkpoint | Codex `gpt-6.1-sol` | build/render script + EJ's acceptance (last per 3.5) | break a component → the build fails |
-| debugging | mixed | loop with the failing test as objective check (a diagnosis-only run is read-only research with a repro) | Codex `gpt-6.1-sol` | repro test: red before, green after | revert the fix → red again |
-| test data gen | mixed | single node, schema-validated (a validation-only run is read-only) | cheap tier (Sonnet 5.5 / `gemini-3.8-flash`) | schema validation + edge-case coverage list | corrupt a row → the validator rejects |
-| test cases gen | yes | single node + review | Codex `gpt-6.1-sol` | generated tests fail on a broken implementation | a seeded mutant must be caught |
-| test script gen | yes | codegen loop | Codex `gpt-6.1-sol` | script detects a seeded failure | seeded failure → non-zero exit |
+| ui/ux dev | yes | codegen loop + human acceptance checkpoint | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | build/render script + EJ's acceptance (last per 3.5) | break a component → the build fails |
+| debugging | mixed | loop with the failing test as objective check (a diagnosis-only run is read-only research with a repro) | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | repro test: red before, green after | revert the fix → red again |
+| test data gen | mixed | single node, schema-validated (a validation-only run is read-only) | Sonnet 5.5 / `gemini-3.8-flash` (cheap tier) | schema validation + edge-case coverage list | corrupt a row → the validator rejects |
+| test cases gen | yes | single node + review | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | generated tests fail on a broken implementation | a seeded mutant must be caught |
+| test script gen | yes | codegen loop | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | script detects a seeded failure | seeded failure → non-zero exit |
 | repo scanning | no | parallel sectioning, read-only fan-out | cheap tier | coverage manifest; findings with paths | plant a marker file → the scan reports it |
 | multi step planning | no | plan + gate (this method) | Codex `gpt-6-astra` (high thinking) | script schema gate + checklist review | an unresolved spot → the gate fails |
 | information extraction | no | single node, structured output | cheap tier | JSON-schema validation + spot-check vs source | a corrupt source field → flagged, never hallucinated |

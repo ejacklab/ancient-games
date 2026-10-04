@@ -148,7 +148,7 @@ call.
 
 | Category | Engine | Basis |
 |---|---|---|
-| code generation, debugging, test cases gen, test script gen, ui/ux dev | `subagent_codex` | EJ's rule 1; UI and generated tests are test surface and product, so they build |
+| code generation, debugging, test cases gen, test script gen, ui/ux dev | opencode **and** codex, assigned by `scripts/workload.py` | EJ's rule 1 says these are coding, and until 2026-10-04 one engine owned them. The split now allocates them: opencode priority, 60/40 at five modules, crossing each module's code and its tests so the tests come from the engine that did not write the code. No single engine owns these rows any more — see "Built 2026-10-04" above |
 | test data gen | `subagent_claude_code_sonnet` (Sonnet 5.5) | `TASK_TYPES.md` already assigns this row to the cheap tier (Sonnet 5.5 / `gemini-3.8-flash`), not to Codex. The first version of this table put it on Codex by extension from "test surface", contradicting that table — corrected 2026-10-03. It is also the single change that moves the load: Codex falls from 33.8% to 28.5% of category claims over the 300-prompt corpus, with Claude at 29.6% |
 | complex debugging and root-cause analysis | `subagent_claude_code` (Opus 5.5) | EJ's rule 3 |
 | **code review** | the engine that did **not** build it | rule 5 above; resolves the ×20 collision |

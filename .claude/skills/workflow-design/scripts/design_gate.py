@@ -35,8 +35,9 @@ FIVE = {"tools", "context", "contract", "evidence", "state"}
 LEDGER_KEYS = ["date", "run_id", "category", "design_source", "claimed_margin", "basis",
                "projected_cost", "actual_cost", "coverage_result", "reconciled"]
 LEDGER_FIELDS = LEDGER_KEYS
-_KINDS = (("codex", "codex"), ("gpt", "codex"), ("claude", "claude"), ("sonnet", "claude"),
-          ("opus", "claude"), ("haiku", "claude"), ("agy", "agy"), ("gemini", "agy"), ("qwen", "qwen"))
+_KINDS = (("codex", "codex"), ("gpt", "codex"), ("opencode", "opencode"), ("minimax", "opencode"),
+          ("claude", "claude"), ("sonnet", "claude"), ("opus", "claude"), ("haiku", "claude"),
+          ("agy", "agy"), ("gemini", "agy"), ("qwen", "qwen"))
 
 
 def repo_root() -> Path:
@@ -44,9 +45,19 @@ def repo_root() -> Path:
 
 
 def engine_kind(engine: str) -> str:
+    """The kind of engine a cell names. A **leading** name wins over an embedded one.
+
+    Two passes because a cell may name more than one engine — the build rows read "opencode ... + Codex ...", and
+    the engine named first is the primary one. Matching embedded tokens in one pass returned `codex` for those
+    cells (the "+ Codex" matches before the loop reaches `opencode`), which would have told the G6 different-kind
+    rule the wrong thing about 60% of the build work.
+    """
     e = (engine or "").lower()
     for tok, kind in _KINDS:
-        if e.startswith(tok) or f" {tok}" in e:
+        if e.startswith(tok):
+            return kind
+    for tok, kind in _KINDS:
+        if f" {tok}" in e:
             return kind
     return "unknown"
 

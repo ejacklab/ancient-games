@@ -23,16 +23,10 @@ CORPUS = json.loads((ROOT / "tests" / "fixtures" / "task_type_prompts.json").rea
 FIVE = sorted(dg.FIVE)
 LOOP_CATS = {"code generation", "debugging", "ui/ux dev", "test script gen"}
 # Test-side engine defaults (concrete ids, per EXECUTOR_KINDS); the table's engine cell is prose.
-ENGINES = {
-    "code generation": "codex gpt-6.1-sol", "code review": "claude sonnet 5.5",
-    "debugging": "codex gpt-6.1-sol", "ui/ux dev": "codex gpt-6.1-sol",
-    "test data gen": "claude sonnet 5.5", "test cases gen": "codex gpt-6.1-sol",
-    "test script gen": "codex gpt-6.1-sol", "repo scanning": "claude sonnet 5.5",
-    "multi step planning": "codex gpt-6-astra", "information extraction": "claude sonnet 5.5",
-    "web search": "codex gpt-6.1-sol", "classification": "agy gemini-3.1-pro-high",
-    "research and reports": "codex gpt-6.1-sol", "others": "claude sonnet 5.5",
-    "document and explain": "claude sonnet 5.5", "grade a run": "claude sonnet 5.5",
-}
+# Derived from docs/TASK_TYPES.md itself: its engine column is the one place this policy lives, and a
+# hand-kept copy here would let a routing change pass unnoticed. Two such copies existed until
+# 2026-10-04 and had already drifted (gpt-6-astra vs Opus, agy vs deepseek-flash).
+ENGINES = {c: v.get("engine", "") for c, v in TYPES["categories"].items()}
 
 
 def builder_cats(cats: list, builds: bool) -> list:
@@ -195,12 +189,23 @@ def test_reviewer_kind_rule():
     base = design_for(next(x for x in CORPUS if x["id"] == "t02-codegen-flag"))
     d = json.loads(json.dumps(base))
     d["nodes"] = [n for n in d["nodes"] if n["category"] != "code review"]
-    assert any(x.startswith("G6") for x in dg.validate_design(d, TYPES))
+    assert any(x.startswith("G6") for x in dg.validate_design(d, TYPES)), \
+        "a building node with no reviewer must be G6"
+
+    # G6 fires when the reviewer is the SAME KIND as the builder, so the reviewer's engine must be read from the
+    # builder's rather than hardcoded. This broke on 2026-10-04: the build rows became two-engine cells
+    # ("opencode ... + Codex ...") and began classifying as opencode, so a hardcoded codex reviewer was correctly
+    # a different kind and the finding stopped firing.
     d = json.loads(json.dumps(base))
+    kinds = [dg.engine_kind(n["engine"]) for n in d["nodes"]]
+    kind = next((k for k in kinds if k in ("codex", "opencode")), "codex")
+    same_kind = {"codex": "codex gpt-6-astra", "opencode": "opencode MiniMax-M3.1-Flash-Preview",
+                 "claude": "claude sonnet 5.5", "agy": "agy gemini-3.1-pro-high"}[kind]
     for n in d["nodes"]:
         if n["category"] == "code review":
-            n["engine"] = "codex gpt-6-astra"
-    assert any(x.startswith("G6") for x in dg.validate_design(d, TYPES))
+            n["engine"] = same_kind
+    assert any(x.startswith("G6") for x in dg.validate_design(d, TYPES)), \
+        f"a {kind} reviewer for a {kind} builder must be G6"
 
 
 def test_ledger_row_rules():
