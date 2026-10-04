@@ -185,6 +185,21 @@ def test_node_and_edge_rules():
     assert any(x.startswith("G1") for x in dg.validate_design(d, TYPES))
 
 
+def test_every_row_in_the_table_has_a_classifiable_engine():
+    """No row may be invisible to the kind rules.
+
+    `design_gate._KINDS` is a hand-kept list of engine tokens, and an engine missing from it makes every row
+    routed to it classify as `unknown` — which silently disarms G6's different-kind rule for that work. Two
+    engines were added in one day (opencode, deepseek) and each exposed exactly this, with the DeepSeek tier
+    invisible from the start. This is the check that would have caught both.
+    """
+    placeholder = {"", "-", "—", "n/a", "none"}          # `others` is a catch-all and names no engine
+    unknown = {c: v.get("engine", "") for c, v in TYPES["categories"].items()
+               if v.get("engine", "").strip().lower() not in placeholder
+               and dg.engine_kind(v.get("engine", "")) == "unknown"}
+    assert unknown == {}, f"rows the gate cannot classify: {unknown}"
+
+
 def test_reviewer_kind_rule():
     base = design_for(next(x for x in CORPUS if x["id"] == "t02-codegen-flag"))
     d = json.loads(json.dumps(base))
