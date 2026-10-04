@@ -7,6 +7,14 @@ Sources (all internal, undocumented formats — every parser fails loudly when a
                   .../subagents/workflows/<runId>/agent-<id>.jsonl         (message.usage per API call)
   codex           ~/.codex/sessions/**/rollout-*.jsonl, joined to a runlog.py `exec` event by its time window
                   and cwd (no guessing: zero or several matches are reported as unlinked)
+  dsh             ~/.dsh/storages/session_projcache/sessions/<sessionId>.json — the DeepSeek Harness's
+                  projection cache — joined the same way. The session log beside it (session.v4.jsonl.zstd)
+                  is the source of truth, but it is zstd-compressed and this script is stdlib-only (Python
+                  3.12 has no `compression.zstd`; there is no `zstd` binary), so what is read is the harness's
+                  derived cache. Those rows say `source: dsh` so the distinction stays visible.
+                  The window join is NOT reliable for DSH the way it is for codex: sessions routinely overlap
+                  in one cwd — parallel nodes, plus whatever interactive session is open — so `--dsh-session
+                  <id>` names one directly and skips the window. Prefer it until dispatch.py journals the id.
   runlog events   runs/<run>/events.jsonl (verdicts, exec start/end)
 
 Writes runs/<run>/feedback.jsonl (ids, numbers, paths and status only — never prompt or response text) and
@@ -28,6 +36,9 @@ from pathlib import Path
 HOME = Path.home()
 ROUND_RE = re.compile(r"\s*#(\d+)$")
 LINK_SLACK_S = 5
+# A projection cache is written around the session's end, which can be a little after the call's own end, so
+# the cheap mtime pre-filter is deliberately wider than the createdAt test that does the real joining.
+CACHE_WRITE_SLACK_S = 120
 
 
 class FormatChanged(Exception):
@@ -176,6 +187,103 @@ def harvest_codex(run_id: str, events: list[dict], sessions: Path) -> list[dict]
     return rows
 
 
+def dsh_session(path: Path) -> dict:
+    """Identity, tokens and model of one DeepSeek Harness session, from its projection cache.
+
+    Derived state, not the session log: see the module docstring for why. The four token parts come from
+    `tokenUsage.totals`, whose `uncachedInputTokens` already excludes cache reads — the same convention the
+    codex parser has to correct for by hand.
+    """
+    d = json.loads(path.read_text())
+    need(d, ["version", "record"], short(path))
+    rec = d["record"]
+    need(rec, ["identity", "rows"], f"{short(path)}: record")
+    ident = rec["identity"]
+    need(ident, ["createdAt", "cwd"], f"{short(path)}: identity")
+    rows = rec["rows"]
+    tu = (rows.get("tokenUsage") or {}).get("val")
+    if tu is None:
+        raise FormatChanged(f"{short(path)}: no tokenUsage projection")
+    need(tu, ["totals"], f"{short(path)}: tokenUsage")
+    t = tu["totals"]
+    need(t, ["uncachedInputTokens", "outputTokens", "cacheReadTokens", "cacheWriteTokens"], f"{short(path)}: totals")
+    used = (((rows.get("modelSelection") or {}).get("val") or {}).get("lastUsed")) or {}
+    stats = ((rows.get("sessionStats") or {}).get("val")) or {}
+    return {"start": datetime.fromtimestamp(ident["createdAt"] / 1000, timezone.utc), "cwd": ident["cwd"],
+            "model": used.get("model"), "provider": used.get("provider"), "effort": used.get("reasoningEffort"),
+            "tokens_in": t["uncachedInputTokens"], "tokens_out": t["outputTokens"],
+            "tokens_cache_read": t["cacheReadTokens"], "tokens_cache_write": t["cacheWriteTokens"],
+            "steps": stats.get("steps"), "llm_ms": stats.get("llmMs")}
+
+
+def harvest_dsh(run_id: str, events: list[dict], projcache: Path) -> list[dict]:
+    """Join each `dsh` engine call to the session it started, by the call's window and cwd.
+
+    A `dsh headless` node *is* one session, so that session's own totals are the node's cost — the same shape as
+    the codex join. The mtime pre-filter only bounds the scan; the decision is `createdAt` inside the window and
+    an equal cwd. Zero or several matches are reported as unlinked, never guessed.
+    """
+    calls = [e for e in events if e.get("event") == "end" and e.get("engine") == "dsh"]
+    if not calls:
+        return []
+    starts = {(e["node_id"], e["attempt"]): e for e in events if e.get("event") == "start"}
+    slack = timedelta(seconds=LINK_SLACK_S)
+    windows = {}
+    for end in calls:
+        st = starts.get((end["node_id"], end["attempt"]))
+        lo = (parse_ts(st["ts"]) if st else parse_ts(end["ts"])) - slack
+        windows[(end["node_id"], end["attempt"])] = (lo, parse_ts(end["ts"]) + slack)
+    scan_lo = min(w[0] for w in windows.values()) - timedelta(seconds=CACHE_WRITE_SLACK_S)
+    scan_hi = max(w[1] for w in windows.values()) + timedelta(seconds=CACHE_WRITE_SLACK_S)
+    cache: dict[Path, dict] = {}
+    rows = []
+    for end in calls:
+        lo, hi = windows[(end["node_id"], end["attempt"])]
+        st = starts.get((end["node_id"], end["attempt"]))
+        matches = []
+        for f in sorted(projcache.glob("*.json")):
+            mtime = f.stat().st_mtime
+            if not (scan_lo.timestamp() <= mtime <= scan_hi.timestamp()):
+                continue
+            r = cache.get(f)
+            if r is None:
+                r = cache[f] = dsh_session(f)
+            if lo <= r["start"] <= hi and r["cwd"] == end.get("cwd"):
+                matches.append((f, r))
+        row = {"run_id": run_id, "source": "dsh", "node_id": end["node_id"], "round": end["attempt"],
+               "engine": "dsh", "status": end["status"], "exit_code": end.get("exit_code"),
+               "duration_ms": end.get("duration_ms"), "ts_start": st["ts"] if st else None, "ts_end": end["ts"],
+               "brief_variant": end.get("brief_variant")}
+        if len(matches) == 1:
+            f, r = matches[0]
+            row.update({k: v for k, v in r.items() if k not in ("start", "cwd")})
+            row["cost_known"] = True; row["source_file"] = short(f)
+        else:
+            row["cost_known"] = False; row["note"] = f"unlinked: {len(matches)} sessions matched the window"
+        rows.append(row)
+    return rows
+
+
+def harvest_dsh_sessions(run_id: str, session_ids: list[str], projcache: Path) -> list[dict]:
+    """One row per named DSH session, with no window and no guesswork.
+
+    This is the join to use: a session's own totals are unambiguous once it is named, while the window join has
+    to give up whenever two sessions in the same cwd overlap. A named session that has no cache is an error, not
+    a silent zero — the caller asked for it by name.
+    """
+    rows = []
+    for sid in session_ids:
+        f = projcache / f"{sid}.json"
+        if not f.exists():
+            raise FormatChanged(f"dsh session {sid}: no projection cache at {short(f)}")
+        r = dsh_session(f)
+        row = {"run_id": run_id, "source": "dsh", "node_id": sid, "round": 1, "engine": "dsh",
+               "cost_known": True, "source_file": short(f)}
+        row.update({k: v for k, v in r.items() if k != "start"})
+        rows.append(row)
+    return rows
+
+
 def read_events(path: Path) -> list[dict]:
     if not path.exists():
         return []
@@ -216,9 +324,12 @@ def digest(run_id: str, rows: list[dict], events: list[dict]) -> list[str]:
         first = [v for v in verdicts if v.get("round", 1) == 1]
         lines.append(f"checks: {sum(v['pass'] for v in verdicts)}/{len(verdicts)} pass; first-try "
                      f"{sum(v['pass'] for v in first)}/{len(first)}")
+    # A row with no runlog event behind it (a named DSH session) has no wall time of its own, so the clause is
+    # dropped when nothing measured one: "0.0 agent-min" beside real tokens reads as a measurement.
+    mins = sum(r.get("duration_ms") or 0 for r in rows) / 60000
+    wall = f"{mins:.1f} agent-min; " if any(r.get("duration_ms") for r in rows) else ""
     lines.append(f"ledger Actual cost: new {tot('tokens_in') + tot('tokens_cache_write'):,} / cache-read "
-                 f"{tot('tokens_cache_read'):,} / out {tot('tokens_out'):,} tokens; "
-                 f"{sum(r.get('duration_ms') or 0 for r in rows) / 60000:.1f} agent-min; {len(rows)} calls")
+                 f"{tot('tokens_cache_read'):,} / out {tot('tokens_out'):,} tokens; {wall}{len(rows)} calls")
     return lines[:20]
 
 
@@ -226,9 +337,13 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--run", required=True, help="the run id: folder name under --runs-root")
     ap.add_argument("--workflow", action="append", default=[], help="a Workflow runId (wf_...) of this run")
+    ap.add_argument("--dsh-session", action="append", default=[],
+                    help="a DeepSeek Harness session id of this run; unambiguous, unlike the window join")
     ap.add_argument("--runs-root", default="runs")
     ap.add_argument("--claude-projects", default=str(HOME / ".claude" / "projects"))
     ap.add_argument("--codex-sessions", default=str(HOME / ".codex" / "sessions"))
+    ap.add_argument("--dsh-projcache",
+                    default=str(HOME / ".dsh" / "storages" / "session_projcache" / "sessions"))
     a = ap.parse_args(argv)
     run_dir = Path(a.runs_root) / a.run
     try:
@@ -237,6 +352,8 @@ def main(argv=None) -> int:
         for wf in a.workflow:
             rows += harvest_workflow(a.run, wf, Path(a.claude_projects))
         rows += harvest_codex(a.run, events, Path(a.codex_sessions))
+        rows += harvest_dsh(a.run, events, Path(a.dsh_projcache))
+        rows += harvest_dsh_sessions(a.run, a.dsh_session, Path(a.dsh_projcache))
     except FormatChanged as e:
         print(f"harvest: FORMAT CHANGED? {e}", file=sys.stderr)
         return 3

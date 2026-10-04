@@ -2,6 +2,7 @@
 import json
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1] / ".claude/skills/workflow-design/scripts"
@@ -138,6 +139,101 @@ def test_codex_join_refuses_to_guess(tmp_path):
     assert h.returncode == 0, h.stderr
     row = json.loads((runs / "r3/feedback.jsonl").read_text().splitlines()[0])
     assert row["cost_known"] is False and "unlinked: 2" in row["note"]
+
+
+def write_projcache(root, session_id, ts_iso, cwd, uncached=100, cr=50, cw=0, out=7,
+                    model="deepseek-flash", provider="deepseek-official", effort="high"):
+    """A DeepSeek Harness projection cache: the plain-JSON shape harvest_run.py reads, trimmed to the rows it uses."""
+    root.mkdir(parents=True, exist_ok=True)
+    created_ms = int(datetime.fromisoformat(ts_iso.replace("Z", "+00:00")).timestamp() * 1000)
+    d = {"version": 7, "record": {
+        "identity": {"formatVersion": 4, "createdAt": created_ms, "cwd": cwd, "isSeeded": False,
+                     "inheritedEventCount": 0},
+        "rows": {
+            "tokenUsage": {"ver": 2, "seq": 232, "val": {"totals": {
+                "uncachedInputTokens": uncached, "outputTokens": out,
+                "cacheReadTokens": cr, "cacheWriteTokens": cw}, "last": {}}},
+            "modelSelection": {"ver": 2, "seq": 232, "val": {
+                "lastUsed": {"provider": provider, "model": model, "reasoningEffort": effort}, "pending": None}},
+            "sessionStats": {"ver": 1, "seq": 232, "val": {"turns": 1, "steps": 27, "llmMs": 1000}},
+            "title": {"ver": 1, "seq": 232, "val": {"text": SECRET}},
+        }}}
+    f = root / f"{session_id}.json"
+    f.write_text(json.dumps(d))
+    return f
+
+
+def test_dsh_join_uses_the_projection_cache(tmp_path):
+    """A `dsh headless` node is one session, so that session's totals are the node's cost."""
+    runs = tmp_path / "runs"
+    r = run("runlog.py", "--runs-root", runs, "exec", "--run", "r5", "--node", "n1", "--attempt", "1",
+            "--engine", "dsh", "--", sys.executable, "-c", "print('hi')", cwd=tmp_path)
+    assert r.returncode == 0, r.stderr
+    start = json.loads((runs / "r5/events.jsonl").read_text().splitlines()[0])["ts"]
+    cache = tmp_path / "projcache"
+    write_projcache(cache, "here", start, str(tmp_path), uncached=100799, cr=2114432, cw=0, out=29806)
+    write_projcache(cache, "elsewhere", start, "/some/other/dir")
+    h = run("harvest_run.py", "--run", "r5", "--runs-root", runs, "--dsh-projcache", cache)
+    assert h.returncode == 0, h.stderr
+    row = json.loads((runs / "r5/feedback.jsonl").read_text().splitlines()[0])
+    assert row["source"] == "dsh" and row["engine"] == "dsh"
+    assert row["cost_known"] and row["model"] == "deepseek-flash" and row["provider"] == "deepseek-official"
+    assert (row["tokens_in"], row["tokens_cache_read"], row["tokens_cache_write"], row["tokens_out"]) == \
+        (100799, 2114432, 0, 29806)
+    assert row["steps"] == 27 and row["effort"] == "high"
+    # the four parts reach the ledger line, and no prompt text leaks out of the cache
+    assert "ledger Actual cost" in h.stdout and "100,799" in h.stdout
+    assert SECRET not in (runs / "r5/feedback.jsonl").read_text() + h.stdout
+
+
+def test_dsh_join_refuses_to_guess(tmp_path):
+    runs = tmp_path / "runs"
+    run("runlog.py", "--runs-root", runs, "exec", "--run", "r6", "--node", "n1", "--engine", "dsh", "--",
+        sys.executable, "-c", "pass", cwd=tmp_path)
+    start = json.loads((runs / "r6/events.jsonl").read_text().splitlines()[0])["ts"]
+    cache = tmp_path / "projcache"
+    write_projcache(cache, "first", start, str(tmp_path))
+    write_projcache(cache, "second", start, str(tmp_path))     # two sessions match the same window and cwd
+    h = run("harvest_run.py", "--run", "r6", "--runs-root", runs, "--dsh-projcache", cache)
+    assert h.returncode == 0, h.stderr
+    row = json.loads((runs / "r6/feedback.jsonl").read_text().splitlines()[0])
+    assert row["cost_known"] is False and "unlinked: 2" in row["note"]
+
+
+def test_dsh_cache_without_tokens_fails_loud(tmp_path):
+    runs = tmp_path / "runs"
+    run("runlog.py", "--runs-root", runs, "exec", "--run", "r7", "--node", "n1", "--engine", "dsh", "--",
+        sys.executable, "-c", "pass", cwd=tmp_path)
+    start = json.loads((runs / "r7/events.jsonl").read_text().splitlines()[0])["ts"]
+    cache = tmp_path / "projcache"
+    f = write_projcache(cache, "broken", start, str(tmp_path))
+    d = json.loads(f.read_text()); del d["record"]["rows"]["tokenUsage"]; f.write_text(json.dumps(d))
+    h = run("harvest_run.py", "--run", "r7", "--runs-root", runs, "--dsh-projcache", cache)
+    assert h.returncode == 3 and "FORMAT CHANGED" in h.stderr and "no tokenUsage projection" in h.stderr
+    assert not (runs / "r7/feedback.jsonl").exists()
+
+
+def test_dsh_named_session_joins_despite_overlapping_windows(tmp_path):
+    """The case the window join must give up on — two sessions in one cwd, overlapping — and naming one wins.
+
+    Reproduced on real data: three concurrent subagents had `createdAt` within 1 ms of each other and every
+    window matched all three, so the join correctly reported "unlinked: 3" and reported no cost at all.
+    """
+    cache = tmp_path / "projcache"
+    ts = "2026-10-03T09:02:31.730Z"
+    write_projcache(cache, "sessA", ts, "/repo", uncached=111, cr=222, cw=0, out=33)
+    write_projcache(cache, "sessB", ts, "/repo", uncached=999, cr=999, cw=0, out=99)
+    h = run("harvest_run.py", "--run", "r8", "--runs-root", tmp_path / "runs", "--dsh-projcache", cache,
+            "--dsh-session", "sessA")
+    assert h.returncode == 0, h.stderr
+    rows = [json.loads(l) for l in (tmp_path / "runs/r8/feedback.jsonl").read_text().splitlines()]
+    assert len(rows) == 1 and rows[0]["node_id"] == "sessA" and rows[0]["cost_known"]
+    assert (rows[0]["tokens_in"], rows[0]["tokens_cache_read"], rows[0]["tokens_out"]) == (111, 222, 33)
+    assert "ledger Actual cost" in h.stdout
+    # a named session with no cache is an error, not a silent zero
+    h = run("harvest_run.py", "--run", "r9", "--runs-root", tmp_path / "runs", "--dsh-projcache", cache,
+            "--dsh-session", "nope")
+    assert h.returncode == 3 and "no projection cache" in h.stderr
 
 
 def test_runlog_timeout_and_failure_status(tmp_path):
