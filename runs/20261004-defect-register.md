@@ -65,7 +65,7 @@ promises on every building node.
 | # | issue | where | found by | ✓ |
 |---|---|---|---|---|
 | 4.1 | The **engine split exists only in the skill** — method and diagram have zero mentions of it | `SKILL.md:175` vs both | all 4 (pass 1) | ✓ |
-| 4.2 | The checklist says **three** qualities and lists **four**, and method §5 is still titled "Three qualities" | `SKILL.md:165`, `METHOD.md:476` | all 4 | ✓ |
+| 4.2 | **FIXED 2026-10-05** — the list held **four** bullets under *"Check it shows all three"*: the fourth was **Engine split**, which is a rule about build work, not a quality. It is lifted out of the list, so the heading and the bullets agree. `METHOD.md` §5 was already correct (three, and titled three). The checklist says **three** qualities and lists **four**, and method §5 is still titled "Three qualities" | `SKILL.md:165`, `METHOD.md:476` | all 4 | ✓ |
 | 4.3 | **FIXED 2026-10-05** — the row now names step 1 (tools, timers, no polling) and step 7 (the evidence a node's claims are judged by, `read` vs `ran`), instead of "no step" **The 3.8 mapping row is wrong in both directions** — the skill carries 3.8 inside steps 1 *and* 7. I added that row today | `DIAGRAM.md:213` | all 4 (pass 2) | ✓ |
 | 4.4 | **FIXED 2026-10-05 — the Classifier row said `agy`; EJ's instruction and the routing table both say DeepSeek.** `classification` is still routed to **`agy`/gemini-3.1-pro-high** in the role map, while the routing row in the same file says `deepseek-flash` | `EXECUTOR_KINDS.md:63` | codex, claude | ✓ |
 | 4.5 | **FIXED 2026-10-05 — one shape: the gate reads the fields `intake.js` emits.** `intake.js` emits **`pieces`**; `design_gate.py` consumes **`nodes`** — nothing joins them | `intake.js:178,238` | claude, codex, agy | ✓ |
@@ -168,7 +168,7 @@ question rather than a design.
 
 | # | Finding | Evidence | Reviewers | ✓ |
 |---|---|---|---|---|
-| 9.1 | **The gate cannot tell which node writes.** `builds` and `touched_paths` are design-level, so a design says "something here builds" and names files, but no node carries the fact. G13 can therefore only catch a *wholly* unclassified design that builds in one node; a three-node design with the writer first passes. This is register 1.5's missing witness seen from the node side, and it is why "`others` may not build" was not expressible as a rule | `design_gate.py` G2/G13; found 2026-10-05 | claude code (found it by being blocked by it) | |
+| 9.1 | **NOT A QUESTION — it is 4.5's decision applied.** `intake.js:201` already carries **`builds` per piece** (`required` at `:233`): *"true if the piece changes the product's code, schema, UI or configuration"*. So the runnable form already says which piece builds, and the gate not reading it is the same "one shape" gap already decided. Implementing it would let G13 and the sabotage rule be per-node instead of design-level. **The gate cannot tell which node writes.** `builds` and `touched_paths` are design-level, so a design says "something here builds" and names files, but no node carries the fact. G13 can therefore only catch a *wholly* unclassified design that builds in one node; a three-node design with the writer first passes. This is register 1.5's missing witness seen from the node side, and it is why "`others` may not build" was not expressible as a rule | `design_gate.py` G2/G13; found 2026-10-05 | claude code (found it by being blocked by it) | |
 
 
 ## 10. The plan is not compared with the design — decision C, 2026-10-05
