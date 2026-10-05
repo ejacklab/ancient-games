@@ -66,7 +66,7 @@ promises on every building node.
 |---|---|---|---|---|
 | 4.1 | The **engine split exists only in the skill** — method and diagram have zero mentions of it | `SKILL.md:175` vs both | all 4 (pass 1) | ✓ |
 | 4.2 | The checklist says **three** qualities and lists **four**, and method §5 is still titled "Three qualities" | `SKILL.md:165`, `METHOD.md:476` | all 4 | ✓ |
-| 4.3 | **The 3.8 mapping row is wrong in both directions** — the skill carries 3.8 inside steps 1 *and* 7. I added that row today | `DIAGRAM.md:213` | all 4 (pass 2) | ✓ |
+| 4.3 | **FIXED 2026-10-05** — the row now names step 1 (tools, timers, no polling) and step 7 (the evidence a node's claims are judged by, `read` vs `ran`), instead of "no step" **The 3.8 mapping row is wrong in both directions** — the skill carries 3.8 inside steps 1 *and* 7. I added that row today | `DIAGRAM.md:213` | all 4 (pass 2) | ✓ |
 | 4.4 | **FIXED 2026-10-05 — the Classifier row said `agy`; EJ's instruction and the routing table both say DeepSeek.** `classification` is still routed to **`agy`/gemini-3.1-pro-high** in the role map, while the routing row in the same file says `deepseek-flash` | `EXECUTOR_KINDS.md:63` | codex, claude | ✓ |
 | 4.5 | **FIXED 2026-10-05 — one shape: the gate reads the fields `intake.js` emits.** `intake.js` emits **`pieces`**; `design_gate.py` consumes **`nodes`** — nothing joins them | `intake.js:178,238` | claude, codex, agy | ✓ |
 | 4.6 | Method 3.1 never received either of the two rules added to skill step 1 | `METHOD.md:79` | claude | ✓ |
