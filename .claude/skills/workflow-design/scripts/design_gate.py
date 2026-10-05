@@ -152,10 +152,12 @@ def validate_design(d: dict, types: dict) -> list[str]:
         nid = n.get("id", "?")
         if not (n.get("check") or "").strip():
             f.append(f"G3: node {nid} has no check")
-        elif re.search(r"TASK_TYPES", str(n.get("check")), re.I):
+        elif re.search(r"TASK_TYPES\.md|^default check for ", str(n.get("check")), re.I):
             # Found by the mutation matrix (2026-10-04). The corpus and the fixtures both emitted
             # "default check for <cat> (TASK_TYPES.md)", so 150 building nodes "had a check" that named no check.
-            # Any reference to the table is that defect, not just the one wording the matrix first used.
+            # A reference to the *document* is that defect — `TASK_TYPES.md` or a `default check for` stub — but a
+            # filename like `tests/test_task_types.py` is not, which the first version of this rule got wrong
+            # and a real design promptly demonstrated (2026-10-05).
             f.append(f"G3: node {nid}'s check points at the category table instead of stating what is checked")
         missing = FIVE - {str(x).lower() for x in n.get("five_things", [])}
         if missing:

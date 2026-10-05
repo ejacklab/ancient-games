@@ -123,7 +123,10 @@ def assign(nodes: list[dict], share: float | None = None, primary: str = "openco
             out[test["id"]] = primary if (self_test or not primary_code) else other
 
     # A module with only one node cannot be crossed, so it is steered to whichever engine is furthest behind.
-    target_primary = round(share * (len(out) + sum(1 for m in order if len(modules[m]) == 1)))
+    # `out` already holds every node, singletons included — adding them again doubled the target and
+    # sent every singleton to the primary engine (found 2026-10-05 when this tool assigned a whole
+    # plan of singletons 4/4 to opencode while reporting a 60% target).
+    target_primary = round(share * len(out))
     for mod in order:
         if len(modules[mod]) != 1:
             continue
@@ -184,8 +187,8 @@ def render(nodes: list[dict], engines: dict[str, str]) -> str:
         got = modules[mod]
         code = engines.get(got.get("code", {}).get("id", ""), "-")
         test = engines.get(got.get("test", {}).get("id", ""), "-")
-        indep = "yes" if code != test else "NO (self-tested)"
-        self_n += code == test
+        indep = "no test node" if test == "-" else ("yes" if code != test else "NO (self-tested)")
+        self_n += code == test and test != "-"
         lines.append(f"  {mod:16} {code:10} {test:10} {indep}")
     counts: dict[str, int] = {}
     for e in engines.values():

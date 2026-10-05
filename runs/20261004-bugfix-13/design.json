@@ -1,0 +1,104 @@
+{
+  "categories": [
+    "code generation",
+    "code review"
+  ],
+  "builds": true,
+  "touched_paths": [
+    ".claude/skills/workflow-design/scripts/readiness.py",
+    ".claude/skills/workflow-design/scripts/design_gate.py",
+    ".claude/workflows/intake.js",
+    "tests/test_readiness.py",
+    "tests/test_task_types.py"
+  ],
+  "pipeline": null,
+  "design_source": "default",
+  "nodes": [
+    {
+      "id": "n1-spec",
+      "category": "code generation",
+      "engine": "deepseek-v4-pro",
+      "check": "spec-check: FIX_SPEC.md carries, for every live bug, the intended behaviour, the exact edit, and a test that must FAIL on the pre-fix file and PASS after",
+      "five_things": [
+        "tools",
+        "context",
+        "contract",
+        "evidence",
+        "state"
+      ],
+      "needs": [],
+      "loop": {
+        "limit": 1,
+        "exit": "the same engine, handed the check's real output, repairs the spec; a second failure blocks the node",
+        "feedback": "the check's real output, verbatim"
+      },
+      "sabotage": "hand the spec check a bug with no test \u2192 it must reject the spec"
+    },
+    {
+      "id": "n2-readiness",
+      "category": "code generation",
+      "engine": "opencode MiniMax-M3.1-Flash-Preview",
+      "check": "pytest tests/test_readiness.py -q green, and every test the spec names fails on the pre-fix readiness.py",
+      "five_things": [
+        "tools",
+        "context",
+        "contract",
+        "evidence",
+        "state"
+      ],
+      "needs": [
+        "n1-spec"
+      ],
+      "loop": {
+        "limit": 2,
+        "exit": "the same engine, handed the failing test output, repairs; a third failure blocks the node and keeps the diff",
+        "feedback": "pytest's real output, verbatim"
+      },
+      "sabotage": "revert readiness.py to HEAD \u2192 the new tests must go red"
+    },
+    {
+      "id": "n3-gate-intake",
+      "category": "code generation",
+      "engine": "codex gpt-6.1-sol",
+      "check": "pytest tests/test_task_types.py tests/test_mutation_matrix.py -q green, and the mutation matrix still reports 18/18 with 0 missed",
+      "five_things": [
+        "tools",
+        "context",
+        "contract",
+        "evidence",
+        "state"
+      ],
+      "needs": [
+        "n1-spec"
+      ],
+      "loop": {
+        "limit": 2,
+        "exit": "the same engine, handed the failing output, repairs; a third failure blocks the node and keeps the diff",
+        "feedback": "pytest's real output, verbatim"
+      },
+      "sabotage": "revert design_gate.py and intake.js to HEAD \u2192 the new tests must go red"
+    },
+    {
+      "id": "n4-verify",
+      "category": "code review",
+      "engine": "claude-opus-5-5",
+      "check": "verify-check: for each live bug, `git stash` the fix and confirm the new test FAILS, then restore and confirm it passes; then the full suite; a bug whose test passes both ways is reported UNPROVEN",
+      "five_things": [
+        "tools",
+        "context",
+        "contract",
+        "evidence",
+        "state"
+      ],
+      "needs": [
+        "n2-readiness",
+        "n3-gate-intake"
+      ]
+    }
+  ],
+  "estimate": {
+    "tokens": "1 spec + 2 builders + 1 verifier, each reading the register and the verifier's findings",
+    "wall_clock": "about 40 minutes",
+    "basis": "measured today: a 45-issue survey ran 535-540 s; a build node with a bounded file is comparable"
+  }
+}
