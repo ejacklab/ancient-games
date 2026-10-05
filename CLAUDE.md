@@ -58,3 +58,33 @@ Work on the Ancient Games code serves that purpose; it is not the goal by itself
 - Answer the question that was asked, in plain language, before offering options or plans.
 - Discuss first. Do not plan or run anything large until EJ says so.
 - Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the checklist in
+`docs/research/20261005-requirement-statements/FINDINGS.md` (§2) and say which questions it passes and which it
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, short:
+
+1. **Source** — who said it, and where? "Mine" is a valid answer; unlabelled is not.
+2. **One thing** — an "and", an "or", a "/", or a second number means it is two statements.
+3. **Unit** — every number says what it counts. Attempts or hours? Roles, or processes at once?
+4. **Can it fail** — name one input that would make the check fail, and `TBD`/`—`/empty must be among them.
+5. **Weak words** — *like, about, appropriate, as needed, logical, fast, enough, only has to, TBD* → a value, or mark
+   the value **open**.
+6. **Level** — MUST (a gate), SHOULD (a default with reasons to override), or guidance? A safety bound earns MUST; a
+   **method does not** (RFC 2119 §6).
+7. **Basis** — measured, quoted, or a guess? A guess is marked `n=0` with when it will be looked at again.
+8. **Links** — does it claim a relation to another rule ("half of", "pairs with", "the same as")? The source did not
+   say that. **A link is its own claim and needs its own source.**
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.

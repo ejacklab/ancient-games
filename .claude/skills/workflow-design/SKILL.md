@@ -184,6 +184,14 @@ Check it shows all three, and say so in the design:
 **One more thing, and it is not a quality: the engine split.**
 For build work, run `scripts/workload.py --plan <plan> --write` before the run starts. It gives **opencode priority** (EJ, 2026-10-04) by **module**, crossing each module's code and tests so the tests are written by the engine that did not write the code. The default is the *smallest* lead that counts as priority — which at five modules is exactly 60/40, costing one module its independent tests; demanding 60% on a larger plan costs far more, so `--share` is there when the bigger lead is wanted. Never split dev and tests independently: that gives half the modules their code *and* their tests from one engine. `check()` refuses a plan where opencode does not lead, that self-tests more than its lead costs, or whose verifier shares its node's engine. `docs/EXECUTOR_KINDS.md` has the rule and the arithmetic.
 
+## Writing a rule down
+
+Before adding or changing any rule in these documents, run it through the checklist in
+`docs/research/20261005-requirement-statements/FINDINGS.md` (§2): source, one thing, unit, can it fail, weak words,
+level, basis, links. It was written on 2026-10-05 after four rules in this repository read as arbitrary — and run
+against three of this project's own rules, it caught four failures in one and three in another. **Never fill a
+missing unit or threshold with your own value; leave it open and ask.**
+
 ## Output
 
 - Small task → `assets/templates/prompt-file.md`, filled in.
