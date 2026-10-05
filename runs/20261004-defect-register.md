@@ -191,6 +191,14 @@ The lesson, recorded because it is the third instance in one day: **checking a c
 things being compared are the same artifact.** 6.5 was a conditional read as a branch; 5.6's "3.6 requires an
 engine" was false; this was a design judged by the dispatcher's rules.
 
+
+## 11. Found while answering the 1.5 question — 2 issues
+
+| # | Finding | Evidence | Reviewers | ✓ |
+|---|---|---|---|---|
+| 9.2 | **A run needs git, and nothing checks the product is a git repository.** Readiness requires the `git` *binary* (`readiness.py:40`) but never that the directory is a repo, while `intake.js` STEP 1 runs `git status --short` unconditionally before creating anything. Outside a repo that prints `fatal: not a git repository` and exits non-zero, so a non-git product dies at the first step of every run with no readiness warning. **EJ raised this** ("(a) sounds like must have a git if I am not wrong") while choosing the witness for 1.5 | `readiness.py:40`; `intake.js` STEP 1 | EJ (found it), 2026-10-05 | |
+| 9.3 | **STEP 1 called the git snapshot "the baseline"**, contradicting the 7.2 fix three places over (`intake.js:279-282`, `:601`, `:630` all say the baseline is the product's test command and its output). So 7.2 was only half-applied: the verification step was corrected and the step that *records* the baseline was not. **FIXED 2026-10-05** — STEP 1 now takes two separate "before" records: the working state (git) and the baseline (the test command and its output) | `intake.js:553` | found by following EJ's question | ✓ |
+
 ## Where to start
 
 The gate family (1) and the test family (2) are one story: the gate cannot reject, and the test was built so that it
