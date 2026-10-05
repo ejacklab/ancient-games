@@ -118,3 +118,29 @@ The mutation matrix is now **24/24 caught, 0 holes, 0 missed, 0 false alarms** �
 
 Two of the six were the register being **wrong**, not the design being open: `6.2`'s limit has been in the code and
 under test the whole time.
+
+
+## 5.6 — the code half was false, and the real half was a bug
+
+The register said: *"`others` has no engine, yet 3.2 sends every unmatched piece there and 3.6 requires every node to
+name an engine."*
+
+Checked against the method: **no step requires a node to name an engine.** 3.7 says a node names *its own* role,
+engine, model and effort, and 3.2 says an unmatched piece *"is `others` and gets the full method from first
+principles"* — so `others` having no table default is the design, not a gap.
+
+What was real, and nobody had noticed:
+
+* The table's engine cell for `others` is `—`. The harness read that cell straight into `ENGINES`, so an
+  `others` piece produced a node whose engine was **an em dash**.
+* `engine_kind("—")` returned `unknown`, and **the gate accepted it**: `p297` and `p300` were passing designs that
+  could not be dispatched.
+* Two `ENGINES` maps existed; fixing the module-level one left the local copy at `corpus_check.py:236` still
+  passing the dash through, which is why the first fix appeared not to work.
+
+Fixed: **G11** rejects any node whose engine is not an engine; the harness resolves `others` to a documented
+`deepseek deepseek-flash` and says why. The mutation matrix is **25/25 caught, 0 holes**.
+
+**The question this leaves** is smaller and real: `others` is exempt from the category checks (G2), so a piece
+nobody could classify **may build product code** — now with an engine the harness chose, not the method. Whether
+that is allowed is EJ's call, and it is the only part of 5.6 that was ever a decision.

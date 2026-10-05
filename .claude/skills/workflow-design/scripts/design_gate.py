@@ -16,6 +16,7 @@ Findings are named:
   G7 ledger rows carry every field the reconciliation needs
   G9 a building node carries the sabotage that proves its check can fail
   G10 a design that builds carries `baseline.command` and names the node that captures it
+  G11 a node names a real engine, not the table's `—` placeholder
   G8 labels agree: the design's categories equal the categories its nodes carry (method 3.2: the piece
      labels replace the provisional category, so a claimed category no node carries, or a node category
      the design does not claim, means the relabelling did not happen; the in-run `code review` node that G6
@@ -294,6 +295,15 @@ def validate_design(d: dict, types: dict) -> list[str]:
         if _cat(n) in known and row.get("product") in ("yes", "mixed") and not n.get("sabotage"):
             f.append(f"G9: building node {n.get('id')!r} carries no sabotage proof — the table's sabotage column "
                      f"is the evidence its check can fail, and a check that cannot fail is not a check")
+    for n in nodes:
+        # G11 (2026-10-05): `TASK_TYPES.md` gives `others` an engine cell of `—`, meaning "no default". The
+        # harness passed that placeholder straight through, so a design could name its engine as an em dash and
+        # pass — `engine_kind` returned 'unknown' and nothing objected. A node whose engine cannot be dispatched
+        # is not a design.
+        kind = engine_kind(n.get("engine", ""))
+        if kind == "unknown":
+            f.append(f"G11: node {n.get('id')!r} names engine {n.get('engine')!r}, which is not an engine — "
+                     f"`others` has no default in the table, so the design must work one out (method 3.2)")
     if cats and node_cats:
         for c in sorted(set(cats) - node_cats):
             f.append(f"G8: category {c!r} is claimed but no node carries it — relabel from the algorithm (3.2)")

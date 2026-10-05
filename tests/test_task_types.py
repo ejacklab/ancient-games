@@ -26,7 +26,13 @@ LOOP_CATS = {"code generation", "debugging", "ui/ux dev", "test script gen"}
 # Derived from docs/TASK_TYPES.md itself: its engine column is the one place this policy lives, and a
 # hand-kept copy here would let a routing change pass unnoticed. Two such copies existed until
 # 2026-10-04 and had already drifted (gpt-6-astra vs Opus, agy vs deepseek-flash).
-ENGINES = {c: v.get("engine", "") for c, v in TYPES["categories"].items()}
+# `others` has no engine by design: the table's cell is a dash, meaning "no default — the full method
+# from first principles" (TASK_TYPES.md:103). Passing that placeholder through produced nodes whose engine
+# was literally a dash (found 2026-10-05, now caught by design_gate.py G11). The harness is not the method,
+# so it must pick one and say which.
+NO_DEFAULT_ENGINE = "deepseek deepseek-flash"   # cheap and general; the method's "first principles"
+ENGINES = {c: (v.get("engine") if v.get("engine") not in ("", "—") else NO_DEFAULT_ENGINE)
+           for c, v in TYPES["categories"].items()}
 
 
 def builder_cats(cats: list, builds: bool) -> list:

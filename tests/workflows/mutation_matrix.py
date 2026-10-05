@@ -123,6 +123,11 @@ def m_split_reviewer_is_one_of_the_builders(d):
             break
 
 
+def m_engine_is_the_tables_placeholder(d):
+    """Register 5.6, found 2026-10-05: `others` has no engine, and the placeholder `—` passed the gate."""
+    d["nodes"][0]["engine"] = "—"
+
+
 def m_no_baseline(d):
     """G10 (closed 2026-10-05): a design that builds must name the baseline command and its owner."""
     d.pop("baseline", None)
@@ -190,6 +195,7 @@ MATRIX = [
     ("no sabotage proof", m_no_sabotage_proof, "G9", ""),
     # closed 2026-10-05 by the format change: the design now carries a `baseline` and the five things as
     # contents, so the three mutations that used to be holes are rules with a mutation each.
+    ("the engine is the table's `—` placeholder", m_engine_is_the_tables_placeholder, "G11", ""),
     ("no baseline", m_no_baseline, "G10", ""),
     ("the baseline's owner runs too late", m_baseline_owner_runs_too_late, "G10", ""),
     ("no three-part stop", m_no_three_part_stop, "G3", ""),

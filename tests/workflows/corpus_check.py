@@ -33,7 +33,13 @@ FIVE = sorted(dg.FIVE)
 # Derived from docs/TASK_TYPES.md via design_gate, not hand-kept: this file and test_task_types.py held
 # the same 16-entry copy until 2026-10-04, and both had drifted from the table they were meant to mirror.
 TYPES = dg.parse_types(ROOT / "docs" / "TASK_TYPES.md")
-ENGINES = {c: v.get("engine", "") for c, v in TYPES["categories"].items()}
+# `others` has no engine by design: the table's cell is a dash, meaning "no default — the full method
+# from first principles" (TASK_TYPES.md:103). Passing that placeholder through produced nodes whose engine
+# was literally a dash (found 2026-10-05, now caught by design_gate.py G11). The harness is not the method,
+# so it must pick one and say which.
+NO_DEFAULT_ENGINE = "deepseek deepseek-flash"   # cheap and general; the method's "first principles"
+ENGINES = {c: (v.get("engine") if v.get("engine") not in ("", "—") else NO_DEFAULT_ENGINE)
+           for c, v in TYPES["categories"].items()}
 LOOP_CATS = {"code generation", "debugging", "ui/ux dev", "test script gen"}
 
 
@@ -227,7 +233,9 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     types = dg.parse_types(Path(a.types))
     global ENGINES
-    ENGINES = {c: v.get("engine", "") for c, v in types["categories"].items()}
+    # the same substitution as at module level — this local copy shadowed it and kept passing the dash
+    ENGINES = {c: (v.get("engine") if v.get("engine") not in ("", "\u2014") else NO_DEFAULT_ENGINE)
+               for c, v in types["categories"].items()}
     corpus = [e for f in a.corpus for e in load_jsonl(Path(f))]
     results = index_by_id(load_jsonl(Path(a.results)))
     emit = Path(a.emit_designs) if a.emit_designs else None
