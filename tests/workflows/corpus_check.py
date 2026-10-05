@@ -28,7 +28,6 @@ SCRIPTS = ROOT / ".claude" / "skills" / "workflow-design" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import design_gate as dg  # noqa: E402
 
-FIVE = sorted(dg.FIVE)
 # Builder defaults per category (concrete engine ids per EXECUTOR_KINDS; the table's cell is prose).
 # Derived from docs/TASK_TYPES.md via design_gate, not hand-kept: this file and test_task_types.py held
 # the same 16-entry copy until 2026-10-04, and both had drifted from the table they were meant to mirror.

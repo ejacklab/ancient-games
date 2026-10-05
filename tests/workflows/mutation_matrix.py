@@ -175,11 +175,6 @@ def m_placeholder_check_rather_than_the_rows_check(d):
     d["nodes"][0]["check"] = "see TASK_TYPES.md"
 
 
-def m_five_things_names_with_nothing_behind_them_UNUSED(d):
-    """The five names are present; there is no content field and no rule that could look for one."""
-    d["nodes"][0]["five_things"] = sorted(dg.FIVE)
-
-
 def m_no_sabotage_proof(d):
     """G9: a building node must carry the proof its check can fail. The matrix's base design carries one."""
     for n in d["nodes"]:

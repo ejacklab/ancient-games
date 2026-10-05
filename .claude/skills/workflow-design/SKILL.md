@@ -126,8 +126,9 @@ agent can read; a subagent starts with nothing but its prompt.
    The stronger model's work is the brief: every one carries a template, a worked example and the standard the result
    is judged by (`references/method.md` 3.8; `docs/workflow-templates/node-brief.md`). Research goes to files
    (`docs/research/<date>-<topic>/`) and only a digest of about 15 lines returns to the COO. To run a designed
-   workflow, `scripts/dispatch.py run PLAN` enforces caps, timers, the brief's three parts, the pass-back and model
-   checks and the retry rules in code (`--dry-run` first; `docs/DISPATCHER_DESIGN.md`). Two reading roles: the
+   workflow, `scripts/dispatch.py run PLAN` enforces timers, the brief's three parts, the pass-back and model
+   checks, the repair rounds and the call budget in code (`--dry-run` first; `docs/DISPATCHER_DESIGN.md`). There is
+   **no caps rule** — deleted 2026-10-05 — and **no fallback**: a failed engine blocks the node and reports. Two reading roles: the
    *researcher* reads docs, papers and the web; the *explorer* reads existing code read-only, cites file:line with a
    quote, and marks each behaviour claim `read` or `ran` — only `ran` claims feed a build (method 3.8 item 10).
 8. **The run ends at the acceptance criteria.** A piece that builds names the blueprint sections it depends on and the

@@ -20,7 +20,6 @@ import design_gate as dg  # noqa: E402
 TYPES = dg.parse_types(ROOT / "docs" / "TASK_TYPES.md")
 CORPUS = json.loads((ROOT / "tests" / "fixtures" / "task_type_prompts.json").read_text())
 
-FIVE = sorted(dg.FIVE)
 LOOP_CATS = {"code generation", "debugging", "ui/ux dev", "test script gen"}
 # Test-side engine defaults (concrete ids, per EXECUTOR_KINDS); the table's engine cell is prose.
 # Derived from docs/TASK_TYPES.md itself: its engine column is the one place this policy lives, and a

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """dispatch.py — the dispatcher layer (docs/DISPATCHER_DESIGN.md). Runs a designed workflow's nodes from a plan file,
-so the method's rules for running a node (3.7–3.8) are code: caps, two timers, the brief's three parts, the
+so the method's rules for running a node (3.7–3.8) are code: two timers, the brief's three parts, the
 pass-back check, the engine-reported model check, repair rounds
 with the check's real output as feedback, the event log, and a short digest. It makes no routing choice: every
 node's engine is the one the plan names (design §5). Stdlib only; it calls no model itself.
 
-  dispatch.py check PLAN              validate the plan (caps, timers, briefs, edges); exit 0/1
+  dispatch.py check PLAN              validate the plan (timers, briefs, edges, engines); exit 0/1
   dispatch.py run PLAN [--dry-run]    run it; resumes from runs/<id>/dispatch.json; prints the digest
 
 Engines: codex · qwen · agy · claude · dsh · script — one adapter each in `engines.py`, so adding or re-enabling an

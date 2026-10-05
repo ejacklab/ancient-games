@@ -38,7 +38,9 @@ import re
 import sys
 from pathlib import Path
 
-FIVE = {"tools", "context", "contract", "evidence", "state"}
+# (No `FIVE` set here any more. It named the five things and was read by nothing once `check_five` started testing
+# the *contents* — the same "defined and used 0 times" shape as register 1.4, reintroduced by that very fix and
+# caught by a scan on 2026-10-05. The five names are in the docstring and in the method; nothing needs a set.)
 LEDGER_KEYS = ["date", "run_id", "category", "design_source", "claimed_margin", "basis",
                "projected_cost", "actual_cost", "coverage_result", "reconciled"]
 LEDGER_FIELDS = LEDGER_KEYS
