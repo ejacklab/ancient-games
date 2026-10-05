@@ -77,6 +77,15 @@ def check_plan(plan: dict, base: Path) -> list[str]:
     if len(ids) != len(set(ids)):
         f.append("node ids are not unique")
     b = plan["budget"]
+    # The budget's own keys were never validated (found 2026-10-05 by an expert measuring rather than reading).
+    # `max_rounds: "two"` reached `rec["rounds"] >= b["max_rounds"]` and raised TypeError mid-run; `-5` and
+    # `true` made that comparison true on the first failure, so the loop silently stopped after one attempt;
+    # `10**9` was accepted as no bound at all.
+    for key in ("max_rounds", "max_calls"):
+        v = b.get(key)
+        if isinstance(v, bool) or not isinstance(v, int) or v < 1:
+            f.append(f"budget.{key} must be a whole number of at least 1, not {v!r} "
+                     f"(a boolean is not a count; a negative or absent bound stops the run early or not at all)")
     for n in nodes:
         nid = n.get("id", "?")
         adapter = ENGINES.get(n.get("engine"))
@@ -291,7 +300,8 @@ def run_node(plan, node, by_id, state, run_dir, base, dry, log) -> None:
             rec.update(status="done", result=r["result"]); log(f"{node['id']} done (a{attempt}, {engine})"); return
         rec["rounds"] += 1
         log(f"{node['id']} check failed (round {rec['rounds']})")
-        if rec["rounds"] >= b["max_rounds"] or not node.get("repair"):
+        limit = b["max_rounds"] if isinstance(b.get("max_rounds"), int) and not isinstance(b.get("max_rounds"), bool) else 0
+        if rec["rounds"] >= limit or not node.get("repair"):
             rec["status"] = "blocked"; raise Stop(f"{node['id']} blocked: check failed {rec['rounds']} round(s)")
         target = by_id[node["repair"]] if node["repair"] != node["id"] else node
         feedback = out

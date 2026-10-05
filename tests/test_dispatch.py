@@ -166,6 +166,27 @@ def test_the_budget_no_longer_carries_the_caps():
     assert not hasattr(dispatch, "MAX_WORKERS")
 
 
+def test_the_budget_keys_are_validated(tmp_path):
+    """Found 2026-10-05 by an expert measuring rather than reading.
+
+    `check_plan` never validated the budget's own keys. `max_rounds: "two"` reached
+    `rec["rounds"] >= b["max_rounds"]` and raised TypeError mid-run; `-5` and `true` made that comparison true on
+    the first failure, so the loop silently stopped after one attempt; `10**9` was taken as no bound at all.
+
+    This pins the type and positivity. **It deliberately does not pin a ceiling** — how high is allowed is EJ's
+    number, not this test's.
+    """
+    import dispatch
+    for bad in ("two", -5, True, 0, 1.5):
+        p = setup(tmp_path, [node("a", "ok")], budget={"max_rounds": bad, "max_calls": 30})
+        out = run(tmp_path, "check", p).stdout
+        assert "max_rounds must be a whole number" in out, (bad, out)
+    for good in (1, 2, 30):
+        p = setup(tmp_path, [node("a", "ok")], budget={"max_rounds": good, "max_calls": 30})
+        assert "max_rounds must be" not in run(tmp_path, "check", p).stdout, good
+    assert dispatch.MAX_ENGINE_PROCESSES >= 1
+
+
 def test_a_call_past_the_ceiling_is_refused(tmp_path):
     """Method 3.8's ceiling on one call: 8 hours (EJ, 2026-10-05, "it is not healthy").
 

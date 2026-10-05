@@ -266,7 +266,10 @@ def validate_design(d: dict, types: dict) -> list[str]:
         if lp is None and known.get(_cat(n), {}).get("loop"):
             f.append(f"G3: node {nid} is a loop-pattern category but carries no loop")
         elif lp is not None:
-            if not isinstance(lp.get("limit"), int) or lp["limit"] < 1:
+            # `not isinstance(v, bool)` because `isinstance(True, int)` is True in Python, so `limit: true` passed
+            # every gate (found 2026-10-05 by an expert answering checklist question 4 — "name one failing input" —
+            # who named `true` among them). A boolean is not a count.
+            if isinstance(lp.get("limit"), bool) or not isinstance(lp.get("limit"), int) or lp["limit"] < 1:
                 f.append(f"G3: node {nid} loop has no attempt limit")
             if not (lp.get("exit") or "").strip():
                 f.append(f"G3: node {nid} loop has no exit for the limit")

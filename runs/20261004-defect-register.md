@@ -243,6 +243,21 @@ something else — and it is what reads as weird six sessions later.
 author, state the operative sentence, and stop. If a relationship between two rules is wanted, it is a separate
 claim and needs its own evidence.
 
+
+## 13. Found by the three experts completing "A limit on attempts." — 2026-10-05
+
+| # | Finding | Evidence | State |
+|---|---|---|---|
+| 12.1 | **`limit: true` passed every gate.** `isinstance(True, int)` is `True` in Python, so a boolean satisfied "a whole number of at least 1". Found by an expert answering checklist question 4 — *"name one failing input"* — which named `true` among them | verified, then fixed in `design_gate.py`; pinned by the mutation *"the loop limit is a boolean"* | **FIXED** |
+| 12.2 | **`check_plan` never validated the budget's own keys.** `max_rounds: "two"` **raised `TypeError` mid-run** at `dispatch.py:294`; `-5` and `true` made `rounds >= max_rounds` true on the first failure, so the loop **silently stopped after one attempt**; `10**9` was taken as no bound | measured by minimax (M5), verified independently, then fixed for type and positivity and pinned by a test | **FIXED** |
+| 12.3 | **The design's attempt limit and the runner's are different numbers.** A node with `loop.limit: 1` and `repair` set gets **2** attempts, because the runner uses `budget.max_rounds` and nothing carries `loop.limit` into the plan. The design can state a bound the run does not apply | claude R2 and minimax R3/M4, from opposite ends | **OPEN — decision C, arriving as its first concrete instance** |
+| 12.4 | **The corpus's `limit: 2` is not evidence.** 166 of 170 loops carry it because two lines of a test file wrote it (`corpus_check.py:101,111`); across 83 loops there are 2 distinct `exit` strings and 2 distinct `feedback` strings | minimax M2 | recorded |
+| 12.5 | **`attempts` and `retries` are both in use and differ by one.** `intake.js:206` counts attempts; `runs/20261004-bugfix-13/design.json` n1-spec counts retries — its exit describes a repair its own `limit: 1` forbids. *"The same number, two meanings, in one file — and it passes `design_gate.py` today"* | minimax M3 | **OPEN — a unit ambiguity, and the proposed fix is that the design states which** |
+
+The three answers are in `runs/20261005-attempt-limit/`, compared in `COMPARISON.md`. All three left the number to
+EJ; none invented one. Two of them quoted RFC 2119 §6's own example, *"limiting retransmisssions"*, as this case
+almost literally — and one stated a **negative link** to 3.8's time ceiling rather than inventing a relationship.
+
 ## Where to start
 
 The gate family (1) and the test family (2) are one story: the gate cannot reject, and the test was built so that it

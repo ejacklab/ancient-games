@@ -123,6 +123,14 @@ def m_split_reviewer_is_one_of_the_builders(d):
             break
 
 
+def m_loop_limit_is_a_boolean(d):
+    """Found 2026-10-05 by checklist question 4 ("name one failing input"): `isinstance(True, int)` is True."""
+    for n in d["nodes"]:
+        if n.get("loop"):
+            n["loop"]["limit"] = True
+            return
+
+
 def m_others_builds_in_one_node(d):
     """G13: `others` is exempt from the category checks, so one node could scope the unknown and build on it."""
     d["categories"] = ["others"]
@@ -206,6 +214,7 @@ MATRIX = [
     ("no sabotage proof", m_no_sabotage_proof, "G9", ""),
     # closed 2026-10-05 by the format change: the design now carries a `baseline` and the five things as
     # contents, so the three mutations that used to be holes are rules with a mutation each.
+    ("the loop limit is a boolean", m_loop_limit_is_a_boolean, "G3", ""),
     ("one `others` node that builds", m_others_builds_in_one_node, "G13", ""),
     ("`baseline.command` is a placeholder", m_baseline_command_is_a_placeholder, "G12", ""),
     ("`touched_paths` is a placeholder", m_touched_paths_is_a_placeholder, "G12", ""),
