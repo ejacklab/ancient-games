@@ -42,7 +42,7 @@ class Engine:
     build, parse     the two engine-specific operations
     needs_model      when false, `check_plan` does not demand a model (the engine takes it from its own config)
     silent_failures  stderr notices that mean the call did not finish although the exit code was 0
-    default_fallback the {engine, model} to rerun once on when this engine fails and the plan names no fallback
+    (no fallback: removed 2026-10-05 — a failed engine blocks the node and reports) no fallback
     note             one line for the design docs; keep it factual and dated
     """
     name: str
@@ -50,7 +50,6 @@ class Engine:
     parse: Parser
     needs_model: bool = True
     silent_failures: Mapping[str, str] = field(default_factory=dict)
-    default_fallback: Mapping[str, str] = field(default_factory=dict)
     note: str = ""
 
 
@@ -145,38 +144,20 @@ def parse_script(stdout, out_file) -> tuple[str, str | None]:
 
 
 # ---------------------------------------------------------------- the registry
-# Fallbacks, used when an executor failure happens and the plan names none (EXECUTOR_KINDS, "When a kind fails
-# mid-run"). Every pair is one hop and no engine falls back to itself; the dispatcher refuses a second fallback,
-# so A→B→A cannot ping-pong. `script` is absent on purpose — a local check command has no other engine that could
-# run it, so a script node with no fallback keeps the tested "blocked" behaviour.
-#
-# The model ids are the ones verified on this machine: `claude-sonnet-5-5` ran three corpus batches through
-# `claude -p` on 2026-10-03, and `gpt-6.1-sol` answered on `codex exec` the same day. Codex is the fallback for
-# everything else because it is the widest-coverage adapter; Claude Sonnet is Codex's fallback per EJ's routing
-# ("other more daily tasks use Sonnet 5.5", 2026-10-03).
-DEFAULT_FALLBACKS = {
-    "codex": {"engine": "claude", "model": "claude-sonnet-5-5"},
-    "agy": {"engine": "codex", "model": "gpt-6.1-sol"},
-    "claude": {"engine": "codex", "model": "gpt-6.1-sol"},
-    "qwen": {"engine": "codex", "model": "gpt-6.1-sol"},
-    "dsh": {"engine": "codex", "model": "gpt-6.1-sol"},
-    # Same tier as codex's: a fast daily coder hands off to the other fast daily coder, one hop, no cycle.
-    "opencode": {"engine": "claude", "model": "claude-sonnet-5-5"},
-}
-
+# No fallbacks (removed 2026-10-05 at EJ's direction). One engine per node: a failure blocks the node and reports,
+# and the COO decides. The map used to be here; see EXECUTOR_KINDS, "When a kind fails mid-run".
 REGISTRY: dict[str, Engine] = {e.name: e for e in (
-    Engine("codex", build_codex, parse_codex, default_fallback=DEFAULT_FALLBACKS["codex"],
+    Engine("codex", build_codex, parse_codex,
            note="codex exec; -o carries the answer, so no stdout parsing"),
-    Engine("qwen", build_qwen, parse_qwen, default_fallback=DEFAULT_FALLBACKS["qwen"],
+    Engine("qwen", build_qwen, parse_qwen,
            note="--output-format json; the model is read from the tool's own `system` event, not the worker"),
     Engine("agy", build_agy, parse_stdout, silent_failures={"print timeout": "timeout", "auto-denied": "denied"},
-           default_fallback=DEFAULT_FALLBACKS["agy"],
            note="exit 0 can still mean timeout or an auto-denied tool in headless mode"),
-    Engine("claude", build_claude, parse_stdout, default_fallback=DEFAULT_FALLBACKS["claude"],
+    Engine("claude", build_claude, parse_stdout,
            note="claude -p; permission mode plan (read-only) or acceptEdits (write), never bypassPermissions"),
-    Engine("opencode", build_opencode, parse_stdout, default_fallback=DEFAULT_FALLBACKS["opencode"],
+    Engine("opencode", build_opencode, parse_stdout,
            note="opencode run; --agent plan (read-only) or build (write). Answer on stdout, banner on stderr"),
-    Engine("dsh", build_dsh, parse_stdout, needs_model=False, default_fallback=DEFAULT_FALLBACKS["dsh"],
+    Engine("dsh", build_dsh, parse_stdout, needs_model=False,
            note="dsh headless; the model is the headless profile's, so a plan's model is recorded, not passed"),
     Engine("script", build_script, parse_script, needs_model=False,
            note="a local command with {prompt_file}/{out}/{attempt}; for tests and deterministic checks"),
@@ -184,7 +165,4 @@ REGISTRY: dict[str, Engine] = {e.name: e for e in (
 
 if __name__ == "__main__":       # a tiny listing, so the seam is inspectable without reading the dispatcher
     for e in REGISTRY.values():
-        fb = e.default_fallback
-        to = f"{fb.get('engine')}/{fb.get('model')}" if fb else "none"
-        print(f"{e.name:8} model={'required' if e.needs_model else 'from its config':14} "
-              f"fallback={to:32} {e.note}")
+        print(f"{e.name:8} model={'required' if e.needs_model else 'from its config':14} {e.note}")

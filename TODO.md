@@ -22,7 +22,8 @@ challenge verbatim and never asks for a restatement. Agreed shape (not scheduled
 EJ adopted a friend's design idea: a layer, not the COO, spawns and supervises agents, so the method's prose rules
 become code that cannot be skipped. It would join the scripts already built — `runlog.py` (two timers, events),
 `validate_result.py` (pass-back), `harvest_run.py` (feedback), `quote_check.py` (explorer) — and enforce the caps
-(5 roles per run, 3 at once), the executor-failure retry on the fallback, and the model check. Ancient Games (a
+(5 roles per run, 3 at once) and the model check. (The executor-failure retry on a fallback was removed
+2026-10-05: a failed engine blocks the node and reports.) Ancient Games (a
 referee that decides how many agents and journals every decision) is the natural home. The COO keeps planning and
 algorithm design. Design written 2026-10-03: `docs/DISPATCHER_DESIGN.md`. Built the same day as
 `scripts/dispatch.py` (steps 1–4); open: a live canary per engine adapter, the first real run, and EJ's two

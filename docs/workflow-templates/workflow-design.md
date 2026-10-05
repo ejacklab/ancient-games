@@ -64,7 +64,7 @@ where they fit (INTENT, STOP, OUTPUT, SCOPE; CLAIMS, NOT_ESTABLISHED).
 - **Context — withheld:** <what it must not see, e.g. the worker's reasoning for a verifier>
 - **Role and engine:** <role: planner / coder / reviewer / classifier / … ; engine: Codex / `agy` / Claude subagent / COO herself>
   — model and effort named exactly (never a default); a Codex or `agy` node also names read-only or write, and a
-  fallback engine or none (`docs/EXECUTOR_KINDS.md`). A COO node meets all four conditions there and stays under the cap
+  one engine, no fallback — a failure blocks the node and reports (`docs/EXECUTOR_KINDS.md`). A COO node meets all four conditions there and stays under the cap
 - **Tools and skills:** <…>
 
 ## Joins

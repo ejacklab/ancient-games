@@ -65,11 +65,18 @@ def test_happy_path_with_dependency_and_parallel_group(tmp_path):
     assert [e["event"] for e in ev].count("end") == 3
 
 
-def test_executor_failure_retries_once_on_fallback(tmp_path):
+def test_executor_failure_blocks_even_when_the_plan_names_a_fallback(tmp_path):
+    """No fallback (removed 2026-10-05 at EJ's direction): a failed engine blocks the node and reports.
+
+    A plan may still *carry* a `fallback` key — nothing reads it now — and the node must block rather than
+    quietly finish on an engine nobody chose.
+    """
     fb = {"engine": "script", "cmd": [sys.executable, "fake.py", "ok", "a", "{attempt}", "{out}"]}
     r = run(tmp_path, "run", setup(tmp_path, fix_attempts([node("a", "exit3", fallback=fb)])))
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert state(tmp_path)["nodes"]["a"]["calls"] == 2 and "executor failure" in r.stderr
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert state(tmp_path)["nodes"]["a"]["calls"] == 1
+    assert "blocked: executor failed" in r.stdout + r.stderr
+    assert "falling back" not in r.stderr
 
 
 @pytest.mark.parametrize("mode,why", [("exit3", "exit 3"), ("empty", "empty result"),
@@ -80,23 +87,22 @@ def test_executor_failures_block_without_fallback(tmp_path, mode, why):
     assert why in r.stderr + r.stdout
 
 
-def test_external_engine_uses_its_default_fallback_when_the_plan_names_none(tmp_path):
-    """A plan that names no fallback is not a dead end for an external engine (EXECUTOR_KINDS, "When a kind
-    fails mid-run"): the engine's own default is tried once, and the log says the default was the source.
+def test_an_external_engine_failure_blocks_and_reports(tmp_path):
+    """Same rule for an external engine: it fails, the node blocks, the COO is told. Nothing hops to Claude.
 
-    `script` has no default, which is why a script node with no fallback still blocks — the case the test above
-    pins.
+    The old behaviour had codex fall through to Claude — which is also the reviewer most designs give a codex
+    builder, so the hop could quietly make the reviewer the builder's own kind (register 8.2). Removing the
+    fallback removes that case with it.
     """
-    head = ("---\nnode: a\nattempt: 2\nengine: claude\nmodel: claude-sonnet-5-5\n"
-            "status: ok\nstarted: t\nended: t\nevidence: e\n---\nok\n")
     env = fake_bin(tmp_path, "codex", "import sys; sys.exit(3)")
-    fake_bin(tmp_path, "claude", "print(%r)" % head)
+    fake_bin(tmp_path, "claude", "import sys; sys.exit(0)")
     c = {"id": "a", "role": "coder", "engine": "codex", "model": "gpt-6.1-sol", "brief": "brief.md",
          "inner_timer": "60s", "outer_timeout_s": 70}
     r = run(tmp_path, "run", setup(tmp_path, [c]), env=env)
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert state(tmp_path)["nodes"]["a"]["calls"] == 2
-    assert "falling back to claude/claude-sonnet-5-5 (the engine default)" in r.stderr
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert state(tmp_path)["nodes"]["a"]["calls"] == 1
+    assert "blocked: executor failed on codex" in r.stdout + r.stderr
+    assert "falling back" not in r.stderr
 
 
 def test_opencode_engine_builds_the_verified_argv(tmp_path):
@@ -124,9 +130,14 @@ def test_opencode_engine_builds_the_verified_argv(tmp_path):
     assert "plan" in engines.build_opencode(read_only, node["model"], "P", None, tmp_path, 1)
 
 
-def test_opencode_falls_back_to_the_daily_claude_tier(tmp_path):
-    """A plan that names no fallback for `opencode` gets one, like every other external engine."""
-    assert engines.DEFAULT_FALLBACKS["opencode"] == {"engine": "claude", "model": "claude-sonnet-5-5"}
+def test_no_engine_carries_a_default_fallback(tmp_path):
+    """Removed 2026-10-05 at EJ's direction: one engine per node, and a failure reports.
+
+    Pinned so the map cannot come back by habit. If a fallback is ever wanted again it should be a deliberate
+    step in the graph, visible, not a silent hop inside the dispatcher.
+    """
+    assert not hasattr(engines, "DEFAULT_FALLBACKS")
+    assert all(not hasattr(e, "default_fallback") for e in engines.REGISTRY.values())
 
 
 def test_check_failure_repairs_with_real_feedback_then_passes(tmp_path):
@@ -376,29 +387,10 @@ print(json.dumps([{"type": "system", "model": "m"}, {"type": "result", "result":
     assert Path(rec["result"]) == tmp_path / "runs/r1/nodes/q-1.result.md"
 
 
-@pytest.mark.parametrize("override", [False, True])
-def test_fallback_inherits_or_overrides_workdir(tmp_path, override):
-    fb = {"engine": "script", "cmd": [sys.executable, "-c", "import os; print(os.getcwd())"]}
-    if override:
-        fb["workdir"] = "b"
-    n = node("a", "exit3", workdir="a", passback=False, fallback=fb,
-             cmd=[sys.executable, "-c", "raise SystemExit(3)"])
-    r = run(tmp_path, "run", setup(tmp_path, [n]))
-    assert r.returncode == 0, r.stdout + r.stderr
-    rec = state(tmp_path)["nodes"]["a"]
-    assert rec["calls"] == 2
-    assert Path(rec["result"]).read_text().strip() == str(tmp_path / ("b" if override else "a"))
-
-
-@pytest.mark.parametrize("fallback", [False, True])
-def test_check_refuses_workdir_that_is_a_file(tmp_path, fallback):
+def test_check_refuses_workdir_that_is_a_file(tmp_path):
     (tmp_path / "x.txt").write_text("not a folder")
     n = node("a", "ok")
-    target = n
-    if fallback:
-        n["fallback"] = {"engine": "script", "cmd": [sys.executable, "-c", "print('ok')"]}
-        target = n["fallback"]
-    target["workdir"] = "x.txt"
+    n["workdir"] = "x.txt"
     r = run(tmp_path, "check", setup(tmp_path, [n]))
     assert r.returncode == 1, r.stdout + r.stderr
     assert "a: workdir 'x.txt' is not a folder" in r.stdout

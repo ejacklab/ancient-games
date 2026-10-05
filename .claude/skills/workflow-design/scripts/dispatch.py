@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """dispatch.py — the dispatcher layer (docs/DISPATCHER_DESIGN.md). Runs a designed workflow's nodes from a plan file,
 so the method's rules for running a node (3.7–3.8) are code: caps, two timers, the brief's three parts, the
-pass-back check, the engine-reported model check, one retry of an executor failure on the fallback, repair rounds
+pass-back check, the engine-reported model check, repair rounds
 with the check's real output as feedback, the event log, and a short digest. It makes no routing choice: every
 node's engine is the one the plan names (design §5). Stdlib only; it calls no model itself.
 
@@ -91,15 +91,11 @@ def check_plan(plan: dict, base: Path) -> list[str]:
                 f.append(f"{nid}: needs unknown node {d!r}")
         if n.get("repair") and n["repair"] not in ids:
             f.append(f"{nid}: repair node {n['repair']!r} not in the plan")
-        # A node's own fallback wins; failing that the engine's default is what would actually run, so it is the
-        # resolved value that gets checked. No "must differ from the node" rule: a `script` fallback legitimately
-        # shares the engine and differs only in `cmd`, and a node may want the same engine with a longer timer.
-        fb = n.get("fallback") or (adapter.default_fallback if adapter is not None else None)
-        if fb:
-            fb_adapter = ENGINES.get(fb.get("engine"))
-            if fb_adapter is None or (fb_adapter.needs_model and not fb.get("model")):
-                f.append(f"{nid}: fallback needs a known engine and a model")
-        for target in [n, fb] if fb else [n]:
+        # No fallback (removed 2026-10-05 at EJ's direction): a node that fails is blocked and reported, and the
+        # COO decides. The fallback added a second engine, a second model and a second workdir to reason about, and
+        # a plan could silently finish on an engine nobody chose — including one that turns a builder into the
+        # reviewer's own kind (register 8.2). A failure that reports is simpler and loses nothing.
+        for target in [n]:
             if "workdir" in target:
                 workdir = base / target["workdir"]
                 if workdir.exists() and not workdir.is_dir():
@@ -250,7 +246,7 @@ class Stop(Exception):
 
 
 def run_node(plan, node, by_id, state, run_dir, base, dry, log) -> None:
-    """One node to done, or raise Stop. Executor failure: one fresh rerun on the fallback. Check failure: repair
+    """One node to done, or raise Stop. Executor failure: blocked and reported. Check failure: repair
     rounds up to max_rounds, each with the check's real output as feedback."""
     b = plan["budget"]
     with LOCK:
@@ -266,18 +262,10 @@ def run_node(plan, node, by_id, state, run_dir, base, dry, log) -> None:
         r = call(plan, target, attempt, run_dir, base, engine, model, feedback, dry)
         if r["outcome"] == "executor":
             log(f"{node['id']} a{attempt}: executor failure on {engine}: {r['why']}")
-            # The plan's own fallback wins; otherwise the engine's default (EXECUTOR_KINDS, "When a kind fails
-            # mid-run"). Logged with its source either way, so a defaulted hop is visible and never silent.
-            fb, src = target.get("fallback"), "the plan"
-            if not fb:
-                fb, src = dict(ENGINES[engine].default_fallback), "the engine default"
-            if not fb or rec.get("fell_back"):
-                rec["status"] = "blocked"; raise Stop(f"{node['id']} blocked: executor failed ({r['why']})")
-            rec["fell_back"] = True
-            log(f"{node['id']}: falling back to {fb.get('engine')}/{fb.get('model')} ({src})")
-            target = {**target, **fb, "id": node["id"], "fallback": None}
-            feedback = (feedback or "") + f"\nHandoff: the previous call on {engine} failed: {r['why']}."
-            continue
+            # Blocked, and reported. The engine failed; that is a fact for the COO, not something to paper over by
+            # quietly running the same work somewhere else (removed 2026-10-05 at EJ's direction).
+            rec["status"] = "blocked"
+            raise Stop(f"{node['id']} blocked: executor failed on {engine} ({r['why']})")
         if r["outcome"] == "unclear":
             rec["status"] = "unclear"; raise Stop(f"{node['id']} asks: {r['why']}")
         if r["outcome"] == "dry":

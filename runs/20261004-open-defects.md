@@ -167,3 +167,22 @@ So an unclassified piece is not waved through and it is not banned. It is **reso
 catches the shape it can see — a wholly unclassified design that builds in one node — and the per-node witness it
 would need is register 1.5's missing one. That is recorded rather than papered over: the gate is still trusting the
 design's own word about what it touches.
+
+
+## 8.2 — resolved by removing the fallback
+
+EJ, 2026-10-05: *"this fallback I think we make things too complex already. We already do a checking before creating
+the workflow, and now opencode have higher priority than codex, so just let it, we remove the rule, because I can
+see when things failed the subagents will report back, so no need to have this."*
+
+Gone: `DEFAULT_FALLBACKS`, the `default_fallback` field on every adapter, the per-node `fallback`, the one-hop retry
+in `run_node`, and the `check_plan` validation of a resolved fallback. **One engine per node; a failure blocks the
+node and reports.**
+
+The defect it carried — both builder kinds fell back to Claude, which is the reviewer most designs give a Codex
+builder, so any fallback could make the reviewer the builder's own kind — cannot happen now, because nothing changes
+engine mid-run. That is better than policing it.
+
+Four documents updated (`EXECUTOR_KINDS`, `WORKFLOW_DESIGN_METHOD` 3.8, `DISPATCHER_DESIGN`, the template, `SKILL.md`)
+and the tests rewritten to pin the new behaviour: an executor failure blocks **even when the plan names a fallback**,
+and a guard asserts the map cannot come back by habit. **511 tests pass.**

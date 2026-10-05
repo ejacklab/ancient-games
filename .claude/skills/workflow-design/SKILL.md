@@ -47,7 +47,8 @@ agent can read; a subagent starts with nothing but its prompt.
    verified/reported/unknown; what it cannot prove stays unknown and needs the canary. Anything missing becomes a
    preparation piece at the front of the flow.
    Template: `readiness.md`. A node run by Codex or `agy` (not a Claude subagent): read `references/executor-kinds.md`
-   first — the canary that proves the tool, read-only versus write, the fallback rule (n=0).
+   first — the canary that proves the tool, read-only versus write. (The fallback rule was removed 2026-10-05:
+   a failed engine blocks the node and reports.)
    **Prove the binary that will make the call, and record its version** — not the version on `PATH`. A provider can
    bundle an older copy of an engine and the two do not accept the same model names; the error names the model or
    the account, never the version. `references/executor-kinds.md`, "The bundled-runtime trap".

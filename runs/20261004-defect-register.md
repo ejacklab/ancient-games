@@ -111,7 +111,7 @@ promises on every building node.
 | # | issue | where | found by | ✓ |
 |---|---|---|---|---|
 | 8.1 | **ANSWERED BY G6 — the gate requires a different-kind reviewer per build group; pinned by a matrix mutation.** **The engine split can defeat rule 5**: code generation is split between opencode and Codex, so a `codex` reviewer reviews code Codex partly wrote — it passes G6 only because `engine_kind` reads the cell's leading token | `testlog.md:105` | claude | ✓ |
-| 8.2 | **`DEFAULT_FALLBACKS["codex"]` is Claude**, so after a fallback a Claude-appointed verifier is no longer a different kind, and no rule restores it | `engines.py` | codex | ✓ |
+| 8.2 | **RESOLVED BY REMOVAL 2026-10-05.** EJ: the fallback was over-engineering — there is already a check before the workflow is built, opencode now has priority over codex, and a failure reports back on its own. `DEFAULT_FALLBACKS`, the per-node `fallback`, the retry in `run_node` and the `check_plan` validation are gone: one engine per node, and a failure blocks the node and goes to EJ. The same-kind clash cannot happen because nothing changes engine mid-run. 511 tests pass. **`DEFAULT_FALLBACKS["codex"]` is Claude**, so after a fallback a Claude-appointed verifier is no longer a different kind, and no rule restores it | `engines.py` | codex | ✓ |
 | 8.3 | **FIXED 2026-10-05 — a node's five things are contents, not a list of names.** Every node's `five_things` is the bare template list — `['context','contract','evidence','state','tools']` with nothing behind them | `testlog.md:72-79` | claude, opencode | ✓ |
 
 ## Totals

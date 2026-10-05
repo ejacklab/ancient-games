@@ -16,7 +16,7 @@ finding ids from `docs/research/`, a file:line, or *model knowledge* where there
 
 **Objective.** One command, `dispatch.py`, runs a designed workflow's nodes from a plan file: it starts each node's
 engine with its brief, enforces timers and caps, validates what comes back, retries executor failures once on the
-fallback, runs the script gate, logs every event, and writes the state file — and returns to the COO only a digest
+runs the script gate, logs every event, and writes the state file — and returns to the COO only a digest
 and the decisions that are hers.
 
 **In scope.** Engine calls through Codex, `qwen` and `agy`; the pass-back contract;
@@ -60,7 +60,7 @@ for each ready node (needs satisfied), in plan order; a parallel group only if t
     run     — runlog.py exec with the inner timer flag and the outer timeout from the plan
     check   — validate_result.py on the result file (model must equal the plan's)
     on executor failure (no file, empty, malformed, wrong model, timeout, exit 0 with no file):
-              rerun once, fresh, on the plan's fallback engine with a short handoff note;
+              block the node and report it to the COO; there is no fallback (removed 2026-10-05);
               a second failure → node `blocked`, stop, report to the COO       (EXECUTOR_KINDS, mid-run rule)
     on a node's own check:
               script check (gate, tests, quote_check) → pass: `done`; fail: back to the plan's repair node,
@@ -82,7 +82,7 @@ node, a small-issue fix (build-a-feature step 6), a budget ceiling, or `UNCLEAR:
   "nodes": [
     {"id": "classify", "role": "classifier", "engine": "agy", "model": "gemini-3.1-pro-high",
      "brief": "runs/<id>/briefs/explore.md", "result": "runs/<id>/nodes/explore-{attempt}.result.md",
-     "inner_timer": "120s", "outer_timeout_s": 150, "fallback": {"engine": "qwen", "model": "qwen3.8-flash"},
+     "inner_timer": "120s", "outer_timeout_s": 150,
      "check": {"name": "schema", "cmd": ["python3", "validate_result.py", "{result}"]}, "needs": []},
     {"id": "dev", "role": "coder", "engine": "codex", "model": "gpt-6.1-sol", "needs": ["classify"],
      "parallel_group": "build", "check": {"kind": "gate", "plan": "runs/<id>/gate-plan.json"},
@@ -94,7 +94,7 @@ node, a small-issue fix (build-a-feature step 6), a budget ceiling, or `UNCLEAR:
 ```
 
 `design_gate.py` already checks a design's nodes, edges, loops and reviewer kind; the plan adds only what running
-needs (engine command, timers, fallback, result path). A G-check for plans (caps, timers present, fallback
+needs (engine command, timers, result path). A G-check for plans (caps, timers present,
 present, brief has its three parts) belongs in `design_gate.py`, not in the dispatcher.
 
 ## 5. Who acts next is decided before the run, not during it
@@ -110,7 +110,7 @@ model's probability is not (J9, J10). The research is kept in `docs/research/202
 
 | Event | Dispatcher action | Counts against the attempt limit? |
 |---|---|---|
-| timeout, empty or missing file, bad header, wrong model, exit 0 with no file | rerun once on the fallback, fresh, with a handoff note; second → `blocked` | no (executor failure) |
+| timeout, empty or missing file, bad header, wrong model, exit 0 with no file | block the node and report it to the COO; handoff note; second → `blocked` | no (executor failure) |
 | result valid, check failed | repair node, round + 1; past the limit → `blocked` | yes |
 | `UNCLEAR:` in the result | stop the node; the question goes to the COO | no |
 | plan over a cap, brief missing a part | refuse to start | — |
@@ -119,7 +119,7 @@ model's probability is not (J9, J10). The research is kept in `docs/research/202
 ## 7. Pieces to build, in order (each with its own check)
 
 1. **Plan check** — built as `dispatch.py check PLAN` rather than in `design_gate.py`, so the runner refuses a bad
-   plan itself: caps, timers, fallback, brief parts. Check: self-test with sabotage.
+   plan itself: caps, timers, brief parts. Check: self-test with sabotage.
 2. **Engine adapters**: one small function per engine that turns a node into the command line with its inner timer
    and model flag (Codex `exec -m … -c model_reasoning_effort=…`, `qwen --max-wall-time … -m …`,
    `agy --print-timeout … --model …`). Check: a dry-run mode that prints commands; a test

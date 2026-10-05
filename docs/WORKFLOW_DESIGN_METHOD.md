@@ -379,7 +379,8 @@ project three diagnoses in two days.
    when its write tools are withheld; a wrong `-m` exits 0 and silently runs another model — both seen
    2026-10-02, `docs/EXECUTOR_KINDS.md`). `partial` is a status the COO decides on: retry only the remainder as a
    new small call. Executor failures follow the existing rule: they do not count against the attempt limit, the
-   node reruns once fresh on its fallback with a short handoff note, and a second failure blocks it and goes to EJ.
+   node is **blocked** and goes to EJ. There is no fallback (removed 2026-10-05): one engine per node, and a
+   failure reports rather than hopping to an engine nobody chose.
 6. **A half-finished node must not leave a mess.** A node that builds writes only inside its contract's "may
    change" paths, and runs from a clean commit or a worktree, so a failed call is discarded whole. The COO never
    reverts files by hand to "tidy up": a revert of anything but a discarded worktree is a Rule 6 confirmation.

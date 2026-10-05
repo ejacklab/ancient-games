@@ -387,35 +387,31 @@ It does not prove quota left, output quality, or that the tool stays inside its 
 little usage, so it runs once per run, and the person's go-ahead for the run covers it. Open: whether to re-check
 before long jobs.
 
-## When a kind fails mid-run (n=0, this file only)
+## When a kind fails mid-run — removed 2026-10-05
 
-A timeout, an empty result or a quota stop is a failure of the executor, not a failed attempt, so it does not count
-against the node's attempt limit. The node reruns once as a fresh node on the fallback kind named in its design,
-with a short handoff note. With no fallback, or on a second failure, the node is blocked and goes to EJ. Write a
-Log line for each: `<node> executor-fail <kind>: <reason>`.
+**There is no fallback.** A timeout, an empty result or a quota stop is a failure of the executor, not a failed
+attempt, so it does not count against the node's attempt limit — but it **blocks the node and goes to EJ**. Write a
+Log line: `<node> executor-fail <kind>: <reason>`.
 
-**Since 2026-10-03 a plan that names no fallback still gets one.** The design's own fallback wins; failing that the
-engine's default applies, so a Codex node is no longer a dead end the moment Codex runs out of credit. The
-dispatcher logs the source it used — `(the plan)` or `(the engine default)` — so a defaulted hop is visible in the
-digest and never silent.
+**Why it was removed (EJ, 2026-10-05).** *"This fallback I think we make things too complex already. We already do a
+checking before creating the workflow, and now opencode has higher priority than codex, so just let it — we remove
+the rule, because I can see when things failed the subagents will report back, so no need to have this."*
 
-| Engine | Falls back to |
-|---|---|
-| `codex` | `claude` / `claude-sonnet-5-5` — EJ's "other more daily tasks use Sonnet 5.5" |
-| `agy`, `claude`, `qwen`, `dsh` | `codex` / `gpt-6.1-sol` |
-| `script` | **none** — a local command has no other engine that could run it, so a script node with no fallback still blocks |
+What the mechanism cost, for the record. `DEFAULT_FALLBACKS` added a second engine, a second model and a second
+`workdir` to every failure path; a node could finish on an engine nobody chose, and the log line that made it
+visible was the only thing standing between a silent substitution and a reported one. It also carried a live defect:
+both builder kinds fell back to **Claude**, which is the reviewer most designs give a Codex builder, so any fallback
+could quietly make the reviewer the builder's own kind (register `8.2`, rule 5). Removing the fallback removes that
+case rather than policing it.
 
-One hop only: the dispatcher refuses a second fallback, so no pair can ping-pong. The map is `DEFAULT_FALLBACKS` in
-`scripts/engines.py`, one entry beside each adapter, and `check_plan` validates the **resolved** fallback — so a bad
-default is caught before the run rather than after a failure. No "must differ from the node" rule: a `script`
-fallback legitimately shares the engine and differs only in `cmd`.
+The simpler rule that replaces it: **one engine per node, and a failure reports.** If a plan ever wants a second
+engine, that is a node in the graph — visible, with its own check — not a hop inside the dispatcher.
 
-**The unknown this rule leans on: how Codex shows exhaustion.** The failure table above still says
-"quota-exhausted behaviour not seen (*unknown*)", and that matters here — a quota stop that exits 0 with a notice is
-read as *success*, so it never reaches the fallback at all. `agy` is the engine known to behave that way, and it is
-listed under `silent_failures` in `engines.py`; Codex gets no entry until its signature is recorded. So the fallback
-covers Codex failures that *look* like failures (a non-zero exit, an empty result, a timeout) and is unproven
-against the other kind.
+**Still true, and unaffected:** the dispatcher refuses a node whose plan names an unknown engine or a model it
+needs; `check_plan` validates the engine a node *names*. And the failure table above still records that
+quota-exhausted behaviour has not been seen (*unknown*) — a quota stop that exits 0 with a notice is read as
+*success*, so it never looks like a failure at all. Removing the fallback does not change that; it means such a
+failure is reported when it is seen, not papered over.
 
 ## Rules for mixed runs
 
