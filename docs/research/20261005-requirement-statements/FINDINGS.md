@@ -2,6 +2,17 @@
 
 Brief: `runs/20261005-requirement-research/BRIEF.md`. Written 2026-10-05.
 
+**Installed as a global skill, 2026-10-05** (EJ: *"make this a global skills"*): the source of truth is
+`~/skills/requirement-check/SKILL.md`, symlinked into both harness roots —
+`~/.agents/skills/requirement-check` (the DeepSeek Harness and Codex scan this) and
+`~/.claude/skills/requirement-check` (Claude Code). The harness's own skill catalog lists it, so every session in this
+profile can load it. It is self-contained: the eight questions and the two verified RFC facts are inlined, because a
+global skill cannot depend on a path inside one project. This file remains the research behind it.
+
+**Its provenance gap, recorded rather than hidden:** `~/skills/` is not a git repository, so the skill is versioned
+nowhere. The same is true of `coding-discipline`, `agent-loop` and `formalization`. Either `~/skills/` becomes a
+repository or these skills have no history.
+
 ## Basis of this file (read this first)
 
 **No network access in this session.** WebSearch and WebFetch were both requested and both refused by the
