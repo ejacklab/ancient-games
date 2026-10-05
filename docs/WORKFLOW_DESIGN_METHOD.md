@@ -233,6 +233,9 @@ joining step compares the answers. A contradiction is a stop: pick one and say w
   always means a workflow design; a draft section alone does not.
 - More than 3 steps → consider a new piece. Split only if each part keeps its own check **and** splitting changes
   how the work is done ("Split iff it changes the route", `challenge-mediation` skill).
+- **Health is a third reason to split (EJ, 2026-10-05; n=0).** Cost and lost context are the first two. The third:
+  a long single attempt hides its failure and cannot be watched, and a run whose work is cut into segments ends each
+  one and can be looked at. A piece that cannot finish inside 3.8's ceiling is not one piece.
 - Risk is judged separately from size: how late a mistake would be noticed, whether it can be undone, how many
   things it touches. Tiny but risky → the prompt file gets one independent check.
 
@@ -257,7 +260,9 @@ defined output, the agent attempts, the check runs, pass → close the loop, fai
 A piece is loop-ready only if it has all five:
 
 1. A check. Best is a script; next a fixed checklist judged by a separate agent; last EJ's own judgment.
-2. A limit on attempts.
+2. A limit on the **number** of attempts — a count, not a time limit. (Renamed 2026-10-05: it read *"a limit on
+   attempts"*, and EJ read it as a time bound, which is 3.8's business. Two different rules were wearing the same
+   three words.)
 3. Specific feedback: the script's real output, not just "failed".
 4. An exit for when the limit is hit. If the attempts ran on a cheap tier, the exit is a fresh node on a stronger
    tier with a short handoff note (the piece, its check, the last feedback) and its own limit. When that limit is
@@ -403,6 +408,14 @@ project three diagnoses in two days.
    provisional sizes are: classification or lookup 60–90 s (the canary's figure), one-file change or one-file test
    set about 5 min, diff review about 5 min, research about 10 min. The design lists them with its cost estimate,
    and the ledger records actual wall time so the numbers get replaced.
+
+   **But no single call runs longer than the ceiling: 8 hours (EJ, 2026-10-05; n=0).** The per-task timers scale;
+   the ceiling does not. Past it the run is not healthy and cannot be monitored — a call that has been going for
+   hours has hidden its failure, cannot be watched, and leaves nothing to resume from. A call that hits the ceiling
+   is an **executor failure**, so it blocks the node and reports (there is no fallback). **`check_plan` refuses a
+   node whose `outer_timeout_s` is past the ceiling**, so this is enforced before the run, not remembered. **This is the reason long
+   work is cut into segments**: not only cost — a segmented run is healthier and easier to monitor, because every
+   segment ends and can be looked at.
 3. **No polling.** The COO never repeats "is it done?" and never sleeps in a loop; each check is a turn. She waits
    in one of three ways: a blocking call under the outer timeout; a background run that notifies her when it
    exits; or a small script that waits and prints one line `done|fail|timeout <result path>`. A progress file the

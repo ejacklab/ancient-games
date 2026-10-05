@@ -166,6 +166,24 @@ def test_the_budget_no_longer_carries_the_caps():
     assert not hasattr(dispatch, "MAX_WORKERS")
 
 
+def test_a_call_past_the_ceiling_is_refused(tmp_path):
+    """Method 3.8's ceiling on one call: 8 hours (EJ, 2026-10-05, "it is not healthy").
+
+    The per-task timers scale with the work; the ceiling does not. Before this the rule was prose — a node could ask
+    for a 40-hour timeout and every check passed.
+    """
+    import dispatch
+    under = [node("a", "ok", outer_timeout_s=dispatch.MAX_CALL_SECONDS)]
+    assert "past the ceiling" not in run(tmp_path, "check", setup(tmp_path, under)).stdout
+    over = [node("a", "ok", outer_timeout_s=dispatch.MAX_CALL_SECONDS + 1)]
+    out = run(tmp_path, "check", setup(tmp_path, over)).stdout
+    assert "past the ceiling" in out, out
+    assert "cut the work into segments" in out
+    # and the sabotage: a 40-hour call, the shape the rule exists to stop
+    huge = [node("a", "ok", outer_timeout_s=40 * 3600)]
+    assert "past the ceiling" in run(tmp_path, "check", setup(tmp_path, huge)).stdout
+
+
 def test_rounds_cap_blocks(tmp_path):
     check = {"name": "never", "cmd": [sys.executable, "-c", "raise SystemExit(1)"]}
     r = run(tmp_path, "run", setup(tmp_path, fix_attempts([node("a", "ok", check=check, repair="a")]),

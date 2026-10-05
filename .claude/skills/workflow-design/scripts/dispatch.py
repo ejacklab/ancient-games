@@ -52,6 +52,12 @@ DEFAULT_BUDGET = {"max_rounds": 2, "max_calls": 30}
 # Measure it before trusting it.
 MAX_ENGINE_PROCESSES = 8
 
+# The ceiling on one call (method 3.8). EJ, 2026-10-05: *"we can't let an attempt keep running for more than 8
+# hours, it is not healthy"* — a call that long has hidden its failure, cannot be watched, and leaves nothing to
+# resume from. The per-task timers scale with the work; this does not. Hitting it is an executor failure, so the
+# node blocks and reports. n=0: EJ's number, unmeasured.
+MAX_CALL_SECONDS = 8 * 3600
+
 
 # ---------------------------------------------------------------- plan
 def load_plan(path: Path) -> dict:
@@ -92,6 +98,11 @@ def check_plan(plan: dict, base: Path) -> list[str]:
             f.append(f"{nid}: a script node needs cmd")
         if not isinstance(n.get("outer_timeout_s"), (int, float)) or n["outer_timeout_s"] <= 0:
             f.append(f"{nid}: no outer_timeout_s (method 3.8 item 2)")
+        # The ceiling on one call. Without this the rule was prose: the per-task timers scale with the work and
+        # nothing bounded a single call, so a node could ask for a 40-hour timeout and every check would pass.
+        elif n["outer_timeout_s"] > MAX_CALL_SECONDS:
+            f.append(f"{nid}: outer_timeout_s {n['outer_timeout_s']}s is past the ceiling of {MAX_CALL_SECONDS}s "
+                     f"(8 h, method 3.8) — cut the work into segments")
         for d in n.get("needs") or []:
             if d not in ids:
                 f.append(f"{nid}: needs unknown node {d!r}")

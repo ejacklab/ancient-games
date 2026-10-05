@@ -314,7 +314,9 @@ details (EJ, 2026-10-02; n=0). The vision, the requirements and every approval s
    brief carries a template, a worked example and the standard the result is judged by (method 3.8;
    `docs/workflow-templates/node-brief.md`), so the worker needs no guessing and she never rewrites a result.
 2. **Budget.** Enforces the ceiling EJ sets: attempt limits, timeouts, the cost ceiling, the tier exit, the
-   executor-failure rule below and the model check. (The "5 roles and 3 at once" caps were deleted 2026-10-05 at
+   executor-failure rule below and the model check. **No single call runs longer than the ceiling — 8 hours
+   (EJ, 2026-10-05; n=0)** — because a call that long has hidden its failure and cannot be monitored; hitting it is
+   an executor failure, so the node blocks and reports. `check_plan` refuses a node past it (`MAX_CALL_SECONDS`). (The "5 roles and 3 at once" caps were deleted 2026-10-05 at
    EJ's direction — see method 3.7; they had re-labelled the spike rule's numbers as a role cap. The dispatcher
    still runs at most `MAX_ENGINE_PROCESSES` nodes at a time — a pool size in **engine processes alive**, unmeasured,
    and deliberately NOT the harness's `maxActiveSubagents`, which counts **resident sessions** where an idle child
