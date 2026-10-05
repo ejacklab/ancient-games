@@ -342,7 +342,7 @@ def test_ledger_markdown_parses_and_validates(tmp_path):
     good = "| 2026-10-02 | 20261002-x | code generation | challenger | 0.25 | one node instead of three | 130k | 95k | criteria pass | yes |"
     bad = "| 2026-10-02 | 20261002-y | debugging | challenger | 0.3 | — | 100k |  | criteria pass | yes |"
     p = tmp_path / "ledger.md"
-    p.write_text("# L\n\n| Date | Run id | Category | Design source | Claimed margin | Basis | Projected cost | Actual cost | Coverage outcome | Reconciled |\n"
+    p.write_text("# L\n\n| Date | Run id | Category | Design source | Claimed margin | Basis | Projected cost | Actual cost | Coverage result | Reconciled |\n"
                  "|---|---|---|---|---|---|---|---|---|---|\n" + good + "\n" + bad + "\n")
     rows = dg.parse_ledger(p)
     assert len(rows) == 2
@@ -350,6 +350,14 @@ def test_ledger_markdown_parses_and_validates(tmp_path):
     findings = dg.validate_ledger_row(rows[1])
     assert any("basis" in x for x in findings)          # challenger without a basis
     assert any("actual cost" in x for x in findings)     # reconciled without an actual cost
+
+    # the header is load-bearing now (2026-10-05). Columns are matched by position, so a header that does not say
+    # what the parser assumes must be refused rather than silently mis-assigning every field after the difference.
+    (tmp_path / "swapped.md").write_text(
+        "# L\n\n| Date | Run id | Category | Design source | Basis | Claimed margin | Projected cost | Actual cost "
+        "| Coverage result | Reconciled |\n|---|---|---|---|---|---|---|---|---|---|\n" + good + "\n")
+    with pytest.raises(ValueError, match="does not match LEDGER_KEYS"):
+        dg.parse_ledger(tmp_path / "swapped.md")
     r = subprocess.run([sys.executable, str(SCRIPTS / "design_gate.py"), "--ledger", str(p)],
                        capture_output=True, text=True, timeout=60)
     assert r.returncode == 1 and "row 2" in r.stdout, r.stdout

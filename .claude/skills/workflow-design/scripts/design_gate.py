@@ -70,6 +70,17 @@ def engine_kind(engine: str) -> str:
     return "unknown"
 
 
+def _header_and_rows(md: list[str], header_first_cell: str) -> tuple[list[str], list[list[str]]]:
+    """The header cells and the body rows of the first table whose first header cell matches."""
+    hdr: list[str] = []
+    for line in md:
+        s = line.strip()
+        if s.startswith("|") and s.lstrip("|").strip().lower().startswith(header_first_cell.lower()):
+            hdr = [c.strip() for c in s.strip("|").split("|")]
+            break
+    return hdr, _table_rows(md, header_first_cell)
+
+
 def _table_rows(md: list[str], header_first_cell: str) -> list[list[str]]:
     rows: list[list[str]] = []
     in_tbl = False
@@ -354,9 +365,21 @@ def validate_design(d: dict, types: dict) -> list[str]:
 
 
 def parse_ledger(path: Path) -> list[dict]:
-    """Read the markdown ledger table into row dicts (columns = LEDGER_KEYS, in order)."""
-    rows = []
-    for r in _table_rows(Path(path).read_text(errors="replace").splitlines(), "Date"):
+    """Read the markdown ledger table into row dicts.
+
+    Columns are matched **by position**, so the header is checked against `LEDGER_KEYS` first. It was not, until
+    2026-10-05: swapping two columns parsed cleanly and silently mis-assigned every field after them (the review
+    round demonstrated `claimed_margin` becoming the string `"default"`), because the only thing the reader anchored
+    on was the first header cell. A header nothing reads is a header that cannot fail.
+    """
+    lines = Path(path).read_text(errors="replace").splitlines()
+    hdr, rows = _header_and_rows(lines, "Date")
+    if hdr:
+        got = [c.strip().lower().replace(" ", "_") for c in hdr][:len(LEDGER_KEYS)]
+        if got and got != LEDGER_KEYS:
+            raise ValueError(f"ledger header does not match LEDGER_KEYS\n  header: {got}\n  keys:   {LEDGER_KEYS}")
+    out: list[dict] = []
+    for r in rows:
         if len(r) < len(LEDGER_KEYS):
             continue
         row = dict(zip(LEDGER_KEYS, r))
@@ -365,8 +388,8 @@ def parse_ledger(path: Path) -> list[dict]:
         except ValueError:
             pass  # "—" for a default row stays a string
         row["reconciled"] = row["reconciled"].strip().lower() in ("yes", "true")
-        rows.append(row)
-    return rows
+        out.append(row)
+    return out
 
 
 def validate_ledger_row(row: dict) -> list[str]:
