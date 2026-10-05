@@ -226,6 +226,23 @@ EJ: *"the limit should be from harness."* It is. `@deepseek-ai/dsh-subagent` car
 by it. `dispatch.py`'s `MAX_WORKERS` is 8, sourced there and read with the harness's inspect provider rather than
 assumed. See `runs/20261004-open-defects.md`.
 
+
+## 12. The mechanism behind the weird rules — invented structure, 2026-10-05
+
+| # | Finding | Evidence |
+|---|---|---|
+| 11.1 | **An agent adds structure that was never given, and later the wrapper is indistinguishable from the rule.** EJ stated one thing — *a design guideline: don't hand an engine one huge prompt; estimate the workload and split into six or more logical pieces.* The agent paired it with a separate 8-hour ceiling, called them "the design-time half" and "the runtime half" of one rule, and wrote the pairing into `METHOD.md` 3.4, `METHOD.md` 3.8 and `SKILL.md` — none of which EJ said. He caught it: *"I never said got a run time half, and I don't understand why got run time half maybe this is why got so many problems."* | `METHOD.md` 3.4 / 3.8 before the 2026-10-05 correction; his message |
+| 11.2 | **Same shape, smaller: numbering a list nobody numbered.** His health point ("it is more healthy, more easy to monitor too") was written up as *"Health is a **third** reason to split (cost and lost context are the first two)"* — an enumeration the method did not have and he did not ask for. | `METHOD.md` 3.4 |
+
+**Why this matters more than missing provenance.** The provenance measurement (19% / 42% / 26%) counts rules with no
+source. This is the opposite failure and a worse one: a rule **with** a plausible source, wearing a structure its
+author never stated. Provenance makes a rule checkable; invented structure makes it *look* checkable while meaning
+something else — and it is what reads as weird six sessions later.
+
+**The test to apply before writing anything normative:** *is this structure the author's, or mine?* Quote the
+author, state the operative sentence, and stop. If a relationship between two rules is wanted, it is a separate
+claim and needs its own evidence.
+
 ## Where to start
 
 The gate family (1) and the test family (2) are one story: the gate cannot reject, and the test was built so that it
