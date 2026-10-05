@@ -357,16 +357,26 @@ The two halves were never the same kind of thing, which is why the sentence woul
 
 * **5 roles** counted distinct `role` values over a run's nodes — a property of a *design*.
 * **3 running** counted engine processes alive at one instant — a property of the *machine* (the dispatcher's worker
-  pool, now the constant `MAX_WORKERS` in `scripts/dispatch.py`).
+  pool, now the constant `MAX_ENGINE_PROCESSES` in `scripts/dispatch.py`).
 
 The pair survives where it belongs, in the spike rule, still about approaches. `check_plan` no longer refuses a plan
 for having many roles or a wide parallel group; the budget keeps `max_rounds` and `max_calls`, which are limits on
 *attempts* and are required by 3.5. **If a run needs many roles, that is a design question, not a cap.**
 
-**The concurrency ceiling comes from the harness (EJ, 2026-10-05).** `@deepseek-ai/dsh-subagent` carries
-`maxActiveSubagents` — default **8** — and `maxDepth` **1**, so a subagent cannot spawn subagents. Read the live
-value with the harness's own inspect provider rather than assuming it, and note that it is a property of the
-**machine**, not of the design: it does not belong in a rule about how to lay out a workflow.
+**Concurrency: name the unit, because four different things get called "parallel".** (EJ, 2026-10-05: *"how many
+running in parallel is even more weird"* — right, and this is the whole reason.)
+
+| phrase | what it counts | does an idle one count? |
+|---|---|---|
+| **resident sessions** — the harness's `@deepseek-ai/dsh-subagent` `maxActiveSubagents`, default **8**, `maxDepth` **1** | child sessions that exist and can be continued | **yes** — a continuable subagent waiting for its parent still holds a slot |
+| **engine processes alive** — the dispatcher's pool | `Popen` calls that have not exited | no |
+| **candidate approaches** — the spike rule in `TASK_TYPES.md` | approaches tried for one question | n/a |
+
+**8 resident sessions can be one working. 8 processes are 8 working.** They are not the same quantity, and using one
+number for the other is the mis-transcription that produced the deleted "5 roles and 3 at once" rule. So: read the
+harness's ceiling from the harness when you need *sessions*; pick the pool size on its own merits when you need
+*processes*, and mark it unmeasured until someone measures it. **Never write "running in parallel" without saying
+which of the three you mean.**
 
 ### 3.8 Running a node: executors are tools, timers, pass-back, no polling
 

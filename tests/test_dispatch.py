@@ -159,7 +159,11 @@ def test_the_budget_no_longer_carries_the_caps():
     import dispatch
     assert "max_roles" not in dispatch.DEFAULT_BUDGET
     assert "max_parallel" not in dispatch.DEFAULT_BUDGET
-    assert dispatch.MAX_WORKERS == 3
+    # The pool counts **engine processes alive**, its own unmeasured machine setting. It is deliberately not the
+    # harness's `maxActiveSubagents`, which counts **resident sessions** (an idle continuable child holds a slot).
+    # Reading one from the other was the mis-transcription corrected on 2026-10-05.
+    assert dispatch.MAX_ENGINE_PROCESSES == 8
+    assert not hasattr(dispatch, "MAX_WORKERS")
 
 
 def test_rounds_cap_blocks(tmp_path):
@@ -183,7 +187,8 @@ def test_many_roles_and_a_wide_group_are_allowed(tmp_path):
     sentence would not parse: two different units called the same word.
 
     Pinned so the caps cannot return by habit. Six roles and a four-node group are simply plans now. The worker
-    pool still keeps its size (`dispatch.MAX_WORKERS`), because that is a machine setting, not a design rule.
+    pool still keeps its size (`dispatch.MAX_ENGINE_PROCESSES`), because that is a machine setting, not a
+    design rule.
     """
     many = [{"id": f"n{i}", "role": f"r{i}", "engine": "codex", "model": "gpt-6.1-sol", "brief": "brief.md",
              "inner_timer": "300s", "outer_timeout_s": 330} for i in range(6)]

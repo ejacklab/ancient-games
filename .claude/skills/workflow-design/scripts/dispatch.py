@@ -40,19 +40,17 @@ LOCK = threading.Lock()
 FILLED = "(filled by the dispatcher)"
 DEFAULT_BUDGET = {"max_rounds": 2, "max_calls": 30}
 
-# How many engine processes the dispatcher keeps alive at once. A **machine setting**, not a rule about designing a
-# workflow: it is the worker-pool size, so a run does not ask the box to hold twenty CLI processes.
+# How many **engine processes** the dispatcher keeps alive at once — `Popen` calls that have not exited.
 #
-# It was `budget["max_parallel"]`, sitting beside a "cap" of "5 subagent roles per run and 3 running at once".
-# EJ deleted that rule on 2026-10-05 — *"not logic at all"* — after finding where the numbers came from: they are
-# the spike rule's in `TASK_TYPES.md` ("run at most 3 in parallel", "up to 5 in a round", both about candidate
-# *approaches*), re-labelled as a rule about *roles* and *concurrency*. Two different units, called the same word,
-# in one sentence. The pair survives where it belongs — in the spike rule, still about approaches.
-# The number comes from **the harness**, not from a preference (EJ, 2026-10-05: "the limit should be from
-# harness"). `@deepseek-ai/dsh-subagent` carries `maxActiveSubagents`, default **8**, and this profile does not
-# override it — read with the harness's own inspect provider, not guessed. `maxDepth` is 1, so a subagent cannot
-# spawn subagents. If a harness ever sets a different ceiling, this is the line that should follow it.
-MAX_WORKERS = 8
+# A **machine setting**, unmeasured (n=0): how many CLI processes this box should hold. It is NOT the harness's
+# `maxActiveSubagents`, and reading it from there was a mistake made and corrected on 2026-10-05: that number bounds
+# **resident child sessions** — a continuable subagent holds a slot while idle, waiting for its parent — so "8
+# resident sessions" and "8 processes alive" are different quantities. Deriving one from the other is the same
+# mis-transcription that produced the deleted "5 roles and 3 at once" rule: a number moved between units because the
+# words looked alike.
+#
+# Measure it before trusting it.
+MAX_ENGINE_PROCESSES = 8
 
 
 # ---------------------------------------------------------------- plan
@@ -316,7 +314,7 @@ def cmd_run(a) -> int:
             if len(batch) == 1:
                 run_node(plan, batch[0], by_id, state, run_dir, base, a.dry_run, log)
             else:
-                with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+                with ThreadPoolExecutor(max_workers=MAX_ENGINE_PROCESSES) as ex:
                     futs = [ex.submit(run_node, plan, n, by_id, state, run_dir, base, a.dry_run, log) for n in batch]
                     errs = [f.exception() for f in futs if f.exception()]
                 if errs:
