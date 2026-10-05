@@ -1,0 +1,71 @@
+{
+  "categories": ["code generation", "test script gen", "code review"],
+  "builds": true,
+  "touched_paths": ["tests/workflows/corpus_check.py", "tests/test_task_types.py"],
+  "pipeline": null,
+  "design_source": "default",
+  "baseline": {"command": "env -u NO_COLOR python3 -m pytest -q", "captured_by": "script"},
+  "nodes": [
+    {
+      "id": "n1-emit-challenger",
+      "category": "code generation",
+      "engine": "opencode MiniMax-M3.1-Flash-Preview",
+      "check": "the harness emits at least one challenger design, and G5 accepts it",
+      "sabotage": "strip design_source from the emitted challenger -> the check goes red",
+      "brief_given": "the challenge, the corpus harness, and TASK_TYPES' challenger rule",
+      "intent": "make the corpus harness emit a challenger arm so G5 can execute",
+      "stop": {
+        "criteria": "a challenger design appears in the emitted corpus and passes the gate",
+        "baseline": "everything the baseline recorded as passing still passes",
+        "must_not_change": "the 300 default designs and their labels"
+      },
+      "returns": "the edited harness and the emitted challenger proofs",
+      "state_reads": "runs/20261005-traversal/state.md",
+      "tools": ["opencode", "python3"],
+      "evidence": ["runs/20261005-traversal/nodes/n1.result.md"],
+      "needs": [],
+      "loop": {"limit": 2, "exit": "a fresh node on the stronger tier with the check's output",
+               "feedback": "pytest's real output"}
+    },
+    {
+      "id": "n2-pin-both-rules",
+      "category": "test script gen",
+      "engine": "opencode MiniMax-M3.1-Flash-Preview",
+      "check": "a test validates a challenger ledger row, and fails if G5 or G7 is removed",
+      "sabotage": "delete the G5 clause -> the new test goes red",
+      "brief_given": "the challenge, the emitted challenger, and the ledger template",
+      "intent": "pin G5 and G7 with a test that fails when either rule is removed",
+      "stop": {
+        "criteria": "both rules have a test that goes red when the rule is deleted",
+        "baseline": "everything the baseline recorded as passing still passes",
+        "must_not_change": "the existing test suite's other assertions"
+      },
+      "returns": "the test file and the proof it fails without the rule",
+      "state_reads": "runs/20261005-traversal/state.md",
+      "tools": ["opencode", "python3"],
+      "evidence": ["runs/20261005-traversal/nodes/n2.result.md"],
+      "needs": ["n1-emit-challenger"],
+      "loop": {"limit": 2, "exit": "a fresh node on the stronger tier with the check's output",
+               "feedback": "pytest's real output"}
+    },
+    {
+      "id": "n3-review",
+      "category": "code review",
+      "engine": "claude sonnet 5.5",
+      "check": "fixed checklist: the diff is read against the challenge, findings cite file:line",
+      "brief_given": "the diff and the challenge, never the builders' reasoning",
+      "intent": "an independent read of what changed",
+      "stop": {
+        "criteria": "every checklist item answered with a finding or a clean pass",
+        "baseline": "everything the baseline recorded as passing still passes",
+        "must_not_change": "nothing; this node reviews and does not edit"
+      },
+      "returns": "findings with file:line, or an explicit clean pass",
+      "state_reads": "runs/20261005-traversal/state.md",
+      "tools": ["claude"],
+      "evidence": ["runs/20261005-traversal/nodes/n3.result.md"],
+      "needs": ["n2-pin-both-rules"]
+    }
+  ],
+  "estimate": {"tokens": 200000, "basis": "two small edits in one test harness, plus a review"}
+}
