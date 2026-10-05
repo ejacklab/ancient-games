@@ -1,0 +1,190 @@
+{
+  "challenge": "Debug the nightly timeout, fix it, grade tonight's run afterwards, and write the note for standup.",
+  "restatement": {
+    "objective": "The nightly job that timed out finishes inside its time limit tonight, for a stated root cause and a reviewed fix; tonight's run is graded against a fixed rubric from its own run directory; and a short standup note reports cause, fix, grade and anything open.",
+    "in_scope": "Locating the job and the timeout's evidence; a reproduction; the root cause; one fix; review of the fix; grading tonight's run; the standup note.",
+    "out_of_scope": "Deploying the fix (EJ approves and deploys - Rule 6); raising the time limit as the fix; other nightly failures found on the way (to the backlog); a second fix attempt after tonight's grade (that is tomorrow's grade -> fix -> regrade run).",
+    "six_whys": {
+      "objective": "a nightly job that times out produces no result, and someone has to explain it at standup",
+      "priority": "tonight's run is the next chance to prove a fix; missing it costs a day",
+      "shape": "bug fix -> the debugging pipeline (repro, fix, rerun); 'rerun' here is tonight's real run, graded",
+      "failure": "the timeout cannot be reproduced offline (load, data size, external service), or the 'fix' just raises the limit and hides the cause",
+      "scope": "it stops at the note; a fix that fails tonight goes to EJ, not into a second attempt in this run",
+      "done": "repro red before and green after (script), then tonight's run graded PASS on the duration dimension from run-directory evidence"
+    },
+    "provisional_category": "debugging + grade a run + document and explain (inferred); relabelled from the algorithm below - unchanged"
+  },
+  "categories": [
+    "debugging",
+    "code review",
+    "grade a run",
+    "document and explain"
+  ],
+  "builds": true,
+  "touched_paths": [
+    "UNRESOLVED: the nightly job's repository and the file(s) the fix changes. No nightly job exists in this repo or its docs; n1-diagnose resolves this and writes the exact paths to state.md before n2-fix may start."
+  ],
+  "pipeline": "debugging",
+  "design_source": "default",
+  "baseline": {
+    "command": "UNRESOLVED: the nightly job repository's own test command. n1-diagnose identifies it, runs it once on the unfixed HEAD, and writes the command and its full output to state.md under 'baseline' before n2-fix starts.",
+    "captured_by": "n1-diagnose"
+  },
+  "unclear_spots": [
+    {"id": "U1", "kind": "decision", "question": "Which nightly job, and where are its logs and its repository?", "provisional_assumption": "the most recent nightly job that ended in a timeout on a machine this session can reach; n1 stops and asks if more than one candidate exists", "blocks": ["n1-diagnose", "n2-fix", "n4-grade", "n5-standup-note"], "depends_on": []},
+    {"id": "U2", "kind": "unknown", "question": "Can the timeout be reproduced offline?", "provisional_assumption": "yes, on the real input or a scaled input with the time limit scaled by the same ratio (ratio recorded); bounded by n1's loop limit", "blocks": ["n2-fix"], "depends_on": ["U1"]},
+    {"id": "U3", "kind": "decision", "question": "Is raising the time limit an acceptable fix?", "provisional_assumption": "no - the limit is in must_not_change unless EJ says otherwise", "blocks": ["n2-fix"], "depends_on": []},
+    {"id": "U4", "kind": "decision", "question": "Who deploys the fix before tonight's run, and by when?", "provisional_assumption": "EJ, after n3-review passes; if it is not deployed in time, n4 still grades the run and reports 'fix not in run'", "blocks": ["n4-grade"], "depends_on": []},
+    {"id": "U5", "kind": "decision", "question": "What does 'grade' mean for this run - which dimensions?", "provisional_assumption": "the rubric in n4-grade: completed, duration vs limit, all stages ran, outputs present, no new failures vs the last good night, fix commit present", "blocks": ["n4-grade"], "depends_on": []},
+    {"id": "U6", "kind": "decision", "question": "Standup note: which audience, format and length?", "provisional_assumption": "the team at tomorrow's standup; plain markdown, at most 6 lines: yesterday / today / blockers", "blocks": ["n5-standup-note"], "depends_on": []}
+  ],
+  "human_checkpoints": [
+    {"after": "n3-review", "before": "n4-grade", "who": "EJ", "what": "approve and deploy the reviewed fix before tonight's run (Rule 6: no deploy to a running system without EJ). The COO records 'deployed: <commit> at <time>' or 'not deployed' in state.md."},
+    {"after": "tonight's nightly run ends", "before": "n4-grade", "who": "COO", "what": "the run is external: n4 starts only when state.md records the run's directory and its end state. No polling loop - EJ or the scheduler's completion signal starts n4."}
+  ],
+  "nodes": [
+    {
+      "id": "n1-diagnose",
+      "category": "debugging",
+      "engine": "codex gpt-6.1-sol",
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "role": "debugger (read-only on product; writes only the repro script and run files)",
+      "check": "the repro command, run under the job's real time limit (or a scaled input with the limit scaled by the recorded ratio), exceeds the limit on the unfixed HEAD - exit code and wall-clock written to state.md; the root cause cites a log line or a profile line with path:line",
+      "sabotage": "run the repro with the limit set far above the observed duration -> it must report 'no timeout', proving the check can come out green; and hand it a log with no timeout -> it must report no-repro, never invent a cause",
+      "brief_given": "The verbatim challenge; U1-U3 with their provisional assumptions; the job's log of the last timed-out run once located; the repository path. Withheld: any guessed fix.",
+      "intent": "Find which nightly job timed out, where the time goes, and a command that reproduces the timeout - so the fix has a check that is red before it starts. Also record the baseline.",
+      "stop": {
+        "criteria": "state.md names the job, its repo, its time limit, the timed-out step, the root cause with path:line evidence, a repro command that is red on unfixed HEAD, and the paths the fix will touch",
+        "baseline": "the repository's test command run once on unfixed HEAD, command and full output written to state.md under 'baseline'",
+        "must_not_change": "any product file, the job's schedule, its configuration and its time limit"
+      },
+      "returns": "runs/20261005-nightly-timeout/nodes/n1-diagnose.result.md with a fixed header (job, repo, limit, slow step, root cause, repro command, red evidence, paths to touch, baseline command)",
+      "state_reads": "runs/20261005-nightly-timeout/state.md (challenge, unclear spots)",
+      "state_writes": "job, repo, limit, root_cause, repro_command, repro_red, touched_paths, baseline",
+      "tools": ["codex CLI (read-only sandbox except the run folder)", "shell: log reading, the repro command, time", "git log/blame"],
+      "evidence": ["runs/20261005-nightly-timeout/nodes/n1-diagnose.result.md", "runs/20261005-nightly-timeout/nodes/n1-repro-red.log", "runs/20261005-nightly-timeout/baseline.log"],
+      "timers": {"inner": "repro command killed at 1.5 x the job's limit", "outer": "45 minutes per attempt"},
+      "needs": [],
+      "loop": {
+        "limit": 2,
+        "exit": "no red repro after 2 attempts -> stop; U2 goes back to EJ with what was tried (inputs, durations). No fix starts without a red check. If EJ chooses, the fallback is instrumentation-only for tonight's run, planned as a new piece.",
+        "feedback": "the repro command's real exit code, wall-clock and last 50 lines of output"
+      }
+    },
+    {
+      "id": "n2-fix",
+      "category": "debugging",
+      "engine": "opencode MiniMax-M3.1-Flash-Preview",
+      "model": "MiniMax-M3.1-Flash-Preview",
+      "effort": "default tier (cheapest that could plausibly do it)",
+      "role": "fixer",
+      "check": "the n1 repro command now finishes under the limit with at least 20% margin (wall-clock <= 0.8 x limit), and the baseline test command passes everything it passed in baseline.log",
+      "sabotage": "revert the fix (git stash) -> the repro goes red again; if it stays green the fix is not what made it pass and the attempt fails",
+      "brief_given": "n1's result file (root cause, repro command, paths to touch, limit) and baseline.log. Withheld: n1's reasoning notes.",
+      "intent": "Remove the root cause n1 named so the job finishes inside its existing limit.",
+      "stop": {
+        "criteria": "repro green with >= 20% margin; revert-the-fix makes it red again",
+        "baseline": "every test passing in baseline.log still passes",
+        "must_not_change": "the job's time limit and schedule (U3); any path outside state.md's touched_paths; the repro script itself"
+      },
+      "returns": "a branch with one commit, plus runs/20261005-nightly-timeout/nodes/n2-fix.result.md (commit, diff stat, repro before/after durations, baseline comparison, revert-check result)",
+      "state_reads": "root_cause, repro_command, touched_paths, limit, baseline",
+      "state_writes": "fix_commit, repro_green, revert_check, baseline_still_passes",
+      "tools": ["opencode CLI", "git", "shell: the repro command and the test command"],
+      "evidence": ["runs/20261005-nightly-timeout/nodes/n2-fix.result.md", "runs/20261005-nightly-timeout/nodes/n2-repro-green.log", "runs/20261005-nightly-timeout/nodes/n2-revert-red.log", "runs/20261005-nightly-timeout/nodes/n2-tests.log"],
+      "timers": {"inner": "repro killed at 1.5 x limit; test command at its usual CI timeout", "outer": "30 minutes per attempt"},
+      "needs": ["n1-diagnose"],
+      "loop": {
+        "limit": 2,
+        "exit": "after 2 failed attempts: a fresh node on codex gpt-6.1-sol with a handoff note (root cause, check, last feedback) and its own limit of 2; if that fails too, the piece goes back to EJ",
+        "feedback": "the repro's real wall-clock vs limit, and the failing test names with their output"
+      }
+    },
+    {
+      "id": "n3-review",
+      "category": "code review",
+      "engine": "claude sonnet 5.5",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "role": "blind reviewer",
+      "reviews": ["n1-diagnose", "n2-fix"],
+      "check": "fixed checklist, each item PASS/FAIL with file:line: (1) the diff touches only touched_paths; (2) the time limit and schedule are unchanged; (3) the change addresses the root cause n1 cited, not a symptom (no added retry/skip that hides work); (4) re-run: repro green, revert -> red, baseline tests pass; (5) no new failure path (errors swallowed, data skipped)",
+      "sabotage": "plant a diff that raises the time limit instead of fixing the cause -> items 2 and 3 must FAIL",
+      "brief_given": "the diff, n1's root cause and evidence, the repro command, baseline.log, the checklist. Withheld: both workers' reasoning and notes.",
+      "intent": "An independent, different-kind check that the fix is real and safe before EJ deploys it.",
+      "stop": {
+        "criteria": "all five checklist items PASS, each with file:line or command output",
+        "baseline": "item 4's re-run of the baseline tests matches baseline.log",
+        "must_not_change": "everything - the reviewer is read-only; it may run commands, never edit"
+      },
+      "returns": "runs/20261005-nightly-timeout/nodes/n3-review.result.md: verdict APPROVE/REJECT and five items",
+      "state_reads": "fix_commit, root_cause, repro_command, baseline",
+      "state_writes": "review_verdict",
+      "tools": ["claude subagent, read-only tool filter (Read, Grep, Bash for running the repro and tests)"],
+      "evidence": ["runs/20261005-nightly-timeout/nodes/n3-review.result.md"],
+      "timers": {"inner": "per command as n2", "outer": "20 minutes"},
+      "needs": ["n2-fix"]
+    },
+    {
+      "id": "n4-grade",
+      "category": "grade a run",
+      "engine": "claude sonnet 5.5",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "role": "grader",
+      "check": "rubric verdicts kept separate per dimension - (a) completed, (b) wall-clock vs limit, (c) every stage ran, (d) expected outputs present, (e) no new failures vs the last good night, (f) the deployed fix commit is the one the run used; each verdict PASS/FAIL/UNKNOWN cites a run-directory file:line; missing evidence = UNKNOWN; an empty or missing run directory = INVALID_RUN",
+      "sabotage": "grade an empty run directory -> INVALID_RUN, not PASS",
+      "brief_given": "the path to tonight's run directory, the last good night's run directory, the limit, the fix commit and the deployment record from state.md, the rubric. Withheld: n1-n3's results and reasoning, so the grade is not anchored by the expectation that the fix worked.",
+      "intent": "Tell from tonight's own evidence whether the fix held.",
+      "stop": {
+        "criteria": "six dimension verdicts, each with evidence or UNKNOWN; an overall verdict that is PASS only when (a), (b) and (f) are PASS",
+        "baseline": "the last good night's run directory, graded on the same rubric for comparison on (b) and (e)",
+        "must_not_change": "everything - read-only on the run directory and the product"
+      },
+      "returns": "runs/20261005-nightly-timeout/nodes/n4-grade.json (one object per dimension: verdict, evidence path:line) and a 3-line summary",
+      "state_reads": "tonight_run_dir, last_good_run_dir, limit, fix_commit, deployed",
+      "state_writes": "grade_overall, grade_file",
+      "tools": ["claude subagent, read-only tool filter (Read, Grep, Glob)"],
+      "evidence": ["runs/20261005-nightly-timeout/nodes/n4-grade.json"],
+      "timers": {"inner": "none (no commands)", "outer": "15 minutes"},
+      "needs": ["n3-review"]
+    },
+    {
+      "id": "n5-standup-note",
+      "category": "document and explain",
+      "engine": "claude sonnet 5.5",
+      "model": "claude-sonnet-5-5",
+      "effort": "low",
+      "role": "writer",
+      "check": "fixed checklist judged by the COO against state.md and n4-grade.json: the note states the job, the root cause, the fix commit, tonight's overall grade and the duration vs limit, and every open item (UNKNOWN dimensions, U-spots still assumed); every fact in it appears in those two sources; at most 6 lines; plain markdown",
+      "sabotage": "remove the root cause from state.md before the check -> the checklist must flag the note's cause line as unsupported",
+      "brief_given": "state.md and n4-grade.json; the format rule (U6). Withheld: worker notes.",
+      "intent": "A note a teammate can read in 20 seconds at standup that says what broke, what changed, and whether it held.",
+      "stop": {
+        "criteria": "every checklist item holds",
+        "baseline": "n/a for prose - the sources are state.md and n4-grade.json as they stand when the node starts",
+        "must_not_change": "everything except the note file; it does not post the note anywhere (sending is EJ's)"
+      },
+      "returns": "runs/20261005-nightly-timeout/STANDUP.md",
+      "state_reads": "the whole state.md and grade_file",
+      "state_writes": "standup_note path; status: done",
+      "tools": ["claude subagent (Read, Write limited to the run folder)"],
+      "evidence": ["runs/20261005-nightly-timeout/STANDUP.md"],
+      "timers": {"inner": "none", "outer": "5 minutes"},
+      "needs": ["n4-grade"]
+    }
+  ],
+  "estimate": {
+    "tokens": 450000,
+    "agents": "5 nodes, at most 9 agent calls with every loop and tier exit spent",
+    "wall_clock": "about 2 hours of agent time before tonight's run; then the run itself; then about 20 minutes",
+    "basis": "unmeasured for this task (n=0): n1 ~150k (log reading on Codex), n2 ~80k per attempt, n3 ~60k, n4 ~50k, n5 ~20k; the figure assumes one attempt per loop"
+  },
+  "quality": {
+    "predictability": "the COO schedules by the edges; loop limits 2 + one tier exit; outputs have fixed headers; criteria written above before the run",
+    "debuggability": "every node writes its result and logs under runs/20261005-nightly-timeout/nodes/; state.md is the resume point; each node reruns alone",
+    "quality_control": "script checks (repro red/green, revert check, baseline) with sabotage proofs; blind different-kind reviewer; grader blind to the workers; skipped checks reported as SKIPPED",
+    "parallel": "none - every node needs the previous node's result; the external nightly run sits between n3 and n4"
+  }
+}

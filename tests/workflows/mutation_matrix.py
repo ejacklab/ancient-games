@@ -123,6 +123,16 @@ def m_split_reviewer_is_one_of_the_builders(d):
             break
 
 
+def m_baseline_command_is_a_placeholder(d):
+    """Found by Claude Code on its own design, 2026-10-05: `UNRESOLVED` is not a test command."""
+    d["baseline"]["command"] = "UNRESOLVED: the repo's own test command, found by n1"
+
+
+def m_touched_paths_is_a_placeholder(d):
+    """The same hole on the other field: a promise to name the paths later is not naming them."""
+    d["touched_paths"] = ["TBD"]
+
+
 def m_engine_is_the_tables_placeholder(d):
     """Register 5.6, found 2026-10-05: `others` has no engine, and the placeholder `—` passed the gate."""
     d["nodes"][0]["engine"] = "—"
@@ -195,6 +205,8 @@ MATRIX = [
     ("no sabotage proof", m_no_sabotage_proof, "G9", ""),
     # closed 2026-10-05 by the format change: the design now carries a `baseline` and the five things as
     # contents, so the three mutations that used to be holes are rules with a mutation each.
+    ("`baseline.command` is a placeholder", m_baseline_command_is_a_placeholder, "G12", ""),
+    ("`touched_paths` is a placeholder", m_touched_paths_is_a_placeholder, "G12", ""),
     ("the engine is the table's `—` placeholder", m_engine_is_the_tables_placeholder, "G11", ""),
     ("no baseline", m_no_baseline, "G10", ""),
     ("the baseline's owner runs too late", m_baseline_owner_runs_too_late, "G10", ""),

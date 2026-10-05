@@ -148,6 +148,21 @@ filed under the runnable form when the emitter was the corpus harness, which sen
 Both are corrected above. `runs/20261004-domain-fix-review/` has the three surveys, the chair that caught them, and
 the verifier that then corrected the chair's own corrections.
 
+
+## Found by Claude Code, 2026-10-05 — a placeholder satisfied two new rules
+
+Given one fresh challenge (`p273`) and no help, Claude Code produced a passing design and then pointed out that two
+of the fields it had honestly marked `UNRESOLVED` would be **accepted by the gate anyway** — because G10 and the G2
+`touched_paths` clause tested only for emptiness.
+
+Confirmed with four cases (`TBD` as a command, `["UNRESOLVED"]` as paths, `—` as an engine, both at once) and closed
+as **G12**: a placeholder is a promise to fill a field in later, not a value. Two mutations pin it.
+
+It is the same lesson as the rest of the register, arriving from a new direction: **a check that only asks whether a
+field is non-empty cannot fail**, and the honest-but-unknown case is exactly where it fails silently. The
+consequence is deliberate — a design whose baseline is `UNRESOLVED` no longer passes, because it should be a
+question rather than a design.
+
 ## Where to start
 
 The gate family (1) and the test family (2) are one story: the gate cannot reject, and the test was built so that it

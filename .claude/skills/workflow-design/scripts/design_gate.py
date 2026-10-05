@@ -17,6 +17,7 @@ Findings are named:
   G9 a building node carries the sabotage that proves its check can fail
   G10 a design that builds carries `baseline.command` and names the node that captures it
   G11 a node names a real engine, not the table's `—` placeholder
+  G12 `baseline.command` and `touched_paths` hold values, not promises to fill them in later
   G8 labels agree: the design's categories equal the categories its nodes carry (method 3.2: the piece
      labels replace the provisional category, so a claimed category no node carries, or a node category
      the design does not claim, means the relabelling did not happen; the in-run `code review` node that G6
@@ -155,6 +156,24 @@ def check_five(n: dict) -> str:
     return ""
 
 
+# A placeholder says "I do not know", not the thing itself. Found by Claude Code, 2026-10-05, on its own design:
+# it had marked two fields `UNRESOLVED` rather than inventing values, then noticed the gate would accept them
+# anyway. It was right — G10 and the G2 touched_paths clause both tested only for emptiness, so `TBD` passed.
+PLACEHOLDER = {"tbd", "todo", "unresolved", "unknown", "n/a", "na", "?", "??", "???", "-", "--", "---",
+               "\u2014", "none", "fixme", "xxx"}
+
+
+def is_placeholder(value) -> bool:
+    """True when a field holds a promise to fill it in later rather than a value."""
+    text = str(value).strip().lower()
+    if not text:
+        return True
+    head = text.split(":")[0].split("\u2014")[0].strip()
+    if head in PLACEHOLDER or text in PLACEHOLDER:
+        return True
+    return head.startswith(("tbd", "todo", "unresolved", "fixme", "unknown ", "n/a"))
+
+
 def check_baseline(d: dict, nodes: list[dict]) -> list[str]:
     """A design that builds names the baseline and the node that captures it (register 1.2, and 5.1's owner)."""
     if not d.get("builds"):
@@ -163,6 +182,9 @@ def check_baseline(d: dict, nodes: list[dict]) -> list[str]:
     if not isinstance(b, dict) or not (b.get("command") or "").strip():
         return ["G10: the design builds, but carries no `baseline.command` — the product's test command that "
                 "part 2 of every building node's stop is measured against"]
+    if is_placeholder(b.get("command")):
+        return [f"G12: `baseline.command` is {str(b.get('command'))[:40]!r} — a promise to fill it in later is "
+                f"not the product's test command, and part 2 of every building node's stop is measured against it"]
     owner = b.get("captured_by")
     ids = {n.get("id") for n in nodes}
     # `script` is a real answer, not a dodge: from a repo root the dispatcher's own wrapper can capture the
@@ -198,6 +220,9 @@ def validate_design(d: dict, types: dict) -> list[str]:
     if pure_yes and not builds and not touched:
         f.append(f"G2: category {pure_yes[0]!r} always writes product, but the design claims it touches "
                  f"none (a mixed category may run read-only; a yes category may not)")
+    if builds and touched and all(is_placeholder(t) for t in touched):
+        f.append(f"G12: touched_paths holds only {[str(t)[:30] for t in touched]} — a placeholder is not a path, "
+                 f"and the claim to build names files it cannot name")
     if builds and not touched:
         # Found by the mutation matrix (2026-10-04): a design may claim `builds: true` and name nothing it
         # touches. The three G2 clauses above and below each look at one field; none compared the claim with its
