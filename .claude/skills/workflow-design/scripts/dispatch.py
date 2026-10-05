@@ -38,7 +38,17 @@ from engines import REGISTRY as ENGINES             # noqa: E402  (the engine ad
 BRIEF_PARTS = ["## Template", "## Example", "## Standard"]
 LOCK = threading.Lock()
 FILLED = "(filled by the dispatcher)"
-DEFAULT_BUDGET = {"max_roles": 5, "max_parallel": 3, "max_rounds": 2, "max_calls": 30}
+DEFAULT_BUDGET = {"max_rounds": 2, "max_calls": 30}
+
+# How many engine processes the dispatcher keeps alive at once. A **machine setting**, not a rule about designing a
+# workflow: it is the worker-pool size, so a run does not ask the box to hold twenty CLI processes.
+#
+# It was `budget["max_parallel"]`, sitting beside a "cap" of "5 subagent roles per run and 3 running at once".
+# EJ deleted that rule on 2026-10-05 — *"not logic at all"* — after finding where the numbers came from: they are
+# the spike rule's in `TASK_TYPES.md` ("run at most 3 in parallel", "up to 5 in a round", both about candidate
+# *approaches*), re-labelled as a rule about *roles* and *concurrency*. Two different units, called the same word,
+# in one sentence. The pair survives where it belongs — in the spike rule, still about approaches.
+MAX_WORKERS = 3
 
 
 # ---------------------------------------------------------------- plan
@@ -59,14 +69,8 @@ def check_plan(plan: dict, base: Path) -> list[str]:
     if len(ids) != len(set(ids)):
         f.append("node ids are not unique")
     b = plan["budget"]
-    roles = {n.get("role") for n in nodes if n.get("engine") != "script"}
-    if len(roles) > b["max_roles"]:
-        f.append(f"{len(roles)} roles > cap {b['max_roles']}: cut the run into slices (method 3.7)")
-    groups: dict[str, int] = {}
     for n in nodes:
         nid = n.get("id", "?")
-        if n.get("parallel_group"):
-            groups[n["parallel_group"]] = groups.get(n["parallel_group"], 0) + 1
         adapter = ENGINES.get(n.get("engine"))
         if adapter is None:
             f.append(f"{nid}: engine {n.get('engine')!r} is not one of {sorted(ENGINES)}")
@@ -100,9 +104,6 @@ def check_plan(plan: dict, base: Path) -> list[str]:
                 workdir = base / target["workdir"]
                 if workdir.exists() and not workdir.is_dir():
                     f.append(f"{nid}: workdir {target['workdir']!r} is not a folder")
-    for g, k in groups.items():
-        if k > b["max_parallel"]:
-            f.append(f"parallel group {g!r} has {k} nodes > cap {b['max_parallel']}")
     if not f and _cycle(nodes):
         f.append("dependency cycle")
     return f
@@ -311,7 +312,7 @@ def cmd_run(a) -> int:
             if len(batch) == 1:
                 run_node(plan, batch[0], by_id, state, run_dir, base, a.dry_run, log)
             else:
-                with ThreadPoolExecutor(max_workers=plan["budget"]["max_parallel"]) as ex:
+                with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
                     futs = [ex.submit(run_node, plan, n, by_id, state, run_dir, base, a.dry_run, log) for n in batch]
                     errs = [f.exception() for f in futs if f.exception()]
                 if errs:

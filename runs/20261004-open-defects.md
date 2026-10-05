@@ -238,3 +238,32 @@ git is present.
 **What this means for 1.5.** Its witness (a) — compare `git diff` against the design's `touched_paths` — is only
 available where the product *is* a repository. So 1.5 is: **git where there is git, and no witness where there is
 not**, with that limit recorded rather than hidden.
+
+
+## The caps rule — deleted 2026-10-05
+
+EJ: *"I feel want this rule can delete because not logic at all."* Correct, and here is why it read that way.
+
+`METHOD.md` said: *"At most **5 subagent roles per run** and at most **3 running at once**"*. Tracing the numbers
+found them in the **spike rule** in `TASK_TYPES.md` — *"run **at most 3 in parallel** … **Up to 5** in a round only
+when the check is fully automatic"* — which is about **candidate approaches for one question**, not about roles and
+not about concurrency. Same pair of numbers, same cited source, different meaning: a transcription, not a rule.
+
+One rule, two units, one word:
+
+| | what it counted | whose business |
+|---|---|---|
+| **5** | distinct `role` values across a run's nodes | a **design** property |
+| **3** | engine processes alive at one instant | the **machine** (the worker pool) |
+
+Deleted from: `METHOD.md` 3.7 (now a note saying what was removed and why), `EXECUTOR_KINDS.md`'s budget list,
+`DISPATCHER_DESIGN.md`'s example plan, and `dispatch.py` — `DEFAULT_BUDGET` loses `max_roles` and `max_parallel`,
+and `check_plan` no longer refuses a plan for having six roles or a four-node parallel group.
+
+**Kept:** the pool size, now `MAX_WORKERS = 3` in `dispatch.py`, labelled for what it is — a machine setting, not a
+rule about designing a workflow. And the pair stays in the spike rule, where it is about approaches.
+
+`METHOD.md`'s "anchors for the number 3" paragraph now says it anchors the **step count**, so the two 3s cannot be
+confused again.
+
+Pinned by `test_many_roles_and_a_wide_group_are_allowed`, so the caps cannot return by habit. **512 tests pass.**

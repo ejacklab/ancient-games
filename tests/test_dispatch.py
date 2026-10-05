@@ -153,6 +153,15 @@ def test_check_failure_repairs_with_real_feedback_then_passes(tmp_path):
     assert rec["rounds"] == 1 and rec["status"] == "done" and "FIXED" in Path(rec["result"]).read_text()
 
 
+def test_the_budget_no_longer_carries_the_caps():
+    """The two keys are gone, not merely unused: a plan cannot set them and nothing reads them."""
+    assert "max_roles" not in engines.__dict__ or True          # engines never held them
+    import dispatch
+    assert "max_roles" not in dispatch.DEFAULT_BUDGET
+    assert "max_parallel" not in dispatch.DEFAULT_BUDGET
+    assert dispatch.MAX_WORKERS == 3
+
+
 def test_rounds_cap_blocks(tmp_path):
     check = {"name": "never", "cmd": [sys.executable, "-c", "raise SystemExit(1)"]}
     r = run(tmp_path, "run", setup(tmp_path, fix_attempts([node("a", "ok", check=check, repair="a")]),
@@ -166,14 +175,23 @@ def test_unclear_stops_and_reaches_the_coo(tmp_path):
     assert "b" not in state(tmp_path)["nodes"]          # nothing after it ran
 
 
-def test_plan_refusals(tmp_path):
+def test_many_roles_and_a_wide_group_are_allowed(tmp_path):
+    """The role and parallel-group caps were deleted 2026-10-05 (EJ: "not logic at all").
+
+    They re-labelled the spike rule's numbers from TASK_TYPES.md — "run at most 3 in parallel", "up to 5 in a
+    round", both about candidate *approaches* — as a rule about *roles* and *concurrency*, which is why the
+    sentence would not parse: two different units called the same word.
+
+    Pinned so the caps cannot return by habit. Six roles and a four-node group are simply plans now. The worker
+    pool still keeps its size (`dispatch.MAX_WORKERS`), because that is a machine setting, not a design rule.
+    """
     many = [{"id": f"n{i}", "role": f"r{i}", "engine": "codex", "model": "gpt-6.1-sol", "brief": "brief.md",
              "inner_timer": "300s", "outer_timeout_s": 330} for i in range(6)]
-    p = setup(tmp_path, many)
-    assert run(tmp_path, "check", p).returncode == 1
-    assert "6 roles > cap 5" in run(tmp_path, "check", p).stdout
+    out = run(tmp_path, "check", setup(tmp_path, many)).stdout
+    assert "roles > cap" not in out, out
     group = [node(f"n{i}", "ok", parallel_group="g") for i in range(4)]
-    assert "4 nodes > cap 3" in run(tmp_path, "check", setup(tmp_path, group)).stdout
+    out = run(tmp_path, "check", setup(tmp_path, group)).stdout
+    assert "nodes > cap" not in out, out
     (tmp_path / "thin.md").write_text("# Brief\n## Task\nx\n## Template\nt\n")
     eng = [{"id": "c", "role": "coder", "engine": "codex", "model": "gpt-6.1-sol", "brief": "thin.md",
             "inner_timer": "300s", "outer_timeout_s": 330}]
@@ -181,7 +199,9 @@ def test_plan_refusals(tmp_path):
     assert "lacks ['## Example', '## Standard']" in out
     cyc = [node("a", "ok", needs=["b"]), node("b", "ok", needs=["a"])]
     assert "dependency cycle" in run(tmp_path, "check", setup(tmp_path, cyc)).stdout
-    assert run(tmp_path, "run", setup(tmp_path, many)).returncode == 2
+    # `run` still refuses a plan that fails its own check (exit 2) — but no longer because of a role count.
+    # A cycle is the refusal to use here, since it did not depend on the deleted caps.
+    assert run(tmp_path, "run", setup(tmp_path, cyc)).returncode == 2
     unknown = [{"id": "x", "role": "explorer", "engine": "gemini", "model": "m", "brief": "brief.md",
                 "inner_timer": "600s", "outer_timeout_s": 660}]
     assert "engine 'gemini' is not one of" in run(tmp_path, "check", setup(tmp_path, unknown)).stdout

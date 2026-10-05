@@ -245,7 +245,8 @@ script gate (`design_gate.py`) plus one blind fixed-checklist pass (Sonnet 5.5; 
 design builds or EJ flagged high risk), and every run reconciles its claim in `docs/TASK_TYPES_LEDGER.md` —
 that ledger is how the defaults earn their n. (Added 2026-10-01 at EJ's request; n=0.)
 
-Anchors for the number 3: Gate splits capability lists over three (`ancient_games/stages.py:109`) and the
+Anchors for the number 3 **in a piece's step count** (not a cap on roles or concurrency — that rule was deleted
+2026-10-05, see 3.7): Gate splits capability lists over three (`ancient_games/stages.py:109`) and the
 the plan-wide cap of 3 dispatched corroborating sources (`ancient_games/registry.py:24`, used at `stages.py:309`; it caps dispatches per plan, not agents running at once — corrected 2026-10-03).
 
 ### 3.5 Clear pieces run as loops
@@ -347,11 +348,20 @@ Only when the design is complete, look for tasks that are **really independent**
 Parallel buys only clock time, and it costs predictability, debuggability and extra joins. Independence of
 verifiers is about what they see, not when they run: two verifiers can run one after another and stay independent.
 
-**Caps (EJ, 2026-10-03; n=0 — a friend's practice plus reasoning, not measured).** At most **5 subagent roles per
-run** and at most **3 running at once** (our own number; the code's 3 at `ancient_games/registry.py:24` caps
-corroborating dispatches per plan, not concurrency); a retry of the same node is not a new
-subagent. A design that needs more is too big: cut it into slices or separate runs, never raise the cap. The
-feedback log (3.8 item 11) records calls per run, so the cap is revised from data.
+**Caps — deleted 2026-10-05 (EJ: "not logic at all").** A rule here read *"at most 5 subagent roles per run and at
+most 3 running at once"*. It was removed once its numbers were traced: they are the **spike rule's** in
+`docs/TASK_TYPES.md` — *"run at most 3 in parallel"*, *"up to 5 in a round"*, both about candidate **approaches** for
+one question — re-labelled as a rule about **roles** and **concurrency**.
+
+The two halves were never the same kind of thing, which is why the sentence would not parse:
+
+* **5 roles** counted distinct `role` values over a run's nodes — a property of a *design*.
+* **3 running** counted engine processes alive at one instant — a property of the *machine* (the dispatcher's worker
+  pool, now the constant `MAX_WORKERS` in `scripts/dispatch.py`).
+
+The pair survives where it belongs, in the spike rule, still about approaches. `check_plan` no longer refuses a plan
+for having many roles or a wide parallel group; the budget keeps `max_rounds` and `max_calls`, which are limits on
+*attempts* and are required by 3.5. **If a run needs many roles, that is a design question, not a cap.**
 
 ### 3.8 Running a node: executors are tools, timers, pass-back, no polling
 

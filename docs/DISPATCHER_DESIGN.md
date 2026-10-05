@@ -78,7 +78,7 @@ node, a small-issue fix (build-a-feature step 6), a budget ceiling, or `UNCLEAR:
 ```json
 {
   "run_id": "20261004-feature-x",
-  "budget": {"max_roles": 5, "max_parallel": 3, "max_rounds": 2, "token_ceiling": 2000000},
+  "budget": {"max_rounds": 2, "token_ceiling": 2000000},
   "nodes": [
     {"id": "classify", "role": "classifier", "engine": "agy", "model": "gemini-3.1-pro-high",
      "brief": "runs/<id>/briefs/explore.md", "result": "runs/<id>/nodes/explore-{attempt}.result.md",

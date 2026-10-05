@@ -314,8 +314,10 @@ details (EJ, 2026-10-02; n=0). The vision, the requirements and every approval s
    brief carries a template, a worked example and the standard the result is judged by (method 3.8;
    `docs/workflow-templates/node-brief.md`), so the worker needs no guessing and she never rewrites a result.
 2. **Budget.** Enforces the ceiling EJ sets: attempt limits, timeouts, the cost ceiling, the tier exit, the
-   executor-failure rule below, the model check, and the caps of at most 5 subagent roles per run and 3 at once
-   (method 3.7). When the next step would pass the ceiling she stops and reports;
+   executor-failure rule below and the model check. (The "5 roles and 3 at once" caps were deleted 2026-10-05 at
+   EJ's direction — see method 3.7; they had re-labelled the spike rule's numbers as a role cap. The dispatcher
+   still runs at most `MAX_WORKERS` nodes at a time, which is a pool size, not a rule about a design.)
+   When the next step would pass the ceiling she stops and reports;
    she never raises it herself.
 3. **Acceptance.** Accepts, sends back for repair, or escalates, on the digest, the verdict and the evidence path
    of an independent verifier (a fresh session, a different engine where possible, rule 5). Reading the state
