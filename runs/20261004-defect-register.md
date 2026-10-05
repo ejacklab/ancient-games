@@ -163,6 +163,13 @@ field is non-empty cannot fail**, and the honest-but-unknown case is exactly whe
 consequence is deliberate — a design whose baseline is `UNRESOLVED` no longer passes, because it should be a
 question rather than a design.
 
+
+## 9. Found while answering the `others` question — 1 issue
+
+| # | Finding | Evidence | Reviewers | ✓ |
+|---|---|---|---|---|
+| 9.1 | **The gate cannot tell which node writes.** `builds` and `touched_paths` are design-level, so a design says "something here builds" and names files, but no node carries the fact. G13 can therefore only catch a *wholly* unclassified design that builds in one node; a three-node design with the writer first passes. This is register 1.5's missing witness seen from the node side, and it is why "`others` may not build" was not expressible as a rule | `design_gate.py` G2/G13; found 2026-10-05 | claude code (found it by being blocked by it) | |
+
 ## Where to start
 
 The gate family (1) and the test family (2) are one story: the gate cannot reject, and the test was built so that it

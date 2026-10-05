@@ -71,6 +71,15 @@ def design_for(entry: dict) -> dict:
     cats = exp["categories"]
     known = TYPES["categories"]
     nodes, prev = [], None
+    if exp["builds"] and cats == ["others"]:
+        # G13: an unclassified piece that builds gets a bounded explore node first (method 3.3)
+        nodes.append({"id": "n0-scope", "category": "others", "engine": NO_DEFAULT_ENGINE,
+                      "check": "the unknown is named: what the piece is, and which category it turns out to be",
+                      "sabotage": "scope something that does not exist \u2192 NOT FOUND, not a guess",
+                      **five_things("others", "n0-scope", NO_DEFAULT_ENGINE, TYPES), "needs": [],
+                      "loop": {"limit": 2, "exit": "fresh node on a stronger tier with the scoping note",
+                               "feedback": "what the explore actually returned"}})
+        prev = "n0-scope"
     for i, c in enumerate(cats):
         n = {"id": f"n{i + 1}", "category": c, "engine": ENGINES[c],
              "check": (known[c].get("check") or f"a check for {c}"),
@@ -189,11 +198,16 @@ def test_guard_research_only_on_building_design():
     assert any(x.startswith("G2") for x in findings), findings
 
 
-def test_others_category_may_build():
+def test_others_builds_only_behind_a_scoping_node():
+    # changed 2026-10-05 (G13): `others` was exempt from everything, so one unclassified node could both work
+    # out what the work was and do it. It may still build — but a bounded explore node goes first.
     e = next(x for x in CORPUS if x["id"] == "t16-vague-better")
     d = design_for(e)
     assert d["categories"] == ["others"] and d["builds"]
+    assert [n["id"] for n in d["nodes"]][:2] == ["n0-scope", "n1"]
     assert dg.validate_design(d, TYPES) == []
+    collapsed = json.loads(json.dumps(d)); collapsed["nodes"] = [collapsed["nodes"][1]]
+    assert any(x.startswith("G13") for x in dg.validate_design(collapsed, TYPES))
 
 
 def test_margin_boundaries():

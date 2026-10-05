@@ -18,6 +18,7 @@ Findings are named:
   G10 a design that builds carries `baseline.command` and names the node that captures it
   G11 a node names a real engine, not the table's `—` placeholder
   G12 `baseline.command` and `touched_paths` hold values, not promises to fill them in later
+  G13 an `others` piece is resolved by an explore node before it is the first thing to run
   G8 labels agree: the design's categories equal the categories its nodes carry (method 3.2: the piece
      labels replace the provisional category, so a claimed category no node carries, or a node category
      the design does not claim, means the relabelling did not happen; the in-run `code review` node that G6
@@ -329,6 +330,19 @@ def validate_design(d: dict, types: dict) -> list[str]:
         if kind == "unknown":
             f.append(f"G11: node {n.get('id')!r} names engine {n.get('engine')!r}, which is not an engine — "
                      f"`others` has no default in the table, so the design must work one out (method 3.2)")
+    # G13 (2026-10-05). `others` is exempt from the category checks, so an unclassified piece could be a single
+    # node that both decides what the work is and does it — the one case where "I do not know what this is" gets
+    # to change the product in one step. Method 3.3's own table says what an unknown gets: a *bounded explore
+    # loop*, which is a node of its own. Given an equally vague prompt and no help, Claude Code produced
+    # `n1-diagnose` first and resolved it rather than labelling the piece `others`; this rule asks for that shape.
+    #
+    # The honest limit: `builds` is a design-level flag, so the gate cannot tell *which* node writes. This rule
+    # therefore catches the shape it can see — a wholly unclassified design that builds in one node — and the
+    # per-node witness is register 1.5's missing one, not something this rule can supply.
+    if d.get("builds") and len(nodes) == 1 and _cat(nodes[0]) == "others":
+        f.append("G13: the design builds and is one `others` node — an unclassified piece cannot both work out "
+                 "what the work is and do it in one step; give it a bounded explore node first (method 3.3) and "
+                 "run the work that depends on it after")
     if cats and node_cats:
         for c in sorted(set(cats) - node_cats):
             f.append(f"G8: category {c!r} is claimed but no node carries it — relabel from the algorithm (3.2)")

@@ -144,3 +144,26 @@ Fixed: **G11** rejects any node whose engine is not an engine; the harness resol
 **The question this leaves** is smaller and real: `others` is exempt from the category checks (G2), so a piece
 nobody could classify **may build product code** — now with an engine the harness chose, not the method. Whether
 that is allowed is EJ's call, and it is the only part of 5.6 that was ever a decision.
+
+
+## The `others` question, answered by the experiment — 2026-10-05
+
+EJ, after seeing Claude Code handle a vague prompt unaided: *"so now you know what to do with the `other`."*
+
+What the experiment showed: given *"Debug the nightly timeout, fix it, grade tonight's run afterwards, and write the
+note for standup"* — a prompt with two things nobody could know — Claude Code **did not use `others` at all**. It
+classified the work properly and put `n1-diagnose` first, a node whose whole job was to find out what the unknown
+was before anything was built on it. Method 3.3's own table says the same: *unknown → a bounded explore loop*.
+
+So an unclassified piece is not waved through and it is not banned. It is **resolved first**:
+
+* **G13** — a design that builds may not be one `others` node. One node cannot both work out what the work is and
+  do it; the unknown gets a bounded explore node of its own, and the work that depends on it runs after.
+* The harness now emits `n0-scope → n1` for the four corpus prompts that are unclassified and build (`p093`, `p199`,
+  `p210`, `p300`). Same categories, same labels, one node more.
+* Pinned by a mutation. The matrix is **28/28 caught, 0 holes**.
+
+**The honest limit of the rule.** `builds` is a *design-level* flag, so the gate cannot tell which node writes. G13
+catches the shape it can see — a wholly unclassified design that builds in one node — and the per-node witness it
+would need is register 1.5's missing one. That is recorded rather than papered over: the gate is still trusting the
+design's own word about what it touches.

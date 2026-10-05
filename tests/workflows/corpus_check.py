@@ -90,6 +90,18 @@ def build_design(cats: list[str], builds: bool, pipeline: str | None, types: dic
                  tiny: bool = False) -> dict:
     known = types["categories"]
     nodes, prev = [], None
+    if builds and cats == ["others"]:
+        # G13. The table gives no default for `others`; method 3.3 gives an unknown piece a bounded explore loop,
+        # so the scoping node runs first and the building piece follows it. This is the shape Claude Code reached
+        # for unaided on an equally vague prompt (2026-10-05).
+        nodes.append({"id": "n0-scope", "category": "others", "engine": NO_DEFAULT_ENGINE,
+                      "check": "the unknown is named: what the piece is, and which category it turns out to be",
+                      "sabotage": "ask it to scope something that does not exist \u2192 it reports NOT FOUND, not a guess",
+                      **five_things("others", "n0-scope", NO_DEFAULT_ENGINE, types),
+                      "needs": [],
+                      "loop": {"limit": 2, "exit": "fresh node on a stronger tier with the scoping note",
+                               "feedback": "what the explore actually returned"}})
+        prev = "n0-scope"
     for i, c in enumerate(cats):
         n = {"id": f"n{i + 1}", "category": c, "engine": ENGINES.get(c, "claude sonnet 5.5"),
              "check": (known[c].get("check") or f"a check for {c}"),

@@ -123,6 +123,12 @@ def m_split_reviewer_is_one_of_the_builders(d):
             break
 
 
+def m_others_builds_in_one_node(d):
+    """G13: `others` is exempt from the category checks, so one node could scope the unknown and build on it."""
+    d["categories"] = ["others"]
+    d["nodes"] = [dict(d["nodes"][0], category="others", needs=[])]
+
+
 def m_baseline_command_is_a_placeholder(d):
     """Found by Claude Code on its own design, 2026-10-05: `UNRESOLVED` is not a test command."""
     d["baseline"]["command"] = "UNRESOLVED: the repo's own test command, found by n1"
@@ -205,6 +211,7 @@ MATRIX = [
     ("no sabotage proof", m_no_sabotage_proof, "G9", ""),
     # closed 2026-10-05 by the format change: the design now carries a `baseline` and the five things as
     # contents, so the three mutations that used to be holes are rules with a mutation each.
+    ("one `others` node that builds", m_others_builds_in_one_node, "G13", ""),
     ("`baseline.command` is a placeholder", m_baseline_command_is_a_placeholder, "G12", ""),
     ("`touched_paths` is a placeholder", m_touched_paths_is_a_placeholder, "G12", ""),
     ("the engine is the table's `—` placeholder", m_engine_is_the_tables_placeholder, "G11", ""),
