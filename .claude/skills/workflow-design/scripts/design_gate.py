@@ -15,6 +15,7 @@ Findings are named:
   G6 a design with building nodes carries a reviewer; single-kind builders get a different-kind reviewer
   G7 ledger rows carry every field the reconciliation needs
   G9 a building node carries the sabotage that proves its check can fail
+  G10 a design that builds carries `baseline.command` and names the node that captures it
   G8 labels agree: the design's categories equal the categories its nodes carry (method 3.2: the piece
      labels replace the provisional category, so a claimed category no node carries, or a node category
      the design does not claim, means the relabelling did not happen; the in-run `code review` node that G6
@@ -124,6 +125,61 @@ def _cat(node: dict) -> str:
     return (node.get("category") or "").strip().lower()
 
 
+# The five things, as fields a node carries rather than names it lists. `context` is the brief the agent is given,
+# `contract` is what the piece is for and how it ends, `state` is what it reads and writes, `tools` what it may use,
+# `evidence` where its output lands.
+CONTRACT_STOP = ("criteria", "baseline", "must_not_change")
+
+
+def check_five(n: dict) -> str:
+    """The first thing wrong with a node's contents, or '' when all five are carried."""
+    brief = (n.get("brief_given") or "").strip()
+    if not brief:
+        return "has no context: brief_given is empty"
+    if not (n.get("intent") or "").strip():
+        return "has no contract: intent is empty"
+    stop = n.get("stop")
+    if not isinstance(stop, dict):
+        return "has no three-part stop (method 3.6: criteria, baseline, must_not_change)"
+    if [k for k in CONTRACT_STOP if not (stop.get(k) or "").strip()]:
+        return f"stop is missing {[k for k in CONTRACT_STOP if not (stop.get(k) or '').strip()]}"
+    if not (n.get("returns") or "").strip():
+        return "has no contract: returns is empty"
+    if not (n.get("state_reads") or n.get("state_writes") or ""):
+        return "has no state: neither state_reads nor state_writes is set"
+    if not (n.get("tools") or []):
+        return "has no tools listed"
+    if not (n.get("evidence") or []):
+        return "has no evidence paths"
+    return ""
+
+
+def check_baseline(d: dict, nodes: list[dict]) -> list[str]:
+    """A design that builds names the baseline and the node that captures it (register 1.2, and 5.1's owner)."""
+    if not d.get("builds"):
+        return []
+    b = d.get("baseline")
+    if not isinstance(b, dict) or not (b.get("command") or "").strip():
+        return ["G10: the design builds, but carries no `baseline.command` — the product's test command that "
+                "part 2 of every building node's stop is measured against"]
+    owner = b.get("captured_by")
+    ids = {n.get("id") for n in nodes}
+    # `script` is a real answer, not a dodge: from a repo root the dispatcher's own wrapper can capture the
+    # baseline before it dispatches anything, and naming that is better than leaving the owner blank (register
+    # 5.1). Anything else must be a node that runs before the first builder.
+    if owner == "script":
+        return []
+    if owner not in ids:
+        return [f"G10: baseline.captured_by {owner!r} is neither a node in this design nor \"script\""]
+    builders = [n.get("id") for n in nodes
+                if str(n.get("builds")).lower() == "true" or n.get("category") in ("code generation",)]
+    order = [n.get("id") for n in nodes]
+    if builders and order.index(owner) > order.index(builders[0]):
+        return [f"G10: baseline.captured_by {owner!r} runs after the first building node {builders[0]!r} — the "
+                f"baseline must be recorded before anything builds"]
+    return []
+
+
 def validate_design(d: dict, types: dict) -> list[str]:
     f: list[str] = []
     known = types["categories"]
@@ -160,9 +216,12 @@ def validate_design(d: dict, types: dict) -> list[str]:
             # filename like `tests/test_task_types.py` is not, which the first version of this rule got wrong
             # and a real design promptly demonstrated (2026-10-05).
             f.append(f"G3: node {nid}'s check points at the category table instead of stating what is checked")
-        missing = FIVE - {str(x).lower() for x in n.get("five_things", [])}
-        if missing:
-            f.append(f"G3: node {nid} is missing {sorted(missing)}")
+        # The five things, as CONTENTS (2026-10-05). Until today this checked that five *names* appeared in a
+        # list, with nothing behind them — `intake.js` had defined the real fields all along, so the gate now
+        # reads them instead of a list of words. One shape, not two.
+        f3 = check_five(n)
+        if f3:
+            f.append(f"G3: node {nid} {f3}")
         lp = n.get("loop")
         if lp is None and known.get(_cat(n), {}).get("loop"):
             f.append(f"G3: node {nid} is a loop-pattern category but carries no loop")
@@ -241,6 +300,7 @@ def validate_design(d: dict, types: dict) -> list[str]:
         # the in-run review node G6 demands is not a deliverable of the prompt, so it may be unlisted
         for c in sorted(node_cats - set(cats) - {"code review"}):
             f.append(f"G8: a node carries category {c!r} that the design does not list")
+    f.extend(check_baseline(d, nodes))
     return f
 
 
@@ -276,20 +336,36 @@ def validate_ledger_row(row: dict) -> list[str]:
     return f
 
 
+def _contents(nid: str, engine: str = "codex gpt-6.1-sol") -> dict:
+    """The five things as contents, not as names — the shape `.claude/workflows/intake.js` already emits."""
+    return {
+        "brief_given": "the brief this piece is given, and what it is withheld",
+        "intent": "one bounded piece: why it exists",
+        "stop": {"criteria": "the check's criteria pass",
+                 "baseline": "everything the baseline recorded as passing still passes",
+                 "must_not_change": "the paths outside this design's may-change set"},
+        "returns": "the node's result file",
+        "state_reads": "the state file",
+        "tools": [engine.split()[0]],
+        "evidence": [f"runs/<runId>/nodes/{nid}.result.md"],
+    }
+
+
 def _good_design() -> dict:
-    five = sorted(FIVE)
     return {
         "categories": ["research and reports", "code generation"],
         "builds": True, "touched_paths": ["x.py"], "pipeline": "research → codegen",
+        "baseline": {"command": "env -u NO_COLOR python3 -m pytest -q", "captured_by": "script"},
         "nodes": [
             {"id": "n1", "category": "research and reports", "engine": "codex gpt-6.1-sol",
-             "check": "questions answered (fixed checklist)", "five_things": five, "needs": []},
+             "check": "questions answered (fixed checklist)", **_contents("n1"), "needs": []},
             {"id": "n2", "category": "code generation", "engine": "codex gpt-6.1-sol",
              "check": "pytest -q green", "sabotage": "break the code → the check goes red",
-             "five_things": five, "needs": ["n1"],
+             **_contents("n2"), "needs": ["n1"],
              "loop": {"limit": 2, "exit": "fresh node on stronger tier", "feedback": "the check's real output"}},
             {"id": "n3", "category": "code review", "engine": "claude sonnet 5.5",
-             "check": "fixed checklist; findings with file:line", "five_things": five, "needs": ["n2"]}],
+             "check": "fixed checklist; findings with file:line", **_contents("n3", "claude sonnet 5.5"),
+             "needs": ["n2"]}],
         "design_source": "default", "estimate": {"tokens": 100000},
     }
 
@@ -322,6 +398,14 @@ def self_test(types_path: Path) -> int:
     expect("a node category the design does not list -> G8", d, "G8")
     d = copy.deepcopy(_good_design()); d["categories"] = ["research and reports", "code generation", "classification"]
     expect("a claimed category no node carries -> G8", d, "G8")
+    d = copy.deepcopy(_good_design()); d["nodes"][1]["brief_given"] = ""
+    expect("a node with no context -> G3", d, "G3")
+    d = copy.deepcopy(_good_design()); d["nodes"][1]["stop"] = {"criteria": "x"}
+    expect("a stop missing two of its three parts -> G3", d, "G3")
+    d = copy.deepcopy(_good_design()); d["baseline"]["captured_by"] = "nobody"
+    expect("a baseline with no real owner -> G10", d, "G10")
+    d = copy.deepcopy(_good_design()); del d["baseline"]
+    expect("a design that builds with no baseline -> G10", d, "G10")
     d = copy.deepcopy(_good_design()); d["nodes"][1]["check"] = ""
     expect("a node without a check -> G3", d, "G3")
     d = copy.deepcopy(_good_design()); d["nodes"][1]["loop"] = {"exit": "x", "feedback": "y"}

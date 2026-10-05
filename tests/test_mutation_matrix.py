@@ -23,13 +23,15 @@ def test_the_gate_catches_every_mutation_aimed_at_a_rule():
     assert r.returncode == 0, r.stdout + r.stderr
 
 
-def test_the_matrix_reports_the_holes_it_cannot_plug():
-    """Three holes are known and deliberate: the algorithm requires work the gate has no rule for, and the matrix
-    must keep saying so rather than quietly dropping them from the list."""
+def test_the_matrix_has_no_holes_left():
+    """The three deliberate holes were closed on 2026-10-05 by the format change: the design carries a
+    `baseline` and the five things as contents, so a mutation that breaks what the algorithm requires is now
+    caught by a rule. The matrix must find nothing it cannot see."""
     r = subprocess.run([sys.executable, str(MATRIX)], capture_output=True, text=True, timeout=120)
-    assert "HOLE" in r.stdout, r.stdout
-    for hole in ("no baseline", "no three-part stop", "five_things names only"):
-        assert hole in r.stdout, f"{hole!r} disappeared from the matrix without a rule to cover it"
+    assert "HOLE" not in r.stdout, f"a hole reopened:\n{r.stdout}"
+    assert "cannot see 0 mutations" in r.stdout, r.stdout
+    for name in ("no baseline", "no three-part stop", "no contents behind the five names"):
+        assert name in r.stdout, f"{name!r} left the matrix without being closed by a rule"
 
 
 def test_the_matrix_can_fail():

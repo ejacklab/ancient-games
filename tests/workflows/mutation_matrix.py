@@ -51,7 +51,8 @@ def m_node_without_check(d):
 
 
 def m_node_missing_a_five_thing(d):
-    d["nodes"][0]["five_things"] = [x for x in d["nodes"][0]["five_things"] if x != "contract"]
+    """G3: the contents, not the names — drop one and the node has no contract."""
+    d["nodes"][0].pop("intent", None)
 
 
 def m_loop_missing(d):
@@ -102,7 +103,10 @@ def m_reviewer_is_the_same_kind(d):
 
 def m_node_category_not_claimed(d):
     d["nodes"].append({"id": "x1", "category": "web search", "engine": "agy", "check": "c",
-                       "five_things": sorted(dg.FIVE), "needs": []})
+                       "brief_given": "b", "intent": "i",
+                       "stop": {"criteria": "c", "baseline": "b", "must_not_change": "m"},
+                       "returns": "r", "state_reads": "s", "tools": ["x"], "evidence": ["e"],
+                       "needs": []})
 
 
 def m_claimed_category_without_a_node(d):
@@ -111,14 +115,29 @@ def m_claimed_category_without_a_node(d):
 
 # ---- what the ALGORITHM requires and the gate has no rule for ---------------------------------
 def m_no_baseline(d):
-    """Method 3.6: a building node's stop needs a baseline recorded before the first node that builds."""
-    d.pop("baseline", None)                     # already absent — the point is that nothing notices
+    """G10 (closed 2026-10-05): a design that builds must name the baseline command and its owner."""
+    d.pop("baseline", None)
+
+
+def m_baseline_owner_runs_too_late(d):
+    """G10: the owner must run before the first building node, not after it."""
+    d["baseline"]["captured_by"] = d["nodes"][-1]["id"]
 
 
 def m_no_three_part_stop(d):
-    """Method 3.6: the stop has three parts. There is nowhere in the schema to put them."""
+    """G3 (closed 2026-10-05): the stop carries method 3.6's three parts, or the node has no contract."""
     for n in d["nodes"]:
+        n["stop"] = {"criteria": "the check passes"}
+
+
+def m_no_contents(d):
+    """G3 (closed 2026-10-05): the five things are contents, not a list of their names."""
+    for n in d["nodes"]:
+        n.pop("brief_given", None)
         n.pop("stop", None)
+        n.pop("returns", None)
+        n.pop("tools", None)
+        n.pop("evidence", None)
 
 
 def m_placeholder_check_rather_than_the_rows_check(d):
@@ -126,7 +145,7 @@ def m_placeholder_check_rather_than_the_rows_check(d):
     d["nodes"][0]["check"] = "see TASK_TYPES.md"
 
 
-def m_five_things_names_with_nothing_behind_them(d):
+def m_five_things_names_with_nothing_behind_them_UNUSED(d):
     """The five names are present; there is no content field and no rule that could look for one."""
     d["nodes"][0]["five_things"] = sorted(dg.FIVE)
 
@@ -142,7 +161,7 @@ MATRIX = [
     ("unknown category", m_unknown_category, "G1", ""),
     ("builds, no product path", m_builds_without_product_touch, "G2", ""),
     ("node without a check", m_node_without_check, "G3", ""),
-    ("five_things missing one name", m_node_missing_a_five_thing, "G3", ""),
+    ("a node missing one of the five contents", m_node_missing_a_five_thing, "G3", ""),
     ("loop object missing", m_loop_missing, "G3", ""),
     ("loop without a limit", m_loop_without_limit, "G3", ""),
     ("loop without an exit", m_loop_without_exit, "G3", ""),
@@ -158,11 +177,12 @@ MATRIX = [
     ("claimed category, no node", m_claimed_category_without_a_node, "G8", ""),
     ("check points at the table", m_placeholder_check_rather_than_the_rows_check, "G3", ""),
     ("no sabotage proof", m_no_sabotage_proof, "G9", ""),
-    # no rule exists for these — the measurement
-    ("no baseline", m_no_baseline, None, "method 3.6 requires one; no G-rule exists"),
-    ("no three-part stop", m_no_three_part_stop, None, "method 3.6; no schema field, no rule"),
-    ("five_things names only", m_five_things_names_with_nothing_behind_them, None,
-     "no content field exists to check"),
+    # closed 2026-10-05 by the format change: the design now carries a `baseline` and the five things as
+    # contents, so the three mutations that used to be holes are rules with a mutation each.
+    ("no baseline", m_no_baseline, "G10", ""),
+    ("the baseline's owner runs too late", m_baseline_owner_runs_too_late, "G10", ""),
+    ("no three-part stop", m_no_three_part_stop, "G3", ""),
+    ("no contents behind the five names", m_no_contents, "G3", ""),
 ]
 
 

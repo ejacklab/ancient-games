@@ -24,9 +24,9 @@ re-read the code, or ran it). Issues without **✓** are engine claims I have no
 
 | # | issue | where | found by | ✓ |
 |---|---|---|---|---|
-| 1.1 | G3 checks that five field **names** appear, not their contents | `design_gate.py:146` | claude, codex (p2); claude, opencode (log) | ✓ |
-| 1.2 | No rule for a **baseline**, though every building node's stop requires one | `design_gate.py:150` | claude, opencode | ✓ |
-| 1.3 | No rule for the **three-part stop** itself | `design_gate.py:150` | claude, opencode | ✓ |
+| 1.1 | **FIXED 2026-10-05 — G3 requires the five things' contents (`check_five`).** G3 checks that five field **names** appear, not their contents | `design_gate.py:146` | claude, codex (p2); claude, opencode (log) | ✓ |
+| 1.2 | **FIXED 2026-10-05 — G10 requires `baseline.command` and an owner.** No rule for a **baseline**, though every building node's stop requires one | `design_gate.py:150` | claude, opencode | ✓ |
+| 1.3 | **FIXED 2026-10-05 — the stop carries method 3.6's three parts in both formats.** No rule for the **three-part stop** itself | `design_gate.py:150` | claude, opencode | ✓ |
 | 1.4 | `pattern` and `sabotage` are parsed from every category row and **used 0 times** | `design_gate.py:93` | claude, opencode | ✓ |
 | 1.5 | G2 takes `builds` and `touched_paths` **from the design itself** — self-referential | `design_gate.py:130` | claude | |
 | 1.6 | Loop rules run only if a loop already exists | `design_gate.py:150` | opencode | |
@@ -68,7 +68,7 @@ promises on every building node.
 | 4.2 | The checklist says **three** qualities and lists **four**, and method §5 is still titled "Three qualities" | `SKILL.md:165`, `METHOD.md:476` | all 4 | ✓ |
 | 4.3 | **The 3.8 mapping row is wrong in both directions** — the skill carries 3.8 inside steps 1 *and* 7. I added that row today | `DIAGRAM.md:213` | all 4 (pass 2) | ✓ |
 | 4.4 | `classification` is still routed to **`agy`/gemini-3.1-pro-high** in the role map, while the routing row in the same file says `deepseek-flash` | `EXECUTOR_KINDS.md:63` | codex, claude | ✓ |
-| 4.5 | `intake.js` emits **`pieces`**; `design_gate.py` consumes **`nodes`** — nothing joins them | `intake.js:178,238` | claude, codex, agy | ✓ |
+| 4.5 | **FIXED 2026-10-05 — one shape: the gate reads the fields `intake.js` emits.** `intake.js` emits **`pieces`**; `design_gate.py` consumes **`nodes`** — nothing joins them | `intake.js:178,238` | claude, codex, agy | ✓ |
 | 4.6 | Method 3.1 never received either of the two rules added to skill step 1 | `METHOD.md:79` | claude | ✓ |
 | 4.7 | The ledger header says "Coverage outcome"; the gate's field list says `coverage_result` (doc drift — the ledger check still passes, so the gate is positional) | `TASK_TYPES_LEDGER.md:7` | agy | ✓ |
 | 4.8 | The TASK_TYPES use-case table **teaches the pairing the expected labels penalise**: it instructs adding `information extraction` to "answer a question about existing code" prompts, which rule 2 forbids as a pass-through | `TASK_TYPES.md:63` | agy, claude, opencode | ✓ |
@@ -112,7 +112,7 @@ promises on every building node.
 |---|---|---|---|---|
 | 8.1 | **The engine split can defeat rule 5**: code generation is split between opencode and Codex, so a `codex` reviewer reviews code Codex partly wrote — it passes G6 only because `engine_kind` reads the cell's leading token | `testlog.md:105` | claude | ✓ |
 | 8.2 | **`DEFAULT_FALLBACKS["codex"]` is Claude**, so after a fallback a Claude-appointed verifier is no longer a different kind, and no rule restores it | `engines.py` | codex | ✓ |
-| 8.3 | Every node's `five_things` is the bare template list — `['context','contract','evidence','state','tools']` with nothing behind them | `testlog.md:72-79` | claude, opencode | ✓ |
+| 8.3 | **FIXED 2026-10-05 — a node's five things are contents, not a list of names.** Every node's `five_things` is the bare template list — `['context','contract','evidence','state','tools']` with nothing behind them | `testlog.md:72-79` | claude, opencode | ✓ |
 
 ## Totals
 

@@ -60,6 +60,26 @@ def builder_cats(cats: list[str], builds: bool, types: dict) -> list[str]:
             or (builds and known.get(c, {}).get("product") == "mixed")]
 
 
+
+def five_things(cat: str, nid: str, engine: str, types: dict) -> dict:
+    """The five things as fields, not as a list of their names (2026-10-05).
+
+    `intake.js` had defined these fields all along; the gate now reads them, so the harness emits them. `stop`
+    carries method 3.6's three parts.
+    """
+    row = types["categories"].get(cat, {})
+    return {
+        "brief_given": row.get("pattern") or f"the brief for {cat}",
+        "intent": f"{cat}: one bounded piece",
+        "stop": {"criteria": row.get("check") or f"the check for {cat} passes",
+                 "baseline": "everything the baseline recorded as passing still passes",
+                 "must_not_change": "paths outside the design's may_change set"},
+        "returns": "the node's result file",
+        "state_reads": "the state file",
+        "tools": [engine.split()[0]],
+        "evidence": [f"runs/<runId>/nodes/{nid}.result.md"],
+    }
+
 def build_design(cats: list[str], builds: bool, pipeline: str | None, types: dict,
                  tiny: bool = False) -> dict:
     known = types["categories"]
@@ -67,7 +87,8 @@ def build_design(cats: list[str], builds: bool, pipeline: str | None, types: dic
     for i, c in enumerate(cats):
         n = {"id": f"n{i + 1}", "category": c, "engine": ENGINES.get(c, "claude sonnet 5.5"),
              "check": (known[c].get("check") or f"a check for {c}"),
-             "sabotage": known[c].get("sabotage") or "", "five_things": list(FIVE),
+             **five_things(c, f"n{i + 1}", ENGINES.get(c, "claude sonnet 5.5"), types),
+             "sabotage": known[c].get("sabotage") or "",
              "needs": [prev] if prev else []}
         if c in LOOP_CATS:
             n["loop"] = {"limit": 2, "exit": "fresh node on stronger tier with handoff note",
@@ -80,7 +101,8 @@ def build_design(cats: list[str], builds: bool, pipeline: str | None, types: dic
             doc_rev = "codex gpt-6.1-sol" if builds else "claude sonnet 5.5"
             nodes.append({"id": f"n{i + 1}r", "category": "code review", "engine": doc_rev,
                           "check": "review against source: fixed checklist, facts traceable",
-                          "five_things": list(FIVE), "needs": [prev], "reviews": [f"n{i + 1}"]})
+                          **five_things("code review", f"n{i + 1}r", doc_rev, types),
+                          "needs": [prev], "reviews": [f"n{i + 1}"]})
             prev = f"n{i + 1}r"
     b_cats = builder_cats(cats, builds, types)
     b_nodes = [n for n in nodes if n["category"] in b_cats]
@@ -98,7 +120,8 @@ def build_design(cats: list[str], builds: bool, pipeline: str | None, types: dic
         rev = "codex gpt-6.1-sol" if k != "codex" else "claude sonnet 5.5"
         nodes.append({"id": f"nr{i + 1}", "category": "code review", "engine": rev,
                       "check": "fixed checklist; findings with file:line",
-                      "five_things": list(FIVE), "needs": [prev] if prev else [],
+                      **five_things("code review", f"nr{i + 1}", rev, types),
+                      "needs": [prev] if prev else [],
                       "reviews": ids})
         prev = f"nr{i + 1}"
     if (pipeline or "").strip().lower() == "grade → fix → regrade":
@@ -106,8 +129,10 @@ def build_design(cats: list[str], builds: bool, pipeline: str | None, types: dic
         nodes.append({"id": "nrg", "category": "grade a run",
                       "engine": ENGINES.get("grade a run", "claude sonnet 5.5"),
                       "check": "regrade verdict on the same rubric; a surviving FAIL goes to EJ",
-                      "five_things": list(FIVE), "needs": [prev] if prev else []})
-    return {"categories": cats, "builds": builds,
+                      **five_things("code review", f"nr{i + 1}", rev, types),
+                      "needs": [prev] if prev else []})
+    base = {"command": "env -u NO_COLOR python3 -m pytest -q", "captured_by": "script"}
+    return {"baseline": base if builds else None, "categories": cats, "builds": builds,
             "touched_paths": (["product/x"] if builds else []),
             "pipeline": pipeline, "nodes": nodes,
             "design_source": "default", "estimate": {"tokens": 100000}}

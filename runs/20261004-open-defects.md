@@ -3,7 +3,7 @@
 The register (`runs/20261004-defect-register.md`) holds 45 distinct issues. This file is the honest status of each
 after the day's work, so the next session does not have to rediscover which ones are live.
 
-**Headline: 2 of 45 are fixed, 3 are partial, 1 is addressed. 39 are open** — the 10 listed below plus 29 the table never had a status for because nothing touched them. The gate work changed the gate's
+**Headline (after the format change, 2026-10-05): 7 of 45 are fixed, 3 are partial, 1 is addressed. 39 are open** — the 10 listed below plus 29 the table never had a status for because nothing touched them. The gate work changed the gate's
 *ability to reject* — three real rules, found by the mutation matrix — but that was new ground, not the register's
 list. Almost everything the four reviews found is still standing.
 
@@ -12,9 +12,9 @@ list. Almost everything the four reviews found is still standing.
 | # | status | what remains |
 |---|---|---|
 
-| 1.1 | **OPEN** | needs a schema change: five_things is a list of names with no content field to check |
-| 1.2 | **OPEN** | needs a schema change: a design has no baseline field |
-| 1.3 | **OPEN** | needs a schema change: a building node has no stop field |
+| 1.1 | **FIXED** | FIXED — G3 requires the five things' contents (check_five); the five names are gone |
+| 1.2 | **FIXED** | FIXED — G10 requires `baseline.command` and an owner; the harness emits it |
+| 1.3 | **FIXED** | FIXED — the stop carries method 3.6's three parts, in both the gate and intake.js |
 | 1.4 | **PARTIAL** | G9 now reads `sabotage`; `pattern` is still parsed and used 0 times |
 | 1.5 | **PARTIAL** | the builds/touched_paths contradiction now fires (G2); G2 still takes both fields from the design |
 | 1.6 | **OPEN** | loop rules still run only when a loop is already present |
@@ -72,3 +72,29 @@ fallback. Both are live.
 `agy` cannot take part in a headless review: it auto-denies the `command` permission it needs, and the escape it
 suggests is the flag rule 3 forbids. Rule 2 routes research to agy, so routing and behaviour disagree. Recorded in
 the run READMEs; not a defect of the algorithm.
+
+## Closed by the format change — 2026-10-05
+
+EJ ruled on the one question: **should the gate validate contents, using the fields `intake.js` already defines?**
+Yes. One shape, and the gate reads it.
+
+| # | what closed it |
+|---|---|
+| **1.1** | `check_five` requires the five things as **contents** — brief_given, intent, a three-part stop, returns, state, tools, evidence. The list of five names is gone from both sides. |
+| **1.2** | **G10**: a design that builds must carry `baseline.command` and name who captures it. |
+| **1.3** | The stop carries method 3.6's **three parts** (`criteria`, `baseline`, `must_not_change`), in the gate and in `intake.js` alike. |
+| **4.5** | The gate and the runnable form finally share **one shape** — `design_gate.py` reads the fields `intake.js` emits. |
+| **8.3** | A bare template list cannot pass, because there is no list to pass. |
+| **5.1** | **PARTIAL.** The design must now name the baseline's owner — a step id or the literal `script` — so the blank the method left is gone. Which step in the run's own step list does it is still open. |
+
+The mutation matrix went from **18/18 caught plus 3 holes** to **23/23 caught, 0 holes, 0 missed, 0 false alarms**.
+That is the measurement: the three mutations that used to break what the algorithm requires with no rule to catch
+them are now caught by a rule, each with its own mutation.
+
+Cost, as projected: 94 of 300 designs needed a baseline (31%), 150 building nodes needed the three-part stop, and
+150 needed contents. The harness emits all three now, so the corpus is 0 bugs again — for the right reason this
+time, since the designs carry the substance rather than a list of its names.
+
+**Two of the five names still have no field of their own.** `tools` and `evidence` are defined here for the first
+time, with the minimum that makes them meaningful (a tool may be used; output lands somewhere). They are thinner
+than `context`, `contract` and `state`, and that is worth knowing before building on them.

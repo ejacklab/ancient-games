@@ -142,6 +142,17 @@ const ALGO_SCHEMA = {
     risk: { type: 'string', enum: ['low', 'high'], description: 'high if a mistake would be noticed late, cannot be undone, or touches many things' },
     risk_reason: { type: 'string' },
   },
+  // A design that builds records the product's test command and who captures it, before anything builds
+  // (register 1.2, and 5.1's missing owner). `captured_by` is a step id or the literal 'script'.
+  baseline: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['command', 'captured_by'],
+    properties: {
+      command: { type: 'string', description: 'the product test command every building piece part 2 is measured against' },
+      captured_by: { type: 'string', description: "the step id that records it, or 'script' for the dispatcher's wrapper" },
+    },
+  },
   required: ['algorithm_file', 'steps', 'unclear_spots', 'risk', 'risk_reason'],
 }
 
@@ -197,7 +208,18 @@ const DESIGN_SCHEMA = {
           exit_on_limit: { type: 'string', description: 'where the piece goes when the limit is hit; empty for pattern step' },
           needs: { type: 'array', items: { type: 'string' }, description: 'piece ids whose result this piece needs' },
           intent: { type: 'string', description: 'contract: one sentence, why this piece exists' },
-          stop: { type: 'string', description: 'contract: the observable condition that ends the piece' },
+          // method 3.6's three parts (2026-10-05). A stop that names one thing lets a piece end while the
+          // product is broken; the gate reads these three keys, so this is the same shape, not a second one.
+          stop: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['criteria', 'baseline', 'must_not_change'],
+            properties: {
+              criteria: { type: 'string', description: 'contract: the acceptance criteria this piece covers pass' },
+              baseline: { type: 'string', description: 'contract: everything the baseline recorded as passing still passes' },
+              must_not_change: { type: 'string', description: 'contract: the must-not-change set still holds' },
+            },
+          },
           returns: { type: 'string', description: 'contract: what comes back and in what shape' },
           files_touched: { type: 'array', items: { type: 'string' }, description: 'contract: paths the piece may create or edit' },
           must_not_change: { type: 'string', description: 'contract: what is off limits' },

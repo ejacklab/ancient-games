@@ -35,6 +35,31 @@ def builder_cats(cats: list, builds: bool) -> list:
             or (builds and known.get(c, {}).get("product") == "mixed")]
 
 
+
+def five_things(cat: str, nid: str, engine: str, types: dict) -> dict:
+    """The five things as fields, not as a list of their names (2026-10-05).
+
+    `intake.js` had defined these fields all along; the gate now reads them, so the harness emits them. `stop`
+    carries method 3.6's three parts.
+    """
+    row = types["categories"].get(cat, {})
+    return {
+        "brief_given": row.get("pattern") or f"the brief for {cat}",
+        "intent": f"{cat}: one bounded piece",
+        "stop": {"criteria": row.get("check") or f"the check for {cat} passes",
+                 "baseline": "everything the baseline recorded as passing still passes",
+                 "must_not_change": "paths outside the design's may_change set"},
+        "returns": "the node's result file",
+        "state_reads": "the state file",
+        "tools": [engine.split()[0]],
+        "evidence": [f"runs/<runId>/nodes/{nid}.result.md"],
+    }
+
+
+def _five(n: dict) -> dict:
+    """The five contents for an inline fixture node."""
+    return five_things(n.get("category", ""), str(n.get("id")), n.get("engine", ""), TYPES)
+
 def design_for(entry: dict) -> dict:
     exp = entry["expected"]
     cats = exp["categories"]
@@ -43,7 +68,8 @@ def design_for(entry: dict) -> dict:
     for i, c in enumerate(cats):
         n = {"id": f"n{i + 1}", "category": c, "engine": ENGINES[c],
              "check": (known[c].get("check") or f"a check for {c}"),
-             "sabotage": known[c].get("sabotage") or "", "five_things": list(FIVE),
+             **five_things(c, f"n{i + 1}", ENGINES.get(c, "claude sonnet 5.5"), TYPES),
+             "sabotage": known[c].get("sabotage") or "",
              "needs": [prev] if prev else []}
         if c in LOOP_CATS:
             n["loop"] = {"limit": 2, "exit": "fresh node on stronger tier with handoff note",
@@ -58,8 +84,11 @@ def design_for(entry: dict) -> dict:
         rev = "claude sonnet 5.5" if b_kinds == {"codex"} else "codex gpt-6.1-sol"
         nodes.append({"id": "nr", "category": "code review", "engine": rev,
                       "check": "fixed checklist; findings with file:line",
-                      "five_things": list(FIVE), "needs": [prev] if prev else []})
+                      **five_things("code review", f"nr{i + 1}", rev, TYPES),
+                      "needs": [prev] if prev else []})
     return {"categories": cats, "builds": exp["builds"],
+            "baseline": ({"command": "env -u NO_COLOR python3 -m pytest -q", "captured_by": "script"}
+                         if exp["builds"] else None),
             "touched_paths": (["product/x.py"] if exp["builds"] else []),
             "pipeline": exp["pipeline"], "nodes": nodes,
             "design_source": "default", "estimate": {"tokens": 100000}}
@@ -124,14 +153,16 @@ def test_mixed_category_semantics():
     d = {"categories": ["debugging"], "builds": False, "touched_paths": [],
          "nodes": [{"id": "n1", "category": "debugging", "engine": "codex gpt-6.1-sol",
                     "check": "repro test red before, green after",
-                     "sabotage": "revert the fix → red again", "five_things": list(FIVE), "needs": [],
+                     "sabotage": "revert the fix → red again",
+                     **five_things("debugging", "n1", "codex gpt-6.1-sol", TYPES), "needs": [],
                     "loop": {"limit": 2, "exit": "fresh node stronger tier", "feedback": "test output"}}],
          "design_source": "default"}
     assert dg.validate_design(d, TYPES) == []
-    d2 = json.loads(json.dumps(d)); d2["builds"] = True; d2["touched_paths"] = ["engine/x.py"]
+    d2 = json.loads(json.dumps(d)); d2["builds"] = True; d2["baseline"] = {"command": "pytest", "captured_by": "script"}; d2["touched_paths"] = ["engine/x.py"]
     assert any(x.startswith("G6") for x in dg.validate_design(d2, TYPES))
     d2["nodes"].append({"id": "nr", "category": "code review", "engine": "claude sonnet 5.5",
-                        "check": "fixed checklist", "five_things": list(FIVE), "needs": ["n1"]})
+                        "check": "fixed checklist",
+                        **five_things("code review", "nr", "claude sonnet 5.5", TYPES), "needs": ["n1"]})
     assert dg.validate_design(d2, TYPES) == []
 
 
@@ -188,7 +219,9 @@ def test_node_and_edge_rules():
     base = design_for(next(x for x in CORPUS if x["id"] == "t02-codegen-flag"))
     d = json.loads(json.dumps(base)); d["nodes"][0]["check"] = ""
     assert any(x.startswith("G3") for x in dg.validate_design(d, TYPES))
-    d = json.loads(json.dumps(base)); d["nodes"][0]["five_things"] = ["tools"]
+    d = json.loads(json.dumps(base)); d["nodes"][0].pop("intent", None)
+    assert any(x.startswith("G3") for x in dg.validate_design(d, TYPES))
+    d = json.loads(json.dumps(base)); d["nodes"][0]["stop"] = {"criteria": "only one part"}
     assert any(x.startswith("G3") for x in dg.validate_design(d, TYPES))
     d = json.loads(json.dumps(base)); d["nodes"][0]["loop"] = {"limit": 0, "exit": "x", "feedback": "y"}
     assert any(x.startswith("G3") for x in dg.validate_design(d, TYPES))
@@ -315,11 +348,13 @@ def test_building_document_needs_different_kind_review():
     writer = {"id": "n1", "category": "document and explain", "engine": "claude sonnet 5.5",
               "check": "checklist against source; LF endings",
               "sabotage": "plant a wrong command → the checklist rejects it",
-              "five_things": list(FIVE), "needs": []}
+              **five_things("document and explain", "n1", "claude sonnet 5.5", TYPES), "needs": []}
     same = {"id": "n1r", "category": "code review", "engine": "claude sonnet 5.5",
-            "check": "review against source", "five_things": list(FIVE), "needs": ["n1"]}
+            "check": "review against source",
+            **five_things("code review", "n1r", "claude sonnet 5.5", TYPES), "needs": ["n1"]}
     other = dict(same, engine="codex gpt-6.1-sol")
     base = {"categories": ["document and explain"], "builds": True, "touched_paths": ["docs/cmds.sh"],
+            "baseline": {"command": "env -u NO_COLOR python3 -m pytest -q", "captured_by": "script"},
             "pipeline": None, "design_source": "default"}
     assert any(x.startswith("G6") for x in dg.validate_design(dict(base, nodes=[writer, same]), TYPES))
     assert dg.validate_design(dict(base, nodes=[writer, other]), TYPES) == []
@@ -329,17 +364,19 @@ def test_reviewer_kind_not_diluted_by_mixed_builders():
     # round-3 blind-review catch (p274): pure builders are codex, a mixed builder is claude —
     # the blend must not make a codex reviewer acceptable
     d = {"categories": ["test data gen", "test script gen"], "builds": True,
+         "baseline": {"command": "env -u NO_COLOR python3 -m pytest -q", "captured_by": "script"},
          "touched_paths": ["tests/x"], "pipeline": None,
          "nodes": [
              {"id": "n1", "category": "test data gen", "engine": "claude sonnet 5.5",
               "check": "schema validation", "sabotage": "corrupt a field → the schema rejects it",
-               "five_things": list(FIVE), "needs": []},
+               **five_things("test data gen", "n1", "claude sonnet 5.5", TYPES), "needs": []},
              {"id": "n2", "category": "test script gen", "engine": "codex gpt-6.1-sol",
               "check": "seeded failure detected", "sabotage": "seed a failure → the script exits non-zero",
-               "five_things": list(FIVE), "needs": ["n1"],
+               **five_things("test script gen", "n2", "codex gpt-6.1-sol", TYPES), "needs": ["n1"],
               "loop": {"limit": 2, "exit": "stronger tier", "feedback": "output"}},
              {"id": "nr", "category": "code review", "engine": "codex gpt-6-astra",
-              "check": "fixed checklist", "five_things": list(FIVE), "needs": ["n2"]}],
+              "check": "fixed checklist",
+              **five_things("code review", "nr", "codex gpt-6-astra", TYPES), "needs": ["n2"]}],
          "design_source": "default"}
     assert any(x.startswith("G6") for x in dg.validate_design(d, TYPES))
     d["nodes"][2]["engine"] = "claude sonnet 5.5"

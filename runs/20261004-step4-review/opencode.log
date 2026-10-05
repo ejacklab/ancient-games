@@ -1,0 +1,1176 @@
+[0m
+> plan · MiniMax-M3.1-Flash-Preview
+[0m
+[0m→ [0mRead BRIEF.md
+[0m
+[0m$ [0mls -la /home/smoke01/dev/ancient-games/runs/20261004-step4-review/ && echo "---" && ls /home/smoke01/dev/ancient-games/docs/ | head -50 && echo "---" && ls /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/
+total 48
+drwxr-xr-x  2 smoke01 smoke01  4096 Oct  4 22:16 .
+drwxr-xr-x 20 smoke01 smoke01  4096 Oct  4 22:16 ..
+-rw-------  1 smoke01 smoke01  9160 Oct  4 22:16 BRIEF.md
+-rw-------  1 smoke01 smoke01  3270 Oct  4 22:16 NODES.md
+-rw-r--r--  1 smoke01 smoke01     0 Oct  4 22:16 agy.log
+-rw-r--r--  1 smoke01 smoke01     0 Oct  4 22:16 agy.md
+-rw-r--r--  1 smoke01 smoke01     0 Oct  4 22:16 claude.log
+-rw-r--r--  1 smoke01 smoke01     0 Oct  4 22:16 claude.md
+-rw-r--r--  1 smoke01 smoke01 14295 Oct  4 22:17 codex.log
+-rw-r--r--  1 smoke01 smoke01    73 Oct  4 22:17 opencode.log
+-rw-r--r--  1 smoke01 smoke01    27 Oct  4 22:17 opencode.md
+---
+ABLATION_1.md
+ABLATION_2.md
+ABLATION_3.md
+ABLATION_4.md
+ABLATION_4_DESIGN.md
+ABLATION_4_IMPL.md
+ABLATION_5.md
+ABLATION_6.md
+ABLATION_7.md
+AUTONOMY_DESIGN.md
+AUTONOMY_REVIEW.md
+DISPATCHER_DESIGN.md
+DKIND_MIRROR_RESEARCH.md
+EXECUTOR_KINDS.md
+HYBRID_BRIEF.md
+HYBRID_SEQUENCES.md
+HYBRID_SPEC.md
+INTERFACE_FIXES_IMPL.md
+INTERFACE_FIXES_PLAN.md
+KNOWLEDGE_GRAPH_DESIGN.md
+SQLITE_INDEX_DESIGN.md
+STORE_DESIGN_DECISION.md
+TASK_TYPES.md
+TASK_TYPES_LEDGER.md
+WORKFLOW_DESIGN_DIAGRAM.md
+WORKFLOW_DESIGN_METHOD.md
+research
+workflow-templates
+---
+SKILL.md
+assets
+references
+scripts
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "" docs/WORKFLOW_DESIGN_METHOD.md | sed -n '1,40p'
+1:# Workflow design method
+2:
+3:Agreed between EJ and Claude on 2026-09-20. This is the method this folder uses to turn an incoming challenge into
+4:either a prompt file or a workflow design. It has been tried on nothing yet: every number and every piece of
+5:"evidence" below comes from one session (n=1) and is not to be built on as a rule until it has been used on real
+6:challenges. The tier rule in 3.5 was added on 2026-09-22, and the restatement step 3.0 on 2026-10-01; neither has
+7:had a run at all (n=0).
+8:
+9:Runnable form: `.claude/workflows/intake.js`. Templates: `docs/workflow-templates/`. Runs: `runs/<run id>/`.
+10:
+11:## 1. The ideas behind it
+12:
+13:- Real tasks are rarely one pattern. Except when a task is tiny, it needs a hybrid. The mix comes from choosing a
+14:  pattern **per piece**, not one pattern for the whole task.
+15:- A piece that is too big fits no single pattern. A piece that is too small costs more than it is worth: every agent
+16:  has a fixed cost, every split loses context, more pieces mean more connections, and a very small piece has
+17:  nothing that can be verified on its own.
+18:- A tiny task needs no workflow, only a prompt file. A workflow is prompts plus the wiring between them.
+19:- Do not assume the model knows what it needs. Every agent starts with only its prompt.
+20:
+21:## 2. When not to use this method
+22:
+23:Understand the challenge first (3.0); the test reads the restatement, not the raw text. If you can state the
+24:restated problem, the fix and the check in one sentence each, and being wrong would show itself at once: write the
+25:prompt file by hand from `docs/workflow-templates/prompt-file.md`, or just do the task. Running the intake
+26:workflow on such a task costs more than the task.
+27:
+28:## 3. The steps
+29:
+30:### 3.0 Understand the challenge — before anything
+31:
+32:(Added 2026-10-01 at EJ's request; extended the same day with the six whys and categorization; not tried on a
+33:real challenge, n=0. Not yet encoded in `intake.js`; see `TODO.md`.)
+34:
+35:From the challenge text alone — no tools, no agents, no repository browsing — state three things:
+36:
+37:- the **objective**: what is true when the task is done;
+38:- **in scope**: what the task touches;
+39:- **out of scope**: what it must not touch.
+40:
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "" docs/WORKFLOW_DESIGN_METHOD.md | sed -n '40,200p'
+40:
+41:Then answer the **six whys**, each feeding one design field. Stop early on any why whose answer no longer
+42:changes the design — six is the ceiling, never a target:
+43:
+44:| # | Why | Feeds | Unanswerable ⇒ |
+45:|---|---|---|---|
+46:| 1 | Why does EJ want this — what problem is behind the ask? | the objective (the XY-problem guard) | unclear spot, decision |
+47:| 2 | Why now — what triggered it? | priority; whether a cheaper fix exists | noted; rarely blocking |
+48:| 3 | Why this shape of solution — why the requested approach over alternatives? | the provisional category and its default pattern (`docs/TASK_TYPES.md`) | decision spot, batched |
+49:| 4 | Why would it fail — what breaks if we get it wrong? | the risk tier → review depth and independent checks | assume the higher tier |
+50:| 5 | Why does it stop where it stops? | in scope / out of scope | decision spot |
+51:| 6 | Why would we believe it is done? | the stop condition and check kind (script, checklist, EJ) | the piece is not loop-ready (3.5) |
+52:
+53:End with a **provisional category** (multi-label, marked *inferred*) from `docs/TASK_TYPES.md`. It is a guess
+54:from the text alone: it feeds the tiny test (§2) and a first default lookup, and 3.2 relabels it from the
+55:algorithm (since 2026-10-02; before, the category was fixed here and only checked against the facts).
+56:
+57:A part that cannot be written, or a challenge that allows two readings, is the first **unclear spot** (kind:
+58:decision, 3.3): a question for EJ with the restatement as the provisional assumption. No new blocking rule is
+59:added: a prompt file's restatement stands on its provisional assumption like any decision, and a design's
+60:question batch reaches EJ before anything runs.
+61:
+62:The tiny test (§2) reads the restatement, not the raw text: tiny means the *restated* problem, fix and check are
+63:one sentence each. A big-sounding challenge with a narrow objective stays small; a vague one ("improve
+64:performance") cannot slip through as tiny.
+65:
+66:The restatement, the why-answers and the provisional category go at the top of the output, beside the verbatim challenge in
+67:the state file, so EJ sees and can correct what the run understood before tokens are spent.
+68:
+69:Cost guard (trial 1, 3.4): this step is one paragraph and six short answers in the same session, never an
+70:agent, never a tool call. On a tiny task it is the prompt file's first lines, so the cheap path stays cheap.
+71:
+72:### 3.1 Readiness — always first
+73:
+74:For the task, and later for each piece, list:
+75:
+76:- **Tools**: the commands, scripts and connections needed, each with the command that proved it works. Run it; do
+77:  not assume. The skill's inventory script (`.claude/skills/workflow-design/scripts/readiness.py`) proves the
+78:  standard set in one pass and marks every line verified / reported / unknown; what it cannot prove stays unknown.
+79:  For a node run by Codex or `agy`, the proof is the canary piece in `docs/EXECUTOR_KINDS.md`, which
+80:  also says which kind a node is assigned to and how its failure shows.
+81:- **Skills** that already cover part of the work.
+82:- **Information**: is the knowledge there; what structure is it in (a state file, a root map, a hierarchy of md
+83:  files, a memory folder, a journal or index, a graph, only the web); and which agents and tools can actually use
+84:  that structure.
+85:
+86:What the information check finds changes the flow:
+87:
+88:| Found | Effect |
+89:|---|---|
+90:| Well-structured files with a map | Fast path: each agent's brief points at exact files |
+91:| There, but unstructured | Add a piece at the front that extracts and organises it |
+92:| Readable by one tool only | Route that piece to that tool, or export what is needed to a plain file |
+93:| There, but not verified | Add a small piece that checks it against the source |
+94:| Missing | Research becomes a piece of the flow; only the pieces that need it wait for it |
+95:
+96:Anything missing becomes a preparation piece at the front. Each task should leave the knowledge better structured
+97:than it found it, so the next task gets the fast path.
+98:
+99:#### Blueprint check — part of readiness
+100:
+101:(Added 2026-09-25 after EJ found that several projects never ended: their workflows built without a fixed target,
+102:so every verify or review step could find more to do. Not yet tried on a real challenge; n=0.)
+103:
+104:A stop condition means something only against a fixed target. For a task that changes a product, that target is the
+105:product's **blueprint**: what the product is for and what it must do, written down and accepted by EJ. The tools and
+106:information checks above do not ask for it, so this check does.
+107:
+108:The blueprint lives in the product's repository, in `docs/blueprint/`, one file per section, with a map
+109:(`docs/blueprint/README.md`) that says where each section is. Where a project already keeps a section elsewhere, the
+110:map points there and that project's rules on who may change it still hold. Layout and headings:
+111:`docs/workflow-templates/blueprint.md`.
+112:
+113:| # | Section | Whose decision |
+114:|---|---|---|
+115:| 1 | Product vision | EJ's. An agent may only write down what EJ has said |
+116:| 2 | Core requirements, each with checkable acceptance criteria (R1, R1.1, …) | EJ's. An agent may draft from the vision |
+117:| 3 | Domain model | drafted by an agent from sections 1–2, accepted by EJ |
+118:| 4 | Business logic | drafted by an agent from sections 2–3, accepted by EJ |
+119:| 5 | System architecture | drafted by an agent from sections 2–4 and 8, accepted by EJ |
+120:| 6 | Data model, schema design and its decisions | drafted by an agent from sections 3–5, accepted by EJ |
+121:| 7 | UI / UX design | drafted by an agent from sections 2–4, accepted by EJ |
+122:| 8 | Non-functional requirements (performance, security, cost, limits) | EJ's. An agent may draft from the vision |
+123:
+124:Each section traces to the sections it is drawn from: a line that serves nothing above it is a finding, not a
+125:feature.
+126:
+127:**Which sections a task needs** depends on what kind of task it is:
+128:
+129:| Kind of task | Sections needed |
+130:|---|---|
+131:| Not a product change (research, a question, an analysis, an edit to documentation only) | none; record why, and the check ends here. It carries no acceptance criteria |
+132:| Fix: restores behaviour the requirements already describe (if they do not describe it, it is a feature) | the requirement it restores, and the sections the fix touches |
+133:| Feature: adds or changes behaviour | vision, requirements, and every section the feature changes |
+134:| New product | all eight present; four settled before anything builds — vision, the first slice's requirements, the hard-to-reverse architecture choices as short decision records, the non-functional targets with runnable checks; the other four settled for the slice only, unknowns marked (EJ, 2026-10-03; was "all eight settled"; n=0) |
+135:
+136:The kind of task is itself checked against the challenge: a task that changes the product's code, schema, UI or
+137:configuration is never "not a product change". A wrong kind switches the whole check off, so it is a stop, not
+138:something a later step can repair.
+139:
+140:**Status of each needed section, judged for this task** (not the status line in the file, which only says whether
+141:EJ accepted it):
+142:
+143:- **settled** — EJ has accepted it (the file says so, with a date) and it covers what this task needs;
+144:- **draft** — it covers what this task needs, but EJ has not accepted it;
+145:- **incomplete** — it exists, accepted or not, but does not cover this task (for example the feature has no
+146:  requirement yet, or the change needs a table the data model does not have);
+147:- **missing** — there is no such section.
+148:
+149:**What each status does to the flow:**
+150:
+151:| Status | Effect |
+152:|---|---|
+153:| settled | nothing; the fast path |
+154:| draft | an unclear spot of kind **decision**: a question for EJ ("accept this section as written?"), the draft being the provisional assumption |
+155:| incomplete | an unclear spot of kind **information**: a blueprint piece at the front drafts the missing part into the section (for requirements: the new R-blocks with their acceptance criteria), and EJ accepts it (the piece's check is EJ's) |
+156:| missing | an unclear spot of kind **information**: a blueprint piece at the front drafts the section from the sections above it, and EJ accepts it (the piece's check is EJ's) |
+157:
+158:**Blueprint confirmations are not answered by silence.** In a prompt file other questions stand on their provisional
+159:assumption unless EJ corrects them (3.3); blueprint questions do not. A piece that **builds** — changes the
+160:product's code, schema, UI or configuration — does not start until every section it depends on is settled, so a
+161:blueprint question must be answered, and a blueprint piece accepted, before such a piece runs. Pieces that only
+162:research or design may run on draft sections, without waiting for the answer; their output names the draft sections
+163:they assumed. Any piece that depends on an incomplete or missing section needs the blueprint piece that drafts it,
+164:because until then there is nothing to read. Each unsettled section has exactly one blueprint spot.
+165:
+166:This check is per task. Per piece, the design records which sections the piece depends on (3.6).
+167:
+168:### 3.2 Write the algorithm
+169:
+170:Try to write the steps that would solve the task. A **step** is one action with a result that can be checked.
+171:
+172:- Steps can be written clearly, each with its check → a strictly defined problem. The number of steps is the size,
+173:  and the steps show what must be in order and what repeats.
+174:- A step cannot be written clearly → the problem is ambiguous there. It is an **unclear spot**.
+175:- A step with no check you can name counts as unclear, however tidy it looks. This guards against a confident
+176:  algorithm for a problem that is not understood.
+177:
+178:**Label the pieces (added 2026-10-02 at EJ's request; n=0).** Once the steps are written, group them into
+179:**pieces** — consecutive steps that end in one deliverable — and give each piece a category from
+180:`docs/TASK_TYPES.md`, with its default pattern, engine and check beside it. The labels come from the algorithm, not
+181:from the prompt text: a prompt that reads as one category often holds several (fix a test, then document it).
+182:
+183:- Label deliverables, not raw steps. File IO, shell execution and workflow execution stay inside the piece they
+184:  serve (TASK_TYPES.md, "Step-level, not categories"); its labelling rules 1–9 apply per piece.
+185:- A piece with no matching row is `others` and gets the full method from first principles. Steps that cannot be
+186:  grouped into one deliverable are an unclear spot.
+187:- The piece labels replace the provisional category from 3.0. Where they differ, the pieces win and the
+188:  difference is a Log line.
+189:- Facts check, per piece: a piece that changes product code, schema, UI or configuration is never labelled
+190:  read-only, and a label that contradicts what the piece writes is a **stop and replan**, not a repair (the
+191:  blueprint kind-guard's shape).
+192:- **A label is not a node.** Labelling says what kind of work a piece is; it does not say it needs its own agent.
+193:  Pieces that share an engine and have no independent check between them merge into one node run by the main
+194:  agent in one session — the default. A hand-off to a subagent must pay for itself: it has its own objective
+195:  check, or needs a different kind (a blind reviewer, another engine), or its context would not fit. EJ's
+196:  experience (2026-10-02, unmeasured here): a prompt finished by the main agent is faster than the same work split
+197:  over three subagents going back and forth, from the waiting and from context lost at every hand-off. Same
+198:  warning as 3.4: fixed cost per agent, context lost at every split, more joins.
+199:- Output: one row per piece in the state file — steps · deliverable · category · default pattern, engine and check
+200:  from the table · and the node it merges into. The node contract still names the exact model and effort.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "" docs/WORKFLOW_DESIGN_METHOD.md | sed -n '200,340p'
+200:  from the table · and the node it merges into. The node contract still names the exact model and effort.
+201:
+202:### 3.3 List all the unclear spots before resolving any
+203:
+204:For each spot record:
+205:
+206:| | |
+207:|---|---|
+208:| Kind | missing **information** → a research piece · a **decision** → ask EJ · **unknown** → a bounded explore loop |
+209:| Blocks | which steps cannot start until it is resolved; everything else can start |
+210:| Depends on | another spot whose answer might remove or change this one |
+211:
+212:Questions for EJ go out as one batch, each with a provisional assumption so it can be answered in a few words.
+213:In a prompt file a provisional assumption stands unless EJ corrects it; a workflow design's questions are answered
+214:before the designed workflow runs, except blueprint questions, which hold back only the pieces that build on them.
+215:Blueprint questions are the exception in a prompt file too: they need an explicit
+216:answer before any step that builds on them runs (3.1, blueprint check). Where spots are resolved separately, one
+217:joining step compares the answers. A contradiction is a stop: pick one and say why, never average.
+218:
+219:### 3.4 Size
+220:
+221:- Up to 3 steps and nothing unclear except decisions that have a provisional assumption → one piece → a prompt
+222:  file, with those decisions listed at the top as questions for EJ. A spot of kind information or unknown always
+223:  means a workflow design. (Changed 2026-09-20 after trial 1, where three decisions with obvious defaults helped
+224:  push a one-line fix out of "small"; n=1.) Blueprint spots follow the same rule: a missing or incomplete section
+225:  always means a workflow design; a draft section alone does not.
+226:- More than 3 steps → consider a new piece. Split only if each part keeps its own check **and** splitting changes
+227:  how the work is done ("Split iff it changes the route", `challenge-mediation` skill).
+228:- Risk is judged separately from size: how late a mistake would be noticed, whether it can be undone, how many
+229:  things it touches. Tiny but risky → the prompt file gets one independent check.
+230:
+231:**Default-first design.** When the size decision says workflow design, the design starts from a lookup, not a
+232:blank page: each piece's category row (labelled in 3.2) or combination pipeline in `docs/TASK_TYPES.md` supplies the default pattern,
+233:engine, check and sabotage; `others` gets the full method from first principles. A bespoke (challenger) design
+234:replaces a default only on a written claim of ≥20% lower projected run cost **at equal coverage** (same
+235:criteria ids, same checks, same blindness — coverage is a gate, never an axis). The decision is reviewed by the
+236:script gate (`design_gate.py`) plus one blind fixed-checklist pass (Sonnet 5.5; a different kind when the
+237:design builds or EJ flagged high risk), and every run reconciles its claim in `docs/TASK_TYPES_LEDGER.md` —
+238:that ledger is how the defaults earn their n. (Added 2026-10-01 at EJ's request; n=0.)
+239:
+240:Anchors for the number 3: Gate splits capability lists over three (`ancient_games/stages.py:109`) and the
+241:the plan-wide cap of 3 dispatched corroborating sources (`ancient_games/registry.py:24`, used at `stages.py:309`; it caps dispatches per plan, not agents running at once — corrected 2026-10-03).
+242:
+243:### 3.5 Clear pieces run as loops
+244:
+245:While the unclear spots are being resolved, the pieces that are already clear and not blocked run as loops: a
+246:defined output, the agent attempts, the check runs, pass → close the loop, fail → the feedback goes back to the agent.
+247:
+248:A piece is loop-ready only if it has all five:
+249:
+250:1. A check. Best is a script; next a fixed checklist judged by a separate agent; last EJ's own judgment.
+251:2. A limit on attempts.
+252:3. Specific feedback: the script's real output, not just "failed".
+253:4. An exit for when the limit is hit. If the attempts ran on a cheap tier, the exit is a fresh node on a stronger
+254:   tier with a short handoff note (the piece, its check, the last feedback) and its own limit. When that limit is
+255:   hit too, or there is no stronger tier, the piece goes back to the unclear list or to EJ. It was not as clear as
+256:   it looked. (Tier exit added 2026-09-22 at EJ's request; n=0.)
+257:5. A check the worker cannot edit, and that is known to be able to fail (the house sabotage check).
+258:
+259:A loop only closes when its check is objective. (n=1: a planner/critic loop whose check was "try to reject it" ran
+260:three rounds, 6 → 5 → 4 problems, and never closed. See `20260919-plan-critic-issues.md`.)
+261:
+262:Attempts start on the cheapest tier that could plausibly do the piece; a stronger tier, which costs many times more
+263:per token, is bought only for what the cheap one could not finish. Escalation is a fresh node, never a tier switch
+264:inside the running session: a switch voids the prompt cache, so the stronger tier re-reads the whole context at its
+265:fresh input rate, and a session in which the cheap tier flailed is mostly wrong turns that would anchor the stronger
+266:tier towards the same dead ends. (Added 2026-09-22 at EJ's request; n=0.)
+267:
+268:### 3.6 The rest is a graph
+269:
+270:When the spots are resolved and the clear loops have closed, the algorithm is fully defined:
+271:
+272:- nodes = right-sized pieces (a node may hold its own loop);
+273:- edges = "this piece needs that piece's result";
+274:- gates = a result is verified before anything that depends on it starts;
+275:- a joining node where branches meet.
+276:
+277:Every node carries five things, so that it can be run, checked and resumed without asking anyone:
+278:
+279:| | What it says | Borrowed from Ancient Games |
+280:|---|---|---|
+281:| **Tools** | what the agent uses, each proved working | — |
+282:| **Context** | exactly what the agent is given, and what is withheld | `KNOWN_FACTS`, `READ_SCOPE.deny` |
+283:| **Contract** | the intent, the stop condition, what comes back and in what shape (given to the worker as a template, an example and a standard, 3.8), what may and must not change | `INTENT`, `STOP`, `OUTPUT`, `SCOPE` (`ancient_games/schema.py`) |
+284:| **Evidence** | the proof that comes back with the result and the file it is saved in; a verifier reads the evidence, never the reasoning | `CLAIMS`, `VERIFY_OUTPUT`, `NOT_ESTABLISHED` (the return contract) |
+285:| **State** | what the node reads from the state file and what it writes back | the journal, read before every step |
+286:
+287:An edge is then more than "needs": it is the earlier node's *returns* and *evidence* becoming the later node's context.
+288:
+289:A node that **builds** also names the blueprint sections it depends on and the acceptance criteria it covers
+290:(R1.1, …, and non-functional N1.1, …; ids in exactly that form). Every criterion in scope is covered by at least one
+291:node that builds; a node that does not build carries no criteria, except a blueprint piece, which names the criteria
+292:it is expected to propose. The stop condition of a node that builds has three parts, all objective:
+293:
+294:1. the acceptance criteria it covers pass;
+295:2. what passed before still passes — everything recorded as passing in the **baseline**: the product's test command
+296:   and its output, written to the state file before the first node that builds starts;
+297:3. its contract's "must not change" holds.
+298:
+299:A failure of any of the three is a failed attempt, not a backlog item. If its check is judged, it is a fixed
+300:checklist of those three parts, never an open-ended review. The node `needs` the blueprint piece for any of its
+301:sections that was missing or incomplete, and for any criterion that piece is to propose; it does not start while any
+302:of its sections is unsettled (3.1, blueprint check). Criteria a blueprint piece proposes are fixed when EJ accepts
+303:the piece, before any node that builds starts; if EJ accepts different criteria than the design expected, the nodes
+304:that cover them are planned again, as when a node hits its attempt limit.
+305:
+306:Anything else a worker, a verifier or the final "what is missing" pass finds — a new wish, an improvement, a
+307:problem that neither the criteria in scope nor the baseline covers — is written to the product's
+308:`docs/blueprint/backlog.md` with the date and the run id (a suspected break of something the baseline does not cover
+309:is marked as such, for EJ); it does not become a new piece or a new attempt in this run. This is what lets a run end.
+310:
+311:With everything known, the design's edges decide who works next: a Workflow script, or the COO (the main Claude
+312:session) following the graph. A node's role subagents do not choose the next node. Each node names its role, engine,
+313:model and effort; the COO's contract, and when she does a small node herself, are in `docs/EXECUTOR_KINDS.md`. If a node hits its attempt limit
+314:and its tier exit is spent, it returns to the unclear list and only that part of the graph is planned again.
+315:
+316:Whole picture: graph on the outside, loops inside the nodes, exploration only inside the unknown-spot nodes. This is
+317:what `20260919-state.md` calls combined execution.
+318:
+319:### 3.7 Sequential first; parallel is the last decision
+320:
+321:Design the whole flow as sequential, state-based steps: read the state file → do one step → write the state back.
+322:Only when the design is complete, look for tasks that are **really independent** — all five must hold:
+323:
+324:1. neither needs the other's result;
+325:2. no shared files or resources;
+326:3. doing one would not change how the other is done;
+327:4. each has its own check;
+328:5. the time saved is worth the extra joining step.
+329:
+330:Parallel buys only clock time, and it costs predictability, debuggability and extra joins. Independence of
+331:verifiers is about what they see, not when they run: two verifiers can run one after another and stay independent.
+332:
+333:**Caps (EJ, 2026-10-03; n=0 — a friend's practice plus reasoning, not measured).** At most **5 subagent roles per
+334:run** and at most **3 running at once** (our own number; the code's 3 at `ancient_games/registry.py:24` caps
+335:corroborating dispatches per plan, not concurrency); a retry of the same node is not a new
+336:subagent. A design that needs more is too big: cut it into slices or separate runs, never raise the cap. The
+337:feedback log (3.8 item 11) records calls per run, so the cap is revised from data.
+338:
+339:### 3.8 Running a node: executors are tools, timers, pass-back, no polling
+340:
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== stages.py 100-115 ===" && grep -n "" ancient_games/stages.py | sed -n '100,115p' && echo "=== registry.py 18-30 ===" && grep -n "" ancient_games/registry.py | sed -n '18,30p' && echo "=== stages.py 300-315 ===" && grep -n "" ancient_games/stages.py | sed -n '300,315p'
+=== stages.py 100-115 ===
+100:    ctx.standing_clauses = task.standing_clauses
+101:    ctx.env_policy = task.env_policy
+102:    ctx.governance_gated = task.governance_gated
+103:    if task.governance_gated != "none" and reg.row_by_id(task.governance_gated, registry).gate != "owner":
+104:        raise ValueError("governance_gated may only name a row whose gate=owner (C·2)")
+105:    # C·3
+106:    fired.append("C·3")
+107:    count = decision_tree(task.difficulty, task.capability)
+108:    # C·4
+109:    if count > 3:
+110:        fired.append("C·4")
+111:        k = math.ceil(count / 3)
+112:        groups: list[GateExit] = []
+113:        caps = list(task.capability)
+114:        size = math.ceil(len(caps) / k)
+115:        for i in range(k):
+=== registry.py 18-30 ===
+18:
+19:from dataclasses import dataclass, field
+20:from typing import Iterable
+21:
+22:from .ctx import ArtifactRef
+23:
+24:CAP = 3
+25:
+26:
+27:@dataclass(frozen=True)
+28:class Row:
+29:    id: str
+30:    pattern: tuple[str, ...]  # matchable keys; () for verb-/instance-keyed rows
+=== stages.py 300-315 ===
+300:    has_command: bool = True  # B·4: a claim lacking a cited command is dropped (UNVERIFIED)
+301:    remedy_mechanism: str | None = None  # [LLM]: the mechanism an add-claim-specific-check remedy names
+302:    n_required: int | None = None  # filled by corroborate()
+303:    stakes: int | None = None  # the action's own stakes (D·2), filled by corroborate()
+304:    actor: str | None = None  # agent-id | MAIN | none, filled by corroborate() from ctx.actor
+305:
+306:
+307:@dataclass
+308:class CapState:
+309:    """cap_state = (ctx.dispatch_count, CAP=3) — §2 Z1′; a slot remains iff dispatch_count < 3."""
+310:
+311:    dispatch_count: int = 0
+312:    cap: int = CAP
+313:
+314:    @property
+315:    def slot_remains(self) -> bool:
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== CAP usages ===" && grep -rn "\bCAP\b" ancient_games/ | head -30 && echo "=== slot_remains/dispatch_count usages ===" && grep -rn "slot_remains\|dispatch_count\|CapState" ancient_games/ | head -30 && echo "=== decision_tree ===" && grep -rn "def decision_tree" -A 25 ancient_games/ | head -40
+=== CAP usages ===
+grep: ancient_games/__pycache__/stages.cpython-312.pyc: binary file matches
+grep: ancient_games/__pycache__/index.cpython-312.pyc: binary file matches
+grep: ancient_games/__pycache__/lints.cpython-312.pyc: binary file matches
+grep: ancient_games/hybrid/__pycache__/invariants.cpython-312.pyc: binary file matches
+grep: ancient_games/hybrid/tools/__pycache__/dispatch.cpython-312.pyc: binary file matches
+ancient_games/stages.py:20:from .registry import CAP, Lookup, Row, REGISTRY
+ancient_games/stages.py:121:        # add-differently-framed-source instead of being routed to a gate: CAP unenforced.
+ancient_games/stages.py:309:    """cap_state = (ctx.dispatch_count, CAP=3) — §2 Z1′; a slot remains iff dispatch_count < 3."""
+ancient_games/stages.py:312:    cap: int = CAP
+ancient_games/ctx.py:134:    dispatch_count: int = 0  # plan-wide category-(a) dispatches so far (Z1′); cap_state = (dispatch_count, CAP=3)
+ancient_games/hybrid/tools/dispatch.py:1:"""Dispatch an agent: `stages.dispatch_source` when it counts toward CAP (B·3, increments
+ancient_games/hybrid/invariants.py:15:from ancient_games.registry import CAP, REGISTRY, Row
+ancient_games/hybrid/invariants.py:151:    if live >= CAP:
+ancient_games/hybrid/invariants.py:152:        return Refusal("I5", f"live_dispatches={live}, CAP={CAP}, no slot")
+ancient_games/lints.py:138:                               f"RETURN_TO_PLANNER: {e.name} dispatched {e.dispatched_total} category-(a) agents > CAP=3"))
+ancient_games/index.py:249:                               f"RETURN_TO_PLANNER: {e.name} dispatched {e.dispatched_total} category-(a) agents > CAP=3"))
+ancient_games/registry.py:24:CAP = 3
+=== slot_remains/dispatch_count usages ===
+grep: ancient_games/__pycache__/stages.cpython-312.pyc: binary file matches
+grep: ancient_games/__pycache__/index.cpython-312.pyc: binary file matches
+grep: ancient_games/__pycache__/ctx.cpython-312.pyc: binary file matches
+grep: ancient_games/__pycache__/lints.cpython-312.pyc: binary file matches
+grep: ancient_games/hybrid/tools/__pycache__/_plan.cpython-312.pyc: binary file matches
+grep: ancient_games/hybrid/tools/__pycache__/dispatch.cpython-312.pyc: binary file matches
+ancient_games/stages.py:119:        # parent ctx at dispatch_count=0 however many agents the groups dispatched, so B·1 built
+ancient_games/stages.py:120:        # CapState(0), slot_remains was always True and a capped judgment claim was always handed
+ancient_games/stages.py:123:        # Ctx.validate; the plan-wide total lives in dispatch_count, which cap_state reads).
+ancient_games/stages.py:134:        ctx.dispatch_count += sum(g.count for g in groups)
+ancient_games/stages.py:147:    # C·3: "set ctx.actor for each drafted action ...; increment ctx.dispatch_count
+ancient_games/stages.py:150:    ctx.dispatch_count += count
+ancient_games/stages.py:308:class CapState:
+ancient_games/stages.py:309:    """cap_state = (ctx.dispatch_count, CAP=3) — §2 Z1′; a slot remains iff dispatch_count < 3."""
+ancient_games/stages.py:311:    dispatch_count: int = 0
+ancient_games/stages.py:315:    def slot_remains(self) -> bool:
+ancient_games/stages.py:316:        return self.dispatch_count < self.cap
+ancient_games/stages.py:338:def count_sources(claim: Claim, events: list[dict], cap_state: CapState, framings: list[str]) -> tuple[int, str | None]:
+ancient_games/stages.py:402:    #  dispatch_count < 3 (a slot remains) and B·2's framing enumeration for this
+ancient_games/stages.py:404:    if cap_state.slot_remains and unused_framing(claim, events, framings) is not None:
+ancient_games/stages.py:465:    cap_state = CapState(ctx.dispatch_count)
+ancient_games/stages.py:540:    and `ctx.dispatch_count` incremented (B·1's last sentence)."""
+ancient_games/stages.py:542:    ctx.dispatch_count += 1
+ancient_games/stages.py:666:    dispatched_total: int = 0  # ctx.dispatch_count at plan time (the plan's category-(a) agents, structurally)
+ancient_games/ctx.py:134:    dispatch_count: int = 0  # plan-wide category-(a) dispatches so far (Z1′); cap_state = (dispatch_count, CAP=3)
+ancient_games/ctx.py:184:        if self.dispatch_count < 0:
+ancient_games/ctx.py:185:            raise ValueError("dispatch_count must be non-negative")
+ancient_games/ctx.py:226:# `difficulty` and `capability` are AA2′'s two rows (V3.6); `actor`/`dispatch_count` are V3.5 §2.
+ancient_games/ctx.py:236:    "dispatch_count": ("C·3/C·4; B·1 on RETURN_TO_PLANNER-triggered dispatch", "B·1 cap_state"),
+ancient_games/hybrid/tools/_plan.py:88:                                 getattr(ctx, "dispatch_count", 0), args.get("has_failable_check", True),
+ancient_games/hybrid/tools/dispatch.py:2:`ctx.dispatch_count`), else `journal.dispatch`. Generates `agent_id` as
+ancient_games/lints.py:23:from .stages import CapState, Claim, Plan, count_sources, remedy_text
+ancient_games/lints.py:136:        if e.dispatched_total > CapState().cap:
+ancient_games/lints.py:145:                n, _ = count_sources(claim, events, CapState(e.dispatched_total), [])
+ancient_games/index.py:27:from .stages import CapState, Claim, Plan, remedy_text
+ancient_games/index.py:247:        if e.dispatched_total > CapState().cap:
+=== decision_tree ===
+ancient_games/stages.py:65:def decision_tree(difficulty: str, capability: Iterable[str]) -> int:
+ancient_games/stages.py-66-    """F1: MAIN only / +1 / +2 / +3 — one agent per independent angle or
+ancient_games/stages.py-67-    capability MAIN lacks. (May exceed 3 here; C·4 splits, never raises the cap.)
+ancient_games/stages.py-68-
+ancient_games/stages.py-69-    `difficulty` is C·2's stated level, passed here because F1 names it alongside
+ancient_games/stages.py-70-    capability — but it is ADVISORY and deliberately not read: the count is one agent
+ancient_games/stages.py-71-    per independent angle, and no spec sentence says how a difficulty level would move
+ancient_games/stages.py-72-    it. `ctx.CTX_META` records difficulty as consumed by C's PLAN_NEEDED exit value
+ancient_games/stages.py-73-    accordingly; `ctx.CHECKED_CONSUMERS` is what keeps that honest."""
+ancient_games/stages.py-74-    return len(list(capability))
+ancient_games/stages.py-75-
+ancient_games/stages.py-76-
+ancient_games/stages.py-77-def gate(ctx: Ctx, task: TaskInput, journal: Journal, registry: list[Row] = REGISTRY) -> GateExit:
+ancient_games/stages.py-78-    fired: list[str] = []
+ancient_games/stages.py-79-    probe_guard: GuardExit | None = None
+ancient_games/stages.py-80-    # C·1 cheap means; a non-read probe on a registry hub goes through D first.
+ancient_games/stages.py-81-    fired.append("C·1")
+ancient_games/stages.py-82-    ctx.known_facts = list(task.known_facts)
+ancient_games/stages.py-83-    if task.probe is not None:
+ancient_games/stages.py-84-        ctx.artifact_refs = [task.probe]
+ancient_games/stages.py-85-        if task.probe.mode != "read":
+ancient_games/stages.py-86-            hit = reg.lookup([task.probe], registry)
+ancient_games/stages.py-87-            if hit.hubs and task.probe_action is not None:
+ancient_games/stages.py-88-                probe_guard = guard(ctx, task.probe_action, journal, registry)
+ancient_games/stages.py-89-                # execute only if D returns stakes=1 (no gate); otherwise not run.
+ancient_games/stages.py-90-    if task.resolved_by is not None and probe_guard is None:
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== category-(a) def ===" && grep -rn "category-(a)" --include=*.py --include=*.md . | grep -v __pycache__ | head -12 && echo "=== invariants 140-160 ===" && grep -n "" ancient_games/hybrid/invariants.py | sed -n '140,158p' && echo "=== lints 128-146 ===" && grep -n "" ancient_games/lints.py | sed -n '128,146p'
+=== category-(a) def ===
+./20260919-plan-critic-issues.md:56:**R3.3** Segment independence-check (the acceptance cannot observe the trigger clause; this is also a dependency gap with decision-record): the rule applies 'only where the trigger holds', but none of the fifteen evaluations sets the trigger false. A deliverable that drops or mis-states the trigger clause passes all fifteen. The design is specified as 'one pure function from the plan's records to a list of findings'. Yet the trigger's inputs are n_required from ctx.stakes and the registry (stages.py:445-450) and category-(a) status, and the record carries neither. decision-record cannot add them, because it runs in parallel with independence-trigger and is told its fields do not come from the trigger research. Proposed fix: state how the function receives the trigger. One option is an explicit second argument, the set of in-scope claim ids computed by the calling door. The other is to make the declaration itself the trigger, with the R1-R5 table documenting when a planner must declare. Then add one evaluation where X and Y are declared for c, a key has writers[X] readers[Y], and the trigger does not hold, with an expected result of 0 findings and the reason.
+./20260919-plan-critic-issues.md:132:**Goal.** Establish from the current code, with file:line evidence, WHEN claims 'must be independent sources', so that the check has a defined scope. Deliver a table of rows R1-R5, each with: the statement, file:line, the exact command or read that shows it, and whether it holds under both F1 answers. R1: where the required source count comes from (n_required_for, stakes and governance row). R2: how category-(a) sources are counted today (author != actor, per distinct framing) and which part F1 leaves open. R3: what B.3 requires of sibling sources (SPEC.md:177) and what dispatch_source actually records (siblings, output path). R4: which existing fields express independence intent (FRAMING, READ_SCOPE.deny, TEMPLATE rows) and which ctx values drive them. R5: what is NOT enforced in the package: schema.payload() has no caller in the package (tests do call it), so READ_SCOPE.deny is never emitted by the hybrid dispatch path. Conclude with one sentence defining the trigger in existing terms (for example: a claim with n_required >= 2 whose sources are category-(a) dispatches), marked as holding or not under each F1 answer. Do not propose code, do not define the independence rule, change no file. Mark any single-run observation 'n=1, not to be built on'.
+./SPEC.md:99:3. `[spine]` (F1) Feed difficulty + capability into the F1 decision tree → agent count; set `execution_status = dispatched` if `count≥1`, else `execution_status = main_executes`; set `ctx.actor` for each drafted action (an assigned agent, `MAIN`, or `none` per §2's Z3′ rule when the action commissions co-equal independent authors from the outset); increment `ctx.dispatch_count` once per category-(a) agent this plan dispatches.
+./SPEC.md:175:   category-(a) dispatch this remedy triggers.
+./SPEC.md:176:2. `[LLM]` (#10, #27, Y1) Before assigning any framing, enumerate the finite set of genuinely distinct framings available for this claim — step 1's remedy check reads this enumeration for an unused entry, never an open-ended search; assign each category-(a) source a distinct entry from it, never issuing the same prompt twice, byte-for-byte or in substance.
+./SPEC.md:177:3. `[spine]` (#8) Dispatch category-(a) sources in parallel, each to its own file; no reading a sibling's file first.
+./docs/INTERFACE_FIXES_PLAN.md:71:`stages.py:325` counts category-(a) sources as `[e for e in recorded if e["author"] != claim.actor]`
+./docs/KNOWLEDGE_GRAPH_DESIGN.md:278:category-(a) source directly, `stages.py` `dispatch_source`, one file per
+./docs/INTERFACE_FIXES_IMPL.md:48:    B·1 counts category-(a) sources as `author != actor` (stages.py:325), so `author` is
+./docs/ABLATION_3.md:30:**F1 — corroboration counts framings; it cannot tell a distinct framing from a nominally distinct one.** Y2′ would have accepted a repo-scoped researcher as a category-(a) source on UC2J and reached 2/2. That source would have been the same instrument. On this task the agent was more rigorous than the rule it was being held to. Candidate refinement, **not to be built on n=1**: a source counts only if its *method* differs, and where the check space is enumerable, a positive control on the instrument is worth more than a repetition of it — which is what `closed_world` already encodes. The rule may already be right and only its rationale missing.
+./ancient_games/stages.py:148:    # once per category-(a) agent this plan dispatches"
+./ancient_games/stages.py:539:    """B·3 for a RETURN_TO_PLANNER-triggered category-(a) dispatch: its own file,
+=== invariants 140-160 ===
+140:        if hit.gate != "owner":
+141:            continue
+142:        rows = [m.row.id for m in hit.matched if m.row.gate == "owner"]
+143:        if not any(approvals_after(events, "owner", rid, after) for rid in rows):
+144:            return [Refusal("I4", f"hard_blocked: owner-gated file {f} ({','.join(rows)}) changed without approval")]
+145:    return []
+146:
+147:
+148:# I5′ ---------------------------------------------------------------------------
+149:def i5(events: list[dict]) -> Refusal | None:
+150:    live = live_dispatches(events)
+151:    if live >= CAP:
+152:        return Refusal("I5", f"live_dispatches={live}, CAP={CAP}, no slot")
+153:    return None
+154:
+155:
+156:__all__ = ["Refusal", "check_invariants", "evaluate_loop_invariants", "pick_by_priority", "invariants_for",
+157:           "LOOP_CHECKED", "ELSEWHERE_CHECKED", "PRIORITY", "RESTRICTED",
+158:           "I4_MODES", "live_dispatches", "event_ok"]
+=== lints 128-146 ===
+128:    """(a) any group's category-(a) dispatched agents > 3, structurally;
+129:    (b) a capped claim with a re-plannable remedy has no recorded fix — recompute
+130:        n_available against the journal first;
+131:    (c) a gate-routed capped claim is not disclosed in the plan's exit line.
+132:    `run_id` scopes the journal read in (b) to that run (`in_run`)."""
+133:    events = in_run(events, run_id)
+134:    out = []
+135:    for e in plan.entries:
+136:        if e.dispatched_total > CapState().cap:
+137:            out.append(Finding("corroboration-capped", e.name,
+138:                               f"RETURN_TO_PLANNER: {e.name} dispatched {e.dispatched_total} category-(a) agents > CAP=3"))
+139:        for cap in e.capped:
+140:            claim = next((c for c in e.claims if c.claim_id == cap.claim_id),
+141:                         Claim(cap.claim_id, cap.kind, n_required=cap.mandated))
+142:            if claim.n_required is None:
+143:                claim = Claim(claim.claim_id, claim.kind, claim.has_command, cap.mandated, claim.stakes)
+144:            if cap.remedy in ("add-claim-specific-check", "add-differently-framed-source"):
+145:                n, _ = count_sources(claim, events, CapState(e.dispatched_total), [])
+146:                if n < cap.mandated:
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -rn "def live_dispatches" -A 12 ancient_games/hybrid/invariants.py && echo "=== SPEC Z1' ===" && grep -rn "Z1′" SPEC.md | head -10 && echo "=== ctx 130-140 ===" && grep -n "" ancient_games/ctx.py | sed -n '128,140p'
+(no output)
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -rn "live_dispatches" --include=*.py . | grep -v __pycache__ | head; echo "---"; grep -rn "def live_dispatches" -A 14 --include=*.py . | grep -v __pycache__ | head -25; echo "=== Z1 ==="; grep -rn "Z1" SPEC.md | head -8
+./ancient_games/hybrid/runner.py:28:from .tools._shared import event_ok, live_dispatches
+./ancient_games/hybrid/runner.py:125:    live = live_dispatches(events)
+./ancient_games/hybrid/runner.py:126:    if "live_dispatches_end" in final and live != final["live_dispatches_end"]:
+./ancient_games/hybrid/runner.py:127:        out.append(f"live_dispatches_end: expected {final['live_dispatches_end']}, got {live}")
+./ancient_games/hybrid/tools/_shared.py:141:def live_dispatches(events: list[dict]) -> int:
+./ancient_games/hybrid/invariants.py:18:                            last_commit_index, live_dispatches)
+./ancient_games/hybrid/invariants.py:34:# still *participates in* I5's computation (`live_dispatches`), which its manifest records; that is
+./ancient_games/hybrid/invariants.py:150:    live = live_dispatches(events)
+./ancient_games/hybrid/invariants.py:152:        return Refusal("I5", f"live_dispatches={live}, CAP={CAP}, no slot")
+./ancient_games/hybrid/invariants.py:158:           "I4_MODES", "live_dispatches", "event_ok"]
+---
+./ancient_games/hybrid/tools/_shared.py:141:def live_dispatches(events: list[dict]) -> int:
+./ancient_games/hybrid/tools/_shared.py-142-    """I5′ (DECISIONS_HYBRID_4 L3): computed from the journal, never a counter."""
+./ancient_games/hybrid/tools/_shared.py-143-    started = sum(1 for e in events if e.get("event") == "tool_call" and e["tool"] == "dispatch" and event_ok(e))
+./ancient_games/hybrid/tools/_shared.py-144-    returned = sum(1 for e in events if e.get("event") == "tool_call" and e["tool"] == "ingest_return" and event_ok(e))
+./ancient_games/hybrid/tools/_shared.py-145-    failed = sum(1 for e in events if e.get("event") == "dispatch_failed")
+./ancient_games/hybrid/tools/_shared.py-146-    return max(0, started - returned - failed)
+./ancient_games/hybrid/tools/_shared.py-147-
+./ancient_games/hybrid/tools/_shared.py-148-
+./ancient_games/hybrid/tools/_shared.py-149-# --- git -----------------------------------------------------------------------
+./ancient_games/hybrid/tools/_shared.py-150-def git(cwd: str, *argv: str) -> subprocess.CompletedProcess:
+./ancient_games/hybrid/tools/_shared.py-151-    return subprocess.run(["git", *argv], cwd=cwd, capture_output=True, text=True)
+./ancient_games/hybrid/tools/_shared.py-152-
+./ancient_games/hybrid/tools/_shared.py-153-
+./ancient_games/hybrid/tools/_shared.py-154-def diff_name_only_head(cwd: str) -> list[str]:
+./ancient_games/hybrid/tools/_shared.py-155-    p = git(cwd, "diff", "--name-only", "HEAD")
+=== Z1 ===
+7:md` is untouched. **Y2′/Z1′–Z6′ are frozen and not re-litigated** — the
+127:Z1′. B runs once per distinct claim.
+129:1. `[spine]` (#4, #27, R4, S3, **Y2′ [unchanged, stands], Z1′, Z2′,
+673:9. **Y2′/Z1′–Z6′ are unchanged and not re-litigated**, per
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== TASK_TYPES.md head 80 ===" && grep -n "" docs/TASK_TYPES.md | sed -n '1,90p'
+=== TASK_TYPES.md head 80 ===
+1:# Task types — default patterns, combination pipelines, and the 20% rule
+2:
+3:Agreed with EJ 2026-10-01. **n=0**: every default here is a working value until `TASK_TYPES_LEDGER.md` has
+4:runs in it. Engines cite `docs/EXECUTOR_KINDS.md` defaults and **suggest, never override** the node contract;
+5:every node still names its exact model and effort.
+6:
+7:The machine-readable form of the tables is *this file*: the skill's `scripts/design_gate.py` parses it. Do not
+8:copy the table into code or another doc — change it here, the gate follows.
+9:
+10:**Correction, 2026-10-03 — the Codex default is unchanged at `gpt-6.1-sol`.** A brief edit here swapped it for
+11:`gpt-5.6-sol` after a Codex call failed with *"The 'gpt-6.1-sol' model is not supported when using Codex with a
+12:ChatGPT account"*. That reading was wrong: the failure came from a **bundled old Codex** (the DeepSeek Harness's
+13:subagent provider pins `@openai/codex@0.153.4`, whose catalog lacks the model), while the CLI on this machine is
+14:`codex-cli 0.160.0` and runs **`gpt-6.1-sol` with high effort normally** (*verified* 2026-10-03). The swap is
+15:reverted. See `docs/EXECUTOR_KINDS.md`, "Model and effort", for the full account and for the one path — the DSH
+16:subagent provider — that still needs its own pin.
+17:
+18:## How this is used (the design rule)
+19:
+20:1. **Guess at §3.0, label at §3.2.** The six why-questions (method 3.0) end with a *provisional* category — a
+21:   guess from the prompt text that feeds the tiny test and a first lookup. After the algorithm is written (method
+22:   3.2) its steps are grouped into pieces, one deliverable each, and **each piece is labelled** from this table
+23:   (changed 2026-10-02 at EJ's request; n=0). The piece labels replace the guess; a difference is a Log line.
+24:   A label says what kind of work a piece is, not that it needs its own agent: same-engine pieces with no independent
+25:   check between them merge into one node (method 3.2, "a label is not a node").
+26:   Checked against facts per piece: a piece that touches product code, schema, UI or config is never labelled
+27:   read-only. A wrong label is a **stop and replan**, not a repair (the blueprint kind-guard's shape).
+28:2. **Default-first.** For each labelled piece look up its row (or the combination's pipeline), adapt it to the
+29:   specifics, then run the normal gates. Steps 2–4 of the method still run. `others` has no default: the full
+30:   method from first principles.
+31:3. **Challenger (the 20% rule).** A bespoke design replaces the default only with a written claim **before the
+32:   run**: ≥20% lower projected run cost (tokens / agents / wall time) **at equal coverage** — same acceptance
+33:   criteria ids, same checks, same blindness. Coverage is a gate, never an axis; nobody trades completeness for
+34:   speed. "Ask three times, get three different answers" is variance, not signal — the default stands unless
+35:   the margin is claimed and proven on paper first.
+36:4. **Two-layer review of the decision.**
+37:   - **Script layer (free, deterministic):** `scripts/design_gate.py` — structure, category-vs-facts, label agreement (G8: the design's
+38:     categories equal the categories its nodes carry; the in-run review node is exempt), the
+39:     margin arithmetic, coverage equality, pipeline well-formedness, the reviewer-kind rule, ledger rows.
+40:   - **Checklist layer (cheap judgment):** a Sonnet 5.5 subagent, fresh session, blind to the designer's
+41:     reasoning, judges a fixed 4-item checklist **in one pass**: does the category fit the challenge's intent?
+42:     is the default pattern wrong for this instance, and why? does the claimed margin have a real basis? is
+43:     anything needed absent from both designs? Verdicts binary with evidence refs — never "try to reject it".
+44:     Two repair attempts on script failure; a checklist "no" escalates per the tier exit (fresh stronger node
+45:     or EJ), never a third round. **Risk tier:** when the design builds or EJ flagged high risk, the checklist
+46:     reviewer is a different kind from the designer (Codex `gpt-6.1-sol`) instead of Sonnet 5.5.
+47:   - This reviews the *design decision*. The design's own in-run review nodes are separate and follow the
+48:     `code review` row below.
+49:5. **Ledger.** Every run appends one row to `docs/TASK_TYPES_LEDGER.md`: date, run id, category,
+50:   default-or-challenger, claimed margin + basis, actual cost, coverage outcome, reconciled. A challenger that
+51:   beats its projection twice becomes a candidate new default; a default repeatedly overridden gets its row
+52:   rewritten. This is how the table earns its n.
+53:
+54:## Use cases in focus (EJ, 2026-10-02)
+55:
+56:What a software developer does daily, ranked for EJ's work. A use case is usually a pipeline of the categories
+57:below, not one row. Evidence: the 90 real prompts of the 2026-10-02 corpus campaign, labelled by the COO (not
+58:independent); #8 has no prompt in that corpus and is ranked on ordinary practice. n=0 for every default here.
+59:
+60:| # | Use case | Real prompts (of 90) | Category rows it uses | Default ready? |
+61:|---|---|---|---|---|
+62:| 1 | Combine several sources into an algorithm | most of the ~50 "understanding" prompts | research and reports, information extraction | candidate pipeline extract → reconcile → algorithm → verify; a row only after two real runs |
+63:| 2 | Answer a question about existing code ("where is X", "explain Y", "is Z still true") | the rest of those ~50 | repo scanning, information extraction | yes |
+64:| 3 | Fix a bug (logs, reproduce, root cause, fix, rerun) | 7 | debugging, code generation | yes, `debugging` pipeline |
+65:| 4 | Build a feature (plan, design, implement) | 9 | multi step planning, code generation, ui/ux dev | yes |
+66:| 5 | Verify (tests, test data, double-confirm against the spec, grade a run) | 10 | test cases gen, test script gen, test data gen, grade a run | yes |
+67:| 6 | Report and document (status, meeting notes, explain for others) | 5 | document and explain | yes |
+68:| 7 | Review code (own, a teammate's, an agent's) | 3 | code review | yes |
+69:| 8 | Learn something new (outside docs, libraries, tools) | 0 | web search, research and reports | yes |
+70:
+71:Out of focus for now (EJ): ship and operate (deploy, CI, environment, incidents) and maintenance (refactor,
+72:dependency upgrades). Neither has a row; one is added when a real task of that kind arrives. Session-control
+73:directives (status, commit, stop) are not a use case: they stay tiny.
+74:
+75:#1 is the most frequent and the riskiest: an extracted description is a hypothesis until checked against its
+76:source, and a second LLM read is not a check (`~/skills/verify-extraction`, where a one-line summary of a 70-line
+77:function was wrong in 5 of 6 differential rounds). Its verify step is a differential test for code and a blind
+78:checklist with a planted wrong fact for prose; two disagreeing sources are reconciled with a reason, never averaged.
+79:
+80:## Categories
+81:
+82:`Touches product` is tri-state: **yes** (every piece writes product), **mixed** (the category runs read-only as
+83:a diagnosis/validation *or* writes as a fix/generation — the design's `builds` flag says which), **no**
+84:(read-only). Round-1 lesson: a binary column made every diagnostic debugging design look like a lie.
+85:
+86:| Category | Touches product | Default pattern | Default engine | Default check | Sabotage (proof the check can fail) |
+87:|---|---|---|---|---|---|
+88:| code generation | yes | evaluator–optimizer loop | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | tests/build pass (script) | break the code → the check goes red |
+89:| code review | no | maker–checker, fresh blind session | risk-tiered: Sonnet 5.5 when nothing builds; different kind from the worker when it builds (EXECUTOR_KINDS rule 5) | fixed checklist; findings with file:line | plant a known defect → the reviewer must find it |
+90:| ui/ux dev | yes | codegen loop + human acceptance checkpoint | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | build/render script + EJ's acceptance (last per 3.5) | break a component → the build fails |
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "" docs/TASK_TYPES.md | sed -n '90,150p'
+90:| ui/ux dev | yes | codegen loop + human acceptance checkpoint | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | build/render script + EJ's acceptance (last per 3.5) | break a component → the build fails |
+91:| debugging | mixed | loop with the failing test as objective check (a diagnosis-only run is read-only research with a repro) | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | repro test: red before, green after | revert the fix → red again |
+92:| test data gen | mixed | single node, schema-validated (a validation-only run is read-only) | Sonnet 5.5 / `gemini-3.8-flash` (cheap tier) | schema validation + edge-case coverage list | corrupt a row → the validator rejects |
+93:| test cases gen | yes | single node + review | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | generated tests fail on a broken implementation | a seeded mutant must be caught |
+94:| test script gen | yes | codegen loop | opencode `MiniMax-M3.1-Flash-Preview` + Codex `gpt-6.1-sol` (split: `workload.py`, opencode priority) | script detects a seeded failure | seeded failure → non-zero exit |
+95:| repo scanning | no | parallel sectioning, read-only fan-out | agy (EJ, 2026-10-04) | coverage manifest; findings with paths | plant a marker file → the scan reports it |
+96:| multi step planning | no | plan + gate (this method) | DeepSeek `deepseek-flash` (EJ, 2026-10-04 — the model the catalog names DeepSeek-V41-Flash) | script schema gate + checklist review | an unresolved spot → the gate fails |
+97:| information extraction | no | single node, structured output | DeepSeek `deepseek-flash` (EJ, 2026-10-04) | JSON-schema validation + spot-check vs source | a corrupt source field → flagged, never hallucinated |
+98:| web search | no | single node; voting on contested facts | agy (EJ, 2026-10-04) | dated sources with URLs; claims traceable | ask a nonexistent fact → must return not-found |
+99:| classification | no | routing node | DeepSeek `deepseek-flash` (EJ, 2026-10-04) | schema-valid label + agreement on a labeled sample | an ambiguous sample → unknown/escalate, not a forced label |
+100:| research and reports | no | single node, or sectioning + join | agy (EJ, 2026-10-04) | answers the question; every finding carries both-side citations and a CONFIRMED/INFERRED/GAP/UNPROVEN label; missing proof never reads as PASS; join contradiction = stop | seed a known divergence → it must appear as a row with both citations; seed conflicting sources → the join stops |
+101:| document and explain | mixed | single node + review against source | Sonnet 5.5 | fixed checklist against the source; format constraints honored (audience, .txt vs markdown, LF) | remove a fact from the source → the review flags it missing |
+102:| grade a run | no | single node, fixed rubric | Sonnet 5.5 | rubric verdicts kept separate per dimension; run-directory evidence only; missing proof = UNKNOWN/INVALID_RUN, never PASS | grade an empty run directory → INVALID_RUN, not PASS |
+103:| others | — | no default — the full method from first principles | — | — | — |
+104:
+105:Step-level, not categories (they are steps inside pieces, or the scheduler itself): **file IO, shell
+106:execution, workflow execution**. Finance is an EXECUTOR_KINDS engine assignment, not a pattern row.
+107:
+108:## Labelling rules (round-1 lessons, 2026-10-02)
+109:
+110:Measured on 50 executor samples (codex 25, agy 25): strict agreement was 12% / 24% before these rules
+111:existed; every disagreement class traced to a missing definition, not to a weak model.
+112:
+113:1. **One label per distinct deliverable — list the deliverables first, then label each.** The primary category
+114:   is the one that answers the ask. Do not add a secondary label for work that is *inside* the primary: a
+115:   research task reads (not also "information extraction"); a debugging diagnosis cites logs (not also
+116:   "research and reports"). Multi-label only when the prompt asks for several *separately delivered* outputs
+117:   ("extract the rules, write them up, then generate test cases" = three deliverables). Dropping a deliverable's
+118:   label is as wrong as adding a passenger label (round-2: combo prompts lost their web-search and
+119:   test-script labels).
+120:2. **Information extraction** applies only when the deliverable *is* the structured data (a table, a schema-
+121:   validated list, field values) — never as a passenger label.
+122:3. **Code review vs research and reports**: review = a verdict on the quality/correctness of work against a
+123:   standard, delivered as an issue report; research = an answer or a findings list. "Compare A to B, list
+124:   divergences with citations" is research; "review this file against the spec, write an issue report" is
+125:   review. **Re-validating an existing finding** against current code ("still open, resolved, or wrong?") is
+126:   research — it updates a findings list, it does not grade work.
+127:4. **Grade a run vs debugging**: grading applies a fixed rubric to a finished run's evidence and stops;
+128:   debugging seeks a root cause. "Which check fired and why" is debugging; "keep the verdicts separate,
+129:   missing proof = UNKNOWN" is grading.
+130:5. **builds=true means the deliverable changes product or test surface** — code, schema, configuration, UI,
+131:   test files, **and generated fixture/seed data that feeds tests or environments** (round-2: fixtures are test
+132:   surface). Findings lists, reports, notes, diaries, command sheets are **not** builds — and neither are
+133:   **deliverable data outputs** (a CSV/JSON table that *is* the answer): a report in data shape is still a
+134:   report (round-3: the gate caught this mislabel on its own corpus author). A `document and explain` piece
+135:   that writes only prose is builds=false even though it writes a file.
+136:6. **tiny + cats=[] is for session-control directives** (status, stop, restate, commit, one-step advice) and
+137:   one-sentence tasks **whose restatement succeeds**: tiny requires the restated problem, fix and check to be
+138:   one sentence each. A prompt you cannot restate ("make it faster", "look into the thing from yesterday") is
+139:   **never tiny** — it is `others` with decision spots. Classifying vague as tiny is the fail-unsafe error: it
+140:   skips the whole method (round-2: the flash tier made exactly this error on 3/3 vague prompts). A standing
+141:   invariant ("do not add fields unless…") is also tiny/[] — it constrains future work, it is not itself a task.
+142:7. **Test cases gen vs test script gen** (round-2, 4 confusions in 50 samples): *cases* = the assertions —
+143:   what behavior is checked, including that content as test code ("extend the unit tests to modules 815–817",
+144:   "add a sabotage case"). *Script* = the machinery that runs things — runners, injectors, drivers, harness
+145:   CLIs, their flags and error reporting ("extend run_e2e.sh with --retry"). If the deliverable would still
+146:   make sense with a different runner, it is cases; if it is about the runner, it is script.
+147:8. **Web search vs research and reports** (round-3): the divider is the *source locus*, not the deliverable
+148:   shape. External sources (the web, vendor docs, "dated sources" from outside) → `web search`, even when the
+149:   output is a report. Material inside the repo → `research and reports`.
+150:9. **Document and explain vs research and reports / code generation** (round-3): when the deliverable is prose
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== LEDGER ===" && grep -n "" docs/TASK_TYPES_LEDGER.md | head -60
+=== LEDGER ===
+1:# Task-types ledger — defaults vs challengers
+2:
+3:One row per run that used a TASK_TYPES.md default or challenged one. Append only; reconcile at the run's end.
+4:A challenger that beats its projection twice becomes a candidate new default; a default repeatedly overridden
+5:gets its row rewritten. This file is state, not knowledge (method §4) — TASK_TYPES.md is the knowledge.
+6:
+7:| Date | Run id | Category | Design source | Claimed margin | Basis | Projected cost | Actual cost | Coverage outcome | Reconciled |
+8:|---|---|---|---|---|---|---|---|---|---|
+9:| 2026-10-03 | 20261003-node-workdir | code generation (build a feature, case C) | default | — | — | 210k–460k tokens, about 4 engine calls, 10–20 min (token measure not named — a flaw) | Codex dev, 2 rounds: new input 68.8k · cache read 703k · output 5.5k; agy 3 calls not measurable (protobuf); 5 engine calls plus 4 script steps; engine time 417 s (dev and cases in parallel) | R1–R7 pass (8 blind cases, failed 7/8 on the old code first); baseline 463/463 still pass; scope, must-not and tamper ok; review: accept, no findings | yes |
+10:
+11:<!-- Row rules — validated by `design_gate.py --ledger docs/TASK_TYPES_LEDGER.md` (G7): every column
+12:     filled; claimed margin (a number >= 0.20) and basis filled for challengers, "—" for defaults; a row is
+13:     reconciled only with its actual cost recorded. -->
+14:| 2026-10-03 | 20261003-data-module-review (SEZA) | code review + information extraction (use case #7, review code) | default | — | — | ~150–200k tokens, 3 nodes (2 COO, 1 blind verifier) + 1 design-checklist reviewer, 20–30 min | not instrumented: 2 DSH subagent calls + 3 COO nodes; no token roll-up for DSH subagents (session log is zstd; no zstd/zstandard on this host) | 17/17 clauses covered once; 30/30 quotes verified; blind verifier re-derived 17/17 and rejected the planted defect; 3 script checks pass, each sabotage-proven; nothing built, no baseline needed; 6 n2/n3 disagreements settled by code | no — token cost not measured |
+15:| 2026-10-03 | 20261003-engine-module-review (SEZA) | code review + repo scanning + information extraction (use case #7, review code) | default | — | — | ~0.5–0.8M tokens, 5 nodes (2 COO + 1 script, 8 explorer calls, 1 reviewer, 1 verifier) + 4 canary calls, 35–50 min | 13 DSH subagent calls + 2 COO nodes; not instrumented: no token roll-up for DSH subagents (session log is zstd; `zstandard` was installed to a temp dir only to recover one denied-write payload) | 17/17 units covered once; 22/22 requirement rows judged once; 161 findings, all 161 quotes verified; blind verifier agreed 17/17 and rejected the planted control row on C4; 3 script checks pass, each sabotage-proven (n1 3 sabotages, n2 quote + coverage, n3 4, n4 2, n5 3); nothing built, no baseline needed | no — token cost not measured |
+16:| 2026-10-04 | 20261004-eval-module-review (SEZA) | code review + repo scanning + research and reports + multi step planning (use cases #7 review code, #6 report and document) | default | — | — | ~0.8–1.0M tokens, 7 nodes (3 COO+script, 9 explorer calls, 1 reviewer, 1 researcher, 1 designer, 1 blind verifier) + 7 canary calls, 45–60 min | not instrumented: 21 DSH executor calls (9 explorer, 1 reviewer, 1 researcher, 1 designer, 1 verifier, 1 denied Claude-Code reviewer attempt, 7 canaries) + 3 COO script nodes; no token roll-up for DSH subagents | 32/32 units covered once; 24/24 clauses judged once; 263 evidence findings, all quotes verified; blind verifier agreed 32/32 units, rejected all 3 planted controls and raised 1 disagreement (U30) resolved by the join; 4 script checks pass, each sabotage-proven (n1 6 cases, n2 3, gate 5, n7 4); nothing built, no baseline needed | no — token cost not measured |
+17:| 2026-10-04 | 20261004-runner-module-review (SEZA) | code review + repo scanning + information extraction + research and reports + document and explain (use case #7, review code, extended with the research and design the challenge asked for) | default | — | — | ~900k tokens (range 750k–1.1M), 8 nodes (2 COO/script, 7 explorer calls, 1 adversarial re-read, 1 reviewer, 1 researcher, 1 designer, 1 verifier) + 4 canaries + 1 design-checklist reviewer, 45–70 min | not instrumented: 12 working DSH subagent calls + 4 canaries + 1 checklist + 2 COO script nodes; no token roll-up for DSH subagents (session log is zstd) | 17/17 units covered once; 46 clauses frozen with resolving locators; 296 evidence rows and all 296 quotes verified; adversarial re-read of the 6 thinnest units (5 corroborated / 1 contradicted, repaired before any verdict); blind verifier agreed 17/17 on units and accepted 14 designs + 1 honest DESIGN-NOT-READY, and rejected the planted control row on C1; every script check passes and each is sabotage-proven (n1 3, n2 3, n2b 1, n3 3, n4 2, n5 2, n6 2); nothing built, no baseline needed; **four checker bugs were found and fixed during the run** (AST depth, duplicate-id rule, a no-op sabotage, and the control line) | no — token cost not measured |
+18:| 2026-10-04 | 20261004-engine-fixes (SEZA, independent set) | debugging + test cases gen + code review (use case #3 fix a bug / #7 review code) | default | — | — | ~0.5–0.9M tokens, 8 nodes (independence analysis, scope+baseline, design ×3 slices, test author, dev, verifier) + 6 canaries, 2–3 h | 10 DSH provider calls: 6 canaries, 1 failed design call, 3 slice designers, 1 test author, 1 dev, 1 verifier, 1 failed test-author retry (COO then did that small node herself). Not instrumented: no token roll-up for DSH subagents | 7/7 items in the independent set have an acceptance case; 601 baseline tests all still pass (609 total, 0 flaky); feature_gate tests/baseline/scope/must-not all ok, tamper flags only the intentionally added regression case; make blocks ok; frozen surface and firewall untouched; verifier independently re-ran the suite and found a real defect (F1) that the tests could not catch, now fixed and pinned by a case proven red without the fix | no — token cost not measured |
+19:| 2026-10-04 | 20261004-tools-independent-fixes (SEZA) | debugging + test cases gen + code review + multi step planning + information extraction (build a feature/fix, default-first) | default | — | — | ~1.1M tokens, 8 nodes (3 COO/script, 1 planner, 1 test-gen, 1 dev, 1 verifier, 1 report check) + 2 canaries, 1.5–2.5 h | not instrumented: 1 planner (Sonnet) + 1 test-gen (Codex FAILED on a provider limit, reran on `subagent_coder`) + 1 dev + 1 bounded follow-up dev + 1 verifier (Opus) + 2 canaries; no token roll-up for DSH subagents | 12 TOOL ids, one disposition each: 7 fixed, 3 already-fixed-unmerged (`d805213`), 2 deferred-blocked with owners. 12 acceptance cases red-before/green-after, hash-locked against dev edits; the independent verifier wrote 43 of its own and caught a planted regression on all four mode parametrisations. Gates A/B/C GREEN, 630 passed, 8 firewall artifacts unchanged. Control discipline: the review's planted unit row was rejected on attempt 2 after attempt 1's control FAILED and exposed a defect in the harness's own check; the slice gate's pytest-format bug was found by the dev, not by the COO | no — token cost not measured |
+20:| 2026-10-04 | 20261004-runner-independent-fixes (SEZA) | debugging + test cases gen + code review + document and explain (build a feature pipeline, case C; 5 build slices) | default | — | — | ~700k tokens (range 550k-900k), 12 nodes (5 COO/script, 1 explorer, 1 case writer, 5 build nodes, 1 doc writer, 1 reviewer) + 1 codex canary + 1 design-checklist reviewer, 90-150 min | not instrumented: 9 working DSH subagent calls + 1 codex canary + 1 checklist + 5 COO nodes; the codex provider FAILED on its first real work call and the run used its named fallback (subagent_coder) for all five build nodes; no token roll-up for DSH subagents | 10 of the 14 runner-review findings fixed, each with an acceptance case red on 5985111 and green after (32 cases, one control; oracle committed at 0255772 so the gate measured the devs' diff alone); feature_gate.py check PASS on all five dimensions (1324 tests now vs 1264 baseline; the 1 flaky and 4 failing-before listed and not judged); blind reviewer found NO behaviour defect and confirmed NO diff line changes a trade outcome; the four holdout-seal tests stayed failing and are the other half of WS-02 (a 477-file leak, another run's scope) - reported not claimed; **every correction in the run came from verification, not from a worker's report**: a wrong premise in the owner question, an executor failure, a golden count 164->142 explained by construction instead of by an unbounded run, two pre-existing tests found to be reading past val_end, and an undeclared file the gate caught | no — token cost not measured |
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== G5/G6/G7 in design_gate.py ===" && grep -n "G5\|G6\|G7\|G8" .claude/skills/workflow-design/scripts/design_gate.py | head -40 && echo "=== size ===" && wc -l .claude/skills/workflow-design/scripts/design_gate.py
+=== G5/G6/G7 in design_gate.py ===
+13:  G5 challenger: claim >= 20%, arithmetic matches the estimates, coverage equal to the default
+14:  G6 a design with building nodes carries a reviewer; single-kind builders get a different-kind reviewer
+15:  G7 ledger rows carry every field the reconciliation needs
+16:  G8 labels agree: the design's categories equal the categories its nodes carry (method 3.2: the piece
+18:     the design does not claim, means the relabelling did not happen; the in-run `code review` node that G6
+53:    cells (the "+ Codex" matches before the loop reaches `opencode`), which would have told the G6 different-kind
+169:            f.append("G5: a design_source object must be type 'challenger'")
+172:            f.append("G5: challenger claim must be a number >= 0.20")
+174:            f.append("G5: challenger claim has no basis")
+180:                f.append(f"G5: recomputed margin {recomputed:.2f} < 0.20")
+182:                f.append(f"G5: margin arithmetic: claim {claim} != recomputed {recomputed:.3f}")
+184:            f.append("G5: challenger without estimate/default_estimate tokens — the arithmetic cannot be checked")
+188:            f.append("G5: coverage differs from the default — coverage is a gate, not an axis")
+195:            f.append("G6: a design with building nodes has no review node")
+209:                    f.append(f"G6: reviewer engine {r.get('engine')!r} is not a different kind from "
+214:            f.append(f"G8: category {c!r} is claimed but no node carries it — relabel from the algorithm (3.2)")
+215:        # the in-run review node G6 demands is not a deliverable of the prompt, so it may be unlisted
+217:            f.append(f"G8: a node carries category {c!r} that the design does not list")
+238:    f = [f"G7: ledger row is missing {k!r}" for k in LEDGER_FIELDS if k not in row]
+241:        f.append("G7: design_source must be 'default' or 'challenger'")
+244:            f.append("G7: a challenger row without a basis")
+247:            f.append("G7: a challenger row needs a claimed margin >= 0.20")
+249:        f.append("G7: a reconciled row without an actual cost")
+295:    expect("a node category the design does not list -> G8", d, "G8")
+297:    expect("a claimed category no node carries -> G8", d, "G8")
+307:    expect("a same-kind reviewer on builders -> G6", d, "G6")
+309:    expect("builders without a reviewer -> G6", d, "G6")
+314:    expect("a 19% claim -> G5", d, "G5")
+317:    expect("margin arithmetic lie (claim .30, recomputed .10) -> G5", d, "G5")
+323:    expect("coverage not equal -> G5 even with a real margin", d, "G5")
+330:    hit = any(x.startswith("G7") for x in validate_ledger_row(row2))
+331:    print(f"{'ok  ' if hit else 'FAIL'} self-test: a challenger row without a basis -> G7")
+=== size ===
+365 .claude/skills/workflow-design/scripts/design_gate.py
+[0m
+[0m→ [0mRead /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/scripts/design_gate.py[90m [offset=130, limit=120][0m
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== SKILL.md 4. Size region ===" && grep -n "" .claude/skills/workflow-design/SKILL.md | sed -n '1,40p' && echo "..." && grep -n "Size" .claude/skills/workflow-design/SKILL.md
+=== SKILL.md 4. Size region ===
+1:---
+2:name: workflow-design
+3:description: "Designing a workflow for an incoming task or challenge — or deciding that none is needed — before any agents are dispatched: understand the challenge (objective, scope, six whys, category and its default pattern), check readiness (including the product blueprint: vision, requirements with acceptance criteria, domain, architecture, data, UI, non-functional), write the algorithm first, list every unclear spot, size the pieces, run clear pieces as loops with objective checks, then wire the rest as a graph whose nodes each carry tools, context, a contract, evidence and state; sequential and state-file driven first, parallel decided last. Use whenever someone asks to design, plan, create, improve or review a workflow, an agent pipeline, an orchestration or a multi-agent / subagent setup; asks how many agents a task needs, whether to parallelise or loop, or how agents should pass information; brings a task too big for one prompt; or when you are about to write a Workflow script or dispatch several subagents without a written design. NOT for: a task of one to three obvious steps (just do it), the Workflow script API (use workflow-authoring), or running an already designed workflow."
+4:---
+5:
+6:# Workflow design
+7:
+8:The job: turn a challenge into **a prompt file** (small task) or **a workflow design** (bigger task). You are
+9:designing, not executing. The full method with its reasons is `references/method.md`; the five templates are in
+10:`assets/templates/`. Read the method once before your first design in a session.
+11:
+12:Why this exists: agents left alone pick a pattern first ("let's fan out five subagents") and discover later that
+13:they lacked information, that a loop had no way to close, or that two parallel workers collided. This method makes
+14:the cheap discoveries first.
+15:
+16:## First: understand the challenge (method 3.0)
+17:
+18:From the challenge text alone — no tools, no agents. State the **objective** (what is true when the task is
+19:done), what is **in scope**, what is **out of scope**. Then the **six whys**, each feeding one design field:
+20:why does the person want this (objective) · why now (priority) · why this shape of solution (category + default
+21:pattern) · why would it fail (risk tier → review depth) · why does it stop where it stops (scope) · why would
+22:we believe it is done (check kind). Stop early when an answer no longer changes the design — six is a ceiling,
+23:never a target. End with a **provisional category** (multi-label, marked inferred) from `references/task-types.md`: a guess
+24:that feeds the tiny test and a first default lookup; step 2 relabels it from the algorithm. A part that cannot be written, or a challenge that allows two readings, is the first unclear
+25:spot (kind: decision) — a question for the person with the restatement as the provisional assumption. The
+26:restatement goes at the top of the output, beside the verbatim challenge in the state file. One paragraph in
+27:the same session, never an agent, never a tool call. (Added 2026-10-01 at EJ's request; six whys and
+28:categorization the same day; n=0.)
+29:
+30:## Then: is it tiny?
+31:
+32:The test reads the restatement, not the raw text. If the restated problem, the fix and the check are one sentence
+33:each, and a mistake would show itself at once, do not design a workflow. Do the task, or fill in
+34:`assets/templates/prompt-file.md`. A process that costs more than the task is a failure of the method, not a
+35:success. (Trial 1, n=1: a one-line README fix went through the full process and cost about 309k tokens, partly
+36:because checks and handover were counted as steps. Count only the steps the challenge itself needs.)
+37:
+38:## The steps
+39:
+40:Work through these in order. Each step's output is a file, because files are the one memory every tool and every
+...
+93:4. **Size.** Up to 3 steps with nothing unclear except decisions that have a default → a prompt file, questions at
+[0m
+[0m→ [0mRead /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/SKILL.md[90m [offset=60, limit=90][0m
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "S4\|DF\b\|Size\|3.4" docs/WORKFLOW_DESIGN_DIAGRAM.md | head -40
+37:  JOIN --> S4{"4 SIZE, 3.4<br/>up to 3 steps, and nothing unclear<br/>except decisions that have a default?"}
+38:  S4 -->|"yes"| PF2["a prompt file, questions at the top.<br/>risk is judged separately from size:<br/>tiny but risky gets one independent check"]
+39:  S4 -->|"more than 3 steps"| SPLIT["consider a new piece. split only if each part<br/>keeps its own check AND the split changes<br/>how the work is done"]
+40:  S4 -->|"a spot of kind information or unknown,<br/>or a blueprint section missing or incomplete"| DESIGN["a workflow design, always"]
+42:  DESIGN --> DF["DEFAULT-FIRST, 3.4<br/>each piece's category row or pipeline in TASK_TYPES.md supplies<br/>pattern, engine, check, sabotage. a CHALLENGER design replaces it<br/>only on a written ≥20%-lower-projected-cost claim AT EQUAL COVERAGE<br/>(coverage is a gate, never an axis). reviewed by design_gate.py (script)<br/>+ one blind checklist pass (sonnet 5.5; different kind when it builds).<br/>every run reconciles its claim in TASK_TYPES_LEDGER.md — n=0 until it fills"]
+43:  DF --> S5["5 CLEAR PIECES RUN AS LOOPS, 3.5<br/>diagram 3. they run WHILE the unclear<br/>spots are still being resolved"]
+207:| 1 | 3.1 readiness, 3.2 algorithm and piece labels, 3.3 spots, 3.4 size, 3.5 loops, 3.6 graph, 3.7 sequential first | steps 1–7, same order |
+208:| 1, at DESIGN | 3.4 "Default-first design" and the 20% ledger | step 4's default-first sentences; `references/task-types.md` |
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "rule 5\|5\.\|blind\|Sonnet 5.5\|high risk" docs/EXECUTOR_KINDS.md | head -30
+3:Written 2026-09-29 from one research session (three Sonnet 5.5 agents for Codex, three for `agy`) plus local
+50:`gpt-6-astra`. On the **DSH subagent provider** the model is currently pinned to `gpt-5.6-sol`, because that is
+74:- The Codex plugin's own docs and rescue prompt use `gpt-5.4-mini`, `gpt-5.3-codex-spark` and a `gpt-5-4-prompting`
+75:  skill as examples. Never copy a model name from them. A workflow that shows 5.4 or an unrequested high is traced to a
+95:| 2026-10-03 | the DSH Claude Code provider's bundled Claude Code **2.1.263** (via `@anthropic-ai/claude-agent-sdk@0.3.263`) | Claude Code **2.1.289** | 400 *"Claude Code 2.1.263 does not support this model; version 2.1.280 or later required"* | Opus 5.5 needs CC ≥ 2.1.280. Sonnet 5.5 runs on 2.1.263, so this is per-model version gating, not a blanket "too old" |
+111:   Until it is aligned, the CLI route (`dispatch.py`) can use the model the provider cannot, which is how Opus 5.5
+139:**The collision is resolved by rule 5, not by picking a winner.** `code review` is claimed by both Codex and
+158:| `code review` | the engine that did **not** build it | rule 5; risk-tiered — Sonnet 5.5 when nothing builds |
+159:| `debugging` | opencode **and** codex split for the fix; **Opus 5.5** when it is complex debugging or root-cause analysis | rule 1, plus rule 3's escalation. The phrase *"complex debugging and root-cause analysis"* is rule 3's wording, not a category, and it lives in **this** row |
+160:| `document and explain` | `subagent_claude_code_sonnet` — Sonnet 5.5 | `TASK_TYPES.md` assigns it there |
+161:| `grade a run` | `subagent_claude_code_sonnet` — Sonnet 5.5 | same |
+168:| `test data gen` | `subagent_claude_code_sonnet` — Sonnet 5.5 | `TASK_TYPES.md`'s own cheap-tier row |
+179:| *"algorithm and solution design"* (rule 3) | **no category.** `multi step planning` is the nearest and EJ put that on `deepseek-flash` (2026-10-04), so this phrase has nowhere to land | Opus 5.5 when it is invoked — **open** |
+181:| *"other more daily tasks use Sonnet 5.5"* (EJ, 2026-10-03) | a **tier rule, not work**: anything Claude does that rule 3 does not claim runs on Sonnet 5.5 | `subagent_claude_code_sonnet` |
+185:heavy Codex use could divert about 30% of the work to Sonnet 5.5. Measured over the 300-prompt corpus, this table
+225:same engine as the node it verifies (rule 5).
+236:| Codex | `gpt-6.1-sol`, high for building | `dispatch.py`, engine `codex` — the PATH `codex-cli` serves the model | `subagent_codex`, whose bundled Codex 0.153.4 cannot, so that row pins `gpt-5.6-sol` |
+237:| Claude Code, design tier | `claude-opus-5-5` | `dispatch.py`, engine `claude` — **the only route that reaches Opus 5.5 today** | `subagent_claude_code` cannot: bundled Claude Code 2.1.263, and Opus 5.5 needs ≥ 2.1.280 |
+266:**One case where this is correctness, not preference:** a node that must be **read-only or blind** — a verifier
+269:blindness has to be structural*.
+321:   of an independent verifier (a fresh session, a different engine where possible, rule 5). Reading the state
+326:   verifier's, which reviews the diff only after writing its cases blind (`docs/TASK_TYPES.md`, build a feature).
+372:5. Sabotage check (house rule): once, run an impossible task and confirm the canary reports `fail`. Until that has
+404:| `codex` | `claude` / `claude-sonnet-5-5` — EJ's "other more daily tasks use Sonnet 5.5" |
+429:4. **Handoff between kinds is the tier exit of method 3.5.** A piece that one kind could not finish goes to a fresh
+432:5. **The independent verifier is a different kind from the worker when it can be.** The reason is different blind
+433:   spots, which is *claimed* across many blogs and measured nowhere. It is a cheap way to get blindness, not a
+468:  `antigravity.google/docs/cli/*`, `github.com/google-antigravity/antigravity-cli` issues #36, #318, #1095.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "" docs/EXECUTOR_KINDS.md | sed -n '425,445p'; echo "=== §3.7 blindness line 330-337 method ==="; grep -n "Independence of verifiers" -B2 -A2 docs/WORKFLOW_DESIGN_METHOD.md
+425:2. **Read-only unless the contract says write.** Codex rescue and `agy` both can write by default; the node's
+426:   contract names read-only or write, and the call is made with the matching flags.
+427:3. **Never `--dangerously-skip-permissions` on `agy`.** Reported to defeat `--sandbox` and write outside the
+428:   workspace (issue #36). Add specific allow rules instead.
+429:4. **Handoff between kinds is the tier exit of method 3.5.** A piece that one kind could not finish goes to a fresh
+430:   node of another kind with a short note (piece, check, last feedback), never a switch inside a running session.
+431:   Which kind counts as "cheaper" is not measured; EJ decides the order per task.
+432:5. **The independent verifier is a different kind from the worker when it can be.** The reason is different blind
+433:   spots, which is *claimed* across many blogs and measured nowhere. It is a cheap way to get blindness, not a
+434:   proven one.
+435:6. **The stop-time review gate stays off.** Reported problems: re-blocks the same finding with no deferral (#790),
+436:   cannot pin model or effort (#769), spends Codex usage on every stop.
+437:7. **Instruction files.** `agy` is not known to read `CLAUDE.md`. A node run by `agy` gets its rules in the prompt
+438:   or in `AGENTS.md`, never assumed from `CLAUDE.md`.
+439:8. **External kinds are called through a Claude wrapper.** The COO (or a Workflow script) schedules nodes
+440:   (method 3.6); a Codex or `agy` node runs as a role subagent that builds the prompt, makes one Bash call with the
+441:   model and effort the brief names, and writes the result file. That costs Claude tokens on every such node, and
+442:   the wrapper sees the worker's output, so the wrapper is never that node's verifier.
+443:
+444:## Open before relying on this
+445:
+=== §3.7 blindness line 330-337 method ===
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== high risk ===" && grep -rn "high risk\|risk tier\|risk-tiered" --include=*.md docs/ .claude/skills/workflow-design/ | head -15; echo "=== method 340-420 ==="; grep -n "" docs/WORKFLOW_DESIGN_METHOD.md | sed -n '395,470p'
+=== high risk ===
+docs/research/20261002-whale-dolphin-hunting/FINDINGS.md:415:  - F7 risk and reversibility: step is irreversible or hard to undo, or EJ flagged high risk (method 3.4 risk, Guard stage).
+docs/research/20261002-whale-dolphin-hunting/FINDINGS.md:439:    - **use_when**: The piece builds (F2) or EJ flagged high risk (F7), the row's check is judged rather than scripted (code review, document and explain, ui/ux acceptance) or the row demands a reviewer of a different kind (EXECUTOR_KINDS rule 5, gate G6), AND the checker engine is proved for that role (F8) AND the checker can be shown to fail (planted defect, F3). If a script check exists and the main agent can run it, stay in Mode 0: a hand-off must buy an objective check, a different kind, or context room (method 3.2).
+docs/research/20261002-whale-dolphin-hunting/FINDINGS.md:458:S4: F2 builds or F7 high risk, AND the check is judged or the row demands a different-kind reviewer, AND the checker is proved and its sabotage can fail (F3, F8) -> Mode 2 DRIVER-AND-BARRIER.
+docs/TASK_TYPES.md:45:     or EJ), never a third round. **Risk tier:** when the design builds or EJ flagged high risk, the checklist
+docs/TASK_TYPES.md:89:| code review | no | maker–checker, fresh blind session | risk-tiered: Sonnet 5.5 when nothing builds; different kind from the worker when it builds (EXECUTOR_KINDS rule 5) | fixed checklist; findings with file:line | plant a known defect → the reviewer must find it |
+docs/EXECUTOR_KINDS.md:158:| `code review` | the engine that did **not** build it | rule 5; risk-tiered — Sonnet 5.5 when nothing builds |
+docs/WORKFLOW_DESIGN_METHOD.md:49:| 4 | Why would it fail — what breaks if we get it wrong? | the risk tier → review depth and independent checks | assume the higher tier |
+docs/WORKFLOW_DESIGN_METHOD.md:237:design builds or EJ flagged high risk), and every run reconciles its claim in `docs/TASK_TYPES_LEDGER.md` —
+.claude/skills/workflow-design/SKILL.md:21:pattern) · why would it fail (risk tier → review depth) · why does it stop where it stops (scope) · why would
+=== method 340-420 ===
+395:   dispatched; a part she cannot write is an unclear spot (3.3).
+396:9. **Research is written to files.** The *researcher* reads docs, papers and the web (WebSearch, WebFetch). A
+397:   research node writes the full findings to
+398:   `docs/research/<date>-<topic>/FINDINGS.md` (each finding with an id, a source and a label) and returns only a
+399:   digest of about 15 lines, no more than 20, plus the path (`docs/workflow-templates/research-file.md`). The COO
+400:   reads the digest; to settle a doubt she reads one finding by id, or sends a small verify node. A design decided
+401:   from the research goes to `decisions.md` (4).
+402:10. **Exploring existing code is its own role** (EJ, 2026-10-03; n=0). The *explorer* reads the existing system —
+403:   code, tests, configs, git history — never the web. The two roles differ in source, tools, evidence and how a
+404:   claim is checked (`docs/EXECUTOR_KINDS.md`, roles). Its contract:
+405:   - **Read-only**, under a stated budget (tool calls or tokens), favouring recall inside the affected area and
+406:     never a repo-wide overview (TASK_TYPES, case C).
+407:   - **Every claim carries file:line and a short verbatim quote**, and `scripts/quote_check.py` confirms each quote
+408:     is at its line (`docs/workflow-templates/explorer-file.md`); a quote that fails is a failed finding, not a typo.
+409:   - **Every behaviour claim is marked `read` or `ran`.** `read` = inferred from the code; `ran` = confirmed by
+410:     running it (a test, a differential run, `~/skills/verify-extraction`). Only `ran` claims may feed a node that
+411:     builds; a `read` claim a build depends on is an unclear spot until it is run.
+412:   - It returns a digest and the path, like research: the impact map (case C), the old system's behaviours and
+413:     golden outputs (case B), or the findings for use cases #1 and #2.
+414:   - The COO explores herself when the affected area is small and fits her context (whale rule); an explorer node
+415:     is for a large or unfamiliar codebase.
+416:11. **Every run leaves a feedback record** (added 2026-10-02; n=0; `docs/research/20261002-workflow-feedback`).
+417:   During the run, `scripts/runlog.py exec` wraps each Codex, `qwen` or `agy` call (start, end, exit, duration;
+418:   raw output to the gitignored `runs/<id>/raw/`) and `runlog.py verdict` writes one line per node check. After
+419:   it, `scripts/harvest_run.py` reads what the engines already recorded (Workflow run JSON and agent transcripts,
+420:   Codex rollouts joined by time window and cwd, never guessed) into `runs/<id>/feedback.jsonl` and prints a
+421:   digest whose last line is the ledger's Actual cost. Tokens are kept in parts (new input, cache read, output):
+422:   cache reads are often ten times the new input. Only ids, numbers, paths and status are written; the repo is
+423:   public. Every parser fails loudly when an engine changes its format.
+424:12. **Design decisions cite their evidence** (EJ, 2026-10-03; n=0). Model memory goes stale, so every design
+425:   decision cites the finding ids it rests on — research (item 9) or exploration (item 10). A decision with no
+426:   source is marked *model knowledge* and treated like a `read` claim: it may not drive a node that builds until it
+427:   is checked against a source or by running code. The researcher and explorer gather; the COO designs, so their
+428:   picks do not become the design without a second look. Which source comes first depends on the case: the
+429:   codebase for a feature in an existing system (TASK_TYPES case C), current docs for a new stack (case D).
+430:
+431:## 4. State and memory
+432:
+433:The state lives in a file (`docs/workflow-templates/state.md`). Each agent reads it, does one step, writes the new
+434:state back; the next agent, or another tool, continues from there, and a broken run resumes from the last written
+435:state. One writer at a time. The state file holds progress and results, never a worker's reasoning; a worker's
+436:detailed notes go in its own output file, so a verifier can be kept blind to them.
+437:
+438:Kinds of memory when running in Claude Code or Codex with subagents:
+439:
+440:| Memory | Limit |
+441:|---|---|
+442:| Context window | Temporary; a subagent starts with only its prompt; long sessions get summarised |
+443:| `CLAUDE.md` / `AGENTS.md` | Loaded every session, so keep them short and let them point to the rest |
+444:| Claude Code auto-memory | Only Claude Code reads it |
+445:| **Files in the repo** | The one memory every tool and every agent can read — use it for anything that must last |
+446:| Skills | How to do things, not facts about a task |
+447:| Run records (workflow `journal.jsonl`, the Ancient Games journal) | Nobody reads them unless asked |
+448:| A subagent's final report | All that comes back; the rest is lost unless written to a file |
+449:
+450:Working rules: each agent gets a brief with only what its piece needs (with a template, an example and a standard, 3.8) and writes its full result to a file; research and decided designs are files too (3.8, `docs/research/`, `decisions.md`); the
+451:main agent keeps conclusions, not details; stored knowledge carries a date and is rechecked before it is relied on;
+452:knowledge (stable) is kept apart from state (changes every run).
+453:
+454:**Project memory for software work (added 2026-10-02 at EJ's request; n=0).** A release note is written for users
+455:after the fact; it tells an agent what shipped, not why or what to avoid, so it is an output here, not the
+456:memory. A product keeps three small append-only files beside its blueprint, each existing to answer one listed
+457:query (the rule above: no store without a query):
+458:
+459:| File (`docs/blueprint/`) | Answers | Entry (kept to about 5 lines) | Written by, when |
+460:|---|---|---|---|
+461:| `decisions.md` | "Why did we choose X? What did we reject?" | date · decision · why · alternatives rejected · the R/N ids it serves · source (finding ids, or *model knowledge*, 3.8 item 12) | the COO, when a decision spot is answered (3.3) or a design choice is made; EJ's answers are the decisions |
+462:| `changelog.md` | "What did run N change, and did it pass?" | date · run id · what changed · criteria covered (R1.1…) · commits · baseline result · optional `release note:` line for users | the COO, once at the end of each run that builds, from the state file |
+463:| `lessons.md` | "What goes wrong around module Y?" | date · where (path or module) · the trap · how it was found · recheck by (a date or a trigger) | any node proposes, the COO appends; an entry past its recheck is marked stale, never silently trusted |
+464:
+465:Working rules: append only, never rewritten (a reversal is a new entry that points at the old one); every entry
+466:carries a date and, where it applies, a requirement id or a path, so an agent finds it by `grep`, not by reading the
+467:file; readiness (3.1, information) and the design read only the entries for the sections, ids and paths the task
+468:touches; the blueprint's `README.md` map lists the files so an agent knows they exist. A release note, when one is
+469:needed, is generated from the `release note:` lines of the changelog, not written separately. The qwen findings of
+470:2026-10-02 (silent model substitution, exit 0 with no file) are examples of lessons.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== i5 callers ===" && grep -rn "i5(\|I5" --include=*.py . | grep -v __pycache__ | head; echo "=== live_dispatches semantics (dispatch.py) ==="; grep -n "" ancient_games/hybrid/tools/_shared.py | sed -n '141,147p'; echo "=== ledger row count ==="; python3 -c "
+import re
+t=open('docs/TASK_TYPES_LEDGER.md').read()
+rows=[l for l in t.splitlines() if l.startswith('| 20')]
+print('rows:',len(rows))
+print('default:',sum(1 for r in rows if '| default |' in r))
+print('challenger:',sum(1 for r in rows if '| challenger |' in r))
+print('reconciled yes:',sum(1 for r in rows if r.rstrip().endswith('| yes |')))
+print('reconciled no:',sum(1 for r in rows if 'token cost not measured' in r))
+"
+=== i5 callers ===
+./ancient_games/journal.py:139:    ("tool_call", "refused_by"): ("I1", "I4", "I5", None),  # I2/I3 never populate this (HYBRID_SPEC §4)
+./ancient_games/hybrid/tools/_shared.py:142:    """I5′ (DECISIONS_HYBRID_4 L3): computed from the journal, never a counter."""
+./ancient_games/hybrid/tools/_shared.py:190:    """agent_ids this run actually dispatched (journaled, I5-capped)."""
+./ancient_games/hybrid/tools/dispatch.py:14:    "outputs": "agent_id", "side_effects": "invoke", "cost": "agent", "participates_in": ["I5"], "entrypoint": "run",
+./ancient_games/hybrid/tools/ingest_return.py:20:    "outputs": "list[event]", "side_effects": "none", "cost": "cheap", "participates_in": ["I5"], "entrypoint": "run",
+./ancient_games/hybrid/registry.py:22:INVARIANTS = ("I1", "I2", "I3", "I4", "I5")
+./ancient_games/hybrid/invariants.py:1:"""HYBRID_SPEC §4 — I1′–I5′ as predicates over (call, ctx, events).
+./ancient_games/hybrid/invariants.py:4:and I5 (dispatch cap); a refusal is journaled into the `tool_call` event
+./ancient_games/hybrid/invariants.py:7:— neither ever populates `refused_by`. Priority, fixed: I4 > I1 > I5 > I2 > I3.
+./ancient_games/hybrid/invariants.py:21:PRIORITY = ("I4", "I1", "I5", "I2", "I3")
+=== live_dispatches semantics (dispatch.py) ===
+141:def live_dispatches(events: list[dict]) -> int:
+142:    """I5′ (DECISIONS_HYBRID_4 L3): computed from the journal, never a counter."""
+143:    started = sum(1 for e in events if e.get("event") == "tool_call" and e["tool"] == "dispatch" and event_ok(e))
+144:    returned = sum(1 for e in events if e.get("event") == "tool_call" and e["tool"] == "ingest_return" and event_ok(e))
+145:    failed = sum(1 for e in events if e.get("event") == "dispatch_failed")
+146:    return max(0, started - returned - failed)
+147:
+=== ledger row count ===
+rows: 8
+default: 8
+challenger: 0
+reconciled yes: 1
+reconciled no: 7
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== check_invariants calls i5? ===" && grep -n "i5\|def check_invariants" -A 6 ancient_games/hybrid/invariants.py | sed -n '1,40p'; echo "=== pipelines in TASK_TYPES ==="; grep -n "^## \|^### \|^| .*pipeline\|Pipeline" docs/TASK_TYPES.md | head -20; echo "=== 309k ==="; grep -rn "309k" --include=*.md . | head -5; echo "=== provisional assumption def ==="; grep -rn "provisional assumption" docs/WORKFLOW_DESIGN_METHOD.md .claude/skills/workflow-design/SKILL.md | head
+=== check_invariants calls i5? ===
+74:        r = i5(events)
+75-        if r:
+76-            out.append(r)
+77-    return evaluated, sorted(out, key=lambda r: PRIORITY.index(r.invariant))
+78-
+79-
+80:def check_invariants(call: Call, ctx, events: list[dict], tools: dict, registry: list[Row] = REGISTRY,
+81-                     cwd: str = ".") -> list[Refusal]:
+82-    return evaluate_loop_invariants(call, ctx, events, tools, registry, cwd)[1]
+83-
+84-
+85-def pick_by_priority(refusals: list[Refusal]) -> Refusal:
+86-    return min(refusals, key=lambda r: PRIORITY.index(r.invariant))
+--
+149:def i5(events: list[dict]) -> Refusal | None:
+150-    live = live_dispatches(events)
+151-    if live >= CAP:
+152-        return Refusal("I5", f"live_dispatches={live}, CAP={CAP}, no slot")
+153-    return None
+154-
+155-
+=== pipelines in TASK_TYPES ===
+18:## How this is used (the design rule)
+54:## Use cases in focus (EJ, 2026-10-02)
+62:| 1 | Combine several sources into an algorithm | most of the ~50 "understanding" prompts | research and reports, information extraction | candidate pipeline extract → reconcile → algorithm → verify; a row only after two real runs |
+64:| 3 | Fix a bug (logs, reproduce, root cause, fix, rerun) | 7 | debugging, code generation | yes, `debugging` pipeline |
+80:## Categories
+108:## Labelling rules (round-1 lessons, 2026-10-02)
+155:## Combination pipelines (seeded)
+157:| Pipeline | Nodes (in order) | Loop sits at | Join check |
+167:### Candidate pipelines (not rows yet — each earns its row after two real runs in the ledger)
+287:## The design JSON the gate reads
+318:## Provenance
+=== 309k ===
+./docs/WORKFLOW_DESIGN_DIAGRAM.md:184:| Steps 1–7 as a whole | `runs/20260920-readme-test-count/` (intake trial 1, design only, ~309k tokens for a one-line README fix — the size rule was wrong and was changed because of it), `runs/20260921-ablation7/` (designed **and executed** end to end: 6 pieces, blind verifier, join, pre-registration, and a final "what is missing" pass that retracted the run's own headline), `runs/20260930-blueprint-review/` (designed, nothing run, blocked on Q1) | 3 designs, 1 executed |
+./.claude/skills/workflow-design/SKILL.md:35:success. (Trial 1, n=1: a one-line README fix went through the full process and cost about 309k tokens, partly
+=== provisional assumption def ===
+docs/WORKFLOW_DESIGN_METHOD.md:58:decision, 3.3): a question for EJ with the restatement as the provisional assumption. No new blocking rule is
+docs/WORKFLOW_DESIGN_METHOD.md:59:added: a prompt file's restatement stands on its provisional assumption like any decision, and a design's
+docs/WORKFLOW_DESIGN_METHOD.md:154:| draft | an unclear spot of kind **decision**: a question for EJ ("accept this section as written?"), the draft being the provisional assumption |
+docs/WORKFLOW_DESIGN_METHOD.md:212:Questions for EJ go out as one batch, each with a provisional assumption so it can be answered in a few words.
+docs/WORKFLOW_DESIGN_METHOD.md:213:In a prompt file a provisional assumption stands unless EJ corrects it; a workflow design's questions are answered
+docs/WORKFLOW_DESIGN_METHOD.md:221:- Up to 3 steps and nothing unclear except decisions that have a provisional assumption → one piece → a prompt
+.claude/skills/workflow-design/SKILL.md:25:spot (kind: decision) — a question for the person with the restatement as the provisional assumption. The
+.claude/skills/workflow-design/SKILL.md:90:   the person as one batch, each with a provisional assumption so it can be answered in a few words. A draft
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "" docs/TASK_TYPES.md | sed -n '155,200p'
+155:## Combination pipelines (seeded)
+156:
+157:| Pipeline | Nodes (in order) | Loop sits at | Join check |
+158:|---|---|---|---|
+159:| research → codegen | research, codegen | codegen node | research answered its questions (checklist); else codegen does not start |
+160:| codegen → tests → review | codegen, tests gen, review | codegen node | review checklist against the acceptance criteria |
+161:| debugging | repro, fix, rerun | the whole piece | the repro test |
+162:| scan → report | scan sections, report join | none | coverage manifest complete; contradictions = stop |
+163:| grade → fix → regrade | grade, fix, regrade | the fix node | the regrade verdict on the same rubric; a FAIL surviving the regrade goes to EJ |
+164:
+165:New combinations earn a row here only after the ledger shows the ad-hoc version ran twice.
+166:
+167:### Candidate pipelines (not rows yet — each earns its row after two real runs in the ledger)
+168:
+169:**build a feature (use case #4)** — EJ, 2026-10-02; n=0.
+170:
+171:1. **Research — the main agent (COO) herself**, with a research skill, writing findings and a digest to
+172:   `docs/research/` (method 3.8 item 9). Research agents only when there are many main sources (context room) or a
+173:   source needs a different kind (web versus repo).
+174:2. **Design and small examples — the COO.** The design, the acceptance criteria in scope, and the briefs for the
+175:   next two nodes, each with a template, a worked example and the standard (method 3.8 item 8).
+176:3. **Dev ∥ verifier phase 1, in parallel** (passes the five tests of method 3.7: one shared input, different
+177:   deliverables, separate paths).
+178:   - *Dev* (the row's coder, Codex `gpt-6.1-sol`): implements and writes **unit tests only**.
+179:   - *Verifier, phase 1* (a different kind from the dev, EXECUTOR_KINDS rule 5): writes the test plan and the
+180:     acceptance cases from the design and acceptance criteria only, **before it has seen any code**. Its cases are
+181:     first run against a deliberately broken build and must fail there (sabotage), or they are not used.
+182:4. **Script gate** (no model; `.claude/skills/workflow-design/scripts/feature_gate.py` — `baseline` from two
+183:   JUnit runs of the full suite before anything builds, `check` against the COO's `plan.json` of may-change,
+184:   must-not-change and protected globs): the dev's new unit tests pass; the per-test baseline still passes; every file in the
+185:   diff is planned or has a listed reason (scope); nothing in "must not change" changed; the verifier's cases and
+186:   any goldens are untouched (tamper guard). A failure goes straight back to the dev; it costs no review.
+187:5. **Verifier, phase 2** — the same verifier, its cases already fixed, so seeing the code cannot bend them: reviews
+188:   the diff (quality, conventions, design fit, security, scope) and runs its cases. One result file, its findings
+189:   split into *behaviour* (a case failed) and *review* (a code issue).
+190:6. **Findings → the COO.** A small issue (her small-node conditions and 8-tool-call cap,
+191:   `docs/EXECUTOR_KINDS.md`) she fixes herself, quickly, and the verifier reruns. A big issue goes back to the dev,
+192:   at most **2 rounds**, then the tier exit or EJ. Findings outside the acceptance criteria go to the backlog, not
+193:   into this run.
+194:
+195:The COO does not review (EJ, 2026-10-03, from a friend's practice): she plans, decides, monitors and makes quick
+196:fixes; the mechanical part of review is the script gate and the judgment part is the verifier. Roles per run:
+197:researcher or explorer, dev, verifier — 3 or 4, inside the cap of 5 (method 3.7).
+198:
+199:Join check: the verifier's cases (proven able to fail) pass, the baseline still passes, "must not change" holds —
+200:the three-part stop of method 3.6 — and the verifier's review has no open finding inside the criteria. Feedback:
+[0m
