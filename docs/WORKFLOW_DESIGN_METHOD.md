@@ -313,6 +313,15 @@ session) following the graph. A node's role subagents do not choose the next nod
 model and effort; the COO's contract, and when she does a small node herself, are in `docs/EXECUTOR_KINDS.md`. If a node hits its attempt limit
 and its tier exit is spent, it returns to the unclear list and only that part of the graph is planned again.
 
+**The design and the runnable plan are two artifacts, and the COO writes both (EJ, 2026-10-05).** The design carries
+the plan of work — categories, checks, edges, loops — and the gate validates it. The plan (`plan.json`) carries what
+a run needs to execute — each node's engine as a bare name, its model, its timers, its brief path — and the
+dispatcher validates *its* internal consistency. **Nothing compares them**, and that is a decision, not an oversight:
+the same person writes the design and the plan and can see both, so a second checker would be machinery guarding
+against an author who is standing right there. If someone other than the author ever runs a design, this is the
+first thing to revisit — a plan can drop every node's `check`, or swap an engine while keeping its model, and
+`check_plan` will not notice.
+
 Whole picture: graph on the outside, loops inside the nodes, exploration only inside the unknown-spot nodes. This is
 what `20260919-state.md` calls combined execution.
 

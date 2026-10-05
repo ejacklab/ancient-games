@@ -170,6 +170,27 @@ question rather than a design.
 |---|---|---|---|---|
 | 9.1 | **The gate cannot tell which node writes.** `builds` and `touched_paths` are design-level, so a design says "something here builds" and names files, but no node carries the fact. G13 can therefore only catch a *wholly* unclassified design that builds in one node; a three-node design with the writer first passes. This is register 1.5's missing witness seen from the node side, and it is why "`others` may not build" was not expressible as a rule | `design_gate.py` G2/G13; found 2026-10-05 | claude code (found it by being blocked by it) | |
 
+
+## 10. The plan is not compared with the design — decision C, 2026-10-05
+
+| # | Finding | Evidence | Decision |
+|---|---|---|---|
+| 10.1 | **Nothing compares the runnable plan to the design the gate approved.** `check_plan(plan, base)` receives only the plan and checks its internal consistency, so a plan can drop every node's `check` (verified: still passes) or swap an engine while keeping its model (verified: only the missing `model`/`inner_timer` is caught, not the change). A design's guarantees therefore do not survive the crossing by any mechanism | `dispatch.py:51`; tested against `runs/20261003-node-workdir/plan.json` | **C — leave it (EJ, 2026-10-05).** One author writes both and can see both; a checker would guard against an author standing right there. Recorded in `METHOD.md` 3.7 as a decision with its revisit condition. |
+
+### Corrected here: the design's `engine` field is not a bug
+
+I claimed earlier on 2026-10-05 that "every design fails at dispatch on its first node" because a design node's
+`engine` is prose (`'agy (EJ, 2026-10-04)'`) while `dispatch.py:261` reads a bare name plus a separate `model`.
+
+**That was wrong.** Designs are not dispatched; plans are. A real plan (`runs/20261003-node-workdir/plan.json`) has
+`"engine": "codex"` and `"model": "gpt-6.1-sol"` — exactly the shape dispatch reads. And method 3.4 says the design
+starts from a table lookup, so the design quoting the table's engine cell is the design doing its job, at *kind*
+level, while the plan names the exact engine at *run* level. Two artifacts, each right for its own level.
+
+The lesson, recorded because it is the third instance in one day: **checking a claim means checking that the two
+things being compared are the same artifact.** 6.5 was a conditional read as a branch; 5.6's "3.6 requires an
+engine" was false; this was a design judged by the dispatcher's rules.
+
 ## Where to start
 
 The gate family (1) and the test family (2) are one story: the gate cannot reject, and the test was built so that it

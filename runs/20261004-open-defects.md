@@ -186,3 +186,31 @@ engine mid-run. That is better than policing it.
 Four documents updated (`EXECUTOR_KINDS`, `WORKFLOW_DESIGN_METHOD` 3.8, `DISPATCHER_DESIGN`, the template, `SKILL.md`)
 and the tests rewritten to pin the new behaviour: an executor failure blocks **even when the plan names a fallback**,
 and a guard asserts the map cannot come back by habit. **511 tests pass.**
+
+
+## The plan is not compared with the design — decision C
+
+EJ, 2026-10-05: *"Yes you are right should be C."*
+
+**C is: leave it.** The COO writes the design and then writes the runnable plan, and owns both. Nothing compares
+them, and that is now a recorded decision rather than an unnoticed hole — written into `METHOD.md` 3.7 with its
+revisit condition: *if someone other than the author ever runs a design, this is the first thing to revisit.*
+
+What was measured before deciding (against `runs/20261003-node-workdir/plan.json`):
+
+| what I did to the plan | `check_plan` said |
+|---|---|
+| removed the `check` from **every node** | **still passes** |
+| deleted the reviewer node | caught, but only because another node `needs` it |
+| swapped every engine to `qwen` | caught, but only because the swap lost `model`/`inner_timer` — not because the engine changed |
+| removed the timers | caught |
+
+So the gap is real and now known. It is accepted because there is **one author with both artifacts in front of
+her** — the same reasoning as removing the fallback: machinery that guards against a person who is standing right
+there is cost without a beneficiary.
+
+**Also corrected here.** I had claimed the design's prose `engine` field was a bug that broke dispatch (a `KeyError`
+on every design). It is not: designs are not dispatched, plans are, and a real plan carries the bare name and model
+that dispatch reads. The design quoting the table at *kind* level is the design doing its job. Three claims in one
+day had to be withdrawn this way — 6.5, 5.6's engine clause, and this — and all three were the same mistake:
+judging one artifact by another artifact's rules.
