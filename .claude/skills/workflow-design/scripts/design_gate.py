@@ -93,7 +93,8 @@ def parse_types(path: Path) -> dict:
         prod = r[1].strip().lower()
         product = "yes" if prod.startswith("yes") else ("mixed" if prod.startswith("mixed") else "no")
         cats[name] = {"product": product, "touches_product": product == "yes",
-                      "pattern": r[2], "engine": r[3], "check": r[4], "sabotage": r[5]}
+                      "pattern": r[2], "loop": "loop" in r[2].lower(),
+                      "engine": r[3], "check": r[4], "sabotage": r[5]}
     pipes: dict[str, dict] = {}
     for r in _table_rows(md, "Pipeline"):
         if len(r) < 4:
@@ -163,7 +164,9 @@ def validate_design(d: dict, types: dict) -> list[str]:
         if missing:
             f.append(f"G3: node {nid} is missing {sorted(missing)}")
         lp = n.get("loop")
-        if lp is not None:
+        if lp is None and known.get(_cat(n), {}).get("loop"):
+            f.append(f"G3: node {nid} is a loop-pattern category but carries no loop")
+        elif lp is not None:
             if not isinstance(lp.get("limit"), int) or lp["limit"] < 1:
                 f.append(f"G3: node {nid} loop has no attempt limit")
             if not (lp.get("exit") or "").strip():

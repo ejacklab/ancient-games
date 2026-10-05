@@ -17,7 +17,8 @@ const ARGS = { challenge: 'harness challenge', runId: '20260920-harness' }
 const clone = x => JSON.parse(JSON.stringify(x))
 
 const NO_BLUEPRINT = { task_kind: 'not a product change', reason: 'a question about the repo', map: '', sections: [] }
-const READY = { state_file: `${RUN}/state.md`, readiness_file: `${RUN}/readiness.md`, tools_checked: 1, missing: [], blueprint: NO_BLUEPRINT }
+const RESTATEMENT = { objective: 'answer the harness challenge', in_scope: 'design the workflow', out_of_scope: 'execute the workflow', provisional_category: 'others' }
+const READY = { state_file: `${RUN}/state.md`, readiness_file: `${RUN}/readiness.md`, tools_checked: 1, missing: [], restatement: RESTATEMENT, blueprint: NO_BLUEPRINT }
 const VERDICT_OK = { check_file: `${RUN}/check.md`, items: ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8'].map(id => ({ id, pass: true, note: 'read' })) }
 const step = (id, extra) => ({ id, action: `do ${id}`, clear: true, check: `pytest -q -k ${id}`, check_kind: 'script', ...extra })
 
@@ -87,6 +88,22 @@ const base = { '1-': READY, '5-': VERDICT_OK }
   const { result, calls } = await runCase({ ...base, '2-': ALGO_BIG, '4-': DESIGN_OK })
   expect('good design -> verified design, 4 agents', result.status === 'verified' && result.size === 'design' && calls.length === 4, JSON.stringify(result))
   expect('good design -> the question for EJ comes out', result.questions_for_ej.length === 1, JSON.stringify(result.questions_for_ej))
+}
+{
+  const d = mutate(x => Object.assign(x.pieces[1], { exit_on_limit: 'a fresh node on a stronger tier with a handoff note' }))
+  const { result } = await runCase({ ...base, '2-': ALGO_BIG, '4-': d })
+  expect('loop exits to a fresh node on a stronger tier -> verified', result.status === 'verified', JSON.stringify(result))
+}
+
+for (const field of Object.keys(RESTATEMENT)) {
+  const ready = { ...READY, restatement: { ...RESTATEMENT, [field]: '' } }
+  const { result, calls } = await runCase({ ...base, '1-': ready, '2-': ALGO_SMALL, '4-': PROMPT_OK })
+  expect(`sabotage readiness: empty restatement ${field} -> stops at step 1, named, 2 agents`, result.status === 'unverified' && result.step === 1 && named(result, `restatement: the ${field} is empty`) && calls.length === 2, JSON.stringify(result))
+}
+{
+  const ready = clone(READY); delete ready.restatement
+  const { result, calls } = await runCase({ ...base, '1-': ready, '2-': ALGO_SMALL, '4-': PROMPT_OK })
+  expect('sabotage readiness: missing restatement -> stops at step 1, named, 2 agents', result.status === 'unverified' && result.step === 1 && named(result, 'restatement: readiness did not report the 3.0 restatement') && calls.length === 2, JSON.stringify(result))
 }
 
 // Sabotage: each broken design must fail, and the failed item must be named.

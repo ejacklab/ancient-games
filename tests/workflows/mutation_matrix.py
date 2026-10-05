@@ -54,6 +54,10 @@ def m_node_missing_a_five_thing(d):
     d["nodes"][0]["five_things"] = [x for x in d["nodes"][0]["five_things"] if x != "contract"]
 
 
+def m_loop_missing(d):
+    del d["nodes"][0]["loop"]
+
+
 def m_loop_without_limit(d):
     del d["nodes"][0]["loop"]["limit"]
 
@@ -139,6 +143,7 @@ MATRIX = [
     ("builds, no product path", m_builds_without_product_touch, "G2", ""),
     ("node without a check", m_node_without_check, "G3", ""),
     ("five_things missing one name", m_node_missing_a_five_thing, "G3", ""),
+    ("loop object missing", m_loop_missing, "G3", ""),
     ("loop without a limit", m_loop_without_limit, "G3", ""),
     ("loop without an exit", m_loop_without_exit, "G3", ""),
     ("loop without feedback", m_loop_without_feedback, "G3", ""),

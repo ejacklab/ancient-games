@@ -18,7 +18,8 @@ Usage:
   readiness.py [--net] [--json] [--require TOOL ...] [--blueprint DIR]
                [--workflows DIR] [--self-test]
 
-Exit codes: 0 ok · 1 a --require'd tool or an explicit --blueprint dir is MISSING · 2 usage error.
+Exit codes: 0 ok · 1 a --require'd tool that is not verified, or an explicit --blueprint dir that is
+MISSING · 2 usage error.
 """
 from __future__ import annotations
 
@@ -45,6 +46,11 @@ MISSING = "MISSING"
 
 GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
           "Machine", "Open unknowns"]
+
+# The blueprint's own section files (docs/workflow-templates/blueprint.md); a .md that is not one of these
+# is not a section, and a mapless directory is MISSING rather than verified.
+SECTION_FILES = {"01-vision.md", "02-requirements.md", "03-domain-model.md", "04-business-logic.md",
+                 "05-architecture.md", "06-data-model.md", "07-ui-ux.md", "08-non-functional.md"}
 
 
 @dataclass
@@ -135,7 +141,8 @@ def check_agy_login(net: bool) -> Check:
     if rc == "timeout":
         return Check("Models and logins", item, UNKNOWN, out, proof)
     ids = [l.split()[0] for l in out.splitlines()
-           if l.split() and not l.lower().startswith("fetching")]
+           if l.split() and not l.lower().startswith("fetching")
+           and not l.split()[0].endswith(":")]  # a label line ("Fetching…", "error: …") is not a model id
     if rc == 0 and ids:
         return Check("Models and logins", item, VERIFIED,
                      f"{len(ids)} models: {', '.join(ids[:4])} …", proof)
@@ -155,6 +162,10 @@ def check_qwen_config(home: Path) -> Check:
         return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
     if not isinstance(d, dict):
         return Check("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
+    for key in ("model", "modelProviders", "env", "security"):
+        if d.get(key) is not None and not isinstance(d[key], dict):
+            return Check("Models and logins", item, UNKNOWN,
+                         f"unreadable: settings.{key} is not an object", str(p))
     model = d.get("model") or {}
     providers = d.get("modelProviders") or {}
     n_models = sum(len(v) for v in providers.values() if isinstance(v, list))
@@ -181,7 +192,7 @@ def list_names(p: Path) -> list[str] | None:
     return out
 
 
-def check_dir_listing(group: str, item: str, p: Path, absent_status: str = VERIFIED) -> Check:
+def check_dir_listing(group: str, item: str, p: Path, absent_status: str = MISSING) -> Check:
     try:
         names = list_names(p)
     except OSError as e:
@@ -198,11 +209,14 @@ def check_blueprint(p: Path) -> Check:
     item = f"blueprint ({p})"
     if not p.is_dir():
         return Check("Skills and workflows", item, MISSING, "directory not found", str(p))
-    files = sorted(e.name for e in p.iterdir() if e.suffix == ".md")
-    has_map = "README.md" in files
+    sections = sorted(e.name for e in p.iterdir() if e.is_file() and e.name in SECTION_FILES)
+    if not (p / "README.md").is_file():
+        return Check("Skills and workflows", item, MISSING,
+                     f"map MISSING, {len(sections)} sections: {', '.join(sections) or 'none'}", str(p))
+    if not sections:
+        return Check("Skills and workflows", item, MISSING, "map present, 0 sections", str(p))
     return Check("Skills and workflows", item, VERIFIED,
-                 f"{len(files)} sections, map {'present' if has_map else 'MISSING'}: {', '.join(files[:8])}",
-                 str(p))
+                 f"{len(sections)} sections, map present: {', '.join(sections)}", str(p))
 
 
 def check_instruction_files(cwd: Path) -> Check:
@@ -320,10 +334,8 @@ def gather(args: argparse.Namespace) -> list[Check]:
 
 
 def exit_code(checks: list[Check], requires: list[str]) -> int:
-    missing = {c.item for c in checks if c.status == MISSING}
-    known = {c.item for c in checks}
-    for r in requires:
-        if r in missing or r not in known:
+    for r in requires:  # a --require'd tool must be VERIFIED: present-but-unproven is not enough
+        if not any(c.item == r and c.status == VERIFIED for c in checks):
             return 1
     for c in checks:  # an explicitly named --blueprint dir that is not there is a hard fail
         if c.item.startswith("blueprint (") and c.status == MISSING:
@@ -366,7 +378,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="also run network checks (`agy models`); off by default")
     ap.add_argument("--json", action="store_true", help="JSON instead of markdown")
     ap.add_argument("--require", action="append", default=[],
-                    help="tool that must be verified present; exit 1 if MISSING (repeatable)")
+                    help="tool that must be verified present; exit 1 if not verified (repeatable)")
     ap.add_argument("--blueprint", metavar="DIR", help="a product's blueprint directory to include")
     ap.add_argument("--workflows", metavar="DIR", help="workflow scripts directory (default .claude/workflows)")
     ap.add_argument("--self-test", action="store_true", help="prove the check can fail, then exit")

@@ -55,6 +55,16 @@ ${CHALLENGE}
 const READY_SCHEMA = {
   type: 'object',
   properties: {
+    restatement: {
+      type: 'object',
+      properties: {
+        objective: { type: 'string' },
+        in_scope: { type: 'string' },
+        out_of_scope: { type: 'string' },
+        provisional_category: { type: 'string' },
+      },
+      required: ['objective', 'in_scope', 'out_of_scope', 'provisional_category'],
+    },
     state_file: { type: 'string' },
     readiness_file: { type: 'string' },
     tools_checked: { type: 'integer', description: 'how many tools you actually ran a command for' },
@@ -91,7 +101,7 @@ const READY_SCHEMA = {
       required: ['task_kind', 'reason', 'map', 'sections'],
     },
   },
-  required: ['state_file', 'readiness_file', 'tools_checked', 'missing', 'blueprint'],
+  required: ['state_file', 'readiness_file', 'tools_checked', 'missing', 'blueprint', 'restatement'],
 }
 
 const ALGO_SCHEMA = {
@@ -288,6 +298,15 @@ const mentions = (text, id) => typeof text === 'string' && new RegExp(`(^|[^A-Za
 const neededSections = bp => ((bp && bp.sections) || []).filter(x => x.needed)
 const unsettledSections = bp => neededSections(bp).filter(x => x.status !== 'settled')
 
+function checkRestatement(ready) {
+  if (!ready.restatement) return ['restatement: readiness did not report the 3.0 restatement']
+  const f = []
+  for (const field of ['objective', 'in_scope', 'out_of_scope', 'provisional_category']) {
+    if (!has(ready.restatement[field])) f.push(`restatement: the ${field} is empty`)
+  }
+  return f
+}
+
 function checkBlueprint(bp) {
   const f = []
   if (!bp) return ['blueprint: readiness did not report the blueprint check']
@@ -378,7 +397,7 @@ function checkDesign(d, algo, bp) {
       if (!(p.attempt_limit >= 1)) f.push(`piece ${p.id}: a ${p.pattern} needs an attempt limit`)
       if (!has(p.feedback)) f.push(`piece ${p.id}: a ${p.pattern} needs the feedback that goes back on failure`)
       if (!has(p.exit_on_limit)) f.push(`piece ${p.id}: a ${p.pattern} needs an exit for when the limit is hit`)
-      else if (!/unclear|EJ/.test(p.exit_on_limit)) f.push(`piece ${p.id}: when the limit is hit it goes back to the unclear list or to EJ, not another round`)
+      else if (!/unclear|EJ|stronger tier/.test(p.exit_on_limit)) f.push(`piece ${p.id}: when the limit is hit it goes back to the unclear list or to EJ, not another round`)
     }
     for (const x of p.needs || []) if (x === p.id || !ids.includes(x)) f.push(`piece ${p.id}: needs unknown piece ${x}`)
     if (!has(p.brief_given)) f.push(`piece ${p.id}: the context (what the agent is given) is empty`)
@@ -499,13 +518,15 @@ const feedbackBlock = failed => failed.length
 const readyPrompt = failed => failed.length ? `${COMMON}
 STEP 1, REPAIR — your first attempt at intake, readiness and the blueprint check failed the checks listed below.
 ${RUN_DIR}/state.md and ${RUN_DIR}/readiness.md already exist. Do not take a new baseline, do not recreate either file,
-and do not add a second log line for step 1. Fix only the failed items, in the Blueprint sections of readiness.md and
+and do not add a second log line for step 1. Fix only the failed items, in the restatement and Blueprint sections of readiness.md and
 state.md, and return all of your data again with the fixes (method 3.1; layout docs/workflow-templates/blueprint.md).
 ${feedbackBlock(failed)}` : `${COMMON}
 STEP 1 — intake, readiness and the blueprint check.
+0. From the challenge text alone, restate its objective, in scope, out of scope and provisional category (method 3.0)
+   before readiness checks or creating any file. Return these four strings in restatement.
 1. BEFORE creating anything, run \`git status --short\` and keep the output.
 2. Create ${RUN_DIR}/state.md from docs/workflow-templates/state.md: the run id, the challenge verbatim, the baseline
-   output from 1.
+   output from 1. Put the restatement from 0 beside the verbatim challenge so EJ can correct it.
 3. Create ${RUN_DIR}/readiness.md from docs/workflow-templates/readiness.md. Tools: run a command for each one the
    challenge will need. Skills: list the ones that apply. Information: where it is, what structure it is in, whether
    you verified it against its source, and which agents and tools can read it.
@@ -622,7 +643,7 @@ let ready = null, failed = []
 for (let n = 1; n <= MAX_ATTEMPTS; n++) {
   ready = await run(readyPrompt(failed), { label: `1-readiness#${n}`, phase: 'Readiness', schema: READY_SCHEMA, model: 'sonnet' })
   if (!ready) return fail(1, 'The readiness agent returned nothing.')
-  failed = checkBlueprint(ready.blueprint)
+  failed = checkRestatement(ready).concat(checkBlueprint(ready.blueprint))
   if (!failed.length) break
   log(`Readiness attempt ${n}/${MAX_ATTEMPTS}: ${failed.length} blueprint check(s) failed`)
 }

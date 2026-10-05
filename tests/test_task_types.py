@@ -76,6 +76,18 @@ def test_types_table_parses():
     assert len(TYPES["pipelines"]) >= 4
 
 
+def test_parse_types_marks_loop_from_the_pattern_column(tmp_path):
+    p = tmp_path / "TASK_TYPES.md"
+    p.write_text("| Category | Touches product | Default pattern | Default engine | Default check | Sabotage (proof the check can fail) |\n"
+                 "|---|---|---|---|---|---|\n"
+                 "| custom iterative work | no | bounded LOOP | codex | check | sabotage |\n"
+                 "| code generation | yes | step | codex | check | sabotage |\n")
+    cats = dg.parse_types(p)["categories"]
+    assert cats["custom iterative work"]["loop"] is True
+    assert cats["code generation"]["loop"] is False
+    assert cats["custom iterative work"]["pattern"] == "bounded LOOP"
+
+
 def test_corpus_shape():
     assert len(CORPUS) == 16
     ids = set()

@@ -22,6 +22,8 @@ GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
           "Machine", "Open unknowns"]
 MCP_LABELS = {"~/.claude/settings.json", "~/.claude.json", "~/.qwen/settings.json",
               ".mcp.json (project)"}
+SECTION_FILES = ["01-vision.md", "02-requirements.md", "03-domain-model.md", "04-business-logic.md",
+                 "05-architecture.md", "06-data-model.md", "07-ui-ux.md", "08-non-functional.md"]
 
 
 @pytest.fixture
@@ -135,7 +137,7 @@ def test_rt_01_sanitized_full_inventory(sandbox):
         "workflow scripts": sandbox.cwd / ".claude/workflows",
     }
     for item, path in directories.items():
-        assert_row(checks, item, "verified", f"absent ({path})", path)
+        assert_row(checks, item, "MISSING", f"absent ({path})", path)
     mcp = [c for c in checks if c["group"] == "MCP"]
     assert {c["item"] for c in mcp} == MCP_LABELS
     assert all(c["status"] == "verified" and c["detail"] == "file absent → no servers from it" for c in mcp)
@@ -198,6 +200,14 @@ def test_rt_03c_non_object_qwen_settings(sandbox):
     assert check["detail"].startswith("unreadable:")
 
 
+def test_rt_03d_non_object_model_field(sandbox):
+    settings = write_file(sandbox.home / ".qwen/settings.json", '{"model": "x"}')
+    checks = json_checks(sandbox.run("--json"))
+    check = row(checks, "qwen config (model, provider)")
+    assert check["status"] == "unknown" and check["proof"] == str(settings)
+    assert check["detail"].startswith("unreadable:")
+
+
 def test_rt_04_cache_fallbacks_cap_and_age(sandbox):
     sandbox.full()
     examples = [
@@ -254,7 +264,7 @@ def test_rt_06_require_matrix_and_dedupe(sandbox):
 
 def test_rt_07_WART_require_accepts_present_broken_tool(sandbox):
     sandbox.fake("broken", "print('boom on stderr\\nsecond line', file=sys.stderr)\nsys.exit(3)\n")
-    checks = json_checks(sandbox.run("--require", "broken", "--json"))
+    checks = json_checks(sandbox.run("--require", "broken", "--json"), code=1)
     assert_row(checks, "broken", "unknown", "exit 3: boom on stderr", "`broken --version`", "Tools")
 
 
@@ -320,7 +330,7 @@ def test_rt_10_hanging_binary_is_bounded(sandbox):
     sandbox.fake("claude", f"with open({str(pid_file)!r}, 'w') as pid_file:\n"
                  "    pid_file.write(str(os.getpid()))\nimport time\ntime.sleep(60)\n")
     start = time.monotonic()
-    result = sandbox.run("--require", "claude", "--json", timeout=35)
+    result = sandbox.run("--json", timeout=35)
     elapsed = time.monotonic() - start
     pid = int(pid_file.read_text())
     with pytest.raises(ProcessLookupError):
@@ -366,16 +376,29 @@ def test_rt_12_net_opt_in_and_agy_banner_parsing(sandbox):
                "3 models: gemini-9-pro, gemini-9-flash, gpt-oss-120b-medium …", "`agy models` (network)")
 
 
+def test_rt_agy_models_rc0_error_is_unknown(sandbox):
+    # rc 0 with an error line is not a model list: an error must not count as a verified model id.
+    sandbox.fake("agy", "if sys.argv[1:] == ['--version']:\n"
+                 "    print('agy-fake 0.1')\n"
+                 "elif sys.argv[1:] == ['models']:\n"
+                 "    print('error: not logged in')\n"
+                 "else:\n    print('UNEXPECTED agy INVOCATION')\n    sys.exit(9)\n")
+    checks = json_checks(sandbox.run("--json", "--net"))
+    assert_row(checks, "agy", "verified", "agy-fake 0.1", "`agy --version`", "Tools")
+    assert_row(checks, "agy login (model list)", "unknown", "exit 0: error: not logged in",
+               "`agy models` (network)", "Models and logins")
+
+
 def test_rt_13_blueprint_workflows_and_usage_errors(sandbox):
     bp, wf, nope = (sandbox.cwd / name for name in ("bp", "wf", "nope"))
-    for name in ("README.md", "a.md", "b.md", "notes.txt"):
+    for name in ("README.md", "a.md", "b.md", "notes.txt", *SECTION_FILES):
         write_file(bp / name, "")
     for name in ("a.js", "b.js", "tool.py", ".hidden.js"):
         write_file(wf / name, "")
     result = sandbox.run("--blueprint", bp)
     assert result.returncode == 0, result.stderr
     assert_row(markdown_checks(result.stdout), f"blueprint ({bp})", "verified",
-               "3 sections, map present: README.md, a.md, b.md", bp)
+               f"8 sections, map present: {', '.join(sorted(SECTION_FILES))}", bp)
     checks = json_checks(sandbox.run("--blueprint", nope, "--json"), code=1)
     assert_row(checks, f"blueprint ({nope})", "MISSING", "directory not found", nope)
     result = sandbox.run("--workflows", wf)
@@ -414,15 +437,15 @@ def test_rt_15_blueprint_without_map(sandbox):
     bp = sandbox.cwd / "bp"
     for name in ("b.md", "a.md", "notes.txt"):
         write_file(bp / name, "")
-    checks = json_checks(sandbox.run("--blueprint", bp, "--json"))
-    assert_row(checks, f"blueprint ({bp})", "verified",
-               "2 sections, map MISSING: a.md, b.md", bp, "Skills and workflows")
+    checks = json_checks(sandbox.run("--blueprint", bp, "--json"), code=1)
+    assert_row(checks, f"blueprint ({bp})", "MISSING",
+               "map MISSING, 0 sections: none", bp, "Skills and workflows")
 
 
 def test_rt_16_empty_skill_directory(sandbox):
     skills = sandbox.home / ".claude/skills"
     skills.mkdir(parents=True)
-    assert_row(json_checks(sandbox.run("--json")), "claude skills (user)", "verified",
+    assert_row(json_checks(sandbox.run("--json")), "claude skills (user)", "MISSING",
                f"empty ({skills})", skills, "Skills and workflows")
 
 
