@@ -363,6 +363,11 @@ The pair survives where it belongs, in the spike rule, still about approaches. `
 for having many roles or a wide parallel group; the budget keeps `max_rounds` and `max_calls`, which are limits on
 *attempts* and are required by 3.5. **If a run needs many roles, that is a design question, not a cap.**
 
+**The concurrency ceiling comes from the harness (EJ, 2026-10-05).** `@deepseek-ai/dsh-subagent` carries
+`maxActiveSubagents` — default **8** — and `maxDepth` **1**, so a subagent cannot spawn subagents. Read the live
+value with the harness's own inspect provider rather than assuming it, and note that it is a property of the
+**machine**, not of the design: it does not belong in a rule about how to lay out a workflow.
+
 ### 3.8 Running a node: executors are tools, timers, pass-back, no polling
 
 (Added 2026-10-02 at EJ's request. n=0: every number below is a provisional working value that the ledger replaces

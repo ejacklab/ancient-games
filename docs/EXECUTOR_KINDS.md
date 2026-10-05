@@ -316,7 +316,8 @@ details (EJ, 2026-10-02; n=0). The vision, the requirements and every approval s
 2. **Budget.** Enforces the ceiling EJ sets: attempt limits, timeouts, the cost ceiling, the tier exit, the
    executor-failure rule below and the model check. (The "5 roles and 3 at once" caps were deleted 2026-10-05 at
    EJ's direction — see method 3.7; they had re-labelled the spike rule's numbers as a role cap. The dispatcher
-   still runs at most `MAX_WORKERS` nodes at a time, which is a pool size, not a rule about a design.)
+   still runs at most `MAX_WORKERS` nodes at a time — a pool size, and it takes its number from the harness's
+   `@deepseek-ai/dsh-subagent` `maxActiveSubagents`, default 8, not from a preference.)
    When the next step would pass the ceiling she stops and reports;
    she never raises it herself.
 3. **Acceptance.** Accepts, sends back for repair, or escalates, on the digest, the verdict and the evidence path

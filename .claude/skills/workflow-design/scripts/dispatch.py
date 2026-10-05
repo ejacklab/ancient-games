@@ -48,7 +48,11 @@ DEFAULT_BUDGET = {"max_rounds": 2, "max_calls": 30}
 # the spike rule's in `TASK_TYPES.md` ("run at most 3 in parallel", "up to 5 in a round", both about candidate
 # *approaches*), re-labelled as a rule about *roles* and *concurrency*. Two different units, called the same word,
 # in one sentence. The pair survives where it belongs — in the spike rule, still about approaches.
-MAX_WORKERS = 3
+# The number comes from **the harness**, not from a preference (EJ, 2026-10-05: "the limit should be from
+# harness"). `@deepseek-ai/dsh-subagent` carries `maxActiveSubagents`, default **8**, and this profile does not
+# override it — read with the harness's own inspect provider, not guessed. `maxDepth` is 1, so a subagent cannot
+# spawn subagents. If a harness ever sets a different ceiling, this is the line that should follow it.
+MAX_WORKERS = 8
 
 
 # ---------------------------------------------------------------- plan

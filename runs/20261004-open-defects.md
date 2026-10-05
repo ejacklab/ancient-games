@@ -267,3 +267,35 @@ rule about designing a workflow. And the pair stays in the spike rule, where it 
 confused again.
 
 Pinned by `test_many_roles_and_a_wide_group_are_allowed`, so the caps cannot return by habit. **512 tests pass.**
+
+
+## The concurrency limit — it comes from the harness, and it is 8
+
+EJ: *"maximum how many subagents, the limit should be from harness."* Correct on both counts, and asking the harness
+was the whole answer.
+
+Read with the harness's **own inspect provider** (not guessed):
+
+```
+@deepseek-ai/dsh-subagent
+  maxActiveSubagents   default 8      ← the ceiling
+  maxDepth             default 1      ← a subagent cannot spawn subagents
+```
+
+This profile's `cordis.yml` / `cordis.patch.yml` do **not** override either, so 8 and 1 are live. And it is not
+merely declared: the plugin constructs a `ContinuableActivationRegistry` holding a `resident` map of live child
+activations, bounded by `() => this.config.maxActiveSubagents.get()`. **The harness owns the ceiling.**
+
+**What changed:**
+
+* `scripts/dispatch.py` — `MAX_WORKERS` is **8**, and the comment names its source (`@deepseek-ai/dsh-subagent`,
+  `maxActiveSubagents`, default 8, read via the inspect provider) instead of standing on its own.
+* `METHOD.md` 3.7 — the deletion note now says the ceiling is a **machine** property that comes from the harness,
+  and should be read live rather than assumed.
+* `EXECUTOR_KINDS.md` — the pool's number names the same source.
+* `tests/test_dispatch.py` — pins 8 and says where it comes from.
+
+**And this retires the thing I was going to build.** I had proposed a small report script to count the COO's own
+dispatches, on the theory that "Door 2" had no ceiling. **It has one — the harness enforces it.** Nothing we write
+needs to count them. That is the third proposed mechanism today that turned out to be unnecessary: the fallback, the
+plan-vs-design checker, and now this counter.

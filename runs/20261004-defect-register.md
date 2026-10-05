@@ -219,6 +219,13 @@ exists?* So §5 is **two questions, not six**: that one, and 5.2's thin owner.
 Also found while checking: `docs/workflow-templates/prompt-file.md:34` uses `git status --short` as its example of
 the must-not-change check — the same git-is-not-required assumption as 9.2, in a template.
 
+## The concurrency number has a real source now — 2026-10-05
+
+EJ: *"the limit should be from harness."* It is. `@deepseek-ai/dsh-subagent` carries `maxActiveSubagents`, default
+**8**, and `maxDepth` **1**; this profile does not override either, and the plugin bounds a live-activation registry
+by it. `dispatch.py`'s `MAX_WORKERS` is 8, sourced there and read with the harness's inspect provider rather than
+assumed. See `runs/20261004-open-defects.md`.
+
 ## Where to start
 
 The gate family (1) and the test family (2) are one story: the gate cannot reject, and the test was built so that it
