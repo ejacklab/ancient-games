@@ -71,6 +71,14 @@ agent, never a tool call. On a tiny task it is the prompt file's first lines, so
 
 ### 3.1 Readiness — always first
 
+**`git` is not a requirement (EJ, 2026-10-05).** A run must work in a plain directory: where the product is a git
+repository the run keeps a pre-run `git status --short` so it can tell what *it* changed, and where it is not, that
+record is simply absent. Readiness checks the `git` **binary** because the tooling uses it when it is there — not
+because a repository is required. The **baseline** never depended on git: it is the product's test command and its
+output (`baseline.command`, gate rule G10), which is also why a `git status` snapshot can never stand in for it.
+Before 2026-10-05 the runnable form ran `git status --short` unconditionally and a plain directory died at the first
+step of every run (register 9.2).
+
 For the task, and later for each piece, list:
 
 - **Tools**: the commands, scripts and connections needed, each with the command that proved it works. Run it; do

@@ -551,14 +551,19 @@ STEP 1 — intake, readiness and the blueprint check.
    before readiness checks or creating any file. Return these four strings in restatement.
 1. BEFORE creating anything, take the two "before" records, and do not confuse them — they answer different
    questions (corrected 2026-10-05, register 7.2):
-   a. the **pre-run working state**: \`git status --short\`, kept so the run can tell what *it* changed. This is
-      not the baseline.
-   b. the **baseline**: run the product's test command (the design's \`baseline.command\`, G10 in design_gate.py)
-      and keep its full output. This is what part 2 of every building piece's stop is measured against, because a
-      \`git status\` snapshot cannot tell a passing product from a broken one.
-   This step needs git, and needs the product to *be* a git repository — nothing checks that yet (see register 9.2).
+   a. the **pre-run working state**, ONLY IF the product is a git repository: \`git rev-parse --is-inside-work-tree\`
+      first, and if it does not say \`true\`, record "no git here" and skip this — **git is not a requirement** (EJ,
+      2026-10-05), so a run must work in a plain directory. Where it is a repository, keep \`git status --short\` so
+      the run can tell what *it* changed. This is not the baseline.
+   b. the **baseline**: ALWAYS, git or not — run the product's test command (the design's \`baseline.command\`,
+      G10 in design_gate.py) and keep its full output. This is what part 2 of every building piece's stop is
+      measured against, because a \`git status\` snapshot cannot tell a passing product from a broken one. This is
+      also why the baseline does not depend on git: it is a command and its output, nothing more.
+   **Never let a missing git stop the run.** Before 2026-10-05 this step ran \`git status --short\` unconditionally
+   and a plain directory died at the first step of every run with \`fatal: not a git repository\` (register 9.2).
 2. Create ${RUN_DIR}/state.md from docs/workflow-templates/state.md: the run id, the challenge verbatim, the
-   pre-run working state from 1a, and the baseline command and its output from 1b. Put the restatement from 0
+   baseline command and its output from 1b, and — where the product is a repository — the pre-run working state
+   from 1a. Put the restatement from 0
    beside the verbatim challenge so EJ can correct it.
 3. Create ${RUN_DIR}/readiness.md from docs/workflow-templates/readiness.md. Tools: run a command for each one the
    challenge will need. Skills: list the ones that apply. Information: where it is, what structure it is in, whether

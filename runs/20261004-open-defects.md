@@ -214,3 +214,27 @@ on every design). It is not: designs are not dispatched, plans are, and a real p
 that dispatch reads. The design quoting the table at *kind* level is the design doing its job. Three claims in one
 day had to be withdrawn this way — 6.5, 5.6's engine clause, and this — and all three were the same mistake:
 judging one artifact by another artifact's rules.
+
+
+## git is not a requirement — EJ, 2026-10-05
+
+Two answers in a row, and the second is the one that stands: *"nope, I think want git be a must here"* → *"nope, I
+don't want git be a must here."*
+
+**So the run must work in a plain directory.** That reversed the fix I was about to make: I had read `readiness.py`
+and was ready to add a hard-fail git-repository check (following the blueprint's precedent, since `MISSING` alone
+does not fail a run). **Nothing was changed** — the check would have made git mandatory, which is the opposite of the
+decision.
+
+Instead, the bug went the other way. `intake.js` STEP 1 ran `git status --short` **unconditionally**, so a plain
+directory died at the first step of every run with `fatal: not a git repository` and a readiness inventory that said
+nothing about it. Now it checks `git rev-parse --is-inside-work-tree` first, records "no git here" when there is
+none, and carries on.
+
+**And the baseline is explicitly unconditional** — the product's test command and its output, no git involved. That
+is also why 7.2's reasoning still holds: a snapshot cannot tell a passing product from a broken one, whether or not
+git is present.
+
+**What this means for 1.5.** Its witness (a) — compare `git diff` against the design's `touched_paths` — is only
+available where the product *is* a repository. So 1.5 is: **git where there is git, and no witness where there is
+not**, with that limit recorded rather than hidden.
