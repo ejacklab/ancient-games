@@ -1,21 +1,76 @@
 {
-  "run_id": "20261005-traversal",
-  "budget": {"max_rounds": 2, "max_calls": 30},
-  "nodes": [
-    {"id": "n1-emit-challenger", "role": "coder", "engine": "opencode",
-     "model": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview",
-     "brief": "runs/20261005-traversal/briefs/n1-emit-challenger.md",
-     "inner_timer": "600s", "outer_timeout_s": 660, "mode": "write",
-     "check": {"name": "pytest", "cmd": ["python3", "-m", "pytest", "-q"],
-               "cwd": "runs/20261005-traversal"}},
-    {"id": "n2-pin-both-rules", "role": "verifier", "engine": "opencode",
-     "model": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview",
-     "brief": "runs/20261005-traversal/briefs/n2-pin-both-rules.md",
-     "inner_timer": "600s", "outer_timeout_s": 660, "needs": ["n1-emit-challenger"],
-     "repair": "n2-pin-both-rules"},
-    {"id": "n3-review", "role": "verifier", "engine": "claude",
-     "model": "claude-sonnet-5-5",
-     "brief": "runs/20261005-traversal/briefs/n3-review.md",
-     "inner_timer": "600s", "outer_timeout_s": 660, "needs": ["n2-pin-both-rules"]}
-  ]
+ "run_id": "20261005-traversal",
+ "budget": {
+  "max_rounds": 2,
+  "max_calls": 30
+ },
+ "nodes": [
+  {
+   "id": "n1-emit-challenger",
+   "role": "coder",
+   "engine": "opencode",
+   "model": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview",
+   "brief": "runs/20261005-traversal/briefs/n1-emit-challenger.md",
+   "inner_timer": "600s",
+   "outer_timeout_s": 660,
+   "mode": "write",
+   "check": {
+    "name": "n1-emit-challenger-check",
+    "cmd": [
+     "python3",
+     "-m",
+     "pytest",
+     "-q"
+    ]
+   },
+   "sabotage": "strip design_source from the emitted challenger -> the check goes red"
+  },
+  {
+   "id": "n2-pin-both-rules",
+   "role": "verifier",
+   "engine": "opencode",
+   "model": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview",
+   "brief": "runs/20261005-traversal/briefs/n2-pin-both-rules.md",
+   "inner_timer": "600s",
+   "outer_timeout_s": 660,
+   "needs": [
+    "n1-emit-challenger"
+   ],
+   "repair": "n2-pin-both-rules",
+   "sabotage": "delete the G5 clause -> the new test goes red",
+   "check": {
+    "name": "n2-pin-both-rules-check",
+    "cmd": [
+     "python3",
+     "-m",
+     "pytest",
+     "-q"
+    ]
+   }
+  },
+  {
+   "id": "n3-review",
+   "role": "verifier",
+   "engine": "claude",
+   "model": "claude-sonnet-5-5",
+   "brief": "runs/20261005-traversal/briefs/n3-review.md",
+   "inner_timer": "600s",
+   "outer_timeout_s": 660,
+   "needs": [
+    "n2-pin-both-rules"
+   ],
+   "sabotage": "",
+   "check": {
+    "name": "review-checklist"
+   }
+  }
+ ],
+ "touched_paths": [
+  "tests/workflows/corpus_check.py",
+  "tests/test_task_types.py"
+ ],
+ "baseline": {
+  "command": "env -u NO_COLOR python3 -m pytest -q",
+  "captured_by": "script"
+ }
 }

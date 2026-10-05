@@ -120,7 +120,11 @@ model's probability is not (J9, J10). The research is kept in `docs/research/202
 
 1. **Plan check** — built as `dispatch.py check PLAN` rather than in `design_gate.py`, so the runner refuses a bad
    plan itself: caps, timers, brief parts. Check: self-test with sabotage.
-2. **Engine adapters**: one small function per engine that turns a node into the command line with its inner timer
+2. **Design comparison**: `check PLAN --design DESIGN` refuses a plan that loses what the design promised — a node,
+   its check, an edge, the sabotage proof, the reviewer, the touched paths, the baseline. Asymmetric on purpose: the
+   plan adds run detail and may not lose. Without `--design` it says so on stderr. (Added 2026-10-05 after a
+   traversal lost two of three checks while every validator said OK.)
+3. **Engine adapters**: one small function per engine that turns a node into the command line with its inner timer
    and model flag (Codex `exec -m … -c model_reasoning_effort=…`, `qwen --max-wall-time … -m …`,
    `agy --print-timeout … --model …`). Check: a dry-run mode that prints commands; a test
    per adapter. One live canary per engine, which spends quota — EJ's go-ahead (EXECUTOR_KINDS canary).

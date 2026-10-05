@@ -175,7 +175,7 @@ question rather than a design.
 
 | # | Finding | Evidence | Decision |
 |---|---|---|---|
-| 10.1 | **Nothing compares the runnable plan to the design the gate approved.** `check_plan(plan, base)` receives only the plan and checks its internal consistency, so a plan can drop every node's `check` (verified: still passes) or swap an engine while keeping its model (verified: only the missing `model`/`inner_timer` is caught, not the change). A design's guarantees therefore do not survive the crossing by any mechanism | `dispatch.py:51`; tested against `runs/20261003-node-workdir/plan.json` | **C — leave it (EJ, 2026-10-05).** One author writes both and can see both; a checker would guard against an author standing right there. Recorded in `METHOD.md` 3.7 as a decision with its revisit condition. |
+| 10.1 | **REVISITED 2026-10-05, same day.** **Nothing compares the runnable plan to the design the gate approved.** `check_plan(plan, base)` receives only the plan and checks its internal consistency, so a plan can drop every node's `check` (verified: still passes) or swap an engine while keeping its model (verified: only the missing `model`/`inner_timer` is caught, not the change). A design's guarantees therefore do not survive the crossing by any mechanism | `dispatch.py:51`; tested against `runs/20261003-node-workdir/plan.json` | **C — leave it (EJ, 2026-10-05).** One author writes both and can see both; a checker would guard against an author standing right there. Recorded in `METHOD.md` 3.7 as a decision with its revisit condition. |
 
 ### Corrected here: the design's `engine` field is not a bug
 
@@ -257,6 +257,16 @@ claim and needs its own evidence.
 The three answers are in `runs/20261005-attempt-limit/`, compared in `COMPARISON.md`. All three left the number to
 EJ; none invented one. Two of them quoted RFC 2119 §6's own example, *"limiting retransmisssions"*, as this case
 almost literally — and one stated a **negative link** to 3.8's time ceiling rather than inventing a relationship.
+
+
+## 14. Found by the traversal — 2026-10-05
+
+| # | Finding | Evidence | State |
+|---|---|---|---|
+| 13.1 | **A judged check is accepted at validation and fatal at run time.** The method's second tier is a fixed checklist judged by a separate agent — no `cmd`. `check_plan` accepted `{"name": "review-checklist"}` and `run_check` then raised **`KeyError: 'cmd'`**. Accepted-then-fatal is the worst of both: it moves the failure into the run | found by the traversal; now refused at validation with a message | **FIXED (refused)** — carrying a judged check in a plan is still **open** |
+| 13.2 | **`{node}` is not a substituted placeholder.** `build_script` substitutes only `{prompt_file}`, `{out}`, `{attempt}`. A plan author writing `{node}` gets `node '{node}' != contract 's1-no-check'` — a pass-back error naming the symptom, not the cause | the traversal's first real run | open (a message fix) |
+| 13.3 | **`check_plan` raised `KeyError: 'budget'` on a bare plan dict**, because `load_plan` injects `DEFAULT_BUDGET` and the check assumed it. It now defaults too, so it is safe to call on any plan | found by the new tests | **FIXED** |
+| 13.4 | **A traversal of the whole chain**: `intake` has no file-based runtime in this harness (its steps were enacted by hand); the design → plan crossing is manual and lossy; `check_plan` passed the loss; a node with no check reports **done**; the number 2 lives in **six** places | `runs/20261005-traversal/TRAVERSAL.md` | **fixed by 10.1's revision** |
 
 ## Where to start
 

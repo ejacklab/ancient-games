@@ -66,7 +66,51 @@ def load_plan(path: Path) -> dict:
     return plan
 
 
-def check_plan(plan: dict, base: Path) -> list[str]:
+def compare_design(design: dict, plan: dict) -> list[str]:
+    """Every fact the design promised the run depends on must survive into the plan.
+
+    Revisits decision C (2026-10-05). C said nothing compares the plan to the design — one author, both artefacts, no
+    checker. A traversal the same day measured what that costs: a hand-written plan **silently dropped two of three
+    nodes' checks**, plus `touched_paths`, `baseline`, `categories` and `estimate`, and `check_plan` said "plan ok".
+    Every validator agreed while two checks had vanished.
+
+    This is deliberately asymmetric. A plan carries things the design does not — a bare engine name, an exact model,
+    timers, a brief path, a role — so equality is wrong. The rule is **the design's promises survive**; the plan may
+    add, and may not lose.
+    """
+    f: list[str] = []
+    dn = {n.get("id"): n for n in design.get("nodes") or []}
+    pn = {n.get("id"): n for n in plan.get("nodes") or []}
+
+    for nid, d in dn.items():
+        p = pn.get(nid)
+        if p is None:
+            f.append(f"design node {nid!r} is missing from the plan")
+            continue
+        if d.get("check") and not p.get("check"):
+            f.append(f"node {nid!r}: the design states a check and the plan carries none — the run would report "
+                     f"done without checking anything")
+        missing_needs = [x for x in (d.get("needs") or []) if x not in (p.get("needs") or [])]
+        if missing_needs:
+            f.append(f"node {nid!r}: the plan drops the design's edge(s) {missing_needs}")
+        if d.get("sabotage") and not p.get("sabotage"):
+            f.append(f"node {nid!r}: the design carries the sabotage proof and the plan drops it")
+        if d.get("category") == "code review" and p.get("role") not in ("verifier", "reviewer", "review"):
+            f.append(f"node {nid!r}: the design's reviewer became role {p.get('role')!r} in the plan")
+
+    for nid in pn:
+        if nid not in dn:
+            f.append(f"plan node {nid!r} is not in the design — an undeclared node is an unreviewed node")
+
+    if design.get("touched_paths") and not plan.get("touched_paths"):
+        f.append("the design names touched_paths and the plan carries none — nothing can tell afterwards which "
+                 "files the run was allowed to change")
+    if design.get("baseline") and not plan.get("baseline"):
+        f.append("the design names a baseline and the plan carries none")
+    return f
+
+
+def check_plan(plan: dict, base: Path, design: dict | None = None) -> list[str]:
     f = []
     nodes = plan.get("nodes") or []
     if not plan.get("run_id"):
@@ -76,7 +120,9 @@ def check_plan(plan: dict, base: Path) -> list[str]:
     ids = [n.get("id") for n in nodes]
     if len(ids) != len(set(ids)):
         f.append("node ids are not unique")
-    b = plan["budget"]
+    # `load_plan` injects DEFAULT_BUDGET, so a plan read from disk always has one. Calling `check_plan` on a bare
+    # dict raised KeyError instead (found 2026-10-05 by a test that called it directly). Default it here too.
+    b = plan.get("budget") or dict(DEFAULT_BUDGET)
     # The budget's own keys were never validated (found 2026-10-05 by an expert measuring rather than reading).
     # `max_rounds: "two"` reached `rec["rounds"] >= b["max_rounds"]` and raised TypeError mid-run; `-5` and
     # `true` made that comparison true on the first failure, so the loop silently stopped after one attempt;
@@ -105,6 +151,13 @@ def check_plan(plan: dict, base: Path) -> list[str]:
                     f.append(f"{nid}: brief lacks {missing} (method 3.8 item 8)")
         elif not n.get("cmd"):
             f.append(f"{nid}: a script node needs cmd")
+        chk = n.get("check")
+        if chk is not None and (not isinstance(chk, dict) or not chk.get("cmd")):
+            # Found 2026-10-05 by the traversal: a judged check (a fixed checklist, no `cmd` — the method's second
+            # tier) was accepted here and then raised `KeyError: 'cmd'` inside run_check. Accepted at validation and
+            # fatal at run time is the worst of both. Until a plan can carry a judged check, refuse it loudly.
+            f.append(f"{nid}: check {chk!r} has no `cmd` — a judged check cannot run yet, and accepting it here "
+                     f"only moves the failure to the run")
         if not isinstance(n.get("outer_timeout_s"), (int, float)) or n["outer_timeout_s"] <= 0:
             f.append(f"{nid}: no outer_timeout_s (method 3.8 item 2)")
         # The ceiling on one call. Without this the rule was prose: the per-task timers scale with the work and
@@ -128,7 +181,13 @@ def check_plan(plan: dict, base: Path) -> list[str]:
                     f.append(f"{nid}: workdir {target['workdir']!r} is not a folder")
     if not f and _cycle(nodes):
         f.append("dependency cycle")
+    if design is not None:
+        f.extend(compare_design(design, plan))
     return f
+
+
+NO_DESIGN_NOTE = ("note: no --design given, so nothing compared this plan against the design it came from. That is "
+                  "how two of three checks were lost on 2026-10-05; pass --design to have them compared.")
 
 
 def _cycle(nodes: list[dict]) -> bool:
@@ -311,7 +370,10 @@ def cmd_run(a) -> int:
     plan_path = Path(a.plan)
     plan = load_plan(plan_path)
     base = Path(a.root).resolve()
-    problems = check_plan(plan, base)
+    design = json.loads(Path(a.design).read_text()) if getattr(a, "design", None) else None
+    problems = check_plan(plan, base, design=design)
+    if design is None:
+        print(NO_DESIGN_NOTE, file=sys.stderr)
     if problems:
         print("plan refused:\n  " + "\n  ".join(problems), file=sys.stderr)
         return 2
@@ -368,13 +430,18 @@ def main(argv=None) -> int:
     ap.add_argument("--runs-root", default="runs")
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("check"); c.add_argument("plan")
+    c.add_argument("--design", help="the design.json this plan came from; without it nothing compares the two")
     r = sub.add_parser("run"); r.add_argument("plan"); r.add_argument("--dry-run", action="store_true")
+    r.add_argument("--design", help="the design.json this plan came from; the run refuses a plan that loses it")
     a = ap.parse_args(argv)
     try:
         if a.cmd == "check":
             plan = load_plan(Path(a.plan))
-            problems = check_plan(plan, Path(a.root).resolve())
+            design = json.loads(Path(a.design).read_text()) if getattr(a, "design", None) else None
+            problems = check_plan(plan, Path(a.root).resolve(), design=design)
             print("plan ok" if not problems else "plan refused:\n  " + "\n  ".join(problems))
+            if design is None:
+                print(NO_DESIGN_NOTE, file=sys.stderr)
             return 0 if not problems else 1
         return cmd_run(a)
     except (OSError, ValueError, KeyError) as e:

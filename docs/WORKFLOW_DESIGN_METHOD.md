@@ -340,11 +340,21 @@ and its tier exit is spent, it returns to the unclear list and only that part of
 **The design and the runnable plan are two artifacts, and the COO writes both (EJ, 2026-10-05).** The design carries
 the plan of work — categories, checks, edges, loops — and the gate validates it. The plan (`plan.json`) carries what
 a run needs to execute — each node's engine as a bare name, its model, its timers, its brief path — and the
-dispatcher validates *its* internal consistency. **Nothing compares them**, and that is a decision, not an oversight:
-the same person writes the design and the plan and can see both, so a second checker would be machinery guarding
-against an author who is standing right there. If someone other than the author ever runs a design, this is the
-first thing to revisit — a plan can drop every node's `check`, or swap an engine while keeping its model, and
-`check_plan` will not notice.
+dispatcher validates *its* internal consistency. **They are compared, since 2026-10-05.** This was decided as *C — leave it* earlier the same day, on the reasoning
+that one author writes both and can see both, so a checker would guard against someone standing right there.
+
+**C was revisited the same day, because a traversal measured the cost.** One real challenge was run end to end:
+`intake` → design → gate → plan → dispatch. The hand-written plan **silently dropped two of three nodes' checks**,
+plus `touched_paths`, the baseline, the categories and the estimate — and `check_plan` said *"plan ok"*. Every
+validator agreed while two checks had vanished, and a node with no check reports **done**.
+
+So `dispatch.py check PLAN --design DESIGN` now compares the two, and `run` refuses a plan that loses the design.
+The comparison is **asymmetric on purpose**: a plan carries what a design does not (a bare engine name, an exact
+model, timers, a brief path, a role), so equality is wrong. **The design's promises must survive; the plan may add
+and may not lose.** Without `--design` the command **says so** on stderr rather than passing silently.
+
+*The first measurement of a decision's cost changed the decision. That is the argument for traversing a chain once
+rather than reasoning about it.*
 
 Whole picture: graph on the outside, loops inside the nodes, exploration only inside the unknown-spot nodes. This is
 what `20260919-state.md` calls combined execution.

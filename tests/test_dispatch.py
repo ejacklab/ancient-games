@@ -166,6 +166,75 @@ def test_the_budget_no_longer_carries_the_caps():
     assert not hasattr(dispatch, "MAX_WORKERS")
 
 
+def test_a_plan_must_carry_what_the_design_promised(tmp_path):
+    """Decision C revisited, 2026-10-05, with the evidence that was missing when C was chosen.
+
+    A traversal found a hand-written plan **silently dropped two of three nodes' checks**, plus `touched_paths`, the
+    `baseline`, the categories and the estimate — and `check_plan` said "plan ok". Every validator agreed while two
+    checks had vanished. `compare_design` is asymmetric on purpose: a plan adds run detail (bare engine, model,
+    timers, brief) and may not lose what the design promised.
+    """
+    import dispatch
+    design = {"categories": ["code generation"], "builds": True,
+              "touched_paths": ["x.py"], "baseline": {"command": "pytest", "captured_by": "script"},
+              "nodes": [
+                  {"id": "a", "category": "code generation", "engine": "codex", "check": "pytest -q green",
+                   "sabotage": "break it -> red", "needs": []},
+                  {"id": "r", "category": "code review", "engine": "claude", "check": "fixed checklist",
+                   "needs": ["a"]}]}
+    plan = {"run_id": "r1", "budget": {"max_rounds": 2, "max_calls": 30}, "touched_paths": ["x.py"],
+            "baseline": {"command": "pytest", "captured_by": "script"},
+            "nodes": [
+                {"id": "a", "role": "coder", "engine": "codex", "model": "gpt-6.1-sol", "brief": "brief.md",
+                 "inner_timer": "60s", "outer_timeout_s": 70, "check": {"name": "t", "cmd": ["true"]},
+                 "sabotage": "break it -> red"},
+                {"id": "r", "role": "verifier", "engine": "claude", "model": "claude-sonnet-5-5", "brief": "brief.md",
+                 "inner_timer": "60s", "outer_timeout_s": 70, "needs": ["a"],
+                 "check": {"name": "t", "cmd": ["true"]}}]}
+    assert dispatch.compare_design(design, plan) == []
+
+    # the defect the traversal measured: a check present in the design and dropped in the plan
+    lossy = json.loads(json.dumps(plan)); lossy["nodes"][1].pop("check")
+    assert any("carries none" in x for x in dispatch.compare_design(design, lossy))
+    # a design node missing entirely
+    gone = json.loads(json.dumps(plan)); gone["nodes"] = gone["nodes"][:1]
+    assert any("missing from the plan" in x for x in dispatch.compare_design(design, gone))
+    # an undeclared node in the plan
+    extra = json.loads(json.dumps(plan))
+    extra["nodes"].append({"id": "z", "role": "coder", "engine": "codex", "model": "gpt-6.1-sol",
+                           "brief": "brief.md", "inner_timer": "60s", "outer_timeout_s": 70})
+    assert any("not in the design" in x for x in dispatch.compare_design(design, extra))
+    # the reviewer demoted to an ordinary role
+    demoted = json.loads(json.dumps(plan)); demoted["nodes"][1]["role"] = "coder"
+    assert any("reviewer became role" in x for x in dispatch.compare_design(design, demoted))
+    # and the top-level facts
+    bare = json.loads(json.dumps(plan)); bare.pop("touched_paths"); bare.pop("baseline")
+    assert len(dispatch.compare_design(design, bare)) >= 2
+
+
+def test_no_design_means_the_comparison_says_so(tmp_path):
+    """Silence would repeat the defect — but a missing design is not itself a defect, so it is a note on stderr,
+    not a finding that refuses the plan."""
+    import dispatch
+    p = setup(tmp_path, [node("a", "ok")])
+    r = run(tmp_path, "check", p)
+    assert "no --design given" in r.stderr, r.stderr
+    assert "plan ok" in r.stdout, r.stdout
+    assert dispatch.check_plan(dispatch.load_plan(Path(p)), tmp_path) == []
+
+
+def test_a_check_without_a_cmd_is_refused(tmp_path):
+    """Accepted at validation and fatal at run time is the worst of both.
+
+    Found by the traversal 2026-10-05: a judged check (a fixed checklist, no `cmd`) passed `check_plan` and then
+    raised `KeyError: 'cmd'` inside `run_check`.
+    """
+    n = node("a", "ok")
+    n["check"] = {"name": "review-checklist"}
+    out = run(tmp_path, "check", setup(tmp_path, [n])).stdout
+    assert "has no `cmd`" in out, out
+
+
 def test_the_budget_keys_are_validated(tmp_path):
     """Found 2026-10-05 by an expert measuring rather than reading.
 
