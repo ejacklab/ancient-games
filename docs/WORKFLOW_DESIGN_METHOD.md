@@ -236,6 +236,20 @@ joining step compares the answers. A contradiction is a stop: pick one and say w
 - **Health is a third reason to split (EJ, 2026-10-05; n=0).** Cost and lost context are the first two. The third:
   a long single attempt hides its failure and cannot be watched, and a run whose work is cut into segments ends each
   one and can be looked at. A piece that cannot finish inside 3.8's ceiling is not one piece.
+- **Size from an estimate, and never hand an engine one huge prompt (EJ, 2026-10-05; n=0).** This is a *design
+  guideline*, and it is the design-time half of 3.8's ceiling:
+
+  > *"When we design the workflow, we don't ask a subagent to give a HUGE prompt that runs like 10 hours to Codex.
+  > Since an LLM can already estimate the workload, better to divide into like 6 or more pieces of prompts that are
+  > logical."*
+
+  A model can estimate a piece's workload **before** it runs — use that, rather than discovering the size from a
+  timeout. **A piece whose work is hours long is not a piece: split it into six or more logical pieces**, each with
+  its own deliverable and its own check. The anti-pattern is concrete — one ten-hour prompt to Codex.
+
+  This does not repeal 3.2's warning that every hand-off has a fixed cost and loses context at the split. It orders
+  the two questions: *can one call finish at all* comes first (3.8's ceiling says no, past 8 hours), and *is this
+  split worth its joins* comes second. For hours-long work the first question already has its answer.
 - Risk is judged separately from size: how late a mistake would be noticed, whether it can be undone, how many
   things it touches. Tiny but risky → the prompt file gets one independent check.
 
@@ -413,7 +427,12 @@ project three diagnoses in two days.
    the ceiling does not. Past it the run is not healthy and cannot be monitored — a call that has been going for
    hours has hidden its failure, cannot be watched, and leaves nothing to resume from. A call that hits the ceiling
    is an **executor failure**, so it blocks the node and reports (there is no fallback). **`check_plan` refuses a
-   node whose `outer_timeout_s` is past the ceiling**, so this is enforced before the run, not remembered. **This is the reason long
+   node whose `outer_timeout_s` is past the ceiling**, so this is enforced before the run, not remembered.
+
+   **The ceiling is the runtime half of 3.4's design guideline.** Design-time, estimate the workload and split
+   hours-long work into six or more logical pieces, so no call is ever *asked* for ten hours; runtime, `check_plan`
+   refuses the plan if one is. Neither half is sufficient: a guideline is not enforced, and a ceiling only catches
+   what the design already got wrong. **This is the reason long
    work is cut into segments**: not only cost — a segmented run is healthier and easier to monitor, because every
    segment ends and can be looked at.
 3. **No polling.** The COO never repeats "is it done?" and never sleeps in a loop; each check is a turn. She waits

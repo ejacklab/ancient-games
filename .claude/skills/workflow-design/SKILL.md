@@ -100,6 +100,12 @@ agent can read; a subagent starts with nothing but its prompt.
    in the ledger (n=0). Too-small pieces cost more than they give: fixed cost per agent, context lost at
    every split, more joins. Judge risk separately from size (noticed late? cannot be undone? touches many things?);
    tiny but risky gets one independent check.
+   **Size from an estimate — never hand an engine one huge prompt (EJ, 2026-10-05).** A model can estimate a
+   piece's workload before it runs; use that. Hours-long work is not one piece: split it into **six or more logical
+   pieces**, each with its own deliverable and check, rather than one ten-hour prompt to Codex. The two questions
+   are ordered — *can one call finish at all* first (method 3.8's 8-hour ceiling, enforced by `check_plan`), *is
+   this split worth its joins* second. Health is the third reason to split, after cost and lost context: a long
+   attempt hides its failure and cannot be watched.
 5. **Clear pieces run as loops** while the unclear spots are being resolved. A piece is loop-ready only with: a check
    (a script is best; next a fixed checklist judged by a separate agent; last the person's judgment), an attempt
    limit, specific feedback (the check's real output), an exit for when the limit is hit, and a check the worker
