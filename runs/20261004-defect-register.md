@@ -79,11 +79,11 @@ promises on every building node.
 
 | # | issue | where | found by | ✓ |
 |---|---|---|---|---|
-| 5.1 | **The baseline has no owner.** 3.6 requires one recorded before the first node that builds; no step produces it, and nothing says what happens if it is already red | `METHOD.md:295-296` | agy, claude, opencode | ✓ |
-| 5.2 | The final **"what is missing" pass has no owner** — §5 and 3.6 both demand it, no step places it in the graph | `METHOD.md:306` | claude, opencode | |
-| 5.3 | **Step 5 runs loops before steps 6-7 define** the nodes, edges and the 5-role/3-at-once caps, so the concurrency is unbounded when it starts | `METHOD.md:245`, `SKILL.md:102` | codex, opencode, agy | ✓ |
-| 5.4 | The promise that a run **ends at the acceptance criteria** is broken for the whole non-product-change class | `METHOD.md:131` | agy, opencode | ✓ |
-| 5.5 | **The tiny-task exit skips readiness**, so a small product change builds with no blueprint criteria and no baseline | `METHOD.md:24-25`, `DIAGRAM.md:19` | codex, claude | ✓ |
+| 5.1 | **CLOSED 2026-10-05 — not a question.** Both halves now exist: gate rule **G10** makes the design name `baseline.command` and its `captured_by`, and `intake.js` STEP 1 item **1b** captures it before anything builds (written today while fixing 9.2/9.3: *"the baseline: ALWAYS, git or not — run the product's test command ... and keep its full output"*). The run-side step the register said did not exist is there. **The baseline has no owner.** 3.6 requires one recorded before the first node that builds; no step produces it, and nothing says what happens if it is already red | `METHOD.md:295-296` | agy, claude, opencode | ✓ |
+| 5.2 | **LARGELY ANSWERED.** The pass is named **and measured**: `SKILL.md`'s quality-control list carries *"a final 'what is missing' pass measured against the three-part stop of step 8 (a failure there is a failed attempt; anything else goes to the backlog)"*, and `METHOD.md:314` routes what it finds to the backlog. What is thin is only *which agent runs it* — it is a piece like any other. Residue: one line, or nothing. The final **"what is missing" pass has no owner** — §5 and 3.6 both demand it, no step places it in the graph | `METHOD.md:306` | claude, opencode | |
+| 5.3 | **PREMISE FALSE, small residue.** The caps are **method constants**, not outputs of steps 6–7: `METHOD.md:351` states them outright (*"at most 3 running at once (our own number)"*), so loops starting at step 5 are bounded by the same numbers and nothing is "unbounded". Same shape as 6.5 — a step read as producing something it does not produce. The real residue is narrow and is 5.7's question: nothing enforces the caps until a plan exists. **Step 5 runs loops before steps 6-7 define** the nodes, edges and the 5-role/3-at-once caps, so the concurrency is unbounded when it starts | `METHOD.md:245`, `SKILL.md:102` | codex, opencode, agy | ✓ |
+| 5.4 | **ANSWERED.** The blueprint table already states the case: *"Not a product change (research, a question, an analysis, an edit to documentation only) | none; record why, and the check ends here."* The method says exactly what happens for that class; the register read "no acceptance criteria" as a broken promise when it is the stated rule. The promise that a run **ends at the acceptance criteria** is broken for the whole non-product-change class | `METHOD.md:131` | agy, opencode | ✓ |
+| 5.5 | **ANSWERED — twice over.** `prompt-file.md:40`: *"For a product change: the acceptance criteria in scope (R1.1, …) and how each is checked, plus: the baseline (the product's test command…)"* — a prompt file carries a baseline. And 3.4's blueprint rule closes the other half: *"a missing or incomplete section always means a workflow design"*, so a tiny product change is only tiny when its blueprint is settled. **The tiny-task exit skips readiness**, so a small product change builds with no blueprint criteria and no baseline | `METHOD.md:24-25`, `DIAGRAM.md:19` | codex, claude | ✓ |
 | 5.6 | **FIXED 2026-10-05 — and it was a bug, not a decision.** The code half was false (no step requires a node to name an engine; method 3.7 says each node names its own). What was real: `TASK_TYPES.md:103` gives `others` an engine cell of `—`, the harness passed that placeholder straight through, and **the gate accepted a design whose engine was an em dash** (`engine_kind` returned `unknown` and nothing objected). New rule **G11** rejects it; the harness resolves `others` to a documented engine. Pinned by a mutation. **`others` has no engine**, yet 3.2 sends every unmatched piece there and 3.6 requires every node to name one | `EXECUTOR_KINDS.md:164` | agy, claude | ✓ |
 | 5.7 | ~~The 5-role/3-at-once caps and item 12's gate exist only in the method~~ **CORRECTED 2026-10-05:** `dispatch.py:41,63-64,108-109` enforces both caps on a *dispatch plan*, so the caps are not method-only. What is missing is a cap rule in `design_gate.py`, which validates a design and sees no caps at all. Item 12's gate is still method-only | `METHOD.md:333,426` | claude, opencode | |
 
@@ -198,6 +198,26 @@ engine" was false; this was a design judged by the dispatcher's rules.
 |---|---|---|---|---|
 | 9.2 | **FIXED 2026-10-05, and NOT by requiring git.** EJ: *"I don't want git be a must here"* — so the fix went the other way. `intake.js` STEP 1 no longer runs `git status --short` unconditionally: it checks `git rev-parse --is-inside-work-tree` first, and in a plain directory records "no git here" and moves on. The baseline is now explicitly unconditional — a command and its output, no git involved — which is also why 7.2's "not a snapshot" reasoning still holds. `METHOD.md` 3.1 records the decision. **A run needs git, and nothing checks the product is a git repository.** Readiness requires the `git` *binary* (`readiness.py:40`) but never that the directory is a repo, while `intake.js` STEP 1 runs `git status --short` unconditionally before creating anything. Outside a repo that prints `fatal: not a git repository` and exits non-zero, so a non-git product dies at the first step of every run with no readiness warning. **EJ raised this** ("(a) sounds like must have a git if I am not wrong") while choosing the witness for 1.5 | `readiness.py:40`; `intake.js` STEP 1 | EJ (found it), 2026-10-05 | |
 | 9.3 | **STEP 1 called the git snapshot "the baseline"**, contradicting the 7.2 fix three places over (`intake.js:279-282`, `:601`, `:630` all say the baseline is the product's test command and its output). So 7.2 was only half-applied: the verification step was corrected and the step that *records* the baseline was not. **FIXED 2026-10-05** — STEP 1 now takes two separate "before" records: the working state (git) and the baseline (the test command and its output) | `intake.js:553` | found by following EJ's question | ✓ |
+
+## §5 pre-checked before asking (2026-10-05)
+
+EJ asked what the §5 questions were. Reading each one against the method first — the discipline that would have saved
+four withdrawn claims earlier in the day — **five of the six dissolved**:
+
+| # | verdict |
+|---|---|
+| 5.1 | **closed** — G10 plus a STEP 1 item that captures the baseline before anything builds |
+| 5.2 | **largely answered** — the pass is named and measured in the quality-control list; only *who runs it* is thin |
+| 5.3 | **premise false** — the caps are method constants (`METHOD.md:351`), not outputs of steps 6–7 |
+| 5.4 | **answered** — the blueprint table states "none; record why, and the check ends here" for that class |
+| 5.5 | **answered twice** — a prompt file carries a baseline, and a missing blueprint section makes a task not-tiny |
+| 5.7 | **small and real** — should the gate check the caps, or is the plan the right place? |
+
+**5.3 and 5.7 are the same question** — *where are the caps enforced, given the early loops run before any plan
+exists?* So §5 is **two questions, not six**: that one, and 5.2's thin owner.
+
+Also found while checking: `docs/workflow-templates/prompt-file.md:34` uses `git status --short` as its example of
+the must-not-change check — the same git-is-not-required assumption as 9.2, in a template.
 
 ## Where to start
 
