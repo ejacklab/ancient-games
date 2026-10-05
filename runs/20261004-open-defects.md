@@ -98,3 +98,23 @@ time, since the designs carry the substance rather than a list of its names.
 **Two of the five names still have no field of their own.** `tools` and `evidence` are defined here for the first
 time, with the minimum that makes them meaningful (a tool may be used; output lands somewhere). They are thinner
 than `context`, `contract` and `state`, and that is worth knowing before building on them.
+
+
+## Settled without a new decision — 2026-10-05
+
+EJ: *"if already answered, please go fix it."* Six items were blocked on a decision that the code, or an earlier
+answer, had already made. Checked one at a time against the files, and fixed or confirmed:
+
+| # | what settled it |
+|---|---|
+| **4.4** | The role map sent classification to `agy`/`gemini-3.1-pro-high`. EJ's own instruction this session — *"classification is using Deepseek v4.1 flash"* — and the routing table 80 lines below it both say DeepSeek. The stale row is corrected. |
+| **4.8** | The use-case table taught `repo scanning, information extraction` for "answer a question about existing code". Of 300 labelled prompts, **17 are `repo scanning` alone and 0 pair the two**. The table now matches the measurement. |
+| **7.2** | The design carries `baseline.command` (G10), so `intake.js`'s V6 verifies **the recorded test command**, not a `git status` snapshot — a snapshot cannot tell a passing product from a broken one, which is what part 2 of a building node's stop measures. |
+| **6.1** | Not undecided: `engines.py:157` `DEFAULT_FALLBACKS` maps every engine, and `intake.js` carries `attempt_limit`. Pinned by `test_dispatch.py:129`. |
+| **6.2** | Not missing: `dispatch.py:41` sets `max_rounds: 2` and `:292` enforces it. Pinned by `test_rounds_cap_blocks` (`test_dispatch.py:145`) — the register's claim was simply wrong. |
+| **8.1** | The split is handled: G6 requires a reviewer of a different kind from each build group it reviews. The corpus passes, and there is now a mutation for the split case specifically. |
+
+The mutation matrix is now **24/24 caught, 0 holes, 0 missed, 0 false alarms** — the 24th is 8.1's own case.
+
+Two of the six were the register being **wrong**, not the design being open: `6.2`'s limit has been in the code and
+under test the whole time.

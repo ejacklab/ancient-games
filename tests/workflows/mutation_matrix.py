@@ -114,6 +114,15 @@ def m_claimed_category_without_a_node(d):
 
 
 # ---- what the ALGORITHM requires and the gate has no rule for ---------------------------------
+def m_split_reviewer_is_one_of_the_builders(d):
+    """Register 8.1: under the engine split a codex reviewer is a different kind from the opencode half but not
+    from the codex half. G6 checks the reviewer against what it reviews, so it must fire."""
+    for n in d["nodes"]:
+        if n["category"] == "code review":
+            n["engine"] = "opencode MiniMax-M3.1-Flash-Preview"
+            break
+
+
 def m_no_baseline(d):
     """G10 (closed 2026-10-05): a design that builds must name the baseline command and its owner."""
     d.pop("baseline", None)
@@ -173,6 +182,8 @@ MATRIX = [
     ("challenger without basis", m_challenger_without_basis, "G5", ""),
     ("drop the reviewer", m_drop_the_reviewer, "G6", ""),
     ("reviewer of the same kind", m_reviewer_is_the_same_kind, "G6", ""),
+    ("under the split, the reviewer is one of the builder kinds",
+     m_split_reviewer_is_one_of_the_builders, "G6", ""),
     ("node category not claimed", m_node_category_not_claimed, "G8", ""),
     ("claimed category, no node", m_claimed_category_without_a_node, "G8", ""),
     ("check points at the table", m_placeholder_check_rather_than_the_rows_check, "G3", ""),

@@ -60,7 +60,7 @@ paths genuinely differ and the DSH row is the exception. **Lesson: when a model 
 | Researcher — docs, papers, web (method 3.8 item 9) | `subagent_researcher` on the DeepSeek Harness (web search and fetch in its tool filter); `agy` by rule 2 above; a Claude subagent on Claude Code | `deepseek-flash`, low; `agy` per its own row; the session model on Claude Code |
 | Explorer — existing code, read-only (method 3.8 item 10) | `subagent_explorer` on the DeepSeek Harness: read-only, `bash` allowed so a claim can be marked `ran`, no `write` or `edit`; the COO herself when the affected area is small | `deepseek-flash`, low; EJ, 2026-10-03, n=0 |
 | Any other `agy` node | `agy` | `gemini-3.8-flash-medium` |
-| Classifier | `agy` | `gemini-3.1-pro-high` (EJ's earlier assignment of classification to 3.1 Pro kept; see below) |
+| Classifier | DeepSeek (`subagent`, kind `deepseek`) | `deepseek-flash` — EJ, 2026-10-04: "multi step planning, classification, is using Deepseek v4.1 flash". This row said `agy`/`gemini-3.1-pro-high` and contradicted the routing table below it and line 146; corrected 2026-10-05 (register 4.4) |
 | Small task | the COO herself | her own model |
 
 **Model and effort.**

@@ -67,11 +67,11 @@ promises on every building node.
 | 4.1 | The **engine split exists only in the skill** — method and diagram have zero mentions of it | `SKILL.md:175` vs both | all 4 (pass 1) | ✓ |
 | 4.2 | The checklist says **three** qualities and lists **four**, and method §5 is still titled "Three qualities" | `SKILL.md:165`, `METHOD.md:476` | all 4 | ✓ |
 | 4.3 | **The 3.8 mapping row is wrong in both directions** — the skill carries 3.8 inside steps 1 *and* 7. I added that row today | `DIAGRAM.md:213` | all 4 (pass 2) | ✓ |
-| 4.4 | `classification` is still routed to **`agy`/gemini-3.1-pro-high** in the role map, while the routing row in the same file says `deepseek-flash` | `EXECUTOR_KINDS.md:63` | codex, claude | ✓ |
+| 4.4 | **FIXED 2026-10-05 — the Classifier row said `agy`; EJ's instruction and the routing table both say DeepSeek.** `classification` is still routed to **`agy`/gemini-3.1-pro-high** in the role map, while the routing row in the same file says `deepseek-flash` | `EXECUTOR_KINDS.md:63` | codex, claude | ✓ |
 | 4.5 | **FIXED 2026-10-05 — one shape: the gate reads the fields `intake.js` emits.** `intake.js` emits **`pieces`**; `design_gate.py` consumes **`nodes`** — nothing joins them | `intake.js:178,238` | claude, codex, agy | ✓ |
 | 4.6 | Method 3.1 never received either of the two rules added to skill step 1 | `METHOD.md:79` | claude | ✓ |
 | 4.7 | The ledger header says "Coverage outcome"; the gate's field list says `coverage_result` (doc drift — the ledger check still passes, so the gate is positional) | `TASK_TYPES_LEDGER.md:7` | agy | ✓ |
-| 4.8 | The TASK_TYPES use-case table **teaches the pairing the expected labels penalise**: it instructs adding `information extraction` to "answer a question about existing code" prompts, which rule 2 forbids as a pass-through | `TASK_TYPES.md:63` | agy, claude, opencode | ✓ |
+| 4.8 | **FIXED 2026-10-05 — use case 2 taught `repo scanning, information extraction`, a pairing that occurs in 0 of 300 labels.** The TASK_TYPES use-case table **teaches the pairing the expected labels penalise**: it instructs adding `information extraction` to "answer a question about existing code" prompts, which rule 2 forbids as a pass-through | `TASK_TYPES.md:63` | agy, claude, opencode | ✓ |
 
 4.8 is the one that changes a *score* into an *algorithm defect*: the models were penalised for following the table.
 
@@ -91,8 +91,8 @@ promises on every building node.
 
 | # | issue | where | found by | ✓ |
 |---|---|---|---|---|
-| 6.1 | A node's fallback engine, stronger-tier model and attempt-limit value are undecided, though the tier exit and the executor-failure rerun both depend on them | `METHOD.md:382` | claude | |
-| 6.2 | No run-wide replan limit, so returning exhausted nodes to planning can renew their budgets indefinitely | `METHOD.md:314` | codex | |
+| 6.1 | **ANSWERED BY THE CODE — `engines.py:157` DEFAULT_FALLBACKS and `intake.js` `attempt_limit` both exist; pinned by test_dispatch.py:129.** A node's fallback engine, stronger-tier model and attempt-limit value are undecided, though the tier exit and the executor-failure rerun both depend on them | `METHOD.md:382` | claude | |
+| 6.2 | **ANSWERED BY THE CODE — `dispatch.py:41` max_rounds=2, enforced at `:292`, pinned by test_dispatch.py:145.** No run-wide replan limit, so returning exhausted nodes to planning can renew their budgets indefinitely | `METHOD.md:314` | codex | |
 | 6.3 | The challenger decision is taken during sizing, before 3.5/3.6 produce the loops and caps whose cost it projects — and the gate then re-checks the estimate | `METHOD.md:234` | opencode | |
 | 6.4 | 3.2 assigns node membership *before* 3.3 lists the spots, 3.4 sizes, and 3.6 builds the graph | `METHOD.md:178,200` | agy, claude | |
 | 6.5 | 3.3 branches on prompt-file vs design before 3.4 decides which; the diagram resolves spots before Size though 3.4 sizes on spot *kinds* | `METHOD.md:213`, `DIAGRAM.md:37` | agy, claude | |
@@ -102,7 +102,7 @@ promises on every building node.
 | # | issue | where | found by | ✓ |
 |---|---|---|---|---|
 | 7.1 | Dispatches readiness **before method 3.0**, skipping the text-only understanding step and the restatement-based tiny test | `intake.js:623` | codex | ✓ |
-| 7.2 | Its only baseline is a `git status` snapshot, not the test command **and output** the stop condition requires | `intake.js:507` | opencode | |
+| 7.2 | **FIXED 2026-10-05 — the design carries `baseline.command` (G10) and intake.js V6 verifies it, not a git snapshot.** Its only baseline is a `git status` snapshot, not the test command **and output** the stop condition requires | `intake.js:507` | opencode | |
 | 7.3 | Refuses any loop exit that does not mention "unclear" or "EJ", though 3.5 item 4's first exit is a fresh node on a stronger tier | `intake.js:381` | claude | |
 | 7.4 | ~~The checks it emits are placeholders pointing back at the table~~ **MIS-FILED:** the emitter was never `intake.js` — it was `tests/workflows/corpus_check.py:68` and `tests/test_task_types.py:44`, both fixed on 2026-10-04. Filing it under the runnable form sent two experts to the wrong file | `testlog.md:72` | claude | |
 
@@ -110,7 +110,7 @@ promises on every building node.
 
 | # | issue | where | found by | ✓ |
 |---|---|---|---|---|
-| 8.1 | **The engine split can defeat rule 5**: code generation is split between opencode and Codex, so a `codex` reviewer reviews code Codex partly wrote — it passes G6 only because `engine_kind` reads the cell's leading token | `testlog.md:105` | claude | ✓ |
+| 8.1 | **ANSWERED BY G6 — the gate requires a different-kind reviewer per build group; pinned by a matrix mutation.** **The engine split can defeat rule 5**: code generation is split between opencode and Codex, so a `codex` reviewer reviews code Codex partly wrote — it passes G6 only because `engine_kind` reads the cell's leading token | `testlog.md:105` | claude | ✓ |
 | 8.2 | **`DEFAULT_FALLBACKS["codex"]` is Claude**, so after a fallback a Claude-appointed verifier is no longer a different kind, and no rule restores it | `engines.py` | codex | ✓ |
 | 8.3 | **FIXED 2026-10-05 — a node's five things are contents, not a list of names.** Every node's `five_things` is the bare template list — `['context','contract','evidence','state','tools']` with nothing behind them | `testlog.md:72-79` | claude, opencode | ✓ |
 

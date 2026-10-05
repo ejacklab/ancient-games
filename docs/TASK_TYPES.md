@@ -60,7 +60,7 @@ independent); #8 has no prompt in that corpus and is ranked on ordinary practice
 | # | Use case | Real prompts (of 90) | Category rows it uses | Default ready? |
 |---|---|---|---|---|
 | 1 | Combine several sources into an algorithm | most of the ~50 "understanding" prompts | research and reports, information extraction | candidate pipeline extract → reconcile → algorithm → verify; a row only after two real runs |
-| 2 | Answer a question about existing code ("where is X", "explain Y", "is Z still true") | the rest of those ~50 | repo scanning, information extraction | yes |
+| 2 | Answer a question about existing code ("where is X", "explain Y", "is Z still true") | the rest of those ~50 | repo scanning | yes |
 | 3 | Fix a bug (logs, reproduce, root cause, fix, rerun) | 7 | debugging, code generation | yes, `debugging` pipeline |
 | 4 | Build a feature (plan, design, implement) | 9 | multi step planning, code generation, ui/ux dev | yes |
 | 5 | Verify (tests, test data, double-confirm against the spec, grade a run) | 10 | test cases gen, test script gen, test data gen, grade a run | yes |

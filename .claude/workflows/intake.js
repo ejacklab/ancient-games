@@ -276,7 +276,10 @@ const VERIFY_ITEMS = [
   ['V3', 'Every check of kind "script" names a command or file that exists here (use `command -v`, `ls`, or a dry run; run nothing that changes anything).'],
   ['V4', 'state.md is complete: the challenge verbatim, the baseline, the Blueprint section, every finished step marked done with its output file, the size decision, the unclear spots and the questions for EJ matching the data below, one log line per finished step.'],
   ['V5', 'Every file named in a brief or in "what you need" exists.'],
-  ['V6', '`git status --short` now differs from the baseline recorded in state.md only by paths under runs/.'],
+  // The baseline is the product's test command and its output (the design carries `baseline.command`, G10 in
+  // design_gate.py), not a `git status` snapshot: a snapshot cannot tell a passing product from a broken one,
+  // which is what part 2 of every building piece's stop measures against. Corrected 2026-10-05 (register 7.2).
+  ['V6', "the recorded `baseline.command` still passes: re-run it and compare with the output state.md recorded"],
   ['V7', 'readiness.md has a Blueprint section that matches the blueprint data below. For a product change: every section marked settled says so in its file, and every section marked settled or draft really covers what the task needs (otherwise it is incomplete); every acceptance criterion is written in the requirements or non-functional section, or is one a blueprint piece in the design is to propose; every piece whose files change the product\'s code, schema, UI or configuration is marked builds; every stop of a piece that builds has all three parts (its criteria pass, the baseline still passes, must-not-change holds) and no open-ended clause such as "until the reviewer finds nothing more". For a task that is not a product change: pass, and say so.'],
   ['V8', 'The kind of task in the blueprint data fits the challenge: a challenge whose work changes the product\'s code, schema, UI or configuration is never "not a product change"; a fix restores behaviour the requirements already describe; anything else that adds or changes behaviour is a feature.'],
 ]
