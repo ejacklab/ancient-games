@@ -50,6 +50,16 @@ def test_each_instability_is_a_failure(tmp_path):
         (tmp_path / "r.md").unlink(missing_ok=True)
 
 
+def test_a_prelude_before_the_header_is_tolerated(tmp_path):
+    """A real run (2026-10-05) had claude print one sentence of context before the `---` header, and the strict
+    'header at byte 0' contract blocked the whole node on 'no header'. The header is the first `---` block,
+    wherever it is; a harmless prelude is discarded."""
+    (tmp_path / "ev.txt").write_text("proof")
+    prelude = "I've checked how this repo's tests import the scripts. Writing now.\n\n"
+    r = run(tmp_path, prelude + GOOD, "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+
 def test_contract_mismatches(tmp_path):
     (tmp_path / "ev.txt").write_text("proof")
     for args, want in [(["--model", "qwen3.8-flash"], "model"), (["--node", "n9"], "node"),

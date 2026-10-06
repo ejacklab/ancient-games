@@ -205,7 +205,7 @@ def _cycle(nodes: list[dict]) -> bool:
 # ---------------------------------------------------------------- engines
 def passback_note(node: dict, engine: str, model: str, attempt: int) -> str:
     return (f"\n\n## Pass-back (from the dispatcher)\nYour final answer must be the result file itself and nothing else:\n"
-            f"a header between two lines of `---` with exactly these keys, then the body the Template asks for.\n"
+            f"a header between two lines of `---` with exactly these keys, then the body the Template asks for. Write nothing before the first `---`.\n"
             f"node: {node['id']}\nattempt: {attempt}\nengine: {engine}\nmodel: {model}\n"
             f"status: ok | fail | partial\nstarted: {FILLED}\nended: {FILLED}\nevidence: <path to your proof, or none>\n"
             f"Copy node, attempt, engine, model, started and ended exactly as written; the dispatcher fills the times and\n"

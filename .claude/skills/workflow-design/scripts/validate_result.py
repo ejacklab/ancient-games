@@ -22,13 +22,21 @@ DIGEST_HEADINGS = ["Answer", "Confidence", "Decision it triggers"]
 
 
 def split_header(text: str):
+    """The header is the first `---`…`---` block, wherever it is.
+
+    A strict "header at byte 0" contract failed a real run (2026-10-05): claude printed one sentence of context
+    before the header, and the whole node blocked on "no header". LLMs will keep adding a prelude, and the prelude
+    is harmless — the header and body are still well-formed. Discard whatever precedes the first `---`; require the
+    block itself to be well-formed.
+    """
     lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
+    start = next((i for i, ln in enumerate(lines) if ln.strip() == "---"), None)
+    if start is None:
         return None, text
-    for i in range(1, len(lines)):
+    for i in range(start + 1, len(lines)):
         if lines[i].strip() == "---":
             hdr = {}
-            for ln in lines[1:i]:
+            for ln in lines[start + 1:i]:
                 if ":" in ln:
                     k, v = ln.split(":", 1)
                     hdr[k.strip()] = v.strip()
