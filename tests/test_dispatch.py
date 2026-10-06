@@ -118,7 +118,7 @@ def test_opencode_engine_builds_the_verified_argv(tmp_path):
     node = {"id": "x", "role": "coder", "engine": "opencode",
             "model": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview", "brief": "brief.md",
             "inner_timer": "600s", "outer_timeout_s": 660, "mode": "write"}
-    r = run(tmp_path, "check", setup(tmp_path, [node]))
+    r = run(tmp_path, "validate", setup(tmp_path, [node]))
     assert r.returncode == 0, r.stdout + r.stderr
 
     argv = engines.build_opencode(node, node["model"], "PROMPT", None, tmp_path, 1)
@@ -170,8 +170,8 @@ def test_a_plan_must_carry_what_the_design_promised(tmp_path):
     """Decision C revisited, 2026-10-05, with the evidence that was missing when C was chosen.
 
     A traversal found a hand-written plan **silently dropped two of three nodes' checks**, plus `touched_paths`, the
-    `baseline`, the categories and the estimate — and `check_plan` said "plan ok". Every validator agreed while two
-    checks had vanished. `compare_design` is asymmetric on purpose: a plan adds run detail (bare engine, model,
+    `baseline`, the categories and the estimate — and `validate_plan` said "plan ok". Every validator agreed while two
+    checks had vanished. `compare_plan_to_design` is asymmetric on purpose: a plan adds run detail (bare engine, model,
     timers, brief) and may not lose what the design promised.
     """
     import dispatch
@@ -191,25 +191,25 @@ def test_a_plan_must_carry_what_the_design_promised(tmp_path):
                 {"id": "r", "role": "verifier", "engine": "claude", "model": "claude-sonnet-5-5", "brief": "brief.md",
                  "inner_timer": "60s", "outer_timeout_s": 70, "needs": ["a"],
                  "check": {"name": "t", "cmd": ["true"]}}]}
-    assert dispatch.compare_design(design, plan) == []
+    assert dispatch.compare_plan_to_design(design, plan) == []
 
     # the defect the traversal measured: a check present in the design and dropped in the plan
     lossy = json.loads(json.dumps(plan)); lossy["nodes"][1].pop("check")
-    assert any("carries none" in x for x in dispatch.compare_design(design, lossy))
+    assert any("carries none" in x for x in dispatch.compare_plan_to_design(design, lossy))
     # a design node missing entirely
     gone = json.loads(json.dumps(plan)); gone["nodes"] = gone["nodes"][:1]
-    assert any("missing from the plan" in x for x in dispatch.compare_design(design, gone))
+    assert any("missing from the plan" in x for x in dispatch.compare_plan_to_design(design, gone))
     # an undeclared node in the plan
     extra = json.loads(json.dumps(plan))
     extra["nodes"].append({"id": "z", "role": "coder", "engine": "codex", "model": "gpt-6.1-sol",
                            "brief": "brief.md", "inner_timer": "60s", "outer_timeout_s": 70})
-    assert any("not in the design" in x for x in dispatch.compare_design(design, extra))
+    assert any("not in the design" in x for x in dispatch.compare_plan_to_design(design, extra))
     # the reviewer demoted to an ordinary role
     demoted = json.loads(json.dumps(plan)); demoted["nodes"][1]["role"] = "coder"
-    assert any("reviewer became role" in x for x in dispatch.compare_design(design, demoted))
+    assert any("reviewer became role" in x for x in dispatch.compare_plan_to_design(design, demoted))
     # and the top-level facts
     bare = json.loads(json.dumps(plan)); bare.pop("touched_paths"); bare.pop("baseline")
-    assert len(dispatch.compare_design(design, bare)) >= 2
+    assert len(dispatch.compare_plan_to_design(design, bare)) >= 2
 
 
 def test_no_design_means_the_comparison_says_so(tmp_path):
@@ -217,28 +217,28 @@ def test_no_design_means_the_comparison_says_so(tmp_path):
     not a finding that refuses the plan."""
     import dispatch
     p = setup(tmp_path, [node("a", "ok")])
-    r = run(tmp_path, "check", p)
+    r = run(tmp_path, "validate", p)
     assert "no --design given" in r.stderr, r.stderr
     assert "plan ok" in r.stdout, r.stdout
-    assert dispatch.check_plan(dispatch.load_plan(Path(p)), tmp_path) == []
+    assert dispatch.validate_plan(dispatch.load_plan(Path(p)), tmp_path) == []
 
 
 def test_a_check_without_a_cmd_is_refused(tmp_path):
     """Accepted at validation and fatal at run time is the worst of both.
 
-    Found by the traversal 2026-10-05: a judged check (a fixed checklist, no `cmd`) passed `check_plan` and then
-    raised `KeyError: 'cmd'` inside `run_check`.
+    Found by the traversal 2026-10-05: a judged check (a fixed checklist, no `cmd`) passed `validate_plan` and then
+    raised `KeyError: 'cmd'` inside `verify_node_result`.
     """
     n = node("a", "ok")
     n["check"] = {"name": "review-checklist"}
-    out = run(tmp_path, "check", setup(tmp_path, [n])).stdout
+    out = run(tmp_path, "validate", setup(tmp_path, [n])).stdout
     assert "has no `cmd`" in out, out
 
 
 def test_the_budget_keys_are_validated(tmp_path):
     """Found 2026-10-05 by an expert measuring rather than reading.
 
-    `check_plan` never validated the budget's own keys. `max_rounds: "two"` reached
+    `validate_plan` never validated the budget's own keys. `max_rounds: "two"` reached
     `rec["rounds"] >= b["max_rounds"]` and raised TypeError mid-run; `-5` and `true` made that comparison true on
     the first failure, so the loop silently stopped after one attempt; `10**9` was taken as no bound at all.
 
@@ -248,11 +248,11 @@ def test_the_budget_keys_are_validated(tmp_path):
     import dispatch
     for bad in ("two", -5, True, 0, 1.5):
         p = setup(tmp_path, [node("a", "ok")], budget={"max_rounds": bad, "max_calls": 30})
-        out = run(tmp_path, "check", p).stdout
+        out = run(tmp_path, "validate", p).stdout
         assert "max_rounds must be a whole number" in out, (bad, out)
     for good in (1, 2, 30):
         p = setup(tmp_path, [node("a", "ok")], budget={"max_rounds": good, "max_calls": 30})
-        assert "max_rounds must be" not in run(tmp_path, "check", p).stdout, good
+        assert "max_rounds must be" not in run(tmp_path, "validate", p).stdout, good
     assert dispatch.MAX_ENGINE_PROCESSES >= 1
 
 
@@ -260,18 +260,18 @@ def test_a_call_past_the_ceiling_is_refused(tmp_path):
     """Method 3.8's ceiling on one call: 8 hours (EJ, 2026-10-05, "it is not healthy").
 
     The per-task timers scale with the work; the ceiling does not. Before this the rule was prose — a node could ask
-    for a 40-hour timeout and every check passed.
+    for a 40-hour timeout and validation passed.
     """
     import dispatch
     under = [node("a", "ok", outer_timeout_s=dispatch.MAX_CALL_SECONDS)]
-    assert "past the ceiling" not in run(tmp_path, "check", setup(tmp_path, under)).stdout
+    assert "past the ceiling" not in run(tmp_path, "validate", setup(tmp_path, under)).stdout
     over = [node("a", "ok", outer_timeout_s=dispatch.MAX_CALL_SECONDS + 1)]
-    out = run(tmp_path, "check", setup(tmp_path, over)).stdout
+    out = run(tmp_path, "validate", setup(tmp_path, over)).stdout
     assert "past the ceiling" in out, out
     assert "cut the work into segments" in out
     # and the sabotage: a 40-hour call, the shape the rule exists to stop
     huge = [node("a", "ok", outer_timeout_s=40 * 3600)]
-    assert "past the ceiling" in run(tmp_path, "check", setup(tmp_path, huge)).stdout
+    assert "past the ceiling" in run(tmp_path, "validate", setup(tmp_path, huge)).stdout
 
 
 def test_rounds_cap_blocks(tmp_path):
@@ -300,24 +300,24 @@ def test_many_roles_and_a_wide_group_are_allowed(tmp_path):
     """
     many = [{"id": f"n{i}", "role": f"r{i}", "engine": "codex", "model": "gpt-6.1-sol", "brief": "brief.md",
              "inner_timer": "300s", "outer_timeout_s": 330} for i in range(6)]
-    out = run(tmp_path, "check", setup(tmp_path, many)).stdout
+    out = run(tmp_path, "validate", setup(tmp_path, many)).stdout
     assert "roles > cap" not in out, out
     group = [node(f"n{i}", "ok", parallel_group="g") for i in range(4)]
-    out = run(tmp_path, "check", setup(tmp_path, group)).stdout
+    out = run(tmp_path, "validate", setup(tmp_path, group)).stdout
     assert "nodes > cap" not in out, out
     (tmp_path / "thin.md").write_text("# Brief\n## Task\nx\n## Template\nt\n")
     eng = [{"id": "c", "role": "coder", "engine": "codex", "model": "gpt-6.1-sol", "brief": "thin.md",
             "inner_timer": "300s", "outer_timeout_s": 330}]
-    out = run(tmp_path, "check", setup(tmp_path, eng)).stdout
+    out = run(tmp_path, "validate", setup(tmp_path, eng)).stdout
     assert "lacks ['## Example', '## Standard']" in out
     cyc = [node("a", "ok", needs=["b"]), node("b", "ok", needs=["a"])]
-    assert "dependency cycle" in run(tmp_path, "check", setup(tmp_path, cyc)).stdout
-    # `run` still refuses a plan that fails its own check (exit 2) — but no longer because of a role count.
+    assert "dependency cycle" in run(tmp_path, "validate", setup(tmp_path, cyc)).stdout
+    # `run` still refuses a plan that fails its own validation (exit 2) — but no longer because of a role count.
     # A cycle is the refusal to use here, since it did not depend on the deleted caps.
     assert run(tmp_path, "run", setup(tmp_path, cyc)).returncode == 2
     unknown = [{"id": "x", "role": "explorer", "engine": "gemini", "model": "m", "brief": "brief.md",
                 "inner_timer": "600s", "outer_timeout_s": 660}]
-    assert "engine 'gemini' is not one of" in run(tmp_path, "check", setup(tmp_path, unknown)).stdout
+    assert "engine 'gemini' is not one of" in run(tmp_path, "validate", setup(tmp_path, unknown)).stdout
 
 
 def test_claude_and_dsh_engines_are_accepted(tmp_path):
@@ -330,16 +330,16 @@ def test_claude_and_dsh_engines_are_accepted(tmp_path):
     """
     cl = [{"id": "x", "role": "explorer", "engine": "claude", "model": "claude-opus-5-5", "brief": "brief.md",
            "inner_timer": "600s", "outer_timeout_s": 660}]
-    r = run(tmp_path, "check", setup(tmp_path, cl))
+    r = run(tmp_path, "validate", setup(tmp_path, cl))
     assert r.returncode == 0, r.stdout + r.stderr
 
     d = [{"id": "y", "role": "classifier", "engine": "dsh", "brief": "brief.md",
           "inner_timer": "120s", "outer_timeout_s": 150}]
-    assert run(tmp_path, "check", setup(tmp_path, d)).returncode == 0
+    assert run(tmp_path, "validate", setup(tmp_path, d)).returncode == 0
 
     c = [{"id": "z", "role": "coder", "engine": "codex", "brief": "brief.md",
           "inner_timer": "120s", "outer_timeout_s": 150}]
-    assert "no model" in run(tmp_path, "check", setup(tmp_path, c)).stdout
+    assert "no model" in run(tmp_path, "validate", setup(tmp_path, c)).stdout
 
 
 def test_dry_run_shows_the_new_engine_commands(tmp_path):
@@ -524,7 +524,7 @@ def test_check_refuses_workdir_that_is_a_file(tmp_path):
     (tmp_path / "x.txt").write_text("not a folder")
     n = node("a", "ok")
     n["workdir"] = "x.txt"
-    r = run(tmp_path, "check", setup(tmp_path, [n]))
+    r = run(tmp_path, "validate", setup(tmp_path, [n]))
     assert r.returncode == 1, r.stdout + r.stderr
     assert "a: workdir 'x.txt' is not a folder" in r.stdout
 

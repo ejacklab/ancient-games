@@ -104,7 +104,7 @@ agent can read; a subagent starts with nothing but its prompt.
    piece's workload before it runs; use that. Hours-long work is not one piece: split it into **six or more logical
    pieces**, each with its own deliverable and check, rather than one ten-hour prompt to Codex. Health is a reason
    to split: a long attempt hides its failure and cannot be watched. Method 3.8 sets a ceiling of 8 hours on one
-   call, and `check_plan` refuses a plan past it.
+   call, and `validate_plan` refuses a plan past it.
 5. **Clear pieces run as loops** while the unclear spots are being resolved. A piece is loop-ready only with: a check
    (a script is best; next a fixed checklist judged by a separate agent; last the person's judgment), an attempt
    limit, specific feedback (the check's real output), an exit for when the limit is hit, and a check the worker

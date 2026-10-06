@@ -40,7 +40,7 @@ class Engine:
 
     name             the value a plan node puts in `engine`
     build, parse     the two engine-specific operations
-    needs_model      when false, `check_plan` does not demand a model (the engine takes it from its own config)
+    needs_model      when false, `validate_plan` does not demand a model (the engine takes it from its own config)
     silent_failures  stderr notices that mean the call did not finish although the exit code was 0
     (no fallback: removed 2026-10-05 — a failed engine blocks the node and reports) no fallback
     note             one line for the design docs; keep it factual and dated

@@ -8,6 +8,17 @@ had a run at all (n=0).
 
 Runnable form: `.claude/workflows/intake.js`. Templates: `docs/workflow-templates/`. Runs: `runs/<run id>/`.
 
+## One word, one job
+
+| word | one job |
+|---|---|
+| `check` | a node's success test — the field in a design and a plan |
+| `validate` | is a document well-formed (`validate_plan`) |
+| `verify` | run a node's success test (`verify_node_result`) |
+| `probe` | inspect the environment (`probe_binary`, `probe_blueprint`, …) |
+| `compare` | plan against design (`compare_plan_to_design`) |
+| `checklist` | the judged fixed list |
+
 ## 1. The ideas behind it
 
 - Real tasks are rarely one pattern. Except when a task is tiny, it needs a hybrid. The mix comes from choosing a
@@ -345,10 +356,10 @@ that one author writes both and can see both, so a checker would guard against s
 
 **C was revisited the same day, because a traversal measured the cost.** One real challenge was run end to end:
 `intake` → design → gate → plan → dispatch. The hand-written plan **silently dropped two of three nodes' checks**,
-plus `touched_paths`, the baseline, the categories and the estimate — and `check_plan` said *"plan ok"*. Every
+plus `touched_paths`, the baseline, the categories and the estimate — and `validate_plan` said *"plan ok"*. Every
 validator agreed while two checks had vanished, and a node with no check reports **done**.
 
-So `dispatch.py check PLAN --design DESIGN` now compares the two, and `run` refuses a plan that loses the design.
+So `dispatch.py validate PLAN --design DESIGN` now compares the two, and `run` refuses a plan that loses the design.
 The comparison is **asymmetric on purpose**: a plan carries what a design does not (a bare engine name, an exact
 model, timers, a brief path, a role), so equality is wrong. **The design's promises must survive; the plan may add
 and may not lose.** Without `--design` the command **says so** on stderr rather than passing silently.
@@ -384,7 +395,7 @@ The two halves were never the same kind of thing, which is why the sentence woul
 * **3 running** counted engine processes alive at one instant — a property of the *machine* (the dispatcher's worker
   pool, now the constant `MAX_ENGINE_PROCESSES` in `scripts/dispatch.py`).
 
-The pair survives where it belongs, in the spike rule, still about approaches. `check_plan` no longer refuses a plan
+The pair survives where it belongs, in the spike rule, still about approaches. `validate_plan` no longer refuses a plan
 for having many roles or a wide parallel group; the budget keeps `max_rounds` and `max_calls`, which are limits on
 *attempts* and are required by 3.5. **If a run needs many roles, that is a design question, not a cap.**
 
@@ -432,7 +443,7 @@ project three diagnoses in two days.
    **But no single call runs longer than the ceiling: 8 hours (EJ, 2026-10-05; n=0).** The per-task timers scale;
    the ceiling does not. Past it the run is not healthy and cannot be monitored — a call that has been going for
    hours has hidden its failure, cannot be watched, and leaves nothing to resume from. A call that hits the ceiling
-   is an **executor failure**, so it blocks the node and reports (there is no fallback). **`check_plan` refuses a
+   is an **executor failure**, so it blocks the node and reports (there is no fallback). **`validate_plan` refuses a
    node whose `outer_timeout_s` is past the ceiling**, so this is enforced before the run, not remembered.
 
  **This is the reason long

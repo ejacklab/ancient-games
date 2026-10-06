@@ -316,7 +316,7 @@ details (EJ, 2026-10-02; n=0). The vision, the requirements and every approval s
 2. **Budget.** Enforces the ceiling EJ sets: attempt limits, timeouts, the cost ceiling, the tier exit, the
    executor-failure rule below and the model check. **No single call runs longer than the ceiling — 8 hours
    (EJ, 2026-10-05; n=0)** — because a call that long has hidden its failure and cannot be monitored; hitting it is
-   an executor failure, so the node blocks and reports. `check_plan` refuses a node past it (`MAX_CALL_SECONDS`). (The "5 roles and 3 at once" caps were deleted 2026-10-05 at
+   an executor failure, so the node blocks and reports. `validate_plan` refuses a node past it (`MAX_CALL_SECONDS`). (The "5 roles and 3 at once" caps were deleted 2026-10-05 at
    EJ's direction — see method 3.7; they had re-labelled the spike rule's numbers as a role cap. The dispatcher
    still runs at most `MAX_ENGINE_PROCESSES` nodes at a time — a pool size in **engine processes alive**, unmeasured,
    and deliberately NOT the harness's `maxActiveSubagents`, which counts **resident sessions** where an idle child
@@ -414,7 +414,7 @@ The simpler rule that replaces it: **one engine per node, and a failure reports.
 engine, that is a node in the graph — visible, with its own check — not a hop inside the dispatcher.
 
 **Still true, and unaffected:** the dispatcher refuses a node whose plan names an unknown engine or a model it
-needs; `check_plan` validates the engine a node *names*. And the failure table above still records that
+needs; `validate_plan` validates the engine a node *names*. And the failure table above still records that
 quota-exhausted behaviour has not been seen (*unknown*) — a quota stop that exits 0 with a notice is read as
 *success*, so it never looks like a failure at all. Removing the fallback does not change that; it means such a
 failure is reported when it is seen, not papered over.

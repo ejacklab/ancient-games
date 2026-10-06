@@ -5,7 +5,7 @@ pass-back check, the engine-reported model check, repair rounds
 with the check's real output as feedback, the event log, and a short digest. It makes no routing choice: every
 node's engine is the one the plan names (design §5). Stdlib only; it calls no model itself.
 
-  dispatch.py check PLAN              validate the plan (timers, briefs, edges, engines); exit 0/1
+  dispatch.py validate PLAN           validate the plan (timers, briefs, edges, engines); exit 0/1
   dispatch.py run PLAN [--dry-run]    run it; resumes from runs/<id>/dispatch.json; prints the digest
 
 Engines: codex · qwen · agy · claude · dsh · script — one adapter each in `engines.py`, so adding or re-enabling an
@@ -66,12 +66,12 @@ def load_plan(path: Path) -> dict:
     return plan
 
 
-def compare_design(design: dict, plan: dict) -> list[str]:
+def compare_plan_to_design(design: dict, plan: dict) -> list[str]:
     """Every fact the design promised the run depends on must survive into the plan.
 
     Revisits decision C (2026-10-05). C said nothing compares the plan to the design — one author, both artefacts, no
     checker. A traversal the same day measured what that costs: a hand-written plan **silently dropped two of three
-    nodes' checks**, plus `touched_paths`, `baseline`, `categories` and `estimate`, and `check_plan` said "plan ok".
+    nodes' checks**, plus `touched_paths`, `baseline`, `categories` and `estimate`, and `validate_plan` said "plan ok".
     Every validator agreed while two checks had vanished.
 
     This is deliberately asymmetric. A plan carries things the design does not — a bare engine name, an exact model,
@@ -110,7 +110,7 @@ def compare_design(design: dict, plan: dict) -> list[str]:
     return f
 
 
-def check_plan(plan: dict, base: Path, design: dict | None = None) -> list[str]:
+def validate_plan(plan: dict, base: Path, design: dict | None = None) -> list[str]:
     f = []
     nodes = plan.get("nodes") or []
     if not plan.get("run_id"):
@@ -120,7 +120,7 @@ def check_plan(plan: dict, base: Path, design: dict | None = None) -> list[str]:
     ids = [n.get("id") for n in nodes]
     if len(ids) != len(set(ids)):
         f.append("node ids are not unique")
-    # `load_plan` injects DEFAULT_BUDGET, so a plan read from disk always has one. Calling `check_plan` on a bare
+    # `load_plan` injects DEFAULT_BUDGET, so a plan read from disk always has one. Calling `validate_plan` on a bare
     # dict raised KeyError instead (found 2026-10-05 by a test that called it directly). Default it here too.
     b = plan.get("budget") or dict(DEFAULT_BUDGET)
     # The budget's own keys were never validated (found 2026-10-05 by an expert measuring rather than reading).
@@ -154,7 +154,7 @@ def check_plan(plan: dict, base: Path, design: dict | None = None) -> list[str]:
         chk = n.get("check")
         if chk is not None and (not isinstance(chk, dict) or not chk.get("cmd")):
             # Found 2026-10-05 by the traversal: a judged check (a fixed checklist, no `cmd` — the method's second
-            # tier) was accepted here and then raised `KeyError: 'cmd'` inside run_check. Accepted at validation and
+            # tier) was accepted here and then raised `KeyError: 'cmd'` inside verify_node_result. Accepted at validation and
             # fatal at run time is the worst of both. Until a plan can carry a judged check, refuse it loudly.
             f.append(f"{nid}: check {chk!r} has no `cmd` — a judged check cannot run yet, and accepting it here "
                      f"only moves the failure to the run")
@@ -182,7 +182,7 @@ def check_plan(plan: dict, base: Path, design: dict | None = None) -> list[str]:
     if not f and _cycle(nodes):
         f.append("dependency cycle")
     if design is not None:
-        f.extend(compare_design(design, plan))
+        f.extend(compare_plan_to_design(design, plan))
     return f
 
 
@@ -214,7 +214,7 @@ def passback_note(node: dict, engine: str, model: str, attempt: int) -> str:
 
 
 # build_command and final_answer now live in engines.py, one adapter per engine. This module keeps only what is
-# engine-neutral: the plan check, the loop, the timers, the process group, the pass-back and model checks.
+# engine-neutral: the plan validation, the loop, the timers, the process group, the pass-back and model checks.
 
 
 # ---------------------------------------------------------------- one call
@@ -307,7 +307,7 @@ def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine
             "result": str(out_file)}
 
 
-def run_check(plan: dict, node: dict, result: str, run_dir: Path, base: Path, rnd: int) -> tuple[bool, str]:
+def verify_node_result(plan: dict, node: dict, result: str, run_dir: Path, base: Path, rnd: int) -> tuple[bool, str]:
     chk = node.get("check")
     if not chk:
         return True, ""
@@ -354,7 +354,7 @@ def run_node(plan, node, by_id, state, run_dir, base, dry, log) -> None:
             rec["status"] = "done"; return
         if r["why"]:
             log(f"{node['id']} a{attempt}: {r['why']}")
-        ok, out = run_check(plan, node, r["result"], run_dir, base, rec["rounds"] + 1)
+        ok, out = verify_node_result(plan, node, r["result"], run_dir, base, rec["rounds"] + 1)
         if ok:
             rec.update(status="done", result=r["result"]); log(f"{node['id']} done (a{attempt}, {engine})"); return
         rec["rounds"] += 1
@@ -371,7 +371,7 @@ def cmd_run(a) -> int:
     plan = load_plan(plan_path)
     base = Path(a.root).resolve()
     design = json.loads(Path(a.design).read_text()) if getattr(a, "design", None) else None
-    problems = check_plan(plan, base, design=design)
+    problems = validate_plan(plan, base, design=design)
     if design is None:
         print(NO_DESIGN_NOTE, file=sys.stderr)
     if problems:
@@ -429,16 +429,16 @@ def main(argv=None) -> int:
     ap.add_argument("--root", default=".", help="repo root: briefs and commands resolve against it")
     ap.add_argument("--runs-root", default="runs")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    c = sub.add_parser("check"); c.add_argument("plan")
+    c = sub.add_parser("validate"); c.add_argument("plan")
     c.add_argument("--design", help="the design.json this plan came from; without it nothing compares the two")
     r = sub.add_parser("run"); r.add_argument("plan"); r.add_argument("--dry-run", action="store_true")
     r.add_argument("--design", help="the design.json this plan came from; the run refuses a plan that loses it")
     a = ap.parse_args(argv)
     try:
-        if a.cmd == "check":
+        if a.cmd == "validate":
             plan = load_plan(Path(a.plan))
             design = json.loads(Path(a.design).read_text()) if getattr(a, "design", None) else None
-            problems = check_plan(plan, Path(a.root).resolve(), design=design)
+            problems = validate_plan(plan, Path(a.root).resolve(), design=design)
             print("plan ok" if not problems else "plan refused:\n  " + "\n  ".join(problems))
             if design is None:
                 print(NO_DESIGN_NOTE, file=sys.stderr)

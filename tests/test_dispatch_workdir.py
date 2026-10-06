@@ -182,7 +182,7 @@ def test_r7_check_refuses_workdir_existing_as_file(tmp_path):
     }
     (tmp_path / "plan.json").write_text(json.dumps(plan))
     r = subprocess.run(
-        [sys.executable, str(SCRIPT), "--root", str(tmp_path), "check", str(tmp_path / "plan.json")],
+        [sys.executable, str(SCRIPT), "--root", str(tmp_path), "validate", str(tmp_path / "plan.json")],
         capture_output=True,
         text=True
     )

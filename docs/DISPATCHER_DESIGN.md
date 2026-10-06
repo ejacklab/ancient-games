@@ -118,9 +118,9 @@ model's probability is not (J9, J10). The research is kept in `docs/research/202
 
 ## 7. Pieces to build, in order (each with its own check)
 
-1. **Plan check** — built as `dispatch.py check PLAN` rather than in `design_gate.py`, so the runner refuses a bad
+1. **Plan validation** — built as `dispatch.py validate PLAN` rather than in `design_gate.py`, so the runner refuses a bad
    plan itself: caps, timers, brief parts. Check: self-test with sabotage.
-2. **Design comparison**: `check PLAN --design DESIGN` refuses a plan that loses what the design promised — a node,
+2. **Design comparison**: `validate PLAN --design DESIGN` refuses a plan that loses what the design promised — a node,
    its check, an edge, the sabotage proof, the reviewer, the touched paths, the baseline. Asymmetric on purpose: the
    plan adds run detail and may not lose. Without `--design` it says so on stderr. (Added 2026-10-05 after a
    traversal lost two of three checks while every validator said OK.)

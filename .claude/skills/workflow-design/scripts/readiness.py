@@ -54,7 +54,7 @@ SECTION_FILES = {"01-vision.md", "02-requirements.md", "03-domain-model.md", "04
 
 
 @dataclass
-class Check:
+class Probe:
     group: str
     item: str
     status: str
@@ -80,7 +80,7 @@ def first_line(out: str) -> str:
     return out.splitlines()[0][:100] if out else "(no output)"
 
 
-def check_binary(name: str) -> Check:
+def probe_binary(name: str) -> Probe:
     """The version of the binary **on PATH**.
 
     That is NOT necessarily the binary that will make a call: a provider can bundle its own, older copy of an
@@ -91,25 +91,25 @@ def check_binary(name: str) -> Check:
     rc, out = run_cmd([name, "--version"])
     proof = f"`{name} --version`"
     if rc is None:
-        return Check("Tools", name, MISSING, "not on PATH", f"`command -v {name}`")
+        return Probe("Tools", name, MISSING, "not on PATH", f"`command -v {name}`")
     if rc == "timeout":
-        return Check("Tools", name, UNKNOWN, out, proof)
+        return Probe("Tools", name, UNKNOWN, out, proof)
     if rc == 0:
-        return Check("Tools", name, VERIFIED, first_line(out), proof)
-    return Check("Tools", name, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+        return Probe("Tools", name, VERIFIED, first_line(out), proof)
+    return Probe("Tools", name, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
 
 
-def check_codex_cache() -> Check:
+def probe_codex_cache() -> Probe:
     item = "codex model cache"
     p = Path.home() / ".codex" / "models_cache.json"
     if not p.exists():
-        return Check("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+        return Probe("Models and logins", item, UNKNOWN, f"no {p}", str(p))
     try:
         d = json.loads(p.read_text())
     except (OSError, ValueError) as e:
-        return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+        return Probe("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
     if not isinstance(d, dict):
-        return Check("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
+        return Probe("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
     models = d.get("models")
     ids: list[str] = []
     if isinstance(models, list):
@@ -125,46 +125,46 @@ def check_codex_cache() -> Check:
     elif isinstance(f_at, str):
         age = f", fetched_at {f_at[:10]}"
     shown = f": {', '.join(ids[:6])}" + (" …" if len(ids) > 6 else "") if ids else ""
-    return Check("Models and logins", item, REPORTED,
+    return Probe("Models and logins", item, REPORTED,
                  f"{len(ids)} model ids{age}{shown} (cache may be stale)", str(p))
 
 
-def check_agy_login(net: bool) -> Check:
+def probe_agy_login(net: bool) -> Probe:
     item = "agy login (model list)"
     proof = "`agy models` (network)"
     if not net:
-        return Check("Models and logins", item, UNKNOWN,
+        return Probe("Models and logins", item, UNKNOWN,
                      "offline run: not provable without `agy models`; rerun with --net", proof)
     rc, out = run_cmd(["agy", "models"], timeout=NET_TIMEOUT)
     if rc is None:
-        return Check("Models and logins", item, MISSING, "agy not on PATH", "`agy --version`")
+        return Probe("Models and logins", item, MISSING, "agy not on PATH", "`agy --version`")
     if rc == "timeout":
-        return Check("Models and logins", item, UNKNOWN, out, proof)
+        return Probe("Models and logins", item, UNKNOWN, out, proof)
     ids = [l.split()[0] for l in out.splitlines()
            if l.split() and not l.lower().startswith("fetching")
            and not l.split()[0].endswith(":")]  # a label line ("Fetching…", "error: …") is not a model id
     if rc == 0 and ids:
-        return Check("Models and logins", item, VERIFIED,
+        return Probe("Models and logins", item, VERIFIED,
                      f"{len(ids)} models: {', '.join(ids[:4])} …", proof)
-    return Check("Models and logins", item, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+    return Probe("Models and logins", item, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
 
 
-def check_qwen_config(home: Path) -> Check:
+def probe_qwen_config(home: Path) -> Probe:
     """Reads ~/.qwen/settings.json only; never prints a key and never calls `qwen`
     (a bare `qwen <word>` is a one-shot prompt that spends quota)."""
     item = "qwen config (model, provider)"
     p = home / ".qwen" / "settings.json"
     if not p.exists():
-        return Check("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+        return Probe("Models and logins", item, UNKNOWN, f"no {p}", str(p))
     try:
         d = json.loads(p.read_text())
     except (OSError, ValueError) as e:
-        return Check("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+        return Probe("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
     if not isinstance(d, dict):
-        return Check("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
+        return Probe("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
     for key in ("model", "modelProviders", "env", "security"):
         if d.get(key) is not None and not isinstance(d[key], dict):
-            return Check("Models and logins", item, UNKNOWN,
+            return Probe("Models and logins", item, UNKNOWN,
                          f"unreadable: settings.{key} is not an object", str(p))
     model = d.get("model") or {}
     providers = d.get("modelProviders") or {}
@@ -173,7 +173,7 @@ def check_qwen_config(home: Path) -> Check:
     key = "key set in settings env" if any(env.values()) else "no key in settings env"
     host = str(model.get("baseUrl", "?")).split("/")[2:3]
     auth = (d.get("security") or {}).get("auth", {}).get("selectedType", "?")
-    return Check("Models and logins", item, REPORTED,
+    return Probe("Models and logins", item, REPORTED,
                  f"default {model.get('name', '?')}, auth {auth}, {n_models} listed models, "
                  f"endpoint {host[0] if host else '?'}, {key} (file claim; key validity not tested)", str(p))
 
@@ -192,67 +192,67 @@ def list_names(p: Path) -> list[str] | None:
     return out
 
 
-def check_dir_listing(group: str, item: str, p: Path, absent_status: str = MISSING) -> Check:
+def probe_dir_listing(group: str, item: str, p: Path, absent_status: str = MISSING) -> Probe:
     try:
         names = list_names(p)
     except OSError as e:
-        return Check(group, item, UNKNOWN, f"unreadable: {e}", str(p))
+        return Probe(group, item, UNKNOWN, f"unreadable: {e}", str(p))
     if names is None:
-        return Check(group, item, absent_status, f"absent ({p})", str(p))
+        return Probe(group, item, absent_status, f"absent ({p})", str(p))
     if not names:
-        return Check(group, item, absent_status, f"empty ({p})", str(p))
+        return Probe(group, item, absent_status, f"empty ({p})", str(p))
     shown = ", ".join(names[:8]) + (" …" if len(names) > 8 else "")
-    return Check(group, item, VERIFIED, f"{len(names)}: {shown}", str(p))
+    return Probe(group, item, VERIFIED, f"{len(names)}: {shown}", str(p))
 
 
-def check_blueprint(p: Path) -> Check:
+def probe_blueprint(p: Path) -> Probe:
     item = f"blueprint ({p})"
     if not p.is_dir():
-        return Check("Skills and workflows", item, MISSING, "directory not found", str(p))
+        return Probe("Skills and workflows", item, MISSING, "directory not found", str(p))
     sections = sorted(e.name for e in p.iterdir() if e.is_file() and e.name in SECTION_FILES)
     if not (p / "README.md").is_file():
-        return Check("Skills and workflows", item, MISSING,
+        return Probe("Skills and workflows", item, MISSING,
                      f"map MISSING, {len(sections)} sections: {', '.join(sections) or 'none'}", str(p))
     if not sections:
-        return Check("Skills and workflows", item, MISSING, "map present, 0 sections", str(p))
-    return Check("Skills and workflows", item, VERIFIED,
+        return Probe("Skills and workflows", item, MISSING, "map present, 0 sections", str(p))
+    return Probe("Skills and workflows", item, VERIFIED,
                  f"{len(sections)} sections, map present: {', '.join(sections)}", str(p))
 
 
-def check_instruction_files(cwd: Path) -> Check:
+def probe_instruction_files(cwd: Path) -> Probe:
     names = ["CLAUDE.md", "AGENTS.md", "QWEN.md", "GEMINI.md"]
     present = [n for n in names if (cwd / n).exists()]
     absent = [n for n in names if n not in present]
     detail = (f"present: {', '.join(present) or 'none'}"
               + (f"; absent: {', '.join(absent)}" if absent else ""))
-    return Check("Memory", "project instruction files", VERIFIED, detail, str(cwd))
+    return Probe("Memory", "project instruction files", VERIFIED, detail, str(cwd))
 
 
-def check_qwen_memory(home: Path) -> Check:
+def probe_qwen_memory(home: Path) -> Probe:
     p = home / ".qwen" / "memories"
     idx = p / "MEMORY.md"
     if not p.is_dir():
-        return Check("Memory", "qwen auto-memory (user)", VERIFIED, f"absent ({p})", str(p))
+        return Probe("Memory", "qwen auto-memory (user)", VERIFIED, f"absent ({p})", str(p))
     try:
         n = len(idx.read_text(errors="replace").splitlines()) if idx.exists() else 0
     except OSError as e:
-        return Check("Memory", "qwen auto-memory (user)", UNKNOWN, f"MEMORY.md unreadable: {e}", str(p))
-    return Check("Memory", "qwen auto-memory (user)", VERIFIED,
+        return Probe("Memory", "qwen auto-memory (user)", UNKNOWN, f"MEMORY.md unreadable: {e}", str(p))
+    return Probe("Memory", "qwen auto-memory (user)", VERIFIED,
                  f"{n} index lines in MEMORY.md; project dirs under ~/.qwen/projects/", str(p))
 
 
-def check_claude_history(home: Path) -> Check:
+def probe_claude_history(home: Path) -> Probe:
     p = home / ".claude" / "projects"
     if not p.is_dir():
-        return Check("Memory", "claude session history", VERIFIED, f"absent ({p})", str(p))
+        return Probe("Memory", "claude session history", VERIFIED, f"absent ({p})", str(p))
     try:
         n = sum(1 for e in p.iterdir() if e.is_dir())
     except OSError as e:
-        return Check("Memory", "claude session history", UNKNOWN, f"unreadable: {e}", str(p))
-    return Check("Memory", "claude session history", VERIFIED, f"{n} project histories", str(p))
+        return Probe("Memory", "claude session history", UNKNOWN, f"unreadable: {e}", str(p))
+    return Probe("Memory", "claude session history", VERIFIED, f"{n} project histories", str(p))
 
 
-def check_mcp(home: Path, cwd: Path) -> list[Check]:
+def probe_mcp(home: Path, cwd: Path) -> list[Probe]:
     out = []
     sources = [("~/.claude/settings.json", home / ".claude" / "settings.json"),
                ("~/.claude.json", home / ".claude.json"),
@@ -260,24 +260,24 @@ def check_mcp(home: Path, cwd: Path) -> list[Check]:
                (".mcp.json (project)", cwd / ".mcp.json")]
     for label, p in sources:
         if not p.exists():
-            out.append(Check("MCP", label, VERIFIED, "file absent → no servers from it", str(p)))
+            out.append(Probe("MCP", label, VERIFIED, "file absent → no servers from it", str(p)))
             continue
         try:
             d = json.loads(p.read_text())
         except (OSError, ValueError) as e:
-            out.append(Check("MCP", label, UNKNOWN, f"unreadable: {e}", str(p)))
+            out.append(Probe("MCP", label, UNKNOWN, f"unreadable: {e}", str(p)))
             continue
         servers = d.get("mcpServers") if isinstance(d, dict) else None
         if servers:
-            out.append(Check("MCP", label, VERIFIED,
+            out.append(Probe("MCP", label, VERIFIED,
                              f"{len(servers)} servers: {', '.join(list(servers)[:6])}", str(p)))
         else:
-            out.append(Check("MCP", label, VERIFIED,
+            out.append(Probe("MCP", label, VERIFIED,
                              "no mcpServers key" if servers is None else "mcpServers present but empty", str(p)))
     return out
 
 
-def check_machine(cwd: Path) -> Check:
+def probe_machine(cwd: Path) -> Probe:
     cores = os.cpu_count() or "?"
     mem_gib = "?"
     try:
@@ -288,52 +288,52 @@ def check_machine(cwd: Path) -> Check:
     except OSError:
         pass
     du = shutil.disk_usage(cwd)
-    return Check("Machine", "this machine", VERIFIED,
+    return Probe("Machine", "this machine", VERIFIED,
                  f"{cores} cores; {mem_gib} RAM available; {du.free / 2**30:.0f} G free on {cwd}",
                  "`os.cpu_count`, `/proc/meminfo`, `shutil.disk_usage`")
 
 
-def open_unknowns() -> list[Check]:
+def open_unknowns() -> list[Probe]:
     return [
-        Check("Open unknowns", "subagent concurrency limit", UNKNOWN,
+        Probe("Open unknowns", "subagent concurrency limit", UNKNOWN,
               "runtime policy, not provable from outside. Claude Code docs report 20 concurrent, nesting depth 3 "
               "(v2.1.217+, env overrides; reported, not measured here); codex/agy: no figure",
               "docs/EXECUTOR_KINDS.md, Concurrency row"),
-        Check("Open unknowns", "codex/agy/qwen execute a task", UNKNOWN,
+        Probe("Open unknowns", "codex/agy/qwen execute a task", UNKNOWN,
               "canary required (spends quota; needs the person's go-ahead)",
               "docs/EXECUTOR_KINDS.md canary piece"),
     ]
 
 
-def gather(args: argparse.Namespace) -> list[Check]:
+def gather(args: argparse.Namespace) -> list[Probe]:
     home, cwd = Path.home(), Path.cwd()
     binaries = list(dict.fromkeys(DEFAULT_BINARIES + list(args.require or [])))
     with ThreadPoolExecutor(max_workers=max(1, min(8, len(binaries)))) as ex:
-        checks: list[Check] = list(ex.map(check_binary, binaries))
-    checks.append(check_codex_cache())
-    checks.append(check_agy_login(args.net))
-    checks.append(check_qwen_config(home))
+        checks: list[Probe] = list(ex.map(probe_binary, binaries))
+    checks.append(probe_codex_cache())
+    checks.append(probe_agy_login(args.net))
+    checks.append(probe_qwen_config(home))
     for label, p in [("claude skills (user)", home / ".claude" / "skills"),
                      ("agents skills (cross-tool)", home / ".agents" / "skills"),
                      ("codex skills (user)", home / ".codex" / "skills"),
                      ("qwen skills (user)", home / ".qwen" / "skills"),
                      ("project skills", cwd / ".claude" / "skills")]:
-        checks.append(check_dir_listing("Skills and workflows", label, p))
-    checks.append(check_dir_listing("Skills and workflows", "workflow scripts",
+        checks.append(probe_dir_listing("Skills and workflows", label, p))
+    checks.append(probe_dir_listing("Skills and workflows", "workflow scripts",
                                     Path(args.workflows) if args.workflows else cwd / ".claude" / "workflows"))
     if args.blueprint:
-        checks.append(check_blueprint(Path(args.blueprint)))
-    checks.append(check_instruction_files(cwd))
-    checks.append(check_qwen_memory(home))
-    checks.append(check_claude_history(home))
-    checks.extend(check_mcp(home, cwd))
-    checks.append(check_machine(cwd))
+        checks.append(probe_blueprint(Path(args.blueprint)))
+    checks.append(probe_instruction_files(cwd))
+    checks.append(probe_qwen_memory(home))
+    checks.append(probe_claude_history(home))
+    checks.extend(probe_mcp(home, cwd))
+    checks.append(probe_machine(cwd))
     checks.extend(open_unknowns())
     checks.sort(key=lambda c: GROUPS.index(c.group))
     return checks
 
 
-def exit_code(checks: list[Check], requires: list[str]) -> int:
+def exit_code(checks: list[Probe], requires: list[str]) -> int:
     for r in requires:  # a --require'd tool must be VERIFIED: present-but-unproven is not enough
         if not any(c.item == r and c.status == VERIFIED for c in checks):
             return 1
@@ -347,7 +347,7 @@ def cell(text: str) -> str:
     return text.replace("|", "\\|")
 
 
-def to_markdown(checks: list[Check]) -> str:
+def to_markdown(checks: list[Probe]) -> str:
     lines = [f"# Readiness tools check — {date.today().isoformat()} — {socket.gethostname()}", "",
              "Installed and logged in only; no canary was run, no quota spent.", ""]
     current = None
@@ -363,7 +363,7 @@ def to_markdown(checks: list[Check]) -> str:
 
 def self_test() -> int:
     fake = "readiness-selftest-fake-tool"
-    c = check_binary(fake)
+    c = probe_binary(fake)
     code = exit_code([c], [fake])
     if c.status == MISSING and code == 1:
         print(f"self-test PASS: `{fake}` reported MISSING and --require on it exits 1 — the check can fail.")
