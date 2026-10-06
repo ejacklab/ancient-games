@@ -77,7 +77,13 @@ paths genuinely differ and the DSH row is the exception. **Lesson: when a model 
 - The node's result records the model the tool reports. The COO fails the node if it is not the one the contract
   named. How `codex exec` and `agy` report the model in their output is not yet checked; the canary settles it
   (*unknown*).
-- The names go stale — `gpt-6-sol` did. But a 400 is not proof of staleness: see **"The bundled-runtime trap"**
+- - **opencode headless: whitelist `/tmp/**`.** The `build` agent's `external_directory` permission is `ask`
+  for `/tmp/*` (only `/tmp/opencode/*` is allowed), and a headless call has no stdin to answer it, so the
+  ask auto-rejects and the node fails on a scratch write. Fixed 2026-10-06 by adding
+  `permission.external_directory."/tmp/**": "allow"` to `~/.config/opencode/opencode.jsonc` — narrow, not
+  the dangerous `--auto`. (Found by the code-graph-tool run, finding D.)
+
+The names go stale — `gpt-6-sol` did. But a 400 is not proof of staleness: see **"The bundled-runtime trap"**
   below before changing a name. The names live in the design's node blocks and the canary log, so a change is one
   edit and the canary shows what actually ran.
 

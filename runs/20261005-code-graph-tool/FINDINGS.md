@@ -28,9 +28,10 @@ These are exactly what n6 exists to fix.
 - **B. The pass-back parser required `---` at byte 0.** claude's one-line prelude broke it. Fixed (see commit).
 - **C. No canonical result file for downstream nodes.** n2 left 4 result files; n5 had to guess which was the spec.
   Fix: the brief must pin "the latest done attempt is canonical" with the exact path.
-- **D. opencode `--agent build` went interactive and aborted.** With stdin=DEVNULL, opencode asked a
-  confirmation ("none if blank") during its build, got EOF, and exited with 7 lines of narration and no header. This
-  blocks n6. Needs an opencode auto-accept/non-interactive invocation (investigate `--yes`/a config flag).
+- **D. opencode `--agent build` aborted on an `external_directory` ask.** n6 tried to write a scratch file to
+  `/tmp/*`; the build agent's `external_directory` permission is `ask` for `/tmp/*` (only `/tmp/opencode/*` is
+  whitelisted), and in headless (stdin closed) "ask" auto-rejects. **Fixed** by whitelisting `/tmp/**` in
+  `~/.config/opencode/opencode.jsonc` — narrow, not the dangerous `--auto`. n6 then completed.
 
 ## Decisions made as COO during the run
 
