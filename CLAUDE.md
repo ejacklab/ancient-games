@@ -88,3 +88,13 @@ The eight, short:
   question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
 - **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
   said so. Quote them, state the operative sentence, stop.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
