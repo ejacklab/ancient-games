@@ -1,0 +1,152 @@
+{
+ "run_id": "20261005-code-graph-tool",
+ "budget": {
+  "max_rounds": 2,
+  "max_calls": 30
+ },
+ "touched_paths": [
+  ".claude/skills/workflow-design/scripts/code_graph.py",
+  "tests/test_code_graph.py"
+ ],
+ "baseline": {
+  "command": "env -u NO_COLOR python3 -m pytest -q",
+  "captured_by": "script"
+ },
+ "nodes": [
+  {
+   "id": "n1-research",
+   "role": "researcher",
+   "engine": "agy",
+   "model": "gemini-3.1-pro-high",
+   "mode": "read-only",
+   "brief": "runs/20261005-code-graph-tool/briefs/n1-research.md",
+   "inner_timer": "1500s",
+   "outer_timeout_s": 1800,
+   "check": {
+    "name": "research cites + digest",
+    "cmd": [
+     "python3",
+     "-c",
+     "import pathlib,sys; t=pathlib.Path('{result}').read_text(); sys.exit(0 if ('http' in t and 'Digest' in t) else 1)"
+    ]
+   },
+   "sabotage": ""
+  },
+  {
+   "id": "n2-design",
+   "role": "designer",
+   "engine": "claude",
+   "model": "claude-opus-5-5",
+   "mode": "read-only",
+   "brief": "runs/20261005-code-graph-tool/briefs/n2-design.md",
+   "inner_timer": "1500s",
+   "outer_timeout_s": 1800,
+   "needs": [
+    "n1-research"
+   ],
+   "check": {
+    "name": "spec has the four parts",
+    "cmd": [
+     "python3",
+     "-c",
+     "import pathlib,sys; t=pathlib.Path('{result}').read_text(); sys.exit(0 if all(k in t for k in ('Nodes','Edges','Output','Coverage')) else 1)"
+    ]
+   },
+   "sabotage": ""
+  },
+  {
+   "id": "n3-build",
+   "role": "coder",
+   "engine": "opencode",
+   "model": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview",
+   "mode": "write",
+   "brief": "runs/20261005-code-graph-tool/briefs/n3-build.md",
+   "inner_timer": "2400s",
+   "outer_timeout_s": 2700,
+   "needs": [
+    "n2-design"
+   ],
+   "repair": "n3-build",
+   "check": {
+    "name": "tool exists and parses",
+    "cmd": [
+     "python3",
+     "-c",
+     "import ast,pathlib,sys; p=pathlib.Path('.claude/skills/workflow-design/scripts/code_graph.py'); sys.exit(0 if (p.exists() and ast.parse(p.read_text()) is not None) else 1)"
+    ]
+   },
+   "sabotage": "remove a call from the fixture -> an edge disappears -> the check goes red"
+  },
+  {
+   "id": "n4-test-cases",
+   "role": "coder",
+   "engine": "codex",
+   "model": "gpt-6.1-sol",
+   "mode": "read-only",
+   "brief": "runs/20261005-code-graph-tool/briefs/n4-test-cases.md",
+   "inner_timer": "1200s",
+   "outer_timeout_s": 1500,
+   "needs": [
+    "n3-build"
+   ],
+   "check": {
+    "name": "cases have negative + %",
+    "cmd": [
+     "python3",
+     "-c",
+     "import pathlib,sys; t=pathlib.Path('{result}').read_text().lower(); sys.exit(0 if ('negative' in t and '%' in t) else 1)"
+    ]
+   },
+   "sabotage": "a seeded mutant in the tool must be caught by the cases -> the check goes red otherwise"
+  },
+  {
+   "id": "n5-review",
+   "role": "verifier",
+   "engine": "claude",
+   "model": "claude-sonnet-5-5",
+   "mode": "read-only",
+   "brief": "runs/20261005-code-graph-tool/briefs/n5-review.md",
+   "inner_timer": "1200s",
+   "outer_timeout_s": 1500,
+   "needs": [
+    "n4-test-cases"
+   ],
+   "check": {
+    "name": "review has checklist + line refs",
+    "cmd": [
+     "python3",
+     "-c",
+     "import pathlib,sys; t=pathlib.Path('{result}').read_text(); sys.exit(0 if ('Checklist' in t and ':' in t) else 1)"
+    ]
+   },
+   "sabotage": ""
+  },
+  {
+   "id": "n6-optimize",
+   "role": "coder",
+   "engine": "opencode",
+   "model": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview",
+   "mode": "write",
+   "brief": "runs/20261005-code-graph-tool/briefs/n6-optimize.md",
+   "inner_timer": "2400s",
+   "outer_timeout_s": 2700,
+   "needs": [
+    "n5-review"
+   ],
+   "repair": "n6-optimize",
+   "check": {
+    "name": "tool runs on repo, valid JSON",
+    "cmd": [
+     "python3",
+     "-c",
+     "import subprocess,json,sys; r=subprocess.run(['python3','.claude/skills/workflow-design/scripts/code_graph.py','.'],capture_output=True,text=True); d=json.loads(r.stdout); sys.exit(0 if ('nodes' in d and 'edges' in d) else 1)"
+    ]
+   },
+   "sabotage": "delete a known function -> its node disappears from the graph -> the check goes red"
+  }
+ ],
+ "estimate": {
+  "tokens": 700000,
+  "basis": "per-piece estimate"
+ }
+}

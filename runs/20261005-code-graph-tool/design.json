@@ -1,0 +1,186 @@
+{
+ "categories": [
+  "research and reports",
+  "multi step planning",
+  "code generation",
+  "test cases gen"
+ ],
+ "builds": true,
+ "touched_paths": [
+  ".claude/skills/workflow-design/scripts/code_graph.py",
+  "tests/test_code_graph.py"
+ ],
+ "pipeline": null,
+ "design_source": "default",
+ "baseline": {
+  "command": "env -u NO_COLOR python3 -m pytest -q",
+  "captured_by": "script"
+ },
+ "nodes": [
+  {
+   "id": "n1-research",
+   "category": "research and reports",
+   "engine": "agy",
+   "check": "every finding cites a source URL, and the digest returned to the COO is 15 lines or fewer",
+   "sabotage": "",
+   "brief_given": "the challenge, EXECUTOR_KINDS (agy is read-only, structured output)",
+   "intent": "find how code graphs are generated today \u2014 the three tiers, the precision limits, stdlib feasibility \u2014 so the design rests on facts, not on one session's memory",
+   "stop": {
+    "criteria": "tiers 1-3 covered, each precision limit named, stdlib-ast feasibility stated; the digest written",
+    "baseline": "not applicable (no build yet)",
+    "must_not_change": "nothing; research only"
+   },
+   "returns": "a findings file and a <=15-line digest",
+   "state_reads": "runs/20261005-code-graph-tool/state.md",
+   "tools": [
+    "agy"
+   ],
+   "evidence": [
+    "runs/20261005-code-graph-tool/nodes/n1.research.md"
+   ],
+   "needs": []
+  },
+  {
+   "id": "n2-design",
+   "category": "multi step planning",
+   "engine": "claude opus 5.5",
+   "check": "the spec names the node types, the edge types, the output schema, and the coverage query",
+   "sabotage": "",
+   "brief_given": "the challenge, n1's digest, and the unresolved decisions (location, format, coverage) with their provisional answers",
+   "intent": "turn the research into a buildable spec: what nodes, what edges, what the CLI and JSON output look like, and how coverage is computed from the graph",
+   "stop": {
+    "criteria": "node types, edge types, output schema and coverage query all named; the spec is one file",
+    "baseline": "not applicable (no build yet)",
+    "must_not_change": "nothing; the design only writes its spec"
+   },
+   "returns": "the tool spec",
+   "state_reads": "runs/20261005-code-graph-tool/state.md",
+   "tools": [
+    "claude"
+   ],
+   "evidence": [
+    "runs/20261005-code-graph-tool/nodes/n2.spec.md"
+   ],
+   "needs": [
+    "n1-research"
+   ]
+  },
+  {
+   "id": "n3-build",
+   "category": "code generation",
+   "engine": "opencode MiniMax-M3.1-Flash-Preview",
+   "check": "code_graph.py runs on a fixture directory and emits valid JSON with nodes and edges",
+   "sabotage": "remove a call from the fixture -> an edge disappears -> the check goes red",
+   "brief_given": "the spec from n2 and the challenge, never n1's raw research",
+   "intent": "build the stdlib-ast code_graph.py the spec describes",
+   "stop": {
+    "criteria": "the script runs on a fixture and emits valid JSON; the smoke check passes",
+    "baseline": "everything the baseline recorded as passing still passes",
+    "must_not_change": "everything except the touched_paths"
+   },
+   "returns": "the tool and a smoke-test result",
+   "state_reads": "runs/20261005-code-graph-tool/state.md",
+   "tools": [
+    "opencode",
+    "python3"
+   ],
+   "evidence": [
+    "runs/20261005-code-graph-tool/nodes/n3.build.md"
+   ],
+   "needs": [
+    "n2-design"
+   ],
+   "loop": {
+    "limit": 2,
+    "exit": "a fresh node on a stronger tier with the check's output",
+    "feedback": "the smoke check's real output"
+   }
+  },
+  {
+   "id": "n4-test-cases",
+   "category": "test cases gen",
+   "engine": "codex gpt-6.1-sol",
+   "check": "the cases cover the algorithm's expected positive and negative cases, reported as a percentage",
+   "sabotage": "a seeded mutant in the tool must be caught by the cases -> the check goes red otherwise",
+   "brief_given": "the tool and the spec; the coverage rule (floor/target) with its provisional values",
+   "intent": "generate the test cases \u2014 positive and negative \u2014 that the graph tool must be exercised against",
+   "stop": {
+    "criteria": "positive and negative cases written, each mapped to a node or edge, coverage % reported",
+    "baseline": "not applicable (no build in this node)",
+    "must_not_change": "the tool"
+   },
+   "returns": "the test cases with their coverage %",
+   "state_reads": "runs/20261005-code-graph-tool/state.md",
+   "tools": [
+    "codex"
+   ],
+   "evidence": [
+    "runs/20261005-code-graph-tool/nodes/n4.cases.md"
+   ],
+   "needs": [
+    "n3-build"
+   ]
+  },
+  {
+   "id": "n5-review",
+   "category": "code review",
+   "engine": "claude sonnet 5.5",
+   "check": "fixed checklist: every generated case passes or is an explained failure; the output matches the spec; findings cite file:line",
+   "sabotage": "",
+   "brief_given": "the tool, the spec, and the cases \u2014 never n3's or n4's reasoning",
+   "intent": "an independent read: run the cases against the tool and report against the spec",
+   "stop": {
+    "criteria": "every checklist item answered with a finding or a clean pass",
+    "baseline": "everything the baseline recorded as passing still passes",
+    "must_not_change": "nothing; review only"
+   },
+   "returns": "findings with file:line, or an explicit clean pass",
+   "state_reads": "runs/20261005-code-graph-tool/state.md",
+   "tools": [
+    "claude",
+    "python3"
+   ],
+   "evidence": [
+    "runs/20261005-code-graph-tool/nodes/n5.review.md"
+   ],
+   "needs": [
+    "n4-test-cases"
+   ]
+  },
+  {
+   "id": "n6-optimize",
+   "category": "code generation",
+   "engine": "opencode MiniMax-M3.1-Flash-Preview",
+   "check": "the tool runs clean on this repo and its coverage summary matches a manual spot-check",
+   "sabotage": "delete a known function -> its node disappears from the graph -> the check goes red",
+   "brief_given": "the tool, the spec, and n5's findings \u2014 fix what the review found, then run it on this repo",
+   "intent": "close the gaps the review found and prove the tool is complete by running it on this repository",
+   "stop": {
+    "criteria": "every n5 finding addressed; the tool runs clean here; the coverage summary matches a spot-check",
+    "baseline": "everything the baseline recorded as passing still passes",
+    "must_not_change": "everything except the touched_paths"
+   },
+   "returns": "the completed tool and its coverage summary over this repo",
+   "state_reads": "runs/20261005-code-graph-tool/state.md",
+   "tools": [
+    "opencode",
+    "python3"
+   ],
+   "evidence": [
+    "runs/20261005-code-graph-tool/nodes/n6.complete.md"
+   ],
+   "needs": [
+    "n5-review"
+   ],
+   "loop": {
+    "limit": 2,
+    "exit": "a fresh node on a stronger tier with the check's output",
+    "feedback": "the coverage check's real output"
+   }
+  }
+ ],
+ "estimate": {
+  "tokens": 700000,
+  "basis": "research ~50k, design ~60k, build ~150k, cases ~40k, review ~60k, optimize ~150k, plus test runs"
+ }
+}
