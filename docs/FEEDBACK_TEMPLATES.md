@@ -16,7 +16,30 @@ loop's exit and the state file, not in the worker's summary. *"We are doing thin
 | 2 | `test script gen` | yes | `Created / Run / Effort` |
 | 3 | `test cases gen` | no | `Created / Type / Coverage / Location` |
 | 4 | `ui/ux dev` | yes | `Changed / Look / Why / Effort` |
-| 5–16 | the rest | — | **not yet walked** |
+| 5 | `debugging` | yes | `Bug / Fixed / Test / Effort` |
+| 6 | `test data gen` | no | `Created / Schema / Coverage / Source` |
+| 7 | `document and explain` | no | `Written / Source (code + graph) / Format` |
+| 8 | `information extraction` | no | `Extracted / Source (code + graph) / Schema` |
+| 9 | `web search` | no | `Found (FACT / INFERRED / GAP) / Disputed` |
+| 10–16 | the rest | — | **not yet walked** |
+
+`Effort` goes on every loop type, unit `tokens + rounds`. Types whose source is code and whose check is "faithful
+to source" (`document and explain`, `information extraction`; `repo scanning`, `code review`, `debugging` to come)
+carry the code-graph tool, and `Source` names the graph.
+
+### `web search` (minimax's shape, chosen by EJ)
+
+```
+## Summary
+- Found:
+    FACT     <claim> — <publisher, published YYYY-MM-DD | "undated", URL>  [N sources — independent | same]
+    INFERRED <claim> — <why it follows from the FACT lines>
+    GAP      <asked fact> — not found; searched: <query, where>; or: exists at <URL> but undated
+- Disputed: <fact> — <k of n> say A (<sources>), <m> say B (<sources>), split <why>; or: none found
+```
+
+Still open for the `TASK_TYPES` row (not the template): who votes (sources or workers — "single node; voting" is a
+contradiction), the corroboration number, undated-source policy, and staleness.
 
 `Effort` goes on every loop type, and its unit is **`tokens + rounds`** (both already measured and harvested).
 
