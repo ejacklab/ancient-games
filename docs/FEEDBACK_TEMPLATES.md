@@ -31,12 +31,19 @@ carry the code-graph tool, and `Source` names the graph.
 
 ```
 ## Summary
+- Searched: <N queries — M near>
+    <keyword>           — near | far     (results close to, or far from, the query)
+    <refined keyword>   — near           (derived from "<original>" because <reason>)
 - Found:
     FACT     <claim> — <publisher, published YYYY-MM-DD | "undated", URL>  [N sources — independent | same]
     INFERRED <claim> — <why it follows from the FACT lines>
     GAP      <asked fact> — not found; searched: <query, where>; or: exists at <URL> but undated
 - Disputed: <fact> — <k of n> say A (<sources>), <m> say B (<sources>), split <why>; or: none found
 ```
+
+`Searched` is the web-search `Effort`: the query log plus accuracy. "accurate" = the returned results are **near**
+the query (relevant), not off-topic — a `near | far` judgment the worker writes (only it saw the results). Refined
+keywords are marked with what they replaced and why. (EJ, 2026-10-06.)
 
 Still open for the `TASK_TYPES` row (not the template): who votes (sources or workers — "single node; voting" is a
 contradiction), the corroboration number, undated-source policy, and staleness.
