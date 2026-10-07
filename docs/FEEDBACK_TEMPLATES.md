@@ -21,7 +21,8 @@ loop's exit and the state file, not in the worker's summary. *"We are doing thin
 | 7 | `document and explain` | no | `Written / Source (code + graph) / Format` |
 | 8 | `information extraction` | no | `Extracted / Source (code + graph) / Schema` |
 | 9 | `web search` | no | `Found (FACT / INFERRED / GAP) / Disputed` |
-| 10–16 | the rest | — | **not yet walked** |
+| 10 | `classification` | no | `Labels / Labeled / Unlabelable / Why` (batch; `T` from the brief) |
+| 11–16 | the rest | — | **not yet walked** |
 
 `Effort` goes on every loop type, unit `tokens + rounds`. Types whose source is code and whose check is "faithful
 to source" (`document and explain`, `information extraction`; `repo scanning`, `code review`, `debugging` to come)
@@ -44,6 +45,25 @@ carry the code-graph tool, and `Source` names the graph.
 `Searched` is the web-search `Effort`: the query log plus accuracy. "accurate" = the returned results are **near**
 the query (relevant), not off-topic — a `near | far` judgment the worker writes (only it saw the results). Refined
 keywords are marked with what they replaced and why. (EJ, 2026-10-06.)
+
+### `classification` (batch labeling — EJ's correction, 2026-10-06)
+
+Classification is **sorting/labeling a batch of data** (e.g. "which business rule belongs to which call-file type"),
+not one item -> one label. The return is the labels plus two counts. All three experts agree; the argued point was
+resolved: the **unlabeled count is the worker's field** (only it tried every item), while **"labeled wrong" is the
+verifier's** (from the sample) — two different numbers, two writers.
+
+```
+## Summary
+T = <batch size from the brief — not re-derived>
+- Labels:       <item -> label, one line each>
+- Labeled:      <N of T>
+- Unlabelable:  <M of T>
+- Why:          <item -> reason, one line per unlabelable item>
+```
+
+Open (EJ's calls): one label or several per item; the large-batch cap; whether the worker may refuse to label;
+label set given vs proposed; and whether the unlabeled reason (reported, not verified) needs a check.
 
 Still open for the `TASK_TYPES` row (not the template): who votes (sources or workers — "single node; voting" is a
 contradiction), the corroboration number, undated-source policy, and staleness.
