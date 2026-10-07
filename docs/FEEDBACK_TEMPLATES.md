@@ -22,7 +22,8 @@ loop's exit and the state file, not in the worker's summary. *"We are doing thin
 | 8 | `information extraction` | no | `Extracted / Source (code + graph) / Schema` |
 | 9 | `web search` | no | `Found (FACT / INFERRED / GAP) / Disputed` |
 | 10 | `classification` | no | `Labels / Labeled / Unlabelable / Why` (batch; `T` from the brief) |
-| 11–16 | the rest | — | **not yet walked** |
+| 11 | `code review` | no | `Against / Method / Findings (suggested fix) / Unclear` |
+| 12–16 | the rest | — | **not yet walked** |
 
 `Effort` goes on every loop type, unit `tokens + rounds`. Types whose source is code and whose check is "faithful
 to source" (`document and explain`, `information extraction`; `repo scanning`, `code review`, `debugging` to come)
@@ -45,6 +46,21 @@ carry the code-graph tool, and `Source` names the graph.
 `Searched` is the web-search `Effort`: the query log plus accuracy. "accurate" = the returned results are **near**
 the query (relevant), not off-topic — a `near | far` judgment the worker writes (only it saw the results). Refined
 keywords are marked with what they replaced and why. (EJ, 2026-10-06.)
+
+### `code review`
+
+```
+## Summary
+- Against:  <what it reviewed against — the checklist/spec>
+- Method:   <what it actually did, and why any deviation from the default>
+- Findings: <N — each: file:line, rule broken, what's wrong, suggested fix (optional)>
+- Unclear:  <anything ambiguous, left for the COO>
+```
+
+`Method` and `Why` are one field: the worker can honestly write "why I deviated from the default", not "why the
+design chose a blind review" (that is in the brief). `Unclear` is the `UNCLEAR:` escape's home. Two kinds of
+suggestion: a **fix** rides with its finding; an **enhancement** (a new wish) goes to `docs/blueprint/backlog.md`,
+never into the review — findings are checkable, enhancements are unbounded (the method step 8).
 
 ### `classification` (batch labeling — EJ's correction, 2026-10-06)
 
