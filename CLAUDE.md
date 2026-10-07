@@ -89,6 +89,11 @@ The eight, short:
 - **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
   said so. Quote them, state the operative sentence, stop.
 
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
 ### Who is this for — and who fills it in?
 
 EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is

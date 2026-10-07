@@ -56,14 +56,15 @@ verifier's** (from the sample) — two different numbers, two writers.
 ```
 ## Summary
 T = <batch size from the brief — not re-derived>
-- Labels:       <item -> label, one line each>
+- Labels:       <item -> label(s), one line each — several allowed, may be proposed>
 - Labeled:      <N of T>
 - Unlabelable:  <M of T>
 - Why:          <item -> reason, one line per unlabelable item>
 ```
 
-Open (EJ's calls): one label or several per item; the large-batch cap; whether the worker may refuse to label;
-label set given vs proposed; and whether the unlabeled reason (reported, not verified) needs a check.
+Settled (EJ): several labels allowed (`item -> label, label`); no cap — the list is the list; "refuse" is just
+`Unlabelable`; labels may be proposed, not locked to a pre-given set. Still open: whether the unlabeled reason
+(reported, not verified) needs a check.
 
 Still open for the `TASK_TYPES` row (not the template): who votes (sources or workers — "single node; voting" is a
 contradiction), the corroboration number, undated-source policy, and staleness.
