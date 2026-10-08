@@ -25,15 +25,15 @@ loop's exit and the state file, not in the worker's summary. *"We are doing thin
 | 11 | `code review` | no | `Against / Method / Findings (suggested fix) / Unclear` |
 | 12 | `multi step planning` | no | `Objective / Nodes / Coverage / Method / Unclear` |
 | 13 | `repo scanning` | no | `Scope / Coverage / Findings / Source (code graph) / Unclear` |
-| 14 | `research and reports` | no | `Answer / Findings (CONFIRMED / INFERRED / GAP) / Gaps` |
-| 15 | `grade a run` | no | `Run / Against / Rubric / Result / Unclear` |
+| 14 | `research and reports` | no | `Answer / Findings (CONFIRMED / INFERRED / GAP / UNPROVEN) / Gaps` |
+| 15 | `grade a run` | no | `Run / Against / Rubric / Unclear` |
 | 16 | `others` | — | `Done / Evidence / Findings` (+ `Effort` if the design runs it as a loop, + `Source` if it has one) |
 
 **Rows 12–16 are proposals merged from three runs (`runs/20261006-feedback-remaining/`, attempt 2 of each), not yet
 walked with EJ.** They are marked `n=0` until EJ settles each.
 
 `Effort` goes on every loop type, unit `tokens + rounds`. Types whose source is code and whose check is "faithful
-to source" (`document and explain`, `information extraction`; `repo scanning`, `code review`, `debugging` to come)
+to source" (`document and explain`, `information extraction`, `repo scanning`, `code review`, `debugging`)
 carry the code-graph tool, and `Source` names the graph.
 
 ### `web search` (minimax's shape, chosen by EJ)
@@ -127,7 +127,7 @@ no `Verdict`.
 ```
 ## Summary
 - Answer:   <what is true in answer to the question, naming the finding ids it rests on; an unsettled part is written as unresolved>
-- Findings: <id claim — CONFIRMED | INFERRED | GAP — both sides: <A> | <B>; each side a file:line with a verbatim quote
+- Findings: <id claim — CONFIRMED | INFERRED | GAP | UNPROVEN — both sides: <A> | <B>; each side a file:line with a verbatim quote
              (>= 8 chars) or a URL with its published date (or "undated"); "— none" when no source opposes>
 - Gaps:     <what the question presupposed that no finding settles, where it was looked for, why open; or "none">
 ```
@@ -143,12 +143,12 @@ both-side citation sits on the row), no `Effort`, no `Source`.
 - Against: <rubric path or id and version, copied from the brief>
 - Rubric:  <per dimension: `<dimension> — PASS | FAIL — <path:line inside the run directory>`, or
             `<dimension> — UNKNOWN — looked for <what> at <path>: absent`; no total, no score>
-- Result:  <`INVALID_RUN — UNKNOWN on: <dimensions>` if any dimension lacks run-directory proof; else `VALID — all N dimensions have proof`>
 - Unclear: <each dimension that could not be applied as written, and the reading used; or "none">
 ```
 
 Per dimension the value is `UNKNOWN`; the run as a whole is `INVALID_RUN` (decided 2026-10-08). An empty run directory gives
-UNKNOWN everywhere and `INVALID_RUN`, never PASS. `Result` reports whether the proof is complete, not whether the run passed.
+UNKNOWN everywhere and `INVALID_RUN`, never PASS. `VALID` / `INVALID_RUN` is the VERIFIER's line, derived from the `Rubric` rows (any `UNKNOWN` dimension
+=> `INVALID_RUN`); the worker does not self-report it.
 
 ### `others` (proposed, n=0)
 
@@ -157,10 +157,11 @@ UNKNOWN everywhere and `INVALID_RUN`, never PASS. `Result` reports whether the p
 - Done:     <one line per deliverable, with where it is (a path, or "inline below")>
 - Evidence: <per Done line: a re-runnable check and what it showed, or a file under runs/<run-id>/; or "none — unchecked">
 - Findings: <what the work found that is not a deliverable, one line each; or "none">
+- New type: <proposal — this matched no known type; pattern, engine, check, sabotage>  (propose when it looks recurring)
 ```
 
 `Effort` (tokens + rounds) only when the brief says the design runs the node as a loop; `Source` (naming the code graph
-when the source is code) only when there is a source. Closest-type goes to `TASK_TYPES_LEDGER.md` (designer's), not here.
+when the source is code) only when there is a source. `others` is a placeholder, not a permanent type: a task that matches no row is run from first principles, and the `New type` proposal goes to the COO, who asks the three experts to design it and add it to `TASK_TYPES.md` + `FEEDBACK_TEMPLATES.md`. `unclear` is different — it means "cannot be done", which stops and reports via `UNCLEAR:`..
 
 `Effort` goes on every loop type, and its unit is **`tokens + rounds`** (both already measured and harvested).
 
