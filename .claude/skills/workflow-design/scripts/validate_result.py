@@ -44,12 +44,15 @@ def split_header(text: str):
     return None, text
 
 
-def check_result(text: str, node=None, attempt=None, model=None, root: Path | None = None):
+def check_result(text: str, node=None, attempt=None, model=None, root: Path | None = None, require_model: bool = True):
     f = []
     hdr, body = split_header(text)
     if hdr is None:
         return ["no header between two '---' lines"], "", {}
     for k in RESULT_KEYS:
+        if k == "model" and not require_model:
+            # an engine with no model of its own (dsh, script) has none to report; it is not a missing field
+            continue
         if not hdr.get(k):
             f.append(f"header is missing {k!r}")
     if hdr.get("status") and hdr["status"] not in STATUSES:

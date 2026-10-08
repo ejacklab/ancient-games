@@ -2,6 +2,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / ".claude/skills/workflow-design/scripts"))
+import validate_result  # noqa: E402
+
 SCRIPT = Path(__file__).resolve().parents[1] / ".claude/skills/workflow-design/scripts/validate_result.py"
 
 GOOD = """---
@@ -58,6 +61,17 @@ def test_a_prelude_before_the_header_is_tolerated(tmp_path):
     prelude = "I've checked how this repo's tests import the scripts. Writing now.\n\n"
     r = run(tmp_path, prelude + GOOD, "--root", str(tmp_path))
     assert r.returncode == 0, r.stdout
+
+
+def test_a_no_model_engine_need_not_report_model():
+    """The dsh engine (and script) take their model from their own config, so `model:` is empty. Requiring it broke
+    a real run (2026-10-08, feedback-remaining n3). A header with an empty model is valid when no model is expected."""
+    no_model = GOOD.replace("model: gpt-6.1-sol\n", "model: \n")
+    f, body, hdr = validate_result.check_result(no_model, node="n2", attempt="1", require_model=False)
+    assert not any("model" in x for x in f), f
+    # and when a model IS expected, an empty one still fails
+    f2, _, _ = validate_result.check_result(no_model, node="n2", attempt="1")
+    assert any("model" in x for x in f2), f2
 
 
 def test_contract_mismatches(tmp_path):
