@@ -1,0 +1,89 @@
+{
+ "run_id": "20261006-feedback-remaining",
+ "budget": {
+  "max_rounds": 2,
+  "max_calls": 30
+ },
+ "nodes": [
+  {
+   "id": "n1-grade-others",
+   "role": "designer",
+   "engine": "claude",
+   "model": "claude-opus-5-5",
+   "mode": "read-only",
+   "brief": "runs/20261006-feedback-remaining/briefs/n1-grade-others.md",
+   "inner_timer": "1200s",
+   "outer_timeout_s": 1500,
+   "check": {
+    "name": "covers grade a run + others",
+    "cmd": [
+     "python3",
+     "-c",
+     "import pathlib,sys; t=pathlib.Path('{result}').read_text(); sys.exit(0 if ('grade a run' in t and 'others' in t and 'Whys' in t) else 1)"
+    ]
+   },
+   "sabotage": ""
+  },
+  {
+   "id": "n2-plan-scan",
+   "role": "designer",
+   "engine": "opencode",
+   "model": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview",
+   "mode": "read-only",
+   "brief": "runs/20261006-feedback-remaining/briefs/n2-plan-scan.md",
+   "inner_timer": "1200s",
+   "outer_timeout_s": 1500,
+   "check": {
+    "name": "covers plan + scan",
+    "cmd": [
+     "python3",
+     "-c",
+     "import pathlib,sys; t=pathlib.Path('{result}').read_text(); sys.exit(0 if ('multi step planning' in t and 'repo scanning' in t and 'Whys' in t) else 1)"
+    ]
+   },
+   "sabotage": ""
+  },
+  {
+   "id": "n3-research",
+   "role": "designer",
+   "engine": "dsh",
+   "mode": "read-only",
+   "brief": "runs/20261006-feedback-remaining/briefs/n3-research.md",
+   "inner_timer": "1200s",
+   "outer_timeout_s": 1500,
+   "check": {
+    "name": "covers research and reports",
+    "cmd": [
+     "python3",
+     "-c",
+     "import pathlib,sys; t=pathlib.Path('{result}').read_text(); sys.exit(0 if ('research and reports' in t and 'Whys' in t) else 1)"
+    ]
+   },
+   "sabotage": ""
+  },
+  {
+   "id": "n4-merge",
+   "role": "verifier",
+   "engine": "claude",
+   "model": "claude-sonnet-5-5",
+   "mode": "write",
+   "brief": "runs/20261006-feedback-remaining/briefs/n4-merge.md",
+   "inner_timer": "1200s",
+   "outer_timeout_s": 1500,
+   "needs": [
+    "n1-grade-others",
+    "n2-plan-scan",
+    "n3-research"
+   ],
+   "check": {
+    "name": "all five types in the doc",
+    "cmd": [
+     "python3",
+     "-c",
+     "import pathlib,sys; t=pathlib.Path('docs/FEEDBACK_TEMPLATES.md').read_text(); sys.exit(0 if all(x in t for x in ('grade a run','others','multi step planning','repo scanning','research and reports')) else 1)"
+    ]
+   },
+   "sabotage": ""
+  }
+ ]
+}

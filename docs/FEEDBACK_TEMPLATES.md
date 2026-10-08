@@ -23,7 +23,14 @@ loop's exit and the state file, not in the worker's summary. *"We are doing thin
 | 9 | `web search` | no | `Found (FACT / INFERRED / GAP) / Disputed` |
 | 10 | `classification` | no | `Labels / Labeled / Unlabelable / Why` (batch; `T` from the brief) |
 | 11 | `code review` | no | `Against / Method / Findings (suggested fix) / Unclear` |
-| 12–16 | the rest | — | **not yet walked** |
+| 12 | `multi step planning` | no | `Objective / Nodes / Coverage / Method / Unclear` |
+| 13 | `repo scanning` | no | `Scope / Coverage / Findings / Source (code graph) / Unclear` |
+| 14 | `research and reports` | no | `Answer / Findings (CONFIRMED / INFERRED / GAP) / Gaps` |
+| 15 | `grade a run` | no | `Run / Against / Rubric / Result / Unclear` |
+| 16 | `others` | — | `Done / Evidence / Findings` (+ `Effort` if the design runs it as a loop, + `Source` if it has one) |
+
+**Rows 12–16 are proposals merged from three runs (`runs/20261006-feedback-remaining/`, attempt 2 of each), not yet
+walked with EJ.** They are marked `n=0` until EJ settles each.
 
 `Effort` goes on every loop type, unit `tokens + rounds`. Types whose source is code and whose check is "faithful
 to source" (`document and explain`, `information extraction`; `repo scanning`, `code review`, `debugging` to come)
@@ -84,6 +91,76 @@ Settled (EJ): several labels allowed (`item -> label, label`); no cap — the li
 
 Still open for the `TASK_TYPES` row (not the template): who votes (sources or workers — "single node; voting" is a
 contradiction), the corroboration number, undated-source policy, and staleness.
+
+### `multi step planning` (proposed, n=0)
+
+```
+## Summary
+- Objective: <challenge restated — what is true when done, in scope, out of scope; copied from the challenge>
+- Nodes:     <one line per node — id, category, engine, check, deliverable, `needs`, loop | no-loop; where design.json
+              lives; touched_paths and baseline.command as values, not promises>
+- Coverage:  <acceptance-criterion ids and checks the nodes cover — and those NOT covered>
+- Method:    <default | challenger; a challenger's margin (>= 20%), basis and arithmetic; default reads "default, unchanged">
+- Unclear:   <spot — read A, chose A because ...; or "none">
+```
+
+No `Effort` (not a loop), no `Source` (the source is the challenge, not code), no gate result or `Accepted` (the gate and
+the reviewer write those after the worker).
+
+### `repo scanning` (proposed, n=0)
+
+```
+## Summary
+- Scope:    <area; one row per section — id, files and graph nodes, budget, `git rev-parse --short HEAD`; what was left unscanned>
+- Coverage: <per section, what IT read and skipped — nodes, functions, edges, files, counts against the graph's `stats`;
+             claims resting on `unresolved_calls` are `read`, never facts>
+- Findings: <one line each — claim, file:line, verbatim quote (>= 8 chars), read | ran; no severity, no fix>
+- Source:   <the code-graph command, schema, tier, root, stats, and every entry in `errors`>
+- Unclear:  <each spot the scan could not settle, with file:line; or "none">
+```
+
+`Coverage` is written by each section worker; the join concatenates the rows and does not re-derive them. No `Effort`,
+no `Verdict`.
+
+### `research and reports` (proposed, n=0)
+
+```
+## Summary
+- Answer:   <what is true in answer to the question, naming the finding ids it rests on; an unsettled part is written as unresolved>
+- Findings: <id claim — CONFIRMED | INFERRED | GAP — both sides: <A> | <B>; each side a file:line with a verbatim quote
+             (>= 8 chars) or a URL with its published date (or "undated"); "— none" when no source opposes>
+- Gaps:     <what the question presupposed that no finding settles, where it was looked for, why open; or "none">
+```
+
+`INFERRED` names the `CONFIRMED` rows it follows from; `GAP` names the query run and where. No `Disputed` (the
+both-side citation sits on the row), no `Effort`, no `Source`.
+
+### `grade a run` (proposed, n=0)
+
+```
+## Summary
+- Run:     <the run directory graded, copied from the brief>
+- Against: <rubric path or id and version, copied from the brief>
+- Rubric:  <per dimension: `<dimension> — PASS | FAIL — <path:line inside the run directory>`, or
+            `<dimension> — UNKNOWN — looked for <what> at <path>: absent`; no total, no score>
+- Result:  <`INVALID_RUN — UNKNOWN on: <dimensions>` if any dimension lacks run-directory proof; else `VALID — all N dimensions have proof`>
+- Unclear: <each dimension that could not be applied as written, and the reading used; or "none">
+```
+
+Per dimension the value is `UNKNOWN`; the run as a whole is `INVALID_RUN` (decided 2026-10-08). An empty run directory gives
+UNKNOWN everywhere and `INVALID_RUN`, never PASS. `Result` reports whether the proof is complete, not whether the run passed.
+
+### `others` (proposed, n=0)
+
+```
+## Summary
+- Done:     <one line per deliverable, with where it is (a path, or "inline below")>
+- Evidence: <per Done line: a re-runnable check and what it showed, or a file under runs/<run-id>/; or "none — unchecked">
+- Findings: <what the work found that is not a deliverable, one line each; or "none">
+```
+
+`Effort` (tokens + rounds) only when the brief says the design runs the node as a loop; `Source` (naming the code graph
+when the source is code) only when there is a source. Closest-type goes to `TASK_TYPES_LEDGER.md` (designer's), not here.
 
 `Effort` goes on every loop type, and its unit is **`tokens + rounds`** (both already measured and harvested).
 
