@@ -3,21 +3,13 @@
 Agreed between EJ and Claude on 2026-09-20. This is the method this folder uses to turn an incoming challenge into
 either a prompt file or a workflow design. It has been tried on nothing yet: every number and every piece of
 "evidence" below comes from one session (n=1) and is not to be built on as a rule until it has been used on real
-challenges. The tier rule in 3.5 was added on 2026-09-22, and the restatement step 3.0 on 2026-10-01; neither has
-had a run at all (n=0).
+challenges. Most sections were added later and have had no run at all (n=0); when each rule was added, and every
+rule that was removed or changed, is in `docs/METHOD_CHANGELOG.md`.
 
 Runnable form: `.claude/workflows/intake.js`. Templates: `docs/workflow-templates/`. Runs: `runs/<run id>/`.
 
-## One word, one job
-
-| word | one job |
-|---|---|
-| `check` | a node's success test — the field in a design and a plan |
-| `validate` | is a document well-formed (`validate_plan`) |
-| `verify` | run a node's success test (`verify_node_result`) |
-| `probe` | inspect the environment (`probe_binary`, `probe_blueprint`, …) |
-| `compare` | plan against design (`compare_plan_to_design`) |
-| `checklist` | the judged fixed list |
+**One word, one job:** `check`, `validate`, `verify`, `probe`, `compare` and `checklist` each mean one thing here —
+the table is Appendix A.
 
 ## 1. The ideas behind it
 
@@ -34,14 +26,12 @@ Runnable form: `.claude/workflows/intake.js`. Templates: `docs/workflow-template
 Understand the challenge first (3.0); the test reads the restatement, not the raw text. If you can state the
 restated problem, the fix and the check in one sentence each, and being wrong would show itself at once: write the
 prompt file by hand from `docs/workflow-templates/prompt-file.md`, or just do the task. Running the intake
-workflow on such a task costs more than the task.
+workflow on such a task costs more than the task. A big-sounding challenge with a narrow objective stays small; a
+vague one ("improve performance") cannot slip through as tiny.
 
 ## 3. The steps
 
 ### 3.0 Understand the challenge — before anything
-
-(Added 2026-10-01 at EJ's request; extended the same day with the six whys and categorization; not tried on a
-real challenge, n=0. Not yet encoded in `intake.js`; see `TODO.md`.)
 
 From the challenge text alone — no tools, no agents, no repository browsing — state three things:
 
@@ -63,16 +53,12 @@ changes the design — six is the ceiling, never a target:
 
 End with a **provisional category** (multi-label, marked *inferred*) from `docs/TASK_TYPES.md`. It is a guess
 from the text alone: it feeds the tiny test (§2) and a first default lookup, and 3.2 relabels it from the
-algorithm (since 2026-10-02; before, the category was fixed here and only checked against the facts).
+algorithm.
 
 A part that cannot be written, or a challenge that allows two readings, is the first **unclear spot** (kind:
 decision, 3.3): a question for EJ with the restatement as the provisional assumption. No new blocking rule is
 added: a prompt file's restatement stands on its provisional assumption like any decision, and a design's
 question batch reaches EJ before anything runs.
-
-The tiny test (§2) reads the restatement, not the raw text: tiny means the *restated* problem, fix and check are
-one sentence each. A big-sounding challenge with a narrow objective stays small; a vague one ("improve
-performance") cannot slip through as tiny.
 
 The restatement, the why-answers and the provisional category go at the top of the output, beside the verbatim challenge in
 the state file, so EJ sees and can correct what the run understood before tokens are spent.
@@ -82,13 +68,11 @@ agent, never a tool call. On a tiny task it is the prompt file's first lines, so
 
 ### 3.1 Readiness — always first
 
-**`git` is not a requirement (EJ, 2026-10-05).** A run must work in a plain directory: where the product is a git
-repository the run keeps a pre-run `git status --short` so it can tell what *it* changed, and where it is not, that
-record is simply absent. Readiness checks the `git` **binary** because the tooling uses it when it is there — not
-because a repository is required. The **baseline** never depended on git: it is the product's test command and its
-output (`baseline.command`, gate rule G10), which is also why a `git status` snapshot can never stand in for it.
-Before 2026-10-05 the runnable form ran `git status --short` unconditionally and a plain directory died at the first
-step of every run (register 9.2).
+**`git` is not a requirement.** A run must work in a plain directory; readiness checks the `git` binary only because
+the tooling uses it when it is there, and in a repository the run keeps a pre-run `git status --short` to tell what
+*it* changed. The **baseline** is the product's test command and its output (`baseline.command`, gate rule G10),
+written to the state file before the first node that builds starts; everything it records as passing must still
+pass (3.6). A `git status` snapshot never stands in for it.
 
 For the task, and later for each piece, list:
 
@@ -116,9 +100,6 @@ Anything missing becomes a preparation piece at the front. Each task should leav
 than it found it, so the next task gets the fast path.
 
 #### Blueprint check — part of readiness
-
-(Added 2026-09-25 after EJ found that several projects never ended: their workflows built without a fixed target,
-so every verify or review step could find more to do. Not yet tried on a real challenge; n=0.)
 
 A stop condition means something only against a fixed target. For a task that changes a product, that target is the
 product's **blueprint**: what the product is for and what it must do, written down and accepted by EJ. The tools and
@@ -150,7 +131,7 @@ feature.
 | Not a product change (research, a question, an analysis, an edit to documentation only) | none; record why, and the check ends here. It carries no acceptance criteria |
 | Fix: restores behaviour the requirements already describe (if they do not describe it, it is a feature) | the requirement it restores, and the sections the fix touches |
 | Feature: adds or changes behaviour | vision, requirements, and every section the feature changes |
-| New product | all eight present; four settled before anything builds — vision, the first slice's requirements, the hard-to-reverse architecture choices as short decision records, the non-functional targets with runnable checks; the other four settled for the slice only, unknowns marked (EJ, 2026-10-03; was "all eight settled"; n=0) |
+| New product | all eight present; four settled before anything builds — vision, the first slice's requirements, the hard-to-reverse architecture choices as short decision records, the non-functional targets with runnable checks; the other four settled for the slice only, unknowns marked |
 
 The kind of task is itself checked against the challenge: a task that changes the product's code, schema, UI or
 configuration is never "not a product change". A wrong kind switches the whole check off, so it is a stop, not
@@ -194,7 +175,7 @@ Try to write the steps that would solve the task. A **step** is one action with 
 - A step with no check you can name counts as unclear, however tidy it looks. This guards against a confident
   algorithm for a problem that is not understood.
 
-**Label the pieces (added 2026-10-02 at EJ's request; n=0).** Once the steps are written, group them into
+**Label the pieces.** Once the steps are written, group them into
 **pieces** — consecutive steps that end in one deliverable — and give each piece a category from
 `docs/TASK_TYPES.md`, with its default pattern, engine and check beside it. The labels come from the algorithm, not
 from the prompt text: a prompt that reads as one category often holds several (fix a test, then document it).
@@ -230,30 +211,22 @@ For each spot record:
 
 Questions for EJ go out as one batch, each with a provisional assumption so it can be answered in a few words.
 In a prompt file a provisional assumption stands unless EJ corrects it; a workflow design's questions are answered
-before the designed workflow runs, except blueprint questions, which hold back only the pieces that build on them.
-Blueprint questions are the exception in a prompt file too: they need an explicit
-answer before any step that builds on them runs (3.1, blueprint check). Where spots are resolved separately, one
+before the designed workflow runs. Blueprint questions are the exception in both: they are not answered by silence,
+and they hold back only the pieces that build on them (3.1). Where spots are resolved separately, one
 joining step compares the answers. A contradiction is a stop: pick one and say why, never average.
 
 ### 3.4 Size
 
 - Up to 3 steps and nothing unclear except decisions that have a provisional assumption → one piece → a prompt
   file, with those decisions listed at the top as questions for EJ. A spot of kind information or unknown always
-  means a workflow design. (Changed 2026-09-20 after trial 1, where three decisions with obvious defaults helped
-  push a one-line fix out of "small"; n=1.) Blueprint spots follow the same rule: a missing or incomplete section
+  means a workflow design. Blueprint spots follow the same rule: a missing or incomplete section
   always means a workflow design; a draft section alone does not.
 - More than 3 steps → consider a new piece. Split only if each part keeps its own check **and** splitting changes
   how the work is done ("Split iff it changes the route", `challenge-mediation` skill).
-- **Health is a reason to split (EJ, 2026-10-05; n=0).** A long single attempt hides its failure and cannot be
+- **Health is a reason to split.** A long single attempt hides its failure and cannot be
   watched; a run whose work is cut into segments ends each one and can be looked at.
-- **Size from an estimate, and never hand an engine one huge prompt (EJ, 2026-10-05; n=0).** A design guideline:
-
-  > *"When we design the workflow, we don't ask a subagent to give a HUGE prompt that runs like 10 hours to Codex.
-  > Since an LLM can already estimate the workload, better to divide into like 6 or more pieces of prompts that are
-  > logical."*
-
-  A model can estimate a piece's workload **before** it runs — use that, rather than discovering the size from a
-  timeout. **A piece whose work is hours long is not a piece: split it into six or more logical pieces**, each with
+- **Size from an estimate, and never hand an engine one huge prompt** (a design guideline). A model can estimate a
+  piece's workload **before** it runs — use that, rather than discovering the size from a timeout. **A piece whose work is hours long is not a piece: split it into six or more logical pieces**, each with
   its own deliverable and its own check. The anti-pattern is concrete — one ten-hour prompt to Codex.
 
   It does not remove 3.2's warning that every hand-off has a fixed cost and loses context at the split.
@@ -267,11 +240,12 @@ replaces a default only on a written claim of ≥20% lower projected run cost **
 criteria ids, same checks, same blindness — coverage is a gate, never an axis). The decision is reviewed by the
 script gate (`design_gate.py`) plus one blind fixed-checklist pass (Sonnet 5.5; a different kind when the
 design builds or EJ flagged high risk), and every run reconciles its claim in `docs/TASK_TYPES_LEDGER.md` —
-that ledger is how the defaults earn their n. (Added 2026-10-01 at EJ's request; n=0.)
+that ledger is how the defaults earn their n.
 
-Anchors for the number 3 **in a piece's step count** (not a cap on roles or concurrency — that rule was deleted
-2026-10-05, see 3.7): Gate splits capability lists over three (`ancient_games/stages.py:109`) and the
-the plan-wide cap of 3 dispatched corroborating sources (`ancient_games/registry.py:24`, used at `stages.py:309`; it caps dispatches per plan, not agents running at once — corrected 2026-10-03).
+Anchors for the number 3 **in a piece's step count** (not a cap on roles or concurrency — there is none, 3.7): Gate
+splits capability lists over three (`ancient_games/stages.py:109`) and the plan-wide cap of 3 dispatched
+corroborating sources (`ancient_games/registry.py:24`, used at `stages.py:309`; it caps dispatches per plan, not
+agents running at once).
 
 ### 3.5 Clear pieces run as loops
 
@@ -281,24 +255,21 @@ defined output, the agent attempts, the check runs, pass → close the loop, fai
 A piece is loop-ready only if it has all five:
 
 1. A check. Best is a script; next a fixed checklist judged by a separate agent; last EJ's own judgment.
-2. A limit on the **number** of attempts — a count, not a time limit. (Renamed 2026-10-05: it read *"a limit on
-   attempts"*, and EJ read it as a time bound, which is 3.8's business. Two different rules were wearing the same
-   three words.)
+2. A limit on the **number** of attempts — a count, not a time limit (time is 3.8's business).
 3. Specific feedback: the script's real output, not just "failed".
 4. An exit for when the limit is hit. If the attempts ran on a cheap tier, the exit is a fresh node on a stronger
-   tier with a short handoff note (the piece, its check, the last feedback) and its own limit. When that limit is
-   hit too, or there is no stronger tier, the piece goes back to the unclear list or to EJ. It was not as clear as
-   it looked. (Tier exit added 2026-09-22 at EJ's request; n=0.)
+   tier with a short handoff note (the piece, its check, the last feedback) and its own limit — never a tier switch
+   inside the running session: a switch voids the prompt cache, so the stronger tier re-reads the whole context at
+   its fresh input rate, and a session in which the cheap tier flailed is mostly wrong turns that would anchor the
+   stronger tier towards the same dead ends. When that limit is hit too, or there is no stronger tier, the piece
+   goes back to the unclear list or to EJ. It was not as clear as it looked.
 5. A check the worker cannot edit, and that is known to be able to fail (the house sabotage check).
 
 A loop only closes when its check is objective. (n=1: a planner/critic loop whose check was "try to reject it" ran
 three rounds, 6 → 5 → 4 problems, and never closed. See `20260919-plan-critic-issues.md`.)
 
 Attempts start on the cheapest tier that could plausibly do the piece; a stronger tier, which costs many times more
-per token, is bought only for what the cheap one could not finish. Escalation is a fresh node, never a tier switch
-inside the running session: a switch voids the prompt cache, so the stronger tier re-reads the whole context at its
-fresh input rate, and a session in which the cheap tier flailed is mostly wrong turns that would anchor the stronger
-tier towards the same dead ends. (Added 2026-09-22 at EJ's request; n=0.)
+per token, is bought only for what the cheap one could not finish; escalation is item 4's exit.
 
 ### 3.6 The rest is a knowledge graph
 
@@ -329,8 +300,7 @@ node that builds; a node that does not build carries no criteria, except a bluep
 it is expected to propose. The stop condition of a node that builds has three parts, all objective:
 
 1. the acceptance criteria it covers pass;
-2. what passed before still passes — everything recorded as passing in the **baseline**: the product's test command
-   and its output, written to the state file before the first node that builds starts;
+2. the baseline recorded in 3.1 still passes;
 3. its contract's "must not change" holds.
 
 A failure of any of the three is a failed attempt, not a backlog item. If its check is judged, it is a fixed
@@ -350,24 +320,11 @@ session) following the knowledge graph. A node's role subagents do not choose th
 model and effort; the COO's contract, and when she does a small node herself, are in `docs/EXECUTOR_KINDS.md`. If a node hits its attempt limit
 and its tier exit is spent, it returns to the unclear list and only that part of the knowledge graph is planned again.
 
-**The design and the runnable plan are two artifacts, and the COO writes both (EJ, 2026-10-05).** The design carries
-the plan of work — categories, checks, edges, loops — and the gate validates it. The plan (`plan.json`) carries what
-a run needs to execute — each node's engine as a bare name, its model, its timers, its brief path — and the
-dispatcher validates *its* internal consistency. **They are compared, since 2026-10-05.** This was decided as *C — leave it* earlier the same day, on the reasoning
-that one author writes both and can see both, so a checker would guard against someone standing right there.
-
-**C was revisited the same day, because a traversal measured the cost.** One real challenge was run end to end:
-`intake` → design → gate → plan → dispatch. The hand-written plan **silently dropped two of three nodes' checks**,
-plus `touched_paths`, the baseline, the categories and the estimate — and `validate_plan` said *"plan ok"*. Every
-validator agreed while two checks had vanished, and a node with no check reports **done**.
-
-So `dispatch.py validate PLAN --design DESIGN` now compares the two, and `run` refuses a plan that loses the design.
-The comparison is **asymmetric on purpose**: a plan carries what a design does not (a bare engine name, an exact
-model, timers, a brief path, a role), so equality is wrong. **The design's promises must survive; the plan may add
-and may not lose.** Without `--design` the command **says so** on stderr rather than passing silently.
-
-*The first measurement of a decision's cost changed the decision. That is the argument for traversing a chain once
-rather than reasoning about it.*
+**The design and the runnable plan are two artifacts, and the COO writes both.** The design carries the plan of
+work — categories, checks, edges, loops — and the gate validates it; the plan (`plan.json`) carries what a run needs
+— each node's engine as a bare name, its model, its timers, its brief path. `dispatch.py validate PLAN --design
+DESIGN` compares them, and `run` refuses a plan that loses the design. The comparison is asymmetric: **the design's
+promises must survive; the plan may add and may not lose.** Without `--design` the command says so on stderr.
 
 Whole picture: knowledge graph on the outside, loops inside the nodes, exploration only inside the unknown-spot nodes. This is
 what `20260919-state.md` calls combined execution.
@@ -392,138 +349,72 @@ only when the design is complete, and only where it really earns it. All five mu
 Parallel buys only clock time, and it costs predictability, debuggability and extra joins. Independence of
 verifiers is about what they see, not when they run: two verifiers can run one after another and stay independent.
 
-**Caps — deleted 2026-10-05 (EJ: "not logic at all").** A rule here read *"at most 5 subagent roles per run and at
-most 3 running at once"*. It was removed once its numbers were traced: they are the **spike rule's** in
-`docs/TASK_TYPES.md` — *"run at most 3 in parallel"*, *"up to 5 in a round"*, both about candidate **approaches** for
-one question — re-labelled as a rule about **roles** and **concurrency**.
-
-The two halves were never the same kind of thing, which is why the sentence would not parse:
-
-* **5 roles** counted distinct `role` values over a run's nodes — a property of a *design*.
-* **3 running** counted engine processes alive at one instant — a property of the *machine* (the dispatcher's worker
-  pool, now the constant `MAX_ENGINE_PROCESSES` in `scripts/dispatch.py`).
-
-The pair survives where it belongs, in the spike rule, still about approaches. `validate_plan` no longer refuses a plan
-for having many roles or a wide parallel group; the budget keeps `max_rounds` and `max_calls`, which are limits on
-*attempts* and are required by 3.5. **If a run needs many roles, that is a design question, not a cap.**
-
-**Concurrency: name the unit, because four different things get called "parallel".** (EJ, 2026-10-05: *"how many
-running in parallel is even more weird"* — right, and this is the whole reason.)
-
-| phrase | what it counts | does an idle one count? |
-|---|---|---|
-| **resident sessions** — the harness's `@deepseek-ai/dsh-subagent` `maxActiveSubagents`, default **8**, `maxDepth` **1** | child sessions that exist and can be continued | **yes** — a continuable subagent waiting for its parent still holds a slot |
-| **engine processes alive** — the dispatcher's pool | `Popen` calls that have not exited | no |
-| **candidate approaches** — the spike rule in `TASK_TYPES.md` | approaches tried for one question | n/a |
-
-**8 resident sessions can be one working. 8 processes are 8 working.** They are not the same quantity, and using one
-number for the other is the mis-transcription that produced the deleted "5 roles and 3 at once" rule. So: read the
-harness's ceiling from the harness when you need *sessions*; pick the pool size on its own merits when you need
-*processes*, and mark it unmeasured until someone measures it. **Never write "running in parallel" without saying
-which of the three you mean.**
+There is no cap on roles or on how many run at once (the deleted caps rule: `docs/METHOD_CHANGELOG.md`); the budget
+keeps `max_rounds` and `max_calls`, which limit *attempts* (3.5). **If a run needs many roles, that is a design
+question, not a cap.** **Never write "running in parallel" without naming the unit** — resident sessions, engine
+processes alive, or candidate approaches (Appendix C).
 
 ### 3.8 Running a node: executors are tools, timers, pass-back, no polling
 
-(Added 2026-10-02 at EJ's request. n=0: every number below is a provisional working value that the ledger replaces
-with measured ones. Not yet encoded in `design_gate.py` or `intake.js`.)
+Every number here is a provisional working value (n=0) that the ledger replaces with measured ones.
+`scripts/dispatch.py` enforces the timers, the ceiling, the brief's three parts, the pass-back check and the
+executor-failure rule in code (`docs/DISPATCHER_DESIGN.md`); the engines' own facts are in `docs/EXECUTOR_KINDS.md`.
 
 The COO (the main Claude session) is the leader and holds the thinking. Codex, `agy`, `qwen` and role subagents are
 **tools** she calls: agents are not yet stable (a call may stop half-way, return nothing, or return something
-malformed), and every exchange with them costs the COO a turn that re-reads her whole context. So:
+malformed), and every exchange with them costs the COO a turn that re-reads her whole context. Before any call, know
+which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The bundled-runtime trap"). So:
 
-**Before any of it: know which binary will make the call, and what version it is.** A provider can bundle its own
-copy of an engine, older than the copy on `PATH`, and the two do not accept the same model names — the error blames
-the model or the account, never the version. Check the catalog of the binary that will actually run, and record that
-version in the canary. `docs/EXECUTOR_KINDS.md`, "The bundled-runtime trap", has the three instances that cost this
-project three diagnoses in two days.
-
-1. **One small task per call.** A call has one deliverable, one command line and an expected finish inside its
-   timeout. A loop is not inside the call: if a piece loops, the COO or the script runs the loop and each attempt is
-   a fresh small call (3.5). A piece too big for one bounded call is not handed over whole; the COO splits it only
-   where 3.2's "a label is not a node" allows (own check, different kind, or context room).
-2. **Two timers per call, both named in the node.** The *inner* timer is the tool's own (`qwen --max-wall-time`,
-   `agy --print-timeout`; `codex exec` has none verified, so it relies on the outer one). The *outer* timer is a
-   `timeout` around the whole command, a little longer than the inner. Timeout values scale with the task; the
-   provisional sizes are: classification or lookup 60–90 s (the canary's figure), one-file change or one-file test
-   set about 5 min, diff review about 5 min, research about 10 min. The design lists them with its cost estimate,
-   and the ledger records actual wall time so the numbers get replaced.
-
-   **But no single call runs longer than the ceiling: 8 hours (EJ, 2026-10-05; n=0).** The per-task timers scale;
-   the ceiling does not. Past it the run is not healthy and cannot be monitored — a call that has been going for
-   hours has hidden its failure, cannot be watched, and leaves nothing to resume from. A call that hits the ceiling
-   is an **executor failure**, so it blocks the node and reports (there is no fallback). **`validate_plan` refuses a
-   node whose `outer_timeout_s` is past the ceiling**, so this is enforced before the run, not remembered.
-
- **This is the reason long
-   work is cut into segments**: not only cost — a segmented run is healthier and easier to monitor, because every
-   segment ends and can be looked at.
-3. **No polling.** The COO never repeats "is it done?" and never sleeps in a loop; each check is a turn. She waits
-   in one of three ways: a blocking call under the outer timeout; a background run that notifies her when it
-   exits; or a small script that waits and prints one line `done|fail|timeout <result path>`. A progress file the
-   tool writes is read only after a timeout, to see how far it got. The design states the COO turns it expects per
-   node (provisional: two, dispatch and accept) and the total.
-4. **Pass-back contract.** Every call writes one result file in the node's own path
-   (`runs/<id>/nodes/<node>-<attempt>.result.*`), written to a temp name and renamed, with a fixed header: node,
-   attempt, engine, model as the tool reports it, `status: ok|fail|partial`, start and end time, evidence path;
-   then the body (`docs/workflow-templates/result-file.md`). A **script** (no model,
-   `.claude/skills/workflow-design/scripts/validate_result.py`) validates it: the file exists and is not empty, the
-   header parses, the status is present, the reported model, node and attempt equal the contract's, the evidence
-   path exists. The COO reads the capped summary (provisional: the
-   header and the first 40 lines) and the path, never the raw output.
-5. **An unstable return is a failure of the executor, not of the work.** All of these count: no file, empty file,
-   unparseable header, wrong model, a timeout, and a clean exit with no result (`qwen` headless exits 0 with no file
-   when its write tools are withheld; a wrong `-m` exits 0 and silently runs another model — both seen
-   2026-10-02, `docs/EXECUTOR_KINDS.md`). `partial` is a status the COO decides on: retry only the remainder as a
-   new small call. Executor failures follow the existing rule: they do not count against the attempt limit, the
-   node is **blocked** and goes to EJ. There is no fallback (removed 2026-10-05): one engine per node, and a
-   failure reports rather than hopping to an engine nobody chose.
-6. **A half-finished node must not leave a mess.** A node that builds writes only inside its contract's "may
-   change" paths, and runs from a clean commit or a worktree, so a failed call is discarded whole. The COO never
-   reverts files by hand to "tidy up": a revert of anything but a discarded worktree is a Rule 6 confirmation.
-7. **Keep the COO's reading small.** Results by path, one-line Log entries, only the state rows the next step
-   needs. Raw tool output never enters her context.
-8. **The stronger model gives the worker a template, an example and a standard** (EJ, 2026-10-02: this is the
-   COO's real work). The COO is the smarter model and the worker is a tool, often a cheaper one; so every brief
-   carries (a) the **template** the result must follow, (b) one worked **example** of a good result, small and
-   real, and (c) the **standard** it will be judged by: the check as the worker can run it, what failing looks
-   like, and the sabotage the check is known to catch. The COO writes these once, in the brief
-   (`docs/workflow-templates/node-brief.md`), instead of correcting the result afterwards: it cuts unstable
-   returns, retries and her own review reading. A brief with no template, no example or no standard is not
-   dispatched; a part she cannot write is an unclear spot (3.3).
-9. **Research is written to files.** The *researcher* reads docs, papers and the web (WebSearch, WebFetch). A
-   research node writes the full findings to
-   `docs/research/<date>-<topic>/FINDINGS.md` (each finding with an id, a source and a label) and returns only a
-   digest of about 15 lines, no more than 20, plus the path (`docs/workflow-templates/research-file.md`). The COO
-   reads the digest; to settle a doubt she reads one finding by id, or sends a small verify node. A design decided
-   from the research goes to `decisions.md` (4).
-10. **Exploring existing code is its own role** (EJ, 2026-10-03; n=0). The *explorer* reads the existing system —
-   code, tests, configs, git history — never the web. The two roles differ in source, tools, evidence and how a
-   claim is checked (`docs/EXECUTOR_KINDS.md`, roles). Its contract:
-   - **Read-only**, under a stated budget (tool calls or tokens), favouring recall inside the affected area and
-     never a repo-wide overview (TASK_TYPES, case C).
-   - **Every claim carries file:line and a short verbatim quote**, and `scripts/quote_check.py` confirms each quote
-     is at its line (`docs/workflow-templates/explorer-file.md`); a quote that fails is a failed finding, not a typo.
-   - **Every behaviour claim is marked `read` or `ran`.** `read` = inferred from the code; `ran` = confirmed by
-     running it (a test, a differential run, `~/skills/verify-extraction`). Only `ran` claims may feed a node that
-     builds; a `read` claim a build depends on is an unclear spot until it is run.
-   - It returns a digest and the path, like research: the impact map (case C), the old system's behaviours and
-     golden outputs (case B), or the findings for use cases #1 and #2.
-   - The COO explores herself when the affected area is small and fits her context (whale rule); an explorer node
-     is for a large or unfamiliar codebase.
-11. **Every run leaves a feedback record** (added 2026-10-02; n=0; `docs/research/20261002-workflow-feedback`).
-   During the run, `scripts/runlog.py exec` wraps each Codex, `qwen` or `agy` call (start, end, exit, duration;
-   raw output to the gitignored `runs/<id>/raw/`) and `runlog.py verdict` writes one line per node check. After
-   it, `scripts/harvest_run.py` reads what the engines already recorded (Workflow run JSON and agent transcripts,
-   Codex rollouts joined by time window and cwd, never guessed) into `runs/<id>/feedback.jsonl` and prints a
-   digest whose last line is the ledger's Actual cost. Tokens are kept in parts (new input, cache read, output):
-   cache reads are often ten times the new input. Only ids, numbers, paths and status are written; the repo is
-   public. Every parser fails loudly when an engine changes its format.
-12. **Design decisions cite their evidence** (EJ, 2026-10-03; n=0). Model memory goes stale, so every design
-   decision cites the finding ids it rests on — research (item 9) or exploration (item 10). A decision with no
-   source is marked *model knowledge* and treated like a `read` claim: it may not drive a node that builds until it
-   is checked against a source or by running code. The researcher and explorer gather; the COO designs, so their
-   picks do not become the design without a second look. Which source comes first depends on the case: the
-   codebase for a feature in an existing system (TASK_TYPES case C), current docs for a new stack (case D).
+1. **One small task per call** — one deliverable, one command line, an expected finish inside its timeout; a loop
+   runs outside the call, each attempt a fresh small call (3.5), and a piece too big for one call is split only where
+   3.2's "a label is not a node" allows.
+2. **Two timers per call, both named in the node** — the tool's inner timer (`qwen --max-wall-time`,
+   `agy --print-timeout`; `codex exec` has none verified) and an outer `timeout` a little longer; provisional sizes,
+   listed with the design's cost estimate: classification or lookup 60–90 s, one-file change, one-file test set or
+   diff review about 5 min, research about 10 min; **no call runs past the 8-hour ceiling** — hitting it is an
+   executor failure (item 5), and `validate_plan` refuses an `outer_timeout_s` past it.
+3. **No polling** — the COO waits by one blocking call under the outer timer, a background run that notifies her on
+   exit, or a script that prints one line `done|fail|timeout <result path>`; a progress file is read only after a
+   timeout; the design states the COO turns it expects per node (provisional: two, dispatch and accept) and in total.
+4. **Pass-back contract** — one result file per call at `runs/<id>/nodes/<node>-<attempt>.result.*`, written to a
+   temp name and renamed, with the fixed header of `docs/workflow-templates/result-file.md`; the script
+   `.claude/skills/workflow-design/scripts/validate_result.py` checks it, and the COO reads only the capped summary
+   (provisional: the header and the first 40 lines) and the path, never the raw output.
+5. **An unstable return is a failure of the executor, not of the work** — no file, empty file, unparseable header,
+   wrong model, a timeout, or a clean exit with no result (instances: `docs/EXECUTOR_KINDS.md`); it does not count
+   against the attempt limit, the node is **blocked** and goes to EJ, and there is no fallback — one engine per node;
+   `partial` is the COO's call: retry only the remainder as a new small call.
+6. **A half-finished node must not leave a mess** — a node that builds writes only inside its "may change" paths,
+   from a clean commit or a worktree, so a failed call is discarded whole; the COO never reverts by hand to "tidy
+   up": a revert of anything but a discarded worktree is a Rule 6 confirmation.
+7. **Keep the COO's reading small** — results by path, one-line Log entries, only the state rows the next step
+   needs; raw tool output never enters her context.
+8. **The stronger model gives the worker a template, an example and a standard** — every brief
+   (`docs/workflow-templates/node-brief.md`) carries the template the result must follow, one small real worked
+   example, and the standard it is judged by (the check as the worker can run it, what failing looks like, the
+   sabotage it catches); a brief missing any of the three is not dispatched, and a part the COO cannot write is an
+   unclear spot (3.3).
+9. **Research is written to files** — the *researcher* reads docs, papers and the web, writes full findings (each
+   with an id, a source and a label) to `docs/research/<date>-<topic>/FINDINGS.md` and returns a digest of about 15
+   lines, no more than 20, plus the path (`docs/workflow-templates/research-file.md`); a doubt is settled by reading
+   one finding by id or by a small verify node; a design decided from research goes to `decisions.md` (4).
+10. **Exploring existing code is its own role** — the *explorer* reads code, tests, configs and git history, never
+   the web, read-only under a stated budget and never a repo-wide overview (TASK_TYPES, case C); every claim carries
+   file:line and a verbatim quote that `scripts/quote_check.py` confirms (a failing quote is a failed finding;
+   `docs/workflow-templates/explorer-file.md`); every behaviour claim is marked `read` (inferred) or `ran`
+   (confirmed by running it), and a `read` claim a build depends on is an unclear spot until it is run; it returns a
+   digest and the path; the COO explores herself when the affected area fits her context (`docs/EXECUTOR_KINDS.md`,
+   roles).
+11. **Every run leaves a feedback record** (`docs/research/20261002-workflow-feedback`) — `scripts/runlog.py exec`
+   wraps each Codex, `qwen` or `agy` call (raw output to the gitignored `runs/<id>/raw/`) and `runlog.py verdict`
+   logs each node check; afterwards `scripts/harvest_run.py` writes `runs/<id>/feedback.jsonl` from the engines' own
+   records, never guessed, and prints a digest whose last line is the ledger's Actual cost; tokens are kept in parts
+   (new input, cache read, output), only ids, numbers, paths and status are written (the repo is public), and every
+   parser fails loudly when an engine changes its format.
+12. **Design decisions cite their evidence** — every design decision cites the finding ids it rests on (items 9,
+   10); one with no source is marked *model knowledge*, treated like a `read` claim, and may not drive a node that
+   builds until checked against a source or by running code; the researcher and explorer gather, the COO designs; the
+   codebase comes first for a feature in an existing system (case C), current docs first for a new stack (case D).
 
 ## 4. State and memory
 
@@ -532,23 +423,14 @@ state back; the next agent, or another tool, continues from there, and a broken 
 state. One writer at a time. The state file holds progress and results, never a worker's reasoning; a worker's
 detailed notes go in its own output file, so a verifier can be kept blind to them.
 
-Kinds of memory when running in Claude Code or Codex with subagents:
-
-| Memory | Limit |
-|---|---|
-| Context window | Temporary; a subagent starts with only its prompt; long sessions get summarised |
-| `CLAUDE.md` / `AGENTS.md` | Loaded every session, so keep them short and let them point to the rest |
-| Claude Code auto-memory | Only Claude Code reads it |
-| **Files in the repo** | The one memory every tool and every agent can read — use it for anything that must last |
-| Skills | How to do things, not facts about a task |
-| Run records (workflow `journal.jsonl`, the Ancient Games journal) | Nobody reads them unless asked |
-| A subagent's final report | All that comes back; the rest is lost unless written to a file |
+Of the kinds of memory an agent has (Appendix B), **files in the repo** are the one every tool and every agent can
+read — use them for anything that must last.
 
 Working rules: each agent gets a brief with only what its piece needs (with a template, an example and a standard, 3.8) and writes its full result to a file; research and decided designs are files too (3.8, `docs/research/`, `decisions.md`); the
 main agent keeps conclusions, not details; stored knowledge carries a date and is rechecked before it is relied on;
 knowledge (stable) is kept apart from state (changes every run).
 
-**Project memory for software work (added 2026-10-02 at EJ's request; n=0).** A release note is written for users
+**Project memory for software work.** A release note is written for users
 after the fact; it tells an agent what shipped, not why or what to avoid, so it is an output here, not the
 memory. A product keeps three small append-only files beside its blueprint, each existing to answer one listed
 query (the rule above: no store without a query):
@@ -572,8 +454,53 @@ Not verified: Codex's memory and subagent features beyond `AGENTS.md`.
 
 ## 5. Three qualities every design must show
 
-| Quality | What must be there |
+- **Predictability** — the edges schedule and stop conditions are written before the run (3.6), attempts are
+  bounded (3.5), and a cost estimate comes before the run (3.4, 3.8 item 2).
+- **Debuggability** — each node labelled and its input, output and state in files (3.6, §4), small enough to rerun
+  alone (3.4), with feedback kept per attempt (3.5, 3.8 item 11).
+- **Quality control** — a check per piece that can fail (3.5), a blind verifier and a contradiction check at joins
+  (3.6), the three-part stop for the final "what is missing" pass (3.6); skipped or unrun checks reported.
+
+## Appendix
+
+Reference detail, moved out of the main flow on 2026-10-08 (`docs/METHOD_CHANGELOG.md`).
+
+### A. One word, one job
+
+| word | one job |
 |---|---|
-| **Predictability** | The design's edges schedule (script or COO); fixed bounds on attempts, pieces and concurrency; structured outputs; stop conditions and success criteria written before the run — for a product change, the acceptance criteria in scope; a cost estimate before the run |
-| **Debuggability** | Every agent labelled; each step's input and output saved to a file; pieces small enough to rerun alone; resume from the failed point; feedback kept per attempt; state in one place |
-| **Quality control** | A check per piece; a verifier that does not see the worker's reasoning; proof the check can fail; a contradiction check at joins; a final "what is missing" pass, measured against the three-part stop of 3.6 (a failure there is a failed attempt; anything else it finds goes to the backlog); skipped or unrun checks reported |
+| `check` | a node's success test — the field in a design and a plan |
+| `validate` | is a document well-formed (`validate_plan`) |
+| `verify` | run a node's success test (`verify_node_result`) |
+| `probe` | inspect the environment (`probe_binary`, `probe_blueprint`, …) |
+| `compare` | plan against design (`compare_plan_to_design`) |
+| `checklist` | the judged fixed list |
+
+### B. Kinds of memory (§4)
+
+Kinds of memory when running in Claude Code or Codex with subagents:
+
+| Memory | Limit |
+|---|---|
+| Context window | Temporary; a subagent starts with only its prompt; long sessions get summarised |
+| `CLAUDE.md` / `AGENTS.md` | Loaded every session, so keep them short and let them point to the rest |
+| Claude Code auto-memory | Only Claude Code reads it |
+| **Files in the repo** | The one memory every tool and every agent can read — use it for anything that must last |
+| Skills | How to do things, not facts about a task |
+| Run records (workflow `journal.jsonl`, the Ancient Games journal) | Nobody reads them unless asked |
+| A subagent's final report | All that comes back; the rest is lost unless written to a file |
+
+### C. Concurrency: name the unit (3.7)
+
+Different things get called "parallel":
+
+| phrase | what it counts | does an idle one count? |
+|---|---|---|
+| **resident sessions** — the harness's `@deepseek-ai/dsh-subagent` `maxActiveSubagents`, default **8**, `maxDepth` **1** | child sessions that exist and can be continued | **yes** — a continuable subagent waiting for its parent still holds a slot |
+| **engine processes alive** — the dispatcher's pool (`MAX_ENGINE_PROCESSES` in `scripts/dispatch.py`) | `Popen` calls that have not exited | no |
+| **candidate approaches** — the spike rule in `TASK_TYPES.md` | approaches tried for one question | n/a |
+
+**8 resident sessions can be one working. 8 processes are 8 working.** They are not the same quantity. Read the
+harness's ceiling from the harness when you need *sessions*; pick the pool size on its own merits when you need
+*processes*, and mark it unmeasured until someone measures it. **Never write "running in parallel" without saying
+which of the three you mean.**
