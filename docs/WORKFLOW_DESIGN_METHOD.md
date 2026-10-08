@@ -372,10 +372,16 @@ rather than reasoning about it.*
 Whole picture: knowledge graph on the outside, loops inside the nodes, exploration only inside the unknown-spot nodes. This is
 what `20260919-state.md` calls combined execution.
 
-### 3.7 Sequential first; parallel is the last decision
+### 3.7 The workflow is a checked sequence
 
-Design the whole flow as sequential, state-based steps: read the state file → do one step → write the state back.
-Only when the design is complete, look for tasks that are **really independent** — all five must hold:
+The workflow is a sequence, and the check at each handoff is the machine — not the topology. A step's result is
+verified, then becomes the next step's input. A plain prompt chain lacks exactly this: it stacks errors silently — a
+wrong output at step 2 becomes step 3's trusted input — while a checked sequence catches the error at the seam.
+
+This is also why sequential holds *for research*: a handoff compresses (one agent's distilled result is the next
+agent's input), where fan-out duplicates (each branch re-reads and re-discovers). Design the whole flow as
+sequential, state-based steps — read the state file → do one step → write the state back — and look for parallel
+only when the design is complete, and only where it really earns it. All five must hold:
 
 1. neither needs the other's result;
 2. no shared files or resources;
