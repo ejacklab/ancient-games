@@ -38,8 +38,7 @@ Work on the referee code (`ancient_games/`) serves that purpose; it is not the g
   `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
 - `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
   method takes from the referee code, and the mapping from method section numbers to the skill's steps.
-- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the three engines (Claude subagent, Codex,
-  Antigravity `agy`), what each is assigned, how it is called, its read-only form and structured output, and its
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
   default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
 - `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
   its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
@@ -67,23 +66,12 @@ Work on the referee code (`ancient_games/`) serves that purpose; it is not the g
 Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
 what I missing, and we complete it."*
 
-**Evaluate it, do not just apply it.** Run the statement through the checklist in
-`docs/research/20261005-requirement-statements/FINDINGS.md` (§2) and say which questions it passes and which it
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `~/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
 fails. Then **ask EJ the failing ones** and write the completed version together.
 
-The eight, short:
-
-1. **Source** — who said it, and where? "Mine" is a valid answer; unlabelled is not.
-2. **One thing** — an "and", an "or", a "/", or a second number means it is two statements.
-3. **Unit** — every number says what it counts. Attempts or hours? Roles, or processes at once?
-4. **Can it fail** — name one input that would make the check fail, and `TBD`/`—`/empty must be among them.
-5. **Weak words** — *like, about, appropriate, as needed, logical, fast, enough, only has to, TBD* → a value, or mark
-   the value **open**.
-6. **Level** — MUST (a gate), SHOULD (a default with reasons to override), or guidance? A safety bound earns MUST; a
-   **method does not** (RFC 2119 §6).
-7. **Basis** — measured, quoted, or a guess? A guess is marked `n=0` with when it will be looked at again.
-8. **Links** — does it claim a relation to another rule ("half of", "pairs with", "the same as")? The source did not
-   say that. **A link is its own claim and needs its own source.**
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
 
 **Two rules for me, learned the hard way on 2026-10-05:**
 

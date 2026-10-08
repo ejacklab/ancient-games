@@ -1,12 +1,15 @@
 ---
 name: workflow-design
-description: "Designing a workflow for an incoming task or challenge — or deciding that none is needed — before any agents are dispatched: understand the challenge (objective, scope, six whys, category and its default pattern), check readiness (including the product blueprint: vision, requirements with acceptance criteria, domain, architecture, data, UI, non-functional), write the algorithm first, list every unclear spot, size the pieces, run clear pieces as loops with objective checks, then wire the rest as a graph whose nodes each carry tools, context, a contract, evidence and state; sequential and state-file driven first, parallel decided last. Use whenever someone asks to design, plan, create, improve or review a workflow, an agent pipeline, an orchestration or a multi-agent / subagent setup; asks how many agents a task needs, whether to parallelise or loop, or how agents should pass information; brings a task too big for one prompt; or when you are about to write a Workflow script or dispatch several subagents without a written design. NOT for: a task of one to three obvious steps (just do it), the Workflow script API (use workflow-authoring), or running an already designed workflow."
+description: "Designing a workflow for an incoming task or challenge — or deciding that none is needed — before any agents are dispatched: understand the challenge (objective, scope, six whys, category and its default pattern), check readiness (including the product blueprint: vision, requirements with acceptance criteria, domain, architecture, data, UI, non-functional), write the algorithm first, list every unclear spot, size the pieces, run clear pieces as loops with objective checks, then wire the rest as a graph whose nodes each carry tools, context, a contract, evidence and state; sequential and state-file driven first, parallel decided last. Use whenever someone asks to design, plan, create, improve or review a workflow, an agent pipeline, an orchestration or a multi-agent / subagent setup; asks how many agents a task needs, whether to parallelise or loop, or how agents should pass information; brings a task too big for one prompt; or when you are about to write a Workflow script or dispatch several subagents without a written design. NOT for: a task of one to three obvious steps (just do it), the Workflow script API, or running an already designed workflow."
 ---
 
 # Workflow design
 
+This is the method half of the **Ancient Games** framework (see `CLAUDE.md`): the method designs a workflow, the
+referee (`ancient_games/`) clears the plan, the knowledge (`docs/`) is shared.
+
 The job: turn a challenge into **a prompt file** (small task) or **a workflow design** (bigger task). You are
-designing, not executing. The full method with its reasons is `references/method.md`; the five templates are in
+designing, not executing. The full method with its reasons is `references/method.md`; the templates are in
 `assets/templates/`. Read the method once before your first design in a session.
 
 Why this exists: agents left alone pick a pattern first ("let's fan out five subagents") and discover later that
@@ -95,11 +98,9 @@ For build work, run `scripts/workload.py --plan <plan> --write` before the run s
 
 ## Writing a rule down
 
-Before adding or changing any rule in these documents, run it through the checklist in
-`docs/research/20261005-requirement-statements/FINDINGS.md` (§2): source, one thing, unit, can it fail, weak words,
-level, basis, links. It was written on 2026-10-05 after four rules in this repository read as arbitrary — and run
-against three of this project's own rules, it caught four failures in one and three in another. **Never fill a
-missing unit or threshold with your own value; leave it open and ask.**
+Before adding or changing any rule in these documents, run it through the **`requirement-check` skill**
+(source, one thing, unit, can it fail, weak words, level, basis, links). One copy of the checklist, in that skill.
+**Never fill a missing unit or threshold with your own value; leave it open and ask.**
 
 ## Output
 
@@ -121,7 +122,7 @@ one trial — so use it only when the person asks for it. Its offline test: `nod
 `challenge-mediation` types a challenge and rates the cost of being wrong — useful input to the risk judgment in
 step 4. `task-decomposition-strategies` helps with splitting; where it leans parallel, this method's sequential-first
 rule wins. `agent-loop` enforces a test loop for step 5. `chronos-ledger` tracks state across sessions.
-`workflow-authoring` is the script API for turning a finished design into a Workflow script.
+`requirement-check` evaluates a rule before you write it; `meaningful-names` checks a name does one job.
 
 Everything here comes from one working session and one trial (n=1); most rules have had no run at all (n=0, dates
 in `docs/METHOD_CHANGELOG.md`). Treat the numbers — the 3-step rule, the cost figures — as working values to be

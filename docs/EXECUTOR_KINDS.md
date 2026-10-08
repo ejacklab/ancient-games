@@ -8,9 +8,9 @@ A node in a workflow design (method 3.6) has a **role** (planner, coder, reviewe
 an **engine** (who does the work) with an exact **model** and **effort**. Role and engine are chosen separately, and
 the engine is named in the node, never left to a default. This file says what each engine is, what it is assigned
 to, how it is called, how its failure shows, and the rules that keep mixed runs predictable. The method's
-readiness step (3.1) proves each tool works; the canary below is that proof for these three.
+readiness step (3.1) proves each tool works; the canary below is that proof for these engines.
 
-## The four kinds (qwen added 2026-10-02; canary passed once, n=1)
+## The kinds (qwen added 2026-10-02; canary passed once, n=1)
 
 | | Claude subagent | Codex (GPT-6.1-sol) | Antigravity `agy` (Gemini) | Qwen Code `qwen` (OpenAI-compatible provider) |
 |---|---|---|---| --- |
