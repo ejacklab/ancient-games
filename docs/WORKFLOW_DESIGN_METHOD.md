@@ -300,14 +300,16 @@ inside the running session: a switch voids the prompt cache, so the stronger tie
 fresh input rate, and a session in which the cheap tier flailed is mostly wrong turns that would anchor the stronger
 tier towards the same dead ends. (Added 2026-09-22 at EJ's request; n=0.)
 
-### 3.6 The rest is a graph
+### 3.6 The rest is a knowledge graph
 
-When the spots are resolved and the clear loops have closed, the algorithm is fully defined:
+When the spots are resolved and the clear loops have closed, the algorithm is fully defined. The rest is declared
+as a **knowledge graph** — what each piece knows, needs and produces — not drawn as an execution DAG:
 
-- nodes = right-sized pieces (a node may hold its own loop);
-- edges = "this piece needs that piece's result";
-- gates = a result is verified before anything that depends on it starts;
-- a joining node where branches meet.
+- a node = a right-sized piece, with what it needs as input and what it produces as output (a node may hold its own loop);
+- an edge = "this piece needs that piece's result" — the knowledge that flows from one to the next;
+- what each piece must not see is written down (the information boundaries);
+- a result is verified before anything that depends on it starts;
+- a joining node where branches meet; contradictions there are a stop.
 
 Every node carries five things, so that it can be run, checked and resumed without asking anyone:
 
@@ -344,9 +346,9 @@ problem that neither the criteria in scope nor the baseline covers — is writte
 is marked as such, for EJ); it does not become a new piece or a new attempt in this run. This is what lets a run end.
 
 With everything known, the design's edges decide who works next: a Workflow script, or the COO (the main Claude
-session) following the graph. A node's role subagents do not choose the next node. Each node names its role, engine,
+session) following the knowledge graph. A node's role subagents do not choose the next node. Each node names its role, engine,
 model and effort; the COO's contract, and when she does a small node herself, are in `docs/EXECUTOR_KINDS.md`. If a node hits its attempt limit
-and its tier exit is spent, it returns to the unclear list and only that part of the graph is planned again.
+and its tier exit is spent, it returns to the unclear list and only that part of the knowledge graph is planned again.
 
 **The design and the runnable plan are two artifacts, and the COO writes both (EJ, 2026-10-05).** The design carries
 the plan of work — categories, checks, edges, loops — and the gate validates it. The plan (`plan.json`) carries what
@@ -367,7 +369,7 @@ and may not lose.** Without `--design` the command **says so** on stderr rather 
 *The first measurement of a decision's cost changed the decision. That is the argument for traversing a chain once
 rather than reasoning about it.*
 
-Whole picture: graph on the outside, loops inside the nodes, exploration only inside the unknown-spot nodes. This is
+Whole picture: knowledge graph on the outside, loops inside the nodes, exploration only inside the unknown-spot nodes. This is
 what `20260919-state.md` calls combined execution.
 
 ### 3.7 Sequential first; parallel is the last decision
