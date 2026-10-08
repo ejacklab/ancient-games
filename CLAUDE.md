@@ -10,10 +10,13 @@ in between.
 
 This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
 
-The main product is `.claude/skills/workflow-design/`: a skill that designs workflows. It is linked into both
-harness roots so it works in every project — `~/.agents/skills/workflow-design` (the user-global root the DeepSeek
-Harness and Codex scan) and `~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that
-skill uses.
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
 
 Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
 runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
@@ -21,7 +24,7 @@ information and where they must not, and how each result is verified. Runnable w
 `.claude/workflows/`.
 
 When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
-Work on the Ancient Games code serves that purpose; it is not the goal by itself.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
 
 ## The knowledge here
 
@@ -34,7 +37,7 @@ Work on the Ancient Games code serves that purpose; it is not the goal by itself
   combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
   `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
 - `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
-  method takes from the Ancient Games code, and the mapping from method section numbers to the skill's steps.
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
 - `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the three engines (Claude subagent, Codex,
   Antigravity `agy`), what each is assigned, how it is called, its read-only form and structured output, and its
   default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
@@ -44,11 +47,11 @@ Work on the Ancient Games code serves that purpose; it is not the goal by itself
   `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
 - `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
   parallel and communication patterns, and the proposed direction. Start here for workflow design.
-- `ancient_games/` — the framework: a referee for agent work. Fixed rules, no LLM calls, a journal of every decision.
-  Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
   sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
 - `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
-- `SPEC.md`, `DECISIONS.md` — the framework's contract. Only EJ changes these.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
 - `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
 - `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
   segments, bounded verify/repair loops, independent verifiers.
