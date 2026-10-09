@@ -1,0 +1,110 @@
+{
+ "categories": [
+  "debugging"
+ ],
+ "builds": true,
+ "touched_paths": [
+  ".claude/skills/workflow-design/scripts/readiness.py",
+  "ancient_games/hybrid/tools/localize.py",
+  "tests/test_readiness.py"
+ ],
+ "pipeline": null,
+ "design_source": "default",
+ "baseline": {
+  "command": "env -u NO_COLOR /usr/bin/python3 -m pytest -q",
+  "captured_by": "script"
+ },
+ "nodes": [
+  {
+   "id": "n1-readiness",
+   "category": "debugging",
+   "engine": "claude opus 5.5",
+   "check": "test_rt_01_sanitized_full_inventory passes",
+   "sabotage": "re-introduce an absolute path -> the test goes red",
+   "brief_given": "the failing test, readiness.py's path reporting, and the fix direction (sanitize home->~ and ROOT->relative)",
+   "intent": "root-cause and fix the readiness sanitization failure \u2014 readiness.py reports absolute paths; the test wants portable output",
+   "stop": {
+    "criteria": "the readiness test passes and the output contains no absolute home/ROOT path",
+    "baseline": "the other tests still pass",
+    "must_not_change": "nothing outside readiness.py"
+   },
+   "returns": "the fix and the failing-then-passing test output",
+   "state_reads": "runs/20261009-fix-tests/state.md",
+   "tools": [
+    "claude",
+    "python3"
+   ],
+   "evidence": [
+    "runs/20261009-fix-tests/nodes/n1.result.md"
+   ],
+   "needs": [],
+   "loop": {
+    "limit": 2,
+    "exit": "a fresh node on a stronger tier with the check's output",
+    "feedback": "the test's real output"
+   }
+  },
+  {
+   "id": "n2-localize",
+   "category": "debugging",
+   "engine": "opencode MiniMax-M3.1-Flash-Preview",
+   "check": "test_case[UC7] and test_uc7_suite_really_goes_red_then_green pass",
+   "sabotage": "re-introduce the regex/ANSI bug -> the tests go red",
+   "brief_given": "the failing tests, ancient_games/hybrid/tools/localize.py, and the fix direction (the ^-anchored FAILED regex misses the line after ANSI stripping)",
+   "intent": "root-cause and fix the localize tool so it locates the failure in pytest output",
+   "stop": {
+    "criteria": "both hybrid tests pass",
+    "baseline": "the other tests still pass",
+    "must_not_change": "nothing outside localize.py"
+   },
+   "returns": "the fix and the failing-then-passing test output",
+   "state_reads": "runs/20261009-fix-tests/state.md",
+   "tools": [
+    "opencode",
+    "python3"
+   ],
+   "evidence": [
+    "runs/20261009-fix-tests/nodes/n2.result.md"
+   ],
+   "needs": [
+    "n1-readiness"
+   ],
+   "loop": {
+    "limit": 2,
+    "exit": "a fresh node on a stronger tier with the check's output",
+    "feedback": "the test's real output"
+   }
+  },
+  {
+   "id": "n3-verify",
+   "category": "code review",
+   "engine": "codex gpt-6.1-sol",
+   "check": "the full suite is green (env -u NO_COLOR /usr/bin/python3 -m pytest -q -> 0 failures)",
+   "sabotage": "",
+   "brief_given": "the two diffs and the failing tests, never the workers' reasoning",
+   "intent": "review the two fixes and run the full suite to confirm zero failures",
+   "stop": {
+    "criteria": "full suite green, and each fix is minimal and targeted",
+    "baseline": "everything that passed before still passes",
+    "must_not_change": "nothing; review only"
+   },
+   "returns": "a clean-pass or findings with file:line",
+   "state_reads": "runs/20261009-fix-tests/state.md",
+   "tools": [
+    "claude",
+    "python3"
+   ],
+   "evidence": [
+    "runs/20261009-fix-tests/nodes/n3.result.md"
+   ],
+   "needs": [
+    "n1-readiness",
+    "n2-localize"
+   ]
+  }
+ ],
+ "estimate": {
+  "tokens": 180000,
+  "basis": "two small debug fixes + one review"
+ }
+}

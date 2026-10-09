@@ -1,0 +1,98 @@
+{
+ "run_id": "20261009-fix-tests",
+ "budget": {
+  "max_rounds": 2,
+  "max_calls": 30
+ },
+ "nodes": [
+  {
+   "id": "n1-readiness",
+   "role": "coder",
+   "engine": "claude",
+   "model": "claude-opus-5-5",
+   "mode": "write",
+   "brief": "runs/20261009-fix-tests/briefs/n1-readiness.md",
+   "inner_timer": "1200s",
+   "outer_timeout_s": 1500,
+   "check": {
+    "name": "readiness test",
+    "cmd": [
+     "env",
+     "-u",
+     "NO_COLOR",
+     "/usr/bin/python3",
+     "-m",
+     "pytest",
+     "tests/test_readiness.py::test_rt_01_sanitized_full_inventory",
+     "-q"
+    ]
+   },
+   "sabotage": "re-introduce an absolute path -> the test goes red"
+  },
+  {
+   "id": "n2-localize",
+   "role": "coder",
+   "engine": "opencode",
+   "model": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview",
+   "mode": "write",
+   "brief": "runs/20261009-fix-tests/briefs/n2-localize.md",
+   "inner_timer": "1200s",
+   "outer_timeout_s": 1500,
+   "needs": [
+    "n1-readiness"
+   ],
+   "repair": "n2-localize",
+   "check": {
+    "name": "hybrid UC7",
+    "cmd": [
+     "env",
+     "-u",
+     "NO_COLOR",
+     "/usr/bin/python3",
+     "-m",
+     "pytest",
+     "tests/test_hybrid_cases.py::test_case[UC7]",
+     "tests/test_hybrid_cases.py::test_uc7_suite_really_goes_red_then_green",
+     "-q"
+    ]
+   },
+   "sabotage": "re-introduce the regex/ANSI bug -> the tests go red"
+  },
+  {
+   "id": "n3-verify",
+   "role": "verifier",
+   "engine": "codex",
+   "model": "gpt-6.1-sol",
+   "mode": "read-only",
+   "brief": "runs/20261009-fix-tests/briefs/n3-verify.md",
+   "inner_timer": "1200s",
+   "outer_timeout_s": 1500,
+   "needs": [
+    "n1-readiness",
+    "n2-localize"
+   ],
+   "check": {
+    "name": "full suite",
+    "cmd": [
+     "env",
+     "-u",
+     "NO_COLOR",
+     "/usr/bin/python3",
+     "-m",
+     "pytest",
+     "-q"
+    ]
+   },
+   "sabotage": ""
+  }
+ ],
+ "touched_paths": [
+  ".claude/skills/workflow-design/scripts/readiness.py",
+  "ancient_games/hybrid/tools/localize.py",
+  "tests/test_readiness.py"
+ ],
+ "baseline": {
+  "command": "env -u NO_COLOR /usr/bin/python3 -m pytest -q",
+  "captured_by": "script"
+ }
+}

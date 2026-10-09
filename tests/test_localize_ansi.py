@@ -22,7 +22,7 @@ def test_localize_parses_pytest_output_that_carries_ansi_colour(tmp_path):
     (tmp_path / "test_x.py").write_text("def test_a():\n    import pkg.mod\n")
     out = subprocess.run([_s.executable, "-m", "pytest", "-q"], cwd=tmp_path,
                          capture_output=True, text=True,
-                         env={**os.environ, "FORCE_COLOR": "3"}).stdout
+                         env={**os.environ, "PY_COLORS": "1"}).stdout
     assert "\x1b[" in out, "this test is only meaningful on coloured output"
 
     env = ToolEnv(run_id="r", journal_path=str(tmp_path / "j.jsonl"), ctx=None, cwd=str(tmp_path))

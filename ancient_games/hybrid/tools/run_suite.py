@@ -1,7 +1,9 @@
 """NEW — `run_suite(command) -> {passed, failed, output, returncode}`; ok=True whenever
 the command ran (a red suite is a result, not a failure of the tool)."""
+import os
 import re
 import subprocess
+import sys
 
 from ..types import ToolResult
 from ._shared import internal_error, require_str
@@ -17,7 +19,11 @@ def run(env, args):
     if bad is not None:
         return bad
     try:
-        p = subprocess.run(args["command"], shell=True, cwd=env.cwd, capture_output=True, text=True, timeout=600)
+        # `python3` in the command must resolve to the python that runs THIS harness, not whatever sits first on
+        # PATH (a bare hermes/runtime python has no pytest, so a suite silently returned "no failure located").
+        e = os.environ.copy()
+        e["PATH"] = os.path.dirname(sys.executable) + os.pathsep + e.get("PATH", "")
+        p = subprocess.run(args["command"], shell=True, cwd=env.cwd, capture_output=True, text=True, timeout=600, env=e)
         output = p.stdout + p.stderr
         passed = re.search(r"(\d+) passed", output)
         failed = re.search(r"(\d+) failed", output)

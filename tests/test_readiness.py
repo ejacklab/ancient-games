@@ -4,9 +4,11 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from datetime import date
@@ -27,7 +29,9 @@ SECTION_FILES = ["01-vision.md", "02-requirements.md", "03-domain-model.md", "04
 
 
 @pytest.fixture
-def sandbox(tmp_path):
+def sandbox():
+    # Under /tmp, not pytest's tmp_path: basetemp may sit under the real home, which RT-01 asserts is absent.
+    tmp_path = Path(tempfile.mkdtemp(dir="/tmp"))
     home, bin_dir, cwd = (tmp_path / name for name in ("home", "bin", "proj"))
     for path in (home, bin_dir, cwd):
         path.mkdir()
@@ -66,8 +70,9 @@ def sandbox(tmp_path):
         for path in logs.iterdir():
             path.unlink()
 
-    return SimpleNamespace(home=home, bin=bin_dir, cwd=cwd, env=env, fake=fake,
-                           full=full, run=run, calls=calls, reset_logs=reset_logs)
+    yield SimpleNamespace(home=home, bin=bin_dir, cwd=cwd, env=env, fake=fake,
+                          full=full, run=run, calls=calls, reset_logs=reset_logs)
+    shutil.rmtree(tmp_path, ignore_errors=True)
 
 
 def write_file(path, text):
