@@ -525,7 +525,8 @@ def self_test(types_path: Path) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Script layer of the default-first design rule.")
     ap.add_argument("design", nargs="?", help="design JSON file")
-    ap.add_argument("--types", default=str(repo_root() / "docs" / "TASK_TYPES.md"))
+    ap.add_argument("--types",
+                    default=str(Path(__file__).resolve().parents[1] / "references" / "task-types.md"))
     ap.add_argument("--ledger-row", metavar="JSON", help="validate one ledger row JSON file")
     ap.add_argument("--ledger", metavar="FILE", help="validate every row of a markdown ledger table")
     ap.add_argument("--self-test", action="store_true")
