@@ -31,8 +31,8 @@ def test_skills_export_is_current():
         # copy the export script to a scratch repo layout and run it into the temp dir is overkill;
         # instead, re-run the export and diff the committed skills/ against what it just produced.
         # The simplest sound check: re-running the export is idempotent (git status stays clean on skills/).
-        before = subprocess.run(["git", "diff", "--name-only", "--", "skills/"], capture_output=True, text=True, cwd=REPO)
+        before = subprocess.run(["git", "status", "--porcelain", "--", "skills/"], capture_output=True, text=True, cwd=REPO)
         assert before.stdout.strip() == "", f"skills/ already drifted before export:\n{before.stdout}"
         subprocess.run([sys.executable, "tools/export_skills.py"], check=True, capture_output=True, cwd=REPO)
-        after = subprocess.run(["git", "diff", "--name-only", "--", "skills/"], capture_output=True, text=True, cwd=REPO)
+        after = subprocess.run(["git", "status", "--porcelain", "--", "skills/"], capture_output=True, text=True, cwd=REPO)
         assert after.stdout.strip() == "", f"a fresh export changed skills/ (drift):\n{after.stdout}"
