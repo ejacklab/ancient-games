@@ -1,0 +1,103 @@
+# Blueprint — <product>
+
+The layout of a product's blueprint. It lives in the product's repository under `docs/blueprint/`. Method:
+`docs/WORKFLOW_DESIGN_METHOD.md` §3.1, blueprint check.
+
+## Files
+
+```
+docs/blueprint/
+  README.md              the map: one row per section, where it lives, its status
+  01-vision.md
+  02-requirements.md
+  03-domain-model.md
+  04-business-logic.md
+  05-architecture.md
+  06-data-model.md       data model, schema design and its decisions
+  07-ui-ux.md
+  08-non-functional.md
+  backlog.md             what a run found that neither its acceptance criteria nor its baseline covers; never
+                         worked on inside the run that found it
+  decisions.md           append-only: why a choice was made and what was rejected (method §4, project memory)
+  changelog.md           append-only: one entry per run that builds; release notes come from it
+  lessons.md             append-only: dated traps with a recheck date or trigger
+```
+
+A section kept somewhere else (for example a project's own spec) is not copied: its row in the map points there,
+and that project's rules on who may change it still hold.
+
+## The map — `README.md`
+
+| # | Section (short name used in readiness and state files) | Where it is | Status of the file (settled / draft / missing) | Accepted by EJ on |
+|---|---|---|---|---|
+| 1 | Product vision (`vision`) | 01-vision.md | | |
+| 2 | Core requirements (`requirements`) | 02-requirements.md | | |
+| 3 | Domain model (`domain model`) | 03-domain-model.md | | |
+| 4 | Business logic (`business logic`) | 04-business-logic.md | | |
+| 5 | System architecture (`architecture`) | 05-architecture.md | | |
+| 6 | Data model and schema decisions (`data model`) | 06-data-model.md | | |
+| 7 | UI / UX design (`ui/ux`) | 07-ui-ux.md | | |
+| 8 | Non-functional requirements (`non-functional`) | 08-non-functional.md | | |
+
+## Every section file starts with
+
+```
+Status: draft | settled (accepted by EJ on YYYY-MM-DD)
+Drawn from: <the sections above it that this one serves, e.g. 02-requirements.md R1–R4>
+```
+
+Only EJ changes a status to settled. An agent that drafts or edits a section sets it to draft.
+
+This is the status of the file: whether EJ has accepted it. It is not the status for a task. Readiness judges, for
+each task, whether a section is settled, draft, incomplete (it does not cover the task, whatever the file says) or
+missing (method §3.1).
+
+## Headings per section
+
+- **01 Product vision** — who it is for; the problem it solves; what it will not do; how we know it works.
+- **02 Core requirements** — one block per requirement:
+
+  ```
+  ### R1 — <name>
+  <what the product must do, in one or two sentences>
+  Acceptance criteria:
+  - R1.1 <an observable check: a command and its result, or a behaviour someone can see>
+  - R1.2 …
+  ```
+
+  A criterion that cannot be checked is not a criterion yet; it is a question for EJ.
+- **03 Domain model** — the entities, their relations, and the words used for them; each entity names the
+  requirements that need it.
+- **04 Business logic** — the rules and flows, each naming the requirement it serves and the entities it uses.
+- **05 System architecture** — the parts, how they talk, where each runs; each choice with its reason and the
+  requirement or non-functional target that drove it.
+- **06 Data model and schema decisions** — tables or documents, fields, keys, migrations; one line per decision with
+  its reason and the alternative that was rejected.
+- **07 UI / UX design** — screens or commands, the flows through them, each naming the requirement it serves.
+- **08 Non-functional requirements** — performance, security, cost and operating limits, each with a number or a
+  check (N1.1, …), in the same shape as the acceptance criteria.
+
+## Backlog — `backlog.md`
+
+| Date | Run id | Found by | What | Why it is out of scope (neither the criteria in scope nor the baseline covers it) | Suspected break? (yes / no) |
+|---|---|---|---|---|---|
+
+## Memory files — `decisions.md`, `changelog.md`, `lessons.md`
+
+Append only; never rewrite an entry (a reversal is a new entry pointing at the old one). Each entry is about five
+lines, dated, and carries a requirement id or a path so it can be found by `grep`. Method §4, project memory.
+
+`decisions.md`
+
+| Date | Decision | Why | Alternatives rejected | Serves (R/N ids) | Source (finding ids, or *model knowledge*) |
+|---|---|---|---|---|---|
+
+`changelog.md`
+
+| Date | Run id | What changed | Criteria covered | Commits | Baseline result | Release note (optional, for users) |
+|---|---|---|---|---|---|---|
+
+`lessons.md`
+
+| Date | Where (path or module) | The trap | How it was found | Recheck by (date or trigger) | Stale? |
+|---|---|---|---|---|---|
