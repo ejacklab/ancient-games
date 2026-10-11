@@ -25,6 +25,7 @@ verbatim from the text they replaced.
 - 2026-10-05 — 3.6: the design and the runnable plan are two artifacts, and the COO writes both (EJ).
 - 2026-10-05 — 3.8 item 2: no single call runs past the 8-hour ceiling (EJ); n=0.
 - 2026-10-05 — 3.7: concurrency "name the unit" (EJ: *"how many running in parallel is even more weird"*); the table moved to Appendix C on 2026-10-08.
+- 2026-10-11 — Appendix A: `accepted` defined as *traceable and internally consistent*, not *true*, and added to the word list on line 11 (EJ: *"please add these to your memory"*, after the agent-memory run was reported as accepted when the item-6 check was a script the COO wrote and the different-kind verifiers had not run); n=1. The three presentation rules that came with it live in `CLAUDE.md`, with their own basis.
 
 ## Removed or changed
 

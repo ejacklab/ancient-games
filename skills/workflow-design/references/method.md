@@ -8,8 +8,8 @@ rule that was removed or changed, is in `docs/METHOD_CHANGELOG.md`.
 
 Runnable form: `.claude/workflows/intake.js`. Templates: `docs/workflow-templates/`. Runs: `runs/<run id>/`.
 
-**One word, one job:** `check`, `validate`, `verify`, `probe`, `compare` and `checklist` each mean one thing here —
-the table is Appendix A.
+**One word, one job:** `check`, `validate`, `verify`, `probe`, `compare`, `checklist` and `accepted` each mean one
+thing here — the table is Appendix A.
 
 ## 1. The ideas behind it
 
@@ -475,6 +475,7 @@ Reference detail, moved out of the main flow on 2026-10-08 (`docs/METHOD_CHANGEL
 | `probe` | inspect the environment (`probe_binary`, `probe_blueprint`, …) |
 | `compare` | plan against design (`compare_plan_to_design`) |
 | `checklist` | the judged fixed list |
+| `accepted` | the run's own gate passed: every claim traces to a sourced row and the result is internally consistent. It does **not** mean the claims are true — no source is re-read independently, so a wrong paper, a bad number, or a conclusion the source does not support all pass. Whoever reports one names the check's author and what it does not establish (`CLAUDE.md`, "Quotes, labels, and who wrote the check") |
 
 ### B. Kinds of memory (§4)
 
