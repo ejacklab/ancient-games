@@ -1,0 +1,28 @@
+| section | taken from (A / B / both / new) | reviewer support | note |
+|---|---|---|---|
+| Status block | new | rule 6 | The exact required sentence, printed as the first line. |
+| Provenance / Labels / Review | A | agy, opencode | A's pointers to both runs and to the vision. A's stale sentence "Two numbers come from checks the researchers wrote and ran themselves" is removed; all three reviewers called it stale next to the measured section. |
+| When-to-use enhancement caveat | A | codex, opencode, agy | The verifier "all four items PASS on this file's text" clause is replaced by a pointer to the run record; all three agreed A overstated what the verifier checked. |
+| Measured enhancement note | A | codex, opencode, agy | Kept; the measured section is placed after the store designs per the agreed order. |
+| The answer first | A + new join | codex, agy (scope); opencode accepted in round 2 | "for memory entries" added; the code-and-docs expansion is named as a proposal for EJ. |
+| When to use which store — intro | new join | all three | Corpus boundaries stated; the cache is derived and never the source of truth. This fixes A's "a cache is never the answer to a question the files answer", which codex said would ban derived caches and agy and opencode accepted. |
+| Memory-entry routing table | A | all three | Rule 7 keeps it as its own table, corpus `project-memory/`. The reviewers agreed on one unified table; rule 7 requires two tables, so they are kept apart. |
+| Memory table citations | A + reviewer correction | all three | Completeness row `V-F21` → `V-F1, S-F13, G-F14`; rationale row `s3-F4` → `M19, SOURCE_OF_TRUTH`. The reviewers' remaining replacement ids are absent from A and B, so the no-invention rule forbids writing them; the correction is applied as the A/B subset only. |
+| Costs paragraph | A + reviewer correction | codex, opencode, agy | `S-F4` marked as other-corpus evidence. "The last three are now measured" corrected to the graph-vs-grep head-to-head only. The paths-only-agent caveat and the reviewers' exact byte count cannot be added: neither occurs in A or B. |
+| Still unresolved (D1–D6) | A | all three | Kept as positions, not averaged. |
+| Why no SQLite is visible | A + reviewer correction | codex (raised), opencode, agy (accepted) | "No `.db` is ever on disk" removed because all three agreed it is false. The reviewers' counter-evidence (the benchmark's on-disk `*.sqlite` files) does not occur in A or B, so it is not asserted here. |
+| Code-and-docs routing table | both (identical) + reviewer correction | all three | Rule 7 keeps it as its own table, corpus this repo's code and docs. Graph rows marked lower bound / Python only; the fallback row now fires on an empty **or partial** answer, per codex as adopted by agy and opencode. |
+| Corpus note after the tables | A | opencode, agy | B's sentence that the per-store sections cover memory routing is rejected; all three agreed it is false. |
+| What this does not change | A + reviewer correction | codex, agy | "R1–R8 apply as written" qualified: R5–R7 are memory-entry criteria and their use for code and docs is a proposal. |
+| Rules for all three caches | A + reviewer corrections | codex, opencode, agy | Freshness moved from newest-source-mtime to recorded commit or content hash (handles deletion); the two graph rebuild figures from different corpora reconciled; the active-entry bullet scoped to `project-memory/`. |
+| SQLite full-text index | both (identical) | all three | Unchanged. |
+| Vector index | B (threshold wording) + A otherwise | all three | Why-4 and 5W1H "When" use B's **EJ's number**; the phantom `SOURCE_OF_TRUTH.md § How each threshold is found` is removed. Hybrid-only restated as a **proposed** policy, not compelled by the evidence. |
+| Code graph | B (threshold wording) + A otherwise | all three | Why-5 uses B's **EJ's number**; "Today: no graph" scoped to the memory drift check; the drift baseline is the entry's verification, not its last edit. |
+| Measured here: development and testing | both (identical) + reviewer corrections | codex, opencode, agy | BM-4 graph cell `n/a` → `0.0 (over 2 questions)`; BM-7 labelled macro-average test-file recall (n=4); BM-8 restated with both counts; the `chars` header reworded to the source definition. The corpus figure stays `4.8 MB`, and the vector model stays unnamed, because no replacement value occurs in A or B. |
+| Core requirements R1–R8 | A + reviewer corrections | codex, opencode, agy | Thresholds now say **EJ's number**; R3.1 uses commit/content hash; the requirements split into common, memory-entry, and proposed code-and-docs. |
+| What this changes elsewhere | A + reviewer correction | codex, agy | Drift comparison rebound to the entry's verification. |
+| Not known | A | all three | Kept; the audit findings are moved to **Unresolved after review** because the reviewers disagree on their count and weight. |
+| Unresolved after review | new | codex, opencode, agy | Four points the round-2 reviews did not settle, each reviewer's position kept. |
+| Section order | new (rule- and review-driven) | codex, opencode, agy | Codex's order, adopted by opencode and agy in round 2: route tables, rules, store designs, then the measured evidence, requirements, and open items. |
+| Reviewer provenance | new | — | codex and opencode wrote round 2 while agy's first submissions were empty (exit 0, no bytes); agy's substantive round-1 and round-2 reviews came from the later agy-fix run recorded in `state.md`. |
+| Trace check | new | — | `verify/trace_check.py` reports no finding id and no number in the merged document that is absent from A or B; all never-rules present; no file changed outside this run. |

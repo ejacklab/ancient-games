@@ -1,0 +1,112 @@
+{
+ "leakage_probe": {
+  "command": "SP=/tmp/claude-1000/-home-smoke01-dev-ancient-games/343bf18f-e2d9-4dcf-8db5-0ed3524f59db/scratchpad; VP=$SP/caches-venv/bin/python\ncp /home/smoke01/dev/ancient-games/runs/20261012-caches-routing/queries.json /tmp/audit-poison.json\npython3 -c 'import json;p=\"/tmp/audit-poison.json\";q=json.load(open(p));[x.update(gold=[\"CANARY_NOT_IN_REPO/x.py\"]) for x in q];json.dump(q,open(p,\"w\"),indent=1)'\n# runner.py imports bench/run_bench.py and points RESULTS_JSON/RESULTS_MD at absolute paths under $SP/audit, because run_bench.py otherwise overwrites bench/results.json and bench/results.md\ncd /tmp && PYTHONDONTWRITEBYTECODE=1 $VP $SP/audit/runner.py $SP/audit/poison --queries /tmp/audit-poison.json --keep-output --skip-determinism\npython3 -c \"import json;r=json.load(open('$SP/audit/poison.json'));print(sum('CANARY_NOT_IN_REPO' in p for x in r['results'] for p in x.get('paths',[])), sum('CANARY_NOT_IN_REPO' in x.get('output','') for x in r['results']))\"\npython3 $SP/audit/compare.py $SP/audit/run1.json $SP/audit/poison.json",
+  "leaked": false,
+  "evidence": "All 40 questions were poisoned, giving 180 applicable route answers and 20 that were not applicable. No path and no output contains CANARY_NOT_IN_REPO (0 and 0), and hit@10 is false on all 180. A plain 'CANARY' search found 2 outputs (A03 vec and hybrid), but that text is real repo content ('CANARY OK' in runs/20261003-dispatch-canary/README.md), not the token. The stronger check: the paths from the poisoned run are identical to the real run (run1.json) on all 180 (id, route) answers, so gold does not change any route's answer. Side effect seen during the probe: --skip-determinism crashes in markdown_report with KeyError 'rebuild_seconds' after results JSON is written (listed below). The bench/ files were hashed before and after: unchanged."
+ },
+ "determinism": {
+  "command": "SP=/tmp/claude-1000/-home-smoke01-dev-ancient-games/343bf18f-e2d9-4dcf-8db5-0ed3524f59db/scratchpad; VP=$SP/caches-venv/bin/python; B=/home/smoke01/dev/ancient-games/runs/20261012-caches-routing/bench; Q=/home/smoke01/dev/ancient-games/runs/20261012-caches-routing/queries.json\nrm -rf $B/.cache && cd /tmp && PYTHONDONTWRITEBYTECODE=1 $VP $B/build.py --store all\nfor i in 1 2; do PYTHONDONTWRITEBYTECODE=1 $VP $SP/audit/runner.py $SP/audit/run$i --queries $Q --keep-output; done   # each run also does its own internal delete+rebuild check\npython3 $SP/audit/compare.py $SP/audit/run1.json $SP/audit/run2.json",
+  "same_answers": true,
+  "evidence": "run1 and run2 were compared on all 180 applicable (id, route) answers, and 0 paths differ. Each run's own determinism check (delete .cache, rebuild, re-answer) also reported identical=True with 0 mismatches. Both runs recorded queries_sha256 1b6611df\u20262db3, which matches sha256sum of queries.json. The graph build's coverage_agrees=True, with 0 code_graph errors. Separately, I compared test_reach with code_graph.py's own tested_by sets for all 1240 functions: 0 mismatches."
+ },
+ "findings": [
+  {
+   "severity": "high",
+   "where": "bench/query.py:163-183 (answer_rg)",
+   "problem": "rg's `paths` lists the top 10 files by match count, but its output stops after 40 matching lines. If the first file has 40 or more matching lines, files ranked 2 to 10 never appear in the output, not even their header line, yet hit@k gives them credit. The other routes print every path they return.",
+   "effect_on_numbers": "My rescore (rgcap.py) counts only files whose header line is printed. Category E: rg hit@5 drops from 0.5 to 0.0 and hit@10 from 0.5 to 0.0. E03, E04 and E05 gold sit at rank 2-3 behind a first file with 83-141 matching lines. Category D: rg hit@5 drops from 0.375 to 0.25 and hit@10 from 0.5 to 0.25 (D02, D08). Category E's winner on hit@5 changes from a tie between rg and hybrid (0.5) to hybrid alone.",
+   "fix": "Make `paths` match what is printed. Either return only the files whose header appears before the cap, or always print the `# path (N matching lines)` header for all 10 ranked files and cap only the match lines under them. Then chars_to_first_gold reflects it too."
+  },
+  {
+   "severity": "high",
+   "where": "bench/run_bench.py:91-100 (chars_to_first_gold), plus category_table means",
+   "problem": "The token proxy cannot be compared across routes, for three reasons. (1) A miss with empty output scores 0, and a miss with output scores the whole output, and both are averaged together with hits. (2) The trigger is a substring test `repo_of(want) in line`. It fires on content that only mentions the gold path (for example a doc line saying `tools/export_skills.py`), and on a different file whose path contains the gold path (`.claude/skills/workflow-design/scripts/engines.py` contains the E06 gold `skills/workflow-design/scripts/engines.py`). hit@k uses exact equality, so the two metrics disagree. (3) fts prints a 24-token snippet while rg and vec print 300-character lines, so output size reflects the print format more than the store.",
+   "effect_on_numbers": "My script chars.py finds 21 of 180 rows triggered by a line that is not the route naming a gold path. Examples: C05 vec/hybrid show 181 chars on a miss; E06 vec shows 76 chars where the line actually naming the gold comes at 428. Graph has 8 empty outputs scored as 0. Category D: graph has the lowest chars (38) with 0 of 2 hits. Taking the mean over hit rows only reverses the fts/hybrid order in A (reported 554 vs 742; over hits 295 vs 91) and in D (reported 925 vs 1144; over hits 525 vs 516). So the chars winner changes in A and D.",
+   "fix": "Count only a line where the route names a gold path as its answer: the rg header `# <path> (`, or a line that starts with `<path>:` or `<path>::`, compared by exact path. Report chars over hit rows only, next to the hit rate. Charge a miss a stated penalty, or leave it out, but never 0. Report the snippet and excerpt sizes per route."
+  },
+  {
+   "severity": "high",
+   "where": "bench/run_bench.py:71-88 (repo_of / hit_at / recall_at)",
+   "problem": "A gold `path::name` counts as hit by any entry from the same file, including a different symbol (for example `export_skills.py::main` for gold `copy_deref`). The brief asks for this, but it gives fts, vec and hybrid credit for the wrong function. For C08-C10 (callers) it does not matter, because rg prints the call line and fts/vec return the real caller.",
+   "effect_on_numbers": "I rescored with my own script, strict.py: an exact `path::Top` or module-chunk match, and for rg a printed match line inside the gold symbol's line span. Its spans come from the stores themselves, so it is not independent of them. Only questions with `::` gold change. A: vec 0.5 to 0.0, hybrid 0.75 to 0.5, fts 0.75 to 0.625, rg 0.75 unchanged, so the A winner goes from a three-way tie (rg/fts/hybrid) to rg alone. B: vec 0.25 to 0.0 and hybrid 0.125 to 0.0, so vec's B win disappears and every route scores 0. E (the 2 symbol-gold questions): rg 1.0 to 0.0, which is the cap effect again.",
+   "fix": "Keep file-level hit as the brief requires, but add a symbol-level hit@k for gold given as `path::name`. For rg, use 'the printed lines include a line inside the symbol'. Show both metrics in results.md, and choose the winner from the symbol-level one."
+  },
+  {
+   "severity": "high",
+   "where": "bench/query.py:470-509 (resolve_symbol)",
+   "problem": "A class name never resolves. code_graph has no class nodes, but it does have method nodes whose qualname is `Class.method`. resolve_symbol matches only `qualname = ?` and `name = ?`, then falls back to modules. So A02 (ArtifactRef, 1 method node in ancient_games/ctx.py) and A04 (GraphBuilder, 50 method nodes in code_graph/code_graph.py) return nothing. This is a gap in the harness, not a limit of the store.",
+   "effect_on_numbers": "With a `qualname LIKE symbol || '.%'` fallback, graph's A hit@5 would go from 0.5 to 0.75, tying rg, fts and hybrid. Its hit@1 would go from 0.5 to 0.75, tying hybrid and beating fts (0.625). So the set of category-A winners changes. Strictly, this adds a tie rather than a new outright winner.",
+   "fix": "If no function matches, resolve `qualname LIKE ? ESCAPE` with `symbol.%` and return the class's file or its first method. Alternatively, have the graph store add class rows from the chunk data."
+  },
+  {
+   "severity": "high",
+   "where": "bench/query.py:147-163 (rg term combination and ranking)",
+   "problem": "The rg baseline searches the terms as alternatives (`-e t1 -e t2`) and ranks files by the number of matching lines. A file with many lines matching one common term (`graph`, `test`, `pytest`) outranks a file containing every term. FTS bm25 rewards co-occurrence and rare terms, so the baseline is weaker than an agent who greps for two terms together. `-i` itself is fair, because FTS unicode61 also folds case. The 300-character cut is applied to rg and vec alike.",
+   "effect_on_numbers": "My re-run (rgalt.py, same corpus and flags) ranks by the number of distinct terms matched, then by line count. Category D: rg hit@5 goes from 0.375 to 0.625, tying fts and hybrid for the D win. A, B, C and E are unchanged. Smart-case instead of -i gives D 0.5. This also adds a tie rather than a new outright winner.",
+   "fix": "Rank rg files by the count of distinct terms matched first, then by matching lines. Or add that as a second rg baseline, and record the choice in config."
+  },
+  {
+   "severity": "low",
+   "where": "bench/query.py:287-312, 356-361 (vec k=10 chunks, then dedup)",
+   "problem": "vec fetches exactly 10 chunks and then removes duplicate paths (markdown sections share one path), so it often returns fewer than 10 paths. fts scans 200 chunks to fill 10 unique paths.",
+   "effect_on_numbers": "vec returns 9.28 paths on average (18 answers have fewer than 10; the minimum is 7), against hybrid's 10. The hit@5 tables do not change.",
+   "fix": "Fetch more neighbours (for example k=50) and stop after 10 unique displays, as fts_answer does."
+  },
+  {
+   "severity": "low",
+   "where": "bench/build.py:274-286 (run_code_graph) vs bench/chunk.py:60-76",
+   "problem": "The graph store is built by running code_graph.py over the working tree. The other stores and rg use `git ls-files`. As a result the graph contains 3 untracked files that are not in the corpus (runs/20261011-agent-memory-graph-r2/check-window.py, check_report_ids.py, runs/20261011-agent-memory-graph/check-findings.py), and its meta mtime does not cover them.",
+   "effect_on_numbers": "No current answer is affected. The corpora differ by 3 .py files.",
+   "fix": "Pass code_graph only the corpus files (or exclude untracked files), or record in meta which files the graph store was built from."
+  },
+  {
+   "severity": "low",
+   "where": "bench/query.py:437-467 (graph_intent)",
+   "problem": "The intent is chosen by a regex over the whole question text, including the symbol. `--test-glob` (A05) is classified as tests-reaching-symbol, and `\\w*` after the stem accepts words such as 'breaking' and 'user'. The README also says graph answers 3 things, but the code has 5 intents: where-symbol-is and file-functions also exist and earn graph its category-A credit.",
+   "effect_on_numbers": "None today: A05 would get no graph answer under either intent.",
+   "fix": "Strip the symbol and file from the question before matching. Document the where-symbol-is intent in the README."
+  },
+  {
+   "severity": "low",
+   "where": "bench/query.py:588-592 (graph cap at 10 test functions)",
+   "problem": "Graph returns test functions, not files. The 10-entry cap can be spent on tests from one file (args_hash is reached by 46 tests), which cuts file-level recall@10 when gold spans several files.",
+   "effect_on_numbers": "None on this set: the only C question with 2 gold files (C07) gets no graph answer. Transitive reach itself is correct: 0 mismatches with code_graph's tested_by over 1240 functions, and a 3-hop case (args_hash) is returned.",
+   "fix": "For 'which test files' questions, group by file before the cap, or cap distinct files rather than entries."
+  },
+  {
+   "severity": "low",
+   "where": "bench/run_bench.py:302-312 (per-category table)",
+   "problem": "The per-category tables leave out each route's question count. Graph's category-D row is over 2 questions while the other routes' rows are over 8, and its 0.0 hit@5 with 38 chars sits next to them without saying so. Rows carrying an `error` (missing store) are averaged as misses without any flag.",
+   "effect_on_numbers": "None (presentation only), but it makes misreading easy.",
+   "fix": "Add a `questions` column and an error count to each category table."
+  },
+  {
+   "severity": "low",
+   "where": "bench/run_bench.py:272 and 278 (markdown_report)",
+   "problem": "`--skip-determinism` crashes with KeyError 'rebuild_seconds'. `--no-build` with a missing store crashes with TypeError (`None[:7]` on git_head). Both happen after results.json has been written but before results.md is written, so the two files can disagree.",
+   "effect_on_numbers": "None on scored numbers. It can leave a stale results.md next to a new results.json.",
+   "fix": "Guard both fields in markdown_report. Refuse to score under --no-build when a store is missing."
+  },
+  {
+   "severity": "low",
+   "where": "bench/query.py:143 (answer_rg calls corpus_paths per query)",
+   "problem": "rg's measured seconds include a `git ls-files` subprocess on every query, about 1.2 ms of rg's ~7.4 ms mean (measured as medians of 20 runs). An agent running rg would not pay this.",
+   "effect_on_numbers": "rg's seconds are about 16% high. fts (0.001-0.007 s) is faster either way, so the speed winner does not change.",
+   "fix": "Compute the corpus list once per process, outside the timed section, as the model load already is."
+  },
+  {
+   "severity": "low",
+   "where": "bench/query.py:420 (answer_hybrid blocks)",
+   "problem": "A fused hit always prints vec's block when vec has one, even if only fts ranked it highly. The README says it prints 'the block of whichever route ranked it'.",
+   "effect_on_numbers": "Small effect on hybrid's output_chars and chars_to_first_gold. Hit rates are unchanged.",
+   "fix": "Print the block of the route that gave the item its better rank, or correct the README."
+  },
+  {
+   "severity": "low",
+   "where": "bench/build.py:120-156 and bench/query.py:121-132 (verified correct)",
+   "problem": "No problem found; recorded so it is not re-checked. The build is full-rebuild only: a fresh temp file, leftovers deleted first, then os.replace, with no update path. A missing store is reported and creates no database. With .cache deleted, all four store routes returned paths [] with 'store file is missing \u2026 no database was created', and .cache did not reappear. With only vec.sqlite present, the fts route left the directory containing vec.sqlite only.",
+   "effect_on_numbers": "None.",
+   "fix": "None needed."
+  }
+ ]
+}
