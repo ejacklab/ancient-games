@@ -1,0 +1,12 @@
+1. COVERAGE: PASS — NONE
+2. GROUNDING: FAIL — SOURCE_OF_TRUTH-reviewcopy.md:15: M2/M7 support rebuilding repository memory, not “all project knowledge”; the claim that knowledge is lost between sessions is an unlabelled addition. SOURCE_OF_TRUTH-reviewcopy.md:23: “Write rules” supports the exclusion of code-derived material, but the six entry kinds come from “Layout.” SOURCE_OF_TRUTH-reviewcopy.md:31: M16 concerns deterministic staleness checks; the no-deletion rule is M13. SOURCE_OF_TRUTH-reviewcopy.md:45: M18 prohibits automatic loading, not all loading of full session history.
+3. NO INVENTED VALUES: PASS — NONE
+4. OWNERSHIP: FAIL — SOURCE_OF_TRUTH-reviewcopy.md:19,27: Agents create entries and humans accept them, but permission to revise entry bodies, evidence, verification metadata and dependency/supersession links afterwards is unspecified. SOURCE_OF_TRUTH-reviewcopy.md:35: No writer or subsequent change authority is named for AGENTS.md, CLAUDE.md, task state, events, journal notes or derived caches; INDEX.md is “generated,” but its generator and maintenance authority are unnamed.
+5. CONSISTENCY: FAIL — SOURCE_OF_TRUTH-reviewcopy.md:27 requires every entry to carry the complete metadata list, whereas RECOMMENDATION.md:140 says “use applicable fields.” SOURCE_OF_TRUTH-reviewcopy.md:35,41 operationally specifies root memory/ paths while SOURCE_OF_TRUTH-reviewcopy.md:9–10,37 leaves placement OPEN. SOURCE_OF_TRUTH-reviewcopy.md:45 strengthens RECOMMENDATION.md:47’s prohibition on automatically loading full session history into an unconditional prohibition.
+6. GAPS:
+Who writes and who may subsequently change each artifact and each mutable entry field (SOURCE_OF_TRUTH-reviewcopy.md:19,27,35)?
+Which repository location will replace the OPEN placement choice (SOURCE_OF_TRUTH-reviewcopy.md:37)?
+What is the index cap, and what unit does it measure (SOURCE_OF_TRUTH-reviewcopy.md:45)?
+What age threshold will the human maintainer set (SOURCE_OF_TRUTH-reviewcopy.md:19)?
+How will code drift and unresolved contradictions be detected, flagged and resolved before an entry determines an action (SOURCE_OF_TRUTH-reviewcopy.md:27,41)?
+VERDICT: REPAIR — Ownership is incomplete: a builder cannot determine who may maintain several artifacts or revise accepted entries.

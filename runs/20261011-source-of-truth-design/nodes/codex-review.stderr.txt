@@ -1,0 +1,740 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a12de1-81b9-7863-84b0-3f8d1f503639
+--------
+user
+You are a FRESH reviewer, a different engine from the one that wrote the design. Do not rewrite the design; judge it. Read-only.
+
+Read these two files:
+- runs/20261011-source-of-truth-design/verify/SOURCE_OF_TRUTH-reviewcopy.md   — the design under review
+- runs/20261011-project-memory-engines/RECOMMENDATION.md                      — the source it claims to be grounded in
+
+The design answers eight questions: (1) why we need this memory, (2) who it is for, (3) what it is for, (4) what will be put in, (5) what will not be put in, (6) where it is put, (7) when it will be used, (8) when it will not be used. It was required to cite the recommendation inline, to label its own additions `model knowledge`, and never to invent a value where the recommendation is silent — an undecided cap, threshold, count, path or owner had to be left as `OPEN:`.
+
+Judge this FIXED six-item checklist, in one pass. Every finding needs the file and line. No open-ended essay.
+
+1. COVERAGE — are all eight questions answered, in order, with content a builder could act on? Name any question whose answer is a restatement, empty, or missing.
+2. GROUNDING — for every inline citation (an M-row, a CP, or a named section), does the cited item actually support the sentence it is attached to? List every citation that does not.
+3. NO INVENTED VALUES — is any cap, threshold, count, path, owner or filename stated as fact where RECOMMENDATION.md gives none? List each.
+4. OWNERSHIP — for everything the design says gets put in, does it name who writes it and who may change it afterwards? Name anything unowned.
+5. CONSISTENCY — does any sentence contradict RECOMMENDATION.md, or contradict another part of the design?
+6. GAPS — at most five things a builder would still have to decide. Give each as one question. Do not propose answers.
+
+Output exactly this shape and nothing else:
+
+1. COVERAGE: PASS|FAIL — <findings with file:line, or NONE>
+2. GROUNDING: PASS|FAIL — <findings with file:line, or NONE>
+3. NO INVENTED VALUES: PASS|FAIL — <findings with file:line, or NONE>
+4. OWNERSHIP: PASS|FAIL — <findings with file:line, or NONE>
+5. CONSISTENCY: PASS|FAIL — <findings with file:line, or NONE>
+6. GAPS: <up to five questions, one per line>
+VERDICT: ACCEPT|REPAIR — <the single most important reason>
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the folder instructions and both files, then check the design against the fixed checklist.
+
+exec
+/bin/bash -lc 'cat CLAUDE.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `~/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+
+exec
+/bin/bash -lc 'nl -ba runs/20261011-source-of-truth-design/verify/SOURCE_OF_TRUTH-reviewcopy.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+     1	# Source-of-Truth Memory Design
+     2	>
+     3	> **Provenance.** Produced 2026-10-11 by `opencode` 1.14.41 (`opencode run -m minimax-coding-plan/MiniMax-M2.5`) from
+     4	> `runs/20261011-source-of-truth-design/brief.md`, grounded in `runs/20261011-project-memory-engines/RECOMMENDATION.md`.
+     5	> Everything below this block is the engine's verbatim output. Checked once by a blind verifier on `claude` 2.1.296 —
+     6	> verdict and evidence in `runs/20261011-source-of-truth-design/run-report.md`. **Not yet accepted by EJ.**
+     7	>
+     8	> **This folder is design documents *about* the memory system. It is not the memory tree** — where that tree lives is
+     9	> still open (CP3: claude proposes `memory/`, codex under `docs/`, opencode `.ai/`), and the design below leaves it
+    10	> `OPEN`. Moved here 2026-10-11 from `runs/20261011-source-of-truth-design/DESIGN.md`, so that later documents on the
+    11	> same subject have one home.
+    12	
+    13	## Why we need this memory
+    14	
+    15	The context window holds only the current task and is cleared at session start — it is not durable memory (M3). Without a durable, version-controlled memory system, knowledge gained during one session is lost when the next session begins. The recommendation establishes that markdown files kept with the code are the canonical shared project memory (M1), and that every durable entry carries id, kind, author, recorded/verified dates, scope, source, status and dependency/supersession links (M11). Memory is needed so that a fresh clone can rebuild all project knowledge without requiring any agent-private store, external service, or prior session context (M2, M7).
+    16	
+    17	## Who it is for
+    18	
+    19	The memory serves both agents and human maintainers. Agents use it to retrieve decisions, facts, lessons and runbooks that affect their current task (Read rules). Human maintainers accept policy and significant decisions; agents draft them and record observations and handoffs (M12). The ownership model assigns agents as writers who create entries as `proposed` with mandatory evidence, while humans serve as the merge gate that accepts `proposed` entries to `active` status, resolve contested entries when code cannot decide, retire entries, and set the index cap and age threshold (Write rules).
+    20	
+    21	## What it is for
+    22	
+    23	Memory stores typed entries — decisions, facts, lessons, runbooks, observations and hypotheses — that capture knowledge not derivable from code, tests or git history (Write rules). The specific triggers for writing are: a decision whose reason is not visible in code; a non-obvious constraint or verified pitfall that cost more than one attempt; a human correction; and a checkpoint of unfinished work before a handoff, interruption or context reduction, recording exact remaining work and verification results including failures (Write rules). The entry body states the claim in one or two sentences, then `Why:` and `How to apply:` (Layout).
+    24	
+    25	## What will be put in
+    26	
+    27	Every entry carries: `id`, `kind` (decision | fact | lesson | runbook | observation | hypothesis), `status` (proposed | active | contested | stale | disputed | superseded | retired), `author`, `recorded_at`, `observed_at`/`verified_at` (plus the git revision verified against), `covers` (paths or symbols), `source`/`evidence`, `depends_on`, `supersedes`, `superseded_by` (M11, Layout, Staleness and contradiction). The entry body states the claim in one or two sentences, then `Why:`, then `How to apply:` (Layout). Entries are written at discovery or correction, or at task end, in the same commit or PR as the change that motivated the entry (Write rules). Each writer gets its own file — different file per session and per claim; no two agents edit one file (M23, Write rules).
+    28	
+    29	## What will not be put in
+    30	
+    31	Do not write: anything derivable from code, tests or git history; credentials or sensitive data; speculative explanations unlabelled (label them `hypothesis` instead); bulk transcripts; another agent's private state (Write rules). Do not turn "implemented" into "verified" (Write rules). Never store project knowledge only in an agent's private memory and call it memory — anything others need must be promoted into the repo (Write rules). Never delete a memory entry; supersede it with an explicit link and keep the old body (M16).
+    32	
+    33	## Where it is put
+    34	
+    35	The default layout uses a committed memory tree at the repo root, following claude's proposal in CP3: `AGENTS.md` at root (the canonical cross-agent instruction file, M9); `CLAUDE.md` as a thin adapter importing AGENTS.md; a `memory/` directory containing `INDEX.md` (generated), `entries/` (D-*, F-*, L-*, R-* typed entries), `work/<task-id>/` (state.md and events/), `journal/<date>-<agent>-<session>.md` (append-only raw notes, never auto-loaded), and `.cache/` (gitignored, optional derived SQLite/FTS and repo map) (Layout, CP3). The recommendation explicitly leaves CP3 unresolved — if the project already has authoritative requirements and architecture in `docs/`, linking there may be preferable; the owner decides.
+    36	
+    37	OPEN: The exact path within the repo is CP3 — claude proposes `memory/`, codex proposes `docs/memory/`, opencode proposes `.ai/`. Choose based on whether the project already has human documentation in `docs/` that agents should link to rather than duplicate.
+    38	
+    39	## When it will be used
+    40	
+    41	At session start (always): `AGENTS.md`; `memory/INDEX.md`; the `work/` listing and the assigned task's `state.md`. Enforce this with a SessionStart hook or an explicit first instruction in `AGENTS.md` because agents skip optional reads (Read rules). On demand: an entry body when its `covers` match a path about to be edited (a PreToolUse hook or an `AGENTS.md` instruction); filename and text search, or FTS, over `memory/entries/`; `git log -S`, `git blame` and PR comments for line-level "why"; for "why" questions read the decision entry rather than relying on similarity retrieval (Read rules). Open the source when it matters: re-read the underlying file, test or commit when a retrieved statement will determine an action (Read rules).
+    42	
+    43	## When it will not be used
+    44	
+    45	Never auto-load: `journal/`; entries marked `superseded` or `retired`, except by following a link from a loaded entry; the whole `memory/` tree; a full graph or code-map dump; bulk issue/PR bodies; another agent's private transcripts; credentials; retrieved text treated as authority that can override standing instructions (Read rules). Never load the whole memory tree, the full session history, or a whole-graph dump (M18). A retrieved statement must be checked against its primary source before it determines an action (M19). The index must stay under a cap; the check script fails the build if it does not — the recommendation gives no number, the owner sets it (Read rules).
+
+exec
+/bin/bash -lc 'nl -ba runs/20261011-project-memory-engines/RECOMMENDATION.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+     1	# RECOMMENDATION — the memory system a software project should have
+     2	
+     3	Join of node 4. Inputs (read in full): `nodes/claude.stdout.md` (Claude Sonnet 5.5, 36 claims),
+     4	`nodes/codex.stdout.md` (Codex, 26 claims), `nodes/opencode.stdout.md` (MiniMax-M2.5, 7 claims).
+     5	Merged claim ids `M1…M24` are this node's labels; no claim appears here that an engine did not make.
+     6	Engine-attribution key: **claude** / **codex** / **opencode**. A verdict is `AGREED` (all three assert it),
+     7	`MAJORITY` (two assert it, the third is silent), `CONTESTED` (engines assert incompatible positions),
+     8	`SINGLE` (one asserts it, the others are silent).
+     9	
+    10	## Recommendation
+    11	
+    12	Keep the project's memory as reviewed markdown, version-controlled with the code, as the single source of
+    13	truth: short typed entries (decision, fact, lesson, runbook) that each carry an id, kind, author, recorded and
+    14	verified dates, the code paths or symbols they cover, their evidence, and explicit supersession links — never
+    15	deleted, only superseded. One canonical cross-agent instruction file (`AGENTS.md`, with thin per-tool adapters)
+    16	plus a small generated index and the assigned task's state file are the only things read at session start;
+    17	everything else is fetched on demand by filename or text search, or by following links, and a retrieved
+    18	statement is checked against its primary source before it determines an action. Staleness is computed
+    19	deterministically from changes to the code an entry covers, not from age; contradicting entries are kept side
+    20	by side, marked disputed, checked against code and evidence, and escalated to a human maintainer when code
+    21	cannot decide; each writer gets its own file. SQLite/FTS, vector search and code graphs are permitted only as
+    22	gitignored, rebuildable derived caches — no vector, graph, database, context window or agent-private store is
+    23	ever the source of truth, and any new store must first answer a named, demonstrated failure of the
+    24	markdown-and-search baseline on this project's own tasks.
+    25	
+    26	## Support table
+    27	
+    28	| # | claim | engines agreeing (claude/codex/opencode) | strongest basis of any engine (read: <source> / model knowledge) | verdict |
+    29	|---|---|---|---|---|
+    30	| M1 | Markdown files kept with the code are the canonical shared project memory. | claude, codex, opencode | **model knowledge** for the substrate ranking in all three; the adjacent read is claude `read: docs/research/20261011-agent-memory-graph-r2/REPORT.md` s1-F7/F8 (a production memory system is a git-backed filesystem), which supports git-backed files, not markdown-over-others | AGREED |
+    31	| M2 | Memory is version-controlled with the code so a change is reviewed as a diff and a fresh clone can rebuild it. | claude, codex | **read: codex — https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging** (branch/merge mechanics) | MAJORITY |
+    32	| M3 | The context window holds the current task only; it is not durable memory. | claude, codex, opencode | **read: codex — https://code.claude.com/docs/en/memory** (fresh context at session start) | AGREED |
+    33	| M4 | A vector index is refused as the source of truth; at most a derived, rebuildable index, and only when the project's own queries justify it. | claude, codex, opencode | **read: claude — REPORT.md s3-F20, s3-F34** (a KG store beat vector top-k on supersession/negation, 6–27% surfaced; relevance recall and token cost "largely equivalent"); also codex `read: https://developers.openai.com/api/docs/guides/retrieval` | AGREED |
+    34	| M5 | A graph store is refused as the memory store; explicit links between documents carry the relationships. | claude, codex, opencode | **read: claude — REPORT.md s3 group** (graph evidence split; a graph index resident-cost 67k vs 18k tokens) | AGREED |
+    35	| M6 | SQLite is a derived, gitignored, rebuildable index only; never authoritative, and its absence must not prevent reading memory. | claude, codex | **model knowledge** for the role call (codex's own "recommendation" label; claude's T1/T2/T4 design tests); codex's `read: https://sqlite.org/fts5.html` establishes only that FTS5 exists | CONTESTED (opencode: use `state.sqlite` as the structured state store, queried at session start) |
+    36	| M7 | Each agent's private session/memory store is not project memory; knowledge other agents need is promoted into the repository. | claude, codex, opencode | **read: codex — https://code.claude.com/docs/en/memory#storage-location** (auto memory is machine-local, shared across that repository's worktrees) | AGREED |
+    37	| M8 | Private agent memory may persist for that agent's own continuity. | codex (yes); opencode (no — ephemeral) | **model knowledge** in both | CONTESTED |
+    38	| M9 | One canonical instruction body (`AGENTS.md`) with thin per-tool adapters; no parallel, independently maintained policy copies. | claude, codex | **read: codex — https://opencode.ai/docs/rules/ + https://code.claude.com/docs/en/memory + https://learn.chatgpt.com/docs/agent-configuration/agents-md** | MAJORITY |
+    39	| M10 | The three tools resolve instruction files differently (Codex nearest-wins override, Claude concatenation, opencode first-match with `AGENTS.md` over `CLAUDE.md`, references not auto-expanded); verify each deployed tool. | codex | **read: codex — https://opencode.ai/docs/rules/, https://code.claude.com/docs/en/memory, https://learn.chatgpt.com/docs/agent-configuration/agents-md** | SINGLE |
+    40	| M11 | Every durable entry carries id, kind, author, recorded/observed/verified dates, scope, source, status and dependency/supersession links. | claude, codex | **read: codex — https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions** (decision-record shape); the field list itself is design in both | MAJORITY |
+    41	| M12 | A human maintainer accepts policy and significant decisions; agents draft them and record observations and handoffs. | claude, codex | **read: claude — ~/CLAUDE.md Rules 7 and 12** ("every artifact has one maker"); codex `read: /home/smoke01/dev/ancient-games/CLAUDE.md` (a project-specific rule, not a general source) | MAJORITY |
+    42	| M13 | Never delete a memory entry; supersede it with an explicit link and keep the old body. | claude, codex, opencode | **read: claude — REPORT.md s1-F4 and FINDINGS-s4 F5–F7** (Graphiti invalidates the older edge; Mem0 marks superseded edges invalid "rather than physically removing") | AGREED |
+    43	| M14 | Disagreeing entries are kept as separate assertions, marked disputed, checked against primary evidence or code, then escalated to the authorized maintainer; a timestamp, majority or clean merge is not enough to pick a winner. | claude, codex | **read: claude — ~/CLAUDE.md Rule 12** ("don't blend conflicting patterns… flag the other"); codex's C22 is **model knowledge** | CONTESTED (opencode: read-time rule "prefer the newest non-stale entry") |
+    44	| M15 | Staleness is bound to the revision an entry was verified against and to changes in the code, config or dependencies it covers, not to age. | claude, codex | **read: claude — REPORT.md s3-F4** (StateTape reads staleness off a code-graph diff with no model call), plus claude's own `memory_check.py` design | MAJORITY |
+    45	| M16 | The staleness check is deterministic and makes no model call. | claude | **read: claude — REPORT.md s3-F4** (C5) | SINGLE |
+    46	| M17 | At session start an agent reads the standing instructions, a small index or state file, and the material for its assigned task. | claude, codex | **read: codex — https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra** (read documents according to the task) | CONTESTED (opencode: session-start reads are `context.md`, active tickets in `state.sqlite` and the last 3 `sessions/` files — no standing instructions and no index) |
+    47	| M18 | Never auto-load the whole memory tree, the full session history, or a whole-graph dump. | claude, codex, opencode | **read: claude — REPORT.md s3-F24, s3-F32** (67k vs 18k resident tokens; ~63K vs ~41K) | AGREED |
+    48	| M19 | Everything else is retrieved on demand by filename/text search or by following index links; open the primary source when a retrieved statement will determine an action. | claude, codex, opencode | **read: codex — OpenAI guidance on skills and prompts** | AGREED |
+    49	| M20 | Prose instructions are context, not enforced configuration; critical constraints belong in hooks, permissions or CI. | claude, codex | **read: codex — https://code.claude.com/docs/en/memory**; claude `read:` the agent-loop skill's Stop/PreToolUse/PostToolUse hooks | MAJORITY |
+    50	| M21 | Refuse any additional store until a named, demonstrated failure of the markdown-and-search baseline exists, measured on the project's own tasks, with a named maintainer and acceptance criteria. | claude, codex, opencode | **read: claude — REPORT.md s5-F7, s5-F22** (a benchmark key with 6.4% corrupting errors; swapping the grading prompt moved one system 0.9013→0.4803), so published numbers cannot choose a design; codex's own test is **model knowledge** and unexecuted | AGREED |
+    51	| M22 | Any memory artifact must be human-readable and reviewable; refuse stores that are only machine-readable. | claude, codex, opencode | **model knowledge** in all three (codex's refusal rationale; opencode's test question 3) | AGREED |
+    52	| M23 | Refuse one shared append file written by parallel agents; give each writer its own file. | claude, codex | **read: codex — https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging** (a merge does not establish semantic agreement); claude C35 is **model knowledge** | CONTESTED (opencode: `sessions/YYYY-MM-DD.md` is one shared per-day append file, and `context.md` is one shared overwrite file) |
+    53	| M24 | Durable entries are written at discovery/correction or task end, not every turn and not as a standing per-session obligation. | claude, codex | **model knowledge** in both (claude also permits per-session `journal/` and `handoff/` appends, so its position is between the two) | CONTESTED (opencode: session end is a standing write trigger) |
+    54	
+    55	**M17 correction (repair 2).** M17 is **`CONTESTED`**, not `MAJORITY`: opencode does not merely omit the
+    56	session-start read set — it asserts a different one: `context.md`, active tickets in `state.sqlite`, and the last
+    57	three `sessions/` files, with no standing instructions and no index (`nodes/opencode.stdout.md:57-59`); the same
+    58	split is CP6 below. M17 is therefore credited to **claude and codex** only (claude: `nodes/claude.stdout.md:104-107`;
+    59	codex: `nodes/codex.stdout.md:30`, `:74`).
+    60	
+    61	## Contested points
+    62	
+    63	**CP1 — The role of SQLite.**
+    64	- **opencode:** SQLite *is* the structured state store — "structured state tracking (ticket status, session logs, entity relationships)", written to `.ai/state.sqlite` inside the repo and queried at session start for `status != done`. Basis: **model knowledge** (C2), justified as "lightweight, queryable, no external service needed, atomic writes".
+    65	- **claude and codex:** SQLite is at most a **derived, gitignored, rebuildable cache** and never authoritative. claude places it at `.cache/` "rebuilt from the tree"; codex places it at `.cache/project-memory/index.sqlite` gitignored and requires that "its absence must not prevent reading authoritative memory", refusing a committed SQLite as sole memory because "it adds a required access mechanism where inspectable files already meet the proposed need". Basis: codex `read: https://sqlite.org/fts5.html` plus its **model-knowledge** recommendation; claude's T1/T2/T4 design tests.
+    66	- **unresolved.** Nothing in the three files measures a committed binary state store against markdown state files. What would settle it: on one real project, track ticket/session state both ways and compare merge-conflict rate on the binary, the cost of querying state without the DB (does a reader still recover?), and the human reviewability of a `state.sqlite` diff.
+    67	
+    68	**CP2 — Contradiction resolution: newest-wins vs disputed-and-escalate.**
+    69	- **opencode:** "On read, agent should check for `## Superseded` / `## Stale` markers and **prefer the newest non-stale entry**." Basis: **model knowledge** (C7, staleness section).
+    70	- **claude and codex:** newest does not win. claude: "**Why not newest wins.** Graphiti's 'new wins' is write-time and LLM-driven"; both entries become `contested`, the next agent adjudicates against code and tests, a human decides if code cannot. Basis: **read: FINDINGS-s4 F15, F16** — a deterministic latest-wins pipeline scored far above the stores on MemoryAgentBench single-hop (78.0%/94.8% vs Zep 7.0%, Mem0 18.0%) but only tied LLM judgment on LongMemEval knowledge-update (57.8% vs 64.4%, n=45); claude gives both rows and refuses to pick. codex: "Recent timestamps, majority votes and clean Git merges are insufficient to select a winner." Basis: **model knowledge** (C22).
+    71	- **unresolved.** No engine ran read-time newest-wins against disputed-and-escalate on real coding tasks. What would settle it: replay both rules over a recorded set of contradicting entries and count how often newest-wins selects the entry that a later code change or a maintainer confirms.
+    72	
+    73	**CP3 — Where the memory tree lives.**
+    74	- **opencode:** `.ai/`, **isolated from human docs** — "keeps AI memory isolated from human docs". Basis: **model knowledge**.
+    75	- **codex:** under the project's **existing `docs/`** — `docs/memory/`, `docs/decisions/`, `docs/work/` — and "reuse existing project documentation rather than copying it into memory"; memory links to already-authoritative requirements and architecture. Basis: **model knowledge** (C13).
+    76	- **claude:** a dedicated committed **`memory/` tree** at the repo root (`INDEX.md`, `entries/`, `state/`, `journal/`). Basis: partly **read: REPORT.md s1-F7/F8** (Letta's layout: root files load every turn, directories with their own `MEMORY.md` stay out of context), partly design.
+    77	- **unresolved.** This is a convention question, and the three files contain no evidence about a real project's docs. What would settle it: an inventory of one project's existing docs — if `docs/` already holds authoritative requirements and architecture, codex's linking placement wins; if writing agent memory there would pollute human docs, opencode's isolation wins; claude's separate committed tree is a third option.
+    78	
+    79	**CP4 — One shared per-day session file vs per-writer files.**
+    80	- **opencode:** `sessions/YYYY-MM-DD.md`, append-only, one file per day, all agents appending. Basis: **model knowledge** (layout and write table).
+    81	- **claude and codex:** one writer per file. claude: "Different file per session and per claim… No two agents edit one file", and per-session files "avoid git merge conflicts that a single shared append file causes" (**model knowledge**, C35). codex refuses "Parallel agents appending to one shared journal" — "overlapping writes and leaves integration implicit" — and notes that "Git merges do not establish semantic agreement". Basis: **read: https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging**.
+    82	- **unresolved.** No engine measured conflict rates. What would settle it: run several agents concurrently on one repo with a shared append file and with per-writer files, and count merge conflicts, lost appends and time spent integrating.
+    83	
+    84	**CP5 — Whether an agent's private store may persist between sessions.**
+    85	- **codex:** yes — "allow for personal continuity; refuse as a project dependency"; private memory "may suggest where to look", and useful knowledge is promoted into the repo. Basis: **read: https://code.claude.com/docs/en/memory#storage-location** plus **model knowledge**.
+    86	- **opencode:** no — the private store "should be ephemeral — no persistent memory between sessions"; cross-session state "should be explicit in project memory, not hidden in agent internals". Basis: **model knowledge** (C6).
+    87	- **claude** is silent on whether it should persist: it records that each agent keeps a private store with no shared schema (C32, **model knowledge**; C31, **read:** the local `MEMORY.md` index), and rules only that a fact existing only there "does not count as memory".
+    88	- **unresolved.** No evidence on whether private persistence helps continuity or hides state other agents need. What would settle it: an A/B where one agent keeps private notes and another does not, measuring whether the notes change actions and whether they duplicate what is in the repo.
+    89	
+    90	**CP6 — What is read automatically at session start.**
+    91	- **opencode:** `context.md`, active tickets from `state.sqlite`, **and "Recent `sessions/` (last 3)"** for continuity. Basis: **model knowledge**.
+    92	- **claude and codex:** instructions, the index, and the assigned task's state only. claude: `AGENTS.md`, `INDEX.md`, the `state/claims/` listing, the newest handoff — and "**Never load.** `journal/`". codex: instructions, `docs/memory/INDEX.md`, the task's `state.md`; "Do not bulk-load transcripts, completed-task journals, every decision or an entire search index at startup." Basis: codex **read: OpenAI guidance on skills and prompts** plus **model knowledge**; claude's read rules are design.
+    93	- **unresolved.** No engine measured whether three prior session summaries improve the first action more than they cost in tokens and distraction. What would settle it: a with/without comparison on recorded tasks scoring first-action correctness and start-up tokens.
+    94	
+    95	**CP7 — Whether a memory write is obligatory every session.**
+    96	- **opencode:** yes — "Session end | agent | Write summary to `sessions/YYYY-MM-DD.md` | Yes". Basis: **model knowledge**.
+    97	- **codex:** no — "Do not require a memory write after every session. Write when there is something another session needs to know", and it refuses "a complete transcript archive as routine memory". Basis: **model knowledge** (C14).
+    98	- **claude** sits between: writes are at task end and "Not every turn", but it does permit per-session `journal/` and `handoff/` appends; the raw-capture read (C9) supports keeping raw material cheap.
+    99	- **unresolved.** This is a work-practice question the three files cannot settle. What would settle it: measure, over many sessions, how often a mandatory session summary is later read or cited — if it is rarely read, codex's rule wins; if it prevents repeated mistakes, opencode's does.
+   100	
+   101	**A separate, narrow note (not a claim conflict).** claude's C25 concludes from its read material — LoCoMo's key has 6.4% score-corrupting errors, and swapping only the grading prompt moved one system from 0.9013 to 0.4803 — that "published accuracy numbers cannot choose a project-memory design". codex reaches a related caution from a different source (C12, Liu et al., position-sensitive retrieval) but bounds it: "That establishes a historical failure mode, not a performance result for today's coding agents." The two do not disagree; codex's is the narrower claim.
+   102	
+   103	## Substrates
+   104	
+   105	| substrate | merged answer | reason | engines |
+   106	|---|---|---|---|
+   107	| Markdown files | **USE — source of truth** | Human-readable, diff-reviewable, rebuildable, no service. Every engine's primary substrate (M1, M22). The ranking itself is model knowledge; only the git-backed property is read (claude, REPORT.md s1-F7/F8). | claude, codex, opencode |
+   108	| SQLite | **CONDITIONAL — derived, gitignored, rebuildable only; never authoritative** (majority). opencode dissents (CP1) | Codex: "allow as an optional derived index; refuse as the default authoritative memory"; absence must not prevent reading memory. claude: `.cache/`, rebuilt from the tree. opencode would use it as the structured state store. | claude, codex (opencode contested) |
+   109	| Vector index | **REFUSE as the store; CONDITIONAL as a rebuildable derived index, only if the project's own queries justify it** | Similarity does not establish that a statement is current, accepted or true (codex, model knowledge); the one directly comparable read found relevance recall and token cost "largely equivalent" to a KG (claude, read REPORT.md s3-F34). | claude, codex, opencode |
+   110	| Graph store | **REFUSE as the store; CONDITIONAL as a derived code map generated per commit** | No demonstrated generic need for a relationship model; supersession is available as frontmatter links; graph evidence is split and a live graph has a resident-context cost and can drift silently (claude, read REPORT.md s3 group). | claude, codex, opencode |
+   111	| Context window | **USE for the current task only; REFUSE as durable memory** | Fresh context at session start; recovery must be possible from project artifacts without the previous conversation (codex, read Claude Code memory docs). | claude, codex, opencode |
+   112	| Each agent's private session store | **REFUSE as a project dependency; allow private notes but promote anything others need into the repo** (persistence itself is CP5) | It is machine-local and invisible to other agents; a fact that exists only there does not count as project memory (codex read storage location; claude C31/C32; opencode C6). | claude, codex, opencode |
+   113	
+   114	## Layout
+   115	
+   116	One committed memory tree. The placement of that tree is CP3 (claude `memory/`; codex under `docs/`; opencode
+   117	`.ai/`). The merged default shown here uses claude's typed-entry shape and codex's per-task shape, with the
+   118	generated index both propose.
+   119	
+   120	```
+   121	AGENTS.md                  canonical standing instructions: commands, constraints, memory read/write protocol, links.
+   122	CLAUDE.md                  thin adapter / symlink importing AGENTS.md — no independently maintained policy copy.
+   123	memory/
+   124	  INDEX.md                 GENERATED, one line per active entry: id · kind · title · covers · status flag.
+   125	                           Never hand-edited. The only whole-file memory load at session start.
+   126	  entries/
+   127	    D-0007-<slug>.md       decision + why: context, choice, consequences, acceptance reference, replacement links.
+   128	    F-0012-<slug>.md       sourced observation / verified pitfall not derivable from code, tests or git history.
+   129	    L-0003-<slug>.md       lesson from a failure or a human correction.
+   130	    R-0002-<slug>.md       runbook; prefer a script, the entry only points at it.
+   131	  work/<task-id>/
+   132	    state.md               current handoff: objective, owner, branch/base revision, done, outstanding, checks, next action.
+   133	    events/<event-id>.md   writer-specific historical record: a discovery, a failed approach, a handoff.
+   134	    evidence/              sanitized evidence not recoverable from code, commits, tests or linked artifacts.
+   135	  journal/<date>-<agent>-<session>.md   append-only raw notes; never auto-loaded.
+   136	  .cache/ (gitignored)     optional derived SQLite/FTS and a repo map, rebuilt from the tree at the current commit.
+   137	docs/ ...                  the project's existing requirements, architecture and runbooks; memory links here, does not copy.
+   138	```
+   139	
+   140	Entry metadata (union of claude's frontmatter and codex's block; use applicable fields): `id`, `kind`
+   141	(decision | fact | lesson | runbook | observation | hypothesis), `status`
+   142	(proposed | active | contested | stale | disputed | superseded | retired), `author`, `recorded_at`,
+   143	`observed_at` / `verified_at` (plus the git revision verified against), `covers` (paths or symbols),
+   144	`source` / `evidence`, `depends_on`, `supersedes`, `superseded_by`. Body: the claim in one or two sentences,
+   145	then **Why:**, then **How to apply:**.
+   146	
+   147	## Write rules
+   148	
+   149	- **Triggers (write):** a decision whose reason is not visible in code; a non-obvious constraint or verified
+   150	  pitfall that cost more than one attempt; a human correction; a checkpoint of unfinished work before a
+   151	  handoff, interruption or context reduction, recording exact remaining work and actual verification results,
+   152	  including failures (claude, codex; opencode adds a decision and a session summary — CP7 for the summary).
+   153	- **Do not write:** anything derivable from code, tests or git history; credentials or sensitive data;
+   154	  speculative explanations unlabelled (label them `hypothesis`); bulk transcripts; another agent's private
+   155	  state. Do not turn "implemented" into "verified".
+   156	- **When:** at discovery or correction, or at task end, in the same commit or PR as the change that motivated
+   157	  the entry. Not every turn; not as a standing per-session obligation (CP7).
+   158	- **Who (agents):** append `journal/` and a handoff; create entries as `proposed` with `evidence:` mandatory;
+   159	  update the authoritative document that a change invalidates, in the same review; flag `stale` or `contested`
+   160	  with evidence; claim a task by creating a claim file.
+   161	- **Who (humans):** accept `proposed` → `active` (review of the diff is the merge gate); accept significant
+   162	  decisions and policy; resolve `contested` when code cannot; retire entries; set the index cap and the age
+   163	  threshold. (claude, codex; opencode's write table has agents authoring decisions with no acceptance step —
+   164	  recorded as a gap, not as a merged rule.)
+   165	- **Append-only:** `journal/`, `work/<task-id>/events/`, evidence, git history, and an accepted decision's body
+   166	  (after acceptance only `status`, `verified_at` and `superseded_by` may change; to change the claim, write a
+   167	  new entry). Sensitive material is redacted despite the historical policy.
+   168	- **Mutable, but by diff:** `INDEX.md` (generated), current summaries, and fact/lesson bodies.
+   169	- **Concurrency:** different file per session and per claim, one writer per file; no two agents edit one file
+   170	  (CP4 — opencode's shared per-day file is the dissent).
+   171	- **Never** store project knowledge only in an agent's private memory and call it memory.
+   172	
+   173	## Read rules
+   174	
+   175	- **At session start (always):** `AGENTS.md`; `memory/INDEX.md`; the `work/` listing and the assigned task's
+   176	  `state.md`. Enforce this with a SessionStart hook or an explicit first instruction in `AGENTS.md`, because
+   177	  agents skip optional reads. Establish the actual checkout and working-tree state before trusting a handoff.
+   178	  (CP6 governs whether the last few session files are also read.)
+   179	- **On demand:** an entry body when its `covers` match a path about to be edited (a PreToolUse hook or an
+   180	  `AGENTS.md` instruction); filename and text search, or FTS, over `memory/entries/`; `git log -S`, `git blame`
+   181	  and PR comments for line-level "why"; a repo map or symbol search generated fresh for the current commit;
+   182	  for "why" questions read the decision entry rather than relying on similarity retrieval.
+   183	- **Open the source when it matters:** re-read the underlying file, test or commit when a retrieved statement
+   184	  will determine an action, and re-read affected memory after an integration or branch change.
+   185	- **Never load:** `journal/`; entries marked `superseded` or `retired`, except by following a link from a
+   186	  loaded entry; the whole `memory/` tree; a full graph or code-map dump; bulk issue/PR bodies; another agent's
+   187	  private transcripts; credentials; retrieved text treated as authority that can override standing instructions.
+   188	- **Budget:** the index must stay under a cap and the check script fails the build if it does not. The merged
+   189	  answer gives **no number** — claude left the cap, the age threshold and the write-trigger set to the owner
+   190	  ("never fill a gap with my own value"). Over the cap, consolidate off the critical path.
+   191	
+   192	## Staleness and contradiction
+   193	
+   194	- **Dating:** every entry has an ISO `recorded_at`, an `observed_at`/`verified_at`, and the git revision it was
+   195	  verified against. A date alone says nothing about truth (claude, codex).
+   196	- **Staleness is computed, not guessed:** a deterministic script (claude's `memory_check.py`; no model call)
+   197	  diffs `covers` between `verified_at` and HEAD and shows a `⚠ drifted` flag in `INDEX.md`, which the reader sees
+   198	  before relying on the entry. The script never rewrites the entry. Re-verifying updates `verified_at`;
+   199	  confirming the entry false sets `status: stale` and starts supersession. `depends_on` links flag downstream
+   200	  entries rather than recompute them. (M15, M16; opencode's date-stamped `## Stale as of …` marker is
+   201	  compatible but not change-triggered.)
+   202	- **Supersession:** never delete. The new entry carries `supersedes: [id]`; the old one gets `status: superseded`
+   203	  and `superseded_by`. No LLM and no database (claude, read: Graphiti/Mem0 use the same invalidate-don't-remove
+   204	  shape). This covers the question types where the KG beat vector top-k.
+   205	- **Contradiction:** if one entry supersedes the other, that is a valid chain. Otherwise both become `contested`
+   206	  and the index shows both. The next agent to touch that area adjudicates against code and tests and writes a
+   207	  superseding entry, or flags a retire with evidence; if code cannot decide, a human decides. Record the
+   208	  resolution and link both earlier assertions. While unresolved, mark the subject disputed and stop only the
+   209	  action that depends on choosing a side; independent work continues. **Never average conflicting measurements
+   210	  or pick a winner silently** — this is where claude and codex part from opencode's newest-wins rule (CP2).
+   211	- **No time-decay deletion:** the decay evidence conflicts in the read material (claude: Selective Forgetting
+   212	  removes 9.8% of nodes with token F1 unchanged — C15 — versus EngramRAG naming temporal decay evicting core
+   213	  invariants a defect — C16; the source report leaves the two unresolved). Age may only add a flag. The
+   214	  threshold is the owner's to set.
+   215	- **Consolidation:** periodic, off the critical path, as a proposed PR — merge duplicates, retire dead entries,
+   216	  shrink the index — never a silent rewrite.
+   217	
+   218	## What NOT to build
+   219	
+   220	Three refusal tests were offered, and they are **given as three, not averaged**: **T-A (codex, model
+   221	knowledge, unexecuted):** add a store only for a named, demonstrated failure of the simpler system, with source
+   222	traceability, a maintenance owner and an evaluated benefit. **T-B (claude):** git-rebuildable from a fresh clone
+   223	with no model call; diff-reviewable before it takes effect; not a second truth needing sync against code and
+   224	git; beats the flat-markdown baseline at a matched token budget on this project's own questions; one maker per
+   225	field. **T-C (opencode, model knowledge):** does it solve a pain the agent actually feels; does it avoid
+   226	external infrastructure; can humans read and verify it. A store is refused if it fails any applicable test.
+   227	
+   228	| Refused | Refused by | Test it fails, and why |
+   229	|---|---|---|
+   230	| Vector database as project truth | claude, codex, opencode | T-B (not human-readable, becomes a second truth), T-A (no demonstrated need), T-C (Q3). A derived FTS/vector cache is allowed, never authoritative. |
+   231	| Graph database as the store (Graphiti/Zep-style, Neo4j) | claude, codex, opencode | T-A (no demonstrated generic relationship need), T-B (not diff-reviewable; supersession is available as frontmatter links), T-C. claude adds that Mem0 removed graph support from its open-source SDK in v2.0.0 (its own label: reported, third-party). |
+   232	| Committed SQLite as the sole or authoritative memory | claude, codex | T-A/T-B — "it adds a required access mechanism where inspectable files already meet the proposed need"; absence must not prevent reading memory. **opencode dissents: CP1.** |
+   233	| LLM-chosen ADD/UPDATE/DELETE, or auto-extraction of facts from every turn | claude | T-B (destructive, not diff-reviewable); hallucinations "accumulate at memory extraction and updating, then propagate into answers" (read: REPORT.md s5-F5); raw capture is cheaper and non-inferior at a tight budget (read: FINDINGS-s4 F17/F18). |
+   234	| Always-live code graph / auto-synced index | claude | T-B — the project's own benchmark measured 4.3% of distinct edges wrong on a clean rebuild, silently, and a CLI over the same index served stale answers (read: REPORT.md s3-F25/F27); plus the resident-context cost. Generate per commit, as a cache. |
+   235	| A giant, automatically growing `MEMORY.md` or whole-tree load | claude, codex, opencode | T-C (readable is not enough — compulsory reading), T-B (unrelated subjects combined); context cost. The index is the only load-at-start item. |
+   236	| Parallel agents appending to one shared journal | claude, codex | T-B — overlapping writes and implicit integration; a merge does not establish semantic agreement. **opencode's per-day `sessions/` file is this pattern: CP4.** |
+   237	| A complete transcript archive as routine memory | claude, codex, opencode | T-A/T-C — preserves volume without selecting what future work needs; opencode's own read rule refuses full history. |
+   238	| Time-based auto-expiry or decay deletion | claude | T-B — it is not reversible and the decay evidence conflicts (C15 vs C16); age may only flag. |
+   239	| Agent-private store as project memory | claude, codex, opencode | T-B (invisible to human review), T-C (Q3), and it breaks one-maker-per-field. |
+   240	| Cloud KV / external sync as memory | opencode | T-C (Q2 external infrastructure and offline failure mode). |
+   241	| A custom memory service before a retrieval failure exists | codex | T-A — benefit and maintenance obligations not established. |
+   242	| Ownership files or CODEOWNERS as memory | claude | T-A/T-B — it is review routing, not retrievable memory; the read material stores no such memory role. |
+   243	
+   244	Each refuser's own caveat is carried forward: claude's tests are its design, not executed; codex "authored this
+   245	test and have not executed it", so its refusals mean "not justified as a generic default", not "proved
+   246	ineffective"; opencode's three questions are model knowledge. SQLite indexing, semantic retrieval and graph
+   247	queries all remain possible additions **once their particular benefit is demonstrated**.
+   248	
+   249	## Strength of this recommendation
+   250	
+   251	- **How many merged claims rest on a source an engine actually read.** Of the 24 rows: **19 rest on a source at
+   252	  least one engine read**, and **5 rest on `model knowledge` at core** — M1 (the markdown-over-others ranking,
+   253	  where the adjacent read supports only git-backed files), M6 (SQLite's derived-only role, where the read
+   254	  establishes only that FTS5 exists), M8 (private-store persistence), M22 (the human-readability refusal), and
+   255	  M24 (write cadence). None of the model-knowledge labels was upgraded.
+   256	- **But the read basis is mostly second-hand.** 13 of the 19 read-backed rows rest on claude's reading of the
+   257	  project's own research report (`docs/research/20261011-agent-memory-graph-r2/REPORT.md` and
+   258	  `FINDINGS-s4-retrieval-consolidation.md`), which claude itself says restates `INDEX.md` and "says no number in
+   259	  it was independently re-run". Those rows are "an engine read a real file"; they are not primary evidence, and
+   260	  where claude gives two conflicting rows (C10/C11, C13/C14, C15/C16, C17/C18, C26/C27) **both are kept here and
+   261	  neither is chosen**.
+   262	- **Which engines read real material at all.** **claude** read local material: `~/CLAUDE.md`, the project
+   263	  `CLAUDE.md`, the Claude Code `MEMORY.md` index, the project's `REPORT.md` and one findings file — and said
+   264	  once that it did not use web search. **codex** read primary sources: git-scm.com, sqlite.org/fts5,
+   265	  developers.openai.com (retrieval guide and skills/prompts post), code.claude.com/docs/en/memory,
+   266	  opencode.ai/docs/rules, learn.chatgpt.com AGENTS.md, arxiv.org/abs/2307.03172, cognitect.com ADR essay, plus
+   267	  local files (`CLAUDE.md`, the requirement-check skill). **opencode read nothing**: all 7 of its claims are
+   268	  labelled `model knowledge`, it has no `read:` row, and it did not state (as the brief required) that it had no
+   269	  web access. It also states a number it did not read — "Does this fit in 64k tokens?" — contrary to the brief's
+   270	  evidence standard.
+   271	- **opencode is thin and partly off-brief, and is used accordingly.** 7 claims against codex's 26 and claude's
+   272	  36; zero sources; it never addresses the cross-agent instruction file at all, although the brief names
+   273	  several agents and asks for a generic project; it reports "Confidence: High" from model knowledge alone. Its
+   274	  contribution here is therefore a third opinion on **shape** (markdown primary, append-only supersession,
+   275	  human-readable, refuse stores without a felt need) plus the two genuine disagreements CP1 and CP2 — not
+   276	  evidence.
+   277	- **Shared blind spots.** No engine produced an operational definition of "work well" (codex flags that it
+   278	  "fails weak-words and can-it-fail checks" and leaves it open); no engine ran memory-with against
+   279	  memory-without on a real project; the index size cap, the age threshold and the write-trigger set are the
+   280	  owner's to set and no engine would invent them; and agreement between claude and codex is partly agreement
+   281	  between one secondary report and one set of vendor docs reasoning, not two independent measurements.
+   282	
+   283	## Digest
+   284	
+   285	- **Answer.** Git-versioned markdown with typed, dated, evidence-bearing entries and explicit supersession is
+   286	  the source of truth; a generated index plus the task state file are the only start-up reads; SQLite/FTS,
+   287	  vector and code-graph stores are gitignored derived caches; no store, DB, context window or private agent
+   288	  memory is authoritative.
+   289	- **Confidence.** Medium in the shape (19 of 24 merged claims rest on a source an engine read); low in every
+   290	  number, because the strongest numbers come from the project's own secondary report.
+   291	- **Cautions.** Seven points are contested: SQLite's role, newest-wins, where memory lives, the shared session
+   292	  file, private-store persistence, the session-start read set, and write cadence. opencode read nothing and
+   293	  never answered the cross-agent instruction question.
+   294	- **Gaps.** "Work well" was never made operational; no with/without measurement; the index cap, age threshold
+   295	  and write triggers are left to the owner.
+   296	- **Decision it triggers.** Adopt the markdown-and-index baseline on one project, set the index cap, and run a
+   297	  with-memory against without-memory comparison on about a dozen recorded past tasks before any derived or
+   298	  additional store is adopted.
+
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/requirement-check/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+---
+name: requirement-check
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, unattributed or impossible to check.
+---
+
+# Requirement check
+
+A general standard (RFC 2119 / 8174), installed globally — not part of the Ancient Games framework. The
+worked failure in `meaningful-names` cites the Ancient Games as one example.
+
+A short gate between **hearing a rule** and **acting on it**. It exists because rules get written down that nobody
+can trace, that count two different things at once, or that nothing can ever fail — and the cost lands months later,
+when nobody can say whether the rule still means anything.
+
+Run it when someone states a rule, and run it on yourself before writing a normative line into any document.
+
+## The eight questions
+
+Ask them of **one statement**. Say which it passes and which it fails, then **ask the person about the failures** —
+do not fill the gaps yourself.
+
+1. **Source.** Who said this, and where? Can you point to the exact line? *"Mine"* is a valid answer. Unlabelled is
+   not.
+2. **One thing.** An "and", an "or", a "/", or a second number means it is **two** statements. Split them, and give
+   each its own source.
+3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
+   files?
+4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
+   failing inputs. If you cannot name one, it is not checkable — it is a wish.
+5. **Weak words.** *like, about, appropriate, as needed, logical, fast, enough, reasonable, only has to, TBD.* Replace
+   each with a value, **or mark the value open**. Never invent the number.
+6. **Level.** Is it **MUST** (a gate that stops work), **SHOULD** (a default that may be overridden with a stated
+   reason), or **guidance**? A safety bound earns MUST. **A method does not** — see the RFC note below.
+7. **Basis.** Measured, quoted from a source, or a guess? A guess is fine **if it is labelled** — `n=0`, with when it
+   will be looked at again.
+8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
+   part"*? The person probably did not say that. **A link is its own claim and needs its own source.**
+
+## Two rules for the agent
+
+- **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
+  is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
+  the time anyone notices.
+- **Never add structure that was not given.** No halves, no numbered reasons, no ordered pairs, no named phases,
+  unless the person said so. Quote them, state the operative sentence, stop. If a relationship between two rules is
+  wanted, that is a separate claim with its own evidence.
+
+## Two verified facts, worth quoting
+
+- **RFC 2119 §6, "Guidance in the use of these Imperatives":** imperatives *"must be used with care and sparingly…
+  they MUST only be used where it is actually required… they must not be used to try to impose a particular method."*
+  Most design rules are method. Method does not earn MUST.
+- **RFC 8174 (updates 2119):** the key words *"have the meanings specified herein only when they are in all
+  capitals."* Lowercase *must* and *should* carry no defined requirement meaning. If nothing marks which lines are
+  requirements, a reader cannot tell rules from explanation.
+
+## How to answer
+
+Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
+one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+
+Do not report a rule as complete when you chose its missing value. Say which values you left open.
+
+## A worked failure
+
+> *"At most 5 subagent roles per run and at most 3 running at once."*
+
+Four of the eight fail: **Source** — nobody could name one; **One thing** — a count of roles *and* a count of
+concurrent processes; **Unit** — two different units, one word ("subagent") used for both; **Level** — a method
+preference written as a cap. The sentence would not parse, and it took four days to find out why. The checklist
+catches it in thirty seconds.
+
+The same checklist, run on *"No single call runs longer than the ceiling: 8 hours"*, passes all eight — because it
+names who set it, counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail.
+
+## Limits
+
+The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
+feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
+and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
+paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
+quotes are checked. Treat the rest as a good working list, not as a citation.
+
+Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.
+
+codex
+I’m using the requirement-check skill to check provenance and unspecified values within your six-item checklist. All eight answers are present; I’m now checking the citations and who owns later changes.
+
+exec
+/bin/bash -lc "nl -ba runs/20261011-project-memory-engines/RECOMMENDATION.md | sed -n '68,172p'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+    68	**CP2 — Contradiction resolution: newest-wins vs disputed-and-escalate.**
+    69	- **opencode:** "On read, agent should check for `## Superseded` / `## Stale` markers and **prefer the newest non-stale entry**." Basis: **model knowledge** (C7, staleness section).
+    70	- **claude and codex:** newest does not win. claude: "**Why not newest wins.** Graphiti's 'new wins' is write-time and LLM-driven"; both entries become `contested`, the next agent adjudicates against code and tests, a human decides if code cannot. Basis: **read: FINDINGS-s4 F15, F16** — a deterministic latest-wins pipeline scored far above the stores on MemoryAgentBench single-hop (78.0%/94.8% vs Zep 7.0%, Mem0 18.0%) but only tied LLM judgment on LongMemEval knowledge-update (57.8% vs 64.4%, n=45); claude gives both rows and refuses to pick. codex: "Recent timestamps, majority votes and clean Git merges are insufficient to select a winner." Basis: **model knowledge** (C22).
+    71	- **unresolved.** No engine ran read-time newest-wins against disputed-and-escalate on real coding tasks. What would settle it: replay both rules over a recorded set of contradicting entries and count how often newest-wins selects the entry that a later code change or a maintainer confirms.
+    72	
+    73	**CP3 — Where the memory tree lives.**
+    74	- **opencode:** `.ai/`, **isolated from human docs** — "keeps AI memory isolated from human docs". Basis: **model knowledge**.
+    75	- **codex:** under the project's **existing `docs/`** — `docs/memory/`, `docs/decisions/`, `docs/work/` — and "reuse existing project documentation rather than copying it into memory"; memory links to already-authoritative requirements and architecture. Basis: **model knowledge** (C13).
+    76	- **claude:** a dedicated committed **`memory/` tree** at the repo root (`INDEX.md`, `entries/`, `state/`, `journal/`). Basis: partly **read: REPORT.md s1-F7/F8** (Letta's layout: root files load every turn, directories with their own `MEMORY.md` stay out of context), partly design.
+    77	- **unresolved.** This is a convention question, and the three files contain no evidence about a real project's docs. What would settle it: an inventory of one project's existing docs — if `docs/` already holds authoritative requirements and architecture, codex's linking placement wins; if writing agent memory there would pollute human docs, opencode's isolation wins; claude's separate committed tree is a third option.
+    78	
+    79	**CP4 — One shared per-day session file vs per-writer files.**
+    80	- **opencode:** `sessions/YYYY-MM-DD.md`, append-only, one file per day, all agents appending. Basis: **model knowledge** (layout and write table).
+    81	- **claude and codex:** one writer per file. claude: "Different file per session and per claim… No two agents edit one file", and per-session files "avoid git merge conflicts that a single shared append file causes" (**model knowledge**, C35). codex refuses "Parallel agents appending to one shared journal" — "overlapping writes and leaves integration implicit" — and notes that "Git merges do not establish semantic agreement". Basis: **read: https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging**.
+    82	- **unresolved.** No engine measured conflict rates. What would settle it: run several agents concurrently on one repo with a shared append file and with per-writer files, and count merge conflicts, lost appends and time spent integrating.
+    83	
+    84	**CP5 — Whether an agent's private store may persist between sessions.**
+    85	- **codex:** yes — "allow for personal continuity; refuse as a project dependency"; private memory "may suggest where to look", and useful knowledge is promoted into the repo. Basis: **read: https://code.claude.com/docs/en/memory#storage-location** plus **model knowledge**.
+    86	- **opencode:** no — the private store "should be ephemeral — no persistent memory between sessions"; cross-session state "should be explicit in project memory, not hidden in agent internals". Basis: **model knowledge** (C6).
+    87	- **claude** is silent on whether it should persist: it records that each agent keeps a private store with no shared schema (C32, **model knowledge**; C31, **read:** the local `MEMORY.md` index), and rules only that a fact existing only there "does not count as memory".
+    88	- **unresolved.** No evidence on whether private persistence helps continuity or hides state other agents need. What would settle it: an A/B where one agent keeps private notes and another does not, measuring whether the notes change actions and whether they duplicate what is in the repo.
+    89	
+    90	**CP6 — What is read automatically at session start.**
+    91	- **opencode:** `context.md`, active tickets from `state.sqlite`, **and "Recent `sessions/` (last 3)"** for continuity. Basis: **model knowledge**.
+    92	- **claude and codex:** instructions, the index, and the assigned task's state only. claude: `AGENTS.md`, `INDEX.md`, the `state/claims/` listing, the newest handoff — and "**Never load.** `journal/`". codex: instructions, `docs/memory/INDEX.md`, the task's `state.md`; "Do not bulk-load transcripts, completed-task journals, every decision or an entire search index at startup." Basis: codex **read: OpenAI guidance on skills and prompts** plus **model knowledge**; claude's read rules are design.
+    93	- **unresolved.** No engine measured whether three prior session summaries improve the first action more than they cost in tokens and distraction. What would settle it: a with/without comparison on recorded tasks scoring first-action correctness and start-up tokens.
+    94	
+    95	**CP7 — Whether a memory write is obligatory every session.**
+    96	- **opencode:** yes — "Session end | agent | Write summary to `sessions/YYYY-MM-DD.md` | Yes". Basis: **model knowledge**.
+    97	- **codex:** no — "Do not require a memory write after every session. Write when there is something another session needs to know", and it refuses "a complete transcript archive as routine memory". Basis: **model knowledge** (C14).
+    98	- **claude** sits between: writes are at task end and "Not every turn", but it does permit per-session `journal/` and `handoff/` appends; the raw-capture read (C9) supports keeping raw material cheap.
+    99	- **unresolved.** This is a work-practice question the three files cannot settle. What would settle it: measure, over many sessions, how often a mandatory session summary is later read or cited — if it is rarely read, codex's rule wins; if it prevents repeated mistakes, opencode's does.
+   100	
+   101	**A separate, narrow note (not a claim conflict).** claude's C25 concludes from its read material — LoCoMo's key has 6.4% score-corrupting errors, and swapping only the grading prompt moved one system from 0.9013 to 0.4803 — that "published accuracy numbers cannot choose a project-memory design". codex reaches a related caution from a different source (C12, Liu et al., position-sensitive retrieval) but bounds it: "That establishes a historical failure mode, not a performance result for today's coding agents." The two do not disagree; codex's is the narrower claim.
+   102	
+   103	## Substrates
+   104	
+   105	| substrate | merged answer | reason | engines |
+   106	|---|---|---|---|
+   107	| Markdown files | **USE — source of truth** | Human-readable, diff-reviewable, rebuildable, no service. Every engine's primary substrate (M1, M22). The ranking itself is model knowledge; only the git-backed property is read (claude, REPORT.md s1-F7/F8). | claude, codex, opencode |
+   108	| SQLite | **CONDITIONAL — derived, gitignored, rebuildable only; never authoritative** (majority). opencode dissents (CP1) | Codex: "allow as an optional derived index; refuse as the default authoritative memory"; absence must not prevent reading memory. claude: `.cache/`, rebuilt from the tree. opencode would use it as the structured state store. | claude, codex (opencode contested) |
+   109	| Vector index | **REFUSE as the store; CONDITIONAL as a rebuildable derived index, only if the project's own queries justify it** | Similarity does not establish that a statement is current, accepted or true (codex, model knowledge); the one directly comparable read found relevance recall and token cost "largely equivalent" to a KG (claude, read REPORT.md s3-F34). | claude, codex, opencode |
+   110	| Graph store | **REFUSE as the store; CONDITIONAL as a derived code map generated per commit** | No demonstrated generic need for a relationship model; supersession is available as frontmatter links; graph evidence is split and a live graph has a resident-context cost and can drift silently (claude, read REPORT.md s3 group). | claude, codex, opencode |
+   111	| Context window | **USE for the current task only; REFUSE as durable memory** | Fresh context at session start; recovery must be possible from project artifacts without the previous conversation (codex, read Claude Code memory docs). | claude, codex, opencode |
+   112	| Each agent's private session store | **REFUSE as a project dependency; allow private notes but promote anything others need into the repo** (persistence itself is CP5) | It is machine-local and invisible to other agents; a fact that exists only there does not count as project memory (codex read storage location; claude C31/C32; opencode C6). | claude, codex, opencode |
+   113	
+   114	## Layout
+   115	
+   116	One committed memory tree. The placement of that tree is CP3 (claude `memory/`; codex under `docs/`; opencode
+   117	`.ai/`). The merged default shown here uses claude's typed-entry shape and codex's per-task shape, with the
+   118	generated index both propose.
+   119	
+   120	```
+   121	AGENTS.md                  canonical standing instructions: commands, constraints, memory read/write protocol, links.
+   122	CLAUDE.md                  thin adapter / symlink importing AGENTS.md — no independently maintained policy copy.
+   123	memory/
+   124	  INDEX.md                 GENERATED, one line per active entry: id · kind · title · covers · status flag.
+   125	                           Never hand-edited. The only whole-file memory load at session start.
+   126	  entries/
+   127	    D-0007-<slug>.md       decision + why: context, choice, consequences, acceptance reference, replacement links.
+   128	    F-0012-<slug>.md       sourced observation / verified pitfall not derivable from code, tests or git history.
+   129	    L-0003-<slug>.md       lesson from a failure or a human correction.
+   130	    R-0002-<slug>.md       runbook; prefer a script, the entry only points at it.
+   131	  work/<task-id>/
+   132	    state.md               current handoff: objective, owner, branch/base revision, done, outstanding, checks, next action.
+   133	    events/<event-id>.md   writer-specific historical record: a discovery, a failed approach, a handoff.
+   134	    evidence/              sanitized evidence not recoverable from code, commits, tests or linked artifacts.
+   135	  journal/<date>-<agent>-<session>.md   append-only raw notes; never auto-loaded.
+   136	  .cache/ (gitignored)     optional derived SQLite/FTS and a repo map, rebuilt from the tree at the current commit.
+   137	docs/ ...                  the project's existing requirements, architecture and runbooks; memory links here, does not copy.
+   138	```
+   139	
+   140	Entry metadata (union of claude's frontmatter and codex's block; use applicable fields): `id`, `kind`
+   141	(decision | fact | lesson | runbook | observation | hypothesis), `status`
+   142	(proposed | active | contested | stale | disputed | superseded | retired), `author`, `recorded_at`,
+   143	`observed_at` / `verified_at` (plus the git revision verified against), `covers` (paths or symbols),
+   144	`source` / `evidence`, `depends_on`, `supersedes`, `superseded_by`. Body: the claim in one or two sentences,
+   145	then **Why:**, then **How to apply:**.
+   146	
+   147	## Write rules
+   148	
+   149	- **Triggers (write):** a decision whose reason is not visible in code; a non-obvious constraint or verified
+   150	  pitfall that cost more than one attempt; a human correction; a checkpoint of unfinished work before a
+   151	  handoff, interruption or context reduction, recording exact remaining work and actual verification results,
+   152	  including failures (claude, codex; opencode adds a decision and a session summary — CP7 for the summary).
+   153	- **Do not write:** anything derivable from code, tests or git history; credentials or sensitive data;
+   154	  speculative explanations unlabelled (label them `hypothesis`); bulk transcripts; another agent's private
+   155	  state. Do not turn "implemented" into "verified".
+   156	- **When:** at discovery or correction, or at task end, in the same commit or PR as the change that motivated
+   157	  the entry. Not every turn; not as a standing per-session obligation (CP7).
+   158	- **Who (agents):** append `journal/` and a handoff; create entries as `proposed` with `evidence:` mandatory;
+   159	  update the authoritative document that a change invalidates, in the same review; flag `stale` or `contested`
+   160	  with evidence; claim a task by creating a claim file.
+   161	- **Who (humans):** accept `proposed` → `active` (review of the diff is the merge gate); accept significant
+   162	  decisions and policy; resolve `contested` when code cannot; retire entries; set the index cap and the age
+   163	  threshold. (claude, codex; opencode's write table has agents authoring decisions with no acceptance step —
+   164	  recorded as a gap, not as a merged rule.)
+   165	- **Append-only:** `journal/`, `work/<task-id>/events/`, evidence, git history, and an accepted decision's body
+   166	  (after acceptance only `status`, `verified_at` and `superseded_by` may change; to change the claim, write a
+   167	  new entry). Sensitive material is redacted despite the historical policy.
+   168	- **Mutable, but by diff:** `INDEX.md` (generated), current summaries, and fact/lesson bodies.
+   169	- **Concurrency:** different file per session and per claim, one writer per file; no two agents edit one file
+   170	  (CP4 — opencode's shared per-day file is the dissent).
+   171	- **Never** store project knowledge only in an agent's private memory and call it memory.
+   172	
+
+codex
+1. COVERAGE: PASS — NONE
+2. GROUNDING: FAIL — SOURCE_OF_TRUTH-reviewcopy.md:15: M2/M7 support rebuilding repository memory, not “all project knowledge”; the claim that knowledge is lost between sessions is an unlabelled addition. SOURCE_OF_TRUTH-reviewcopy.md:23: “Write rules” supports the exclusion of code-derived material, but the six entry kinds come from “Layout.” SOURCE_OF_TRUTH-reviewcopy.md:31: M16 concerns deterministic staleness checks; the no-deletion rule is M13. SOURCE_OF_TRUTH-reviewcopy.md:45: M18 prohibits automatic loading, not all loading of full session history.
+3. NO INVENTED VALUES: PASS — NONE
+4. OWNERSHIP: FAIL — SOURCE_OF_TRUTH-reviewcopy.md:19,27: Agents create entries and humans accept them, but permission to revise entry bodies, evidence, verification metadata and dependency/supersession links afterwards is unspecified. SOURCE_OF_TRUTH-reviewcopy.md:35: No writer or subsequent change authority is named for AGENTS.md, CLAUDE.md, task state, events, journal notes or derived caches; INDEX.md is “generated,” but its generator and maintenance authority are unnamed.
+5. CONSISTENCY: FAIL — SOURCE_OF_TRUTH-reviewcopy.md:27 requires every entry to carry the complete metadata list, whereas RECOMMENDATION.md:140 says “use applicable fields.” SOURCE_OF_TRUTH-reviewcopy.md:35,41 operationally specifies root memory/ paths while SOURCE_OF_TRUTH-reviewcopy.md:9–10,37 leaves placement OPEN. SOURCE_OF_TRUTH-reviewcopy.md:45 strengthens RECOMMENDATION.md:47’s prohibition on automatically loading full session history into an unconditional prohibition.
+6. GAPS:
+Who writes and who may subsequently change each artifact and each mutable entry field (SOURCE_OF_TRUTH-reviewcopy.md:19,27,35)?
+Which repository location will replace the OPEN placement choice (SOURCE_OF_TRUTH-reviewcopy.md:37)?
+What is the index cap, and what unit does it measure (SOURCE_OF_TRUTH-reviewcopy.md:45)?
+What age threshold will the human maintainer set (SOURCE_OF_TRUTH-reviewcopy.md:19)?
+How will code drift and unresolved contradictions be detected, flagged and resolved before an entry determines an action (SOURCE_OF_TRUTH-reviewcopy.md:27,41)?
+VERDICT: REPAIR — Ownership is incomplete: a builder cannot determine who may maintain several artifacts or revise accepted entries.
+tokens used
+27,972

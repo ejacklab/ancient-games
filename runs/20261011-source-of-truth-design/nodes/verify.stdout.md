@@ -1,0 +1,6 @@
+1. PASS — Lines 3, 7, 11, 15, 19, 23, 29 and 33 give the eight questions in order. The only other heading is the title at line 1. The `OPEN:` note at line 27 sits inside the "Where" section, so it is not an extra section.
+2. PASS — I found no mismatched citation. M3 (line 5), M13 (line 21) and M18/M19 (line 35) match the support table. M11 and M12 match their rows. The "Read rules" and "Write rules" cites match RECOMMENDATION.md:175-190 and 149-171. CP3 at line 25 matches RECOMMENDATION.md:73-77.
+3. FAIL — Line 35 gives a number the source does not. RECOMMENDATION.md:188-190 says the cap has "no number" and is left to the owner. Everything else the design leaves open is marked `OPEN:` or deferred to the owner (lines 9, 25, 27).
+4. PASS — Line 35: "The index must stay under 500 entries; the check script fails the build if it does not (Read rules)." RECOMMENDATION.md:188-190 says the index must stay under a cap, and "The merged answer gives **no number**". It adds that the cap is the owner's to set, and line 163 repeats that humans set the index cap.
+ALTERED: line 35 — "under 500 entries"
+VERDICT: REPAIR — Replace "500 entries" with `OPEN:` on the index cap, since the recommendation gives no number and the owner sets it.
