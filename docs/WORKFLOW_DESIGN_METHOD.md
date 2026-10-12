@@ -33,7 +33,8 @@ vague one ("improve performance") cannot slip through as tiny.
 
 ### 3.0 Understand the challenge — before anything
 
-From the challenge text alone — no tools, no agents, no repository browsing — state three things:
+From the challenge text alone — no tools, no agents, no repository browsing except opening the vision and
+requirement files the last step names — state three things:
 
 - the **objective**: what is true when the task is done;
 - **in scope**: what the task touches;
@@ -60,11 +61,33 @@ decision, 3.3): a question for EJ with the restatement as the provisional assump
 added: a prompt file's restatement stands on its provisional assumption like any decision, and a design's
 question batch reaches EJ before anything runs.
 
+#### Then: the vision and requirements the task serves (every task except a tiny one)
+
+A task that is not tiny (§2) names the vision and requirements it serves before any research, design or build
+starts. This includes research, design and documentation tasks: they have a target too, even when they change no
+product.
+
+- **Vision**: what the result is for and who uses it. It is EJ's: cite the file, or quote EJ's own words from the
+  conversation. An agent never writes the vision. If there is none, that is a question for EJ.
+- **Requirements**: what the result must do, each with an acceptance criterion that some input can fail. If they
+  exist, cite them. If they are missing or incomplete, the agent drafts them from the vision and from what EJ has
+  said, marks them *draft*, and puts them to EJ with the restatement.
+
+**Work does not start until EJ confirms the requirements.** This question is not answered by silence (as in the
+blueprint check, 3.1).
+
+Then read the restatement against them. Where the objective, the scope or a why disagrees with the vision or a
+requirement, rewrite it and say what changed.
+
+*Basis:* EJ, 2026-10-12, n=1. In run `20261012-memory-caches` the first caches design was framed without a vision,
+and EJ had to correct its scope. The runs after the vision and R1–R8 existed (`20261012-caches-routing`,
+`20261012-caches-merge`) had a fixed target for every check.
+
 The restatement, the why-answers and the provisional category go at the top of the output, beside the verbatim challenge in
 the state file, so EJ sees and can correct what the run understood before tokens are spent.
 
 Cost guard (trial 1, 3.4): this step is one paragraph and six short answers in the same session, never an
-agent, never a tool call. On a tiny task it is the prompt file's first lines, so the cheap path stays cheap.
+agent, never a tool call, apart from opening the vision and requirement files. On a tiny task it is the prompt file's first lines, so the cheap path stays cheap.
 
 ### 3.1 Readiness — always first
 
@@ -128,7 +151,7 @@ feature.
 
 | Kind of task | Sections needed |
 |---|---|
-| Not a product change (research, a question, an analysis, an edit to documentation only) | none; record why, and the check ends here. It carries no acceptance criteria |
+| Not a product change (research, a question, an analysis, an edit to documentation only) | none of the blueprint sections; its vision and requirements were settled in 3.0 |
 | Fix: restores behaviour the requirements already describe (if they do not describe it, it is a feature) | the requirement it restores, and the sections the fix touches |
 | Feature: adds or changes behaviour | vision, requirements, and every section the feature changes |
 | New product | all eight present; four settled before anything builds — vision, the first slice's requirements, the hard-to-reverse architecture choices as short decision records, the non-functional targets with runnable checks; the other four settled for the slice only, unknowns marked |

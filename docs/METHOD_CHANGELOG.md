@@ -27,6 +27,8 @@ verbatim from the text they replaced.
 - 2026-10-05 — 3.7: concurrency "name the unit" (EJ: *"how many running in parallel is even more weird"*); the table moved to Appendix C on 2026-10-08.
 - 2026-10-11 — Appendix A: `accepted` defined as *traceable and internally consistent*, not *true*, and added to the word list on line 11 (EJ: *"please add these to your memory"*, after the agent-memory run was reported as accepted when the item-6 check was a script the COO wrote and the different-kind verifiers had not run); n=1. The three presentation rules that came with it live in `CLAUDE.md`, with their own basis.
 
+- 2026-10-12 — 3.0: the vision and requirements a task serves, named at the end of 3.0 for every task except a tiny one (research, design and documentation included); requirements drafted by the agent when missing, and work does not start until EJ confirms them (EJ: *"I notice you perform better when I give you a vision and requirements"*; then *"b, apply to every task except tiny ones"*); n=1 (runs `20261012-memory-caches`, `-caches-routing`, `-caches-merge`).
+
 ## Removed or changed
 
 - 2026-09-20 — 3.4, first bullet changed after trial 1, where three decisions with obvious defaults helped push a one-line fix out of "small" (n=1): a spot of kind information or unknown always means a workflow design.
@@ -43,3 +45,5 @@ verbatim from the text they replaced.
 
 - 2026-10-08 — Optimization pass (`runs/20261008-optimize/`): the provenance tags above taken out of the method's text; the glossary, the memory-kinds table and the concurrency table moved to the method's Appendix; §3.8's twelve items compressed to one line each (numbers kept, because code and docs cite them); duplicated definitions merged (baseline → 3.1, "not answered by silence" → 3.1, tiny test → §2, tier escalation → 3.5 item 4); §5 collapsed to pointers. The matching `SKILL.md` change (a summary that links to the method instead of a second
   copy) is proposed in `runs/20261008-optimize/SKILL.proposed.md` and not yet applied.
+- 2026-10-12 — 3.0, first line: *"From the challenge text alone — no tools, no agents, no repository browsing — state three things"* now allows opening the vision and requirement files the new last step names; the cost guard gained the same exception (EJ, with the vision-and-requirements step above).
+- 2026-10-12 — 3.1, blueprint table, row *Not a product change*: *"none; record why, and the check ends here. It carries no acceptance criteria"* replaced by *"none of the blueprint sections; its vision and requirements were settled in 3.0"* (EJ: the step applies to every task except a tiny one).
