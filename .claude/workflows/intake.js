@@ -1,7 +1,7 @@
 export const meta = {
   name: 'intake',
   description: 'Take one incoming challenge through the workflow design method and produce a prompt file (small task) or a workflow design (bigger task). Designs only; executes nothing.',
-  whenToUse: 'When a challenge arrives and it is not obvious whether it needs a workflow. args: {challenge: "<text>", runId: "<YYYYMMDD-slug>"}. Writes only under runs/<runId>/. Skip it when the problem, the fix and the check are one sentence each.',
+  whenToUse: 'When a challenge arrives and it is not obvious whether it needs a workflow. args: {challenge: "<text>", runId: "<YYYYMMDD-slug>", requirementsConfirmed?: true}. Writes only under runs/<runId>/. A run whose requirements are only a draft stops after step 1 with status awaiting_ej; re-run with requirementsConfirmed: true once EJ confirms them. Skip it when the problem, the fix and the check are one sentence each.',
   phases: [
     { title: 'Readiness', detail: 'create the state file; list tools, skills and information, and what is missing; check the product blueprint' },
     { title: 'Algorithm', detail: 'write the steps with their checks; list every unclear spot; judge risk' },
@@ -19,6 +19,8 @@ export const meta = {
 const opts = typeof args === 'string' ? { challenge: args } : (args || {})
 const CHALLENGE = typeof opts.challenge === 'string' ? opts.challenge.trim() : ''
 const RUN_ID = typeof opts.runId === 'string' ? opts.runId.trim() : ''
+// EJ's confirmation of draft requirements (method 3.0, the vision step). The script cannot read files, so it comes in args.
+const REQUIREMENTS_CONFIRMED = opts.requirementsConfirmed === true
 if (!CHALLENGE) return { status: 'error', reason: 'args.challenge is missing. Pass {challenge: "<text>", runId: "<YYYYMMDD-slug>"}.' }
 if (!/^[0-9]{8}-[a-z0-9][a-z0-9-]*$/.test(RUN_ID)) return { status: 'error', reason: 'args.runId must look like 20260920-short-name (the script cannot read the clock).' }
 
@@ -65,6 +67,29 @@ const READY_SCHEMA = {
       },
       required: ['objective', 'in_scope', 'out_of_scope', 'provisional_category'],
     },
+    vision: {
+      type: 'object',
+      description: 'method 3.0, the vision step: what the result is for. It is EJ\'s: a file path, or EJ\'s own words quoted from the challenge',
+      properties: { source: { type: 'string', description: 'a file path or EJ\'s quoted words; empty only if there is none, and then a missing item with effect "ask EJ" asks for it' } },
+      required: ['source'],
+    },
+    requirements: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['confirmed', 'draft'], description: 'confirmed = a file says EJ accepted them; draft = anything else, including requirements you drafted' },
+        source: { type: 'string', description: 'the file they come from, or "drafted by the agent"' },
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { id: { type: 'string' }, criterion: { type: 'string', description: 'an acceptance criterion that some input can fail' } },
+            required: ['id', 'criterion'],
+          },
+        },
+      },
+      required: ['status', 'source', 'items'],
+    },
+    restatement_changes: { type: 'string', description: 'what you changed in the restatement after reading it against the vision and requirements; "none" if nothing' },
     state_file: { type: 'string' },
     readiness_file: { type: 'string' },
     tools_checked: { type: 'integer', description: 'how many tools you actually ran a command for' },
@@ -101,7 +126,7 @@ const READY_SCHEMA = {
       required: ['task_kind', 'reason', 'map', 'sections'],
     },
   },
-  required: ['state_file', 'readiness_file', 'tools_checked', 'missing', 'blueprint', 'restatement'],
+  required: ['state_file', 'readiness_file', 'tools_checked', 'missing', 'blueprint', 'restatement', 'vision', 'requirements', 'restatement_changes'],
 }
 
 const ALGO_SCHEMA = {
@@ -332,6 +357,22 @@ function checkRestatement(ready) {
   return f
 }
 
+// Method 3.0, the vision step: name the vision and requirements the task serves; work does not start until EJ confirms
+// the requirements. Intake is for tasks that are not tiny (its whenToUse says to skip it otherwise), so it always applies.
+function checkVision(ready) {
+  const f = []
+  const askedForVision = (ready.missing || []).some(m => m.effect === 'ask EJ' && /vision/i.test(m.item || ''))
+  if (!ready.vision || (!has(ready.vision.source) && !askedForVision)) f.push('vision: no source is given, and no "ask EJ" item asks for it')
+  const req = ready.requirements
+  if (!req) return f.concat(['requirements: readiness did not report them'])
+  const items = req.items || []
+  if (!items.length) f.push('requirements: none are listed')
+  for (const it of items) if (!has(it.criterion)) f.push(`requirements: ${it.id || '(no id)'} has no acceptance criterion`)
+  if (req.status === 'confirmed' && /drafted by the agent/i.test(req.source || '')) f.push('requirements: marked confirmed, but drafted by the agent; only EJ confirms')
+  if (!has(ready.restatement_changes)) f.push('restatement: restatement_changes is empty (write "none" if nothing changed)')
+  return f
+}
+
 function checkBlueprint(bp) {
   const f = []
   if (!bp) return ['blueprint: readiness did not report the blueprint check']
@@ -543,12 +584,20 @@ const feedbackBlock = failed => failed.length
 const readyPrompt = failed => failed.length ? `${COMMON}
 STEP 1, REPAIR — your first attempt at intake, readiness and the blueprint check failed the checks listed below.
 ${RUN_DIR}/state.md and ${RUN_DIR}/readiness.md already exist. Do not take a new baseline, do not recreate either file,
-and do not add a second log line for step 1. Fix only the failed items, in the restatement and Blueprint sections of readiness.md and
+and do not add a second log line for step 1. Fix only the failed items, in the restatement, vision and requirements, and Blueprint sections of readiness.md and
 state.md, and return all of your data again with the fixes (method 3.1; layout docs/workflow-templates/blueprint.md).
 ${feedbackBlock(failed)}` : `${COMMON}
 STEP 1 — intake, readiness and the blueprint check.
 0. From the challenge text alone, restate its objective, in scope, out of scope and provisional category (method 3.0)
    before readiness checks or creating any file. Return these four strings in restatement.
+0b. The vision step (method 3.0, end): name the vision and the requirements this task serves.
+   - vision.source: the file that holds the vision, or EJ's own words quoted from the challenge. Never write a vision
+     yourself. If there is none, leave it empty and add a missing item "vision" with effect "ask EJ".
+   - requirements: cite them from a file if they exist (status "confirmed" only if the file says EJ accepted them).
+     Otherwise draft them from the vision and from what EJ said: each with an id (R1, R1.1, …) and an acceptance
+     criterion that some input can fail; source "drafted by the agent"; status "draft".
+   - Read the restatement from 0 against them; rewrite what disagrees and say what changed in restatement_changes
+     ("none" if nothing). Put the vision and the requirements in readiness.md and in state.md beside the restatement.
 1. BEFORE creating anything, take the two "before" records, and do not confuse them — they answer different
    questions (corrected 2026-10-05, register 7.2):
    a. the **pre-run working state**, ONLY IF the product is a git repository: \`git rev-parse --is-inside-work-tree\`
@@ -681,11 +730,21 @@ let ready = null, failed = []
 for (let n = 1; n <= MAX_ATTEMPTS; n++) {
   ready = await run(readyPrompt(failed), { label: `1-readiness#${n}`, phase: 'Readiness', schema: READY_SCHEMA, model: 'sonnet' })
   if (!ready) return fail(1, 'The readiness agent returned nothing.')
-  failed = checkRestatement(ready).concat(checkBlueprint(ready.blueprint))
+  failed = checkRestatement(ready).concat(checkVision(ready), checkBlueprint(ready.blueprint))
   if (!failed.length) break
   log(`Readiness attempt ${n}/${MAX_ATTEMPTS}: ${failed.length} blueprint check(s) failed`)
 }
 if (failed.length) return { status: 'unverified', step: 1, run_dir: RUN_DIR, failed_items: failed, agents_used: agentsUsed }
+// Method 3.0: work does not start until EJ confirms the requirements; silence is not a confirmation.
+if (ready.requirements.status === 'draft' && !REQUIREMENTS_CONFIRMED) {
+  return {
+    status: 'awaiting_ej', step: 1, run_dir: RUN_DIR,
+    vision: ready.vision, requirements: ready.requirements, restatement: ready.restatement, restatement_changes: ready.restatement_changes,
+    question_for_ej: 'Confirm these requirements as written, or correct them. Then re-run intake with requirementsConfirmed: true.',
+    agents_used: agentsUsed,
+  }
+}
+if (ready.requirements.status === 'draft') log('Requirements: draft, confirmed by EJ through args.requirementsConfirmed')
 const bp = ready.blueprint
 if (ready.missing.length) log(`Readiness: ${ready.missing.length} item(s) missing or unverified`)
 const notSettled = unsettledSections(bp)

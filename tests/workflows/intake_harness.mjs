@@ -18,7 +18,9 @@ const clone = x => JSON.parse(JSON.stringify(x))
 
 const NO_BLUEPRINT = { task_kind: 'not a product change', reason: 'a question about the repo', map: '', sections: [] }
 const RESTATEMENT = { objective: 'answer the harness challenge', in_scope: 'design the workflow', out_of_scope: 'execute the workflow', provisional_category: 'others' }
-const READY = { state_file: `${RUN}/state.md`, readiness_file: `${RUN}/readiness.md`, tools_checked: 1, missing: [], restatement: RESTATEMENT, blueprint: NO_BLUEPRINT }
+const VISION = { source: 'docs/vision.md' }
+const REQS = { status: 'confirmed', source: 'docs/requirements.md', items: [{ id: 'R1', criterion: 'an empty input is refused' }] }
+const READY = { state_file: `${RUN}/state.md`, readiness_file: `${RUN}/readiness.md`, tools_checked: 1, missing: [], restatement: RESTATEMENT, blueprint: NO_BLUEPRINT, vision: VISION, requirements: REQS, restatement_changes: 'none' }
 const VERDICT_OK = { check_file: `${RUN}/check.md`, items: ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8'].map(id => ({ id, pass: true, note: 'read' })) }
 const step = (id, extra) => ({ id, action: `do ${id}`, clear: true, check: `pytest -q -k ${id}`, check_kind: 'script', ...extra })
 
@@ -104,6 +106,27 @@ for (const field of Object.keys(RESTATEMENT)) {
   const ready = clone(READY); delete ready.restatement
   const { result, calls } = await runCase({ ...base, '1-': ready, '2-': ALGO_SMALL, '4-': PROMPT_OK })
   expect('sabotage readiness: missing restatement -> stops at step 1, named, 2 agents', result.status === 'unverified' && result.step === 1 && named(result, 'restatement: readiness did not report the 3.0 restatement') && calls.length === 2, JSON.stringify(result))
+}
+
+// Method 3.0, the vision step (R1-R4, EJ 2026-10-12).
+const stopsAtReadiness = (name, ready, text) => runCase({ ...base, '1-': ready, '2-': ALGO_SMALL, '4-': PROMPT_OK }).then(({ result, calls }) =>
+  expect(`vision step: ${name} -> stops at step 1, named, 2 agents`, result.status === 'unverified' && result.step === 1 && named(result, text) && calls.length === 2, JSON.stringify(result)))
+await stopsAtReadiness('R1.1 no vision source and no "ask EJ" item', { ...READY, vision: { source: '' } }, 'vision: no source is given')
+{
+  const ready = { ...READY, vision: { source: '' }, missing: [{ item: 'vision', effect: 'ask EJ' }] }
+  const { result } = await runCase({ ...base, '1-': ready, '2-': ALGO_SMALL, '4-': PROMPT_OK })
+  expect('vision step: no vision source but an "ask EJ" item -> passes readiness', result.status === 'verified', JSON.stringify(result))
+}
+await stopsAtReadiness('R2.1 no requirements listed', { ...READY, requirements: { ...REQS, items: [] } }, 'requirements: none are listed')
+await stopsAtReadiness('R2.1 a requirement with no criterion', { ...READY, requirements: { ...REQS, items: [{ id: 'R1', criterion: ' ' }] } }, 'requirements: R1 has no acceptance criterion')
+await stopsAtReadiness('R2.1 confirmed but drafted by the agent', { ...READY, requirements: { ...REQS, source: 'drafted by the agent' } }, 'only EJ confirms')
+await stopsAtReadiness('R4.1 empty restatement_changes', { ...READY, restatement_changes: '' }, 'restatement_changes is empty')
+{
+  const draft = { ...READY, requirements: { status: 'draft', source: 'drafted by the agent', items: [{ id: 'R1', criterion: 'an empty input is refused' }] } }
+  const { result, calls } = await runCase({ ...base, '1-': draft, '2-': ALGO_SMALL, '4-': PROMPT_OK })
+  expect('vision step: R3.1 draft requirements -> awaiting_ej after step 1, 1 agent', result.status === 'awaiting_ej' && result.step === 1 && calls.length === 1 && result.requirements.status === 'draft', JSON.stringify(result))
+  const confirmed = await runCase({ ...base, '1-': draft, '2-': ALGO_SMALL, '4-': PROMPT_OK }, { ...ARGS, requirementsConfirmed: true })
+  expect('vision step: R3 draft requirements confirmed by EJ through args -> verified, 4 agents', confirmed.result.status === 'verified' && confirmed.calls.length === 4, JSON.stringify(confirmed.result))
 }
 
 // Sabotage: each broken design must fail, and the failed item must be named.
