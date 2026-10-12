@@ -156,6 +156,18 @@ def test_untracked_matching_entry_is_an_error(tmp_path):
     assert (repo / INDEX).read_bytes() == SINGLE_INDEX
 
 
+@pytest.mark.parametrize("status", ["superseded", "retired"])
+def test_untracked_inactive_entry_is_an_error(tmp_path, status):
+    """B1.2 — an untracked inactive entry must still be named and rejected in write mode."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    write_entry(repo, "D-untracked.md", id="untracked", status=status)
+    result = run_index(repo)
+    assert result.returncode == 1, output(result)
+    assert "D-untracked.md: " in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
 @pytest.mark.parametrize("staged_only", [False, True])
 def test_write_reads_working_tree_for_git_known_entries(tmp_path, staged_only):
     """B1.2 — tracked and newly staged entries must use their current working-tree content."""
@@ -306,6 +318,8 @@ def test_inactive_content_problems_warn_without_blocking(tmp_path, status, raw, 
     repo = make_repo(tmp_path)
     stage_single_entry(repo)
     write_entry(repo, "D-old.md", raw=raw.format(status=status))
+    if mode == "write":
+        git(repo, "add", "--", str(ENTRIES / "D-old.md"))
     result = run_index(repo, *snapshot_args(repo, mode))
     assert result.returncode == 0, output(result)
     assert "D-old.md: " in output(result)
@@ -552,6 +566,15 @@ def test_check_accepts_valid_equal_snapshot(tmp_path, mode):
     result = run_index(repo, *snapshot_args(repo, mode))
     assert result.returncode == 0, output(result)
     size_numbers(result, SINGLE_INDEX)
+
+
+def test_check_rejects_nonexistent_revision(tmp_path):
+    """C1.2 — a revision that names no commit must fail instead of passing as an empty snapshot."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    git(repo, "commit", "-m", "Valid memory snapshot")
+    result = run_index(repo, "--check", "no-such-rev")
+    assert result.returncode == 1, output(result)
 
 
 @pytest.mark.parametrize("snapshot", ["no-memory-staged", "no-memory-commit", "unborn-head"])
