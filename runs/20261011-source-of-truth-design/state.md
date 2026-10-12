@@ -47,3 +47,32 @@ verified recommendation from run `20261011-project-memory-engines`.
   source, M11 vs R:140) and admitted its own earlier grounding PASS was lenient and self-authored.
 - 2026-10-11 three engines have now spoken: opencode wrote the design; codex and claude both say REPAIR. The design
   at `docs/memory-system/SOURCE_OF_TRUTH.md` is **not accepted**; the repair has not been run.
+- 2026-10-12 commit `2940b32` ("Simplify the source-of-truth memory design and record EJ's decisions"): Claude
+  revised the design together with EJ. Opencode did not, so the repair loop above was not run as such. The annotated
+  version, with a provenance block listing what changed, is
+  `runs/20261011-source-of-truth-design/DESIGN-detailed-2026-10-12.md`. Lines 8–11 of `SOURCE_OF_TRUTH.md` summarise
+  EJ's decisions (EJ, 2026-10-12): no owners and no human approval gate; decisions and facts come before the code; a
+  fact is a constraint the code must respect; the drift check covers decisions and facts only; a background subagent
+  keeps memory current. The split of what is written immediately and what later is in
+  `runs/20261012-memory-update-timing/notes.md`, where it is labelled "My reading — not in the sources".
+- 2026-10-12 commit `df09e06` ("Memory design: drop proposed/active, journal is read at milestones"), pushed to
+  origin/master. It removes the open question "who moves an entry from `proposed` to `active`". The commit's reason:
+  that step existed only for the approval gate EJ removed, so it was a leftover, not a real open question.
+  EJ, 2026-10-12: an agent reads `journal/` at each milestone and writes what is worth keeping as entries; `journal/`
+  is still never loaded at session start.
+- 2026-10-12 discussion only, the design did not change. EJ, 2026-10-12: task and project memory need a journal; user
+  and agent memory do not. The main session checked this against `docs/research/20261011-agent-memory-graph-r2/`
+  (s1-F19 EverMemOS, s1-F27 Agent Zero Memory, s1-F2). Its reading, not verified: the claim holds, but not because
+  user and agent memory have no episodes — the research says they keep an episodic layer. It holds because their raw
+  record already exists as private Claude Code transcripts that only one owner reads, while task and project memory
+  need a shared raw record in the repo, and reading another agent's transcripts is excluded
+  (`runs/20261011-project-memory-engines/RECOMMENDATION.md:187`). The design already matches the split: project
+  memory has `journal/`, task memory has `work/<task-id>/events/`.
+- 2026-10-12 four questions remain in the design's "Not decided yet (EJ decides)" list (line 78): which tool generates
+  `INDEX.md` and what runs it; how the script tells that the entry changed earlier than the code; who resolves a git
+  merge conflict; whether a changed decision is edited in place or superseded. The main session's reading: they are
+  build details or have obvious defaults. The `INDEX.md` size number (line 126, "EJ sets the number") is the
+  exception: it has no basis until an index exists. EJ has not ruled on any of them.
+- 2026-10-12 the design is still a **draft, not accepted** (its header says so). The codex and Claude reviews
+  (REPAIR, 2026-10-11) have not been re-run on the revised text, so whether the revision fixes their findings is not
+  checked.
