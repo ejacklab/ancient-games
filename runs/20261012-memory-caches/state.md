@@ -96,3 +96,8 @@ seza `.ctxgraph/graph.db`), so "is it needed" comes before "how".
   `origin/master`. Step 4 is still open: the header of `docs/memory-system/CACHES.md` says "draft, not yet accepted
   by EJ".
 - 2026-10-12 EJ accepted `docs/memory-system/CACHES.md` ("yes I accept"), including R1–R9; its status line now says so.
+- 2026-10-12 commit `efce7de` ("Memory caches: example numbers by case, vision settled, memory-only scope") replaced
+  the log line above that leaves every trigger number to EJ: the triggers in `CACHES.md` are now comparisons that the
+  measurement decides, after EJ: *"this is design guide, how can I give you a number?"* (`CACHES.md`, "Not known").
+  A new section "Example numbers by case" comes from run `runs/20261012-caches-numbers/`. The scope is now memory
+  entries, per the vision EJ settled, and R9 "never read at session start" was added.

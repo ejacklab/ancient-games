@@ -91,3 +91,24 @@ verified recommendation from run `20261011-project-memory-engines`.
   it is the full-text index's trigger. Quoted from its SQLite When row: "Built when the trigger fires: `INDEX.md` can
   no longer list every active entry."
 - 2026-10-12 EJ accepted the design ("yes I accept the source of truth design"), with its vision and its Write / Keep / Read requirements. The status line in docs/memory-system/SOURCE_OF_TRUTH.md says so.
+- 2026-10-12 Recorded after the acceptance line: commit `b748de1` ("Source-of-truth memory: vision settled, Write /
+  Keep / Read requirements") came before it. It adds the vision file
+  `docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md`. The COO drafted it from EJ's own
+  decisions, and each line is labelled [EJ], [design] or [proposed]. EJ settled it (*"ok the vision is confirm"*).
+- 2026-10-12 in the same commit, the "never copies" line of the vision was reworded after EJ's correction that the
+  memory itself lives in git (*"the memory will be in git also right?"*). The rule is about what an entry says, not
+  where it is stored. Design line 84 ("Anything the code, tests or git history already tell you") was reworded to match:
+  anything that can be read directly from the code, the tests or the commit log.
+- 2026-10-12 in the same commit, the design gained its core requirements, grouped by what happens to a memory: Write
+  (W1–W6), Keep (K1–K6) and Read (Rd1–Rd6). The design quotes EJ on the grouping (*"yes go ahead with write keep
+  read"*) and on reading them (*"this is amazing and a lot easy to read"*, taken as confirmation). Each requirement
+  names its source and has a "Fails if" check.
+- 2026-10-12 in the same commit, the design body was aligned with the requirements. The `INDEX.md` size is now a
+  comparison (Rd3: it must fit the strictest start-file limit of the agents that read it, and the build checks it), not
+  "EJ sets the number". "Not decided yet (EJ decides)" became "Still open", with two builder items: which tool
+  generates `INDEX.md` and what runs it (K6), and who resolves a git merge conflict (W6). The drift check is now K2.
+  The `O-` and `H-` file prefixes (W1.1) and the edit-in-place versus supersede rule (K4.3) are marked proposed.
+- 2026-10-12 the question above about `CACHES.md` depending on the `INDEX.md` size limit is **answered**: Rd3 together
+  with `CACHES.md` § "Example numbers by case" replaces "EJ sets the number". Rd3.1 gives, as an example from
+  `CACHES.md`, about 24 KB and 200 lines when Claude Code, Qwen and agy share a project.
+- 2026-10-12 commit `bc1acfc` ("Source-of-truth memory: accepted by EJ") records the acceptance on the line above.
