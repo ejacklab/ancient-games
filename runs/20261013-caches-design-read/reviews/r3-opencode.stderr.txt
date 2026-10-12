@@ -1,0 +1,582 @@
+[0m
+> plan · MiniMax-M3.1-Flash-Preview
+[0m
+[0m→ [0mRead runs/20261013-caches-design-read/briefs/r3-final.md
+[0m→ [0mRead runs/20261013-caches-design-read/briefs/r1-read.md
+[0m→ [0mRead runs/20261013-caches-design-read/reviews/r2-claude.md
+[0m→ [0mRead runs/20261013-caches-design-read/reviews/r2-codex.md
+[0m→ [0mRead runs/20261013-caches-design-read/reviews/r2-opencode.md
+[0m→ [0mRead runs/20261013-caches-design-read/reviews/r2-agy.md
+[0m→ [0mRead runs/20261013-caches-design-read/inputs/CACHES.md
+[0m
+[0m$ [0mls /home/smoke01/dev/ancient-games/runs/20261013-caches-design-read/ /home/smoke01/dev/ancient-games/runs/20261013-caches-design-read/inputs/ /home/smoke01/dev/ancient-games/runs/20261013-caches-design-read/reviews/ /home/smoke01/dev/ancient-games/runs/20261013-caches-design-read/briefs/
+/home/smoke01/dev/ancient-games/runs/20261013-caches-design-read/:
+baseline-git-status.txt
+briefs
+inputs
+reviews
+run.sh
+state.md
+
+/home/smoke01/dev/ancient-games/runs/20261013-caches-design-read/briefs/:
+r1-read.md
+r2-discuss.md
+r3-final.md
+
+/home/smoke01/dev/ancient-games/runs/20261013-caches-design-read/inputs/:
+CACHES.md
+caches-vision.md
+changes-since-review.diff
+
+/home/smoke01/dev/ancient-games/runs/20261013-caches-design-read/reviews/:
+r1-agy.md
+r1-agy.status
+r1-agy.stderr.txt
+r1-claude.md
+r1-codex.md
+r1-codex.status
+r1-codex.stderr.txt
+r1-opencode.md
+r1-opencode.status
+r1-opencode.stderr.txt
+r2-agy.md
+r2-agy.status
+r2-agy.stderr.txt
+r2-claude.md
+r2-codex.md
+r2-codex.status
+r2-codex.stderr.txt
+r2-opencode.md
+r2-opencode.status
+r2-opencode.stderr.txt
+r3-agy.md
+r3-agy.stderr.txt
+r3-codex.md
+r3-codex.status
+r3-codex.stderr.txt
+r3-opencode.md
+r3-opencode.stderr.txt
+[0m
+[0m$ [0mls /home/smoke01/dev/ancient-games/runs/20261012-caches-routing/nodes/ /home/smoke01/dev/ancient-games/runs/20261012-caches-routing/bench/ 2>&1 | head -50
+/home/smoke01/dev/ancient-games/runs/20261012-caches-routing/bench/:
+README.md
+__pycache__
+build.py
+chunk.py
+query.py
+results.json
+results.md
+run_bench.py
+sample_queries.json
+
+/home/smoke01/dev/ancient-games/runs/20261012-caches-routing/nodes/:
+audit-0.json
+bench-run.txt
+build.opencode.status
+build.opencode.stderr.txt
+build.opencode.stdout.md
+gold-verdicts.json
+queries.codex.status
+queries.codex.stderr.txt
+queries.codex.stdout.md
+review.codex.status
+review.codex.stderr.txt
+review.codex.stdout.md
+runtime-recall.json
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && sed -n '70,80p' runs/20261012-caches-routing/bench/README.md; echo "=== results.md 1-40"; sed -n '1,40p' runs/20261012-caches-routing/bench/results.md
+## What each route does, and what it prints
+
+| route | ranks by | `paths` | `output` |
+|---|---|---|---|
+| `rg` | distinct terms matched, then match count per file | up to 10 files | `# <file> (N matching lines)` for every ranked file, then `path:line:text`; match lines capped at 40 in total |
+| `fts` | `bm25()` | up to 10 chunk `path::name` | `path::name:start-end:` plus `snippet()` |
+| `vec` | cosine distance to the embedded question | up to 10 chunk `path::name` | `path::name:line:` plus the first 300 characters |
+| `hybrid` | reciprocal rank fusion, `sum(1/(60+rank))` | up to 10, from `fts` and `vec` | the block of whichever route ranked it |
+| `graph` | directness (hops), then path | up to 10 `path::name` | one hit per line |
+
+=== results.md 1-40
+# Cache benchmark results
+
+- question set: `queries.json` (40 questions)
+- corpus: 490 files (123 `.py`, 367 `.md`), 4021 chunks
+- git HEAD at build: `41ebd42f484708851de72d8bfe7e2ae2df13d655`
+- read budget: at most 10 paths per answer, 300 characters per printed line, rg output capped at 40 lines
+- a route may read: question, terms, symbol, file; `gold` is read by run_bench.py only, after the answer
+
+## Build (full rebuild, no prior store)
+
+| store | seconds | bytes | what it was built from |
+|---|---:|---:|---|
+| fts | 0.169 | 9,457,664 | git `41ebd42`, newest source mtime 1791785790.0215247 |
+| vec | 0.936 | 10,215,424 | git `41ebd42`, newest source mtime 1791785790.0215247 |
+| graph | 0.892 | 4,902,912 | git `41ebd42`, newest source mtime 1791785790.0215247 |
+
+## Determinism check
+
+Deleted `bench/.cache/`, rebuilt in 1.882s, answered every question again and compared `paths`.
+
+- answers compared: 180
+- identical: **True**
+
+## By category
+
+`file hit@5` counts a gold `path::name` as hit when the route returns its file. `symbol hit@5` needs the symbol itself: an entry naming it, the top-level def/class holding it or a method of it, a module-code chunk for a module-level name, and for `rg` a printed match line inside the symbol's lines. A gold given as a plain file scores the same on both. **The best route is chosen on symbol hit@5.**
+
+`chars` is the mean number of characters of output read up to and including the first line where the route names a gold file as its answer (`# <path> (`, or a line starting `<path>:`), over the answers that named one; `n` is how many did. A miss is left out, never scored 0. What each route prints differs -- rg: a `# path (N matching lines)` header per file plus at most 40 match lines of up to 300 characters; fts: one 24-token snippet per path; vec: the first 300 characters per path; hybrid: the vec or fts block per path; graph: one id per line -- so `chars` measures the print format as much as the store.
+
+### Category A -- exact identifier (8 questions)
+
+| route | symbol hit@5 | file hit@5 | chars to first gold (n) | mean output chars | mean seconds |
+|---|---:|---:|---:|---:|---:|
+| rg | 0.75 | 0.75 | 919.5714 (7) | 2016.25 | 0.0074 |
+| fts | 0.625 | 0.75 | 355.7143 (7) | 1477.25 | 0.0009 |
+| vec | 0.0 | 0.5 | 837.0 (5) | 2997.0 | 0.0018 |
+| hybrid | 0.5 | 0.75 | 91.3333 (6) | 2804.625 | 0.0025 |
+| graph | 0.75 | 0.75 | 43.1667 (6) | 92.5 | 0.0005 |
+
+Best on symbol hit@5: rg, graph (0.75) -- a tie
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && sed -n '85,115p' runs/20261012-caches-routing/nodes/audit-0.json; echo "=== 45-55"; sed -n '45,56p' runs/20261012-caches-routing/nodes/audit-0.json
+"where": "bench/run_bench.py:272 and 278 (markdown_report)",
+   "problem": "`--skip-determinism` crashes with KeyError 'rebuild_seconds'. `--no-build` with a missing store crashes with TypeError (`None[:7]` on git_head). Both happen after results.json has been written but before results.md is written, so the two files can disagree.",
+   "effect_on_numbers": "None on scored numbers. It can leave a stale results.md next to a new results.json.",
+   "fix": "Guard both fields in markdown_report. Refuse to score under --no-build when a store is missing."
+  },
+  {
+   "severity": "low",
+   "where": "bench/query.py:143 (answer_rg calls corpus_paths per query)",
+   "problem": "rg's measured seconds include a `git ls-files` subprocess on every query, about 1.2 ms of rg's ~7.4 ms mean (measured as medians of 20 runs). An agent running rg would not pay this.",
+   "effect_on_numbers": "rg's seconds are about 16% high. fts (0.001-0.007 s) is faster either way, so the speed winner does not change.",
+   "fix": "Compute the corpus list once per process, outside the timed section, as the model load already is."
+  },
+  {
+   "severity": "low",
+   "where": "bench/query.py:420 (answer_hybrid blocks)",
+   "problem": "A fused hit always prints vec's block when vec has one, even if only fts ranked it highly. The README says it prints 'the block of whichever route ranked it'.",
+   "effect_on_numbers": "Small effect on hybrid's output_chars and chars_to_first_gold. Hit rates are unchanged.",
+   "fix": "Print the block of the route that gave the item its better rank, or correct the README."
+  },
+  {
+   "severity": "low",
+   "where": "bench/build.py:120-156 and bench/query.py:121-132 (verified correct)",
+   "problem": "No problem found; recorded so it is not re-checked. The build is full-rebuild only: a fresh temp file, leftovers deleted first, then os.replace, with no update path. A missing store is reported and creates no database. With .cache deleted, all four store routes returned paths [] with 'store file is missing \u2026 no database was created', and .cache did not reappear. With only vec.sqlite present, the fts route left the directory containing vec.sqlite only.",
+   "effect_on_numbers": "None.",
+   "fix": "None needed."
+  }
+ ]
+}=== 45-55
+   "effect_on_numbers": "My re-run (rgalt.py, same corpus and flags) ranks by the number of distinct terms matched, then by line count. Category D: rg hit@5 goes from 0.375 to 0.625, tying fts and hybrid for the D win. A, B, C and E are unchanged. Smart-case instead of -i gives D 0.5. This also adds a tie rather than a new outright winner.",
+   "fix": "Rank rg files by the count of distinct terms matched first, then by matching lines. Or add that as a second rg baseline, and record the choice in config."
+  },
+  {
+   "severity": "low",
+   "where": "bench/query.py:287-312, 356-361 (vec k=10 chunks, then dedup)",
+   "problem": "vec fetches exactly 10 chunks and then removes duplicate paths (markdown sections share one path), so it often returns fewer than 10 paths. fts scans 200 chunks to fill 10 unique paths.",
+   "effect_on_numbers": "vec returns 9.28 paths on average (18 answers have fewer than 10; the minimum is 7), against hybrid's 10. The hit@5 tables do not change.",
+   "fix": "Fetch more neighbours (for example k=50) and stop after 10 unique displays, as fts_answer does."
+  },
+  {
+   "severity": "low",
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== seza.md 330-355"; sed -n '330,355p' runs/20261012-caches-numbers/nodes/seza.md; echo "=== seza.md 240-250"; sed -n '240,250p' runs/20261012-caches-numbers/nodes/seza.md
+=== seza.md 330-355
+## What each trigger comparison would show for SEZA today (your reading)
+
+These are my readings from the numbers above. None is a run of the CACHES.md benchmark (BM-1..BM-9); there is no
+recorded-question set for SEZA, so the comparison is on my 5 questions only (n=5, chosen by me).
+
+| Trigger | Comparison in CACHES.md | What SEZA's numbers show (my reading) |
+|---|---|---|
+| R5.1 full-text | full-text reaches the right entry after reading less than `INDEX.md` plus grep, no more misses | The index here is 12,108 B (3,027 tokens), and it is already loaded at session start, so reading it costs nothing extra. In my test every index line for Q1-Q5 matched its pattern (Q2 only in the index). grep over the 55-file memory folder prints 361 to 3,348 B; over the 257-file larger set 617 to 14,203 B, except the broad term (Q5) 109,519 B. In FTS5, the right entry was rank 1 for Q3, Q4 and rank 1 and 3 for Q1, but missed top 5 for Q5 and missed entirely for Q2 (it hits the index line, not the topic file). So at 55 entries full-text did not read less than the index plus grep, and for 2 of 5 questions it reached the right entry later. At the 257-file set, FTS ranked the right file first for 3 of 5. n=5, no verdict. |
+| R5.2 vector | hybrid finds entries full-text missed, no worse elsewhere | I found no recorded "miss" list for SEZA. The one candidate in my set: Q2, where full-text (and grep) on the phrase `sandbox seal` do not reach the topic file ("sealed sandbox", "seal tests"), but the index does. Not recorded as a miss under V-F13, because the index reached it. `factstore/doc_vectors/embeddings.npz` exists (74,426 B, 24 chunks) but I did not test its quality. Condition for R5.2 (R5.1 fired first) is not met. |
+| R5.3 code graph | `covers:` names functions; check about files on no `covers:` list; false alarms outnumber true | None of SEZA's graph projections covers code: `project_memory` entities are 485 `file` and 38 `directory` metadata rows (path, sha256, size) plus 98 non-inventory entries; `.ctxgraph` is research claims (35 Control, 31 Finding, ...). There is no `covers:` field in SEZA, so condition 1 and 3 cannot be evaluated; condition 2 cannot be evaluated either. SEZA's own record on the question is `factstore/CLAUDE.md` (graph tooling "making it very very slow"). The two SEZA graphs with callers: `project_memory` (about 15 sessions used `search` in a 7-day window), `.ctxgraph` (no caller). |
+| R8.2 rebuild | rebuild time less than the reading time saved between rebuilds | Rebuild times (my in-memory FTS5 build, files read from disk and inserted, median of 3): 55 Claude memory files 0.004 s; 259 memory-store+ADR files (2.5 MB) 0.028 s; 515 distinct md docs (10.0 MB) 0.125 s; 2,013 md files (34.4 MB, the brief's exclusion list, worktree copies included) 0.54 s. These are comparable to CACHES.md's 0.53 s (10,000 synthetic entries). Reading time saved: grep already runs in 4-7 ms on these stores, so the per-query saving over grep is below 10 ms; the saving over reading the 3,027-token index is not measured. The one real SEZA rebuild is `project_memory`: 9,633 events, 9.08 MB journal, 16.1 MB db; its rebuild time was NOT measured (running it writes into SEZA). Last rebuild 2026-10-04 13:25. |
+
+## Not measured
+
+- Time of `python3 -m project_memory rebuild`/`sync`/`verify` on the real journal (would write into SEZA; I did not run it).
+- The size and token count of `project_memory verify/status/pending/search` output, which `backtest/AGENTS.md` tells agents to run at each task start.
+- The exact SessionStart-hook output length (I did not run the hook; it writes a stamp file). Estimated from the code only.
+- Real tokens: all token figures are bytes/4 estimates, not a tokenizer count.
+- Cold-cache grep time (all grep timings are warm cache, on WSL2).
+- Characters read to the first right entry for the grep route vs index route; I recorded bytes printed and rank, not the
+  full reading path of an agent (BM-style measure).
+- Any recall quality of `factstore/doc_vectors/embeddings.npz`.
+- The accuracy of "right entry" labels: those are my judgement, no second reader.
+- FTS5 timing with a real on-disk file and WAL; my FTS runs were `:memory:`.
+- Who read `.ctxgraph/graph.db` on 2026-10-11 19:32 (atime only).
+- Transcript scan covers Claude Code sessions under `~/.claude/projects/-home-smoke01-dev-seza/`; Codex, agy, Qwen and
+=== seza.md 240-250
+
+---
+
+## 5. Grep cost today (my own test)
+
+Setup: five questions taken from SEZA memory entries or docs. Two corpora:
+- **M** = the 55-file Claude memory folder `$CM`.
+- **D** = M + `backtest/project_memory` (md/json, `state/` excluded) + `docs/decisions` + `knowledge` (md/json/jsonl/txt,
+  `target/` excluded) + `factstore/CLAUDE.md` + `seza-factstore`. 257 files, 2,527,718 B (`rg --files` with the same globs, then `stat`).
+
+Commands (pattern `$P`, `$RGD` = `rg -i -N --no-messages -g '*.md' -g '*.json' -g '*.jsonl' -g '*.txt' --glob '!**/target/**' --glob '!**/state/**' --glob '!**/__pycache__/**'`):
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== web.md 105-155"; sed -n '105,155p' runs/20261012-caches-numbers/nodes/web.md
+=== web.md 105-155
+---
+
+## 3. When retrieval beats loading everything
+
+- **V-F8 (cited, not redone):** Anthropic 2024: under 200,000 tokens, include the whole knowledge base. Still the only vendor threshold found.
+- **W-18 LongMemEval** — CONFIRMED. https://arxiv.org/abs/2410.10813 (abstract) and https://arxiv.org/html/2410.10813. Submitted 2024-10 (ICLR 2025). Quote: "commercial chat assistants and long-context LLMs showing a 30% accuracy drop". LongMemEval_S is "approximately 115k tokens per problem, with histories of about 50 sessions"; LongMemEval_M is 500 sessions, "around 1.5 million tokens." Long-context reading, oracle (only the right sessions) against S (everything): GPT-4o 0.870 vs 0.606 (30.3% drop); Llama 3.1 70B 0.744 vs 0.334 (55.1%); Llama 3.1 8B 0.710 vs 0.454 (36.1%); Phi-3 128k 14B 0.702 vs 0.380 (45.9%). So reading about 115K tokens of history, which fits in every window above, cost 30% to 55% of accuracy for those 2024 models.
+- **W-19 BEAM** — CONFIRMED. https://arxiv.org/html/2510.27246v1 (Tavakoli et al., ICLR 2026; v1 2025-10). 100 conversations up to 10M tokens, 2,000 questions. Table 1 average score, "Vanilla" (long context) / RAG:
+
+| Model | 100K | 500K | 1M | 10M |
+|---|---|---|---|---|
+| Llama-4-Maverick | 0.240 / 0.323 | 0.283 / 0.330 | 0.259 / 0.307 | 0.104 / 0.249 |
+| GPT-4.1-nano | 0.239 / 0.309 | 0.194 / 0.314 | 0.191 / 0.302 | 0.109 / 0.218 |
+| Gemini-2.0-flash | 0.242 / 0.280 | 0.257 / 0.267 | 0.199 / 0.271 | 0.122 / 0.216 |
+| Qwen2.5-32B-AWQ | 0.280 / 0.269 | 0.200 / 0.291 | 0.193 / 0.285 | 0.133 / 0.211 |
+
+  Quote: "even LLMs with long context windows perform substantially worse as conversation length increases." Read: retrieval already matched or beat loading at 100K in 3 of 4 models and beat it in all 4 from 500K (my reading of the table). Caveats from the paper: vanilla at 10M uses "the largest recent segment that fits" each window; the Qwen vanilla baseline used 128K while RAG used 32K. Models are 2025-era. The unit is conversation tokens, not entries.
+- **W-20 Mem0, vendor** — REPORTED (vendor's own page). https://mem0.ai/blog/state-of-ai-agent-memory-2026 — page shows "Published Oct 12, 2026; first posted Apr 1, 2026". Mem0 retrieves "approximately 6,900 tokens per query" on LoCoMo (92.5), LongMemEval (94.4), BEAM 1M (64.1) and BEAM 10M (48.6); the 2025 paper's full-context baseline was "~26,000" tokens per conversation. The page says the figures are not independently reproduced and one is flagged "confirm sourcing before publishing".
+- **W-13 (above)**: focused ~300 tokens against full ~113k, same questions: focused better.
+- **W-21 Anthropic, context engineering** — CONFIRMED. https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents, 2025-09-29. Quote: "CLAUDE.md files are naively dropped into context up front" while "primitives like glob and grep allow it to navigate its environment." Subagents return summaries of "1,000-2,000 tokens" after exploring with "tens of thousands of tokens or more." No threshold.
+- **GAP:** no newer vendor threshold than 200K tokens, and no threshold stated in entries. S-F5 (my arithmetic in the repo: 200K tokens is about 400 to 650 entries at 300 to 500 tokens each, V-F12) stays an estimate.
+
+---
+
+## 4. When search beats grep for an agent, by corpus size
+
+- **W-22 BM25 Wins at Scale** — CONFIRMED (upgrades S-F4, which had only the abstract and the smallest tier). https://arxiv.org/html/2607.26497v3 (v3 2026-07-31). Combined score, by tier (docs, corpus tokens: BM25 / File-System Agent with grep, up to 30 matching paths / DenseRAG):
+
+| Docs | Corpus tokens | BM25 | Grep agent | Dense |
+|---|---|---|---|---|
+| 1,144 | 1.7M | 74.7 | 77.4 | 58.1 |
+| 2,254 | 3.0M | 71.4 | 75.4 | 55.7 |
+| 6,980 | 8.5M | 70.1 | 69.9 | 51.0 |
+| 21,614 | 25.6M | 64.9 | 62.6 | 44.2 |
+| 66,932 | 78.6M | 59.5 | 56.7 | 38.1 |
+| 131,876 | 154.7M | 55.2 | 50.9 | 36.0 |
+| 511,959 | 600.8M | 50.5 | 30.7 | 29.9 |
+
+  Tokens per query: BM25 5.8K (nearly constant), dense 4.9K, grep agent 226K at the smallest tier and 343K at 21,614 docs. Quote (from S-F4): "Around 10 million corpus tokens, BM25 overtakes it". Reading from the table: the grep agent leads by 2.7 and 4.0 points at 1,144 and 2,254 docs, BM25 leads by 0.2 at 6,980 docs. Dense was the lowest at every size. General RAG corpus, not code or notes; one reader model; preprint. Entry equivalents are the repo's arithmetic (S-F5): 8.5M tokens is about 30,000 entries at 0.27M tokens per 1,000.
+  The accuracy gap is small in the first tiers; the token cost gap is large (226K vs 5.8K per question at 1,144 docs). So at small sizes the case for an index is cost, not accuracy.
+- **W-23 Direct corpus interaction (grep agents) at large scale** — CONFIRMED abstracts.
+  - https://arxiv.org/abs/2605.05242 (Li et al., 2026-05-03): grep-and-shell agents "without any embedding model, vector index, or retrieval API"; outperform sparse, dense and reranking baselines on several BRIGHT and BEIR sets. No numbers on the abstract page.
+  - https://arxiv.org/abs/2606.06880 (Zhuang et al., 2026): "latency degrades sharply as the corpus grows"; at 1M documents RISE-BM25 reaches 81% (gpt-5.4-mini) while pure-shell DCI on gpt-5.4-nano "degrades to 60%, with 33 of 100 queries failing on wall-clock time."
+  - https://arxiv.org/abs/2606.14885 (DR-DCI, 2026): raw DCI "becomes unstable" as the corpus grows from 100K to 10M documents.
+  - https://arxiv.org/abs/2608.20317 (2026-08-20): moving BrowseComp-Plus (about 100K documents) into a 553M-document corpus, the strongest agent "loses five points of answer accuracy" but evidence recall falls "from 84.3% to 21.4%", with 63% more search calls.
+  - Reading: grep-agent trouble shows at 100K to 1M documents (web-size documents), well above any memory store.
+- **V-F6 (cited):** Cursor, 2025-11-06: 12.5% average accuracy gain from semantic search; the effect on code retention grows to 2.6% "on large codebases with 1,000 files or more". Cursor's own model and benchmark. Best result is grep plus semantic.
+- **V-F4 (cited):** EnterpriseRAG-Bench, 500K documents: BM25 68.8 / vector 51.4 / bash agent 60.6 correctness.
+- **S-F6 (cited):** LongMemEval QA, grep beat vector in a harness study (Claude Opus 4.6 in Claude Code: inline grep 76.7, inline vector 75.0).
+- **W-28 ripgrep, the floor for grep** — CONFIRMED but old. https://burntsushi.net/ripgrep/ (2016; hardware: EC2 c3.2xlarge, Ubuntu 16.04). Linux kernel source, pattern `PM_RESUME`: "rg 0.349 +/- 0.104", "git grep 0.342 +/- 0.005". One 1 GB file: "rg 0.268", "grep 0.516". So a text search over a source tree the size of the Linux kernel took about a third of a second on 2016 hardware. This sets the latency baseline: a memory store of a few thousand short files is far smaller.
+- **GAP:** no controlled study of full-text or vector against grep on a corpus of a few hundred to a few thousand short notes or memory entries (S-F5 gap holds). The smallest controlled tier found is 1,144 documents (W-22).
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== vector 88-105"; sed -n '88,105p' runs/20261012-memory-caches/nodes/vector.claude.md; echo "=== vector 230-240"; sed -n '230,240p' runs/20261012-memory-caches/nodes/vector.claude.md; echo "=== vector 256-262"; sed -n '256,262p' runs/20261012-memory-caches/nodes/vector.claude.md; echo "=== vector 288-296"; sed -n '288,296p' runs/20261012-memory-caches/nodes/vector.claude.md
+=== vector 88-105
+
+**F6 (CONFIRMED, vendor) Cursor: semantic search helps agents, more so in large codebases; the best result is grep plus
+semantic search.** Cursor blog "Improving agent with semantic search", 2025-11-06: "semantic search significantly
+improves agent performance, especially over large codebases: Achieving on average 12.5% higher accuracy in answering
+questions (6.5%-23.5% depending on the model)"; "agent code retention increases by 0.3% when semantic search is
+available. This effect increases to 2.6% on large codebases with 1,000 files or more"; "Our agent makes heavy use of
+grep as well as semantic search, and the combination of these two leads to the best outcomes." Caveats: Cursor's own
+trained embedding model, their private Context Bench, no absolute scores published, code (not decisions/lessons).
+URL: https://cursor.com/blog/semsearch.
+
+**F7 (CONFIRMED) Anthropic: hybrid beats embeddings alone, because embeddings miss exact matches.** "Introducing
+Contextual Retrieval", 2024-09-19: "While embedding models excel at capturing semantic relationships, they can miss
+crucial exact matches"; BM25 "is particularly effective for queries that include unique identifiers or technical terms";
+top-20 failure rate 5.7% with embeddings alone, 2.9% with contextual embeddings plus contextual BM25, 1.9% with reranking.
+Datasets include codebases. Note this is a 2024 chunk-RAG test with API embeddings, and the baseline 5.7% is a
+chunk-level failure rate, not an agent-task result. URL: https://www.anthropic.com/news/contextual-retrieval.
+
+**F8 (CONFIRMED) Anthropic on when not to retrieve at all.** Same page: "If your knowledge base is smaller than 200,000
+=== vector 230-240
+
+### Q4. How it fails
+
+**F20 (CONFIRMED) Negation is a documented weakness of bi-encoders.** NevIR (arXiv 2305.07614, 2023, EACL 2024): "cross-
+encoders perform best, followed by late-interaction models, and in last place are bi-encoder and sparse neural
+architectures. We find that most information retrieval models (including SOTA ones) do not consider negation, performing
+the same or worse than a random ranking." URL: https://arxiv.org/abs/2305.07614. It tests ranking two documents that
+differ only by a negation, with 2023 models; I found no newer measurement for current embedding models (listed below).
+For project memory this matters for entries such as "do not use X" next to "use X" (INFERRED).
+
+**F21 (CONFIRMED + INFERRED) Exact identifiers and rare terms.** Anthropic (F7): "they can miss crucial exact matches".
+=== vector 256-262
+without that filter would return superseded entries; one built over the same active set as `INDEX.md` would not
+(INFERRED; no source tested this).
+
+**F23 (CONFIRMED) Top-k cannot enumerate or prove absence.** F1 quote: it "cannot enumerate a complete set, establish an
+absence, or traverse relationships". Applies to any ranked top-k, vector or keyword (F1's notes-search column).
+
+**F24 (CONFIRMED) Drift between files and vectors; what the tools do about it.**
+=== vector 288-296
+
+- **Option 0: none.** `INDEX.md` + grep (+ the SQLite FTS cache from the sibling research). Supported by F1 (relevance
+  parity, no vector gain on enumeration/supersession), F3, F4, F8, F12. Cost: zero new tools.
+- **Option A: static embeddings, no GPU.** `pip install model2vec` + numpy; `potion-base-8M` (7.6M params, ~8-30 MB, F18);
+  store a `.npy` matrix plus a JSON of per-file content hashes under `.cache/`; cosine by numpy. Rebuild = re-embed the
+  files whose hash changed (INFERRED design detail). Quality of static models on decision-style text: GAP; the model
+  card reports MTEB averages that I did not extract.
+- **Option B: small ONNX model, CPU or GPU.** `pip install fastembed` (or `fastembed-gpu`) with `bge-small-en-v1.5`
+  (33M params, 384 dims, F18/F19), vectors in a numpy file or in `sqlite-vec` (F17, pre-v1, brute force). This is the
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== sqlite 50-58"; sed -n '50,58p' runs/20261012-memory-caches/nodes/sqlite-fts.claude.md; echo "=== sqlite 76-92"; sed -n '76,92p' runs/20261012-memory-caches/nodes/sqlite-fts.claude.md; echo "=== sqlite 103-110"; sed -n '103,110p' runs/20261012-memory-caches/nodes/sqlite-fts.claude.md
+=== sqlite 50-58
+- *Backlinks, orphans, broken `supersedes` links*: needs a link table or a script; FTS5 itself does not provide it (the harness in F5 builds a separate `links` table).
+- *Semantic ("by meaning") questions*: FTS5 does not answer these; that is the vector cache's question, not this one.
+
+### 2. When it pays off (brief item 2)
+
+**F4 — CONFIRMED.** The one controlled scaling measurement found for BM25 against an agent using grep over files. The "File-System Agent" had `list_dir`, `grep` (fixed string, up to 30 matching paths) and `read_doc` (first 8,000 characters), 80 LLM calls per question; the benchmark is a general RAG corpus, not code or memory entries.
+URL: https://arxiv.org/abs/2607.26497 and https://arxiv.org/html/2607.26497v3 ("BM25 Wins at Scale", submitted 2026-07-29, v3 2026-07-31).
+Quotes: `"Around 10 million corpus tokens, BM25 overtakes it and leads at every larger shared tier"`; `"its sequential exploration costs 39 times more query tokens at the bedrock."` Numbers from the extract of the HTML: smallest tier 1,144 documents and 1.7M corpus tokens; tokens per question at that tier BM25 5.8K against File-System Agent 226K; at full corpus 5.8K against 895K (agent figure includes retries); BM25 leads "with a margin near 20 points at full scale." Also: the agent leads "at the smallest shared tiers."
+Limits: the extract gave the abstract's "roughly 10 million" and the smallest tier, not a per-tier table. The File-System Agent's grep returns paths only, not lines, which is weaker than `rg` with context. This is one paper, preprint.
+=== sqlite 76-92
+All of these are 2026; none is measured on a corpus like ours. Rebuild time and size are listed only where a source gave them; the local numbers are in F13.
+
+**F9 — CONFIRMED. `monorepo-agents-harness` `kb-index.sh`.** Closest match to the brief: full rebuild, gitignored, grep fallback.
+URLs: https://github.com/atayahmet/monorepo-agents-harness/issues/25 (2026-10-07) and https://github.com/atayahmet/monorepo-agents-harness/pull/26 (merged 2026-10-08, commit `6a22b7e`, VERSION 0.4.0-rc.13).
+Quotes: `"Rebuild in full every time."`; `"`query` compares the index build time with the newest source mtime and rebuilds first if the index is stale."`; `"A stale index is worse than no index."`; if `sqlite3` is missing or lacks FTS5 it should `"print one warning and fall back to the current grep path."`; rebuild `"finishes in under a second"` at about 1.4k files. PR: `"a deterministic, self-healing SQLite FTS5 index over `knowledge/**/*.md`"`, built into a temp file then renamed over `knowledge/.index.sqlite`; derived columns `kind`, `workspace`, `task_slug`, `date` come from page shapes, not frontmatter. Tests: 38/38; removing self-heal caused 2 failures and removing atomic publish caused 4.
+Local: yes, `sqlite3` CLI and shell. Tokenizer: not named (so FTS5 default). Size on disk: not stated.
+
+**F10 — CONFIRMED. Scott Spence's `node:sqlite` + FTS5 markdown tool** (and its "wiki0" successor).
+URL: https://scottspence.com/posts/give-coding-agents-your-project-docs-with-node-sqlite-and-fts5 (2026-09-17).
+Quotes: `"One chunk per heading, so results point at a section, not a whole file."`; the index command starts with `db.exec('DELETE FROM chunks')` and reinserts everything; `"with a SQLite index that can be rebuilt any time for search, backlinks and facts."`; facts are `"decisions, requirements, risks and assumptions so they could be queried on their own."` Numbers: about 260 posts as 2,647 chunks in under half a second including Node startup; search about 50 ms; in a real project docs grew from 65 to 291 and agents called the CLI 1,122 times across 327 sessions. FTS5 table made with no tokenizer option (default). Staleness: not discussed; full rebuild each run. Index size: not given. No comparison with grep is made in the post.
+
+**F11 — CONFIRMED. memweave** (Python; hybrid BM25 + optional vectors).
+URL: https://towardsdatascience.com/memweave-zero-infra-ai-agent-memory-with-markdown-and-sqlite-no-vector-database-required/ (2026-04-16, by its author).
+Quotes: `"The database is always a derived cache — if you delete it, memweave rebuilds it from the files."`; `"losing the database is not data loss. Losing the files is."`; `"BM25 catches exact matches — error codes, config values, proper names"`. Change detection: SHA-256 on files and chunks. Default merge weight 0.7 vector, 0.3 BM25. No size, rebuild time, latency or benchmark number is given.
+
+**F12 — CONFIRMED (partly). Other tools, one line each.**
+- `ai-memory` (Rust): `"Plain markdown on disk as source of truth. SQLite is just a derived index."`; `"Persistent index in SQLite + FTS5. Native. No reindex on every restart."`; author calls it beta, a few weeks in personal use. Its comparison target `agentmemory` reportedly pays `"~5 minutes rebuilding from scratch"` on restart and slowed at about 10K observations. https://akitaonrails.com/en/2026/05/23/i-built-memory-system-for-coding-agents-ai-memory/ (2026-05-23). The 5-minute figure is the author's report about another tool.
+=== sqlite 103-110
+| 1,000 | 1.1 MB | 2.3 MB | 0.08 s | 0.011 / 0.009 / 0.0002 s | 0.005 / 0.0002 s |
+| 10,000 | 10.6 MB | 21.9 MB | 0.53 s | 0.104 / 0.060 / 0.0008 s | 0.038 / 0.0006 s |
+| 50,000 | 53.2 MB | 110.3 MB | 2.57 s | 0.405 / 0.148 / 0.0031 s | invalid (see below) |
+
+What it does and does not show. At every size the grep route answers in well under half a second, so **latency is not a reason for a cache at this scale**; the index is about twice the markdown size. The 50,000-entry grep timing printed a negative number (the WSL clock moved), so I discard it. For the first three rows the structured query matched zero entries (the random path did not occur), so those timings are a full scan with no hits. The python script and the SQL returned the same count only where hits existed (4 and 4 at 50,000). Token cost to the agent is the real axis and this test does not measure it: it does not run an agent. The gain F4 reports is on tokens and accuracy, not wall-clock.
+
+### 4. How it fails (brief item 4)
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== REC 30-60"; sed -n '30,60p' runs/20261011-project-memory-engines/RECOMMENDATION.md; echo "=== SOT 262-280"; sed -n '262,280p' docs/memory-system/SOURCE_OF_TRUTH.md; echo "=== SOT 165-170"; sed -n '165,170p' docs/memory-system/SOURCE_OF_TRUTH.md
+=== REC 30-60
+| M1 | Markdown files kept with the code are the canonical shared project memory. | claude, codex, opencode | **model knowledge** for the substrate ranking in all three; the adjacent read is claude `read: docs/research/20261011-agent-memory-graph-r2/REPORT.md` s1-F7/F8 (a production memory system is a git-backed filesystem), which supports git-backed files, not markdown-over-others | AGREED |
+| M2 | Memory is version-controlled with the code so a change is reviewed as a diff and a fresh clone can rebuild it. | claude, codex | **read: codex — https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging** (branch/merge mechanics) | MAJORITY |
+| M3 | The context window holds the current task only; it is not durable memory. | claude, codex, opencode | **read: codex — https://code.claude.com/docs/en/memory** (fresh context at session start) | AGREED |
+| M4 | A vector index is refused as the source of truth; at most a derived, rebuildable index, and only when the project's own queries justify it. | claude, codex, opencode | **read: claude — REPORT.md s3-F20, s3-F34** (a KG store beat vector top-k on supersession/negation, 6–27% surfaced; relevance recall and token cost "largely equivalent"); also codex `read: https://developers.openai.com/api/docs/guides/retrieval` | AGREED |
+| M5 | A graph store is refused as the memory store; explicit links between documents carry the relationships. | claude, codex, opencode | **read: claude — REPORT.md s3 group** (graph evidence split; a graph index resident-cost 67k vs 18k tokens) | AGREED |
+| M6 | SQLite is a derived, gitignored, rebuildable index only; never authoritative, and its absence must not prevent reading memory. | claude, codex | **model knowledge** for the role call (codex's own "recommendation" label; claude's T1/T2/T4 design tests); codex's `read: https://sqlite.org/fts5.html` establishes only that FTS5 exists | CONTESTED (opencode: use `state.sqlite` as the structured state store, queried at session start) |
+| M7 | Each agent's private session/memory store is not project memory; knowledge other agents need is promoted into the repository. | claude, codex, opencode | **read: codex — https://code.claude.com/docs/en/memory#storage-location** (auto memory is machine-local, shared across that repository's worktrees) | AGREED |
+| M8 | Private agent memory may persist for that agent's own continuity. | codex (yes); opencode (no — ephemeral) | **model knowledge** in both | CONTESTED |
+| M9 | One canonical instruction body (`AGENTS.md`) with thin per-tool adapters; no parallel, independently maintained policy copies. | claude, codex | **read: codex — https://opencode.ai/docs/rules/ + https://code.claude.com/docs/en/memory + https://learn.chatgpt.com/docs/agent-configuration/agents-md** | MAJORITY |
+| M10 | The three tools resolve instruction files differently (Codex nearest-wins override, Claude concatenation, opencode first-match with `AGENTS.md` over `CLAUDE.md`, references not auto-expanded); verify each deployed tool. | codex | **read: codex — https://opencode.ai/docs/rules/, https://code.claude.com/docs/en/memory, https://learn.chatgpt.com/docs/agent-configuration/agents-md** | SINGLE |
+| M11 | Every durable entry carries id, kind, author, recorded/observed/verified dates, scope, source, status and dependency/supersession links. | claude, codex | **read: codex — https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions** (decision-record shape); the field list itself is design in both | MAJORITY |
+| M12 | A human maintainer accepts policy and significant decisions; agents draft them and record observations and handoffs. | claude, codex | **read: claude — ~/CLAUDE.md Rules 7 and 12** ("every artifact has one maker"); codex `read: /home/smoke01/dev/ancient-games/CLAUDE.md` (a project-specific rule, not a general source) | MAJORITY |
+| M13 | Never delete a memory entry; supersede it with an explicit link and keep the old body. | claude, codex, opencode | **read: claude — REPORT.md s1-F4 and FINDINGS-s4 F5–F7** (Graphiti invalidates the older edge; Mem0 marks superseded edges invalid "rather than physically removing") | AGREED |
+| M14 | Disagreeing entries are kept as separate assertions, marked disputed, checked against primary evidence or code, then escalated to the authorized maintainer; a timestamp, majority or clean merge is not enough to pick a winner. | claude, codex | **read: claude — ~/CLAUDE.md Rule 12** ("don't blend conflicting patterns… flag the other"); codex's C22 is **model knowledge** | CONTESTED (opencode: read-time rule "prefer the newest non-stale entry") |
+| M15 | Staleness is bound to the revision an entry was verified against and to changes in the code, config or dependencies it covers, not to age. | claude, codex | **read: claude — REPORT.md s3-F4** (StateTape reads staleness off a code-graph diff with no model call), plus claude's own `memory_check.py` design | MAJORITY |
+| M16 | The staleness check is deterministic and makes no model call. | claude | **read: claude — REPORT.md s3-F4** (C5) | SINGLE |
+| M17 | At session start an agent reads the standing instructions, a small index or state file, and the material for its assigned task. | claude, codex | **read: codex — https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra** (read documents according to the task) | CONTESTED (opencode: session-start reads are `context.md`, active tickets in `state.sqlite` and the last 3 `sessions/` files — no standing instructions and no index) |
+| M18 | Never auto-load the whole memory tree, the full session history, or a whole-graph dump. | claude, codex, opencode | **read: claude — REPORT.md s3-F24, s3-F32** (67k vs 18k resident tokens; ~63K vs ~41K) | AGREED |
+| M19 | Everything else is retrieved on demand by filename/text search or by following index links; open the primary source when a retrieved statement will determine an action. | claude, codex, opencode | **read: codex — OpenAI guidance on skills and prompts** | AGREED |
+| M20 | Prose instructions are context, not enforced configuration; critical constraints belong in hooks, permissions or CI. | claude, codex | **read: codex — https://code.claude.com/docs/en/memory**; claude `read:` the agent-loop skill's Stop/PreToolUse/PostToolUse hooks | MAJORITY |
+| M21 | Refuse any additional store until a named, demonstrated failure of the markdown-and-search baseline exists, measured on the project's own tasks, with a named maintainer and acceptance criteria. | claude, codex, opencode | **read: claude — REPORT.md s5-F7, s5-F22** (a benchmark key with 6.4% corrupting errors; swapping the grading prompt moved one system 0.9013→0.4803), so published numbers cannot choose a design; codex's own test is **model knowledge** and unexecuted | AGREED |
+| M22 | Any memory artifact must be human-readable and reviewable; refuse stores that are only machine-readable. | claude, codex, opencode | **model knowledge** in all three (codex's refusal rationale; opencode's test question 3) | AGREED |
+| M23 | Refuse one shared append file written by parallel agents; give each writer its own file. | claude, codex | **read: codex — https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging** (a merge does not establish semantic agreement); claude C35 is **model knowledge** | CONTESTED (opencode: `sessions/YYYY-MM-DD.md` is one shared per-day append file, and `context.md` is one shared overwrite file) |
+| M24 | Durable entries are written at discovery/correction or task end, not every turn and not as a standing per-session obligation. | claude, codex | **model knowledge** in both (claude also permits per-session `journal/` and `handoff/` appends, so its position is between the two) | CONTESTED (opencode: session end is a standing write trigger) |
+
+**M17 correction (repair 2).** M17 is **`CONTESTED`**, not `MAJORITY`: opencode does not merely omit the
+session-start read set — it asserts a different one: `context.md`, active tickets in `state.sqlite`, and the last
+three `sessions/` files, with no standing instructions and no index (`nodes/opencode.stdout.md:57-59`); the same
+split is CP6 below. M17 is therefore credited to **claude and codex** only (claude: `nodes/claude.stdout.md:104-107`;
+codex: `nodes/codex.stdout.md:30`, `:74`).
+
+=== SOT 262-280
+  decision replaced by a different one gets a new entry that supersedes it. The design leaves this open.
+- **Fails if** git shows an entry file deleted, or a `superseded` or `retired` entry has no link.
+
+**K5 — The journal becomes entries** (v: nothing lost between sessions)
+- **K5.1** Task and project memory each keep a journal: a task's in `work/<task-id>/journal/`, the project's in
+  `journal/` for work not tied to a task. Both hold raw notes, one file per agent session, appended to and never
+  edited. Agent and user memory keep no journal under this design (EJ, 2026-10-12).
+- **K5.2** At the end of a task, and before a handoff or session end, an agent reads its task's journal (or the project
+  journal) written since the last read, writes what is worth keeping as entries, and logs that read in the task's `state.md`. A session cut off
+  before it can read loses nothing: the next read covers it (EJ, 2026-10-12: no separate milestones, the start and the
+  end already cover them).
+- **Fails if** a task's `state.md` shows it complete or handed off with no journal-read log line.
+
+**K6 — `INDEX.md` stays in step** (d: Where it is put; When to write)
+- **K6.1** `INDEX.md` is generated from `entries/`: one line per active entry, showing its id, kind and one-line
+  claim. It is never edited by hand.
+- **K6.2** It is regenerated right after any decision or fact is written, so the next session sees it.
+- **Open:** which tool generates it and what runs it (a build detail).
+- **Fails if** regenerating `INDEX.md` changes it, meaning it was out of step, or it lists a superseded entry as
+=== SOT 165-170
+never overrides standing instructions.
+
+`INDEX.md` must fit the strictest start-file limit of the agents that read it, and the build checks it (Rd3).
+
+## Core requirements (confirmed by EJ, 2026-10-12)
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== cg 176-190"; sed -n '176,190p' runs/20261012-memory-caches/nodes/code-graph.opencode.stdout.md; echo "=== cg 214-228"; sed -n '214,228p' runs/20261012-memory-caches/nodes/code-graph.opencode.stdout.md; echo "=== codex 338-345"; sed -n '338,345p' runs/20261012-caches-numbers/nodes/codex.md; echo "=== codex 440-448"; sed -n '440,448p' runs/20261012-caches-numbers/nodes/codex.md
+=== cg 176-190
+> `codegraph affected --stdin # pipe from git diff`
+> `AFFECTED = $( git diff --name-only HEAD …`
+
+Relevant to §6: **the vendor's graph consumes git's answer to "what changed"; it does not try to out-perform git at it.**
+
+**F18 — the in-repo tool.** `code_graph/code_graph.py`, 981 lines, stdlib only (`argparse, ast, builtins, fnmatch, json, sys, collections, pathlib`). Emits JSON to **stdout only** — no DB, no file, no cache, no lockfile, no incremental path; `GraphBuilder.run()` re-walks, re-reads and re-`ast.parse`s everything every invocation. `*.py` only (`self.root.rglob("*.py")`, `code_graph.py:262`). Node kinds `module`/`function`; edge kinds `contains`/`import`/`call`/`fixture` (`code_graph.py:55`). Its own stated design rule — "Files are walked in sorted path order. Two runs on the same tree give byte-identical output" — means it **cannot drift** (confirmed independently by F5's determinism control, below).
+
+---
+
+## 4. How it fails
+
+**F5 — CONFIRMED — this is the best-documented drift study I could find, and it is a vendor measuring itself against its own tool.** <https://github.com/colbymchenry/codegraph/blob/main/docs/benchmarks/index-drift-cg33.md> (last commit 2026-10-07; "Measured 2026-08-06"). Confirms and extends s3-F25/F26/F28.
+
+*Silent, and the README says the opposite.*
+
+=== cg 214-228
+
+> "| 80 commits | 1,634 (963 / 671) | 890 | **361 (359 / 2)** |"
+> "**The full rebuild is the wrong one here** — converging would mean teaching sync to manufacture thousands of wrong edges. Left as is, deliberately."
+
+*Failure mode 5 — a mistyped cache path is indistinguishable from staleness.* (New; directly relevant to M6.)
+
+> "`sqlite3` against a mistyped path **creates an empty database** rather than failing, and every subsequent query then answers from an empty schema — which reads exactly like a stale pre-migration index."
+
+*Failure mode 6 — retrieval quality decays invisibly (s3-F26, re-verified).*
+
+> "a generated ambient-types file carried graph mass **0.24750** on the drifted index vs **0.13119** on a clean rebuild (~1.9×), and score **49.0** vs **27.0**. On the drifted index it took **60.7%** of an explore envelope and starved the file the agent had actually named by symbol, which rendered **251 chars of a 10,970 reservation**."
+
+**F5b — CONFIRMED — the detection mechanisms exist, and none of them can see this failure class.** <https://colbymchenry.github.io/codegraph/guides/indexing/>
+
+The three layers are named, on the page, as covering exactly two windows: the debounce window and the server-not-running gap.
+=== codex 338-345
+
+   > `Auto-memory ("Live system may stay down … do not re-raise") is now out of date on this point.`
+
+   **CONFIRMED:** the primary audit records stale memory. **My reading:** a faster search index would still return outdated information unless memory maintenance and source checking addressed it. This is not evidence that vectors would improve retrieval.
+
+   Command:
+
+   ```bash
+=== codex 440-448
+- **A tool’s advisory budget:** Qwen defines `MEMORY_CONTEXT_WARNING_RATIO = 0.15` at [chunk-GXSNGY5M.js:146045](/home/smoke01/.npm-global/lib/node_modules/@qwen-code/qwen-code/chunks/chunk-GXSNGY5M.js:146045). Its warning estimates tokens from character count and compares all always-loaded context against that fraction at [line 147724](/home/smoke01/.npm-global/lib/node_modules/@qwen-code/qwen-code/chunks/chunk-GXSNGY5M.js:147724). This is a software warning threshold, **not measured evidence of degradation**.
+
+Current agy documentation also specifies a “24 KB (`24,000` bytes) per-file limit” and a “20,000-token aggregate rules budget.” Over-budget rules may become pointers rather than inline text. [Antigravity rules](https://www.antigravity.google/docs/rules/), accessed 2026-10-12. **GAP:** verified behavior of those limits on SEZA’s installed CLI.
+
+Codex’s instruction cap and DSH’s instruction-loader byte budget apply if an index is placed in that instruction chain. An ordinary subsequent file read consumes model context but is not thereby governed by the same loader cap.
+
+For an illustration tied to SEZA’s actual index, the following arithmetic assumes a future index has the same average line density as Claude’s current index. **This extrapolation is mine, not a finding.** Its hypothetical entry counts are capacity illustrations, not cache-adoption triggers.
+
+**Measurement/arithmetic M4 — startup totals and index extrapolation**
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== DR 145-165"; sed -n '145,165p' runs/20261012-caches-enhance/DECISION-RULES.md; echo "=== DR 55-65"; sed -n '55,65p' runs/20261012-caches-enhance/DECISION-RULES.md
+=== DR 145-165
+  `S-F4`'s 1,144-document BM25 study transfers to this project's 10,000-entry claim is not settled by the three files.
+- **D3 — Token cost of grep + opening hits.** opencode: **~226K per question** at 10,000 entries (`S-F4`, `S-F13`).
+  claude: **GAP per question**, "because it depends on hits and grep is unranked". codex: **tokens were not
+  measured** (`S-F13`). **unresolved.**
+- **D4 — Cost of `INDEX.md` at query time.** claude: **no extra read**, it is loaded at session start (`M17`).
+  opencode: **<0.01 s** scan, minimal header-only tokens (`SOURCE_OF_TRUTH.md`). codex: **time GAP and tokens GAP**
+  (`M17`, `M19`). Two engines read the same `M17` differently. **unresolved.**
+- **D5 — Does `INDEX.md` carry `covers:` (and status) per line?** codex asserts the `covers:` match directly
+  (`V-F21`). opencode asserts status per line (`SOURCE_OF_TRUTH:100`). claude hedges: `RECOMMENDATION.md`'s Layout
+  says the lines carry `covers`, `SOURCE_OF_TRUTH.md` says only *"one line per active entry"* — so if `covers` is not
+  there, that row falls back to grep over `entries/`. **unresolved** (a documentation conflict; the three files do
+  not settle which doc is right).
+- **D6 — What counts as a fired trigger?** opencode treats a **size crossover (~37K entries)** as a build condition
+  (`S-F4`, `S-F5`, `S-F13`). codex treats only a **recorded miss count** as one and says corpus size alone does not
+  justify vectors (`V-F11`, `V-F13`, `M4`). claude requires a **demonstrated baseline failure** (`M21`) plus a fired
+  R5.3 condition. **unresolved** — the three name three different currencies.
+- **Not disagreements, for the record (one engine only, so the table must not read as consensus):** the code graph's
+  lane, its triggers and its drift rule rest on claude alone (codex and opencode did not address code structure); the
+  `~37K` grep crossover, the `0.0006 s` FTS5 figure and the `~5.8K`/`~226K` token pair rest on opencode alone; the
+  vector timings rest on codex alone.
+
+=== DR 55-65
+| What should I load when resuming testing? | **none** | `INDEX.md` and the assigned task's `state.md` | Retrieval is on demand; caches are not startup context | codex (`M17`, `M18`, `M19`) | M17, M18, M19 |
+| What does changing F reach, through several hops, including files on no `covers:` list? | **code graph** — after the trigger, Python only; the answer is a lower bound | before the trigger, grep the import and call names and read | The graph's one lane, the hidden-dependency class; it is trigger condition 2 | claude (`G-F8`, `G-F17`, `G-F18`, `M5`, `R5.3`); codex and opencode did not address code structure | G-F8, G-F17, G-F18, M5, R5.3 |
+| Which tests reach function F, so I know what to run first? | **code graph** — conditional yes, after the trigger, as a lower bound | grep test names, then run the suite | Coverage is static reachability over call and fixture edges and the tool says it is a lower bound; use it to order tests, never to skip tests or claim "untested" *(claude's reading — the "never skip" half is labelled my reading by claude, not measured)* | claude (`code_graph.py` docstring, `G-F12`) | code_graph.py docstring, G-F12 |
+| Where is X defined, and exactly where is it called? | **none** | `grep -n`, then read the hit | The graph leaves exhaustive call-site grep and line-level code to the explorer; 3,874 unresolved calls against 2,000 call edges means "no callers" would be a silent partial answer | claude (`s3-F29`, `G-F12`) | s3-F29, G-F12 |
+| What does this function do? | **none** | read the file | The graph stores no line-level code | claude (`s3-F29`) | s3-F29 |
+| Is F unused or dead? | **none** | grep, then run the tests | 2,863 attribute, 927 dynamic and 84 name calls are unresolved, so a missing edge does not mean no caller | claude (`G-F12`) | G-F12 |
+| Give me a map of the whole repo | **none** — `M18` forbids loading a whole-graph dump, and this graph's dump is 2.6 MB | `PROJECT_OVERVIEW.md` and `INDEX.md` | Graph responses also leave more context resident (67k vs 18k tokens on VS Code, external tool) | claude (`M18`, `G-F12`, `G-F7b`, `s3-F24`) | M18, G-F12, G-F7b, s3-F24 |
+| A `covers:` path that isn't Python (docs, shell, JS) | **none** | git and grep | The in-repo tool reads `*.py` only, and silence on other paths looks like "nothing found" | claude (`G-F18`, `code-graph §5 option B`) | G-F18 |
+| A one-line comment changed in a large covered file: real change? | **none** | `git diff`, plus stdlib `ast` on that one file if precision is needed | Option E gets the precision from the diff without a repo-wide graph | claude (`code-graph §5 option E`) | code-graph §5 option E |
+| Is the graph I'm about to query current? | **none — don't check; rebuild whole** | rebuild, or use git | Drift cannot be cheaply detected, since detecting it costs the full rebuild; a cache is never patched | claude (`G-F5c`, `G-F5` drift, `R2`, `R3.1`) | G-F5c, G-F5, R2, R3.1 |
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== build 62-72"; sed -n '62,72p' runs/20261012-caches-routing/nodes/build.opencode.stdout.md; echo "=== state 44-62"; sed -n '44,62p' runs/20261012-caches-routing/state.md
+=== build 62-72
+
+## What did not work, and what I chose
+
+- **S03 is a real miss, and the graph is right.** "Which tests should I run after changing `code_graph/code_graph.py`" → the graph answers *none*. `code_graph/tests/test_code_graph.py` runs the tool as a **subprocess** and never imports it, so no call edge exists. A static graph cannot see process-exercised code.
+- **Crashes I found and fixed while testing:** `vec` raised `TypeError` on an empty question (model2vec returns no embedding, not a zero one). FTS term quoting survives `D-0012`, `c++`, `a AND b`, `"`, `*` — no raises.
+- **Choices the brief left open**, all in `results.json` under `config` so a review can flip one: `rg` uses `-F` (fixed strings) so it searches the same literal text FTS quotes; printed lines cut at 300 chars (1495 corpus lines are longer); `rg` output capped at 40 lines; scoring compares files, so a gold `path::name` is hit by a bare path; route seconds exclude the one-time model load (0.31 s, reported separately).
+- **`newest_source_mtime` moved mid-run** (4016 → 4017 chunks): `docs/memory-system/CACHES.md` was edited at 13:59:43 by the parallel session `20261012-caches-enhance`. The stores picked it up — which is rule 1 working, but it means these numbers are a snapshot of a corpus in motion. Re-run before the tables are used.
+- `../queries.json` did not exist (node 1a still running), so the run used `bench/sample_queries.json`; `--queries ../queries.json` will work as soon as it lands.
+
+One caveat on evidence: these numbers come from a harness I wrote, and the determinism check is my own check of my own code — node 2's audit is what should make them evidence.
+=== state 44-62
+  It reports rebuilds of fts 0.16 s, vec 0.96 s and graph 0.91 s, deterministic rebuild (0 mismatches) and a
+  poisoned-gold leakage probe that came back clean. These are self-checks by the builder, not evidence until node 2
+  audits them. It found the static graph cannot see subprocess-run tests (`code_graph/tests` runs the tool as a
+  subprocess). `git status` matches the baseline. It also noticed `CACHES.md` being edited mid-run by the parallel
+  session, so the numbers must be re-run on a stable snapshot.
+- 2026-10-12 node 2 launched as Workflow `wf_48c8f56f-a17`: five gold checkers (one per category) and an
+  independent harness audit (leakage probe, determinism, code review), with at most 2 repair-and-re-audit rounds.
+- 2026-10-12 suite timing and coverage done: 529 tests pass in 31.0-33.3 s (3 runs); per-test coverage reduced to
+  `cov/coverage-maps.json` (84 files, 918 functions); the 151 MB raw JSON deleted. Runtime coverage shows the direct-call
+  gold is far from complete (C01: 1 file direct, 6 at runtime) and is blind to subprocess-run tests (C05-C07).
+- 2026-10-12 node 2: gold 37/40 correct, 3 incomplete and completed (`queries.v2.json`, now `queries.json`; v1 kept).
+  Audit 0: no leakage, deterministic, 5 high biases (rg ranking and output cap, the chars proxy, file-level scoring,
+  class names in graph); repair 1 fixed all 5 (`bench/` only). **Workflow stopped during re-audit 1** after EJ: "I
+  am not asking you to build a cache I am asking you to improve and enhance the design". The repair is not
+  re-audited.
+- 2026-10-12 node 3 run once on the repaired harness: `bench/results.md`, determinism 180/180. Runtime recall for
+  C01-C04 in `nodes/runtime-recall.json`. Node 4 (the agent trial) dropped: it is building, not design.
+- 2026-10-12 node 5: section "Measured here: development and testing" added to `docs/memory-system/CACHES.md` (main
+  session, after the other session's run had finished its edit), plus a header line and one pointer sentence. No
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== grep BM- in results.md"; grep -c "BM-" runs/20261012-caches-routing/bench/results.md; echo "=== headings"; grep -n "^#\{2,3\} " runs/20261012-caches-routing/bench/results.md; echo "=== runtime coverage section?"; grep -n -i "coverage\|recall\|529\|tests" runs/20261012-caches-routing/bench/results.md | head -20
+=== grep BM- in results.md
+0
+=== headings
+9:## Build (full rebuild, no prior store)
+17:## Determinism check
+24:## By category
+30:### Category A -- exact identifier (8 questions)
+42:### Category B -- concept in other words (8 questions)
+54:### Category C -- structure and test impact (10 questions)
+68:### Category D -- decision or reason in the docs (8 questions)
+80:### Category E -- how to run or configure (6 questions)
+92:## Every category, one row per route
+104:## Per question
+=== runtime coverage section?
+66:Category C also reports recall@10: rg 0.85, fts 0.9, vec 0.4, hybrid 0.85, graph 0.7
+106:| id | category | route | symbol hit@10 | file hit@10 | recall@10 | chars to first gold | output chars | seconds |
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "Rd4.1\|K3.2\|Every other question\|the same for a missing embedding\|built by one command" runs/20261013-caches-design-read/inputs/changes-since-review.diff | head -30
+155:   every answer (Rd3.2) (`S-F9`); the same for a missing embedding model (my reading, extending `S-F9`). A mistyped
+205:-2. **Why would memory need that?** For "which entries cover the files I am editing" (`SOURCE_OF_TRUTH.md` Rd4.1). The
+224:-| **When** | Today: before editing a file (`SOURCE_OF_TRUTH.md` Rd4.1). A graph, if ever built, is rebuilt in full each time it is used. |
+265:+- **B1.2 Vector** — built only when, on the misses noted in agents' journals (Rd4.1), the vector index (the hybrid
+270:+    that found it notes it in its journal (Rd4.1).
+361:+- **K2.3** The full-text and vector indexes are rebuilt by one command, in one step. If either fails, neither
+372:-- **K3.2** The comparison is rerun when an agent records a miss, and when EJ asks; the agent that runs it writes the
+376:+- **K3.2** The comparison is rerun when an agent notes a miss, and when EJ asks; the agent that runs it writes the
+412:-- **Rd4.1** The questions agents ask of the memory are recorded, and so is each miss: an entry existed, `INDEX.md`,
+427:+- **Rd4.1** When an agent finds an entry that `INDEX.md`, grep and full-text all missed (the definition in B1.2), it
+429:+  and how it found it. B1.2 and K3 run on these notes. Every other question goes unrecorded: a log of every search
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "Rd3.3\|Rd3.2" runs/20261013-caches-design-read/inputs/changes-since-review.diff
+155:   every answer (Rd3.2) (`S-F9`); the same for a missing embedding model (my reading, extending `S-F9`). A mistyped
+398: - **Rd3.2** A missing cache file or a missing FTS5 falls back to grep, and every fallback answer says it came from
+401:-- **Rd3.3** A missing embedding model does the same. *(my reading, extending S-F9.)* (was R4.2)
+402:+- **Rd3.3** A missing embedding model falls back to full-text if it is there, and to grep if not; the answer says
+[0m

@@ -19,7 +19,11 @@
 > 2026-10-12: *"yes, write them in"*). On acceptance: Part 2 moved to the code-graph project, and B4 no longer stores
 > `status` (EJ, 2026-10-12: *"others can accept and apply"*). Finally the full question log was dropped: only misses are
 > noted, in the journal, and a comparison builds its question set when it runs; Rd4.3–Rd4.6 and `questions/` are gone
-> (EJ, 2026-10-12: *"yes , made that change"*).
+> (EJ, 2026-10-12: *"yes , made that change"*). Then the miss notes went too: nothing is recorded during normal work;
+> every comparison runs when EJ asks, on a question set built then (B1.3, formerly Rd4.2), and the vector set includes
+> questions worded differently from their entries. Rd4 is gone (EJ, 2026-10-13: *"remove this idea , sounds very
+> weird"*). Then the fixes from a three-round read by four readers (`runs/20261013-caches-design-read/`): wording,
+> citations and leftovers; none changes a requirement's intent (EJ, 2026-10-13: *"yes, apply them"*).
 
 # Memory Caches: SQLite Full-Text and Vector
 
@@ -42,16 +46,17 @@
 > verifier checked, and what it returned, is in the run record.
 
 > **Measured enhancement, 2026-10-12** (`runs/20261012-caches-routing/`): the section **Measured here: development and
-> testing** adds measurements on this repo and a routing rule for code and docs. In this merged version, review
-> corrections also touch other sections (see `runs/20261012-caches-merge/merge/merge-notes.md`). Its conflict with
-> the vision for code and docs is left to EJ.
+> testing** adds measurements on this repo for code and docs. Its routing rule moved with Part 2 to
+> `docs/code-graph/CODE_GRAPH.md`, and its proposals to widen the vision were not adopted (see The answer first). In
+> this merged version, review corrections also touch other sections (see
+> `runs/20261012-caches-merge/merge/merge-notes.md`).
 
 > **Vision:** `vision-statements/caches-memory-vision-statements.md` — moved out 2026-10-12 so the vision
 > and the requirements each have one copy.
 
 ## The answer first
 
-None of the three caches is needed today **for memory entries**. `project-memory/` does not exist yet, so nothing has
+Neither cache is needed today **for memory entries**. `project-memory/` does not exist yet, so nothing has
 been measured on it. My reading of the research is that at the sizes measured elsewhere, `INDEX.md`, grep and git
 answer the questions each cache would answer. Each cache below has a
 **trigger**: a condition that can be observed and that makes it worth building. None of them is built before its
@@ -78,31 +83,32 @@ each: `claude` on the code graph, `codex` on the vector index, `opencode` on SQL
 the 30-row cost table, with every disagreement kept, are in `runs/20261012-caches-enhance/DECISION-RULES.md` — the
 run record. **This file is the live copy.**
 
-**The rule.** **SQLite FTS5** is for a free-text question whose words are likely in the entry text, once its
-comparison (B1.1) shows ranked results with snippets reach the right entry after reading less than `INDEX.md` plus grep
-(`S-F1`, `S-F4`). **The vector index** is for the same discovery when the question's wording differs from the
-entry's, once the documented miss trigger has fired (`V-F11`, `V-F13`, `M4`). Everything else is the files.
+**The rule.** **SQLite FTS5** is for a free-text question whose words are likely in the entry text, once its comparison
+(B1.1) shows ranked results with snippets reach the right entry after reading less than `INDEX.md` plus grep (`S-F1`,
+`S-F4`). **The vector index** is for the same discovery when the question's wording differs from the entry's, once its
+comparison (B1.2) shows it finds what full-text misses (`V-F11`, `V-F13`, `M4`). Everything else is the files.
 
 | the question | store | if not, this | evidence |
 |---|---|---|---|
 | What do we already know about X? (free text, words likely in the entry) | **FTS5** — conditional on its trigger (B1.1) | `INDEX.md`, grep, then read | S-F1, S-F4 |
-| Which prior entry matches when my words differ from its? (find by meaning) | **vector** — conditional on the miss trigger | `INDEX.md`, grep, then read | V-F11, V-F13, M4 |
+| Which prior entry matches when my words differ from its? (find by meaning) | **vector** — conditional on its trigger (B1.2) | full-text if built, else `INDEX.md`, grep, then read (Rd3.3) | V-F11, V-F13, M4 |
 | A question about the code itself: what changing F reaches, which tests reach F | the code-graph project (`docs/code-graph/`) | — | — |
 | An exact identifier, an error string, a known `file:line` | none | literal grep or filename lookup, then read | V-F7, V-F21, s3-F29 |
 | Every active entry covering path X — completeness | none — a ranked top-k cannot prove completeness | exhaustive scan of `INDEX.md` and entry headers | V-F1, S-F13, G-F14 |
-| Proving absence ("have we never recorded…") | none — no hit is not proof | exhaustive search, then read | V-F20 |
-| A structured header question (status, `supersedes`, `depends_on`) | none | `INDEX.md` scan or a script over frontmatter; follow links by grep | V-F22, M13 |
+| Proving absence ("have we never recorded…") | none — no hit is not proof | exhaustive search, then read | V-F23, V-F1 |
+| A structured header question (status, `supersedes`, `depends_on`) | none | a script over the entries' frontmatter (`INDEX.md` carries only id, kind and claim, `SOURCE_OF_TRUTH.md` K6.1); follow links by grep | V-F22, M13 |
 | Why did we choose this, or why is this line like this? | none | the entry's **Why:** and its evidence; `git blame`, `git log -S` | M19, SOURCE_OF_TRUTH |
 | Is this decision still true of the code? | none | read the entry and the code before acting on it; a mismatch is reported to EJ | SOURCE_OF_TRUTH Rd5 |
-| What should I load when resuming? | none | `INDEX.md` and the task's `state.md` | M17, M18, M19 |
-| A map of the whole repo | none | `PROJECT_OVERVIEW.md`, `INDEX.md` | M18, G-F18 |
+| What should I load when resuming? | none | `INDEX.md` and the task's `state.md` | M17 (CONTESTED), M18, M19 |
+| A map of the whole repo | none | `PROJECT_OVERVIEW.md`, `INDEX.md` | M18 |
 
 **Costs, and where there are none.** Measured on other corpora or on this machine, never on a real
 `project-memory/`: grep over 10,000 synthetic entries, 0.038 s for one word and 0.060 s for a structured chain
-(`S-F13`); grep plus opening every hit, about 226K tokens per question (`S-F4`, `S-F13` — opencode's figure, and D3
+(`S-F13`); a grep-and-read agent (list, grep up to 30 paths, read the first 8,000 characters, 80 model calls per
+question), about 226K tokens per question on a 1,144-document general corpus (`S-F4`; opencode's figure, and D3
 records that the other two report no such measurement; `S-F4` measures other corpora, not memory entries); an
-`INDEX.md` scan, under 0.01 s and minimal tokens
-(`SOURCE_OF_TRUTH.md`); reading one entry, roughly 270 tokens by the 4-characters-per-token assumption (`S-F5`, not
+`INDEX.md` scan, not measured (opencode's figure, under 0.01 s and minimal tokens, is unresolved, D4); reading one
+entry, roughly 270 tokens by the 4-characters-per-token assumption (`S-F5`, not
 measured); a git last-change lookup at the tool's timing resolution (`G-F12`). **`GAP` for everything that matters
 most**: no FTS5-vs-grep measurement on short entries (`S-F5`), no vector measurement on a corpus shaped like
 `entries/` (`V-F11`), and no real `project-memory/` corpus. This repo's code and docs are measured in **Measured
@@ -114,7 +120,9 @@ FTS/vector benefit has been measured at all; the true token cost of grep-plus-op
 `INDEX.md` carries `covers:` and status; and what counts as a *fired* trigger. **For code and docs, the measurements
 settle three of them** (my reading): D1, full-text before vector (BM-4, BM-5); D2, the full-text benefit is measured
 on docs (BM-4, BM-6); D3, grep printed about 4,470 characters to the right file on decision questions, not ~226K
-tokens (BM-4). For memory entries all six stay open.
+tokens (BM-4). For memory entries, D6 is settled by the comparisons (B1.1, B1.2), and D5 by `SOURCE_OF_TRUTH.md` K6.1
+(`INDEX.md` lists id, kind and one-line claim). D1 is answered by the *proposed* full-text-before-vector policy
+(B1.2). D2, D3 and D4 stay open (not measured).
 
 **Why no SQLite is visible in this repo.** Three reasons, and none is a rejection. (Since 2026-10-12 three SQLite
 caches do exist, in the measurement run's workspace: `runs/20261012-caches-routing/bench/.cache/` holds `fts.sqlite`,
@@ -143,13 +151,16 @@ These apply to whichever cache is built. They come from how the researched tools
   edges wrong, with every integrity check passing (`G-F5 drift`). Its makers decided drift cannot be measured cheaply
   (`G-F5c`). An FTS rebuild of 10,000 synthetic entries takes 0.53 s (`S-F13`).
 - **Rebuild before answering when stale.** Before each query, compare the recorded content hash of the
-  sources with the index and rebuild if they differ. Build into a temporary file and rename it over the old one
-  (`S-F9`, quoted: *"A stale index is worse than no index."*).
+  sources with the index and rebuild if they differ (`S-F11`: the hash; `S-F9`: rebuild before answering, though its
+  own check is the newest mtime, K1.1). Build into a temporary file and rename it over the old one (`S-F9`, quoted:
+  *"A stale index is worse than no index."*).
 - **Fall back when absent.** If the cache file or SQLite's FTS5 is missing, the tool answers with grep and says so in
-  every answer (Rd3.2) (`S-F9`); the same for a missing embedding model (my reading, extending `S-F9`). A mistyped
-  database path silently creates an empty database, which looks exactly like a stale one (`G-F5 drift`, failure
-  mode 5), so the tool opens the cache read-only and treats "no such file" as absent.
-- **Index only active entries** — for `project-memory/` — the same set as `INDEX.md`, with `covers` stored
+  every answer (Rd3.2) (`S-F9`); a missing embedding model falls back to full-text if it is there, and to grep if not
+  (Rd3.3; my reading, extending `S-F9`). A mistyped database path silently creates an empty database, which looks
+  exactly like a stale one (`G-F5 drift`, failure mode 5), so the tool opens the cache read-only and treats "no such
+  file" as absent.
+- **Index only active entries** — for `project-memory/` — by their own headers (B4.1), the set `INDEX.md` is
+  generated from, with `covers` stored
   beside each row (`V-F22`, my reading). Otherwise superseded entries come back looking current.
 
 ## SQLite full-text index
@@ -205,14 +216,13 @@ amount either way (not measured).
    tree), so this is only a bound: below it, retrieval quality is not what limits an agent (my reading). Vectors also
    add failures of their own: negation (`V-F20`), exact ids and paths (`V-F21`), and a second rebuild step that can lag
    the first (`V-F24`).
-4. **Why might it be needed later?** If agents keep missing entries that exist because their words differ from the
-   entry's. The trigger is a record of such misses: the entry existed, `INDEX.md`, grep and full-text search all missed
-   it, and it was found another way (`V-F13`, my reading). The vector index is worth building when, on those recorded
-   misses, the hybrid index finds entries full-text did not, and it does no worse on the other questions (B1.2).
-5. **Why hybrid only?** On memory-style text, the positive results found combine vectors with keyword search (`V-F6`,
-   `V-F7`; `V-F10` is unproven), and vectors alone were the weakest arm when results were returned inline (`V-F3`,
-   `V-F4`). So the vector index comes after the full-text index, never
-   instead of it. This is a **proposed** policy: on half the file-based pairs in `V-F3` vectors won alone (why 2
+4. **Why might it be needed later?** If agents miss entries that exist because their words differ from the entry's.
+   The vector index is worth building when, on questions written in words different from their entries, it finds
+   entries full-text did not, and it does no worse on the other questions (B1.2).
+5. **Why hybrid only?** In the studies found (code and chunk RAG, not memory entries), the positive results combine
+   vectors with keyword search (`V-F6`, `V-F7`); on agent memory, `V-F10` is unproven, and vectors alone were the
+   weakest arm when results were returned inline (`V-F3`, `V-F4`). So the vector index comes after the full-text index,
+   never instead of it. This is a **proposed** policy: on half the file-based pairs in `V-F3` vectors won alone (why 2
    above), so the evidence does not compel it.
 
 ### 5W1H
@@ -221,18 +231,22 @@ amount either way (not measured).
 |---|---|
 | **Who** | Built and rebuilt by a script with no model call except the embedding model itself. Read by any agent on demand, through the same command as full-text search. EJ decides to build it when the trigger fires. |
 | **What** | One vector per active entry file, with the entry's `covers`, content hash and embedding-model id stored beside it (`V-F24`: a changed model makes every vector useless). Results merged with the full-text results by reciprocal rank fusion (vector node §Q5, from qmd's README). |
-| **When** | After the full-text index exists, and when the B1.2 comparison favours hybrid. Rebuilt with the full-text index, in the same step, so the two cannot disagree (`V-F24`, my reading). |
+| **When** | Built when its B1.2 comparison passes and EJ decides (B1.0), after the full-text index exists. Rebuilt with the full-text index, in the same step, so the two cannot disagree (`V-F24`, my reading). |
 | **Where** | `project-memory/.cache/`, beside `index.sqlite`, gitignored. |
 | **Why** | The five whys above. |
-| **How** | The smallest options in `V-F18`/`V-F19`: a static Model2Vec model with numpy (option A, no GPU) or `bge-small-en-v1.5` through FastEmbed (option B). Both are small next to the 16 GB GPU here. Embedding speed on this GPU is **not measured** (`V-F18`). No embedding runtime is installed today; numpy is (`V-F19`). |
+| **How** | The smallest options in `V-F18`/`V-F19`: a static Model2Vec model with numpy (option A, no GPU: its model and runtime; its incremental rebuild is not used, B3.1) or `bge-small-en-v1.5` through FastEmbed (option B). Both are small next to the 16 GB GPU here. Embedding speed on this GPU is **not measured** (`V-F18`). No embedding runtime is installed today; numpy is (`V-F19`). |
 
 ## Measured here: development and testing
 
 EJ's aim is that development and testing get faster and cheaper in tokens. So this section measures all three stores
 against grep on **this repo**: 490 files (123 `.py`, 367 `.md`, 4.8 MB), with 40 questions an agent asks while
-developing and testing it. Run: `runs/20261012-caches-routing/` (results in `bench/results.md`, ids `BM-*` below).
+developing and testing it. Run: `runs/20261012-caches-routing/` (results in `bench/results.md`; BM-7 is from
+`nodes/runtime-recall.json` and the suite timing from the run's `state.md`; the `BM-*` ids are labels given here).
 
 **Who wrote each check, and what it does not establish.**
+- **The corpus moved during the build** (4,016 → 4,017 chunks; the builder: *"Re-run before the tables are used"*). A
+  later run on the repaired harness is recorded, but nothing records that the corpus held still. rg's seconds include
+  a `git ls-files` call an agent would not pay, about 16% (audit); the speed winner does not change.
 - The **questions and answers** were written by codex (`gpt-6.1-sol`), each checked by an `rg` command it ran. Five
   Claude agents re-checked all 40: 37 were correct and 3 were incomplete. Those 3 were completed.
 - **"Which tests run this code"** is also scored against per-test runtime coverage (`pytest-cov`, no model). That
@@ -286,7 +300,7 @@ right file):
    n=6), which is
    too small to act on. Nothing here contradicts the earlier rule that vectors come last and only as a hybrid.
 3. **No route answers a concept asked in other words in one shot** (BM-2). That still takes an agent searching and
-   reading. It is exactly the miss the vector trigger is meant to record.
+   reading. It is exactly the kind of question the vector comparison (B1.2) is tested on.
 4. **No single store answers "which tests should I run".** The graph finds tests that reach the code indirectly
    (BM-7), but is blind to tests that run it as a separate process (BM-8). Full-text search on the file name finds
    the latter. An empty graph answer means *not seen*, never *no tests*. Even combined, the two routes
@@ -313,40 +327,46 @@ counterpart — which store to reach for once a trigger has fired — is the sec
   builds nothing (EJ, 2026-10-12: *"EJ decides"*; the 5W1H tables below say the same). The agent that told EJ
   writes down his decision — build or not, his words, the date — beside the comparison result in `runs/<run-id>/`
   (*proposed*; EJ, 2026-10-12: *"yes, write them in"*).
-- **B1.1 Full-text** — built only when, on a question set built for the comparison (Rd4.2), full-text reaches the right
+- **B1.1 Full-text** — built only when, on a question set built for the comparison (B1.3), full-text reaches the right
   entry after reading less than `INDEX.md` plus grep does, with no more misses. Measured as the code-and-docs benchmark
   was (BM-1 to BM-9): the same questions through both routes, the characters read to the first right entry, and the
   misses. Characters read is a proxy, not a token count, and a weak one: it stops at the right file, not the right
   answer (**Measured here**, who wrote each check). A route answers a question when the right entry is in its top 5
   results; a question it does not answer counts as a miss, never left out as the benchmark did (*"A miss is left out,
   never scored 0"*, `bench/results.md`); characters are compared only over the questions both routes answered
-  (*proposed*). The benchmark had no `INDEX.md` arm; this comparison adds one. The comparison decides; no fixed size is
+  (*proposed*). The benchmark had no `INDEX.md` arm; this comparison adds one. *Not decided:* how the
+  `INDEX.md`-plus-grep route orders its results, and so what its top 5 is (the benchmark's `rg` ranked by distinct
+  terms matched, then matches per file, `bench/README.md`). The comparison decides; no fixed size is
   set in advance (S-F5: nothing is measured yet for a corpus of a few hundred to a few thousand short entries; S-F13
   measured only speed, on synthetic entries). (was R5.1)
   - **The comparison** runs on a trial index built in `runs/<run-id>/`, never in `project-memory/.cache/`
-    (*proposed*). It runs when EJ asks, or when an agent notes in its journal that `INDEX.md` plus grep made it read
-    through many hits to reach an entry; the agent that runs it writes the result there; if it passes, the agent tells
-    EJ, who decides (B1.0) (*proposed*; EJ, 2026-10-12: *"yes , made that change"*).
-- **B1.2 Vector** — built only when, on the misses noted in agents' journals (Rd4.1), the vector index (the hybrid
+    (*proposed*). It runs when EJ asks; the agent that runs it writes the result there; if it passes, the agent tells
+    EJ, who decides (B1.0) (*proposed*; EJ, 2026-10-13: *"remove this idea , sounds very weird"*).
+- **B1.2 Vector** — built only when, on a question set built for the comparison (B1.3), the vector index (the hybrid
   index, under the proposal below) finds an entry that full-text missed, and loses nothing full-text already found. (was
   R5.2; EJ, 2026-10-12: *"ok write it into CACHES.md"*)
-  - **A miss** is a question where the entry existed, the asker's words share no term with it, `INDEX.md`, grep and
-    full-text search all missed it, and the agent found it another way (V-F13, the researcher's inference). The agent
-    that found it notes it in its journal (Rd4.1).
+  - **The question set** includes questions written in words that share no term with their entry, the kind
+    `INDEX.md`, grep and full-text all miss (V-F13, the researcher's inference; BM-2 tested such questions)
+    (*proposed*; EJ, 2026-10-13: *"remove this idea , sounds very weird"*).
   - **Finds** means the right entry is in the top 5 results (*proposed*; the benchmark's measure, BM-1 to BM-5).
-  - **Loses nothing** means: every question in the B1.1 question set that full-text answers is still answered, and the
+  - **Loses nothing** means: every question in the set that full-text answers is still answered, and the
     characters read to the first right entry, over the questions both answered, are no more than full-text's
     (*proposed*; the same measure as B1.1, with its weakness).
   - **The comparison** runs on a trial index built in `runs/<run-id>/`, never in `project-memory/.cache/`
-    (*proposed*). It is rerun when an agent notes a miss, and when EJ asks; the agent that runs it writes the result
-    there; if it passes, the agent tells EJ, who decides (B1.0) (*proposed*).
+    (*proposed*). It runs when EJ asks; the agent that runs it writes the result there; if it passes, the agent tells
+    EJ, who decides (B1.0) (*proposed*).
   - *Proposed* (hybrid only, **Vector index** why 5; EJ, 2026-10-12: *"label hybrid as proposed"*): the vector index
     is combined with full-text, so it is built only after B1.1 has fired, and the comparison runs on the hybrid
     index.
   - **Fails if** a vector index exists in `project-memory/.cache/` with no recorded comparison in which it found at
-    least one missed entry and lost none of full-text's answers, or with no recorded decision by EJ.
+    least one entry full-text missed and lost none of full-text's answers, or with no recorded decision by EJ.
+- **B1.3 The question set** for a comparison is built when the comparison runs: questions with known answers, written
+  from the entries that exist then and checked by a second agent, as the code-and-docs benchmark was (**Measured
+  here**: codex wrote the questions, five Claude agents checked them). The run records who wrote and who checked it
+  (*proposed*; moved from Rd4.2, EJ, 2026-10-13: *"remove this idea , sounds very weird"*).
 - **Fails if** a cache exists under `project-memory/.cache/` with no recorded comparison showing its trigger fired,
-  or with no recorded decision by EJ to build it; or a passed comparison has no record that EJ was told.
+  or with no recorded decision by EJ to build it; a passed comparison has no record that EJ was told; or a comparison
+  ran on a question set with no record of who wrote it and who checked it.
 
 **B2 — Derived from the files** (v: never the source of truth; was R1)
 The cache is computed from the memory's markdown and never holds knowledge of its own (M4, M6; M6 is marked
@@ -399,7 +419,7 @@ CONTESTED in its source, where one engine proposed SQLite as a structured state 
 - **K2.2** Only one rebuild runs at a time in a working copy: a second one waits for it, then compares the hash again
   (K2.1) before answering. Each worktree has its own `.cache/`, because the folder is gitignored, so agents on
   different worktrees never share one (*proposed*; EJ, 2026-10-12: *"yes, write them in"*).
-- **K2.3** The full-text and vector indexes are rebuilt by one command, in one step. If either fails, neither
+- **K2.3** When both indexes are built, they are rebuilt by one command, in one step. If either fails, neither
   replaces the old ones, and the query falls back (Rd3.5) (*proposed*; the vector 5W1H and V-F24: a second rebuild
   step lets the two disagree).
 - **Fails if** after an entry is added, changed or deleted, or the embedding model changes, a query answers from the
@@ -408,10 +428,10 @@ CONTESTED in its source, where one engine proposed SQLite as a structured state 
 **K3 — Dropped when it stops paying** (d; vision: *"cheap … and not before"*; was R8.2; EJ, 2026-10-12: *"yes please
 write"*)
 - **K3.1** A built cache is expected to keep passing its own trigger (K3.3 says what happens when it does not): its B1
-  comparison is rerun, on a question set built then and, for the vector index, on the noted misses (Rd4) (*proposed*;
+  comparison is rerun, on a question set built then (B1.3) (*proposed*;
   the rebuild-cost part was dropped, EJ, 2026-10-12: *"drop the K3 cost part"*).
-- **K3.2** The comparison is rerun when an agent notes a miss, and when EJ asks; the agent that runs it writes the
-  result to `runs/<run-id>/` (*proposed*, the same as B1.2).
+- **K3.2** The comparison is rerun when EJ asks; the agent that runs it writes the result to `runs/<run-id>/`
+  (*proposed*, the same as B1.1 and B1.2).
 - **K3.3** If the cache no longer passes, the agent tells EJ, who decides whether to drop it; his decision is recorded
   as in B1.0. Dropping is deleting it; memory is unaffected (B2, Rd3) (*proposed*, mirroring B1.0).
 - **Fails if** a cache stays in `project-memory/.cache/` after a rerun it failed, with no recorded decision by EJ to
@@ -443,28 +463,18 @@ write"*)
   so. *(my reading, extending S-F9; *proposed*: full-text before grep.)* (was R4.2)
 - **Rd3.4** A wrong path is never mistaken for an empty index: the cache is opened read-only and "no such file" is
   treated as absent. *Example:* point the tool at a typo'd path → it falls back to grep and says so, it does not
-  create an empty database. (G-F5, failure mode 5) (was R3.2)
+  create an empty database. (G-F5 drift, failure mode 5) (was R3.2)
 - **Rd3.5** A rebuild that fails falls back to grep; it never answers from the stale index (K2) (*proposed*).
 - **Fails if** with the cache, FTS5 or the embedding model missing, the path mistyped, or a rebuild failing, a query
   errors, answers from an empty or stale index, or answers from grep without saying so.
-
-**Rd4 — Misses are noted; question sets are built when needed** (*proposed*; EJ, 2026-10-12: *"yes , made that change"*)
-- **Rd4.1** When an agent finds an entry that `INDEX.md`, grep and full-text all missed (the definition in B1.2), it
-  notes the miss in its `journal/` file as it happens: the question, the search terms it used, the entry it found,
-  and how it found it. B1.2 and K3 run on these notes. Every other question goes unrecorded: a log of every search
-  costs every search, and the comparisons do not need it.
-- **Rd4.2** The question set for a comparison is built when the comparison runs: questions with known answers, written
-  from the entries that exist then and checked by a second agent, as the code-and-docs benchmark was (**Measured
-  here**: codex wrote the questions, five Claude agents checked them). The run records who wrote and who checked it.
-- **Fails if** an agent's `state.md` or journal describes finding an entry that search missed, with no journal note
-  holding the question, the terms and the entry; or a comparison runs on a question set with no record of who wrote
-  it and who checked it.
 
 ## Example numbers by case
 
 The triggers in B1 and K3 are comparisons. The measurement decides them, so no number is fixed in advance. This
 section shows **what those comparisons have come out at elsewhere**, by agent type and condition, so a reader knows
-roughly where a project stands before measuring. These are examples with sources, not thresholds.
+roughly where a project stands before measuring. These are examples with sources, not thresholds. The first
+subsection is different: it gives start-file limits, which `SOURCE_OF_TRUTH.md` Rd3 uses for the `INDEX.md` size
+check. No cache trigger compares them.
 
 Run: `runs/20261012-caches-numbers/`. Its source ids are:
 - `W-*`: web research (`nodes/web.md`);
@@ -481,10 +491,10 @@ sourced figure.
 | Agent | Window | Limit on files loaded at start | Measured effective context | Example |
 |---|---|---|---|---|
 | Claude Code (Claude 5.x) | 1M (W-8) | `MEMORY.md`: "first 200 lines … or the first 25KB, whichever comes first"; `CLAUDE.md`: target under 200 lines (W-1) | Opus 4.6, MRCR v2: 76% at 1M (W-14); 93% at 256K (W-15, reported) | 25 KB binds first: about 150 lines at 167 B per line (W-1), about 107 lines at SEZA's 233 B per line (*my arithmetic*, SZ) |
-| Codex (GPT-6.x) | 1.05M per the API (W-9), but this machine's Codex model cache says `context_window: 500000`, 95% effective, so about 475K (CX) | `AGENTS.md` combined up to 32 KiB (`project_doc_max_bytes`) (W-2) | GPT-5.4: 79.3% at 128K–256K, 36.6% at 512K–1M (W-15, reported) | instructions plus index under 32 KiB |
+| Codex (GPT-6.x) | 1.05M per the API (W-9), but this machine's Codex model cache says `context_window: 500000`, 95% effective, so about 475K (CX) | `AGENTS.md` combined up to 32 KiB (`project_doc_max_bytes`) (W-2) | GPT-5.4: 79.3% at 128K–256K, 36.6% at 512K–1M (W-15, reported) | instructions plus index under 32 KiB, if the index is loaded through `AGENTS.md` |
 | agy (Gemini 3.1 Pro / 3.8 Flash) | 1,048,576 (W-9, CX) | 24,000 bytes per rule file, **and** a 20,000-token budget across all rules (CX, official page); 12,000 characters in other reports (W-4, conflict) | 84.9% at 128K, 26.3% at 1M (W-15, reported) | under 12,000 characters if both readings must hold (*my reading*) |
 | opencode (MiniMax M3 / M2.7) | 1M / 204,800 (W-9) | no limit stated (W-6) | GAP | follow the strictest agent sharing the repo |
-| dsh (DeepSeek flash / V4 pro) | 1,048,576 (CX) | a 65,536-byte budget for the instruction files it loads (CX, from its loader docs) | GAP | instructions plus index under 64 KiB |
+| dsh (DeepSeek flash / V4 pro) | 1,048,576 (CX) | a 65,536-byte budget for the instruction files it loads (CX, from its loader docs) | GAP | instructions plus index under 64 KiB, if the index is loaded through its instruction files |
 | Qwen Code | — | its auto-memory index is capped at 200 lines or 25,000 bytes (`MAX_MANAGED_AUTO_MEMORY_INDEX_LINES` / `_BYTES`, CX); it also warns when always-loaded context passes 15% of the window, an advisory only (CX) | — | the index cap binds first: under 25,000 bytes, as for Claude |
 | Cursor | — | rules "under 500 lines" (W-3) | — | — |
 
@@ -515,25 +525,27 @@ sourced figure.
 | SEZA memory: the Claude memory folder (55 files) and a wider set of 257 files (2.5 MB) | grep takes 4–7 ms but prints from 361 B (a narrow term, memory folder) to 109,519 B, about 27K tokens (a broad term, 257-file set). Over the 257 files, a full-text proxy ranked the right file first on 3 of 5 questions and missed on 2 (n=5, one reader) | SZ |
 | A tool result too large to read | filtering in code instead of reading: 150,000 tokens down to 2,000 | OC (Anthropic, 2025-11-04) |
 
-**My reading:** on accuracy, grep stays competitive until millions of tokens. On **tokens read**, full-text wins much
-earlier: on SEZA-sized memory, a single broad term already floods grep's output. The B1.1 comparison measures exactly
-that.
+**My reading:** on accuracy, grep stays competitive until millions of tokens. On tokens read, a single broad term
+already floods grep's output on SEZA-sized memory (SZ), which is why the comparison is worth running. Whether
+full-text reads less without missing more is not shown: at n=5 SEZA gave no verdict. The B1.1 comparison measures
+exactly that.
 
 ### B1.2: the vector index
 
 | Case | What was measured | Source |
 |---|---|---|
-| Loading about 115K tokens of history instead of retrieving | 30%–55% lower accuracy (GPT-4o, Llama 3.1) | W-18 |
+| Loading all of about 115K tokens of history instead of only the right sessions (oracle) | 30%–55% lower accuracy (GPT-4o, Llama 3.1) | W-18 |
 | Long context against retrieval, 100K–1M tokens | retrieval better for 3 of 4 models at 100K, and for all 4 from 500K | W-19 |
 | Vendor guidance | under about 200,000 tokens, the whole base can go in the prompt | V-F8 (2024) |
 | Dense against BM25, 1,144–511,959 docs | dense lowest at every tier in the table (7 tiers) | W-22 |
 | Enterprise corpus, 500K docs | vector 51.4 vs BM25 68.8 correctness | V-F4 |
-| Code, 1,000 or more files | +12.5% accuracy with vector search (Cursor), but 15 days later Cursor shipped Instant Grep and says it "does not store embeddings of your codebase for search" | V-F6, OC |
+| Code | +12.5% average accuracy with semantic search (Cursor); its code-retention gain grows to 2.6% on codebases of 1,000 or more files; but 15 days later Cursor shipped Instant Grep and says it "does not store embeddings of your codebase for search" | V-F6, OC |
 | A memory growing 10× (1M to 10M tokens) | Mem0 64.1 to 48.6 (vendor's figures) | W-20 |
-| SEZA | no recorded misses, so the comparison has nothing to run on | SZ |
+| SEZA | no questions worded differently from their entries were tested, so the comparison has not run | SZ |
 
-**My reading:** retrieval beats loading everything somewhere around 100K–500K tokens, but it is keyword retrieval
-that wins. Vectors earn a place only on recorded meaning-misses, which is what B1.2 tests.
+**My reading:** retrieval beats loading everything somewhere around 100K–500K tokens (W-19; the retriever is not stated
+in the extract); where keyword and dense retrieval were compared, keyword won (W-22, V-F4). Vectors earn a place only
+where they find what word search misses, which is what B1.2 tests.
 
 ### SEZA today, trigger by trigger (SZ, the researcher's reading)
 - **B1.1:** no verdict at n=5.
@@ -546,8 +558,10 @@ SEZA's own `project_memory search` was used 42 times in 15 sessions, with none a
   (`seza/runs/20261010-project-cleanup/STATUS-GRAPH.md:268`).
 - Its derived graph was missing when it was asked for: *"graph is missing; run sync or rebuild"*.
 
-**My reading:** a faster cache would have returned the same stale entries. K2 (stale never answers) matters more here
-than any of the three stores.
+**My reading:** a faster cache would have returned the same outdated entries. Neither cache nor its freshness check
+(K2, which compares the index with the files) corrects an entry whose own text is out of date; that needs the entries
+kept current and checked against their sources (CX). Of the two failures, only the missing derived store is a cache
+matter, and Rd3 covers it.
 
 ## What this changes elsewhere (proposed, not done)
 
@@ -559,7 +573,8 @@ than any of the three stores.
   and a question set; the measurement decides (EJ, 2026-10-12: *"this is design guide, how can I give you a
   number?"*).
 - No measurement exists of either cache on a project-memory corpus. All evidence is on other corpora: source code,
-  chat memory, enterprise documents.
+  chat memory, enterprise documents, and one markdown memory folder (SEZA, n=5). None is on this design's active
+  `entries/`.
 - The researchers' web reads went through extracts. `S-F*` quotes are not byte-checked (`sqlite-fts.claude.md`,
   header). `V-F*` quotes were checked against saved copies.
 - The planted "tool that does not exist" check in the research was void: the names were readable in the run's

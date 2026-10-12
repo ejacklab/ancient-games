@@ -22,7 +22,9 @@
 > (EJ, 2026-10-12: *"others can accept and apply"*): "who decides" replaces "who sets the triggers"; the grep timing is
 > one labelled figure; `G-F5` is labelled as a code-graph study; and "never answers from a stale index" is added. The
 > tests run on "the project's own questions and noted misses": the full question log was dropped (EJ, 2026-10-12: *"yes
-> , made that change"*).
+> , made that change"*). Then the miss notes went too: the tests run on a question set built when EJ asks (EJ,
+> 2026-10-13: *"remove this idea , sounds very weird"*). The stale-index line no longer cites SEZA: SEZA's stale
+> entries were outdated content, which K2 cannot catch (EJ, 2026-10-13: *"yes, apply them"*).
 
 The caches are two optional indexes over the project's markdown memory — full-text search and vector search. Both
 live in `project-memory/.cache/`, both are gitignored, and both are rebuilt from the files. Neither is needed today.
@@ -46,16 +48,16 @@ The caches exist to keep finding the right entry cheap when that happens — and
   4.3% of its edges from a clean rebuild with every integrity check passing (`G-F5`: a study of a code-graph tool,
   kept as evidence of how a patched index fails).
 - It never answers from a stale index. Before answering, it is checked against the files and rebuilt if they
-  differ (K2) — stale state, not search, is what went wrong in SEZA (`CACHES.md` § SEZA today).
+  differ (K2; `S-F9`: *"A stale index is worse than no index."*).
 - It is never read at session start (`M18`).
 - It is never built before its own trigger fires. Every trigger is an observable comparison, and the measurement
   decides it, not a number set in advance (EJ, 2026-10-12: *"this is design guide, how can I give you a number?"*).
 - It never becomes a second thing to keep in sync: delete the folder and memory is unaffected.
 
-**How we know it works.** Two tests, on the project's own questions and noted misses.
+**How we know it works.** Two tests, on a set of the project's own questions built when EJ asks.
 - **It finds the right entry, for less.** Full-text search reaches the right entry after reading less than
-  `INDEX.md` plus grep, with no more misses (B1.1). Vector search, run on the recorded misses, finds entries
-  full-text did not, and does no worse on the other questions (B1.2).
+  `INDEX.md` plus grep, with no more misses (B1.1). Vector search, on questions worded differently from their
+  entries, finds entries full-text did not, and does no worse on the other questions (B1.2).
 - **It holds nothing of its own.** Delete the cache, rebuild it from the files, and the same query returns the
   same entries, with no model call except the vector embedding step (`M6`, B5.1; a 10,000-entry FTS rebuild takes
   0.53 s, `S-F13`).
