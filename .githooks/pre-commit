@@ -1,0 +1,19 @@
+#!/bin/sh
+# pre-commit — refuse a commit that leaves project-memory/INDEX.md out of step with its entries.
+#
+# Switch it on once per clone:   git config core.hooksPath .githooks
+#
+# Only a commit that touches the memory or the generator is checked; everything else passes straight through.
+# The check reads git objects only and writes nothing, so it cannot dirty the tree it is guarding.
+#
+# This hook is a convenience, not the guarantee: rebase, cherry-pick, fast-forward and --no-verify skip it, and
+# hooks are not cloned. `env -u NO_COLOR python3 -m pytest -q` runs the same check against the committed
+# snapshot on every change (tests/test_memory_index.py).
+set -e
+
+if [ -z "$(git diff --cached --name-only -- project-memory/ tools/memory_index.py)" ]; then
+    exit 0
+fi
+
+echo "pre-commit: project-memory/ or tools/memory_index.py changed; checking INDEX.md"
+exec python3 tools/memory_index.py --check
