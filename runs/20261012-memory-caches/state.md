@@ -92,3 +92,6 @@ seza `.ctxgraph/graph.db`), so "is it needed" comes before "how".
 - 2026-10-12 EJ agreed: the SQLite node's timing script (`S-F13`) was copied from the session scratchpad to
   `nodes/evidence/bench.py`. The synthetic corpora and databases it generated (about 134 MB) were not kept; the
   script regenerates them. Run committed and pushed with `docs/memory-system/CACHES.md`.
+- 2026-10-12 the commit is `7757f21` (12 files, 2,213 insertions); `git branch -r --contains 7757f21` lists
+  `origin/master`. Step 4 is still open: the header of `docs/memory-system/CACHES.md` says "draft, not yet accepted
+  by EJ".

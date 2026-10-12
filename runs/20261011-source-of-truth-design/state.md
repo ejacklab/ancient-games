@@ -76,3 +76,17 @@ verified recommendation from run `20261011-project-memory-engines`.
 - 2026-10-12 the design is still a **draft, not accepted** (its header says so). The codex and Claude reviews
   (REPAIR, 2026-10-11) have not been re-run on the revised text, so whether the revision fixes their findings is not
   checked.
+- 2026-10-12 commit `7757f21` ("Memory caches: research and design for SQLite FTS, vector and code graph"), pushed to
+  origin/master, adds `docs/memory-system/CACHES.md`. It is the design for the `.cache/` that `SOURCE_OF_TRUTH.md`
+  allows (line 104), and it is a separate run: `runs/20261012-memory-caches/`. The commit does not touch
+  `SOURCE_OF_TRUTH.md`.
+- 2026-10-12 `CACHES.md`'s conclusion, quoted from "The answer first": "None of the three caches is needed today."
+  The three are SQLite full-text, vector and code graph. Each has a trigger, and every trigger number is left to EJ
+  (`CACHES.md`, "Not known").
+- 2026-10-12 `CACHES.md` proposes an answer to one of the open questions at line 78, "how the script tells that the
+  entry changed earlier than the code". Quoted from its "What this changes elsewhere (proposed, not done)": "The
+  research suggests an answer for EJ to decide: compare `git log` times of the entry file and its `covers:` paths."
+  The proposal is for EJ to decide; `SOURCE_OF_TRUTH.md` has not been changed.
+- 2026-10-12 `CACHES.md` also depends on the `INDEX.md` size limit, still open here (line 126, "EJ sets the number"):
+  it is the full-text index's trigger. Quoted from its SQLite When row: "Built when the trigger fires: `INDEX.md` can
+  no longer list every active entry."
