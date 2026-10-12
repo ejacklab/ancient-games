@@ -293,6 +293,36 @@ def test_malformed_entries_fail_without_writing(tmp_path, mode, raw):
     assert (repo / INDEX).read_bytes() == SINGLE_INDEX
 
 
+@pytest.mark.parametrize("raw", [
+    pytest.param(
+        "---\nid: bad\nkind: unknown\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+        id="unknown-kind",
+    ),
+    pytest.param(
+        "---\nid: bad\nkind: fact\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+        id="prefix-kind-mismatch",
+    ),
+    pytest.param(
+        "---\nid: bad\nkind: decision\nstatus: active\n---\nClaim without rationale.\n",
+        id="missing-why",
+    ),
+    pytest.param(
+        "---\nid: bad\nkind: decision\nstatus: active\n---\n \t\n**Why:** reason\n",
+        id="empty-claim",
+    ),
+])
+def test_staged_malformed_active_entries_fail_without_writing(tmp_path, raw):
+    """B2.4 — malformed active entries known to git must fail in write mode without changing the index."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    write_entry(repo, "D-bad.md", raw=raw)
+    git(repo, "add", "--", str(ENTRIES / "D-bad.md"))
+    result = run_index(repo)
+    assert result.returncode == 1, output(result)
+    assert "D-bad.md: " in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
 @pytest.mark.parametrize("status", ["active", "superseded", "retired"])
 @pytest.mark.parametrize("mode", ["write", "staged", "commit"])
 def test_duplicate_ids_are_rejected_in_every_status(tmp_path, status, mode):
