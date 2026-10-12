@@ -90,3 +90,4 @@ verified recommendation from run `20261011-project-memory-engines`.
 - 2026-10-12 `CACHES.md` also depends on the `INDEX.md` size limit, still open here (line 126, "EJ sets the number"):
   it is the full-text index's trigger. Quoted from its SQLite When row: "Built when the trigger fires: `INDEX.md` can
   no longer list every active entry."
+- 2026-10-12 EJ accepted the design ("yes I accept the source of truth design"), with its vision and its Write / Keep / Read requirements. The status line in docs/memory-system/SOURCE_OF_TRUTH.md says so.

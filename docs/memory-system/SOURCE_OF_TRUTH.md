@@ -1,7 +1,7 @@
 # Source-of-Truth Memory Design
 
-> **Status: draft; the vision and the requirements (Write / Keep / Read) are confirmed by EJ, 2026-10-12, but the
-> design as a whole is not yet accepted.** Vision: `vision-statements/source-of-truth-memory-vision-statements.md`.
+> **Status: accepted by EJ on 2026-10-12** (EJ: *"yes I accept the source of truth design"*), with its vision and
+> its Write / Keep / Read requirements. Vision: `vision-statements/source-of-truth-memory-vision-statements.md`.
 > First written 2026-10-11 by `opencode` from
 > `runs/20261011-project-memory-engines/RECOMMENDATION.md`; revised with EJ on 2026-10-12.
 > Sources, citations and review history: `runs/20261011-source-of-truth-design/` (the full annotated version is
