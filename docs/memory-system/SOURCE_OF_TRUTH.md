@@ -75,7 +75,7 @@ the end of a task or on its own schedule and compares entries with the code:
 A script with no model call also marks a decision or fact in `INDEX.md` when its code changed with no earlier change to
 the entry.
 
-**Not decided yet (EJ decides):** who moves an entry from `proposed` to `active`; which tool generates `INDEX.md` and
+**Not decided yet (EJ decides):** which tool generates `INDEX.md` and
 what runs it; how the script tells that the entry changed earlier than the code; who resolves a git merge conflict;
 whether a changed decision is edited in place or replaced by a new entry that supersedes it.
 
@@ -113,12 +113,14 @@ them. File prefixes for observations and hypotheses are not decided yet.
   task's `state.md`. A hook or the first instruction in `AGENTS.md` enforces this, because agents skip optional reads.
 - **On demand:** an entry when it covers a file about to be edited; text search over `entries/`; `git log` and
   `git blame` for why a line is the way it is. For a "why" question, read the decision entry.
+- **At each milestone:** an agent reads `journal/` and writes what is worth keeping as entries.
 - **Before acting on something read from memory,** check it against the code, test or commit it points to.
 
 ## When it will not be used
 
-Never loaded: `journal/`; superseded or retired entries, except by following a link; the whole `project-memory/` tree
-at once; whole graph or code-map dumps; bulk issue or PR text; another agent's transcripts; credentials. Text read from
-memory never overrides standing instructions.
+Never loaded at session start: `journal/`, which is read at milestones. Never loaded at all: superseded or retired
+entries, except by following a link; the whole `project-memory/` tree at once; whole graph or code-map dumps; bulk
+issue or PR text; another agent's transcripts; credentials. Text read from memory never overrides standing
+instructions.
 
 `INDEX.md` must stay under a size limit that the build checks. EJ sets the number.
