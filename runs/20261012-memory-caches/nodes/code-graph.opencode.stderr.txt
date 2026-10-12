@@ -1,0 +1,765 @@
+[0m
+> plan · MiniMax-M3.1-Flash-Preview
+[0m
+[0m→ [0mRead docs/memory-system/SOURCE_OF_TRUTH.md
+[0m→ [0mRead runs/20261012-memory-caches/state.md
+[0m→ [0mRead docs/KNOWLEDGE_GRAPH_DESIGN.md
+[0m
+[0m$ [0mwc -l /home/smoke01/dev/ancient-games/code_graph/code_graph.py; ls -la /home/smoke01/dev/ancient-games/code_graph/ 2>/dev/null; ls /home/smoke01/dev/ancient-games/docs/research/20261011-agent-memory-graph-r2/
+981 /home/smoke01/dev/ancient-games/code_graph/code_graph.py
+total 52
+drwxr-xr-x  3 smoke01 smoke01  4096 Oct  7 04:36 .
+drwxr-xr-x 16 smoke01 smoke01  4096 Oct 12 10:12 ..
+-rw-r--r--  1 smoke01 smoke01 38217 Oct  6 18:02 code_graph.py
+drwxr-xr-x  3 smoke01 smoke01  4096 Oct  7 04:36 tests
+DIGEST.md
+FINDINGS-s1-architectures.md
+FINDINGS-s2-graph-memory.md
+FINDINGS-s3-project-graph.md
+FINDINGS-s4-retrieval-consolidation.md
+FINDINGS-s5-evaluation.md
+INDEX.md
+REPORT.md
+[0m
+[0m$ [0mhead -120 /home/smoke01/dev/ancient-games/code_graph/code_graph.py
+#!/usr/bin/env python3
+"""code_graph.py -- a static code graph built from Python sources with the stdlib only.
+
+Walks every *.py file under ROOT, records one node per module and one node per
+function, and one edge per containment, import, call and fixture injection.  The
+code being read is parsed, never imported and never executed.  Coverage is static
+reachability from the test functions over call and fixture edges, so it is a
+lower bound on what the tests really run.
+
+Two points the spec leaves open, decided here (review findings 2 and 5):
+
+* A role follows where the function lives.  Every function outside a test file is
+  `code`, so one decorated `@pytest.fixture` outside a test file counts toward
+  `coverage.total`.  The decorator still makes it injectable, and a `fixture`
+  edge still points at it; being a fixture is a binding fact, not a role.
+* Imports bind module-wide whatever their scope.  A function-local
+  `import x.y as mod` binds `mod` in the module's one alias table, so it makes a
+  module -> module edge.  This is a whole-module table, not a scope analysis.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import builtins
+import fnmatch
+import json
+import sys
+from collections import defaultdict, deque
+from pathlib import Path
+
+SCHEMA = "code_graph/1"
+TIER = "stdlib-ast"
+
+BUILTIN_NAMES = frozenset(dir(builtins))
+
+ALWAYS_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "node_modules",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        "build",
+        "dist",
+    }
+)
+
+DEFAULT_TEST_GLOBS = ("test_*.py", "*_test.py")
+CONFTEST_NAME = "conftest.py"
+
+EDGE_KINDS = ("contains", "import", "call", "fixture")
+UNRESOLVED_REASONS = ("dynamic", "attribute", "name")
+COVERAGE_FOLLOWS = ("call", "fixture")
+FIXTURE_CONSUMERS = ("test", "fixture")
+TEXT_LIMIT = 80
+
+RESOLVED = "resolved"
+EXTERNAL = "external"
+UNRESOLVED = "unresolved"
+SILENT = "silent"
+
+DEF_NODES = (ast.FunctionDef, ast.AsyncFunctionDef)
+
+
+class UsageError(Exception):
+    pass
+
+
+def attribute_parts(expr):
+    """Return (root_name, [attr, ...]) for a Name or a pure attribute chain."""
+    attrs = []
+    current = expr
+    while isinstance(current, ast.Attribute):
+        attrs.append(current.attr)
+        current = current.value
+    if not isinstance(current, ast.Name):
+        return None
+    attrs.reverse()
+    return current.id, attrs
+
+
+def dotted_name(expr):
+    parts = attribute_parts(expr)
+    if parts is None:
+        return None
+    root, attrs = parts
+    return ".".join([root] + attrs)
+
+
+def decorator_target(decorator):
+    return decorator.func if isinstance(decorator, ast.Call) else decorator
+
+
+def is_fixture_decorator(decorator):
+    name = dotted_name(decorator_target(decorator))
+    return bool(name) and name.split(".")[-1] == "fixture"
+
+
+def is_autouse_decorator(decorator):
+    if not isinstance(decorator, ast.Call):
+        return False
+    for keyword in decorator.keywords:
+        if keyword.arg == "autouse":
+            try:
+                return bool(ast.literal_eval(keyword.value))
+            except (ValueError, SyntaxError, TypeError):
+                return False
+    return False
+
+
+def has_fixture_decorator(node):
+    return any(is_fixture_decorator(d) for d in node.decorator_list)
+
+
+def fixture_name_of(function):
+    for decorator in function.node.decorator_list:
+[0m
+[0m$ [0mgrep -n "^### F4\|^### F20\|^### F25\|^### F27\|^### F34\|^## F4\|^## F20\|^## F25\|^## F27\|^## F34\|F4\b\|F20\b\|F25\b\|F27\b\|F34\b" /home/smoke01/dev/ancient-games/docs/research/20261011-agent-memory-graph-r2/FINDINGS-s3-project-graph.md | head -50
+9:| F4 | StateTape's memory maintenance reads staleness off the graph instead of inferring it from text: at each write it diffs the code graph, logs changed symbols and nominates every held record covering them, with no model call; a call edge that changes target marks the symbol drifted even when its body is unchanged. | verified | https://arxiv.org/abs/2609.36319 (2026-09-28), quoted verbatim: "At every write, it compares the code graph before and after the write, logs the symbols that changed, and nominates every held record that covers one of them. Because it only compares two graphs, it makes no model call." |
+25:| F20 | MOOSEDev returned the expected record set essentially in full (0.98–1.00) on supersession, set-completeness and negation questions against a production vector-memory tool whose top-k retrieval surfaced 6–27%. | reported | https://arxiv.org/abs/2608.13662 (2026-08-13), quoted verbatim: "MOOSEDev returned the expected answer set essentially in full (0.98-1.00) on supersession, set-completeness, and negation questions, whereas the baseline's top-k retrieval surfaced between 6% and 27%." |
+30:| F25 | CodeGraph's own benchmark contradicts the "never stale" claim: a live auto-sync-maintained index does not converge on a clean rebuild, 4.3% of distinct edges were wrong in both directions (751 missing, 476 stale of 28,809), overwhelmingly `calls` edges, and the divergence is silent. | verified | https://github.com/colbymchenry/codegraph/blob/main/docs/benchmarks/index-drift-cg33.md (measured 2026-08-06), quoted verbatim: "A live, auto-sync-maintained index **does not converge** to a clean full rebuild of the identical working tree. On codegraph's own repo, **4.3% of distinct edges were wrong**, in both directions, overwhelmingly `calls` edges." and "This matters because it is silent: nothing warns, nothing surfaces it, and the README tells users the index is never stale and there is nothing to re-run." |
+32:| F27 | A user-facing CLI over the same index served stale structural answers silently because only the MCP daemon auto-syncs: after adding a symbol, `codegraph query "metodoNuevo"` returned "No results found" and the database had 0 rows for it; the issue was created 2026-09-20 and closed 2026-10-07. | verified | https://github.com/Gentleman-Programming/gentle-ai/issues/4813 (created 2026-09-20, closed 2026-10-07), quoted verbatim: "So an agent doing exactly what the guidance tells it to do can read a stale index and get silently wrong structural answers, with no warning from the tool." and "$ codegraph query \"metodoNuevo\"\nℹ No results found for \"metodoNuevo\"" |
+39:| F34 | MOOSEDev's advantage is bounded to structured question types: relevance recall and token cost were "largely equivalent" between the knowledge-graph system and the vector-memory baseline. | reported | https://arxiv.org/abs/2608.13662 (2026-08-13), quoted verbatim: "Conversely, relevance recall and token cost were largely equivalent between the two systems." |
+[0m
+[0m• [0mExtract code graph facts from repo[90m Explore Agent[0m
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && git log --oneline -5 && echo "---SIZE---" && du -sh .git && echo "---FILECOUNT---" && git ls-files | wc -l && echo "---PYCOUNT---" && git ls-files '*.py' | wc -l && echo "---COVERSPATHS---" && ls project-memory/ 2>/dev/null || echo "no project-memory dir"
+49c04c2 Log the 2026-10-12 source-of-truth changes in the run state
+df09e06 Memory design: drop proposed/active, journal is read at milestones
+2940b32 Simplify the source-of-truth memory design and record EJ's decisions
+06b4f5b Record how a conclusion is reported: quotes, labels, who wrote the check
+09ec056 Fix the three remaining test failures
+---SIZE---
+19M	.git
+---FILECOUNT---
+1446
+---PYCOUNT---
+123
+---COVERSPATHS---
+no project-memory dir
+[0m
+[0m✓ [0mExtract code graph facts from repo[90m Explore Agent[0m
+[0m
+[0m$ [0mcurl -sS -m 25 "https://html.duckduckgo.com/html/?q=tarnline+code+graph+cli" 2>&1 | tr -d '\r' | grep -o 'href="[^"]*"' | head -40
+href="https://duckduckgo.com/"
+href="/font/ProximaNova-Reg-webfont.woff2"
+href="/font/ProximaNova-Sbold-webfont.woff2"
+href="//duckduckgo.com/opensearch_lite_v2.xml"
+href="//duckduckgo.com/favicon.ico"
+href="//duckduckgo.com/assets/icons/meta/DDG-iOS-icon_60x60.png?v=2"
+href="//duckduckgo.com/assets/icons/meta/DDG-iOS-icon_76x76.png?v=2"
+href="//duckduckgo.com/assets/icons/meta/DDG-iOS-icon_120x120.png?v=2"
+href="//duckduckgo.com/assets/icons/meta/DDG-iOS-icon_152x152.png?v=2"
+href="//duckduckgo.com/assets/icons/meta/DDG-icon_256x256.png"
+href="//duckduckgo.com/dist/l.304bf63bbd053ee46b28.css"
+href="//duckduckgo.com/dist/lc.844e8ff9baa78da64b59.css"
+href="/html/"
+href="https://duckduckgo.com/"
+[0m
+[0m$ [0mgh api -X GET search/repositories -f q='tarnline' -f per_page=10 --jq '.total_count, (.items[]|{full_name,description,language,stargazers_count,pushed_at,html_url})' 2>&1 | head -60
+0
+[0m
+[0m$ [0mecho "=== pypi ==="; curl -sS -m 20 -o /dev/null -w "tarnline: %{http_code}\n" https://pypi.org/pypi/tarnline/json; echo "=== npm ==="; curl -sS -m 20 -o /dev/null -w "tarnline: %{http_code}\n" https://registry.npmjs.org/tarnline; echo "=== github repo direct ==="; curl -sS -m 20 -o /dev/null -w "colbymchenry/tarnline: %{http_code}\n" https://api.github.com/repos/colbymchenry/tarnline
+=== pypi ===
+tarnline: 404
+=== npm ===
+tarnline: 404
+=== github repo direct ===
+colbymchenry/tarnline: 404
+[0m
+[0m$ [0mfor q in "tarnline" "tarnline+code+graph" "tarnline+cli"; do echo "=== repo search: $q ==="; gh api -X GET search/repositories -f q="$q in:name" -f per_page=8 --jq '.total_count as $t | $t, (.items[]?|"  \(.full_name) | \(.language) | ★\(.stargazers_count) | \(.description)")' 2>&1 | head -12; done
+=== repo search: tarnline ===
+0
+=== repo search: tarnline+code+graph ===
+0
+=== repo search: tarnline+cli ===
+0
+[0m
+[0m$ [0mfor id in 2609.36319 2608.13662 2603.27277 2602.20048; do printf "%s -> " "$id"; curl -sS -m 20 -o /tmp/opencode/ax_$id.html -w "%{http_code}\n" "https://arxiv.org/abs/$id"; done; echo "--- sizes ---"; ls -la /tmp/opencode/ax_*.html 2>/dev/null | awk '{print $5, $9}'
+2609.36319 -> 200
+2608.13662 -> 200
+2603.27277 -> 200
+2602.20048 -> 200
+--- sizes ---
+42289 /tmp/opencode/ax_2602.20048.html
+41061 /tmp/opencode/ax_2603.27277.html
+40854 /tmp/opencode/ax_2608.13662.html
+43214 /tmp/opencode/ax_2609.36319.html
+[0m
+[0m% [0mWebFetch https://lite.duckduckgo.com/lite/?q=tarnline+code+graph+CLI+languages
+[0m
+[0m$ [0mecho "=== quoted tarnline ==="; curl -sS -m 25 "https://lite.duckduckgo.com/lite/?q=%22tarnline%22" | tr -d '\r' | grep -oE 'https?://[a-zA-Z0-9./_%-]+' | grep -v duckduckgo | head -25
+=== quoted tarnline ===
+http://www.w3.org/TR/html4/loose.dtd
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -rin "tarnline" . 2>/dev/null | head -20; echo "=== home-wide (shallow) ==="; grep -ril "tarnline" /home/smoke01/.claude /home/smoke01/.agents 2>/dev/null | head -20; echo "=== which ==="; which tarnline 2>&1; ls /home/smoke01/.local/bin 2>/dev/null | head -30
+./runs/20261012-memory-caches/state.md:71:  that does not exist (`hollowfern`, `quillvec`, `tarnline`); the right answer is not-found.
+./runs/20261012-memory-caches/launch-opencode.sh:6:PLANT='Which languages does the `tarnline` code-graph CLI support, according to its README?'
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stderr.txt:172:[0m$ [0mcurl -sS -m 25 "https://html.duckduckgo.com/html/?q=tarnline+code+graph+cli" 2>&1 | tr -d '\r' | grep -o 'href="[^"]*"' | head -40
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stderr.txt:188:[0m$ [0mgh api -X GET search/repositories -f q='tarnline' -f per_page=10 --jq '.total_count, (.items[]|{full_name,description,language,stargazers_count,pushed_at,html_url})' 2>&1 | head -60
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stderr.txt:191:[0m$ [0mecho "=== pypi ==="; curl -sS -m 20 -o /dev/null -w "tarnline: %{http_code}\n" https://pypi.org/pypi/tarnline/json; echo "=== npm ==="; curl -sS -m 20 -o /dev/null -w "tarnline: %{http_code}\n" https://registry.npmjs.org/tarnline; echo "=== github repo direct ==="; curl -sS -m 20 -o /dev/null -w "colbymchenry/tarnline: %{http_code}\n" https://api.github.com/repos/colbymchenry/tarnline
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stderr.txt:193:tarnline: 404
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stderr.txt:195:tarnline: 404
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stderr.txt:197:colbymchenry/tarnline: 404
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stderr.txt:199:[0m$ [0mfor q in "tarnline" "tarnline+code+graph" "tarnline+cli"; do echo "=== repo search: $q ==="; gh api -X GET search/repositories -f q="$q in:name" -f per_page=8 --jq '.total_count as $t | $t, (.items[]?|"  \(.full_name) | \(.language) | ★\(.stargazers_count) | \(.description)")' 2>&1 | head -12; done
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stderr.txt:200:=== repo search: tarnline ===
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stderr.txt:202:=== repo search: tarnline+code+graph ===
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stderr.txt:204:=== repo search: tarnline+cli ===
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stderr.txt:218:[0m% [0mWebFetch https://lite.duckduckgo.com/lite/?q=tarnline+code+graph+CLI+languages
+./runs/20261012-memory-caches/nodes/code-graph.opencode.stdout.md:4:Now web research. Let me check network access and hunt for `tarnline`.
+=== home-wide (shallow) ===
+/home/smoke01/.claude/projects/-home-smoke01-dev-ancient-games/343bf18f-e2d9-4dcf-8db5-0ed3524f59db/subagents/agent-a634b2514315b96a1.jsonl
+/home/smoke01/.claude/projects/-home-smoke01-dev-ancient-games/343bf18f-e2d9-4dcf-8db5-0ed3524f59db.jsonl
+=== which ===
+__pycache__
+agy
+apex
+bd
+claude
+cloudflared
+coverage
+coverage-3.12
+coverage3
+cpuinfo
+curl-cffi
+doesitcache
+email_validator
+f2py
+fastapi
+fonttools
+hermes
+hermes-acp
+hermes-agent
+himalaya
+httpx
+kimi
+kimi-cli
+markdownify
+mguru
+numpy-config
+orion
+papa
+pip
+pip3
+[0m
+[0m→ [0mRead runs/20261012-memory-caches/launch-opencode.sh
+[0m→ [0mRead runs/20261012-memory-caches/state.md[90m [offset=60, limit=20][0m
+[0m
+[0m$ [0mcd /tmp/opencode && curl -sSL -m 40 "https://raw.githubusercontent.com/colbymchenry/codegraph/main/README.md" -o cg_readme.md -w "http=%{http_code} bytes=%{size_download}\n"; echo "=== first 160 lines ==="; head -160 cg_readme.md
+http=200 bytes=70865
+=== first 160 lines ===
+<div align="center">
+
+# CodeGraph
+
+Already installed? Run `codegraph upgrade`
+
+Follow [@getcodegraph](https://x.com/getcodegraph) on X for updates.
+
+### Supercharge Claude Code, Cursor, Codex, OpenCode, Hermes Agent, Gemini, Antigravity, Kiro, and GitHub Copilot with Semantic Code Intelligence
+
+**The fastest complete code graph · surgical context · built for how agents actually work · 100% local**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/rust-logo-dark.svg?v=1">
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/rust-logo.svg?v=1" height="30" alt="Rust" align="center">
+</picture>&nbsp; **Kernel powered by Rust**
+
+### [Documentation & Website →](https://colbymchenry.github.io/codegraph/)
+
+[![npm version](https://img.shields.io/npm/v/@colbymchenry/codegraph.svg)](https://www.npmjs.com/package/@colbymchenry/codegraph)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Self-contained](https://img.shields.io/badge/Node.js-bundled%20%C2%B7%20none%20required-brightgreen.svg)](https://nodejs.org/)
+[![npm provenance](https://img.shields.io/badge/npm-provenance-brightgreen.svg)](#verified-releases)
+[![Attested builds](https://img.shields.io/badge/releases-signed%20%26%20attested-brightgreen.svg)](#verified-releases)
+
+[![Windows](https://img.shields.io/badge/Windows-supported-blue.svg)](#supported-platforms)
+[![macOS](https://img.shields.io/badge/macOS-supported-blue.svg)](#supported-platforms)
+[![Linux](https://img.shields.io/badge/Linux-supported-blue.svg)](#supported-platforms)
+
+[![Claude Code](https://img.shields.io/badge/Claude_Code-supported-blueviolet.svg)](#supported-agents)
+[![Cursor](https://img.shields.io/badge/Cursor-supported-blueviolet.svg)](#supported-agents)
+[![Codex](https://img.shields.io/badge/Codex-supported-blueviolet.svg)](#supported-agents)
+[![opencode](https://img.shields.io/badge/opencode-supported-blueviolet.svg)](#supported-agents)
+[![Hermes Agent](https://img.shields.io/badge/Hermes_Agent-supported-blueviolet.svg)](#supported-agents)
+[![Gemini](https://img.shields.io/badge/Gemini-supported-blueviolet.svg)](#supported-agents)
+[![Antigravity](https://img.shields.io/badge/Antigravity-supported-blueviolet.svg)](#supported-agents)
+[![Kiro](https://img.shields.io/badge/Kiro-supported-blueviolet.svg)](#supported-agents)
+[![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-supported-blueviolet.svg)](#supported-agents)
+
+<br>
+
+**The CodeGraph platform is coming** — for every PR, know exactly what to test, what could break, which flows are affected, and whether business logic is compromised.
+
+<a href="https://getcodegraph.com"><img alt="Join the waitlist for early beta access" src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/waitlist.svg?v=2" height="52"></a>
+
+<sub>Get <b>early beta access</b> to the hosted product · <a href="https://getcodegraph.com">getcodegraph.com</a></sub>
+
+</div>
+
+## Contents
+
+- [Get Started](#get-started)
+- [Language Support](#language-support)
+- [Why CodeGraph?](#why-codegraph)
+- [Key Features](#key-features)
+- [Framework-aware Routes](#framework-aware-routes)
+- [Mixed iOS / React Native / Expo bridging](#mixed-ios--react-native--expo-bridging)
+- [Quick Start](#quick-start)
+- [How It Works](#how-it-works)
+- [CLI Reference](#cli-reference)
+- [MCP Tools](#mcp-tools)
+- [Library Usage](#library-usage)
+- [Configuration](#configuration)
+- [Telemetry](#telemetry)
+- [Verified releases](#verified-releases)
+- [Supported Platforms](#supported-platforms)
+- [Supported Agents](#supported-agents)
+- [Supported Languages](#supported-languages)
+- [Measured cross-file coverage](#measured-cross-file-coverage)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+
+## Get Started
+
+### 1. Install the CLI
+
+**No Node.js required** — one command grabs the right build for your OS:
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.ps1 | iex
+```
+
+<details>
+<summary><b>Already have Node? Use npm instead (works on any version)</b></summary>
+
+```bash
+npm i -g @colbymchenry/codegraph
+```
+
+<sub>CodeGraph bundles its own runtime — nothing to compile, no native build, works the same everywhere. The installer puts `codegraph` on your PATH but **doesn't change your current shell** — open a new terminal before the next step so the command resolves.</sub>
+
+<sub>**Upgrade any time** with `codegraph upgrade` — it detects how you installed (bundle, npm, or npx) and updates in place. Add `--check` to see if an update is available, or `codegraph upgrade <version>` to pin one.</sub>
+
+</details>
+
+### 2. Wire up your agent(s)
+
+In a **new terminal**, run the installer to connect CodeGraph to the agents you use:
+
+```bash
+codegraph install
+```
+
+<sub>Detects and auto-configures Claude Code, Cursor, Codex CLI, opencode, Hermes Agent, Gemini CLI, Antigravity IDE, Kiro, and GitHub Copilot (VS Code, Copilot CLI, JetBrains IDEs) — wiring the CodeGraph MCP server into each. **This is the step that connects CodeGraph to your agent;** installing the CLI in step 1 does not do it on its own. It only wires up your agent — it does **not** index any code; building each project's graph is the separate `codegraph init` in step 3. (Shortcut: `npx @colbymchenry/codegraph` downloads and runs this in one go.)</sub>
+
+### 3. Initialize each project
+
+```bash
+cd your-project
+codegraph init
+```
+
+<sub>`codegraph init` creates the local `.codegraph/` directory and builds the full graph in the same step — one command, done.</sub>
+
+<div align="center">
+
+![1_C_VYnhpys0UHrOuOgpgoyw](https://github.com/user-attachments/assets/f168182f-4d9a-44e0-94d7-08d018cc8a3a)
+
+</div>
+
+### 4. No more syncing!
+
+Auto-sync is enabled by default. CodeGraph watches the project and updates the graph on every file change — while your agent edits code, or you add, modify, or delete files. **The index is never stale, and there is nothing to re-run.**
+
+### Uninstall
+
+Changed your mind? One command removes CodeGraph from every agent it configured **and** the CLI itself — every install it finds (standalone bundle, npm global package, launcher link), shown to you before anything is deleted:
+
+```bash
+codegraph uninstall
+```
+
+Pass `--keep-cli` to remove only the agent configurations and keep the CLI installed.
+
+<sub>Reverses the installer — strips CodeGraph's MCP server config, instructions, and permissions from each configured agent. Your project indexes (`.codegraph/`) are left untouched; remove those per-project with `codegraph uninit`. Use `--target` to remove from specific agents, or `--yes` to run non-interactively.</sub>
+
+---
+
+## Language Support
+
+Every language below gets the same treatment — full structural extraction and cross-file resolution into one graph, no per-language setup:
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/typescript.svg?v=1" width="104" height="104" alt="TypeScript" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/javascript.svg?v=1" width="104" height="104" alt="JavaScript" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/arkts.svg?v=1" width="104" height="104" alt="ArkTS" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/python.svg?v=1" width="104" height="104" alt="Python" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/go.svg?v=1" width="104" height="104" alt="Go" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/rust.svg?v=1" width="104" height="104" alt="Rust" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/java.svg?v=1" width="104" height="104" alt="Java" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/csharp.svg?v=1" width="104" height="104" alt="C#" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/php.svg?v=1" width="104" height="104" alt="PHP" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/ruby.svg?v=1" width="104" height="104" alt="Ruby" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/c.svg?v=1" width="104" height="104" alt="C" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/cpp.svg?v=1" width="104" height="104" alt="C++" />
+  <img src="https://raw.githubusercontent.com/colbymchenry/codegraph/main/assets/languages/objective-c.svg?v=1" width="104" height="104" alt="Objective-C" />
+[0m
+[0m% [0mWebFetch https://colbymchenry.github.io/codegraph/reference/languages/
+[0m
+[0m$ [0mcd /tmp/opencode && echo "=== SQLite / storage ==="; grep -n -i "sqlite\|\.codegraph/\|database\|\.db\b" cg_readme.md | head -25; echo; echo "=== size / mb / rebuild / index time ==="; grep -n -iE "[0-9]+ ?(mb|ms|s\b|sec|seconds|minutes)|index time|build time|rebuild|full rebuild|incremental" cg_readme.md | head -40
+=== SQLite / storage ===
+117:<sub>`codegraph init` creates the local `.codegraph/` directory and builds the full graph in the same step — one command, done.</sub>
+139:<sub>Reverses the installer — strips CodeGraph's MCP server config, instructions, and permissions from each configured agent. Your project indexes (`.codegraph/`) are left untouched; remove those per-project with `codegraph uninit`. Use `--target` to remove from specific agents, or `--yes` to run non-interactively.</sub>
+284:| **100% Local** | No data leaves your machine. No API keys. No external services. SQLite database only |
+435:That's it — your agent will use CodeGraph tools automatically when a `.codegraph/` directory exists.
+484:- Works **per project**: query any project that has a `.codegraph/` index by passing `projectPath` — so a monorepo where only some services are indexed, or a second repo, works in one session. A path with no index returns clean guidance to use built-in tools; indexing stays your decision.
+498:│   "How does a request reach the database?"                        │
+510:│                       SQLite knowledge graph                      │
+517:2. **Storage** — Everything goes into a local SQLite database (`.codegraph/codegraph.db`) with FTS5 full-text search.
+592:Even when the server's own root has no `.codegraph/` index, the tools stay available: pass `projectPath` to query any indexed project — a sub-service in a monorepo, or a second repo — in the same session. A path that has no index returns clean guidance to use built-in tools instead, so nothing fails loudly, and indexing stays your decision.
+625:that drive the graph directly: `DatabaseConnection`, `QueryBuilder`,
+626:`getDatabasePath`, `initGrammars` / `loadGrammarsForLanguages`, and `FileLock`.
+634:  `node:sqlite` (Electron qualifies when its bundled Node is 22.5+). The CLI and
+883:**MCP hits `database is locked`** — current builds shouldn't: CodeGraph bundles its own Node runtime and uses Node's built-in `node:sqlite` in WAL mode, where concurrent reads never block on a writer. If you still see it:
+886:- **`codegraph status` shows `Journal:` other than `wal`** — WAL couldn't be enabled on this filesystem (common on network shares and WSL2 `/mnt`), so reads can block on writes. Move the project (with its `.codegraph/` folder) onto a local disk.
+890:**Two `codegraph serve --mcp` on one project fight over the index / auto-sync stops** — CodeGraph allows one live MCP *writer* per project (the shared background daemon, or a single direct-mode process). Extra clients should proxy to that daemon. If you set `CODEGRAPH_NO_DAEMON=1`, run only one `serve --mcp` for that project; a second instance exits with a clear writer-lock error (see `writer.pid` under `.codegraph/`). Prefer leaving the daemon enabled so multiple MCP hosts share one watcher.
+896:**Sharing one checkout between Windows and WSL** — Don't point both at the same `.codegraph/`: the background-server lock and the SQLite index are tied to the OS that wrote them, and SQLite locking across the WSL2/Windows filesystem boundary is unreliable (WSL reports it as a `disk I/O error`). For a project on a Windows drive (a `/mnt/c/…` path), WSL keeps its own index automatically: an index first built from WSL goes in `.codegraph-wsl/`, leaving `.codegraph/` to Windows. An index already in `.codegraph/` stays where it is, so if Windows built that one, give WSL its own by setting `CODEGRAPH_DIR=.codegraph-wsl` in WSL and running `codegraph init` there. `CODEGRAPH_DIR` always picks the name when set, on either side. CodeGraph skips any sibling `.codegraph-*` directory when indexing and watching, so the two never trip over each other.
+898:**Very large repositories (hundreds of thousands of files), or a large `.codegraph/codegraph.db-wal` file** — The `-wal` file is SQLite's write-ahead log: writes waiting to be folded into `codegraph.db`. While a big index is being built, CodeGraph lets it grow in proportion to the index (soft threshold = the larger of 256 MB and a quarter of the index size, up to 2 GB) before folding it back, because folding too often is what made large indexes slow on ordinary disks. At rest it is trimmed to 64 MB, and a leftover from a killed session is folded and trimmed the next time the project opens — the index itself has no size limit. Two environment variables tune this: `CODEGRAPH_WAL_VALVE_MB` (the soft threshold during indexing) and `CODEGRAPH_WAL_HEAL_MB` (the resting size and the trim threshold). `CODEGRAPH_WAL_VALVE_DEBUG=1` prints every decision to stderr.
+
+=== size / mb / rebuild / index time ===
+190:When an AI agent needs to understand code — to answer a question or make a change — it discovers structure the slow way: grep, glob, and Read, one file at a time, rebuilding call paths and dependencies by hand. That's a pile of tool calls and round-trips before it even starts the real work.
+210:| **VS Code** | TypeScript · ~11k files | **2 vs 28** | **2.2× faster** (58s vs 2m 10s) | **0** vs 12 | 77% fewer | 71% cheaper |
+211:| **Excalidraw** | TypeScript · ~640 | **2 vs 43** | **3.6× faster** (45s vs 2m 42s) | **0** vs 18 | 84% fewer | 78% cheaper |
+212:| **Django** | Python · ~3k | 3 vs 14 | 35% faster (54s vs 1m 23s) | **0** vs 8.5 | 41% fewer | 13% cheaper¹ |
+213:| **Tokio** | Rust · ~790 | 3 vs 29 | **2.6× faster** (1m 3s vs 2m 43s) | **0** vs 19 | 65% fewer | 64% cheaper |
+214:| **OkHttp** | Java · ~645 | 1 vs 6 | 43% faster (33s vs 58s) | **0** vs 2 | 54% fewer | 21% cheaper |
+215:| **Gin** | Go · ~110 | 1 vs 7 | 39% faster (28s vs 46s) | **0** vs 4 | 52% fewer | ~even¹ |
+216:| **Alamofire** | Swift · ~110 | 4 vs 33 | **2.6× faster** (54s vs 2m 22s) | **0** vs 16.5 | 59% fewer | 57% cheaper |
+225:| **VS Code** | Time / Tools / Tokens / Cost | 58s / 2 / 155k / $0.53 | 2m 10s / 28 / 670k / $1.80 |
+226:| **Excalidraw** | Time / Tools / Tokens / Cost | 45s / 2 / 156k / $0.54 | 2m 42s / 43 / 991k / $2.43 |
+227:| **Django** | Time / Tools / Tokens / Cost | 54s / 3 / 183k / $0.55 | 1m 23s / 14 / 309k / $0.63 |
+228:| **Tokio** | Time / Tools / Tokens / Cost | 1m 3s / 3 / 201k / $0.66 | 2m 43s / 29 / 573k / $1.83 |
+229:| **OkHttp** | Time / Tools / Tokens / Cost | 33s / 1 / 107k / $0.39 | 58s / 6 / 230k / $0.50 |
+230:| **Gin** | Time / Tools / Tokens / Cost | 28s / 1 / 87k / $0.31 | 46s / 7 / 180k / $0.31 |
+231:| **Alamofire** | Time / Tools / Tokens / Cost | 54s / 4 / 209k / $0.54 | 2m 22s / 33 / 505k / $1.27 |
+265:- **On a workstation:** the full parallel pipeline — native parse workers, a multi-worker resolver pool that engages the moment it pays for itself, memory-gated analysis caches. The Swift compiler repository (27k files of Swift and C++) fresh-indexes in about 100 seconds; a one-file edit re-syncs in ~4.
+266:- **On a 2-core / 6GB VPS:** the same graph, from a pipeline tuned to *finish* — the Linux kernel (70k files, 2M symbols, 6.4M relationships) indexes to completion in under 12 minutes where RAM-first designs run out of memory before reaching 1%.
+267:- **Every day after day one:** saving a file updates the graph in well under a second — the watcher fires 300ms after a lone save and syncs exactly what changed (~0.3s of work on a 4,400-file project, ~0.4s on the 27,000-file Swift compiler repo), never re-scanning the tree. Measured against the fastest competing indexer's re-index-on-change: 2–7× faster on medium and larger repos across a 31-repo, 30-language benchmark — and the gap widens with repo size, because their cost grows with the repository and ours grows with the change.
+291:1. **File watcher with debounced auto-sync.** A native FSEvents / inotify / ReadDirectoryChangesW watcher captures every source-file create / modify / delete and triggers a re-index after a debounce window (default `2000ms`, tunable via `CODEGRAPH_WATCH_DEBOUNCE_MS`, clamped to `[100ms, 60s]`). Bursts of edits collapse into a single sync.
+299:  → watcher fires (<100ms)
+300:  → debounce (default 2s)
+521:4. **Auto-Sync** — The MCP server watches your project using native OS file events. Changes are debounced (2-second quiet window), filtered to source files only, and incrementally synced. The graph stays fresh as you code — no configuration needed.
+534:codegraph sync [path]             # Incremental update
+656:- **Files larger than 1 MB** — generated bundles, minified JS, vendored blobs.
+898:**Very large repositories (hundreds of thousands of files), or a large `.codegraph/codegraph.db-wal` file** — The `-wal` file is SQLite's write-ahead log: writes waiting to be folded into `codegraph.db`. While a big index is being built, CodeGraph lets it grow in proportion to the index (soft threshold = the larger of 256 MB and a quarter of the index size, up to 2 GB) before folding it back, because folding too often is what made large indexes slow on ordinary disks. At rest it is trimmed to 64 MB, and a leftover from a killed session is folded and trimmed the next time the project opens — the index itself has no size limit. Two environment variables tune this: `CODEGRAPH_WAL_VALVE_MB` (the soft threshold during indexing) and `CODEGRAPH_WAL_HEAL_MB` (the resting size and the trim threshold). `CODEGRAPH_WAL_VALVE_DEBUG=1` prints every decision to stderr.
+[0m
+[0m% [0mWebFetch https://colbymchenry.github.io/codegraph/guides/indexing/
+[0m% [0mWebFetch https://raw.githubusercontent.com/colbymchenry/codegraph/main/docs/benchmarks/index-drift-cg33.md
+[0m
+[0m$ [0mcd /tmp/opencode && for id in 2607.14390 2609.36319 2602.20048; do echo "########## arXiv $id"; curl -sSL -m 25 "https://arxiv.org/abs/$id" | tr -d '\r' | sed -n 's/.*<meta name="citation_title" content="\([^"]*\)".*/TITLE: \1/p;s/.*<meta name="citation_date" content="\([^"]*\)".*/DATE: \1/p;s/.*<blockquote class="abstract[^>]*>//p;/Abstract:/,$p' | head -6; echo; done
+########## arXiv 2607.14390
+TITLE: Why Git Is the Memory Solution for the Agentic Development Lifecycle
+
+            <span class="descriptor">Abstract:</span>Coding agents now produce a growing share of a team&#39;s code, while the reasoning behind each change -- the alternatives weighed, the constraints discovered, the approaches rejected -- is trapped in assistant transcripts that vanish with the session. Memory for this setting, the agentic development lifecycle (ADLC), is usually posed as one retrieval problem and built as machinery: tiered stores, memory graphs, compiled wikis, model-judged admission. We argue memory should instead be git-bound -- built into the repository&#39;s version control, inheriting the guarantees the machinery struggles to construct: ground truth from commits, freshness from rebuild, verification from the merge, containment from review. On this ledger we solve two problems separately, then combine them. Seed supply is closed as an eight-corpus retrieval study under a pre-registered ship discipline: five imported ranking mechanisms rejected, two kept, and a best configuration of ~0.31 pooled MRR -- ~60x the raw-transcript grep floor, ~15x an honest parsed-turn floor. Answer assembly is where ranking stops helping: single-shot retrieval scores only 0.07-0.20 answer-sufficiency on real developer questions, and ungated episode injection measurably degrades good answers. A router dispatches breadth to a git-anchored structural map, pointed lookups to confidence-gated episodes, and rationale to decision synthesis, which reconstructs why-arcs no single session contains (0.83 sufficiency on a young ~50k-LOC production system). Routed, the system answers at 382-980 tokens per question -- three orders of magnitude below the recorded history. Because ground truth is mined from commit-session links rather than annotated, every result is replicable on any user&#39;s own history at zero labeling cost. The remaining constraint is capture. Code, benchmark, and paper source: <a href="http://github.com/rekal-dev/rekal-cli" rel="external noopener nofollow" class="link-external link-http">this http URL</a>.
+    </blockquote>
+
+    <!--CONTEXT-->
+
+########## arXiv 2609.36319
+TITLE: StateTape: Action-Conditioned Evidence Lifecycle Modeling for Long-Horizon Coding Agents
+
+            <span class="descriptor">Abstract:</span>Despite the recent success of coding agents built on large language models, it remains challenging to run them over long horizons, since every observation is appended to the context and the context grows with each one. History-based maintenance is a common remedy, which masks or summarizes old observations, or prunes what a model reads as useless, and bounds the context at little cost. However, it decides from the text of the history alone and sees nothing of how the code is connected. Since a coding agent edits code many times over a single task, and each write can change what code elsewhere means, such maintenance may keep records a write has falsified, drop ones that still hold, and miss code the agent needs next. To overcome these challenges, this paper proposes StateTape, a novel and scalable framework that rewrites a coding agent&#39;s context as the repository changes rather than as the context grows. The key idea of StateTape is to model the repository as a symbol-level code graph, whose dependencies and language rules expose which symbols a write can affect. Upon this graph, a tape marks the symbols each write changed, which turns staleness from an inference about text into an observation of the agent&#39;s writes. We propose a per-write procedure in which the tape nominates the records a write could have falsified while a small manager model settles what the write log cannot, and further provide a theoretical analysis and TraceBench, a benchmark that labels what an agent is holding against what is actually needed. Empirically, we demonstrate that StateTape can effectively clear falsified records and retrieve what is needed, and thus achieve a higher resolve rate in all experiments spanned by six coding agents and three edit-heavy benchmarks with little computational overhead.
+    </blockquote>
+
+    <!--CONTEXT-->
+
+########## arXiv 2602.20048
+TITLE: CodeCompass: Navigating the Navigation Paradox in Agentic Code Intelligence
+
+            <span class="descriptor">Abstract:</span>Modern code intelligence agents operate in contexts exceeding 1 million tokens--far beyond the scale where humans manually locate relevant files. Yet agents consistently fail to discover architecturally critical files when solving real-world coding tasks. We identify the Navigation Paradox: agents perform poorly not due to context limits, but because navigation and retrieval are fundamentally distinct problems. Through 258 automated trials across 30 benchmark tasks on a production FastAPI repository, we demonstrate that graph-based structural navigation via CodeCompass--a Model Context Protocol server exposing dependency graphs--achieves 99.4% task completion on hidden-dependency tasks, a 23.2 percentage-point improvement over vanilla agents (76.2%) and 21.2 points over BM25 retrieval (78.2%).However, we uncover a critical adoption gap: 58% of trials with graph access made zero tool calls, and agents required explicit prompt engineering to adopt the tool consistently. Our findings reveal that the bottleneck is not tool availability but behavioral alignment--agents must be explicitly guided to leverage structural context over lexical heuristics. We contribute: (1) a task taxonomy distinguishing semantic-search, structural, and hidden-dependency scenarios; (2) empirical evidence that graph navigation outperforms retrieval when dependencies lack lexical overlap; and (3) open-source infrastructure for reproducible evaluation of navigation tools.
+    </blockquote>
+
+    <!--CONTEXT-->
+[0m
+[0m$ [0mcd /tmp/opencode && for r in oraios/serena ast-grep/ast-grep; do echo "##### $r"; curl -sSL -m 30 "https://raw.githubusercontent.com/$r/main/README.md" -o t.md -w "http=%{http_code} bytes=%{size_download}\n"; grep -n -iE "language|tree-sitter|LSP|index|symbol" t.md | head -18; echo; done
+##### oraios/serena
+http=200 bytes=15104
+18:  operating at the symbol level and exploiting relational structure.
+53:> "As a coding AI agent, I would ask my owner to add Serena because it gives me the missing IDE-level understanding of symbols, references, and
+56:**GPT 5.4 (medium) in Copilot CLI on a large, multi-language monorepo:**
+58:real code – especially symbol-aware navigation, cross-file refactors, and monorepo dependency jumps – while I still lean
+89:## Programming Language Support & Semantic Analysis Capabilities
+92:based on symbolic understanding of the code.
+100:* **Language servers** implementing the language server protocol (LSP) — the free/open-source alternative 
+107:### Language Servers
+109:Serena incorporates a powerful abstraction layer for the integration of language servers that implement the language server protocol (LSP). 
+110:The underlying language servers are typically open-source projects or at least freely available for use.
+112:When using Serena's language server backend, we provide **support for over 40 programming languages**, including
+113:Ada / SPARK, AL, Angular, Ansible, Astro, Bash, BSL, C#, C/C++, Clojure, Crystal, CUE, Dart, Deno, Elixir, Elm, Erlang, Fortran, F#, GDScript, Gleam, GLSL, Go, Groovy, Haskell, Haxe, HLSL, HTML, Java, JavaScript, JSON, Julia, Kotlin, LaTeX, Lean 4, Lua, Luau, Markdown, MATLAB, mSL, Nextflow, Nix, OCaml, Pascal, Perl, PHP, PowerShell, Python, QML, R, Rego, Ruby, Rust, Scala, SCSS / Sass / CSS, Solidity, Svelte, Swift, SystemVerilog, Terraform, TOML, TypeScript, Vue, WGSL, Wolfram Language, YAML, and Zig.
+119:The plugin naturally supports all programming languages and frameworks that are supported by JetBrains IDEs,
+138:Serena's retrieval tools allow agents to explore codebases at the symbol level, understanding structure and relationships
+141:| Capability                       | Language Servers | JetBrains Plugin |
+143:| find symbol                      | yes              | yes              |
+144:| symbol overview (file outline)   | yes              | yes              |
+145:| find referencing symbols         | yes              | yes              |
+
+##### ast-grep/ast-grep
+http=200 bytes=5689
+103:ast-grep's core is an algorithm to search and replace code based on abstract syntax tree produced by tree-sitter.
+115:* Written in compiled language, with tree-sitter based parsing and utilizing multiple cores.
+[0m
+[0m$ [0mcd /tmp/opencode && curl -sSL -m 30 "https://raw.githubusercontent.com/oraios/serena/main/README.md" -o serena.md && echo "=== index/cache/fresh/stale ==="; grep -n -iE "no index|index|cache|fresh|stale|on-the-fly|on demand|outdated|reindex" serena.md | head -25
+=== index/cache/fresh/stale ===
+28:> Do not install Serena via an MCP or plugin marketplace! They contain outdated and suboptimal installation commands.
+[0m
+[0m$ [0mcd /tmp/opencode && echo "=== SCIP ==="; curl -sSL -m 30 "https://raw.githubusercontent.com/sourcegraph/scip/main/README.md" -o scip.md -w "http=%{http_code} bytes=%{size_download}\n"; head -30 scip.md; echo; echo "=== ast-grep languages page ==="; curl -sSL -m 30 "https://ast-grep.astral.sh/guide/languages.html" -o ag.html -w "http=%{http_code} bytes=%{size_download}\n"; tr -d '\r' < ag.html | sed 's/<[^>]*>//g' | grep -v '^\s*$' | head -50
+=== SCIP ===
+http=200 bytes=3176
+# SCIP Code Intelligence Protocol
+
+SCIP (pronunciation: "skip") is a language-agnostic protocol
+for indexing source code,
+which can be used to power code navigation functionality
+such as Go to definition, Find references, and Find implementations.
+
+This repository includes:
+
+- A [Protobuf schema for SCIP](./scip.proto).
+- Rich Go and Rust bindings for SCIP: These include many utility functions
+  to help build tooling on top of SCIP.
+- Auto-generated bindings for TypeScript and Haskell.
+- The [`scip` CLI](./docs/CLI.md), which makes SCIP indexes
+  a breeze to work with.
+
+If you're interested in better understanding the motivation behind SCIP,
+check out the [announcement blog post](https://about.sourcegraph.com/blog/announcing-scip) and the [design doc](./docs/DESIGN.md).
+
+If you're interested in writing a new indexer that emits SCIP,
+check out our documentation on
+[how to write an indexer](https://docs.sourcegraph.com/code_intelligence/explanations/writing_an_indexer).
+Also, check out the [Debugging section][] in the Development docs.
+
+If you're interested in consuming SCIP data,
+you can either use one of the [provided language bindings](https://github.com/scip-code/scip/tree/main/bindings),
+or generate code for the [SCIP Protobuf schema](./scip.proto)
+using the Protobuf toolchain for your language ecosystem.
+Also, check out the [Debugging section][] in the Development docs.
+
+
+=== ast-grep languages page ===
+curl: (6) Could not resolve host: ast-grep.astral.sh
+/bin/bash: line 1: ag.html: No such file or directory
+http=000 bytes=0
+[0m
+[0m$ [0mcd /tmp/opencode && echo "=== serena docs: index/no-index ==="; for u in "https://raw.githubusercontent.com/oraios/serena/main/docs/02-usage/010_overview.md" "https://raw.githubusercontent.com/oraios/serena/main/README.md"; do echo "--- $u"; curl -sSL -m 25 "$u" | grep -n -iE "index|reindex|stale|outdated|language server|always up to date|static analysis" | head -12; done
+=== serena docs: index/no-index ===
+--- https://raw.githubusercontent.com/oraios/serena/main/docs/02-usage/010_overview.md
+--- https://raw.githubusercontent.com/oraios/serena/main/README.md
+28:> Do not install Serena via an MCP or plugin marketplace! They contain outdated and suboptimal installation commands. 
+100:* **Language servers** implementing the language server protocol (LSP) — the free/open-source alternative 
+107:### Language Servers
+109:Serena incorporates a powerful abstraction layer for the integration of language servers that implement the language server protocol (LSP). 
+110:The underlying language servers are typically open-source projects or at least freely available for use.
+112:When using Serena's language server backend, we provide **support for over 40 programming languages**, including
+141:| Capability                       | Language Servers | JetBrains Plugin |
+154:**: Only available for some languages, limited by the language server functionality.
+160:| Capability                                | Language Servers   | JetBrains Plugin                  |
+171:| Capability             | Language Servers  | JetBrains Plugin |
+223:> When using the language server backend, some additional dependencies may need to be installed to support certain languages;
+240:By default, this will set up Serena to use the language server backend. To use the JetBrains backend instead, add the parameters `-b JetBrains`
+[0m
+[0m$ [0mcd /tmp/opencode && echo "=== ast-grep docs ==="; for u in "https://raw.githubusercontent.com/ast-grep/ast-grep/main/website/guide/languages.md" "https://raw.githubusercontent.com/ast-grep/ast-grep/main/website/src/guide/languages.md" "https://raw.githubusercontent.com/ast-grep/ast-grep/main/website/index.md"; do printf "%s -> " "$u"; curl -sSL -m 20 -o agm.md -w "%{http_code}\n" "$u"; if [ -s agm.md ]; then head -40 agm.md; fi; done
+=== ast-grep docs ===
+https://raw.githubusercontent.com/ast-grep/ast-grep/main/website/guide/languages.md -> 404
+404: Not Foundhttps://raw.githubusercontent.com/ast-grep/ast-grep/main/website/src/guide/languages.md -> 404
+404: Not Foundhttps://raw.githubusercontent.com/ast-grep/ast-grep/main/website/index.md -> 404
+404: Not Found
+[0m
+[0m$ [0mcd /tmp/opencode && echo "=== benchmark table header ==="; sed -n '195,240p' cg_readme.md
+=== benchmark table header ===
+
+> **A note on cost:** CodeGraph's win on *every* codebase is precision — the agent stops crawling files and answers from the graph. On current models that precision is also a large direct saving: the 2026-08 re-measurement, on a harness that blocks the CLI in both arms, put it at **44% lower cost and 62% fewer tokens on average** across the seven benchmark repos, because a strong model *without* the graph burns its budget re-deriving structure. Cost tracks how much *discovery* a question demands more than raw repo size: 57–78% on questions the file-reading agent needed 28–43 tool calls to answer, near-even where it got there in 7.
+
+> **A note on context:** the numbers above measure *throughput* — tokens processed, tools called, dollars spent to reach one answer. They don't measure what is still sitting in your context window afterward, and on that axis CodeGraph costs **more**, not less. Across the same seven repos in multi-turn sessions, CodeGraph's responses leave about **80% more retrieval context resident** at the end of a session than a file-reading agent's do — on VS Code, 67k tokens against 18k. The mechanism is the same one that makes it fast: CodeGraph returns one dense, verbatim payload that answers the question and then stays in the window, where a grep-and-read agent churns through many small results that get evicted. Fewer tokens *processed* and a larger persistent *footprint* are both real at once. If you run long sessions in a small window, budget for it. Measured per-repo: [`docs/benchmarks/residual-context-occupancy.md`](docs/benchmarks/residual-context-occupancy.md).
+
+### Benchmark Results
+
+Tested across **7 real-world open-source codebases** spanning 7 languages, comparing an agent (Claude Code, headless) answering one architecture question **with** and **without** CodeGraph, at the **median of 4 runs per arm**. _Re-measured 2026-08-05 on **Claude Opus 4.8** against the current build, on a harness that blocks the `codegraph` CLI in **both** arms — contamination row: 0 of 28 without-arm runs._
+
+> **The universal win — every repo, every size: 88% fewer tool calls · 53% faster · 62% fewer tokens · 44% cheaper · file reads cut to zero on all seven repos.**
+
+With the index available, the agent answers from one to four `codegraph_explore` calls and stops. Without it, the agent burns its budget on discovery — up to **43 tool calls and 19 file reads** re-deriving what the graph already knew. Every repo was faster with CodeGraph in this measurement — by 35% on the narrowest question, by 3.6× on the widest.
+
+| Codebase | Language | Tool calls | Time | File reads | Tokens | Cost |
+|----------|----------|------------|------|------------|--------|------|
+| **VS Code** | TypeScript · ~11k files | **2 vs 28** | **2.2× faster** (58s vs 2m 10s) | **0** vs 12 | 77% fewer | 71% cheaper |
+| **Excalidraw** | TypeScript · ~640 | **2 vs 43** | **3.6× faster** (45s vs 2m 42s) | **0** vs 18 | 84% fewer | 78% cheaper |
+| **Django** | Python · ~3k | 3 vs 14 | 35% faster (54s vs 1m 23s) | **0** vs 8.5 | 41% fewer | 13% cheaper¹ |
+| **Tokio** | Rust · ~790 | 3 vs 29 | **2.6× faster** (1m 3s vs 2m 43s) | **0** vs 19 | 65% fewer | 64% cheaper |
+| **OkHttp** | Java · ~645 | 1 vs 6 | 43% faster (33s vs 58s) | **0** vs 2 | 54% fewer | 21% cheaper |
+| **Gin** | Go · ~110 | 1 vs 7 | 39% faster (28s vs 46s) | **0** vs 4 | 52% fewer | ~even¹ |
+| **Alamofire** | Swift · ~110 | 4 vs 33 | **2.6× faster** (54s vs 2m 22s) | **0** vs 16.5 | 59% fewer | 57% cheaper |
+
+<sub>¹ Cost tracks how much *discovery* the question demanded, which is why it varies far more than the other columns: 57–78% on repos where the file-reading arm needed 28–43 tool calls, but only 13% on Django and even on Gin, where it got there in 14 and 7. The with-arm still answered in 3 and 1 calls with zero file reads. **File reads** = median files opened — the surgical-context win in one column: the agent never reads a file on any of the seven repos when CodeGraph is present.</sub>
+
+<details>
+<summary><strong>Per-repo breakdown — WITH vs WITHOUT (median of 4)</strong></summary>
+
+| Codebase | Metric | WITH cg | WITHOUT cg |
+|---|---|---|---|
+| **VS Code** | Time / Tools / Tokens / Cost | 58s / 2 / 155k / $0.53 | 2m 10s / 28 / 670k / $1.80 |
+| **Excalidraw** | Time / Tools / Tokens / Cost | 45s / 2 / 156k / $0.54 | 2m 42s / 43 / 991k / $2.43 |
+| **Django** | Time / Tools / Tokens / Cost | 54s / 3 / 183k / $0.55 | 1m 23s / 14 / 309k / $0.63 |
+| **Tokio** | Time / Tools / Tokens / Cost | 1m 3s / 3 / 201k / $0.66 | 2m 43s / 29 / 573k / $1.83 |
+| **OkHttp** | Time / Tools / Tokens / Cost | 33s / 1 / 107k / $0.39 | 58s / 6 / 230k / $0.50 |
+| **Gin** | Time / Tools / Tokens / Cost | 28s / 1 / 87k / $0.31 | 46s / 7 / 180k / $0.31 |
+| **Alamofire** | Time / Tools / Tokens / Cost | 54s / 4 / 209k / $0.54 | 2m 22s / 33 / 505k / $1.27 |
+
+</details>
+
+<details>
+<summary><strong>Full benchmark details</strong></summary>
+
+**Methodology.** Each arm is `claude -p` (Claude Opus 4.8, `claude-opus-4-8`) run headlessly against the repo with `--strict-mcp-config`: **WITH** = CodeGraph's MCP server enabled, **WITHOUT** = an empty MCP config. Built-in Read/Grep/Bash stay available to both. Same question per repo, **4 runs per arm, median reported**. Cost = the run's `total_cost_usd`; Tokens = total tokens processed, summed per assistant turn (input incl. cache reads + cache creation + output); Time = wall-clock; Tool calls = every tool invocation, including those inside any sub-agents the model spawns. Repos cloned at `--depth 1` and indexed by the same CodeGraph build that served them. Re-measured 2026-08-05 on the current build.
+
+**The `codegraph` CLI is blocked in both arms.** A sanitized `PATH` plus a `PreToolUse` hook denies any Bash invocation of the CLI, in the WITHOUT arm as well as the WITH arm. This matters: without that block the control arm is not a control. On an unblocked harness we measured the WITHOUT agent finding the CLI on `PATH` and reaching CodeGraph through Bash in **26 of 28 runs** — which distorts the comparison in both directions, since a CLI call is not counted as a tool call and its output still enters the window. Earlier published figures were produced without this block. In the run reported above, all 28 WITHOUT runs attempted the CLI and **all 28 were blocked — 0 contaminated**.
+[0m
+[0m$ [0mcd /tmp/opencode && echo "=== sourcegraph: index staleness / precise vs implicit ==="; curl -sSL -m 30 "https://sourcegraph.com/docs/code_intelligence/explanations/auto_indexing" -o sgi.html -w "http=%{http_code} bytes=%{size_download}\n"; tr -d '\r' < sgi.html | sed 's/<[^>]*>/ /g' | tr -s ' \n' ' \n' | grep -n -iE "stale|out of date|outdated|index is|commit|exact|imprecise" | head -20
+...output truncated...
+
+Full output saved to: /home/smoke01/.local/share/opencode/tool-output/tool_12e8f4d3d002CEJZTfbUzsNW3x
+
+(no output)
+[0m
+[0m$ [0mcd /tmp/opencode && curl -sSL -m 25 "https://lite.duckduckgo.com/lite/?q=detect+stale+documentation+after+code+change+git+commit+timestamp+ADR" | tr -d '\r' | sed 's/<[^>]*>/ /g' | tr -s ' ' ' ' | grep -oE 'https?://[^ ]+' | grep -viE 'duckduckgo|w3.org' | head -20
+(no output)
+[0m
+[0m$ [0mcd /tmp/opencode && for p in core-concepts/how-it-works reference/cli; do echo "##### $p"; curl -sSL -m 25 "https://colbymchenry.github.io/codegraph/$p/" | tr -d '\r' | sed 's/<[^>]*>/ /g' | tr -s ' \n' ' \n' | grep -inE "[0-9]+ *(MB|KB|GB)|db size|disk|size on disk|edges stored|full rebuild|--force|re-index from scratch" | head -12; echo; done
+##### core-concepts/how-it-works
+
+##### reference/cli
+74: const a=document.getElementById("starlight__sidebar"),n=a?.querySelector("sl-sidebar-state-persist"),o="sl-sidebar-state",i=()=>{let t=[];const e=n?.dataset.hash||"";try{const s=sessionStorage.getItem(o),r=JSON.parse(s||"{}");Array.isArray(r.open)&&r.hash===e&&(t=r.open)}catch{}return{hash:e,open:t,scroll:a?.scrollTop||0}},c=t=>{try{sessionStorage.setItem(o,JSON.stringify(t))}catch{}},d=()=>c(i()),l=(t,e)=>{const s=i();s.open[e]=t,c(s)};n?.addEventListener("click",t=>{if(!(t.target instanceof Element))return;const e=t.target.closest("summary")?.closest("details");if(!e)return;const s=e.querySelector("sl-sidebar-restore"),r=parseInt(s?.dataset.index||"");isNaN(r)||l(!e.open,r)});addEventListener("visibilitychange",()=>{document.visibilityState==="hidden"&&d()});addEventListener("pageHide",d); On this page Overview init, index, and sync Query commands affected ui On this page Overview init, index, and sync Query commands affected ui CLI Terminal window codegraph # Run interactive installer codegraph install # Run installer (explicit) codegraph uninstall # Remove CodeGraph from your agents (inverse of install) codegraph init [path] # Initialize a project + build its graph (one step) codegraph uninit [path] # Remove CodeGraph from a project (--force to skip prompt) codegraph index [path] # Full re-index from scratch (--force, --quiet, --verbose) codegraph sync [path] # Incremental update (--quiet) codegraph status [path] # Show statistics (--json) codegraph ui [path] # Open the browser viewer (not released yet — see below) codegraph unlock [path] # Remove a stale lock file that's blocking indexing codegraph query &#x3C;search> # Search symbols (--kind, --limit, --json) codegraph explore &#x3C;query> # Relevant symbols' source + call paths in one shot (same output as the codegraph_explore MCP tool) codegraph node &#x3C;symbol | file> # One symbol's source + callers, or read a file with line numbers (same output as codegraph_node) codegraph files [path] # Show file structure (--format, --filter, --pattern, --max-depth, --json) codegraph callers &#x3C;symbol> # Find what calls a function/method (--limit, --json) codegraph callees &#x3C;symbol> # Find what a function/method calls (--limit, --json) codegraph impact &#x3C;symbol> # Analyze what code is affected by changing a symbol (--depth, --json) codegraph affected [files...] # Find test files affected by changes (see below) codegraph daemon # Manage background daemons — pick one to stop (alias: daemons) codegraph telemetry [on | off] # Show or change anonymous usage telemetry codegraph upgrade [version] # Update to the latest release (--check, --force) codegraph version # Print the installed version (also -v, --version) codegraph help [command] # Show help, optionally for one command # Search symbols (--kind, --limit, --json)codegraph explore # Relevant symbols&#x27; source + call paths in one shot (same output as the codegraph_explore MCP tool)codegraph node # One symbol&#x27;s source + callers, or read a file with line numbers (same output as codegraph_node)codegraph files [path] # Show file structure (--format, --filter, --pattern, --max-depth, --json)codegraph callers # Find what calls a function/method (--limit, --json)codegraph callees # Find what a function/method calls (--limit, --json)codegraph impact # Analyze what code is affected by changing a symbol (--depth, --json)codegraph affected [files...] # Find test files affected by changes (see below)codegraph daemon # Manage background daemons — pick one to stop (alias: daemons)codegraph telemetry [on|off] # Show or change anonymous usage telemetrycodegraph upgrade [version] # Update to the latest release (--check, --force)codegraph version # Print the installed version (also -v, --version)codegraph help [command] # Show help, optionally for one command"> 
+77: codegraph init creates the local .codegraph/ directory and builds the full graph in one step. (The old -i / --index flag is now a no-op, accepted only so existing scripts don’t break.) After that the file watcher keeps the graph current automatically — index (a full rebuild from scratch) and sync (an incremental update) are only needed when the watcher is disabled or you’re scripting against the index outside an agent session.
+[0m
+[0m$ [0mcd /tmp/opencode && for q in "documentation+stale+code+changed+git+timestamp+check+ADR+drift" "git+diff+detect+comment+outdated+source+file+changed+CI"; do echo "##### $q"; curl -sS -m 25 "https://lite.duckduckgo.com/lite/?q=$q" | tr -d '\r' | grep -oE 'https?://[a-zA-Z0-9./_%-]+' | grep -viE 'duckduckgo|w3\.org' | head -12; echo; done
+##### documentation+stale+code+changed+git+timestamp+check+ADR+drift
+
+##### git+diff+detect+comment+outdated+source+file+changed+CI
+[0m
+[0m$ [0mcd /tmp/opencode && curl -sS -m 25 "https://lite.duckduckgo.com/lite/?q=stalint+OR+%22check+docs%22+detect+outdated+documentation+source+file+modified+git" | tr -d '\r' | grep -oE 'https?://[a-zA-Z0-9./_%-]+' | grep -viE 'duckduckgo|w3\.org' | head -14
+(no output)
+[0m
+[0m$ [0mcd /tmp/opencode && curl -sSL -m 25 "https://colbymchenry.github.io/codegraph/guides/affected-tests/" | tr -d '\r' | sed 's/<[^>]*>/ /g' | tr -s ' \n' ' \n' | grep -oiE "[^|]{0,300}(sync|index|git diff|stale|commit)[^|]{0,300}" | head -14
+{constructor(){super();const e=this.querySelector("select");e&&(e.addEventListener("change",t=>{t.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=t.currentTarget.value)}),window.addEventListener("pageshow",t=>{if(!t.persisted)return;const n=e.querySelector("option[selected]")?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}}customElements.define("starlight-lang-select",s); class s extends HTMLElement{constructor(){super(),this.btn=this.querySelector("button"),this.btn.addEventListener("click",()=>this.toggleExpanded());const t=this.closest("nav");t&&t.addEventListener("k
+								const idx = parseInt(this.dataset.index 
+	 Getting Started Introduction Quickstart Installation Configuration Your First Graph Next Steps Core Concepts How It Works The Knowledge Graph Resolution &amp; Frameworks Guides Indexing a Project Reading Your Graph in the Browser Framework Routes Affected Tests in CI Reference MCP Server Integrations CLI API Languages Troubleshooting 
+etItem(o,JSON.stringify(t))}catch{}},d=()=>c(i()),l=(t,e)=>{const s=i();s.open[e]=t,c(s)};n?.addEventListener("click",t=>{if(!(t.target instanceof Element))return;const e=t.target.closest("summary")?.closest("details");if(!e)return;const s=e.querySelector("sl-sidebar-restore"),r=parseInt(s?.dataset.index
+ Terminal window codegraph affected src/utils.ts src/api.ts # pass files as arguments git diff --name-only 
+ codegraph affected --stdin # pipe from git diff codegraph affected src/auth.ts --filter "e2e/*" # custom test-file pattern 
+ #!/usr/bin/env bash AFFECTED = $( git diff --name-only HEAD
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== repo commits ==="; git rev-list --count HEAD; echo "=== per-path git log timing (ancient_games/journal.py) ==="; /usr/bin/time -f "%e s" git log -1 --format=%at -- ancient_games/journal.py 2>&1 | tail -2; echo "=== touched paths since a date (the actual check shape) ==="; /usr/bin/time -f "%e s" git log --since="2026-10-01" --name-only --format=%at -- ancient_games/ 2>&1 | tail -1; echo "=== count of changed files in that window ==="; git log --since="2026-10-01" --name-only --format="" -- ancient_games/ | sort -u | grep -c . ; echo "=== .git size ==="; du -sh .git
+=== repo commits ===
+246
+=== per-path git log timing (ancient_games/journal.py) ===
+1788875291
+0.00 s
+=== touched paths since a date (the actual check shape) ===
+0.00 s
+=== count of changed files in that window ===
+1
+=== .git size ===
+19M	.git
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== HEAD date ==="; git log -1 --format="%H %ad %s" --date=iso; echo "=== last 5 commit dates ==="; git log -5 --format="%ad %s" --date=short; echo "=== commits touching ancient_games/ in last 30 days of repo time ==="; git log --since="2026-09-12" --name-only --format="COMMIT %at" -- ancient_games/ | head -30; echo "=== timing: full git log name-only over whole history for one dir ==="; /usr/bin/time -f "elapsed %e s" git log --name-only --format="" -- ancient_games/ > /tmp/opencode/gl.txt 2>/tmp/opencode/gt.txt; cat /tmp/opencode/gt.txt; echo "distinct paths touched ever in that dir:"; sort -u /tmp/opencode/gl.txt | grep -c .
+=== HEAD date ===
+49c04c27ff7e7cbcb6c35361fedb5b4812273f0a 2026-10-12 13:07:27 +0800 Log the 2026-10-12 source-of-truth changes in the run state
+=== last 5 commit dates ===
+2026-10-12 Log the 2026-10-12 source-of-truth changes in the run state
+2026-10-12 Memory design: drop proposed/active, journal is read at milestones
+2026-10-12 Simplify the source-of-truth memory design and record EJ's decisions
+2026-10-12 Record how a conclusion is reported: quotes, labels, who wrote the check
+2026-10-09 Fix the three remaining test failures
+=== commits touching ancient_games/ in last 30 days of repo time ===
+COMMIT 1791551028
+
+ancient_games/hybrid/tools/run_suite.py
+=== timing: full git log name-only over whole history for one dir ===
+elapsed 0.01 s
+distinct paths touched ever in that dir:
+40
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && /usr/bin/time -f "WALL %e s" python3 code_graph/code_graph.py . > /tmp/opencode/cg_now.json 2>/tmp/opencode/cg_time.txt; cat /tmp/opencode/cg_time.txt; echo "=== size ==="; ls -l /tmp/opencode/cg_now.json | awk '{print $5" bytes"}'; echo "=== stats ==="; python3 -c "
+import json;d=json.load(open('/tmp/opencode/cg_now.json'));print('schema',d['schema'],'tier',d['tier']);print(json.dumps(d['stats'],indent=1));print('errors',len(d['errors']))"
+WALL 0.94 s
+=== size ===
+2607872 bytes
+=== stats ===
+schema code_graph/1 tier stdlib-ast
+{
+ "edges": {
+  "call": 2000,
+  "contains": 1240,
+  "fixture": 115,
+  "import": 345
+ },
+ "external_calls": 3562,
+ "external_imports": 541,
+ "files": 126,
+ "fixtures": 13,
+ "functions": 1240,
+ "modules": 126,
+ "tests": 433,
+ "unresolved": {
+  "attribute": 2863,
+  "dynamic": 927,
+  "name": 84
+ }
+}
+errors 0
+[0m
+[0m$ [0mfor r in colbymchenry/codegraph oraios/serena ast-grep/ast-grep sourcegraph/scip; do printf "%-28s " "$r"; gh api repos/$r --jq '"pushed=\(.pushed_at) stars=\(.stargazers_count) license=\(.license.spdx_id)"' 2>&1 | head -1; done; echo "--- codegraph last commit touching README.md ---"; gh api "repos/colbymchenry/codegraph/commits?path=README.md&per_page=1" --jq '.[0].commit.committer.date' 2>&1 | head -1; echo "--- drift doc last commit ---"; gh api "repos/colbymchenry/codegraph/commits?path=docs/benchmarks/index-drift-cg33.md&per_page=1" --jq '.[0].commit.committer.date + "  " + .[0].sha[0:8]' 2>&1 | head -1; echo "--- languages doc last commit ---"; gh api "repos/colbymchenry/codegraph/commits?path=docs/src/content/docs/reference/languages.mdx&per_page=1" --jq '.[0].commit.committer.date' 2>&1 | head -1
+colbymchenry/codegraph       pushed=2026-10-11T23:19:13Z stars=73760 license=MIT
+oraios/serena                pushed=2026-10-09T13:08:19Z stars=30193 license=NOASSERTION
+ast-grep/ast-grep            pushed=2026-10-11T15:34:09Z stars=16199 license=MIT
+sourcegraph/scip             pushed=2026-10-10T06:03:56Z stars=827 license=Apache-2.0
+--- codegraph last commit touching README.md ---
+2026-09-30T11:36:02Z
+--- drift doc last commit ---
+2026-10-07T09:16:49Z  d348d301
+--- languages doc last commit ---
+[0m
