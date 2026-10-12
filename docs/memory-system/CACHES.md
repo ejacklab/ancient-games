@@ -40,8 +40,8 @@ answer the questions each cache would answer. Each cache below has a
 **trigger**: a condition that can be observed and that makes it worth building. None of them is built before its
 trigger fires.
 
-For the **code and docs** the measured section below proposes otherwise. That expansion is a proposal for EJ, not a
-decision (`runs/20261012-caches-routing/vision-proposals.md`).
+The caches are for **memory entries** only: that is the vision EJ confirmed on 2026-10-12. The measured section below
+on code and docs is kept as evidence; it is outside the vision, and its proposals to widen the vision were not adopted.
 
 This follows the design's own rule: `.cache/` is optional, gitignored and rebuilt from the files, and its absence
 must not stop anyone reading memory (`SOURCE_OF_TRUTH.md`; recommendation M4, M6). It also follows the repo's own
@@ -123,8 +123,9 @@ development and testing** measures those.
 
 ### Part 2 — code and docs (corpus: this repo's code and docs)
 
-This table is measured on this repo and is **proposed** for EJ, not a decision. Its evidence is **Measured here:
-development and testing** below.
+**Outside the vision.** The confirmed vision covers memory entries only (EJ, 2026-10-12). This table is measured on
+this repo's code and docs and is kept as evidence and as guidance for agents; it is not part of the caches design.
+Its evidence is **Measured here: development and testing** below.
 
 **Routing rule for development and testing (proposed).**
 
@@ -147,12 +148,10 @@ graph save reading (BM-6). `project-memory/` does not exist yet.
 
 **What this does not change, and what it proposes.**
 - **Unchanged:** the rules for all three caches below (full rebuild, rebuild when stale, fall back when absent).
-  R1–R8 are the acceptance criteria; they are split below into the common cache invariants, the memory-entry criteria,
-  and the proposed code-and-docs expansion.
-- **Conflict with "The answer first" and the vision:** for code and docs, the measurements say full-text and the graph
-  already save reading today. That contradicts "none of the three caches is needed today" and the vision's *who it is
-  for: an agent retrieving an entry*. Changing either is EJ's call. The proposed wording is in
-  `runs/20261012-caches-routing/vision-proposals.md`, and neither file has been edited.
+  R1–R9 are the acceptance criteria for the memory caches.
+- **The vision stands as confirmed:** for code and docs, the measurements say full-text and the graph already save
+  reading today. EJ kept the vision for memory entries only (2026-10-12), so the proposals in
+  `runs/20261012-caches-routing/vision-proposals.md` (P1–P3) were not adopted.
 
 ## Rules for all three caches
 
@@ -227,8 +226,8 @@ amount either way (not measured).
    the first (`V-F24`).
 4. **Why might it be needed later?** If agents keep missing entries that exist because their words differ from the
    entry's. The trigger is a record of such misses: the entry existed, `INDEX.md`, grep and full-text search all missed
-   it, and it was found another way (`V-F13`, my reading). How many misses justify building it is **EJ's number**. No
-   source gives one.
+   it, and it was found another way (`V-F13`, my reading). The vector index is worth building when, on those recorded
+   misses, the hybrid index finds entries full-text did not, and it does no worse on the other questions (R5.2).
 5. **Why hybrid only?** On memory-style text, the positive results found combine vectors with keyword search (`V-F6`,
    `V-F7`; `V-F10` is unproven), and vectors alone were the weakest arm when results were returned inline (`V-F3`,
    `V-F4`). So the vector index comes after the full-text index, never
@@ -241,7 +240,7 @@ amount either way (not measured).
 |---|---|
 | **Who** | Built and rebuilt by a script with no model call except the embedding model itself. Read by any agent on demand, through the same command as full-text search. EJ decides to build it when the trigger fires. |
 | **What** | One vector per active entry file, with the entry's `status`, `covers`, content hash and embedding-model id stored beside it (`V-F24`: a changed model makes every vector useless). Results merged with the full-text results by reciprocal rank fusion (vector node §Q5, from qmd's README). |
-| **When** | After the full-text index exists, and after the miss record shows EJ's number. Rebuilt with the full-text index, in the same step, so the two cannot disagree (`V-F24`, my reading). |
+| **When** | After the full-text index exists, and when the R5.2 comparison favours hybrid. Rebuilt with the full-text index, in the same step, so the two cannot disagree (`V-F24`, my reading). |
 | **Where** | `project-memory/.cache/`, beside `index.sqlite`, gitignored. |
 | **Why** | The five whys above. |
 | **How** | The smallest options in `V-F18`/`V-F19`: a static Model2Vec model with numpy (option A, no GPU) or `bge-small-en-v1.5` through FastEmbed (option B). Both are small next to the 16 GB GPU here. Embedding speed on this GPU is **not measured** (`V-F18`). No embedding runtime is installed today; numpy is (`V-F19`). |
@@ -267,7 +266,7 @@ amount either way (not measured).
 5. **Why might it be needed later?** Any one of the three conditions in the code-graph node's §6, each a test:
    - `covers:` starts naming functions or classes instead of files;
    - the check must answer about files not on any `covers:` list ("what does this change affect");
-   - path-level flags raise too many false alarms. How many is **EJ's number**.
+   - on a review of past path-level flags, the false alarms outnumber the true ones (R5.3).
 
 ### 5W1H
 
@@ -350,12 +349,13 @@ right file):
 ## Core requirements
 
 Acceptance criteria are checkable or they are questions for EJ. Where the research gives no number, the criterion
-carries `OPEN:` rather than an invented value. R1–R4 and R8 are common to any cache. R5–R7 name what a
-memory-entry cache holds — an entry's trigger, `status`, `covers` and file name — so applying them to code and docs
-is part of the proposal for EJ, not a decision.
+carries `OPEN:` rather than an invented value. They cover the memory caches, the scope
+of the confirmed vision (`vision-statements/caches-memory-vision-statements.md`); R9 carries the vision's "never read
+at session start".
 
 ### R1 — Derived and disposable
-The cache is computed from the markdown and never holds knowledge of its own (M4, M6).
+The cache is computed from the files (the memory's markdown, and for the code graph the code its entries cover) and
+never holds knowledge of its own (M4, M6).
 
 - **R1.1** Deleting the cache and rebuilding from the files restores every answer. *Example:* `rm -rf
   project-memory/.cache/` → run the documented rebuild → the same query returns the same entries. (M6)
@@ -386,16 +386,18 @@ The cache is computed from the markdown and never holds knowledge of its own (M4
 Each cache has an observable trigger. This is the requirement that keeps the whole layer honest. The query-time
 counterpart — which store to reach for once a trigger has fired — is the section **When to use which store** above.
 
-- **R5.1 Full-text** — built only when `INDEX.md` can no longer list every active entry under its size limit. `OPEN: not
-  measured — the limit is EJ's number` (S-F5, S-F13: not measured for a corpus of a few hundred to a few thousand short
-  entries).
-- **R5.2 Vector** — built only after R5.1 has fired *and* the miss record reaches EJ's number. A "miss" is
-  recorded when an entry existed and `INDEX.md`, grep and full-text search all missed it (V-F13).
-  `OPEN: not measured — the miss count is EJ's number.` The vector index is hybrid only — appended to
-  full-text results by reciprocal rank fusion, never instead of them (V-F3, V-F4, V-F6, V-F7; V-F10 is unproven).
+- **R5.1 Full-text** — built only when, on the project's own recorded questions, full-text reaches the right entry
+  after reading less than `INDEX.md` plus grep does, with no more misses. Measured as the code-and-docs benchmark was
+  (BM-1 to BM-9): the same questions through both routes, the characters read to the first right entry, and the misses.
+  The comparison decides; no fixed size is set in advance (S-F5, S-F13: nothing is measured yet for a corpus of a few
+  hundred to a few thousand short entries).
+- **R5.2 Vector** — built only after R5.1 has fired *and*, run on the recorded misses, the hybrid index finds entries
+  full-text did not, while doing no worse on the other recorded questions. A "miss" is recorded when an entry existed
+  and `INDEX.md`, grep and full-text search all missed it (V-F13). How its results are combined with full-text
+  (hybrid only) is a design proposal in **Vector index**, not part of this trigger.
 - **R5.3 Code graph** — built only when one of three conditions holds: `covers:` starts naming functions or classes
-  rather than files; the check must answer about files on no `covers:` list; or path-level flags raise too many
-  false alarms. `OPEN: not measured — the tolerated false-alarm rate is EJ's number.` (code-graph §6, G-F14, G-F18)
+  rather than files; the check must answer about files on no `covers:` list; or, on a review of past path-level
+  flags, the false alarms outnumber the true ones. (code-graph §6, G-F14, G-F18)
 
 ### R6 — Only active entries, with their status
 - **R6.1** The index holds the same set of entries as `INDEX.md`, each row carrying `status` and `covers`.
@@ -408,9 +410,138 @@ counterpart — which store to reach for once a trigger has fired — is the sec
 ### R8 — The rebuild stays cheap
 - **R8.1** The documented rebuild completes without a model call, except the embedding step of R5.2.
   *Example:* rebuild with no model credentials available; the FTS and code-graph paths still work. (M4, M6)
-- **R8.2** `OPEN: not measured — the budget is EJ's number.` Measured, for orientation only: 0.94 s (code graph,
+- **R8.2** A rebuild costs less than the cache saves between rebuilds: its time is compared with the reading time the
+  cache saved on the recorded questions in that period. If the rebuild costs more, the cache is not kept. Measured, for
+  orientation only: 0.94 s (code graph,
   this repo, G-F12) and 0.53 s (FTS, 10,000 synthetic entries, S-F13). Nothing is measured on a real
   `project-memory/` corpus, because it does not exist yet.
+
+### R9 — Never read at session start
+- **R9.1** No cache file is part of what a session loads at start. *Example:* the session-start reads in
+  `SOURCE_OF_TRUTH.md` (§ When it will be used) name no file under `project-memory/.cache/`; a start hook that
+  opens `.cache/index.sqlite` fails this. (The vision's never-rule; M18)
+
+## Example numbers by case
+
+The triggers in R5 and R8.2 are comparisons. The measurement decides them, so no number is fixed in advance. This
+section shows **what those comparisons have come out at elsewhere**, by agent type and condition, so a reader knows
+roughly where a project stands before measuring. These are examples with sources, not thresholds.
+
+Run: `runs/20261012-caches-numbers/`. Its source ids are:
+- `W-*`: web research (`nodes/web.md`);
+- `OC`: opencode's research (`nodes/opencode.md`);
+- `SZ`: the SEZA measurement (`nodes/seza.md`; every number with its command);
+- `CX`: codex's independent second look at SEZA, by agent type (`nodes/codex.md`);
+- `BM-*`, `S-F*`, `V-F*`, `G-F*`, `s3-F*`: as above.
+
+Web quotes are model-made extracts, not byte-checked, except W-1. Numbers marked *my arithmetic* are computed from a
+sourced figure.
+
+### The index read at session start (`INDEX.md`, `MEMORY.md`), by agent type
+
+| Agent | Window | Limit on files loaded at start | Measured effective context | Example |
+|---|---|---|---|---|
+| Claude Code (Claude 5.x) | 1M (W-8) | `MEMORY.md`: "first 200 lines … or the first 25KB, whichever comes first"; `CLAUDE.md`: target under 200 lines (W-1) | Opus 4.6, MRCR v2: 76% at 1M (W-14); 93% at 256K (W-15, reported) | 25 KB binds first: about 150 lines at 167 B per line (W-1), about 107 lines at SEZA's 233 B per line (*my arithmetic*, SZ) |
+| Codex (GPT-6.x) | 1.05M per the API (W-9), but this machine's Codex model cache says `context_window: 500000`, 95% effective, so about 475K (CX) | `AGENTS.md` combined up to 32 KiB (`project_doc_max_bytes`) (W-2) | GPT-5.4: 79.3% at 128K–256K, 36.6% at 512K–1M (W-15, reported) | instructions plus index under 32 KiB |
+| agy (Gemini 3.1 Pro / 3.8 Flash) | 1,048,576 (W-9, CX) | 24,000 bytes per rule file, **and** a 20,000-token budget across all rules (CX, official page); 12,000 characters in other reports (W-4, conflict) | 84.9% at 128K, 26.3% at 1M (W-15, reported) | under 12,000 characters if both readings must hold (*my reading*) |
+| opencode (MiniMax M3 / M2.7) | 1M / 204,800 (W-9) | no limit stated (W-6) | GAP | follow the strictest agent sharing the repo |
+| dsh (DeepSeek flash / V4 pro) | 1,048,576 (CX) | a 65,536-byte budget for the instruction files it loads (CX, from its loader docs) | GAP | instructions plus index under 64 KiB |
+| Qwen Code | — | its auto-memory index is capped at 200 lines or 25,000 bytes (`MAX_MANAGED_AUTO_MEMORY_INDEX_LINES` / `_BYTES`, CX); it also warns when always-loaded context passes 15% of the window, an advisory only (CX) | — | the index cap binds first: under 25,000 bytes, as for Claude |
+| Cursor | — | rules "under 500 lines" (W-3) | — | — |
+
+**Why the start load should stay small, whatever the window:**
+- Half of 17 models kept satisfactory performance only up to 32K (RULER, W-10).
+- 11 models fell below 50% of their baseline at 32K when the question and the answer share few words (NoLiMa, W-11).
+- Focused prompts of about 300 tokens beat full ones of about 113K (W-13).
+- Context files raised inference cost by over 20%, with no general success gain (W-17).
+- At 500 simultaneous instructions, the best model was 68% accurate (W-16).
+
+**Use case, SEZA (SZ, CX):**
+- The start load by agent, as estimates: Claude Code 61,993 B (about 15.4K tokens, including the global `CLAUDE.md`;
+  SZ measured 58,427 B without it); dsh 46,319 B (about 11.5K); Codex and agy 29,166 B each (about 7.2K) (CX). All are
+  well under 15% of every window above.
+- `MEMORY.md` is 52 lines and 12,108 B, within Claude's limit.
+- The 52 topic files (159,524 B) would not fit in 25 KB. That is why they are an index plus files read on demand.
+
+**When several agents share a project, the binding limit is the smallest one among them** (*my reading*).
+
+### R5.1: full-text against `INDEX.md` plus grep
+
+| Case | What was measured | Source |
+|---|---|---|
+| 1,144 docs, 1.7M tokens | the grep agent is more accurate (77.4 vs 74.7) but reads 226K tokens per question against BM25's 5.8K | W-22 |
+| 6,980 docs, 8.5M tokens | accuracy crossover: BM25 70.1 vs 69.9; BM25 ahead at every larger tier | W-22, S-F4 |
+| 511,959 docs, 600.8M tokens | BM25 50.5 vs the grep agent 30.7 | W-22 |
+| This repo's code and docs, 490 files, 4.8 MB | full-text prints about a sixth of grep's characters before naming a right file | BM-6 |
+| SEZA memory: the Claude memory folder (55 files) and a wider set of 257 files (2.5 MB) | grep takes 4–7 ms but prints from 361 B (a narrow term, memory folder) to 109,519 B, about 27K tokens (a broad term, 257-file set). Over the 257 files, a full-text proxy ranked the right file first on 3 of 5 questions and missed on 2 (n=5, one reader) | SZ |
+| A tool result too large to read | filtering in code instead of reading: 150,000 tokens down to 2,000 | OC (Anthropic, 2025-11-04) |
+
+**My reading:** on accuracy, grep stays competitive until millions of tokens. On **tokens read**, full-text wins much
+earlier: on SEZA-sized memory, a single broad term already floods grep's output. The R5.1 comparison measures exactly
+that.
+
+### R5.2: the vector index
+
+| Case | What was measured | Source |
+|---|---|---|
+| Loading about 115K tokens of history instead of retrieving | 30%–55% lower accuracy (GPT-4o, Llama 3.1) | W-18 |
+| Long context against retrieval, 100K–1M tokens | retrieval better for 3 of 4 models at 100K, and for all 4 from 500K | W-19 |
+| Vendor guidance | under about 200,000 tokens, the whole base can go in the prompt | V-F8 (2024) |
+| Dense against BM25, 1,144–511,959 docs | dense lowest at every tier in the table (7 tiers) | W-22 |
+| Enterprise corpus, 500K docs | vector 51.4 vs BM25 68.8 correctness | V-F4 |
+| Code, 1,000 or more files | +12.5% accuracy with vector search (Cursor), but 15 days later Cursor shipped Instant Grep and says it "does not store embeddings of your codebase for search" | V-F6, OC |
+| A memory growing 10× (1M to 10M tokens) | Mem0 64.1 to 48.6 (vendor's figures) | W-20 |
+| SEZA | no recorded misses, so the comparison has nothing to run on | SZ |
+
+**My reading:** retrieval beats loading everything somewhere around 100K–500K tokens, but it is keyword retrieval
+that wins. Vectors earn a place only on recorded meaning-misses, which is what R5.2 tests.
+
+### R5.3: the code graph
+
+| Case | What was measured | Source |
+|---|---|---|
+| Gin, about 110 files | cost about even with or without the graph (vendor's own benchmark, like the rows below) | G-F7, W-25 |
+| Alamofire, about 110 files | 57% cheaper (vendor's own benchmark) | W-25 |
+| Excalidraw, about 640 files | 78% cheaper, 84% fewer tokens | G-F7 |
+| Django, about 3k files | 13% cheaper | G-F7 |
+| VS Code, about 11k files | 71% cheaper, but 67k vs 18k tokens left resident after the session | G-F7, G-F7b |
+| Hidden-dependency tasks | 99.4% vs 76.2% task completion | s3-F16 |
+| 43 files (Serena, vendor self-evaluation) | cross-file rename 9 calls down to 1, but 4.5× worse on a one-line edit | OC |
+| This repo | the graph names a caller in 33–46 characters | BM-3 |
+| SEZA | `.ctxgraph` (1.1 MB) imported once on 2026-07-28, every `usage_count` 0, no production code queries it (SZ); a query script exists and a staging copy was queried on 2026-08-02 (CX). How often it was used is a GAP. A built graph with almost no use: the case R5.3 exists to prevent | SZ, CX |
+
+**My reading:** the payoff follows how far a question reaches across files, not the file count. Two repos of 110
+files went from no saving to 57%.
+
+### R8.2: rebuild cost
+
+| Store | Measured | Source |
+|---|---|---|
+| Full-text | 0.169 s for 490 files (index 9.5 MB, about 2× the source); 0.53 s for 10,000 entries; 2.57 s for 50,000; SEZA 0.004 s for 55 files, 0.54 s for 2,013 md files (34 MB), both in an in-memory database, so no disk writes (SZ) | BM-9, S-F13, SZ |
+| Vector | 0.936 s for 490 files with model2vec; embedding speed 81,018 samples/s for model2vec against 274 for a MiniLM fine-tune (model2vec's own table); sqlite-vec builds 1M × 128 dims in about 4 s, embedding excluded | BM-9, OC, W-27 |
+| Code graph | 0.94 s for 126 `.py` files; codegraph about 100 s for about 27k files | G-F12, W-25 |
+
+**My reading:** at the sizes of this repo (490 files) and of SEZA's whole markdown corpus (2,013 files; its memory
+stores alone are 152–201 files), a rebuild takes under a second (SEZA's figure is in-memory, not on disk). Larger
+corpora take seconds (2.57 s for 50,000 entries; about 4 s for sqlite-vec at 1M vectors, embedding
+excluded) to minutes (codegraph, about 100 s for about 27k files). A heavy embedding model adds the most per file.
+So R8.2 starts to bite with corpus size and with a slow embedding model.
+
+### SEZA today, trigger by trigger (SZ, the researcher's reading)
+- **R5.1:** no verdict at n=5.
+- **R5.2:** not met.
+- **R5.3:** cannot be evaluated; the graph that exists is barely used (production queries: GAP).
+- **R8.2:** cheap.
+
+SEZA's own `project_memory search` was used 42 times in 15 sessions, with none after 2026-09-24.
+
+**What actually went wrong in SEZA was not search** (CX):
+- Its start index carried outdated state: the cleanup audit records *"Memory index stale"*
+  (`seza/runs/20261010-project-cleanup/STATUS-GRAPH.md:268`).
+- Its derived graph was missing when it was asked for: *"graph is missing; run sync or rebuild"*.
+
+**My reading:** a faster cache would have returned the same stale entries. R3 (stale never answers) and the drift
+check matter more here than any of the three stores.
 
 ## What this changes elsewhere (proposed, not done)
 
@@ -421,8 +552,9 @@ counterpart — which store to reach for once a trigger has fired — is the sec
 
 ## Not known
 
-- Every trigger number is EJ's: the `INDEX.md` size limit (already open in `SOURCE_OF_TRUTH.md`), the number of
-  recorded misses for vectors, and the false-alarm rate for the code graph.
+- No trigger has a fixed number. Each is a comparison (R5, R8.2) that is measured once `project-memory/` has entries
+  and recorded questions; the measurement decides (EJ, 2026-10-12: *"this is design guide, how can I give you a
+  number?"*).
 - No measurement exists of any of the three on a project-memory corpus. All evidence is on other corpora: source code,
   chat memory, enterprise documents.
 - The researchers' web reads went through extracts. `S-F*` quotes are not byte-checked (`sqlite-fts.claude.md`,
