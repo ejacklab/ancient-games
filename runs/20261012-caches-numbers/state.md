@@ -92,3 +92,4 @@
   public). `.gitignore` keeps 7 files on disk only: `nodes/seza.md`, `nodes/codex.md` and their logs, the inline review
   prompt, and both review outputs. The review verdicts and findings are recorded above. `CACHES.md` keeps the SEZA
   numbers and one quote.
+- 2026-10-12 EJ accepted `docs/memory-system/CACHES.md` ("yes I accept"), including R1–R9; its status line now says so.

@@ -95,3 +95,4 @@ seza `.ctxgraph/graph.db`), so "is it needed" comes before "how".
 - 2026-10-12 the commit is `7757f21` (12 files, 2,213 insertions); `git branch -r --contains 7757f21` lists
   `origin/master`. Step 4 is still open: the header of `docs/memory-system/CACHES.md` says "draft, not yet accepted
   by EJ".
+- 2026-10-12 EJ accepted `docs/memory-system/CACHES.md` ("yes I accept"), including R1–R9; its status line now says so.

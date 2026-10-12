@@ -63,3 +63,4 @@ timestamped lines to this log).
   (finding 10) and a provenance line in the status block. The pre-fix copy is `merge/CACHES.merged.before-review-fixes.md`.
   Trace check: 113/113 numbers trace; the only flagged id, `D2`, is from the run record. Not independently re-reviewed.
   Nothing is committed, and no shared file is edited.
+- 2026-10-12 EJ accepted `docs/memory-system/CACHES.md` ("yes I accept"), including R1–R9; its status line now says so.

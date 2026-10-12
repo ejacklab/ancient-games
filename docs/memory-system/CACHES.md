@@ -1,4 +1,4 @@
-> Status: draft, not accepted by EJ. Merged 2026-10-12 by dsh (`deepseek-flash`) from Version A
+> **Status: accepted by EJ on 2026-10-12** (EJ: *"yes I accept"*), including the requirements R1–R9. Merged 2026-10-12 by dsh (`deepseek-flash`) from Version A
 > (`runs/20261012-caches-enhance/CACHES.md`) and Version B (`runs/20261012-caches-routing/CACHES.enhanced.md`), after
 > reviews by agy, codex and opencode (`runs/20261012-caches-merge/reviews/`).
 > Then corrected by the COO (Claude `claude-opus-5-5`) for two leftovers and seven review findings
