@@ -3,8 +3,25 @@
 > reviews by agy, codex and opencode (`runs/20261012-caches-merge/reviews/`).
 > Then corrected by the COO (Claude `claude-opus-5-5`) for two leftovers and seven review findings
 > (`runs/20261012-caches-merge/verify/review-coo.md`); dsh's original is `merge/CACHES.merged.dsh-original.md`.
+>
+> **Changed 2026-10-12, accepted by EJ the same day** (EJ, 2026-10-12: *"others can accept and apply"*): the core
+> requirements were regrouped into Build / Keep / Read (ids B, K, Rd; each gives the R id it replaces), with a source
+> and a "Fails if" check each, and Rd4 (questions and misses are recorded) added as *proposed*. The code graph was taken
+> out of the requirements and the example numbers, because it is its own project (EJ: *"code graph should have it's own
+> project"*); its text is in `docs/code-graph/CODE_GRAPH.md`. Its own section, the title, two Part 1 rows and its lines
+> in the rule and the costs were removed too. After three reviews (`runs/20261012-caches-requirements-review/`), EJ
+> chose the B1.1 comparison as the full-text trigger, replacing "`INDEX.md` can no longer list every active entry" in
+> the rule, the routing table, the five whys and the 5W1H (EJ: *"the comparison for full-text"*), and dropped K3's
+> rebuild-cost part with its example table (EJ: *"drop the K3 cost part"*). Then the reviewers' wording and citation
+> fixes (EJ: *"apply the reviewers' remaining wording and citation fixes"*). Then three of their new requirements, as
+> *proposed*: EJ's decisions are recorded (B1.0, K3.3), one rebuild at a time and both indexes in one step (K2.2, K2.3),
+> and a question record that can replay a comparison (Rd4.4–Rd4.6); and `questions/` added to `SOURCE_OF_TRUTH.md` (EJ,
+> 2026-10-12: *"yes, write them in"*). On acceptance: Part 2 moved to the code-graph project, and B4 no longer stores
+> `status` (EJ, 2026-10-12: *"others can accept and apply"*). Finally the full question log was dropped: only misses are
+> noted, in the journal, and a comparison builds its question set when it runs; Rd4.3–Rd4.6 and `questions/` are gone
+> (EJ, 2026-10-12: *"yes , made that change"*).
 
-# Memory Caches: SQLite Full-Text, Vector, Code Graph
+# Memory Caches: SQLite Full-Text and Vector
 
 > **Provenance.** Written 2026-10-12 by Claude (`claude-opus-5-5`) from three research
 > nodes in `runs/20261012-memory-caches/nodes/`: SQLite full-text (`sqlite-fts.claude.md`, ids `S-F*`), vector
@@ -49,10 +66,9 @@ history of building graphs nobody queried (`docs/KNOWLEDGE_GRAPH_DESIGN.md` §1,
 
 ## When to use which store
 
-The two tables below cover two different corpora and are kept apart. **Part 1 is for memory entries**
-(`project-memory/`), reasoned from the research and the run record. **Part 2 is for code and docs**, measured on this
-repo. In both parts a cache is derived and optional and is never the source of truth; once its trigger fires it is a
-cheaper way to reach the same entry.
+**Part 1 is for memory entries** (`project-memory/`), reasoned from the research and the run record. Part 2, for code
+and docs, has moved to the code-graph project. A cache is derived and optional and is never the source of truth; once
+its trigger fires it is a cheaper way to reach the same entry.
 
 ### Part 1 — memory entries (corpus: `project-memory/`)
 
@@ -62,29 +78,24 @@ each: `claude` on the code graph, `codex` on the vector index, `opencode` on SQL
 the 30-row cost table, with every disagreement kept, are in `runs/20261012-caches-enhance/DECISION-RULES.md` — the
 run record. **This file is the live copy.**
 
-**The rule.** **SQLite FTS5** is for a free-text question whose words are likely in the entry text, once `INDEX.md`
-can no longer list every active entry under its size limit and ranked results with snippets save opened files
+**The rule.** **SQLite FTS5** is for a free-text question whose words are likely in the entry text, once its
+comparison (B1.1) shows ranked results with snippets reach the right entry after reading less than `INDEX.md` plus grep
 (`S-F1`, `S-F4`). **The vector index** is for the same discovery when the question's wording differs from the
-entry's, once the documented miss trigger has fired (`V-F11`, `V-F13`, `M4`). **The code graph** is only for a
-multi-hop structural question about Python code, after its trigger, and only as a lower bound (`G-F8`, `G-F17`,
-`G-F18`, `M5`). Everything else is the files.
+entry's, once the documented miss trigger has fired (`V-F11`, `V-F13`, `M4`). Everything else is the files.
 
 | the question | store | if not, this | evidence |
 |---|---|---|---|
-| What do we already know about X? (free text, words likely in the entry) | **FTS5** — conditional on the size trigger | `INDEX.md`, grep, then read | S-F1, S-F4 |
+| What do we already know about X? (free text, words likely in the entry) | **FTS5** — conditional on its trigger (B1.1) | `INDEX.md`, grep, then read | S-F1, S-F4 |
 | Which prior entry matches when my words differ from its? (find by meaning) | **vector** — conditional on the miss trigger | `INDEX.md`, grep, then read | V-F11, V-F13, M4 |
-| A question about the code itself: what changing F reaches, which tests reach F | see **Part 2** (code and docs) | — | Part 2 |
+| A question about the code itself: what changing F reaches, which tests reach F | the code-graph project (`docs/code-graph/`) | — | — |
 | An exact identifier, an error string, a known `file:line` | none | literal grep or filename lookup, then read | V-F7, V-F21, s3-F29 |
 | Every active entry covering path X — completeness | none — a ranked top-k cannot prove completeness | exhaustive scan of `INDEX.md` and entry headers | V-F1, S-F13, G-F14 |
 | Proving absence ("have we never recorded…") | none — no hit is not proof | exhaustive search, then read | V-F20 |
 | A structured header question (status, `supersedes`, `depends_on`) | none | `INDEX.md` scan or a script over frontmatter; follow links by grep | V-F22, M13 |
 | Why did we choose this, or why is this line like this? | none | the entry's **Why:** and its evidence; `git blame`, `git log -S` | M19, SOURCE_OF_TRUTH |
-| Did the covered code change after the entry was verified? | none | `git log <verified-rev>..HEAD -- <each covers: path>`; any commit listed means yes. `<verified-rev>` is the git revision the entry header records it was last verified against (`SOURCE_OF_TRUTH.md` l.50); the command is my reading | G-F14, G-F12, M15 |
-| Is this decision still true of the code? | none | read the entry and the code; the design gives this to the background subagent | SOURCE_OF_TRUTH:68–73 |
+| Is this decision still true of the code? | none | read the entry and the code before acting on it; a mismatch is reported to EJ | SOURCE_OF_TRUTH Rd5 |
 | What should I load when resuming? | none | `INDEX.md` and the task's `state.md` | M17, M18, M19 |
 | A map of the whole repo | none | `PROJECT_OVERVIEW.md`, `INDEX.md` | M18, G-F18 |
-| A `covers:` path that is not Python | none | git and grep | G-F18 |
-| Is the graph I am about to query current? | none — do not check, rebuild whole | rebuild, or use git | G-F5, G-F18 |
 
 **Costs, and where there are none.** Measured on other corpora or on this machine, never on a real
 `project-memory/`: grep over 10,000 synthetic entries, 0.038 s for one word and 0.060 s for a structured chain
@@ -94,10 +105,8 @@ records that the other two report no such measurement; `S-F4` measures other cor
 (`SOURCE_OF_TRUTH.md`); reading one entry, roughly 270 tokens by the 4-characters-per-token assumption (`S-F5`, not
 measured); a git last-change lookup at the tool's timing resolution (`G-F12`). **`GAP` for everything that matters
 most**: no FTS5-vs-grep measurement on short entries (`S-F5`), no vector measurement on a corpus shaped like
-`entries/` (`V-F11`), no graph-vs-grep head-to-head on this repo's own questions (`G-F10`, `M21`), and no wrapper
-exists to time a filtered graph query (`G-F18`). The graph-vs-grep head-to-head is now measured on this repo's own
-code and docs (BM-1–BM-9, below); the vector-on-`entries/` gap and a real `project-memory/` corpus are not. See
-**Measured here: development and testing** below.
+`entries/` (`V-F11`), and no real `project-memory/` corpus. This repo's code and docs are measured in **Measured
+here: development and testing** below.
 
 **Still unresolved.** Six disagreements the three engines did not settle, kept as positions and not averaged (D1–D6
 in the run record): whether FTS5 or the vector index comes first, or whether memory needs a store at all; whether the
@@ -114,62 +123,34 @@ product.) The patterns are gitignored and
 the indexes are rebuilt on demand. The SQLite this repo does have, `ancient_games/index.py`,
 indexes the **referee's journal**, not memory: it is the working precedent for this exact pattern (7 tables, derived,
 ~8 ms per journal) but it answers a different question. And the memory cache is gated behind a trigger that has not
-fired, because `project-memory/` does not exist yet. The same is true of the code graph: `code_graph/code_graph.py`
-already exists, deterministic and full-rebuild, and is the option this document names if that trigger fires.
+fired, because `project-memory/` does not exist yet.
 
 A fourth reason belongs to the first draft. Its research asked only whether each cache is needed to search memory
 *entries*, so it measured nothing on the questions asked during development and testing. The section **Measured here:
 development and testing** measures those.
 
-### Part 2 — code and docs (corpus: this repo's code and docs)
+### Part 2 — code and docs
 
-**Outside the vision.** The confirmed vision covers memory entries only (EJ, 2026-10-12). This table is measured on
-this repo's code and docs and is kept as evidence and as guidance for agents; it is not part of the caches design.
-Its evidence is **Measured here: development and testing** below.
+Moved to the code-graph project, `docs/code-graph/CODE_GRAPH.md` (EJ, 2026-10-12: *"others can accept and apply"*). It
+routed questions about this repo's code and docs, outside the caches vision; its evidence stays below in **Measured
+here: development and testing**.
 
-**Routing rule for development and testing (proposed).**
-
-| the question | use | then | evidence |
-|---|---|---|---|
-| Where is function or method X defined? | code graph | read that definition | BM-1 |
-| Where is a flag, constant or string defined? | full-text, or grep | read the hit | BM-1 (A05) |
-| What calls X? | code graph — lower bound, Python only | read the callers; treat the list as partial | BM-3 (C08–C10: 33–46 characters) |
-| What does changing F reach, several hops out? | code graph — Python only, lower bound | grep imports and callers for the rest, then read | G-F8, G-F17, G-F18 (not measured here) |
-| Which tests should I run after changing function X or file F? | code graph (tests reaching X or F) **plus** full-text on the file name (tests that run it as a separate process) | run that subset; run the full suite (31–33 s) before committing | BM-7, BM-8, BM-9 |
-| Why did we decide X? Where is X explained in the docs? | full-text (ties hybrid on hits; prints less in total) | read the section | BM-4 |
-| How do I run or configure X? | not settled: hybrid and vector scored 0.5 and full-text 0.33, on 6 questions | read the hit | BM-5 (n=6, too small to act on) |
-| A concept, in my own words | grep and read, as an agent search | record a miss if the answer is found another way | BM-2 |
-| Anything the graph answers with nothing or only partly | full-text, then grep | — | BM-8 |
-
-This table is for the **code and docs**. Part 1 above is for **memory entries**; it is reasoned, not measured, and
-three of its citations were corrected in this merge. The two
-differ because the corpus differs. Code and docs exist today and are already large enough that full-text and the
-graph save reading (BM-6). `project-memory/` does not exist yet.
-
-**What this does not change, and what it proposes.**
-- **Unchanged:** the rules for all three caches below (full rebuild, rebuild when stale, fall back when absent).
-  R1–R9 are the acceptance criteria for the memory caches.
-- **The vision stands as confirmed:** for code and docs, the measurements say full-text and the graph already save
-  reading today. EJ kept the vision for memory entries only (2026-10-12), so the proposals in
-  `runs/20261012-caches-routing/vision-proposals.md` (P1–P3) were not adopted.
-
-## Rules for all three caches
+## Rules for every cache
 
 These apply to whichever cache is built. They come from how the researched tools fail.
 
 - **Full rebuild, never patched.** A live, incrementally updated index drifted silently from a clean rebuild: 4.3% of
   edges wrong, with every integrity check passing (`G-F5 drift`). Its makers decided drift cannot be measured cheaply
-  (`G-F5c`). A full rebuild of this repo's code graph takes 0.94 s (`G-F12`); the benchmark's own code-graph rebuild
-  takes 0.89 s (BM-9); an FTS rebuild of 10,000 synthetic entries takes 0.53 s (`S-F13`).
-- **Rebuild before answering when stale.** Before each query, compare the recorded commit or content hash of the
+  (`G-F5c`). An FTS rebuild of 10,000 synthetic entries takes 0.53 s (`S-F13`).
+- **Rebuild before answering when stale.** Before each query, compare the recorded content hash of the
   sources with the index and rebuild if they differ. Build into a temporary file and rename it over the old one
   (`S-F9`, quoted: *"A stale index is worse than no index."*).
-- **Fall back when absent.** If the cache file or SQLite's FTS5 is missing, the tool warns once and answers with grep
-  (`S-F9`); the same for a missing embedding model (my reading, extending `S-F9`). A mistyped database path silently
-  creates an empty database, which looks exactly like a stale one (`G-F5 drift`, failure mode 5), so the tool opens the
-  cache read-only and treats "no such file" as absent.
-- **Index only active entries** — for `project-memory/` — the same set as `INDEX.md`, with `status` and `covers`
-  stored beside each row (`V-F22`, my reading). Otherwise superseded entries come back looking current.
+- **Fall back when absent.** If the cache file or SQLite's FTS5 is missing, the tool answers with grep and says so in
+  every answer (Rd3.2) (`S-F9`); the same for a missing embedding model (my reading, extending `S-F9`). A mistyped
+  database path silently creates an empty database, which looks exactly like a stale one (`G-F5 drift`, failure
+  mode 5), so the tool opens the cache read-only and treats "no such file" as absent.
+- **Index only active entries** — for `project-memory/` — the same set as `INDEX.md`, with `covers` stored
+  beside each row (`V-F22`, my reading). Otherwise superseded entries come back looking current.
 
 ## SQLite full-text index
 
@@ -186,9 +167,9 @@ These apply to whichever cache is built. They come from how the researched tools
    researcher's own test, at 10,000 synthetic entries a one-word grep took 0.038 s and a grep chain for a header
    question 0.06 s; at 50,000 the header chain took 0.15 s, and the one-word timing was invalid (`S-F13`). No study
    covers a corpus of a few hundred to a few thousand short entries (`S-F5`: not measured).
-4. **Why might it be needed later?** `INDEX.md` stops being enough once it can no longer list every active entry under
-   its size limit. The agent then loses the one-line scan of every entry, and ranked search is what replaces it (my
-   reading).
+4. **Why might it be needed later?** If, on a set of the project's own questions, `INDEX.md` plus grep makes an agent
+   read more to reach the right entry than ranked search would. The B1.1 comparison measures exactly that (EJ,
+   2026-10-12: *"the comparison for full-text"*).
 5. **Why only as a cache?** The markdown is the source of truth, and the cache must be rebuildable and skippable (M6).
 
 Structured questions such as "every active decision covering path X" or "what supersedes Y" do not need SQLite. A
@@ -201,11 +182,11 @@ amount either way (not measured).
 | | |
 |---|---|
 | **Who** | Built and rebuilt by a script with no model call. Read by any agent on demand. EJ decides to build it when the trigger fires. |
-| **What** | One FTS5 table with `kind`, `status` and `covers` as `UNINDEXED` columns (`S-F2`). One row per active entry file: the research leaves the row grain open (`S-F17`); my reading is that an entry of one or two sentences is already one section. The default `unicode61` tokenizer: in the researcher's own one-row test, a plausible change to keep paths whole made ordinary queries return zero rows silently, and ids such as `D-0012` had to be quoted (`S-F16`). |
-| **When** | Built when the trigger fires: `INDEX.md` can no longer list every active entry. Rebuilt before any query that finds it stale. Never read at session start. |
+| **What** | One FTS5 table with `kind` and `covers` as `UNINDEXED` columns (`S-F2`). One row per active entry file: the research leaves the row grain open (`S-F17`); my reading is that an entry of one or two sentences is already one section. The default `unicode61` tokenizer: in the researcher's own one-row test, a plausible change to keep paths whole made ordinary queries return zero rows silently, and ids such as `D-0012` had to be quoted (`S-F16`). |
+| **When** | Built when its B1.1 comparison passes and EJ decides (B1.0). Rebuilt before any query that finds it stale. Never read at session start. |
 | **Where** | `project-memory/.cache/index.sqlite`, gitignored. |
 | **Why** | The five whys above. |
-| **How** | One stdlib `sqlite3` script, the smallest option in the SQLite node (§5, option B): rebuild to a temporary file and rename; compare the recorded commit or content hash for staleness, so a deleted entry is caught (R3.1); fall back to `rg`. Nothing to install: SQLite 3.45.1 with FTS5 works here (verified 2026-10-12). |
+| **How** | One stdlib `sqlite3` script, the smallest option in the SQLite node (§5, option B): rebuild to a temporary file and rename; compare the recorded content hash for staleness, so a deleted or uncommitted change is caught (K1.1, K2.1); fall back to `rg`. Nothing to install: SQLite 3.45.1 with FTS5 works here (verified 2026-10-12). |
 
 ## Vector index
 
@@ -227,7 +208,7 @@ amount either way (not measured).
 4. **Why might it be needed later?** If agents keep missing entries that exist because their words differ from the
    entry's. The trigger is a record of such misses: the entry existed, `INDEX.md`, grep and full-text search all missed
    it, and it was found another way (`V-F13`, my reading). The vector index is worth building when, on those recorded
-   misses, the hybrid index finds entries full-text did not, and it does no worse on the other questions (R5.2).
+   misses, the hybrid index finds entries full-text did not, and it does no worse on the other questions (B1.2).
 5. **Why hybrid only?** On memory-style text, the positive results found combine vectors with keyword search (`V-F6`,
    `V-F7`; `V-F10` is unproven), and vectors alone were the weakest arm when results were returned inline (`V-F3`,
    `V-F4`). So the vector index comes after the full-text index, never
@@ -239,45 +220,11 @@ amount either way (not measured).
 | | |
 |---|---|
 | **Who** | Built and rebuilt by a script with no model call except the embedding model itself. Read by any agent on demand, through the same command as full-text search. EJ decides to build it when the trigger fires. |
-| **What** | One vector per active entry file, with the entry's `status`, `covers`, content hash and embedding-model id stored beside it (`V-F24`: a changed model makes every vector useless). Results merged with the full-text results by reciprocal rank fusion (vector node §Q5, from qmd's README). |
-| **When** | After the full-text index exists, and when the R5.2 comparison favours hybrid. Rebuilt with the full-text index, in the same step, so the two cannot disagree (`V-F24`, my reading). |
+| **What** | One vector per active entry file, with the entry's `covers`, content hash and embedding-model id stored beside it (`V-F24`: a changed model makes every vector useless). Results merged with the full-text results by reciprocal rank fusion (vector node §Q5, from qmd's README). |
+| **When** | After the full-text index exists, and when the B1.2 comparison favours hybrid. Rebuilt with the full-text index, in the same step, so the two cannot disagree (`V-F24`, my reading). |
 | **Where** | `project-memory/.cache/`, beside `index.sqlite`, gitignored. |
 | **Why** | The five whys above. |
 | **How** | The smallest options in `V-F18`/`V-F19`: a static Model2Vec model with numpy (option A, no GPU) or `bge-small-en-v1.5` through FastEmbed (option B). Both are small next to the 16 GB GPU here. Embedding speed on this GPU is **not measured** (`V-F18`). No embedding runtime is installed today; numpy is (`V-F19`). |
-
-## Code graph
-
-### Five whys
-
-1. **Why a code graph?** To answer structural questions about the code: what an edit touches, and whether the code an
-   entry covers has changed.
-2. **Why would memory need that?** For the drift check (`SOURCE_OF_TRUTH.md` line 75: mark a decision or fact whose
-   code changed with no earlier change to the entry) and for "which entries cover the files I am editing".
-3. **Why is git enough for both?** `covers:` names **paths**, not symbols, and is already a hand-kept index from entry
-   to path (`G-F14`). One `git log` from the entry's verified revision lists the changes to its `covers:` paths, in
-   0.00–0.01 s on this repo (`G-F12`; code-graph node §6). Git is the record itself, so it cannot drift.
-4. **Why not add a graph for precision anyway?** An incrementally synced graph adds a silent failure that git does not
-   have (`G-F5 drift`, 4.3% of edges wrong). A full-rebuild graph such as the repo's own does not drift (`G-F18`), but
-   it covers Python only, so for other `covers:` paths it gives a silent partial answer (code-graph node §5, option B).
-   The precision it buys, a one-line comment flagging a whole file, can be had by parsing only the changed file with
-   Python's `ast` (code-graph node §5, option E). The deeper question, "is this entry still true", belongs to the
-   background subagent that compares entries with the code (`SOURCE_OF_TRUTH.md` lines 68–73), not to a model-free
-   script.
-5. **Why might it be needed later?** Any one of the three conditions in the code-graph node's §6, each a test:
-   - `covers:` starts naming functions or classes instead of files;
-   - the check must answer about files not on any `covers:` list ("what does this change affect");
-   - on a review of past path-level flags, the false alarms outnumber the true ones (R5.3).
-
-### 5W1H
-
-| | |
-|---|---|
-| **Who** | The drift-check script, with no model call. EJ decides to build a graph if one of the three conditions holds. |
-| **What** | Today: no graph for the memory drift check. Git on `covers:` paths, plus an `ast` parse of changed Python files if precision is needed. If a condition holds: the repo's own `code_graph/code_graph.py` (Python only, deterministic, full rebuild, no incremental mode, `G-F18`) before any outside tool. |
-| **When** | Today the check runs whenever `INDEX.md` is generated (my reading of `SOURCE_OF_TRUTH.md` line 75). A graph, if ever built, is rebuilt in full each time it is used. |
-| **Where** | Nothing today. Later, `project-memory/.cache/code-graph.json`, gitignored. |
-| **Why** | The five whys above. |
-| **How** | One `git log` call per entry: `git log <verified-rev>..HEAD -- <each covers: path>`, where `<verified-rev>` is the revision the entry header records it was last verified against (`SOURCE_OF_TRUTH.md` l.50). A listed commit flags the entry. The baseline is the verification, not the entry's last edit, which an unrelated edit can move (code-graph node §6; this command is my reading). External indexers (codegraph) are not adopted: their win is measured on source-code architecture questions, not on memory (`G-F7`, `G-F14`), and they bring the drift in `G-F5 drift`. |
 
 ## Measured here: development and testing
 
@@ -348,82 +295,174 @@ right file):
 
 ## Core requirements
 
-Acceptance criteria are checkable or they are questions for EJ. Where the research gives no number, the criterion
-carries `OPEN:` rather than an invented value. They cover the memory caches, the scope
-of the confirmed vision (`vision-statements/caches-memory-vision-statements.md`); R9 carries the vision's "never read
-at session start".
+They serve the vision, `vision-statements/caches-memory-vision-statements.md`, and cover the two memory caches,
+full-text and vector; the code graph is its own project (`docs/code-graph/`). They are grouped by what happens to a
+cache: it is **built**, it is **kept** true, and it is **read** (EJ, 2026-10-12: *"let rewrite using these 3
+categories first"*). Each requirement names its source: **(v)** is the vision, **(d)** is this document's text, and
+*proposed* marks wording EJ has not decided. Each has a check, **Fails if**, that some case breaks. There are no fixed
+numbers: where a limit applies, it is a comparison that measurement decides. The ids R1–R9 they replace are given in
+brackets, because run records cite them.
 
-### R1 — Derived and disposable
-The cache is computed from the files (the memory's markdown, and for the code graph the code its entries cover) and
-never holds knowledge of its own (M4, M6).
+### Build — when a cache comes to exist, and what goes in it
 
-- **R1.1** Deleting the cache and rebuilding from the files restores every answer. *Example:* `rm -rf
-  project-memory/.cache/` → run the documented rebuild → the same query returns the same entries. (M6)
-- **R1.2** Memory is fully readable with no cache present. *Example:* with `.cache/` absent, session start and an
-  on-demand `grep` over `entries/` both work. (M6)
-- **R1.3** The cache directory is ignored by git and a rebuild leaves `git status --short` clean. (M6)
-
-### R2 — Full rebuild, never patched
-- **R2.1** The documented rebuild regenerates the whole index from the files; no incremental update path exists.
-  *Example:* the rebuild command has no "update" mode. (G-F5 drift)
-- **R2.2** The index records what it was built from, so a stale one is detectable. *Example:* the index stores the
-  commit or a content hash of its sources, and the query tool compares before answering. A newest-mtime check is not
-  enough: a deletion leaves no newer file (R3.1). (S-F9)
-
-### R3 — Stale never answers
-- **R3.1** Before answering, the tool compares the index's recorded commit or content hash with the sources and
-  rebuilds if they differ, building into a temporary file and renaming over the old one — so a deleted entry cannot
-  stay searchable. (S-F9)
-- **R3.2** A wrong path is never mistaken for an empty index: the cache is opened read-only and "no such file" is
-  treated as absent. *Example:* point the tool at a typo'd path → it warns and falls back to grep, it does not
-  create an empty database. (G-F5, failure mode 5)
-
-### R4 — Absence degrades, it does not fail
-- **R4.1** A missing cache file or a missing FTS5 warns once and answers with grep. (S-F9)
-- **R4.2** A missing embedding model does the same. *(my reading, extending S-F9.)*
-
-### R5 — Nothing is built before its trigger fires
+**B1 — Nothing is built before its trigger fires** (v: never built before its own trigger; was R5)
 Each cache has an observable trigger. This is the requirement that keeps the whole layer honest. The query-time
 counterpart — which store to reach for once a trigger has fired — is the section **When to use which store** above.
 
-- **R5.1 Full-text** — built only when, on the project's own recorded questions, full-text reaches the right entry
-  after reading less than `INDEX.md` plus grep does, with no more misses. Measured as the code-and-docs benchmark was
-  (BM-1 to BM-9): the same questions through both routes, the characters read to the first right entry, and the misses.
-  The comparison decides; no fixed size is set in advance (S-F5, S-F13: nothing is measured yet for a corpus of a few
-  hundred to a few thousand short entries).
-- **R5.2 Vector** — built only after R5.1 has fired *and*, run on the recorded misses, the hybrid index finds entries
-  full-text did not, while doing no worse on the other recorded questions. A "miss" is recorded when an entry existed
-  and `INDEX.md`, grep and full-text search all missed it (V-F13). How its results are combined with full-text
-  (hybrid only) is a design proposal in **Vector index**, not part of this trigger.
-- **R5.3 Code graph** — built only when one of three conditions holds: `covers:` starts naming functions or classes
-  rather than files; the check must answer about files on no `covers:` list; or, on a review of past path-level
-  flags, the false alarms outnumber the true ones. (code-graph §6, G-F14, G-F18)
+- **B1.0 EJ decides** — when a cache's comparison passes, EJ decides whether it is built; a passed comparison alone
+  builds nothing (EJ, 2026-10-12: *"EJ decides"*; the 5W1H tables below say the same). The agent that told EJ
+  writes down his decision — build or not, his words, the date — beside the comparison result in `runs/<run-id>/`
+  (*proposed*; EJ, 2026-10-12: *"yes, write them in"*).
+- **B1.1 Full-text** — built only when, on a question set built for the comparison (Rd4.2), full-text reaches the right
+  entry after reading less than `INDEX.md` plus grep does, with no more misses. Measured as the code-and-docs benchmark
+  was (BM-1 to BM-9): the same questions through both routes, the characters read to the first right entry, and the
+  misses. Characters read is a proxy, not a token count, and a weak one: it stops at the right file, not the right
+  answer (**Measured here**, who wrote each check). A route answers a question when the right entry is in its top 5
+  results; a question it does not answer counts as a miss, never left out as the benchmark did (*"A miss is left out,
+  never scored 0"*, `bench/results.md`); characters are compared only over the questions both routes answered
+  (*proposed*). The benchmark had no `INDEX.md` arm; this comparison adds one. The comparison decides; no fixed size is
+  set in advance (S-F5: nothing is measured yet for a corpus of a few hundred to a few thousand short entries; S-F13
+  measured only speed, on synthetic entries). (was R5.1)
+  - **The comparison** runs on a trial index built in `runs/<run-id>/`, never in `project-memory/.cache/`
+    (*proposed*). It runs when EJ asks, or when an agent notes in its journal that `INDEX.md` plus grep made it read
+    through many hits to reach an entry; the agent that runs it writes the result there; if it passes, the agent tells
+    EJ, who decides (B1.0) (*proposed*; EJ, 2026-10-12: *"yes , made that change"*).
+- **B1.2 Vector** — built only when, on the misses noted in agents' journals (Rd4.1), the vector index (the hybrid
+  index, under the proposal below) finds an entry that full-text missed, and loses nothing full-text already found. (was
+  R5.2; EJ, 2026-10-12: *"ok write it into CACHES.md"*)
+  - **A miss** is a question where the entry existed, the asker's words share no term with it, `INDEX.md`, grep and
+    full-text search all missed it, and the agent found it another way (V-F13, the researcher's inference). The agent
+    that found it notes it in its journal (Rd4.1).
+  - **Finds** means the right entry is in the top 5 results (*proposed*; the benchmark's measure, BM-1 to BM-5).
+  - **Loses nothing** means: every question in the B1.1 question set that full-text answers is still answered, and the
+    characters read to the first right entry, over the questions both answered, are no more than full-text's
+    (*proposed*; the same measure as B1.1, with its weakness).
+  - **The comparison** runs on a trial index built in `runs/<run-id>/`, never in `project-memory/.cache/`
+    (*proposed*). It is rerun when an agent notes a miss, and when EJ asks; the agent that runs it writes the result
+    there; if it passes, the agent tells EJ, who decides (B1.0) (*proposed*).
+  - *Proposed* (hybrid only, **Vector index** why 5; EJ, 2026-10-12: *"label hybrid as proposed"*): the vector index
+    is combined with full-text, so it is built only after B1.1 has fired, and the comparison runs on the hybrid
+    index.
+  - **Fails if** a vector index exists in `project-memory/.cache/` with no recorded comparison in which it found at
+    least one missed entry and lost none of full-text's answers, or with no recorded decision by EJ.
+- **Fails if** a cache exists under `project-memory/.cache/` with no recorded comparison showing its trigger fired,
+  or with no recorded decision by EJ to build it; or a passed comparison has no record that EJ was told.
 
-### R6 — Only active entries, with their status
-- **R6.1** The index holds the same set of entries as `INDEX.md`, each row carrying `status` and `covers`.
-  *Example:* a superseded entry never appears in a search result as if current. (V-F22)
+**B2 — Derived from the files** (v: never the source of truth; was R1)
+The cache is computed from the memory's markdown and never holds knowledge of its own (M4, M6; M6 is marked
+CONTESTED in its source, where one engine proposed SQLite as a structured state store).
 
-### R7 — An answer names its entry
-- **R7.1** Every result prints the entry file it came from, so a human can open the source before acting.
-  *Example:* search output names `entries/D-0012-*.md`. (M19)
+- **B2.1** Deleting the cache and rebuilding from the same files restores every answer, provided the vector index is
+  rebuilt with the same embedding model and settings (a changed model makes every vector useless, V-F24).
+  *Example:* `rm -rf project-memory/.cache/` → run the documented rebuild → the same query returns the same entries.
+  (M6) (was R1.1)
+- **B2.2** The cache directory is ignored by git (`git check-ignore` reports it), and a rebuild adds nothing to
+  `git status --short` that was not there before it. (M6) (was R1.3)
+- **Fails if** the same query returns different entries after a delete and a rebuild from the same files with the
+  same embedding model, `git check-ignore` does not report the cache directory, or a rebuild adds a line to
+  `git status --short`.
 
-### R8 — The rebuild stays cheap
-- **R8.1** The documented rebuild completes without a model call, except the embedding step of R5.2.
-  *Example:* rebuild with no model credentials available; the FTS and code-graph paths still work. (M4, M6)
-- **R8.2** A rebuild costs less than the cache saves between rebuilds: its time is compared with the reading time the
-  cache saved on the recorded questions in that period. If the rebuild costs more, the cache is not kept. Measured, for
-  orientation only: 0.94 s (code graph,
-  this repo, G-F12) and 0.53 s (FTS, 10,000 synthetic entries, S-F13). Nothing is measured on a real
-  `project-memory/` corpus, because it does not exist yet.
+**B3 — Full rebuild, never patched** (v: never patched; was R2.1)
+- **B3.1** The documented rebuild regenerates the whole index from the files; no incremental update path exists.
+  *Example:* the rebuild command has no "update" mode. (G-F5 drift)
+- **Fails if** the rebuild has an update or incremental mode, or reuses any row or vector from the previous index.
 
-### R9 — Never read at session start
-- **R9.1** No cache file is part of what a session loads at start. *Example:* the session-start reads in
+**B4 — Only active entries** (d: Rules for every cache, my reading; was R6)
+- **B4.1** The index holds every file in `entries/` whose own header says `status: active`, and nothing else — not
+  `journal/` or `work/` — each row carrying `covers`. Every row is active, so no row stores `status`
+  (*proposed*; EJ, 2026-10-12: *"others can accept and apply"*). The headers are the reference, not
+  `INDEX.md`, which is generated from them (`SOURCE_OF_TRUTH.md` K6.1) (*proposed*). *Example:* a superseded entry
+  never appears in a search result as if current. (V-F22, my reading)
+- **Fails if** the index holds a file whose header is not `status: active`, lacks an active entry, holds a file
+  outside `entries/`, or has a row without `covers`.
+
+**B5 — No model call to rebuild, except embedding** (v: How we know it works; was R8.1)
+- **B5.1** The documented rebuild completes without a model call, except the embedding step of B1.2.
+  *Example:* rebuild with no model credentials available; the full-text path still works. (M4, M6)
+- **Fails if** the full-text rebuild calls a model, or the vector rebuild calls any model but its embedding model.
+
+### Keep — the cache stays true to the files, and stays worth having
+
+**K1 — It records what it was built from** (d: Rules for every cache; was R2.2)
+- **K1.1** The index records a content hash of each entry file it was built from, so a stale one is detectable,
+  including edits not yet committed (*proposed*: a commit alone misses those). A newest-mtime check, the one `S-F9`
+  uses, is not enough: a deletion leaves no newer file (K2.1; my reading). (S-F11: SHA-256 on files)
+- **K1.2** The vector index also records the id of the embedding model it was built with, because a changed model
+  makes every vector useless (V-F24; the vector 5W1H stores it beside each vector).
+- **Fails if** the index carries no content hash of its sources, or the vector index carries no embedding-model id.
+
+**K2 — Stale never answers** (d: Rules for every cache; was R3.1)
+- **K2.1** Before answering, the tool compares the recorded content hash with the entry files, and for the vector
+  index the recorded model id with the one a rebuild would use now (*proposed*). If either differs it rebuilds,
+  building into a temporary file and renaming over the old one — so a deleted entry cannot stay searchable. (S-F9:
+  rebuild before answering; S-F11: the hash)
+- **K2.2** Only one rebuild runs at a time in a working copy: a second one waits for it, then compares the hash again
+  (K2.1) before answering. Each worktree has its own `.cache/`, because the folder is gitignored, so agents on
+  different worktrees never share one (*proposed*; EJ, 2026-10-12: *"yes, write them in"*).
+- **K2.3** The full-text and vector indexes are rebuilt by one command, in one step. If either fails, neither
+  replaces the old ones, and the query falls back (Rd3.5) (*proposed*; the vector 5W1H and V-F24: a second rebuild
+  step lets the two disagree).
+- **Fails if** after an entry is added, changed or deleted, or the embedding model changes, a query answers from the
+  old index; two rebuilds write to one cache at once; or the two indexes were built from different content hashes.
+
+**K3 — Dropped when it stops paying** (d; vision: *"cheap … and not before"*; was R8.2; EJ, 2026-10-12: *"yes please
+write"*)
+- **K3.1** A built cache is expected to keep passing its own trigger (K3.3 says what happens when it does not): its B1
+  comparison is rerun, on a question set built then and, for the vector index, on the noted misses (Rd4) (*proposed*;
+  the rebuild-cost part was dropped, EJ, 2026-10-12: *"drop the K3 cost part"*).
+- **K3.2** The comparison is rerun when an agent notes a miss, and when EJ asks; the agent that runs it writes the
+  result to `runs/<run-id>/` (*proposed*, the same as B1.2).
+- **K3.3** If the cache no longer passes, the agent tells EJ, who decides whether to drop it; his decision is recorded
+  as in B1.0. Dropping is deleting it; memory is unaffected (B2, Rd3) (*proposed*, mirroring B1.0).
+- **Fails if** a cache stays in `project-memory/.cache/` after a rerun it failed, with no recorded decision by EJ to
+  keep it.
+
+### Read — an agent queries it
+
+**Rd1 — Never read at session start** (v: never read at session start; was R9)
+- **Rd1.1** No cache file is part of what a session loads at start. *Example:* the session-start reads in
   `SOURCE_OF_TRUTH.md` (§ When it will be used) name no file under `project-memory/.cache/`; a start hook that
-  opens `.cache/index.sqlite` fails this. (The vision's never-rule; M18)
+  opens `.cache/index.sqlite` fails this. (M18; CP6, codex: *"Do not bulk-load … an entire search index at
+  startup"*)
+- **Fails if** a start hook or instruction opens any file under `project-memory/.cache/`.
+
+**Rd2 — An answer names its entry** (d; was R7)
+- **Rd2.1** Every result prints the entry file it came from, so the agent can open the source before acting on it
+  (M19: *"open the primary source when a retrieved statement will determine an action"*). *Example:* search output
+  names `entries/D-0012-*.md`. (*proposed*: "the agent", not "a human", per M19 and the vision; EJ, 2026-10-12:
+  *"write fixes 1–4 into CACHES.md"*)
+- **Fails if** a result does not name its entry file.
+
+**Rd3 — Absence degrades, it does not fail** (v: delete the folder and memory is unaffected; was R1.2, R3.2, R4)
+- **Rd3.1** Memory is fully readable with no cache present. *Example:* with `.cache/` absent, session start and an
+  on-demand `grep` over `entries/` both work. (M6) (was R1.2)
+- **Rd3.2** A missing cache file or a missing FTS5 falls back to grep, and every fallback answer says it came from
+  grep, not the cache, so the agent knows its results are unranked. (S-F9) (was R4.1; *proposed*: "says so in every
+  answer" replaces "warns once")
+- **Rd3.3** A missing embedding model falls back to full-text if it is there, and to grep if not; the answer says
+  so. *(my reading, extending S-F9; *proposed*: full-text before grep.)* (was R4.2)
+- **Rd3.4** A wrong path is never mistaken for an empty index: the cache is opened read-only and "no such file" is
+  treated as absent. *Example:* point the tool at a typo'd path → it falls back to grep and says so, it does not
+  create an empty database. (G-F5, failure mode 5) (was R3.2)
+- **Rd3.5** A rebuild that fails falls back to grep; it never answers from the stale index (K2) (*proposed*).
+- **Fails if** with the cache, FTS5 or the embedding model missing, the path mistyped, or a rebuild failing, a query
+  errors, answers from an empty or stale index, or answers from grep without saying so.
+
+**Rd4 — Misses are noted; question sets are built when needed** (*proposed*; EJ, 2026-10-12: *"yes , made that change"*)
+- **Rd4.1** When an agent finds an entry that `INDEX.md`, grep and full-text all missed (the definition in B1.2), it
+  notes the miss in its `journal/` file as it happens: the question, the search terms it used, the entry it found,
+  and how it found it. B1.2 and K3 run on these notes. Every other question goes unrecorded: a log of every search
+  costs every search, and the comparisons do not need it.
+- **Rd4.2** The question set for a comparison is built when the comparison runs: questions with known answers, written
+  from the entries that exist then and checked by a second agent, as the code-and-docs benchmark was (**Measured
+  here**: codex wrote the questions, five Claude agents checked them). The run records who wrote and who checked it.
+- **Fails if** an agent's `state.md` or journal describes finding an entry that search missed, with no journal note
+  holding the question, the terms and the entry; or a comparison runs on a question set with no record of who wrote
+  it and who checked it.
 
 ## Example numbers by case
 
-The triggers in R5 and R8.2 are comparisons. The measurement decides them, so no number is fixed in advance. This
+The triggers in B1 and K3 are comparisons. The measurement decides them, so no number is fixed in advance. This
 section shows **what those comparisons have come out at elsewhere**, by agent type and condition, so a reader knows
 roughly where a project stands before measuring. These are examples with sources, not thresholds.
 
@@ -465,7 +504,7 @@ sourced figure.
 
 **When several agents share a project, the binding limit is the smallest one among them** (*my reading*).
 
-### R5.1: full-text against `INDEX.md` plus grep
+### B1.1: full-text against `INDEX.md` plus grep
 
 | Case | What was measured | Source |
 |---|---|---|
@@ -477,10 +516,10 @@ sourced figure.
 | A tool result too large to read | filtering in code instead of reading: 150,000 tokens down to 2,000 | OC (Anthropic, 2025-11-04) |
 
 **My reading:** on accuracy, grep stays competitive until millions of tokens. On **tokens read**, full-text wins much
-earlier: on SEZA-sized memory, a single broad term already floods grep's output. The R5.1 comparison measures exactly
+earlier: on SEZA-sized memory, a single broad term already floods grep's output. The B1.1 comparison measures exactly
 that.
 
-### R5.2: the vector index
+### B1.2: the vector index
 
 | Case | What was measured | Source |
 |---|---|---|
@@ -494,44 +533,11 @@ that.
 | SEZA | no recorded misses, so the comparison has nothing to run on | SZ |
 
 **My reading:** retrieval beats loading everything somewhere around 100K–500K tokens, but it is keyword retrieval
-that wins. Vectors earn a place only on recorded meaning-misses, which is what R5.2 tests.
-
-### R5.3: the code graph
-
-| Case | What was measured | Source |
-|---|---|---|
-| Gin, about 110 files | cost about even with or without the graph (vendor's own benchmark, like the rows below) | G-F7, W-25 |
-| Alamofire, about 110 files | 57% cheaper (vendor's own benchmark) | W-25 |
-| Excalidraw, about 640 files | 78% cheaper, 84% fewer tokens | G-F7 |
-| Django, about 3k files | 13% cheaper | G-F7 |
-| VS Code, about 11k files | 71% cheaper, but 67k vs 18k tokens left resident after the session | G-F7, G-F7b |
-| Hidden-dependency tasks | 99.4% vs 76.2% task completion | s3-F16 |
-| 43 files (Serena, vendor self-evaluation) | cross-file rename 9 calls down to 1, but 4.5× worse on a one-line edit | OC |
-| This repo | the graph names a caller in 33–46 characters | BM-3 |
-| SEZA | `.ctxgraph` (1.1 MB) imported once on 2026-07-28, every `usage_count` 0, no production code queries it (SZ); a query script exists and a staging copy was queried on 2026-08-02 (CX). How often it was used is a GAP. A built graph with almost no use: the case R5.3 exists to prevent | SZ, CX |
-
-**My reading:** the payoff follows how far a question reaches across files, not the file count. Two repos of 110
-files went from no saving to 57%.
-
-### R8.2: rebuild cost
-
-| Store | Measured | Source |
-|---|---|---|
-| Full-text | 0.169 s for 490 files (index 9.5 MB, about 2× the source); 0.53 s for 10,000 entries; 2.57 s for 50,000; SEZA 0.004 s for 55 files, 0.54 s for 2,013 md files (34 MB), both in an in-memory database, so no disk writes (SZ) | BM-9, S-F13, SZ |
-| Vector | 0.936 s for 490 files with model2vec; embedding speed 81,018 samples/s for model2vec against 274 for a MiniLM fine-tune (model2vec's own table); sqlite-vec builds 1M × 128 dims in about 4 s, embedding excluded | BM-9, OC, W-27 |
-| Code graph | 0.94 s for 126 `.py` files; codegraph about 100 s for about 27k files | G-F12, W-25 |
-
-**My reading:** at the sizes of this repo (490 files) and of SEZA's whole markdown corpus (2,013 files; its memory
-stores alone are 152–201 files), a rebuild takes under a second (SEZA's figure is in-memory, not on disk). Larger
-corpora take seconds (2.57 s for 50,000 entries; about 4 s for sqlite-vec at 1M vectors, embedding
-excluded) to minutes (codegraph, about 100 s for about 27k files). A heavy embedding model adds the most per file.
-So R8.2 starts to bite with corpus size and with a slow embedding model.
+that wins. Vectors earn a place only on recorded meaning-misses, which is what B1.2 tests.
 
 ### SEZA today, trigger by trigger (SZ, the researcher's reading)
-- **R5.1:** no verdict at n=5.
-- **R5.2:** not met.
-- **R5.3:** cannot be evaluated; the graph that exists is barely used (production queries: GAP).
-- **R8.2:** cheap.
+- **B1.1:** no verdict at n=5.
+- **B1.2:** not met.
 
 SEZA's own `project_memory search` was used 42 times in 15 sessions, with none after 2026-09-24.
 
@@ -540,22 +546,19 @@ SEZA's own `project_memory search` was used 42 times in 15 sessions, with none a
   (`seza/runs/20261010-project-cleanup/STATUS-GRAPH.md:268`).
 - Its derived graph was missing when it was asked for: *"graph is missing; run sync or rebuild"*.
 
-**My reading:** a faster cache would have returned the same stale entries. R3 (stale never answers) and the drift
-check matter more here than any of the three stores.
+**My reading:** a faster cache would have returned the same stale entries. K2 (stale never answers) matters more here
+than any of the three stores.
 
 ## What this changes elsewhere (proposed, not done)
 
-- `SOURCE_OF_TRUTH.md` lists as undecided "how the script tells that the entry changed earlier than the code". The
-  research suggests an answer for EJ to decide: list the commits to its `covers:` paths since the
-  revision the entry was last verified against, not since the entry's last edit.
-- `SOURCE_OF_TRUTH.md` line 104 can keep `.cache/` as written. This document says when each part of it is built.
+- `SOURCE_OF_TRUTH.md` § Where it is put can keep `.cache/` as written. This document says when each part of it is built.
 
 ## Not known
 
-- No trigger has a fixed number. Each is a comparison (R5, R8.2) that is measured once `project-memory/` has entries
-  and recorded questions; the measurement decides (EJ, 2026-10-12: *"this is design guide, how can I give you a
+- No trigger has a fixed number. Each is a comparison (B1, K3) that is measured once `project-memory/` has entries
+  and a question set; the measurement decides (EJ, 2026-10-12: *"this is design guide, how can I give you a
   number?"*).
-- No measurement exists of any of the three on a project-memory corpus. All evidence is on other corpora: source code,
+- No measurement exists of either cache on a project-memory corpus. All evidence is on other corpora: source code,
   chat memory, enterprise documents.
 - The researchers' web reads went through extracts. `S-F*` quotes are not byte-checked (`sqlite-fts.claude.md`,
   header). `V-F*` quotes were checked against saved copies.

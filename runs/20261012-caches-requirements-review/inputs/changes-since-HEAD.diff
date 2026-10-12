@@ -1,0 +1,795 @@
+diff --git a/docs/memory-system/CACHES.md b/docs/memory-system/CACHES.md
+index d4c6e8c..39830ec 100644
+--- a/docs/memory-system/CACHES.md
++++ b/docs/memory-system/CACHES.md
+@@ -3,6 +3,11 @@
+ > reviews by agy, codex and opencode (`runs/20261012-caches-merge/reviews/`).
+ > Then corrected by the COO (Claude `claude-opus-5-5`) for two leftovers and seven review findings
+ > (`runs/20261012-caches-merge/verify/review-coo.md`); dsh's original is `merge/CACHES.merged.dsh-original.md`.
++>
++> **Changed 2026-10-12, not yet accepted:** the core requirements were regrouped into Build / Keep / Read (ids B, K,
++> Rd; each gives the R id it replaces), with a source and a "Fails if" check each, and Rd4 (questions and misses are
++> recorded) added as *proposed*. The code graph was taken out of the requirements and the example numbers, because it
++> is its own project (EJ: *"code graph should have it's own project"*); its text is in `docs/code-graph/CODE_GRAPH.md`.
+ 
+ # Memory Caches: SQLite Full-Text, Vector, Code Graph
+ 
+@@ -79,8 +84,7 @@ multi-hop structural question about Python code, after its trigger, and only as
+ | Proving absence ("have we never recorded…") | none — no hit is not proof | exhaustive search, then read | V-F20 |
+ | A structured header question (status, `supersedes`, `depends_on`) | none | `INDEX.md` scan or a script over frontmatter; follow links by grep | V-F22, M13 |
+ | Why did we choose this, or why is this line like this? | none | the entry's **Why:** and its evidence; `git blame`, `git log -S` | M19, SOURCE_OF_TRUTH |
+-| Did the covered code change after the entry was verified? | none | `git log <verified-rev>..HEAD -- <each covers: path>`; any commit listed means yes. `<verified-rev>` is the git revision the entry header records it was last verified against (`SOURCE_OF_TRUTH.md` l.50); the command is my reading | G-F14, G-F12, M15 |
+-| Is this decision still true of the code? | none | read the entry and the code; the design gives this to the background subagent | SOURCE_OF_TRUTH:68–73 |
++| Is this decision still true of the code? | none | read the entry and the code before acting on it; a mismatch is reported to EJ | SOURCE_OF_TRUTH Rd5 |
+ | What should I load when resuming? | none | `INDEX.md` and the task's `state.md` | M17, M18, M19 |
+ | A map of the whole repo | none | `PROJECT_OVERVIEW.md`, `INDEX.md` | M18, G-F18 |
+ | A `covers:` path that is not Python | none | git and grep | G-F18 |
+@@ -148,7 +152,7 @@ graph save reading (BM-6). `project-memory/` does not exist yet.
+ 
+ **What this does not change, and what it proposes.**
+ - **Unchanged:** the rules for all three caches below (full rebuild, rebuild when stale, fall back when absent).
+-  R1–R9 are the acceptance criteria for the memory caches.
++  B1–Rd4 (Core requirements) are the acceptance criteria for the memory caches.
+ - **The vision stands as confirmed:** for code and docs, the measurements say full-text and the graph already save
+   reading today. EJ kept the vision for memory entries only (2026-10-12), so the proposals in
+   `runs/20261012-caches-routing/vision-proposals.md` (P1–P3) were not adopted.
+@@ -161,13 +165,13 @@ These apply to whichever cache is built. They come from how the researched tools
+   edges wrong, with every integrity check passing (`G-F5 drift`). Its makers decided drift cannot be measured cheaply
+   (`G-F5c`). A full rebuild of this repo's code graph takes 0.94 s (`G-F12`); the benchmark's own code-graph rebuild
+   takes 0.89 s (BM-9); an FTS rebuild of 10,000 synthetic entries takes 0.53 s (`S-F13`).
+-- **Rebuild before answering when stale.** Before each query, compare the recorded commit or content hash of the
++- **Rebuild before answering when stale.** Before each query, compare the recorded content hash of the
+   sources with the index and rebuild if they differ. Build into a temporary file and rename it over the old one
+   (`S-F9`, quoted: *"A stale index is worse than no index."*).
+-- **Fall back when absent.** If the cache file or SQLite's FTS5 is missing, the tool warns once and answers with grep
+-  (`S-F9`); the same for a missing embedding model (my reading, extending `S-F9`). A mistyped database path silently
+-  creates an empty database, which looks exactly like a stale one (`G-F5 drift`, failure mode 5), so the tool opens the
+-  cache read-only and treats "no such file" as absent.
++- **Fall back when absent.** If the cache file or SQLite's FTS5 is missing, the tool answers with grep and says so in
++  every answer (Rd3.2) (`S-F9`); the same for a missing embedding model (my reading, extending `S-F9`). A mistyped
++  database path silently creates an empty database, which looks exactly like a stale one (`G-F5 drift`, failure
++  mode 5), so the tool opens the cache read-only and treats "no such file" as absent.
+ - **Index only active entries** — for `project-memory/` — the same set as `INDEX.md`, with `status` and `covers`
+   stored beside each row (`V-F22`, my reading). Otherwise superseded entries come back looking current.
+ 
+@@ -205,7 +209,7 @@ amount either way (not measured).
+ | **When** | Built when the trigger fires: `INDEX.md` can no longer list every active entry. Rebuilt before any query that finds it stale. Never read at session start. |
+ | **Where** | `project-memory/.cache/index.sqlite`, gitignored. |
+ | **Why** | The five whys above. |
+-| **How** | One stdlib `sqlite3` script, the smallest option in the SQLite node (§5, option B): rebuild to a temporary file and rename; compare the recorded commit or content hash for staleness, so a deleted entry is caught (R3.1); fall back to `rg`. Nothing to install: SQLite 3.45.1 with FTS5 works here (verified 2026-10-12). |
++| **How** | One stdlib `sqlite3` script, the smallest option in the SQLite node (§5, option B): rebuild to a temporary file and rename; compare the recorded content hash for staleness, so a deleted or uncommitted change is caught (K1.1, K2.1); fall back to `rg`. Nothing to install: SQLite 3.45.1 with FTS5 works here (verified 2026-10-12). |
+ 
+ ## Vector index
+ 
+@@ -227,7 +231,7 @@ amount either way (not measured).
+ 4. **Why might it be needed later?** If agents keep missing entries that exist because their words differ from the
+    entry's. The trigger is a record of such misses: the entry existed, `INDEX.md`, grep and full-text search all missed
+    it, and it was found another way (`V-F13`, my reading). The vector index is worth building when, on those recorded
+-   misses, the hybrid index finds entries full-text did not, and it does no worse on the other questions (R5.2).
++   misses, the hybrid index finds entries full-text did not, and it does no worse on the other questions (B1.2).
+ 5. **Why hybrid only?** On memory-style text, the positive results found combine vectors with keyword search (`V-F6`,
+    `V-F7`; `V-F10` is unproven), and vectors alone were the weakest arm when results were returned inline (`V-F3`,
+    `V-F4`). So the vector index comes after the full-text index, never
+@@ -240,7 +244,7 @@ amount either way (not measured).
+ |---|---|
+ | **Who** | Built and rebuilt by a script with no model call except the embedding model itself. Read by any agent on demand, through the same command as full-text search. EJ decides to build it when the trigger fires. |
+ | **What** | One vector per active entry file, with the entry's `status`, `covers`, content hash and embedding-model id stored beside it (`V-F24`: a changed model makes every vector useless). Results merged with the full-text results by reciprocal rank fusion (vector node §Q5, from qmd's README). |
+-| **When** | After the full-text index exists, and when the R5.2 comparison favours hybrid. Rebuilt with the full-text index, in the same step, so the two cannot disagree (`V-F24`, my reading). |
++| **When** | After the full-text index exists, and when the B1.2 comparison favours hybrid. Rebuilt with the full-text index, in the same step, so the two cannot disagree (`V-F24`, my reading). |
+ | **Where** | `project-memory/.cache/`, beside `index.sqlite`, gitignored. |
+ | **Why** | The five whys above. |
+ | **How** | The smallest options in `V-F18`/`V-F19`: a static Model2Vec model with numpy (option A, no GPU) or `bge-small-en-v1.5` through FastEmbed (option B). Both are small next to the 16 GB GPU here. Embedding speed on this GPU is **not measured** (`V-F18`). No embedding runtime is installed today; numpy is (`V-F19`). |
+@@ -249,35 +253,30 @@ amount either way (not measured).
+ 
+ ### Five whys
+ 
+-1. **Why a code graph?** To answer structural questions about the code: what an edit touches, and whether the code an
+-   entry covers has changed.
+-2. **Why would memory need that?** For the drift check (`SOURCE_OF_TRUTH.md` line 75: mark a decision or fact whose
+-   code changed with no earlier change to the entry) and for "which entries cover the files I am editing".
+-3. **Why is git enough for both?** `covers:` names **paths**, not symbols, and is already a hand-kept index from entry
+-   to path (`G-F14`). One `git log` from the entry's verified revision lists the changes to its `covers:` paths, in
+-   0.00–0.01 s on this repo (`G-F12`; code-graph node §6). Git is the record itself, so it cannot drift.
+-4. **Why not add a graph for precision anyway?** An incrementally synced graph adds a silent failure that git does not
+-   have (`G-F5 drift`, 4.3% of edges wrong). A full-rebuild graph such as the repo's own does not drift (`G-F18`), but
+-   it covers Python only, so for other `covers:` paths it gives a silent partial answer (code-graph node §5, option B).
+-   The precision it buys, a one-line comment flagging a whole file, can be had by parsing only the changed file with
+-   Python's `ast` (code-graph node §5, option E). The deeper question, "is this entry still true", belongs to the
+-   background subagent that compares entries with the code (`SOURCE_OF_TRUTH.md` lines 68–73), not to a model-free
+-   script.
+-5. **Why might it be needed later?** Any one of the three conditions in the code-graph node's §6, each a test:
++1. **Why a code graph?** To answer structural questions about the code, such as what an edit touches.
++2. **Why would memory need that?** For "which entries cover the files I am editing" (`SOURCE_OF_TRUTH.md` Rd4.1). The
++   drift check it once also served was removed by EJ on 2026-10-12.
++3. **Why is a text search enough?** `covers:` names **paths**, not symbols, and is already a hand-kept index from entry
++   to path (`G-F14`), so finding the entries that cover a file is a search over `covers:` lines.
++4. **Why not add a graph anyway?** An incrementally synced graph adds a silent failure that a text search does not have
++   (`G-F5 drift`, 4.3% of edges wrong). A full-rebuild graph such as the repo's own does not drift (`G-F18`), but it
++   covers Python only, so for other `covers:` paths it gives a silent partial answer (code-graph node §5, option B).
++   Whether an entry is still true is answered by reading it against the code (`SOURCE_OF_TRUTH.md` Rd5), not by a
++   graph.
++5. **Why might it be needed later?** Either of two conditions in the code-graph node's §6, each a test:
+    - `covers:` starts naming functions or classes instead of files;
+-   - the check must answer about files not on any `covers:` list ("what does this change affect");
+-   - on a review of past path-level flags, the false alarms outnumber the true ones (R5.3).
++   - an agent must answer about files not on any `covers:` list ("what does this change affect").
+ 
+ ### 5W1H
+ 
+ | | |
+ |---|---|
+-| **Who** | The drift-check script, with no model call. EJ decides to build a graph if one of the three conditions holds. |
+-| **What** | Today: no graph for the memory drift check. Git on `covers:` paths, plus an `ast` parse of changed Python files if precision is needed. If a condition holds: the repo's own `code_graph/code_graph.py` (Python only, deterministic, full rebuild, no incremental mode, `G-F18`) before any outside tool. |
+-| **When** | Today the check runs whenever `INDEX.md` is generated (my reading of `SOURCE_OF_TRUTH.md` line 75). A graph, if ever built, is rebuilt in full each time it is used. |
++| **Who** | Any agent, by a text search over `covers:` lines. EJ decides to build a graph if one of the two conditions holds. |
++| **What** | Today: no graph for memory. A text search over `covers:` lines. If a condition holds: the repo's own `code_graph/code_graph.py` (Python only, deterministic, full rebuild, no incremental mode, `G-F18`) before any outside tool. |
++| **When** | Today: before editing a file (`SOURCE_OF_TRUTH.md` Rd4.1). A graph, if ever built, is rebuilt in full each time it is used. |
+ | **Where** | Nothing today. Later, `project-memory/.cache/code-graph.json`, gitignored. |
+ | **Why** | The five whys above. |
+-| **How** | One `git log` call per entry: `git log <verified-rev>..HEAD -- <each covers: path>`, where `<verified-rev>` is the revision the entry header records it was last verified against (`SOURCE_OF_TRUTH.md` l.50). A listed commit flags the entry. The baseline is the verification, not the entry's last edit, which an unrelated edit can move (code-graph node §6; this command is my reading). External indexers (codegraph) are not adopted: their win is measured on source-code architecture questions, not on memory (`G-F7`, `G-F14`), and they bring the drift in `G-F5 drift`. |
++| **How** | `rg` for the file's path in the `covers:` lines of `entries/`. External indexers (codegraph) are not adopted: their win is measured on source-code architecture questions, not on memory (`G-F7`, `G-F14`), and they bring the drift in `G-F5 drift`. |
+ 
+ ## Measured here: development and testing
+ 
+@@ -348,82 +347,152 @@ right file):
+ 
+ ## Core requirements
+ 
+-Acceptance criteria are checkable or they are questions for EJ. Where the research gives no number, the criterion
+-carries `OPEN:` rather than an invented value. They cover the memory caches, the scope
+-of the confirmed vision (`vision-statements/caches-memory-vision-statements.md`); R9 carries the vision's "never read
+-at session start".
++They serve the vision, `vision-statements/caches-memory-vision-statements.md`, and cover the two memory caches,
++full-text and vector; the code graph is its own project (`docs/code-graph/`). They are grouped by what happens to a
++cache: it is **built**, it is **kept** true, and it is **read** (EJ, 2026-10-12: *"let rewrite using these 3
++categories first"*). Each requirement names its source: **(v)** is the vision, **(d)** is this document's text, and
++*proposed* marks wording EJ has not decided. Each has a check, **Fails if**, that some case breaks. There are no fixed
++numbers: where a limit applies, it is a comparison that measurement decides. The ids R1–R9 they replace are given in
++brackets, because run records cite them.
+ 
+-### R1 — Derived and disposable
+-The cache is computed from the files (the memory's markdown, and for the code graph the code its entries cover) and
+-never holds knowledge of its own (M4, M6).
++### Build — when a cache comes to exist, and what goes in it
+ 
+-- **R1.1** Deleting the cache and rebuilding from the files restores every answer. *Example:* `rm -rf
+-  project-memory/.cache/` → run the documented rebuild → the same query returns the same entries. (M6)
+-- **R1.2** Memory is fully readable with no cache present. *Example:* with `.cache/` absent, session start and an
+-  on-demand `grep` over `entries/` both work. (M6)
+-- **R1.3** The cache directory is ignored by git and a rebuild leaves `git status --short` clean. (M6)
+-
+-### R2 — Full rebuild, never patched
+-- **R2.1** The documented rebuild regenerates the whole index from the files; no incremental update path exists.
+-  *Example:* the rebuild command has no "update" mode. (G-F5 drift)
+-- **R2.2** The index records what it was built from, so a stale one is detectable. *Example:* the index stores the
+-  commit or a content hash of its sources, and the query tool compares before answering. A newest-mtime check is not
+-  enough: a deletion leaves no newer file (R3.1). (S-F9)
+-
+-### R3 — Stale never answers
+-- **R3.1** Before answering, the tool compares the index's recorded commit or content hash with the sources and
+-  rebuilds if they differ, building into a temporary file and renaming over the old one — so a deleted entry cannot
+-  stay searchable. (S-F9)
+-- **R3.2** A wrong path is never mistaken for an empty index: the cache is opened read-only and "no such file" is
+-  treated as absent. *Example:* point the tool at a typo'd path → it warns and falls back to grep, it does not
+-  create an empty database. (G-F5, failure mode 5)
+-
+-### R4 — Absence degrades, it does not fail
+-- **R4.1** A missing cache file or a missing FTS5 warns once and answers with grep. (S-F9)
+-- **R4.2** A missing embedding model does the same. *(my reading, extending S-F9.)*
+-
+-### R5 — Nothing is built before its trigger fires
++**B1 — Nothing is built before its trigger fires** (v: never built before its own trigger; was R5)
+ Each cache has an observable trigger. This is the requirement that keeps the whole layer honest. The query-time
+ counterpart — which store to reach for once a trigger has fired — is the section **When to use which store** above.
+ 
+-- **R5.1 Full-text** — built only when, on the project's own recorded questions, full-text reaches the right entry
+-  after reading less than `INDEX.md` plus grep does, with no more misses. Measured as the code-and-docs benchmark was
+-  (BM-1 to BM-9): the same questions through both routes, the characters read to the first right entry, and the misses.
+-  The comparison decides; no fixed size is set in advance (S-F5, S-F13: nothing is measured yet for a corpus of a few
+-  hundred to a few thousand short entries).
+-- **R5.2 Vector** — built only after R5.1 has fired *and*, run on the recorded misses, the hybrid index finds entries
+-  full-text did not, while doing no worse on the other recorded questions. A "miss" is recorded when an entry existed
+-  and `INDEX.md`, grep and full-text search all missed it (V-F13). How its results are combined with full-text
+-  (hybrid only) is a design proposal in **Vector index**, not part of this trigger.
+-- **R5.3 Code graph** — built only when one of three conditions holds: `covers:` starts naming functions or classes
+-  rather than files; the check must answer about files on no `covers:` list; or, on a review of past path-level
+-  flags, the false alarms outnumber the true ones. (code-graph §6, G-F14, G-F18)
+-
+-### R6 — Only active entries, with their status
+-- **R6.1** The index holds the same set of entries as `INDEX.md`, each row carrying `status` and `covers`.
+-  *Example:* a superseded entry never appears in a search result as if current. (V-F22)
+-
+-### R7 — An answer names its entry
+-- **R7.1** Every result prints the entry file it came from, so a human can open the source before acting.
+-  *Example:* search output names `entries/D-0012-*.md`. (M19)
+-
+-### R8 — The rebuild stays cheap
+-- **R8.1** The documented rebuild completes without a model call, except the embedding step of R5.2.
+-  *Example:* rebuild with no model credentials available; the FTS and code-graph paths still work. (M4, M6)
+-- **R8.2** A rebuild costs less than the cache saves between rebuilds: its time is compared with the reading time the
+-  cache saved on the recorded questions in that period. If the rebuild costs more, the cache is not kept. Measured, for
+-  orientation only: 0.94 s (code graph,
+-  this repo, G-F12) and 0.53 s (FTS, 10,000 synthetic entries, S-F13). Nothing is measured on a real
+-  `project-memory/` corpus, because it does not exist yet.
+-
+-### R9 — Never read at session start
+-- **R9.1** No cache file is part of what a session loads at start. *Example:* the session-start reads in
++- **B1.0 EJ decides** — when a cache's comparison passes, EJ decides whether it is built; a passed comparison alone
++  builds nothing (EJ, 2026-10-12: *"EJ decides"*; the 5W1H tables below say the same).
++- **B1.1 Full-text** — built only when, on the project's own recorded questions (Rd4), full-text reaches the right
++  entry after reading less than `INDEX.md` plus grep does, with no more misses. Measured as the code-and-docs benchmark
++  was (BM-1 to BM-9): the same questions through both routes, the characters read to the first right entry, and the
++  misses. Characters read is a proxy, not a token count, and a weak one: it stops at the right file, not the right
++  answer (**Measured here**, who wrote each check). The comparison decides; no fixed size is set in advance (S-F5,
++  S-F13: nothing is measured yet for a corpus of a few hundred to a few thousand short entries). (was R5.1)
++  - **The comparison** runs on a trial index built in `runs/<run-id>/`, never in `project-memory/.cache/`
++    (*proposed*). It is rerun when an agent records a miss, and when EJ asks; the agent that runs it writes the result
++    there; if it passes, the agent tells EJ, who decides (B1.0) (*proposed*, the same as B1.2; EJ, 2026-10-12:
++    *"give B1.1 the same rerun wording"*).
++- **B1.2 Vector** — built only when, on the recorded questions and misses (Rd4), the vector index finds an entry that
++  full-text missed, and loses nothing full-text already found. (was R5.2; EJ, 2026-10-12: *"ok write it into
++  CACHES.md"*)
++  - **A miss** is a question where the entry existed, `INDEX.md`, grep and full-text search all missed it, and the
++    agent found it another way (V-F13). The agent that found it records it (Rd4).
++  - **Finds** means the right entry is in the top 5 results (*proposed*; the benchmark's measure, BM-1 to BM-5).
++  - **Loses nothing** means: every recorded question full-text answers is still answered, and the characters read to
++    the first right entry are no more than full-text's (*proposed*; the same measure as B1.1, with its weakness).
++  - **The comparison** runs on a trial index built in `runs/<run-id>/`, never in `project-memory/.cache/`
++    (*proposed*). It is rerun when an agent records a miss, and when EJ asks; the agent that runs it writes the result
++    there; if it passes, the agent tells EJ, who decides (B1.0) (*proposed*).
++  - *Proposed* (hybrid only, **Vector index** why 5; EJ, 2026-10-12: *"label hybrid as proposed"*): the vector index
++    is combined with full-text, so it is built only after B1.1 has fired, and the comparison runs on the hybrid
++    index.
++  - **Fails if** a vector index exists in `project-memory/.cache/` with no recorded comparison in which it found at
++    least one missed entry and lost none of full-text's answers, or with no decision by EJ.
++- **Fails if** a cache exists under `project-memory/.cache/` with no recorded comparison showing its trigger fired,
++  or with no decision by EJ to build it.
++
++**B2 — Derived from the files** (v: never the source of truth; was R1)
++The cache is computed from the memory's markdown and never holds knowledge of its own (M4, M6).
++
++- **B2.1** Deleting the cache and rebuilding from the files restores every answer, provided the vector index is
++  rebuilt with the same embedding model (a changed model makes every vector useless, V-F24). *Example:* `rm -rf
++  project-memory/.cache/` → run the documented rebuild → the same query returns the same entries. (M6) (was R1.1)
++- **B2.2** The cache directory is ignored by git and a rebuild leaves `git status --short` clean. (M6) (was R1.3)
++- **Fails if** the same query returns different entries after a delete and a rebuild with the same embedding model,
++  or a rebuild leaves `git status --short` dirty.
++
++**B3 — Full rebuild, never patched** (v: never patched; was R2.1)
++- **B3.1** The documented rebuild regenerates the whole index from the files; no incremental update path exists.
++  *Example:* the rebuild command has no "update" mode. (G-F5 drift)
++- **Fails if** the rebuild has an update or incremental mode.
++
++**B4 — Only active entries, with their status** (d: Rules for all three caches, my reading; was R6)
++- **B4.1** The index holds the same set of entries as `INDEX.md`, each row carrying `status` and `covers`.
++  *Example:* a superseded entry never appears in a search result as if current. (V-F22, my reading)
++- **Fails if** the index holds an entry `INDEX.md` does not list as active, lacks one that `INDEX.md` does list, or
++  has a row without `status` or `covers`.
++
++**B5 — No model call to rebuild, except embedding** (v: How we know it works; was R8.1)
++- **B5.1** The documented rebuild completes without a model call, except the embedding step of B1.2.
++  *Example:* rebuild with no model credentials available; the full-text path still works. (M4, M6)
++- **Fails if** the full-text rebuild calls a model, or the vector rebuild calls any model but its embedding model.
++
++### Keep — the cache stays true to the files, and stays worth having
++
++**K1 — It records what it was built from** (d: Rules for all three caches; was R2.2)
++- **K1.1** The index records a content hash of the entry files it was built from, so a stale one is detectable,
++  including edits not yet committed (*proposed*: a commit alone misses those). A newest-mtime check is not enough:
++  a deletion leaves no newer file (K2.1). (S-F9)
++- **K1.2** The vector index also records the id of the embedding model it was built with, because a changed model
++  makes every vector useless (V-F24; the vector 5W1H stores it beside each vector).
++- **Fails if** the index carries no content hash of its sources, or the vector index carries no embedding-model id.
++
++**K2 — Stale never answers** (d: Rules for all three caches; was R3.1)
++- **K2.1** Before answering, the tool compares the recorded content hash with the entry files, and for the vector
++  index the recorded model id with the current one (*proposed*). If either differs it rebuilds, building into a
++  temporary file and renaming over the old one — so a deleted entry cannot stay searchable. (S-F9)
++- **Fails if** after an entry is added, changed or deleted, or the embedding model changes, a query answers from the
++  old index.
++
++**K3 — Dropped when it stops paying** (d; vision: *"cheap … and not before"*; was R8.2; EJ, 2026-10-12: *"yes please
++write"*)
++- **K3.1** A built cache keeps passing its own trigger: its B1 comparison is rerun on the recorded questions (Rd4),
++  and a query's cost includes any rebuild it triggered (K2) (*proposed*).
++- **K3.2** The comparison is rerun when an agent records a miss, and when EJ asks; the agent that runs it writes the
++  result to `runs/<run-id>/` (*proposed*, the same as B1.2).
++- **K3.3** If the cache no longer passes, the agent tells EJ, who decides whether to drop it. Dropping is deleting it;
++  memory is unaffected (B2, Rd3) (*proposed*, mirroring B1.0).
++- **Fails if** a cache stays in `project-memory/.cache/` after a rerun it failed, with no decision by EJ to keep it.
++
++### Read — an agent queries it
++
++**Rd1 — Never read at session start** (v: never read at session start; was R9)
++- **Rd1.1** No cache file is part of what a session loads at start. *Example:* the session-start reads in
+   `SOURCE_OF_TRUTH.md` (§ When it will be used) name no file under `project-memory/.cache/`; a start hook that
+-  opens `.cache/index.sqlite` fails this. (The vision's never-rule; M18)
++  opens `.cache/index.sqlite` fails this. (M18)
++- **Fails if** a start hook or instruction opens any file under `project-memory/.cache/`.
++
++**Rd2 — An answer names its entry** (d; was R7)
++- **Rd2.1** Every result prints the entry file it came from, so the agent can open the source before acting on it
++  (M19: *"open the primary source when a retrieved statement will determine an action"*). *Example:* search output
++  names `entries/D-0012-*.md`. (*proposed*: "the agent", not "a human", per M19 and the vision; EJ, 2026-10-12:
++  *"write fixes 1–4 into CACHES.md"*)
++- **Fails if** a result does not name its entry file.
++
++**Rd3 — Absence degrades, it does not fail** (v: delete the folder and memory is unaffected; was R1.2, R3.2, R4)
++- **Rd3.1** Memory is fully readable with no cache present. *Example:* with `.cache/` absent, session start and an
++  on-demand `grep` over `entries/` both work. (M6) (was R1.2)
++- **Rd3.2** A missing cache file or a missing FTS5 falls back to grep, and every fallback answer says it came from
++  grep, not the cache, so the agent knows its results are unranked. (S-F9) (was R4.1; *proposed*: "says so in every
++  answer" replaces "warns once")
++- **Rd3.3** A missing embedding model does the same. *(my reading, extending S-F9.)* (was R4.2)
++- **Rd3.4** A wrong path is never mistaken for an empty index: the cache is opened read-only and "no such file" is
++  treated as absent. *Example:* point the tool at a typo'd path → it falls back to grep and says so, it does not
++  create an empty database. (G-F5, failure mode 5) (was R3.2)
++- **Rd3.5** A rebuild that fails falls back to grep; it never answers from the stale index (K2) (*proposed*).
++- **Fails if** with the cache, FTS5 or the embedding model missing, the path mistyped, or a rebuild failing, a query
++  errors, answers from an empty or stale index, or answers from grep without saying so.
++
++**Rd4 — Questions and misses are recorded** (*proposed*; new)
++- **Rd4.1** The questions agents ask of the memory are recorded, and so is each miss: an entry existed, `INDEX.md`,
++  grep and full-text search all missed it, and it was found another way (the definition in B1.2). B1 and K3 run on
++  this record.
++- **Rd4.2** The agent that asked the question records it, as it happens (*proposed*).
++- **Rd4.3** The record lives in `project-memory/questions/`, one file per agent session, committed to git
++  (*proposed*). Not in `.cache/`: the record is a source, and deleting the cache must not delete it. One file per
++  session, for the reason `journal/` has one (`SOURCE_OF_TRUTH.md` W6.1): agents never append to one shared file. Not
++  inside `journal/`: the journal is raw notes that become entries, while this record is read by the comparison.
++- **Rd4.4** One record holds: the question as asked; the routes tried, in order (`INDEX.md`, grep, full-text,
++  vector); the entry that answered it, or "not found"; whether it was a miss, and if so how the entry was found; the
++  date; and the agent's model id (*proposed*).
++- **Not yet done:** `SOURCE_OF_TRUTH.md` § Where it is put does not list `questions/`; adding it waits for EJ.
++- **Fails if** `project-memory/` has entries and B1 or K3 has no recorded questions to run on, or a record lacks a
++  field of Rd4.4.
+ 
+ ## Example numbers by case
+ 
+-The triggers in R5 and R8.2 are comparisons. The measurement decides them, so no number is fixed in advance. This
++The triggers in B1 and K3 are comparisons. The measurement decides them, so no number is fixed in advance. This
+ section shows **what those comparisons have come out at elsewhere**, by agent type and condition, so a reader knows
+ roughly where a project stands before measuring. These are examples with sources, not thresholds.
+ 
+@@ -465,7 +534,7 @@ sourced figure.
+ 
+ **When several agents share a project, the binding limit is the smallest one among them** (*my reading*).
+ 
+-### R5.1: full-text against `INDEX.md` plus grep
++### B1.1: full-text against `INDEX.md` plus grep
+ 
+ | Case | What was measured | Source |
+ |---|---|---|
+@@ -477,10 +546,10 @@ sourced figure.
+ | A tool result too large to read | filtering in code instead of reading: 150,000 tokens down to 2,000 | OC (Anthropic, 2025-11-04) |
+ 
+ **My reading:** on accuracy, grep stays competitive until millions of tokens. On **tokens read**, full-text wins much
+-earlier: on SEZA-sized memory, a single broad term already floods grep's output. The R5.1 comparison measures exactly
++earlier: on SEZA-sized memory, a single broad term already floods grep's output. The B1.1 comparison measures exactly
+ that.
+ 
+-### R5.2: the vector index
++### B1.2: the vector index
+ 
+ | Case | What was measured | Source |
+ |---|---|---|
+@@ -494,44 +563,25 @@ that.
+ | SEZA | no recorded misses, so the comparison has nothing to run on | SZ |
+ 
+ **My reading:** retrieval beats loading everything somewhere around 100K–500K tokens, but it is keyword retrieval
+-that wins. Vectors earn a place only on recorded meaning-misses, which is what R5.2 tests.
+-
+-### R5.3: the code graph
+-
+-| Case | What was measured | Source |
+-|---|---|---|
+-| Gin, about 110 files | cost about even with or without the graph (vendor's own benchmark, like the rows below) | G-F7, W-25 |
+-| Alamofire, about 110 files | 57% cheaper (vendor's own benchmark) | W-25 |
+-| Excalidraw, about 640 files | 78% cheaper, 84% fewer tokens | G-F7 |
+-| Django, about 3k files | 13% cheaper | G-F7 |
+-| VS Code, about 11k files | 71% cheaper, but 67k vs 18k tokens left resident after the session | G-F7, G-F7b |
+-| Hidden-dependency tasks | 99.4% vs 76.2% task completion | s3-F16 |
+-| 43 files (Serena, vendor self-evaluation) | cross-file rename 9 calls down to 1, but 4.5× worse on a one-line edit | OC |
+-| This repo | the graph names a caller in 33–46 characters | BM-3 |
+-| SEZA | `.ctxgraph` (1.1 MB) imported once on 2026-07-28, every `usage_count` 0, no production code queries it (SZ); a query script exists and a staging copy was queried on 2026-08-02 (CX). How often it was used is a GAP. A built graph with almost no use: the case R5.3 exists to prevent | SZ, CX |
+-
+-**My reading:** the payoff follows how far a question reaches across files, not the file count. Two repos of 110
+-files went from no saving to 57%.
++that wins. Vectors earn a place only on recorded meaning-misses, which is what B1.2 tests.
+ 
+-### R8.2: rebuild cost
++### K3: rebuild cost
+ 
+ | Store | Measured | Source |
+ |---|---|---|
+ | Full-text | 0.169 s for 490 files (index 9.5 MB, about 2× the source); 0.53 s for 10,000 entries; 2.57 s for 50,000; SEZA 0.004 s for 55 files, 0.54 s for 2,013 md files (34 MB), both in an in-memory database, so no disk writes (SZ) | BM-9, S-F13, SZ |
+ | Vector | 0.936 s for 490 files with model2vec; embedding speed 81,018 samples/s for model2vec against 274 for a MiniLM fine-tune (model2vec's own table); sqlite-vec builds 1M × 128 dims in about 4 s, embedding excluded | BM-9, OC, W-27 |
+-| Code graph | 0.94 s for 126 `.py` files; codegraph about 100 s for about 27k files | G-F12, W-25 |
+ 
+ **My reading:** at the sizes of this repo (490 files) and of SEZA's whole markdown corpus (2,013 files; its memory
+ stores alone are 152–201 files), a rebuild takes under a second (SEZA's figure is in-memory, not on disk). Larger
+ corpora take seconds (2.57 s for 50,000 entries; about 4 s for sqlite-vec at 1M vectors, embedding
+-excluded) to minutes (codegraph, about 100 s for about 27k files). A heavy embedding model adds the most per file.
+-So R8.2 starts to bite with corpus size and with a slow embedding model.
++excluded). A heavy embedding model adds the most per file.
++So K3 starts to bite with corpus size and with a slow embedding model.
+ 
+ ### SEZA today, trigger by trigger (SZ, the researcher's reading)
+-- **R5.1:** no verdict at n=5.
+-- **R5.2:** not met.
+-- **R5.3:** cannot be evaluated; the graph that exists is barely used (production queries: GAP).
+-- **R8.2:** cheap.
++- **B1.1:** no verdict at n=5.
++- **B1.2:** not met.
++- **K3:** cheap.
+ 
+ SEZA's own `project_memory search` was used 42 times in 15 sessions, with none after 2026-09-24.
+ 
+@@ -540,19 +590,16 @@ SEZA's own `project_memory search` was used 42 times in 15 sessions, with none a
+   (`seza/runs/20261010-project-cleanup/STATUS-GRAPH.md:268`).
+ - Its derived graph was missing when it was asked for: *"graph is missing; run sync or rebuild"*.
+ 
+-**My reading:** a faster cache would have returned the same stale entries. R3 (stale never answers) and the drift
+-check matter more here than any of the three stores.
++**My reading:** a faster cache would have returned the same stale entries. K2 (stale never answers) matters more here
++than any of the three stores.
+ 
+ ## What this changes elsewhere (proposed, not done)
+ 
+-- `SOURCE_OF_TRUTH.md` lists as undecided "how the script tells that the entry changed earlier than the code". The
+-  research suggests an answer for EJ to decide: list the commits to its `covers:` paths since the
+-  revision the entry was last verified against, not since the entry's last edit.
+-- `SOURCE_OF_TRUTH.md` line 104 can keep `.cache/` as written. This document says when each part of it is built.
++- `SOURCE_OF_TRUTH.md` § Where it is put can keep `.cache/` as written. This document says when each part of it is built.
+ 
+ ## Not known
+ 
+-- No trigger has a fixed number. Each is a comparison (R5, R8.2) that is measured once `project-memory/` has entries
++- No trigger has a fixed number. Each is a comparison (B1, K3) that is measured once `project-memory/` has entries
+   and recorded questions; the measurement decides (EJ, 2026-10-12: *"this is design guide, how can I give you a
+   number?"*).
+ - No measurement exists of any of the three on a project-memory corpus. All evidence is on other corpora: source code,
+diff --git a/docs/memory-system/SOURCE_OF_TRUTH.md b/docs/memory-system/SOURCE_OF_TRUTH.md
+index 2cbe4b6..b866ccf 100644
+--- a/docs/memory-system/SOURCE_OF_TRUTH.md
++++ b/docs/memory-system/SOURCE_OF_TRUTH.md
+@@ -7,14 +7,17 @@
+ > Sources, citations and review history: `runs/20261011-source-of-truth-design/` (the full annotated version is
+ > `DESIGN-detailed-2026-10-12.md`) and `runs/20261012-memory-update-timing/notes.md`.
+ >
++> **Revised 2026-10-12:** the drift-check script and the background subagent are removed (EJ: *"ok remove both and
++> update the doc"*). A decision is started when it is written and complete when its time, result and test results are
++> added; whoever reads a decision or fact checks it against the code before acting on it.
++>
+ > **Where this differs from the recommendation — EJ's decisions:** no owners and no human approval gate (anyone may
+ > change any entry, and every change is logged); decisions and facts come before the code; a *fact* means a constraint
+-> the code must respect, not something discovered afterwards; the drift check covers decisions and facts only; a
+-> background subagent keeps memory current.
++> the code must respect, not something discovered afterwards; no drift-check script and no background subagent.
+ >
+-> **Not proven:** the timing split (what is written immediately and what later) and letting the subagent update lessons
+-> on its own are design judgement, not measured. Where the recommendation's engines disagreed (session-start reads,
+-> one file per writer, SQLite, how often to write), this design follows the majority.
++> **Not proven:** the timing split (what is written immediately and what later) is design judgement, not measured.
++> Where the recommendation's engines disagreed (session-start reads, one file per writer, SQLite, how often to write),
++> this design follows the majority.
+ 
+ ## Why we need this memory
+ 
+@@ -47,12 +50,15 @@ The order of work is: change the decision or fact first, then the code. Work tha
+ for the project's workflow, not for memory. A decision about this project is a project entry, whoever made it, EJ
+ included.
+ 
++A decision is **started** when it is written: we decided to build something, and why. It is **complete** when the
++time, the result and the test results are added to it (EJ, 2026-10-12).
++
+ ## What will be put in
+ 
+-**An entry** is one markdown file. Its header holds: `id`, `kind`, `status`, `author`, the date it was recorded, the
+-date and git revision it was last verified against, `covers` (the code paths it is about), its source or evidence,
+-links (`depends_on`, `supersedes`, `superseded_by`), and a `changed:` log. Its body is the claim in one or two
+-sentences, then **Why:**, then **How to apply:**.
++**An entry** is one markdown file. Its header holds: `id`, `kind`, `status`, `author`, the date it was recorded,
++`covers` (the code paths it is about), its source or evidence, links (`depends_on`, `supersedes`, `superseded_by`), a
++`changed:` log, and, on a decision once its work is complete, `done:` (the time, the result and the test results). Its
++body is the claim in one or two sentences, then **Why:**, then **How to apply:**.
+ 
+ **Changing entries.** Anyone may change any entry, and `AGENTS.md` too. Each change adds one line to the entry's
+ `changed:` log: the time, and who made it — the model ID for an agent, the name for a person. Files that are not entries
+@@ -67,20 +73,16 @@ so a clean merge does not mean the file is consistent.
+ | When | What |
+ |---|---|
+ | Immediately | Decisions and facts, before the code — and `INDEX.md` is regenerated right after, so the next session sees them. A human correction. The state of unfinished work before a handoff, an interruption or a context reduction. |
+-| At the end of a task, or in the background | Other lessons, observations and hypotheses; merging duplicates; checking entries against the code; runbooks. |
+-
+-**Keeping it current.** Entries may go out of date while work goes on; that is accepted. A background subagent runs at
+-the end of a task or on its own schedule and compares entries with the code:
++| When the work a decision governs is complete | The decision's `done:` line: the time, the result and the test results. |
++| At the end of a task | Other lessons, observations and hypotheses; merging duplicates; runbooks. |
+ 
+-- When a **decision or fact** no longer matches the code, it does not change the entry. It reports to EJ which entry,
+-  what the entry says, and what the code does instead. EJ decides whether the entry is updated or the code is fixed.
+-- **Lessons, observations, hypotheses and runbooks** it may update itself; its changes are logged like anyone else's.
++**Keeping it current.** Entries may go out of date while work goes on; that is accepted. Nothing watches for it: there
++is no drift-check script and no background subagent. Whoever reads a decision or fact checks it against the code before
++acting on it. When they no longer match, the reader does not change the entry: it reports to EJ which entry, what the
++entry says, and what the code does instead, and EJ decides whether the entry is updated or the code is fixed.
+ 
+-A script with no model call also marks a decision or fact in `INDEX.md` when its code changed with no earlier change to
+-the entry.
+-
+-**Still open:** which tool generates `INDEX.md` and what runs it (K6); who resolves a git merge conflict (W6). The drift
+-check is K2. Whether a changed decision is edited in place or superseded is proposed in K4.3.
++**Still open:** which tool generates `INDEX.md` and what runs it (K6); who resolves a git merge conflict (W6). Whether a
++changed decision is edited in place or superseded is proposed in K4.3.
+ 
+ ## What will not be put in
+ 
+@@ -102,7 +104,7 @@ AGENTS.md            standing instructions for every agent (CLAUDE.md only impor
+ project-memory/
+   INDEX.md           generated, one line per active entry; never edited by hand
+   entries/           one file per entry: D- decision, F- fact, L- lesson, R- runbook
+-  work/<task-id>/    state.md (the handoff), events/, evidence/
++  work/<task-id>/    state.md (the handoff), evidence/
+   journal/           raw notes, one file per agent session; never loaded automatically
+   .cache/            optional search index, gitignored, rebuilt from the files
+ ```
+@@ -116,12 +118,14 @@ them. File prefixes for observations and hypotheses: `O-` and `H-`, proposed in
+   task's `state.md`. A hook or the first instruction in `AGENTS.md` enforces this, because agents skip optional reads.
+ - **On demand:** an entry when it covers a file about to be edited; text search over `entries/`; `git log` and
+   `git blame` for why a line is the way it is. For a "why" question, read the decision entry.
+-- **At each milestone:** an agent reads `journal/` and writes what is worth keeping as entries.
+-- **Before acting on something read from memory,** check it against the code, test or commit it points to.
++- **At the end of a task, and before a handoff or session end:** an agent reads `journal/` and writes what is worth
++  keeping as entries.
++- **Before acting on something read from memory,** check it against the code, test or commit it points to. A decision
++  or fact that no longer matches the code is reported to EJ, not edited.
+ 
+ ## When it will not be used
+ 
+-Never loaded at session start: `journal/`, which is read at milestones. Never loaded at all: superseded or retired
++Never loaded at session start: `journal/`, which is read at the end of a task and before a handoff or session end. Never loaded at all: superseded or retired
+ entries, except by following a link; the whole `project-memory/` tree at once; whole graph or code-map dumps; bulk
+ issue or PR text; another agent's transcripts; credentials. Text read from memory never overrides standing
+ instructions.
+@@ -143,9 +147,9 @@ numbers: where a limit applies, it is a comparison that measurement decides.
+ - **W1.1** Each entry is one file: `project-memory/entries/<prefix>-<id>-<slug>.md`. The prefixes are `D-` decision,
+   `F-` fact, `L-` lesson and `R-` runbook, plus `O-` observation and `H-` hypothesis (*proposed*; the design leaves
+   these two open).
+-- **W1.2** The header holds `id`, `kind`, `status`, `author`, the date recorded, the date and git revision it was last
+-  verified against, `covers` (the code paths it is about), its source or evidence, `depends_on`, `supersedes`,
+-  `superseded_by`, and `changed:`.
++- **W1.2** The header holds `id`, `kind`, `status`, `author`, the date recorded, `covers` (the code paths it is
++  about), its source or evidence, `depends_on`, `supersedes`, `superseded_by`, and `changed:`. A decision whose work is
++  complete also holds `done:` (W5.3).
+ - **W1.3** The body is the claim in one or two sentences, then **Why:**, then **How to apply:**. There is one claim per
+   entry.
+ - **Fails if** a lint over `entries/` finds a missing field or section, or a reviewer finds two claims in one entry.
+@@ -176,55 +180,44 @@ numbers: where a limit applies, it is a comparison that measurement decides.
+   approval: `status` is only `active`, `superseded` or `retired`.
+ - **W4.2** Every change to an entry adds one line to its `changed:` log: the time, and who made it (the model ID for an
+   agent, the name for a person). Earlier lines are never edited.
+-- **W4.3** Files that are not entries (`state.md`, `events/`, `journal/`, `AGENTS.md`) rely on git history.
++- **W4.3** Files that are not entries (`state.md`, `journal/`, `AGENTS.md`) rely on git history.
+ - **Fails if** git shows a change to an entry with no matching `changed:` line, or a `status` outside the three.
+ 
+ **W5 — When to write** (d: When to write)
+ - **W5.1** Written immediately: a decision or fact, before the code it governs; a human correction; and the state of
+   unfinished work, before a handoff, an interruption or a context reduction.
+-- **W5.2** Written at the end of a task, or by the background subagent: other lessons, observations, hypotheses, and
+-  runbooks.
++- **W5.2** Written at the end of a task: other lessons, observations, hypotheses, and runbooks.
++- **W5.3** A decision is started when it is written. When the work it governs is complete, the agent or person who did
++  the work adds `done:` to it: the time, the result and the test results (EJ, 2026-10-12).
+ - **Fails if** a commit changes code under a new decision with no entry in that commit or an earlier one. For a human
+-  correction, it fails if the session ends without one (judged).
++  correction, it fails if the session ends without one (judged). For W5.3, it fails if a task's `state.md` says its
++  work is complete and the decision it carried out has no `done:` line.
+ 
+ **W6 — Writers do not collide** (d: Changing entries)
+ - **W6.1** Each new entry gets its own file. Agents never append to one shared file; `journal/` has one file per agent
+   session.
+ - **W6.2** Each agent works on its own branch or worktree, so two edits to the same lines meet as a merge conflict, not
+   a silent overwrite.
+-- **W6.3** A clean merge does not mean the entries agree: after a merge that touched `entries/`, the K2 check runs.
+ - **Open:** who resolves a merge conflict.
+-- **Fails if** an edit to an entry is lost without a conflict, or a merge touching `entries/` skips K2.
++- **Fails if** an edit to an entry is lost without a conflict.
+ 
+ ### Keep — memory stays true, and nothing is lost
+ 
+ **K1 — The decision or fact first, then the code** (v; d: What it is for)
+ - **K1.1** To change behaviour that a decision or fact governs, change the entry first, then the code. Work that has to
+   go the other way is a matter for the project's workflow, not for memory.
+-- **Fails if** K2 flags the entry: its code changed after its verified revision.
+-
+-**K2 — The drift check** (v: never unnoticed; d: Keeping it current)
+-- **K2.1** For each active decision and fact, a script with no model call runs
+-  `git log <verified-rev>..HEAD -- <each covers path>`. Any commit it lists flags the entry in `INDEX.md`.
+-- **K2.2** It runs whenever `INDEX.md` is generated (K6), and after a merge that touched `entries/` (W6.3).
+-- **K2.3** It covers decisions and facts only. Lessons, observations and hypotheses are not flagged when code changes
+-  later.
+-- **Fails if** an entry with such a commit is not flagged, or a lesson is flagged.
+-
+-**K3 — The background subagent** (v; d: Keeping it current)
+-- **K3.1** It runs off the critical path, at the end of a task or on its own schedule, and compares entries with the
+-  code.
+-- **K3.2** It never edits a decision or fact. It reports to EJ which entry, what the entry says, and what the code does
+-  instead, and EJ decides whether the entry is updated or the code is fixed.
+-- **K3.3** It may update lessons, observations, hypotheses and runbooks, and merge duplicates by superseding one. Each
+-  of its changes is logged like anyone else's.
+-- **Fails if** a `changed:` line on a decision or fact names the background subagent, or a drift it found reaches EJ
+-  without the entry, the claim and the code behaviour.
++- **Fails if** git shows a commit changing the behaviour a decision or fact governs, with no change to that entry in the
++  same commit or an earlier one (judged).
++
++*K2 (the drift-check script) and K3 (the background subagent) were removed by EJ on 2026-10-12. Their numbers are not
++reused, because other text cites K4–K6. A mismatch between a decision and the code is now caught when the decision is
++read (Rd5).*
+ 
+ **K4 — Never deleted, never expired by age** (v: nothing lost; d: What will not be put in)
+ - **K4.1** An entry is never deleted. It is marked `superseded` or `retired`, links to what replaced it
+   (`superseded_by`), and keeps its old body.
+-- **K4.2** Age alone never expires an entry. Staleness comes only from K2.
++- **K4.2** Age alone never expires an entry. An entry is found out of date only when someone reads it and checks it
++  against the code (Rd5).
+ - **K4.3** *Proposed:* a decision refined without changing its meaning is edited in place, with a `changed:` line; a
+   decision replaced by a different one gets a new entry that supersedes it. The design leaves this open.
+ - **Fails if** git shows an entry file deleted, or a `superseded` or `retired` entry has no link.
+@@ -232,13 +225,15 @@ numbers: where a limit applies, it is a comparison that measurement decides.
+ **K5 — The journal becomes entries** (v: nothing lost between sessions)
+ - **K5.1** Task and project memory keep `journal/`: raw notes, one file per agent session, appended to and never
+   edited.
+-- **K5.2** At each milestone, an agent reads the journal written since the last milestone, writes what is worth keeping
+-  as entries, and logs that read in the task's `state.md`.
+-- **Fails if** a milestone in `state.md` has no journal-read log line.
++- **K5.2** At the end of a task, and before a handoff or session end, an agent reads the journal written since the
++  last read, writes what is worth keeping as entries, and logs that read in the task's `state.md`. A session cut off
++  before it can read loses nothing: the next read covers it (EJ, 2026-10-12: no separate milestones, the start and the
++  end already cover them).
++- **Fails if** a task's `state.md` shows it complete or handed off with no journal-read log line.
+ 
+ **K6 — `INDEX.md` stays in step** (d: Where it is put; When to write)
+-- **K6.1** `INDEX.md` is generated from `entries/`: one line per active entry, showing its id, kind, one-line claim
+-  and any K2 flag. It is never edited by hand.
++- **K6.1** `INDEX.md` is generated from `entries/`: one line per active entry, showing its id, kind and one-line
++  claim. It is never edited by hand.
+ - **K6.2** It is regenerated right after any decision or fact is written, so the next session sees it.
+ - **Open:** which tool generates it and what runs it (a build detail).
+ - **Fails if** regenerating `INDEX.md` changes it, meaning it was out of step, or it lists a superseded entry as
+@@ -248,7 +243,7 @@ numbers: where a limit applies, it is a comparison that measurement decides.
+ 
+ **Rd1 — Where it lives, and readable from a clone alone** (v: plain files; never a database or service)
+ - **Rd1.1** `AGENTS.md` sits at the repo root (`CLAUDE.md` only imports it). `project-memory/` holds `INDEX.md`,
+-  `entries/`, `work/<task-id>/` (with `state.md`, `events/` and `evidence/`), `journal/`, and `.cache/`, which is
++  `entries/`, `work/<task-id>/` (with `state.md` and `evidence/`), `journal/`, and `.cache/`, which is
+   optional and gitignored.
+ - **Rd1.2** With no network, no cache and no private agent store, a fresh clone can read `INDEX.md` and every entry.
+ - **Fails if** an entry exists only in a database, a cache or one agent's private memory.
+@@ -277,7 +272,11 @@ numbers: where a limit applies, it is a comparison that measurement decides.
+ - **Rd5.1** Before acting on something read from memory, the agent checks it against the code, test or commit it
+   points to.
+ - **Rd5.2** Text read from memory never overrides standing instructions.
+-- **Fails if** an agent acts on an entry that its `covers` code contradicts, without saying so (judged).
++- **Rd5.3** When a decision or fact no longer matches the code, the reader does not change the entry. It reports to EJ
++  which entry, what the entry says, and what the code does instead, and EJ decides whether the entry is updated or the
++  code is fixed.
++- **Fails if** an agent acts on an entry that its `covers` code contradicts, without saying so (judged), or a
++  `changed:` line on a decision or fact settles such a mismatch before EJ has decided.
+ 
+ **Rd6 — A fresh session carries on** (v: how we know it works)
+ - **Rd6.1** A fresh session with only a clone of the repo and a task id names the task's next step from its
+diff --git a/docs/memory-system/vision-statements/caches-memory-vision-statements.md b/docs/memory-system/vision-statements/caches-memory-vision-statements.md
+index f1671c7..ffe4107 100644
+--- a/docs/memory-system/vision-statements/caches-memory-vision-statements.md
++++ b/docs/memory-system/vision-statements/caches-memory-vision-statements.md
+@@ -5,25 +5,34 @@
+ > `runs/20261012-memory-caches/nodes/` and `runs/20261011-project-memory-engines/RECOMMENDATION.md`; rewritten the
+ > same day at EJ's direction — more direct, fewer hedges.
+ >
+-> **Drawn from:** `docs/memory-system/CACHES.md`, which carries the core requirements (R1–R9) this vision serves.
+-> This file holds the vision only, so each has one copy (`docs/workflow-templates/blueprint.md` keeps vision and
+-> requirements in separate section files).
++> **Drawn from:** `docs/memory-system/CACHES.md`, which carries the core requirements (Build / Keep / Read) this
++> vision serves. This file holds the vision only, so each has one copy (`docs/workflow-templates/blueprint.md` keeps
++> vision and requirements in separate section files).
+ >
+ > **Whose it is.** Per the blueprint template, the product vision is EJ's — *"an agent may only write down what EJ
+ > has said"*. This was drafted from the research at his request and settled by him on 2026-10-12.
++>
++> **Changed 2026-10-12:** the code graph removed at EJ's direction (*"code graph should have it's own project"*);
++> its draft is `docs/code-graph/CODE_GRAPH.md`. The problem now names both ways it shows up, one per cache — the
++> vector reason was missing (EJ: *"ok write it into the vision"*). "How we know it works" now tests that the right
++> entry is found for less (B1.1, B1.2), not only that a rebuild repeats; and the rebuild's "no model call" now
++> excepts the vector embedding step, as B5.1 does (EJ: *"ok write it into the vision"*).
+ 
+-The caches are three optional indexes over the project's markdown memory — full-text search, vector search, and a
+-code graph. All three live in `project-memory/.cache/`, all three are gitignored, and all three are rebuilt from the
+-files. None of them is needed today.
++The caches are two optional indexes over the project's markdown memory — full-text search and vector search. Both
++live in `project-memory/.cache/`, both are gitignored, and both are rebuilt from the files. Neither is needed today.
+ 
+ **Who it is for.** An agent retrieving an entry on demand. Not the human reviewer, who reads the entries themselves,
+ and not EJ, who sets the triggers.
+ 
+ **The problem it solves.** The memory is markdown in git, and today `INDEX.md` plus grep finds what an agent needs —
+-at 10,000 entries a grep takes 0.038–0.06 s (`S-F13`). It stops being enough as the memory grows, for two reasons:
+-`INDEX.md` can no longer list every active entry under its size limit, so the one-line scan of everything is gone;
+-and grep returns unranked matches, where every hit an agent opens costs context (`S-F1`). The caches exist to keep
+-finding the right entry cheap at that size — and not before.
++at 10,000 entries a grep takes 0.038–0.06 s (`S-F13`). As the memory grows, that stops being enough in two ways:
++- **Too many entries — full-text search.** `INDEX.md` can no longer list every active entry under its size limit,
++  so the one-line scan of everything is gone; and grep returns unranked matches, where every hit an agent opens
++  costs context (`S-F1`).
++- **Different words — vector search.** The agent's words differ from the entry's, so `INDEX.md`, grep and
++  full-text search all miss an entry that exists (`V-F13`).
++
++The caches exist to keep finding the right entry cheap when that happens — and not before.
+ 
+ **What it will never do.**
+ - It is never the source of truth. The markdown is, always, and a cache holds nothing the files do not (`M4`, `M6`).
+@@ -34,7 +43,13 @@ finding the right entry cheap at that size — and not before.
+   decides it, not a number set in advance (EJ, 2026-10-12: *"this is design guide, how can I give you a number?"*).
+ - It never becomes a second thing to keep in sync: delete the folder and memory is unaffected.
+ 
+-**How we know it works.** Delete the cache, rebuild it from the files, and the same query returns the same entries,
+-with no model call. That is the whole test (`M6`; a 10,000-entry FTS rebuild takes 0.53 s, `S-F13`; this repo's code
+-graph rebuilds in 0.94 s, `G-F12`). One caveat travels with every number here: none of it has been measured on a
+-real `project-memory/` corpus, because that corpus does not exist yet (`S-F5`, `V-F11`).
++**How we know it works.** Two tests, both on the project's own recorded questions.
++- **It finds the right entry, for less.** Full-text search reaches the right entry after reading less than
++  `INDEX.md` plus grep, with no more misses (B1.1). Vector search, run on the recorded misses, finds entries
++  full-text did not, and does no worse on the other questions (B1.2).
++- **It holds nothing of its own.** Delete the cache, rebuild it from the files, and the same query returns the
++  same entries, with no model call except the vector embedding step (`M6`, B5.1; a 10,000-entry FTS rebuild takes
++  0.53 s, `S-F13`).
++
++One caveat travels with every number here: none of it has been measured on a real `project-memory/` corpus,
++because that corpus does not exist yet (`S-F5`, `V-F11`).
+diff --git a/docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md b/docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md
+index 0ae24bb..0f730f7 100644
+--- a/docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md
++++ b/docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md
+@@ -12,6 +12,9 @@
+ >
+ > **Drawn from:** `docs/memory-system/SOURCE_OF_TRUTH.md`, the design this vision serves, and its run record
+ > `runs/20261011-source-of-truth-design/` (decisions in `DESIGN-detailed-2026-10-12.md`).
++>
++> **Revised 2026-10-12:** the background subagent is removed, and a decision's start and completion are added (EJ:
++> *"ok remove both and update the doc"*).
+ 
+ The source-of-truth memory is the project's written memory: plain markdown files kept in the repo with the code,
+ which every agent and every person reads and may change [design, l.19–22]. It holds what the code cannot tell you
+@@ -21,6 +24,10 @@ which every agent and every person reads and may change [design, l.19–22]. It
+ 
+ [EJ, 2026-10-12, DESIGN-detailed l.27–29]
+ 
++A decision is started when it is written, and complete when its time, result and test results are added [EJ,
++2026-10-12: *"when we put details says we decided to build soemthing. means it is a starting. when done, you put the
++time and results , test reuslt those into your memory , that means comeplte"*].
++
+ **Who it is for.**
+ - Every agent and every person working on the project. There are no owners and no approval gate: anyone may change
+   any entry, and every change is logged with when and which model or person made it [EJ, 2026-10-12, header l.8–9;
+@@ -40,12 +47,15 @@ unless it is written down. A private agent store is invisible to the other agent
+   from these files [design, l.21–22; CACHES.md, accepted].
+ - An entry is never held back for approval. An entry is a memory once it is written [EJ, 2026-10-12: *"for example a
+   lesson learn, is it a memory, why got proposed and active?"*].
+-- The code never moves ahead of a decision or fact unnoticed. The decision or fact changes first, then the code. When a
+-  decision or fact no longer matches the code, the background subagent reports it to EJ and does not edit it
+-  [EJ, 2026-10-12, DESIGN-detailed l.27, l.31].
+-- Nothing is lost between sessions. Task and project memory keep a journal, and an agent reads it at each milestone
+-  and writes what is worth keeping as entries [EJ, 2026-10-12: *"task and project memory need a journal"*; *"an agent
+-  will go read the journal when hit each milestone"*].
++- A decision or fact is never acted on unchecked. The decision or fact changes first, then the code. Whoever reads a
++  decision or fact checks it against the code before acting on it; when they no longer match, the reader reports it to
++  EJ and does not edit it. Nothing else watches for this: no script and no background subagent [EJ, 2026-10-12,
++  DESIGN-detailed l.27, l.31; revised 2026-10-12: *"I think both can remove. memory is very simple"*].
++- Nothing is lost between sessions. Task and project memory keep a journal, and an agent reads it at the end of a
++  task and before a handoff or session end, and writes what is worth keeping as entries [EJ, 2026-10-12: *"task and
++  project memory need a journal"*; *"an agent will go read the journal when hit each milestone"*; revised 2026-10-12,
++  milestones dropped: *"if we said handoff or session end, then the simple start and end solution already cover
++  right?"*].
+ 
+ **How we know it works.** [proposed] A fresh session with only a clone of the repo can carry on from where the last
+ one stopped:
