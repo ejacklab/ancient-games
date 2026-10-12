@@ -1,0 +1,179 @@
+{
+  "categories": [
+    "test cases gen",
+    "code generation",
+    "code review"
+  ],
+  "builds": true,
+  "touched_paths": [
+    "tools/memory_index.py",
+    "tests/test_memory_index.py",
+    ".githooks/pre-commit",
+    ".githooks/pre-merge-commit",
+    "tests/test_memory_index_unit.py"
+  ],
+  "pipeline": "codegen → tests → review",
+  "nodes": [
+    {
+      "id": "n1-tests",
+      "category": "test cases gen",
+      "engine": "codex gpt-6.1-sol",
+      "builds": true,
+      "check": "pytest --collect-only ok; trace_check.py all ids cited; 0 passed with no script",
+      "needs": [],
+      "loop": {
+        "limit": 2,
+        "exit": "fresh node, stronger tier (codex gpt-6-astra), handoff note, then EJ",
+        "feedback": "the check's real output"
+      },
+      "five_things": [
+        "tools",
+        "context",
+        "contract",
+        "evidence",
+        "state"
+      ],
+      "brief_given": "briefs/n1.md + docs/index-md/{REQUIREMENTS,DESIGN,VISION}.md + tests/test_skills_export.py for style; withheld: any code, workflow-design.md, state.md, the sabotage plan",
+      "intent": "acceptance tests written from the spec alone, before any code exists",
+      "stop": {
+        "criteria": "collects; trace_check.py finds every in-scope id; 0 passed with no script",
+        "baseline": "529-test baseline still passes",
+        "must_not_change": "DESIGN.md do-not list (SOURCE_OF_TRUTH.md, CLAUDE.md, AGENTS.md, core.hooksPath, project-memory/), docs/index-md/*, every path outside the node's may-change set; may change tests/test_memory_index.py only"
+      },
+      "returns": "tests/test_memory_index.py + nodes/n1-<a>.result.md (criterion id -> test names)",
+      "state_reads": "worktree path, spec hashes",
+      "state_writes": "attempt, verdict, result path",
+      "tools": [
+        "codex"
+      ],
+      "evidence": [
+        "runs/20261012-index-md-build/nodes/n1-<a>.result.md"
+      ],
+      "sabotage": "drop one criterion id from a copy of the test file -> trace_check.py fails; with no script every test is red"
+    },
+    {
+      "id": "n2-code",
+      "category": "code generation",
+      "engine": "opencode MiniMax-M3.1-Flash-Preview",
+      "builds": true,
+      "check": "feature_gate.py check: new tests green, baseline green, scope, must-not, tamper",
+      "needs": [
+        "n1-tests"
+      ],
+      "loop": {
+        "limit": 3,
+        "exit": "fresh node, stronger tier (codex gpt-6.1-sol high), handoff note, then EJ",
+        "feedback": "the gate's real output and failing test output"
+      },
+      "five_things": [
+        "tools",
+        "context",
+        "contract",
+        "evidence",
+        "state"
+      ],
+      "brief_given": "briefs/n2.md + the spec + the frozen test file + tools/export_skills.py for style; withheld: N1's notes, workflow-design.md, state.md, the sabotage plan",
+      "intent": "the product: tools/memory_index.py, the two hooks, and the coder's unit tests",
+      "stop": {
+        "criteria": "every in-scope criterion's test passes (feature_gate tests)",
+        "baseline": "feature_gate baseline check green",
+        "must_not_change": "DESIGN.md do-not list (SOURCE_OF_TRUTH.md, CLAUDE.md, AGENTS.md, core.hooksPath, project-memory/), docs/index-md/*, every path outside the node's may-change set; tests/test_memory_index.py protected (tamper); may change tools/memory_index.py, .githooks/*, tests/test_memory_index_unit.py"
+      },
+      "returns": "code + tests/test_memory_index_unit.py + nodes/n2-<a>.result.md (requirement id -> file:line)",
+      "state_reads": "N1 result path",
+      "state_writes": "attempt, gate verdict, result path",
+      "tools": [
+        "opencode"
+      ],
+      "evidence": [
+        "runs/20261012-index-md-build/nodes/n2-<a>.result.md",
+        "runs/20261012-index-md-build/gate-<a>.txt"
+      ],
+      "sabotage": "N3: one hidden mutant per in-scope Fails if; each must turn a test red"
+    },
+    {
+      "id": "n4-review",
+      "category": "code review",
+      "engine": "claude sonnet-5.5",
+      "builds": false,
+      "reviews": [
+        "n2-code",
+        "n1-tests"
+      ],
+      "check": "fixed checklist with file:line; planted defect must be found",
+      "needs": [
+        "n2-code"
+      ],
+      "five_things": [
+        "tools",
+        "context",
+        "contract",
+        "evidence",
+        "state"
+      ],
+      "brief_given": "briefs/n4.md + the spec + a planted copy of the diff + gate output; withheld: workers' notes and reasoning, workflow-design.md, state.md, the plant",
+      "intent": "blind judgment of what the tests cannot see, against a fixed checklist",
+      "stop": {
+        "criteria": "checklist judged item by item with file:line; the plant is found",
+        "baseline": "not changed (read-only)",
+        "must_not_change": "everything; writes only its result file"
+      },
+      "returns": "nodes/n4-<a>.result.md: checklist table, findings split in/outside criteria",
+      "state_reads": "N2 and N3 result paths",
+      "state_writes": "verdict, finding counts",
+      "tools": [
+        "claude subagent"
+      ],
+      "evidence": [
+        "runs/20261012-index-md-build/nodes/n4-<a>.result.md"
+      ],
+      "sabotage": "one planted defect the tests cannot catch; a miss voids the review"
+    }
+  ],
+  "design_source": "default",
+  "estimate": {
+    "tokens": 600000
+  },
+  "coverage": {
+    "criteria": [
+      "B1.1",
+      "B1.2",
+      "B1.3",
+      "B2.1",
+      "B2.2",
+      "B2.3",
+      "B2.4",
+      "B2.5",
+      "B2.6",
+      "B3.1",
+      "B3.2",
+      "B3.3",
+      "B3.4",
+      "B4.1",
+      "B4.2",
+      "B4.3",
+      "B4.4",
+      "C1.1",
+      "C1.2",
+      "C1.3",
+      "C1.4",
+      "C2.1",
+      "C2.2",
+      "G1.1",
+      "G2.1",
+      "G2.3",
+      "G3.1",
+      "G3.2",
+      "G4.2"
+    ],
+    "checks": [
+      "env -u NO_COLOR python3 -m pytest -q",
+      "feature_gate.py check",
+      "mutants killed"
+    ]
+  },
+  "baseline": {
+    "command": "env -u NO_COLOR python3 -m pytest -q",
+    "captured_by": "script"
+  }
+}
