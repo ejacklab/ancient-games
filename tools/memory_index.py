@@ -384,9 +384,9 @@ def working_tree_entries(repo: Path) -> list[Entry]:
             raw = (repo / path).read_bytes()
         except OSError as error:
             entry = Entry(name=name)
-            # The file is gone from the working tree but still in the index: it keeps its line, so this is not
-            # fatal for the build the way a malformed entry is.
-            entry.warnings.append(f"cannot be read in the working tree: {error.strerror}")
+            # Unreadable, or deleted without `git rm`: its status cannot be known, and an active entry must never
+            # be skipped (DESIGN, Must not 4), so this is an error like an unreadable untracked file.
+            entry.errors.append(f"cannot be read in the working tree: {error.strerror} (deleted? git rm it)")
             entries.append(entry)
             continue
         entries.append(entry_from_bytes(name, raw))
@@ -439,9 +439,9 @@ def write_index(repo: Path) -> int:
     index = repo / INDEX_PATH
     if index.exists() and index.read_bytes() == rendered:
         print(f"{INDEX_PATH} is up to date")
-        return 0
-    write_atomically(index, rendered)
-    print(f"wrote {INDEX_PATH}")
+    else:
+        write_atomically(index, rendered)
+        print(f"wrote {INDEX_PATH}")
     if over_limit(rendered):
         print_over_limit()
     return 0
@@ -534,6 +534,9 @@ def main() -> int:
         return check_index(repo, args.rev) if args.check else write_index(repo)
     except GitError as error:
         report(f"memory_index.py: {error}")
+        return 1
+    except OSError as error:  # e.g. INDEX.md is a folder, or project-memory/ is read-only: a problem, not a crash
+        report(f"{error.filename or 'memory_index.py'}: {error.strerror or error}")
         return 1
 
 

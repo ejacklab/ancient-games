@@ -190,3 +190,47 @@ def test_only_matching_names_directly_in_the_entries_folder_are_entries():
                  f"{entries}/X-hidden.md", f"{entries}/D-hidden.txt", f"{entries}/D-.md",
                  f"{entries}/D-one.markdown"):
         assert not memory_index.is_entry_path(path), path
+
+# --- fixes from the review (run 20261012-index-md-build, N4 findings F2, F3, F5) -------------------------------
+def make_memory_repo(tmp_path, monkeypatch):
+    """A repository under tmp_path, git config isolated, with one staged active entry."""
+    for name in [name for name in os.environ if name.startswith("GIT_")]:
+        monkeypatch.delenv(name)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", "/dev/null")
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    repo = tmp_path / "repo"
+    (repo / "project-memory/entries").mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+    (repo / "project-memory/entries/D-one.md").write_text(ENTRY_TEXT, encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    return repo
+
+
+def test_a_tracked_entry_that_cannot_be_read_is_an_error(tmp_path, monkeypatch, capsys):
+    """B2.3 — Must not 4: a tracked entry missing from the working tree is named and stops the build."""
+    repo = make_memory_repo(tmp_path, monkeypatch)
+    (repo / "project-memory/entries/D-one.md").unlink()
+    assert memory_index.write_index(repo) == 1
+    assert "D-one.md: cannot be read in the working tree" in capsys.readouterr().err
+    assert not (repo / "project-memory/INDEX.md").exists()
+
+
+def test_an_index_already_over_the_limit_still_warns(tmp_path, monkeypatch, capsys):
+    """B4.3 — over the limit, write mode warns and exits 0, also when INDEX.md is already up to date."""
+    repo = make_memory_repo(tmp_path, monkeypatch)
+    monkeypatch.setattr(memory_index, "MAX_LINES", 3)
+    assert memory_index.write_index(repo) == 0
+    capsys.readouterr()
+    assert memory_index.write_index(repo) == 0
+    out = capsys.readouterr().out
+    assert "is up to date" in out and "over the limit" in out
+
+
+def test_an_os_error_on_the_index_is_a_problem_not_a_traceback(tmp_path, monkeypatch, capsys):
+    """B2.6 — INDEX.md being a folder is reported as `<file>: <problem>` with exit 1, never a traceback."""
+    repo = make_memory_repo(tmp_path, monkeypatch)
+    (repo / "project-memory/INDEX.md").mkdir()
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(sys, "argv", ["memory_index.py"])
+    assert memory_index.main() == 1
+    assert "INDEX.md: " in capsys.readouterr().err
