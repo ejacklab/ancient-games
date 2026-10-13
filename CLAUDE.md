@@ -67,7 +67,7 @@ Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eva
 what I missing, and we complete it."*
 
 **Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
-(`skill requirement-check`) or read `~/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+(`skill requirement-check`) or read `.claude/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
 fails. Then **ask EJ the failing ones** and write the completed version together.
 
 The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
