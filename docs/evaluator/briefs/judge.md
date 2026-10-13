@@ -2,22 +2,27 @@
 
 ## Task (one deliverable)
 
-For each case listed in `{RUN}/judge-input.json` (the `judged` cases), decide whether the product **holds**: whether
-the case's failure does **not** happen. Quote file:line evidence for each. Write `{RUN}/judge-{CALL}.json`. Do not fix
-anything.
+For each case you are given (the `judged` cases), decide whether the product **holds**: whether the case's failure
+does **not** happen. Quote file:line evidence for each. Do not fix anything.
 
 ## Context (only what this step needs)
 
-Read only these:
-- `{RUN}/judge-input.json`: the case ids, their failure texts, and their groups' requirement sentences.
-- `{PRODUCT_COPY}/`: the product's code. This copy **may contain one planted defect** that makes one of your cases
-  fail. Judge every case on what the code actually does, not on what its comments or names say.
+You are given **one** of two call shapes (R1-F2: call 1 is never told the run folder).
 
-You see nothing else: no tests, no probes, no other run files.
+- **Call 1** (`CALL=1 JUDGE_DIR=<folder>`). Read only `{JUDGE_DIR}/judge-input.json` (the case ids, their failure
+  texts and their groups' requirement sentences) and `{JUDGE_DIR}/product/`, the product's code. This copy **may
+  contain one planted defect** that makes one of your cases fail. You are not told which case; finding it is part of
+  how this judging is checked. Write `{JUDGE_DIR}/judge-1.json`. `<file>` paths are relative to
+  `{JUDGE_DIR}/product/`.
+- **Call 2** (`CALL=2 RUN=<run> PRODUCT_COPY=<folder> CASE=<id>`). Judge **only** case `{CASE}`, using
+  `{RUN}/judge-input.json` for its text and `{PRODUCT_COPY}/` for the code. Write `{RUN}/judge-2.json`.
+
+Judge every case on what the code actually does, not on what its comments or names say. You see nothing else: no
+tests, no probes, no other run files.
 
 ## Template
 
-`<file>` is the path **relative to `{PRODUCT_COPY}`**, for example `tools/x.py`, not `judge-copy/tools/x.py`.
+`<file>` is the path **relative to the product folder you were given** (`{JUDGE_DIR}/product/` in call 1, `{PRODUCT_COPY}` in call 2), for example `tools/x.py`.
 
 ```json
 {"cases": [{"case": "<id>", "holds": true|false,
@@ -49,4 +54,4 @@ it. **Read the code, not the comments.**
 
 Write every file with the Write tool, not with shell redirection such as `cat > file`. Then list the file once to confirm it exists: a step whose file is missing has failed, and the run stops there.
 
-`{RUN}/judge-{CALL}.json`. Reply in one line: the counts of holds and does not hold.
+`{JUDGE_DIR}/judge-1.json` in call 1, `{RUN}/judge-2.json` in call 2. Reply in one line: the counts of holds and does not hold.
