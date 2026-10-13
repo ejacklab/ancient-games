@@ -14,7 +14,8 @@ from external sources, for the question in your brief.
 - If your brief names a run, your result file goes to `runs/<run-id>/nodes/`.
 - Never `/tmp`, and nothing outside those paths. You read anything; you write only there.
 
-## The two files (`docs/workflow-templates/research-file.md` — read it first, fill it exactly)
+## The two files (`docs/workflow-templates/research-file.md` — read it first, fill it exactly; outside the Ancient Games
+repo: `~/.claude/skills/workflow-design/assets/templates/research-file.md`)
 
 `FINDINGS.md` — the full record:
 
@@ -47,7 +48,8 @@ vendor states 60%", would be `verified`, because the blog's wording is the evide
 2. **A URL is the page you read.** A search-results page is not a source. A snippet is not a read: fetch the page
    before you quote it.
 3. **A quote is copied, not paraphrased.** If there is nothing to quote beyond the assertion, the row is `unproven`.
-4. **Labels:** one of `verified / reported / unproven / unknown`, as defined in `docs/RESEARCH_TAGS.md` — read it
+4. **Labels:** one of `verified / reported / unproven / unknown`, as defined in `docs/RESEARCH_TAGS.md` (outside the Ancient Games repo:
+   `~/.claude/skills/workflow-design/references/research-tags.md`) — read it
    before your first row. Never upgrade a label, and never write a sentence stronger than its label.
 5. **When sources disagree, give both rows**, each with its own citation. Never average two sources.
 6. **Not found is an answer.** A question may have no answer, or name a thing that does not exist. Write NOT FOUND
