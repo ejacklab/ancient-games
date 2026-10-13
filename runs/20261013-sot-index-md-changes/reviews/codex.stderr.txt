@@ -1,0 +1,2063 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a132c7-79a9-7ff1-9482-162bd63ce1e0
+--------
+user
+Read /home/smoke01/dev/ancient-games/runs/20261013-sot-index-md-changes/briefs/enhance.md and do what it says. Your engine name: codex. Print the whole report as your final answer; the launcher saves it to /home/smoke01/dev/ancient-games/runs/20261013-sot-index-md-changes/reviews/codex.md.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the repository instructions and the brief, then complete the review and print the full report here.
+exec
+/bin/bash -lc 'cat CLAUDE.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `~/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+
+exec
+/bin/bash -lc 'cat runs/20261013-sot-index-md-changes/briefs/enhance.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Brief — one part of a memory design: the changes the INDEX.md work implies
+
+You are one of four independent readers. You do not see the others' work. Your job is to **enhance**: think it
+through and propose one complete, simple answer for each change, for the owner, EJ, to decide.
+
+## Read first
+
+- `/home/smoke01/dev/ancient-games/docs/memory-system/SOURCE_OF_TRUTH.md`, the design, accepted by EJ. Read it whole.
+- `/home/smoke01/dev/ancient-games/docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md`,
+  the settled vision.
+- `/home/smoke01/dev/ancient-games/docs/index-md/REQUIREMENTS.md` and `DESIGN.md` in the same folder: the requirements
+  and design for the script that builds `project-memory/INDEX.md` from the entry files. Its last section, "Open, for
+  EJ", item 4, lists the changes below.
+- Optional, as evidence of what already exists: `tools/memory_index.py`, `.githooks/`, `tests/test_memory_index.py`
+  and `docs/index-md/BACKLOG.md`. The script is built and merged. The design describes what memory needs; it is not
+  rewritten to match the script's details.
+
+## The problem
+
+The `INDEX.md` work settled things that the design still leaves vague or open. Five changes are proposed, none made:
+
+1. **K6.2 and the "When to write" table.** Today: *"It is regenerated right after any decision or fact is written"*.
+   Proposed: after **any** entry is created or changed (every kind, every status change), and `INDEX.md` is
+   committed **in the same commit** as the entry. K6's "Open: which tool generates it and what runs it" and the
+   "Still open" line under "When to write" may now be answerable.
+2. **A new K6.3:** `INDEX.md` is never hand-merged. On a conflict, resolve the entry files, then regenerate. This
+   touches W6's "Open: who resolves a merge conflict".
+3. **Rd3.1** (and the matching line before "Core requirements"): *"the build checks it"* becomes "the script checks
+   it, and the tests run the check". This repo has no build step.
+4. **W1.1, the id.** An entry's `id` must be unique without coordination between git branches, never "the next free
+   number". The form (a date, a hash, a random suffix) is open.
+5. **W1.2 and W1.3, the format.** The script reads a header between two `---` lines with `key: value` fields, and
+   takes the claim as the body up to the first line starting with `**Why:**`. The design names the fields and the
+   sections but not this format or this spelling.
+
+## Your task
+
+For **each** of the five:
+
+1. **Recommend** in one sentence: make it as proposed, make it differently, or don't make it. A simpler idea is
+   welcome.
+2. **One reason**, grounded in the design, the vision or the `INDEX.md` documents. Quote the line you rely on.
+3. **The exact text**, by section or requirement id. Each requirement you change keeps a **Fails if** check.
+
+Then, once for the whole set:
+
+4. **What could go wrong:** one concrete case.
+5. **Questions for EJ:** at most two, and only ones whose answer changes your text.
+
+Rules:
+- Keep it simple. The owner's rule is that memory is simple, and a mechanism that is not needed is removed.
+- Label each line *EJ's* (his words), *design* (already in the document) or *proposed* (yours).
+- Do not invent numbers or limits. Where a value is not known, say it is open.
+- Read only; do not change any file.
+
+## Output — one markdown report
+
+```
+# INDEX.md changes to the design (<your engine name>)
+
+## 1. K6.2 and When to write
+## 2. K6.3, never hand-merge
+## 3. Rd3.1, who checks the size
+## 4. W1.1, the id
+## 5. W1.2 and W1.3, the format
+## What could go wrong
+## Questions for EJ
+```
+
+The launcher tells you your engine name and where the report goes.
+
+codex
+I’m applying the requirement-check skill because this review proposes requirement text. I’ll use the accepted design and settled vision as the basis, with the script as evidence of what is implemented.
+exec
+/bin/bash -lc "cat '/home/smoke01/.agents/skills/requirement-check/SKILL.md'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+---
+name: requirement-check
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, unattributed or impossible to check.
+---
+
+# Requirement check
+
+A general standard (RFC 2119 / 8174), installed globally — not part of the Ancient Games framework. The
+worked failure in `meaningful-names` cites the Ancient Games as one example.
+
+A short gate between **hearing a rule** and **acting on it**. It exists because rules get written down that nobody
+can trace, that count two different things at once, or that nothing can ever fail — and the cost lands months later,
+when nobody can say whether the rule still means anything.
+
+Run it when someone states a rule, and run it on yourself before writing a normative line into any document.
+
+## The eight questions
+
+Ask them of **one statement**. Say which it passes and which it fails, then **ask the person about the failures** —
+do not fill the gaps yourself.
+
+1. **Source.** Who said this, and where? Can you point to the exact line? *"Mine"* is a valid answer. Unlabelled is
+   not.
+2. **One thing.** An "and", an "or", a "/", or a second number means it is **two** statements. Split them, and give
+   each its own source.
+3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
+   files?
+4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
+   failing inputs. If you cannot name one, it is not checkable — it is a wish.
+5. **Weak words.** *like, about, appropriate, as needed, logical, fast, enough, reasonable, only has to, TBD.* Replace
+   each with a value, **or mark the value open**. Never invent the number.
+6. **Level.** Is it **MUST** (a gate that stops work), **SHOULD** (a default that may be overridden with a stated
+   reason), or **guidance**? A safety bound earns MUST. **A method does not** — see the RFC note below.
+7. **Basis.** Measured, quoted from a source, or a guess? A guess is fine **if it is labelled** — `n=0`, with when it
+   will be looked at again.
+8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
+   part"*? The person probably did not say that. **A link is its own claim and needs its own source.**
+
+## Two rules for the agent
+
+- **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
+  is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
+  the time anyone notices.
+- **Never add structure that was not given.** No halves, no numbered reasons, no ordered pairs, no named phases,
+  unless the person said so. Quote them, state the operative sentence, stop. If a relationship between two rules is
+  wanted, that is a separate claim with its own evidence.
+
+## Two verified facts, worth quoting
+
+- **RFC 2119 §6, "Guidance in the use of these Imperatives":** imperatives *"must be used with care and sparingly…
+  they MUST only be used where it is actually required… they must not be used to try to impose a particular method."*
+  Most design rules are method. Method does not earn MUST.
+- **RFC 8174 (updates 2119):** the key words *"have the meanings specified herein only when they are in all
+  capitals."* Lowercase *must* and *should* carry no defined requirement meaning. If nothing marks which lines are
+  requirements, a reader cannot tell rules from explanation.
+
+## How to answer
+
+Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
+one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+
+Do not report a rule as complete when you chose its missing value. Say which values you left open.
+
+## A worked failure
+
+> *"At most 5 subagent roles per run and at most 3 running at once."*
+
+Four of the eight fail: **Source** — nobody could name one; **One thing** — a count of roles *and* a count of
+concurrent processes; **Unit** — two different units, one word ("subagent") used for both; **Level** — a method
+preference written as a cap. The sentence would not parse, and it took four days to find out why. The checklist
+catches it in thirty seconds.
+
+The same checklist, run on *"No single call runs longer than the ceiling: 8 hours"*, passes all eight — because it
+names who set it, counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail.
+
+## Limits
+
+The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
+feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
+and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
+paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
+quotes are checked. Treat the rest as a good working list, not as a citation.
+
+Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.
+
+exec
+/bin/bash -lc "cat 'docs/index-md/REQUIREMENTS.md'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# INDEX.md generator — requirements
+
+> **Status: draft, under review with EJ.** Written 2026-10-12 by the COO (Claude `claude-opus-5-5`). The builder
+> builds against this version; a requirement marked *open* is not built until EJ settles it.
+>
+> **Sources.** Each requirement names one:
+> - **(d)** `docs/memory-system/SOURCE_OF_TRUTH.md`, accepted by EJ;
+> - **(p)** the proposal `runs/20261012-index-md-algorithm/proposals/claude.md`, by step;
+> - **(r)** a fix from the blind reviews in `runs/20261012-index-md-algorithm/reviews/`, with the reviewer and problem
+>   number;
+> - **(v)** `VISION.md`.
+>
+> *Proposed* marks wording EJ has not decided. Every requirement has a **Fails if** check that some case breaks. There
+> are no fixed numbers: where a limit applies, measurement decides it.
+>
+> **Categories (proposed):** **B — Build** (what goes in and what comes out), **C — Check** (how anyone tells the file
+> is right), **G — Git** (when it runs, and how branches meet).
+
+## B — Build: from entries to `INDEX.md`
+
+**B1 — What it reads** (p step 1; r opencode 3, codex 7)
+- **B1.1** Only files directly in `project-memory/entries/` whose name matches `^[DFLOH]-[^/]+\.md$`. No subfolders,
+  no dotfiles, not `INDEX.md`. The five prefixes are those of W1.1.
+- **B1.2** Write mode reads the working-tree content of the entry files git knows about (tracked or staged). An
+  untracked entry file is an error that names the file and tells the writer to `git add` it.
+- **B1.3** Check mode reads git objects only: the staging area by default, or a commit with `--check <rev>`. Paths
+  are listed with `-z` and read through one `git cat-file --batch` call.
+- **Fails if** an untracked entry gets a line, a file outside B1.1 gets a line, or a path with a space or a non-ASCII
+  character is read wrongly in either mode.
+
+**B2 — What it parses** (p steps 3–4; r opencode 5, 6, 8, 9; agy 6, 7)
+- **B2.1** The header starts on line 1 with `---` and ends at the next line that is exactly `---`. Inside it, read
+  only top-level `id:`, `kind:` and `status:` as `key: value`, stripping whitespace and surrounding quotes. *Proposed*:
+  the design names the fields but not this format.
+- **B2.2** The claim is the body after the header, up to the first line that starts with `**Why:**`. Blank lines are
+  dropped and runs of whitespace become one space. *Proposed:* W1.3 fixes the spelling `**Why:**`.
+- **B2.3** Every entry must have a readable header with a non-empty `id` and a `status` of `active`, `superseded` or
+  `retired`. No two entries share an `id`.
+- **B2.4** An **active** entry must also have: a `kind` from the five (decision, fact, lesson, observation,
+  hypothesis); a file prefix that matches its `kind`; a `**Why:**` line; and a non-empty claim.
+- **B2.5** A problem in an inactive entry beyond B2.3 is a warning, not an error, so one old entry cannot block every
+  memory commit.
+- **B2.6** A file that is not valid UTF-8 is reported as `<file>: <problem>`, not as a crash.
+- **Fails if** a malformed active entry gets a line, a prefix/kind mismatch passes, a duplicate id passes, a broken
+  retired entry stops the build, or any input ends in a traceback.
+
+**B3 — What it writes** (p steps 2, 5, 6; r codex 6, opencode 7, agy 8)
+- **B3.1** One line per active entry, sorted by file name in code-point order:
+  `- [<id>](entries/<percent-encoded file name>) <kind>: <claim>`. Superseded and retired entries get no line.
+- **B3.2** A fixed head: the title `# Project memory index`, then a comment saying the file is generated, must not be
+  edited, and naming the command that rebuilds it. With no active entries, the list is the line `(no active entries)`.
+- **B3.3** UTF-8, LF line endings, one newline at the end. No date, time, count, host name or locale-dependent order.
+- **B3.4** If the result is byte-identical to the existing file, the file is not rewritten. A missing `INDEX.md` is
+  written.
+- **Fails if** two runs over the same entries, on two machines or with two locales, give different bytes; a
+  superseded entry gets a line; or a file name with a space or `#` gives a link that does not resolve.
+
+**B4 — Size** (d Rd3.1; p steps 7–8, 14; r agy 2, opencode 13, 16, codex 10–12)
+- **B4.1** The index must fit the strictest start-file limit of the agents that read it (Rd3.1). The script measures
+  lines and UTF-8 bytes and compares them with two constants, `MAX_LINES` and `MAX_BYTES`. Their values come from
+  measuring the readers' load paths. Until then they hold the design's example, about 24 KB and 200 lines (Rd3.1),
+  marked as an example in the code.
+- **B4.2** Every run prints the size against both limits.
+- **B4.3** Nothing is ever cut to fit. Over the limit, write mode still writes the whole file, prints a warning and
+  exits 0. Check mode fails.
+- **B4.4** Any change that brings the index back under the limit makes the check pass. No approval is needed (d W4.1).
+- **Open:** which agents and load paths read `INDEX.md`, and whether any of them counts characters rather than bytes
+  (opencode 13: agy's limit may be in characters).
+- **Fails if** a line is dropped or shortened to fit, or `--check` passes an index over either limit.
+
+## C — Check: how anyone tells the file is right
+
+**C1 — The check mode** (d K6; p step 9)
+- **C1.1** `python3 tools/memory_index.py --check [<rev>]` rebuilds the index from the snapshot (B1.3) and compares it
+  byte for byte with the snapshot's `INDEX.md`.
+- **C1.2** It passes (exit 0) only when the entries are valid, the bytes are equal, and the size is within the limits.
+  Otherwise it exits 1, says what failed, prints a unified diff when the bytes differ, and prints the fix: stage the
+  entries, run the script, stage `INDEX.md`.
+- **C1.3** A snapshot with no `project-memory/`, or an unborn `HEAD`, passes with "nothing to check".
+- **C1.4** It writes nothing.
+- **Fails if** a hand edit to `INDEX.md` passes, a stale `INDEX.md` passes, or check mode changes any file.
+
+**C2 — Tests** (r opencode 15, agy 3–4; replaces "the build checks it" in Rd3.1)
+- **C2.1** `tests/test_memory_index.py` runs under the repo's `pytest`
+  (`env -u NO_COLOR python3 -m pytest -q`).
+- **C2.2** It holds at least these tests:
+  - golden bytes for a fixed set of sample entries;
+  - running twice changes nothing;
+  - the check rejects a hand-edited `INDEX.md`;
+  - the check rejects a superseded entry listed as active;
+  - `--check HEAD` passes on this repo itself.
+- **Fails if** any of these cases passes when it should fail, or the test file does not run under the repo's `pytest`.
+
+## G — Git: when it runs, and how branches meet
+
+**G1 — Who runs it** (p step 10; d K6.2, *proposed* change)
+- **G1.1** Whoever creates or changes any entry file runs the script, of every kind and for every status change, and
+  commits `INDEX.md` in the same commit as the entry.
+- **G1.2** This is written as an instruction where agents read it: `CLAUDE.md` today, because `AGENTS.md` only points
+  there (r opencode 11), and `AGENTS.md` after the move in Rd1.1.
+- **Fails if** a commit changes an entry and not the `INDEX.md` it implies (caught by C1 at the next check).
+
+**G2 — The hook** (p step 11; r opencode 10, codex 3)
+- **G2.1** One committed hook, `.githooks/pre-commit`, runs `--check` when the staged change touches
+  `project-memory/` or `tools/memory_index.py`. `.githooks/pre-merge-commit` only calls it.
+- **G2.2** It is switched on once per clone with `git config core.hooksPath .githooks`.
+- **G2.3** The hook is a convenience, not the guarantee. Rebase, cherry-pick, fast-forward and `--no-verify` skip it;
+  the tests (C2) catch what it misses (r codex 1–2, opencode 1–2, agy 3).
+- **Fails if** a commit through the hook leaves a wrong `INDEX.md`, or a change to the script alone skips the check.
+
+**G3 — Merging** (p step 13; d W6; *proposed* new K6.3)
+- **G3.1** `INDEX.md` merges as normal text. There is no `merge=union`, no `merge=binary` and no custom merge driver.
+- **G3.2** When `INDEX.md` conflicts, nobody edits it. Resolve the entry files first, then run the script, stage
+  `INDEX.md` and commit.
+- **Fails if** a merged `INDEX.md` differs from what the script builds from the merged entries.
+
+**G4 — Ids across branches** (p must-not 5; d W1.1, *proposed* change)
+- **G4.1** An entry's `id` is unique without coordination between branches. It is never "the next free number". The
+  form (a date, a hash or a nonce) is open.
+- **G4.2** The script rejects a duplicate id (B2.3); it does not choose the form.
+- **Fails if** two branches can each create the same id and the clash shows only after a merge.
+
+## Open, for EJ
+
+1. **The categories B / C / G** are proposed.
+2. **G4.1:** the form of an entry id.
+3. **B4:** which agents and load paths read `INDEX.md`; bytes or characters.
+4. **The design changes these requirements imply in `SOURCE_OF_TRUTH.md`:**
+   - K6.2 becomes "any entry, same commit", and the "When to write" table changes the same way;
+   - a new K6.3: never hand-merge `INDEX.md`;
+   - Rd3.1 "the build checks it" becomes "the script checks it, and the tests run the check";
+   - W1.1 gets the id rule;
+   - W1.2 and W1.3 get the header format and the `**Why:**` spelling.
+
+   None of these is made yet.
+
+exec
+/bin/bash -lc "cat 'docs/memory-system/SOURCE_OF_TRUTH.md'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Source-of-Truth Memory Design
+
+> **Status: accepted by EJ on 2026-10-12** (EJ: *"yes I accept the source of truth design"*), with its vision and
+> its Write / Keep / Read requirements. Vision: `vision-statements/source-of-truth-memory-vision-statements.md`.
+> First written 2026-10-11 by `opencode` from
+> `runs/20261011-project-memory-engines/RECOMMENDATION.md`; revised with EJ on 2026-10-12.
+> Sources, citations and review history: `runs/20261011-source-of-truth-design/` (the full annotated version is
+> `DESIGN-detailed-2026-10-12.md`) and `runs/20261012-memory-update-timing/notes.md`.
+>
+> **Revised 2026-10-12:** the drift-check script and the background subagent are removed (EJ: *"ok remove both and
+> update the doc"*). A decision to build something is started when it is written and complete when its time, result
+> and test results are added; whoever reads a decision or fact checks it against the code before acting on it, and
+> reports a mismatch in the task's `state.md`. W5.3 and Rd5.3–Rd5.5 were refined after a four-reader round
+> (`runs/20261012-sot-w53-rd53-read/`; EJ: *"state.md for the report, apply all the proposed fixes"*).
+>
+> **Revised 2026-10-12, memory by scope (item 7):**
+> - Memory has four scopes: task, project, agent and user. Task and project memory keep a journal; agent and user
+>   memory keep none.
+> - A task's journal is `work/<task-id>/journal/` (EJ: *"create task folder, the subfolder inside"*).
+> - An agent may read another agent's memory if it knows and says whose it is (EJ: *"agent can read another agent
+>   memory but they must know that is another agent memory, what agent what tools"*).
+> - Rd2.2 is split into "not at session start" (Rd2.2) and "never" (Rd2.3), after a four-reader round
+>   (`runs/20261012-sot-item7-scopes/`).
+>
+> **Revised 2026-10-13, runbooks (item 8):** the runbook kind and the `R-` prefix are removed. A procedure lives in the
+> repo as a script, or as a page in `docs/` where it cannot be a script, and `AGENTS.md` names the project's scripts.
+> An entry links to a procedure and never repeats its steps (EJ: *"it is weird to have script inside the memory, if we
+> buidlign a script should be a project already"*; readers' round `runs/20261012-sot-item8-runbooks/`).
+>
+> **Revised 2026-10-13, prefixes (item 9):** `O-` observation and `H-` hypothesis are confirmed, so each of the five
+> kinds has one prefix letter that matches its `kind`. A changed kind becomes a new entry that supersedes the old one,
+> so a file's prefix never changes (EJ: *"a changed kind becomes a new superseding entry"*; readers' round
+> `runs/20261013-sot-item9-prefixes/`).
+>
+> **Where this differs from the recommendation — EJ's decisions:** no owners and no human approval gate (anyone may
+> change any entry, and every change is logged); decisions and facts come before the code; a *fact* means a constraint
+> the code must respect, not something discovered afterwards; no drift-check script and no background subagent.
+>
+> **Not proven:** the timing split (what is written immediately and what later) is design judgement, not measured.
+> Where the recommendation's engines disagreed (session-start reads, one file per writer, SQLite, how often to write),
+> this design follows the majority.
+
+## Why we need this memory
+
+The context window is cleared at the start of every session, so anything learned is lost unless it is written down.
+Project memory is plain markdown files kept in the repo with the code. Every agent and every person reads the same
+files, a fresh clone has all of it, and every change shows up as a git diff. Reading it needs no private agent store,
+database or outside service.
+
+## Who it is for
+
+Every agent and every person working on this project. There are no owners and no approval gate: anyone may change any
+entry, and every change is logged. EJ decides the questions listed as not decided.
+
+Memory has four scopes (EJ, 2026-10-12):
+- **task:** `project-memory/work/<task-id>/`;
+- **project:** the rest of `project-memory/`, and `AGENTS.md`;
+- **agent:** memory belonging to one agent name;
+- **user:** memory about one person, across projects.
+
+This design covers task and project memory. Agent and user memory live outside the repo, in the home folder (agent
+memory at `~/.claude/agent-memory/<name>/`, the way Claude Code does it). For agent memory, this design says only how
+another agent may read it (Rd4.5).
+
+## What it is for
+
+It holds what the code cannot tell you, as typed entries:
+
+- **Requirements, written before the code.** A **decision** is a choice the code must follow, with the reason. A
+  **fact** is a truth or outside constraint the code must respect.
+- **What was learned, written after.** A **lesson** comes from a failure or a human correction. An **observation**
+  records what was seen. A **hypothesis** is a guess, labelled as one.
+- **Not a kind: procedures.** How to run or fix something lives in the repo as a script, or as a page in `docs/` where
+  it cannot be a script. `AGENTS.md` names the project's scripts, one line each. An entry links to a procedure and
+  never repeats its steps. What was learned while running one is a lesson (W3.6).
+
+The order of work is: change the decision or fact first, then the code. Work that has to go the other way is a matter
+for the project's workflow, not for memory. A decision about this project is a project entry, whoever made it, EJ
+included.
+
+A decision to build something is **started** when it is written: we decided to build something, and why. It is
+**complete** when the time, the result and the test results are added to it (EJ, 2026-10-12). A standing rule, such as
+"all timestamps are UTC", is never complete.
+
+## What will be put in
+
+**An entry** is one markdown file. Its header holds: `id`, `kind`, `status`, `author`, the date it was recorded,
+`covers` (the code paths it is about), its source or evidence, links (`depends_on`, `supersedes`, `superseded_by`), a
+`changed:` log, and, on a decision to build something once its work is complete, `done:` (the time, the result, and the
+test results or a pointer to them; W5.3). Its
+body is the claim in one or two sentences, then **Why:**, then **How to apply:**.
+
+**Changing entries.** Anyone may change any entry, and `AGENTS.md` too. Each change adds one line to the entry's
+`changed:` log: the time, and who made it — the model ID for an agent, the name for a person. Files that are not entries
+rely on git history. Each new entry gets its own file, so agents never append to one shared file. Two writers must not
+edit the same file at the same time: each agent works on its own branch or worktree, and git shows a merge conflict when
+two edits
+touch the same lines. Edits to different lines of one file merge without warning even if they contradict each other,
+so a clean merge does not mean the file is consistent.
+
+**When to write.**
+
+| When | What |
+|---|---|
+| Immediately | Decisions and facts, before the code — and `INDEX.md` is regenerated right after, so the next session sees them. A human correction. The state of unfinished work before a handoff, an interruption or a context reduction. |
+| When the work a decision to build something is complete | The decision's `done:` line, written by whoever finishes the work: the time, the result, and the test results or "no tests", with a pointer to the evidence. |
+| At the end of a task | Other lessons, observations and hypotheses; merging duplicates. |
+
+**Keeping it current.** Entries may go out of date while work goes on; that is accepted. Nothing watches for it: there
+is no drift-check script and no background subagent. Whoever reads a decision or fact checks it against the code before
+acting on it. When they no longer match, the reader does not change the entry. It writes a report in its task's
+`state.md` and tells EJ which entry, what the entry says, and what the code does instead. EJ decides whether the entry
+is updated or the code is fixed. Until then, the reader leaves the contradicted part alone and carries on with the
+rest. A decision still being built (no `done:` yet), or one the reader's own task is changing, is not a mismatch
+(Rd5.4).
+
+**Still open:** which tool generates `INDEX.md` and what runs it (K6); who resolves a git merge conflict (W6). Whether a
+changed decision is edited in place or superseded is proposed in K4.3.
+
+## What will not be put in
+
+- Anything that can be read directly from the code, the tests or the commit log (W3.1). The memory itself lives in git.
+- Credentials or sensitive data.
+- Guesses not labelled as a hypothesis.
+- Raw transcripts, or another agent's private state.
+- Work described as "verified" when it is only implemented.
+
+An entry is never deleted: it is marked `superseded` or `retired` and linked to what replaced it. Age alone never
+expires an entry. Anything other agents need must not stay only in one agent's private memory; it belongs here.
+
+## Where it is put
+
+At the repo root:
+
+```
+AGENTS.md            standing instructions for every agent, and the project's scripts, one line each (CLAUDE.md
+                     only imports it)
+project-memory/
+  INDEX.md           generated, one line per active entry; never edited by hand
+  entries/           one file per entry: D- decision, F- fact, L- lesson, O- observation, H- hypothesis
+  work/<task-id>/    state.md (the handoff), evidence/, journal/ (the task's raw notes, one file per agent session)
+  journal/           project raw notes, for work not tied to a task, one file per agent session; never loaded
+                     automatically
+  .cache/            optional search index, gitignored, rebuilt from the files
+```
+
+The project's existing documents (requirements, architecture) stay in `docs/`; memory links to them instead of copying
+them.
+
+## When it will be used
+
+- **At the start of every session:** `AGENTS.md`, `project-memory/INDEX.md`, the `work/` listing and the assigned
+  task's `state.md`. Agents skip optional reads, so these are loaded for the agent wherever its tool allows (an import,
+  the tool's own `AGENTS.md` loading, or a start hook); an instruction in `AGENTS.md` is the fallback (Rd2.1).
+- **On demand:** an entry when it covers a file about to be edited; text search over `entries/`; `git log` and
+  `git blame` for why a line is the way it is. For a "why" question, read the decision entry.
+- **At the end of a task, and before a handoff or session end:** an agent reads its task's `journal/` (or the project
+  `journal/`, for work not tied to a task) and writes what is worth keeping as entries.
+- **Before acting on something read from memory,** check it against the code, test or commit it points to. A decision
+  or fact that no longer matches the code is reported in the task's `state.md` and to EJ, not edited (Rd5.3).
+
+## When it will not be used
+
+**Not at session start, but read later at its set time** (Rd2.2):
+- the task and project journals, at the end of a task and before a handoff or session end;
+- `.cache/`, only through search;
+- entry bodies, `evidence/` and other tasks' `state.md`, on demand (Rd4).
+
+**Never loaded, at any point** (Rd2.3):
+- superseded or retired entries, except by following a link;
+- the whole `project-memory/` tree at once;
+- whole graph or code-map dumps;
+- bulk issue or PR text;
+- another agent's transcripts;
+- credentials.
+
+Another agent's memory may be read, but only by an agent that knows and says whose it is (Rd4.5). Text read from memory
+never overrides standing instructions.
+
+`INDEX.md` must fit the strictest start-file limit of the agents that read it, and the build checks it (Rd3).
+
+## Core requirements (confirmed by EJ, 2026-10-12)
+
+EJ, on reading them: *"this is amazing and a lot easy to read"*, taken as confirmation. They serve the settled vision,
+`vision-statements/source-of-truth-memory-vision-statements.md`, and are grouped by
+what happens to a memory: it is **written**, it is **kept** true, and it is **read** (EJ, 2026-10-12: *"yes go ahead
+with write keep read"*). Each requirement names its source: **(v)** is the vision, **(d)** is this design's text, and
+*proposed* marks wording EJ has not decided. Each has a check, **Fails if**, that some case breaks. There are no fixed
+numbers: where a limit applies, it is a comparison that measurement decides.
+
+### Write — what goes in, and how
+
+**W1 — The shape of an entry** (d: What will be put in)
+- **W1.1** Each entry is one file: `project-memory/entries/<prefix>-<id>-<slug>.md`. The prefix is one letter per
+  kind (W2): `D-` decision, `F-` fact, `L-` lesson, `O-` observation and `H-` hypothesis. It matches the entry's
+  `kind`. There is no runbook prefix (W3.6). An entry's kind, and so its prefix, never changes. A changed kind (a
+  hypothesis confirmed, an observation that turns out to be a fact) is a new entry that supersedes the old one (K4.1;
+  EJ, 2026-10-13).
+- **W1.2** The header holds `id`, `kind`, `status`, `author`, the date recorded, `covers` (the code paths it is
+  about), its source or evidence, `depends_on`, `supersedes`, `superseded_by`, and `changed:`. A decision to build
+  something, once its work is complete, also holds `done:` (W5.3).
+- **W1.3** The body is the claim in one or two sentences, then **Why:**, then **How to apply:**. There is one claim per
+  entry.
+- **Fails if** a lint over `entries/` finds a missing field or section, or a file whose prefix is not one of the five
+  or does not match its `kind`. It also fails if a reviewer finds two claims in one entry, or git shows an entry file
+  renamed to a different prefix.
+
+**W2 — What each kind means** (v; d: What it is for)
+- **W2.1** A **decision** is a choice the code must follow, with the reason. A **fact** is a truth or outside
+  constraint the code must respect, not something discovered afterwards. Both are requirements: they are written
+  before the code.
+- **W2.2** A **lesson** comes from a failure or a human correction. An **observation** records what was seen. A
+  **hypothesis** is a guess, labelled as one.
+- **Fails if** `kind` holds any other value, or a guess is recorded under any kind but hypothesis.
+
+**W3 — What never goes in** (v; d: What will not be put in)
+- **W3.1** Nothing that can be read directly from the code, the tests or the commit log: what a function does, which
+  test covers it, what a commit changed. The memory lives in git; the rule is about what an entry says.
+- **W3.2** No credentials or sensitive data.
+- **W3.3** No raw transcripts, and nothing from another agent's private state.
+- **W3.4** No work described as "verified" when it is only implemented.
+- **W3.5** No user memory (one person, across projects) and no agent memory (one agent name). Both live in the home
+  folder.
+- **W3.6** No copy of the project's existing documents (requirements, architecture in `docs/`) or of its procedures:
+  an entry links to them. A procedure lives in the repo as a script, or as a page in `docs/` where it cannot be a
+  script, and `AGENTS.md` names each script, one line each. A script is project work, not memory (EJ, 2026-10-13).
+- **Fails if** a secret scanner finds a credential (W3.2). For W3.1 and W3.3–W3.6, a reviewer finds such content.
+  Those are judged checks.
+
+**W4 — Who writes, and the change log** (v: no owners, every change logged)
+- **W4.1** Anyone, agent or person, may create or change any entry, and `AGENTS.md` too. There is no owner and no
+  approval: `status` is only `active`, `superseded` or `retired`. The one exception is Rd5.3: a reader who finds a
+  decision or fact out of step with the code reports it and does not settle it (EJ, 2026-10-12).
+- **W4.2** Every change to an entry adds one line to its `changed:` log: the time, and who made it (the model ID for an
+  agent, the name for a person). Earlier lines are never edited.
+- **W4.3** Files that are not entries (`state.md`, `journal/`, `AGENTS.md`) rely on git history.
+- **Fails if** git shows a change to an entry with no matching `changed:` line, or a `status` outside the three.
+
+**W5 — When to write** (d: When to write)
+- **W5.1** Written immediately: a decision or fact, before the code it governs; a human correction; and the state of
+  unfinished work, before a handoff, an interruption or a context reduction.
+- **W5.2** Written at the end of a task: other lessons, observations and hypotheses.
+- **W5.3** A decision to build something is started when it is written. When the work is complete, whoever finishes it
+  adds `done:` to the decision: the time, the result in one sentence, and the test results, or "no tests" said plainly.
+  `done:` points to the evidence (`runs/<run-id>/` or the commit) rather than copying test output (W3.1). A standing
+  rule, such as "all timestamps are UTC", is never complete and never gets `done:`. If the result differs from the
+  decision, that is a mismatch for Rd5.3: it is reported, not settled in `done:`. (EJ, 2026-10-12; refined after four
+  readers.)
+- **Fails if** a commit changes code under a new decision with no entry in that commit or an earlier one. For a human
+  correction, it fails if the session ends without one (judged). For W5.3, it fails if a reviewer of a finished task
+  finds that its decision has no `done:`, or a `done:` without a time, a result and test results or "no tests"
+  (judged; EJ, 2026-10-12).
+
+**W6 — Writers do not collide** (d: Changing entries)
+- **W6.1** Each new entry gets its own file. Agents never append to one shared file; each journal, the task's or the
+  project's, has one file per agent session.
+- **W6.2** Each agent works on its own branch or worktree, so two edits to the same lines meet as a merge conflict, not
+  a silent overwrite.
+- **Open:** who resolves a merge conflict.
+- **Fails if** an edit to an entry is lost without a conflict.
+
+### Keep — memory stays true, and nothing is lost
+
+**K1 — The decision or fact first, then the code** (v; d: What it is for)
+- **K1.1** To change behaviour that a decision or fact governs, change the entry first, then the code. Work that has to
+  go the other way is a matter for the project's workflow, not for memory.
+- **Fails if** git shows a commit changing the behaviour a decision or fact governs, with no change to that entry in the
+  same commit or an earlier one (judged).
+
+*K2 (the drift-check script) and K3 (the background subagent) were removed by EJ on 2026-10-12. Their numbers are not
+reused, because other text cites K4–K6. A mismatch between a decision and the code is now caught when the decision is
+read (Rd5).*
+
+**K4 — Never deleted, never expired by age** (v: nothing lost; d: What will not be put in)
+- **K4.1** An entry is never deleted. It is marked `superseded` or `retired`, links to what replaced it
+  (`superseded_by`), and keeps its old body.
+- **K4.2** Age alone never expires an entry. An entry is found out of date only when someone reads it and checks it
+  against the code (Rd5).
+- **K4.3** *Proposed:* a decision refined without changing its meaning is edited in place, with a `changed:` line; a
+  decision replaced by a different one gets a new entry that supersedes it. The design leaves this open.
+- **Fails if** git shows an entry file deleted, or a `superseded` or `retired` entry has no link.
+
+**K5 — The journal becomes entries** (v: nothing lost between sessions)
+- **K5.1** Task and project memory each keep a journal: a task's in `work/<task-id>/journal/`, the project's in
+  `journal/` for work not tied to a task. Both hold raw notes, one file per agent session, appended to and never
+  edited. Agent and user memory keep no journal under this design (EJ, 2026-10-12).
+- **K5.2** At the end of a task, and before a handoff or session end, an agent reads its task's journal (or the project
+  journal) written since the last read, writes what is worth keeping as entries, and logs that read in the task's `state.md`. A session cut off
+  before it can read loses nothing: the next read covers it (EJ, 2026-10-12: no separate milestones, the start and the
+  end already cover them).
+- **Fails if** a task's `state.md` shows it complete or handed off with no journal-read log line.
+
+**K6 — `INDEX.md` stays in step** (d: Where it is put; When to write)
+- **K6.1** `INDEX.md` is generated from `entries/`: one line per active entry, showing its id, kind and one-line
+  claim. It is never edited by hand.
+- **K6.2** It is regenerated right after any decision or fact is written, so the next session sees it.
+- **Open:** which tool generates it and what runs it (a build detail).
+- **Fails if** regenerating `INDEX.md` changes it, meaning it was out of step, or it lists a superseded entry as
+  active.
+
+### Read — the right memory reaches the agent at the right time
+
+**Rd1 — Where it lives, and readable from a clone alone** (v: plain files; never a database or service)
+- **Rd1.1** `AGENTS.md` sits at the repo root (`CLAUDE.md` only imports it). `project-memory/` holds `INDEX.md`,
+  `entries/`, `work/<task-id>/` (with `state.md`, `evidence/` and `journal/`), `journal/`, and `.cache/`, which is
+  optional and gitignored.
+- **Rd1.2** With no network, no cache and no private agent store, a fresh clone can read `INDEX.md` and every entry.
+- **Fails if** an entry exists only in a database, a cache or one agent's private memory.
+
+**Rd2 — Session start** (v: a fresh session carries on; d: When it will be used)
+- **Rd2.1** At session start, an agent reads `AGENTS.md`, `INDEX.md`, the `work/` listing and its task's `state.md`.
+  Agents skip optional reads, so these are loaded for the agent wherever its tool allows: an `@` import in
+  `CLAUDE.md`, the tool's own loading of `AGENTS.md`, or a start hook for the task's `state.md`. Only where none of
+  these exists does the first instruction in `AGENTS.md` ask the agent to read them (EJ, 2026-10-12: *"we should just
+  make sure they read all the required"*).
+- **Rd2.2** Not at session start, but read later at its set time:
+  - the task and project journals (K5.2);
+  - `.cache/`, only through search (Rd4.2);
+  - entry bodies, `evidence/` and other tasks' `state.md`, on demand (Rd4).
+- **Rd2.3** Never loaded, at session start or at any later point:
+  - superseded or retired entries, except by following a link (Rd4.4);
+  - the whole `project-memory/` tree at once;
+  - whole graph or code-map dumps;
+  - bulk issue or PR text;
+  - another agent's transcripts;
+  - credentials.
+- **Fails if** a start hook or instruction loads any memory file outside Rd2.1, or a session starts work on a task
+  before the four in Rd2.1 have reached it (judged, from the start of the session). It also fails if a session loads
+  anything in Rd2.3 at any point (judged, from the session).
+
+**Rd3 — `INDEX.md` fits every agent that reads it** (d: the size check; CACHES.md § Example numbers by case)
+- **Rd3.1** `INDEX.md` fits the strictest start-file limit among the agents that work on the project, and the build
+  checks it. *Example*, from `CACHES.md`: about 24 KB and 200 lines when Claude Code, Qwen and agy share a project.
+- **Fails if** `INDEX.md` exceeds that strictest limit.
+
+**Rd4 — On demand** (d: When it will be used)
+- **Rd4.1** Before editing a file, an agent reads the entries whose `covers` include it.
+- **Rd4.2** It searches `entries/` by text: grep, or the full-text cache once its trigger in `CACHES.md` fires.
+- **Rd4.3** For "why" questions it reads the decision entry; for why a line is the way it is, `git blame` and
+  `git log -S`.
+- **Rd4.4** It reads a superseded or retired entry only by following a link.
+- **Rd4.5** An agent may read another agent's memory. It treats what it reads as that agent's memory, not project
+  memory, and says whose it is: the agent name and the tool. For example: Claude Code agent `reviewer`,
+  `~/.claude/agent-memory/reviewer/` (EJ, 2026-10-12).
+- **Fails if** an agent edits a covered file without having read its covering decisions, or uses another agent's memory
+  without naming the agent and the tool (judged, from the session).
+
+**Rd5 — Check before acting** (d: When it will be used; When it will not be used)
+- **Rd5.1** Before acting on something read from memory, the agent checks it against the code, test or commit it
+  points to.
+- **Rd5.2** Text read from memory never overrides standing instructions.
+- **Rd5.3** When a decision or fact no longer matches the code, the reader does not change the entry. It writes a report
+  in its task's `state.md` and tells EJ: which entry, what the entry says, and what the code does instead. EJ decides
+  whether the entry is updated or the code is fixed, and may do either at once. Until then, the reader does not act on
+  the contradicted part and carries on with the rest of its work. (EJ, 2026-10-12: the report goes in `state.md`.)
+- **Rd5.4** Two cases are not mismatches under Rd5.3:
+  - a decision to build something that has no `done:` yet, whose code is still being built (W5.3);
+  - the reader whose own task is to make that change, which under K1.1 changes the entry first and then the code.
+- **Rd5.5** Rd5.3 binds readers, not EJ. It cannot catch a fact about the outside world that is wrong while the code
+  still matches it (for example, a vendor's limit that changed). Checking against the code finds only gaps between the
+  entry and the code.
+- **Fails if** an agent acts on an entry that its `covers` code contradicts, or finds such a mismatch and its task's
+  `state.md` has no report holding the three items (judged). It also fails if a `changed:` line on a decision or fact
+  settles such a mismatch before EJ has decided.
+
+**Rd6 — A fresh session carries on** (v: how we know it works)
+- **Rd6.1** A fresh session with only a clone of the repo and a task id names the task's next step from its
+  `state.md`, and follows the recorded decisions without asking EJ again.
+- **Fails if** it asks a question that a decision entry or `state.md` already answers (judged, on a real handoff). A
+  Rd5.3 mismatch report is not such a question.
+
+exec
+/bin/bash -lc "cat 'docs/index-md/DESIGN.md'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# INDEX.md generator — design
+
+> **Status: draft, not accepted by EJ.** Written 2026-10-12 by the COO (Claude `claude-opus-5-5`). This is the
+> proposal `runs/20261012-index-md-algorithm/proposals/claude.md` with the fixes from three blind reviews
+> (`runs/20261012-index-md-algorithm/reviews/summary.md`) folded in. Requirement ids (B, C, G) refer to
+> `REQUIREMENTS.md`; the why is in `VISION.md`. The evidence (literature reviews, proposals, reviews) is in the run
+> folder.
+
+## For the builder
+
+**Build:**
+- `tools/memory_index.py`: Python 3, standard library only. Next to `tools/export_skills.py`; the repo has no
+  `scripts/`.
+- `tests/test_memory_index.py`: run with `env -u NO_COLOR python3 -m pytest -q`.
+- `.githooks/pre-commit` and `.githooks/pre-merge-commit`. The second is one line that runs the first.
+
+**Do not, without EJ's go:**
+- edit `docs/memory-system/SOURCE_OF_TRUTH.md`, `CLAUDE.md` or `AGENTS.md`;
+- run `git config core.hooksPath .githooks`;
+- create `project-memory/` in this repo.
+
+Tests build their own sample entries in a temporary folder.
+
+**When something here is unclear or looks wrong,** stop and record it. The requirements are still under review in
+another session; do not settle a requirement by building it.
+
+## The algorithm
+
+**Build the index** (shared by both modes):
+
+1. **List entry files** (B1). Take files directly in `project-memory/entries/` whose name matches `^[DFLOH]-[^/]+\.md$`.
+   - **Write mode:** list them with `git ls-files -z --cached --others --exclude-standard -- project-memory/entries/`.
+     Any file that is in `--others` (untracked) is an error naming it: "git add it first".
+   - **Check mode:** list them with `git ls-files -s -z` (the staging area) or `git ls-tree -r -z <rev>`, then read
+     every blob in one `git cat-file --batch` call. On this machine, one call per file was about 20 times slower.
+2. **Sort** the file names with Python's default `str` order (code points). Never use locale collation or directory
+   order (B3.1).
+3. **Decode** each file as UTF-8, and turn CRLF into LF. A decode error becomes `<file>: not valid UTF-8` (B2.6).
+4. **Parse** (B2.1, B2.2).
+   - **Header:** line 1 must be `---`; it ends at the next line that is exactly `---`. Read top-level `id:`, `kind:`
+     and `status:` as `key: value`, stripping whitespace and one pair of surrounding quotes.
+   - **Claim:** the text after the header, up to the first line that starts with `**Why:**`. Drop blank lines,
+     collapse whitespace runs to one space, and strip the ends. *Known limit:* this also collapses spaces inside an
+     inline code span (r codex 8). It is accepted, since claims are plain sentences.
+5. **Validate** (B2.3–B2.5). Collect every problem and report them all.
+   - **Errors, for every entry:** no header; empty `id`; `status` not one of active, superseded or retired; a
+     duplicate `id`.
+   - **Errors, for active entries:** `kind` not one of the five; file prefix not matching `kind`
+     (D decision, F fact, L lesson, O observation, H hypothesis); no `**Why:**` line; empty claim.
+   - **Warnings:** anything else wrong in an inactive entry.
+
+   Any error: print `<file>: <problem>` lines, write nothing, exit 1.
+6. **Render** (B3). The bytes are exactly:
+   ```
+   # Project memory index
+
+   <!-- Generated by tools/memory_index.py from project-memory/entries/. Do not edit by hand. Rebuild: python3 tools/memory_index.py -->
+
+   - [<id>](entries/<urllib.parse.quote(file name)>) <kind>: <claim>
+   ```
+   - One line per active entry, in step-2 order. With none, the line `(no active entries)`.
+   - UTF-8, LF, one final newline. No date, count or host.
+7. **Measure** (B4). Count the lines and UTF-8 bytes against `MAX_LINES` and `MAX_BYTES`, two constants at the top of
+   the script. Their comment cites Rd3.1 and says the values are the design's example until measured. Print
+   `INDEX.md: <lines>/<MAX_LINES> lines, <bytes>/<MAX_BYTES> bytes` on every run.
+
+**Write mode:** `python3 tools/memory_index.py`
+
+8. Run steps 1–7 on the working tree.
+   - If the result equals the current `INDEX.md` byte for byte, leave it alone.
+   - Otherwise write a temporary file in the same folder and rename it over `INDEX.md`. A missing `INDEX.md` is simply
+     written.
+   - Over the size limit: still write the whole file, print a warning, and exit 0 (B4.3).
+   - It writes nothing but `project-memory/INDEX.md`.
+
+**Check mode:** `python3 tools/memory_index.py --check [<rev>]`
+
+9. Run steps 1–7 on the snapshot and compare with the snapshot's `INDEX.md` (C1).
+   - Exit 0 only if the entries are valid, the bytes are equal and the size is within the limits.
+   - Otherwise exit 1 with the reason. If the bytes differ, also print a `difflib` unified diff and the fix: stage the
+     entries, run `python3 tools/memory_index.py`, then `git add project-memory/INDEX.md`.
+   - No `project-memory/` in the snapshot, or an unborn `HEAD`: exit 0, "nothing to check".
+
+**The hook** (G2)
+
+10. `.githooks/pre-commit`:
+    - If `git diff --cached --name-only -- project-memory/ tools/memory_index.py` is empty, exit 0.
+    - Otherwise run `python3 tools/memory_index.py --check` and return its exit code.
+
+    `.githooks/pre-merge-commit` is `exec "$(dirname "$0")/pre-commit"`. git runs `pre-merge-commit` on a clean merge,
+    and `pre-commit` on the commit that ends a conflicted merge (`githooks(5)`, git 2.43, verified).
+11. The tests (C2) run `--check HEAD` on the repo, which covers what the hook misses: rebase, cherry-pick,
+    fast-forward and `--no-verify`.
+
+**Merging** (G3)
+
+12. `INDEX.md` merges as plain text. When it conflicts, resolve the entries first, then run write mode, stage
+    `INDEX.md` and commit. The pre-commit check confirms the result.
+
+## Why this shape (from the run)
+
+1. **One file per entry with a generated combined file** is what ended shared-file conflicts elsewhere (C31). Committing
+   it is what Rd1.2 needs. Sorting by file name puts parallel additions on different lines. That merges are therefore
+   mostly clean is *not measured*.
+2. **Same entries, same bytes,** so "regenerate and compare" is an exact check (Kubernetes and Cog work this way: C54,
+   C55, X31). Qwen Code switched to code-point order after locale order made collaborators rewrite the file back and
+   forth (C2).
+3. **Nothing is cut.** Every overflow scheme found either drops active entries or changes what sessions load (C45,
+   C46, C52). The mechanism is chosen when it is needed.
+
+## Must not
+
+1. Edit or hand-merge `INDEX.md`, or give it `merge=union`. `union` silently re-adds a superseded entry's line (C36).
+2. Let the output depend on the machine: locale, directory order or a timestamp (C2, C14, C15).
+3. Truncate, drop, rank or dedupe lines to fit (C45, C46).
+4. Skip an invalid active entry, or write a line with a hole in it (X4, X33).
+5. Rely on the hook alone. Hooks are not cloned, and rebase and `--no-verify` skip them (G2.3).
+6. Stage, commit or push anything, or change an entry. The script writes `INDEX.md` only.
+
+exec
+/bin/bash -lc "cat 'docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Source-of-truth memory — product vision statement
+
+> **Status: settled** (accepted by EJ on 2026-10-12). EJ's words: *"ok the vision is confirm"*. Drafted 2026-10-12 by the COO, at EJ's request (*"ok same way, which I think
+> is the better way we define the vision first"*), from what EJ has already decided about this memory. Each line
+> names its basis:
+> - **[EJ]**: EJ's decision or words, with the date and the record that holds it;
+> - **[design]**: text of `SOURCE_OF_TRUTH.md` that EJ revised, but not his own sentence;
+> - **[proposed]**: the COO's wording, which EJ has not said.
+>
+> **Whose it is.** The product vision is EJ's (*"an agent may only write down what EJ has said"*, blueprint template).
+> He settled it on 2026-10-12.
+>
+> **Drawn from:** `docs/memory-system/SOURCE_OF_TRUTH.md`, the design this vision serves, and its run record
+> `runs/20261011-source-of-truth-design/` (decisions in `DESIGN-detailed-2026-10-12.md`).
+>
+> **Revised 2026-10-12:** the background subagent is removed, and a decision's start and completion are added (EJ:
+> *"ok remove both and update the doc"*).
+
+The source-of-truth memory is the project's written memory: plain markdown files kept in the repo with the code,
+which every agent and every person reads and may change [design, l.19–22]. It holds what the code cannot tell you
+[design, l.35]:
+- the **decisions and facts** the code must follow, written **before** the code;
+- what was **learned** after: lessons, observations and hypotheses.
+
+[EJ, 2026-10-12, DESIGN-detailed l.27–29]
+
+A decision to build something is started when it is written, and complete when its time, result and test results are
+added [EJ, 2026-10-12: *"when we put details says we decided to build soemthing. means it is a starting. when done, you
+put the time and results , test reuslt those into your memory , that means comeplte"*]. A standing rule is never
+complete [EJ, 2026-10-12, accepted from the four-reader round].
+
+**Who it is for.**
+- Every agent and every person working on the project. There are no owners and no approval gate: anyone may change
+  any entry, and every change is logged with when and which model or person made it [EJ, 2026-10-12, header l.8–9;
+  *"log when and which model changed it"*, agent-memory notes l.65].
+- Not one person's memory across projects (user memory), and not one agent's own memory (agent memory). Both live
+  outside the repo, in the home folder [EJ, 2026-10-12, agent-memory notes l.63, l.85]. Memory has four scopes (task,
+  project, agent, user), and this memory is the task and project ones. An agent may read another agent's memory, as
+  long as it knows and says whose it is: which agent, which tool [EJ, 2026-10-12: *"agent can read another agent
+  memory but they must know that is another agent memory, what agent what tools"*].
+
+**The problem it solves.** The context window is cleared at the start of every session, so anything learned is lost
+unless it is written down. A private agent store is invisible to the other agents [design, l.19, l.91].
+
+**What it will never do.**
+- It never copies what can be read directly from the code, the tests or the commit log, such as what a function does,
+  which test covers it, or what a commit changed. A copy goes stale when the code changes. The memory itself lives in
+  git; the rule is about what an entry says, not where it is stored [design, l.84, reworded after EJ's correction on
+  2026-10-12: *"the memory will be in git also right?"*].
+- It never needs a private store, a database or an outside service to be read. The caches are optional and rebuilt
+  from these files [design, l.21–22; CACHES.md, accepted].
+- An entry is never held back for approval. An entry is a memory once it is written [EJ, 2026-10-12: *"for example a
+  lesson learn, is it a memory, why got proposed and active?"*].
+- A decision or fact is never acted on unchecked. The decision or fact changes first, then the code. Whoever reads a
+  decision or fact checks it against the code before acting on it; when they no longer match, the reader reports it in
+  its task's `state.md` and to EJ, and does not edit it. Nothing else watches for this: no script and no background
+  subagent [EJ, 2026-10-12, DESIGN-detailed l.27, l.31; revised 2026-10-12: *"I think both can remove. memory is very
+  simple"*; *"state.md for the report"*].
+- Nothing is lost between sessions. Task and project memory keep a journal (a task's inside its own task folder; agent
+  and user memory keep none), and an agent reads it at the end of a
+  task and before a handoff or session end, and writes what is worth keeping as entries [EJ, 2026-10-12: *"task and
+  project memory need a journal"*; *"an agent will go read the journal when hit each milestone"*; revised 2026-10-12,
+  milestones dropped: *"if we said handoff or session end, then the simple start and end solution already cover
+  right?"*; task journal placed 2026-10-12: *"create task folder, the subfolder inside"*].
+
+**How we know it works.** [proposed] A fresh session with only a clone of the repo can carry on from where the last
+one stopped:
+- It reads `AGENTS.md`, `INDEX.md` and its task's `state.md`, and follows the recorded decisions without asking
+  again.
+- Every change to an entry shows who made it and when.
+
+exec
+/bin/bash -lc 'cat docs/memory-system/SOURCE_OF_TRUTH.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Source-of-Truth Memory Design
+
+> **Status: accepted by EJ on 2026-10-12** (EJ: *"yes I accept the source of truth design"*), with its vision and
+> its Write / Keep / Read requirements. Vision: `vision-statements/source-of-truth-memory-vision-statements.md`.
+> First written 2026-10-11 by `opencode` from
+> `runs/20261011-project-memory-engines/RECOMMENDATION.md`; revised with EJ on 2026-10-12.
+> Sources, citations and review history: `runs/20261011-source-of-truth-design/` (the full annotated version is
+> `DESIGN-detailed-2026-10-12.md`) and `runs/20261012-memory-update-timing/notes.md`.
+>
+> **Revised 2026-10-12:** the drift-check script and the background subagent are removed (EJ: *"ok remove both and
+> update the doc"*). A decision to build something is started when it is written and complete when its time, result
+> and test results are added; whoever reads a decision or fact checks it against the code before acting on it, and
+> reports a mismatch in the task's `state.md`. W5.3 and Rd5.3–Rd5.5 were refined after a four-reader round
+> (`runs/20261012-sot-w53-rd53-read/`; EJ: *"state.md for the report, apply all the proposed fixes"*).
+>
+> **Revised 2026-10-12, memory by scope (item 7):**
+> - Memory has four scopes: task, project, agent and user. Task and project memory keep a journal; agent and user
+>   memory keep none.
+> - A task's journal is `work/<task-id>/journal/` (EJ: *"create task folder, the subfolder inside"*).
+> - An agent may read another agent's memory if it knows and says whose it is (EJ: *"agent can read another agent
+>   memory but they must know that is another agent memory, what agent what tools"*).
+> - Rd2.2 is split into "not at session start" (Rd2.2) and "never" (Rd2.3), after a four-reader round
+>   (`runs/20261012-sot-item7-scopes/`).
+>
+> **Revised 2026-10-13, runbooks (item 8):** the runbook kind and the `R-` prefix are removed. A procedure lives in the
+> repo as a script, or as a page in `docs/` where it cannot be a script, and `AGENTS.md` names the project's scripts.
+> An entry links to a procedure and never repeats its steps (EJ: *"it is weird to have script inside the memory, if we
+> buidlign a script should be a project already"*; readers' round `runs/20261012-sot-item8-runbooks/`).
+>
+> **Revised 2026-10-13, prefixes (item 9):** `O-` observation and `H-` hypothesis are confirmed, so each of the five
+> kinds has one prefix letter that matches its `kind`. A changed kind becomes a new entry that supersedes the old one,
+> so a file's prefix never changes (EJ: *"a changed kind becomes a new superseding entry"*; readers' round
+> `runs/20261013-sot-item9-prefixes/`).
+>
+> **Where this differs from the recommendation — EJ's decisions:** no owners and no human approval gate (anyone may
+> change any entry, and every change is logged); decisions and facts come before the code; a *fact* means a constraint
+> the code must respect, not something discovered afterwards; no drift-check script and no background subagent.
+>
+> **Not proven:** the timing split (what is written immediately and what later) is design judgement, not measured.
+> Where the recommendation's engines disagreed (session-start reads, one file per writer, SQLite, how often to write),
+> this design follows the majority.
+
+## Why we need this memory
+
+The context window is cleared at the start of every session, so anything learned is lost unless it is written down.
+Project memory is plain markdown files kept in the repo with the code. Every agent and every person reads the same
+files, a fresh clone has all of it, and every change shows up as a git diff. Reading it needs no private agent store,
+database or outside service.
+
+## Who it is for
+
+Every agent and every person working on this project. There are no owners and no approval gate: anyone may change any
+entry, and every change is logged. EJ decides the questions listed as not decided.
+
+Memory has four scopes (EJ, 2026-10-12):
+- **task:** `project-memory/work/<task-id>/`;
+- **project:** the rest of `project-memory/`, and `AGENTS.md`;
+- **agent:** memory belonging to one agent name;
+- **user:** memory about one person, across projects.
+
+This design covers task and project memory. Agent and user memory live outside the repo, in the home folder (agent
+memory at `~/.claude/agent-memory/<name>/`, the way Claude Code does it). For agent memory, this design says only how
+another agent may read it (Rd4.5).
+
+## What it is for
+
+It holds what the code cannot tell you, as typed entries:
+
+- **Requirements, written before the code.** A **decision** is a choice the code must follow, with the reason. A
+  **fact** is a truth or outside constraint the code must respect.
+- **What was learned, written after.** A **lesson** comes from a failure or a human correction. An **observation**
+  records what was seen. A **hypothesis** is a guess, labelled as one.
+- **Not a kind: procedures.** How to run or fix something lives in the repo as a script, or as a page in `docs/` where
+  it cannot be a script. `AGENTS.md` names the project's scripts, one line each. An entry links to a procedure and
+  never repeats its steps. What was learned while running one is a lesson (W3.6).
+
+The order of work is: change the decision or fact first, then the code. Work that has to go the other way is a matter
+for the project's workflow, not for memory. A decision about this project is a project entry, whoever made it, EJ
+included.
+
+A decision to build something is **started** when it is written: we decided to build something, and why. It is
+**complete** when the time, the result and the test results are added to it (EJ, 2026-10-12). A standing rule, such as
+"all timestamps are UTC", is never complete.
+
+## What will be put in
+
+**An entry** is one markdown file. Its header holds: `id`, `kind`, `status`, `author`, the date it was recorded,
+`covers` (the code paths it is about), its source or evidence, links (`depends_on`, `supersedes`, `superseded_by`), a
+`changed:` log, and, on a decision to build something once its work is complete, `done:` (the time, the result, and the
+test results or a pointer to them; W5.3). Its
+body is the claim in one or two sentences, then **Why:**, then **How to apply:**.
+
+**Changing entries.** Anyone may change any entry, and `AGENTS.md` too. Each change adds one line to the entry's
+`changed:` log: the time, and who made it — the model ID for an agent, the name for a person. Files that are not entries
+rely on git history. Each new entry gets its own file, so agents never append to one shared file. Two writers must not
+edit the same file at the same time: each agent works on its own branch or worktree, and git shows a merge conflict when
+two edits
+touch the same lines. Edits to different lines of one file merge without warning even if they contradict each other,
+so a clean merge does not mean the file is consistent.
+
+**When to write.**
+
+| When | What |
+|---|---|
+| Immediately | Decisions and facts, before the code — and `INDEX.md` is regenerated right after, so the next session sees them. A human correction. The state of unfinished work before a handoff, an interruption or a context reduction. |
+| When the work a decision to build something is complete | The decision's `done:` line, written by whoever finishes the work: the time, the result, and the test results or "no tests", with a pointer to the evidence. |
+| At the end of a task | Other lessons, observations and hypotheses; merging duplicates. |
+
+**Keeping it current.** Entries may go out of date while work goes on; that is accepted. Nothing watches for it: there
+is no drift-check script and no background subagent. Whoever reads a decision or fact checks it against the code before
+acting on it. When they no longer match, the reader does not change the entry. It writes a report in its task's
+`state.md` and tells EJ which entry, what the entry says, and what the code does instead. EJ decides whether the entry
+is updated or the code is fixed. Until then, the reader leaves the contradicted part alone and carries on with the
+rest. A decision still being built (no `done:` yet), or one the reader's own task is changing, is not a mismatch
+(Rd5.4).
+
+**Still open:** which tool generates `INDEX.md` and what runs it (K6); who resolves a git merge conflict (W6). Whether a
+changed decision is edited in place or superseded is proposed in K4.3.
+
+## What will not be put in
+
+- Anything that can be read directly from the code, the tests or the commit log (W3.1). The memory itself lives in git.
+- Credentials or sensitive data.
+- Guesses not labelled as a hypothesis.
+- Raw transcripts, or another agent's private state.
+- Work described as "verified" when it is only implemented.
+
+An entry is never deleted: it is marked `superseded` or `retired` and linked to what replaced it. Age alone never
+expires an entry. Anything other agents need must not stay only in one agent's private memory; it belongs here.
+
+## Where it is put
+
+At the repo root:
+
+```
+AGENTS.md            standing instructions for every agent, and the project's scripts, one line each (CLAUDE.md
+                     only imports it)
+project-memory/
+  INDEX.md           generated, one line per active entry; never edited by hand
+  entries/           one file per entry: D- decision, F- fact, L- lesson, O- observation, H- hypothesis
+  work/<task-id>/    state.md (the handoff), evidence/, journal/ (the task's raw notes, one file per agent session)
+  journal/           project raw notes, for work not tied to a task, one file per agent session; never loaded
+                     automatically
+  .cache/            optional search index, gitignored, rebuilt from the files
+```
+
+The project's existing documents (requirements, architecture) stay in `docs/`; memory links to them instead of copying
+them.
+
+## When it will be used
+
+- **At the start of every session:** `AGENTS.md`, `project-memory/INDEX.md`, the `work/` listing and the assigned
+  task's `state.md`. Agents skip optional reads, so these are loaded for the agent wherever its tool allows (an import,
+  the tool's own `AGENTS.md` loading, or a start hook); an instruction in `AGENTS.md` is the fallback (Rd2.1).
+- **On demand:** an entry when it covers a file about to be edited; text search over `entries/`; `git log` and
+  `git blame` for why a line is the way it is. For a "why" question, read the decision entry.
+- **At the end of a task, and before a handoff or session end:** an agent reads its task's `journal/` (or the project
+  `journal/`, for work not tied to a task) and writes what is worth keeping as entries.
+- **Before acting on something read from memory,** check it against the code, test or commit it points to. A decision
+  or fact that no longer matches the code is reported in the task's `state.md` and to EJ, not edited (Rd5.3).
+
+## When it will not be used
+
+**Not at session start, but read later at its set time** (Rd2.2):
+- the task and project journals, at the end of a task and before a handoff or session end;
+- `.cache/`, only through search;
+- entry bodies, `evidence/` and other tasks' `state.md`, on demand (Rd4).
+
+**Never loaded, at any point** (Rd2.3):
+- superseded or retired entries, except by following a link;
+- the whole `project-memory/` tree at once;
+- whole graph or code-map dumps;
+- bulk issue or PR text;
+- another agent's transcripts;
+- credentials.
+
+Another agent's memory may be read, but only by an agent that knows and says whose it is (Rd4.5). Text read from memory
+never overrides standing instructions.
+
+`INDEX.md` must fit the strictest start-file limit of the agents that read it, and the build checks it (Rd3).
+
+## Core requirements (confirmed by EJ, 2026-10-12)
+
+EJ, on reading them: *"this is amazing and a lot easy to read"*, taken as confirmation. They serve the settled vision,
+`vision-statements/source-of-truth-memory-vision-statements.md`, and are grouped by
+what happens to a memory: it is **written**, it is **kept** true, and it is **read** (EJ, 2026-10-12: *"yes go ahead
+with write keep read"*). Each requirement names its source: **(v)** is the vision, **(d)** is this design's text, and
+*proposed* marks wording EJ has not decided. Each has a check, **Fails if**, that some case breaks. There are no fixed
+numbers: where a limit applies, it is a comparison that measurement decides.
+
+### Write — what goes in, and how
+
+**W1 — The shape of an entry** (d: What will be put in)
+- **W1.1** Each entry is one file: `project-memory/entries/<prefix>-<id>-<slug>.md`. The prefix is one letter per
+  kind (W2): `D-` decision, `F-` fact, `L-` lesson, `O-` observation and `H-` hypothesis. It matches the entry's
+  `kind`. There is no runbook prefix (W3.6). An entry's kind, and so its prefix, never changes. A changed kind (a
+  hypothesis confirmed, an observation that turns out to be a fact) is a new entry that supersedes the old one (K4.1;
+  EJ, 2026-10-13).
+- **W1.2** The header holds `id`, `kind`, `status`, `author`, the date recorded, `covers` (the code paths it is
+  about), its source or evidence, `depends_on`, `supersedes`, `superseded_by`, and `changed:`. A decision to build
+  something, once its work is complete, also holds `done:` (W5.3).
+- **W1.3** The body is the claim in one or two sentences, then **Why:**, then **How to apply:**. There is one claim per
+  entry.
+- **Fails if** a lint over `entries/` finds a missing field or section, or a file whose prefix is not one of the five
+  or does not match its `kind`. It also fails if a reviewer finds two claims in one entry, or git shows an entry file
+  renamed to a different prefix.
+
+**W2 — What each kind means** (v; d: What it is for)
+- **W2.1** A **decision** is a choice the code must follow, with the reason. A **fact** is a truth or outside
+  constraint the code must respect, not something discovered afterwards. Both are requirements: they are written
+  before the code.
+- **W2.2** A **lesson** comes from a failure or a human correction. An **observation** records what was seen. A
+  **hypothesis** is a guess, labelled as one.
+- **Fails if** `kind` holds any other value, or a guess is recorded under any kind but hypothesis.
+
+**W3 — What never goes in** (v; d: What will not be put in)
+- **W3.1** Nothing that can be read directly from the code, the tests or the commit log: what a function does, which
+  test covers it, what a commit changed. The memory lives in git; the rule is about what an entry says.
+- **W3.2** No credentials or sensitive data.
+- **W3.3** No raw transcripts, and nothing from another agent's private state.
+- **W3.4** No work described as "verified" when it is only implemented.
+- **W3.5** No user memory (one person, across projects) and no agent memory (one agent name). Both live in the home
+  folder.
+- **W3.6** No copy of the project's existing documents (requirements, architecture in `docs/`) or of its procedures:
+  an entry links to them. A procedure lives in the repo as a script, or as a page in `docs/` where it cannot be a
+  script, and `AGENTS.md` names each script, one line each. A script is project work, not memory (EJ, 2026-10-13).
+- **Fails if** a secret scanner finds a credential (W3.2). For W3.1 and W3.3–W3.6, a reviewer finds such content.
+  Those are judged checks.
+
+**W4 — Who writes, and the change log** (v: no owners, every change logged)
+- **W4.1** Anyone, agent or person, may create or change any entry, and `AGENTS.md` too. There is no owner and no
+  approval: `status` is only `active`, `superseded` or `retired`. The one exception is Rd5.3: a reader who finds a
+  decision or fact out of step with the code reports it and does not settle it (EJ, 2026-10-12).
+- **W4.2** Every change to an entry adds one line to its `changed:` log: the time, and who made it (the model ID for an
+  agent, the name for a person). Earlier lines are never edited.
+- **W4.3** Files that are not entries (`state.md`, `journal/`, `AGENTS.md`) rely on git history.
+- **Fails if** git shows a change to an entry with no matching `changed:` line, or a `status` outside the three.
+
+**W5 — When to write** (d: When to write)
+- **W5.1** Written immediately: a decision or fact, before the code it governs; a human correction; and the state of
+  unfinished work, before a handoff, an interruption or a context reduction.
+- **W5.2** Written at the end of a task: other lessons, observations and hypotheses.
+- **W5.3** A decision to build something is started when it is written. When the work is complete, whoever finishes it
+  adds `done:` to the decision: the time, the result in one sentence, and the test results, or "no tests" said plainly.
+  `done:` points to the evidence (`runs/<run-id>/` or the commit) rather than copying test output (W3.1). A standing
+  rule, such as "all timestamps are UTC", is never complete and never gets `done:`. If the result differs from the
+  decision, that is a mismatch for Rd5.3: it is reported, not settled in `done:`. (EJ, 2026-10-12; refined after four
+  readers.)
+- **Fails if** a commit changes code under a new decision with no entry in that commit or an earlier one. For a human
+  correction, it fails if the session ends without one (judged). For W5.3, it fails if a reviewer of a finished task
+  finds that its decision has no `done:`, or a `done:` without a time, a result and test results or "no tests"
+  (judged; EJ, 2026-10-12).
+
+**W6 — Writers do not collide** (d: Changing entries)
+- **W6.1** Each new entry gets its own file. Agents never append to one shared file; each journal, the task's or the
+  project's, has one file per agent session.
+- **W6.2** Each agent works on its own branch or worktree, so two edits to the same lines meet as a merge conflict, not
+  a silent overwrite.
+- **Open:** who resolves a merge conflict.
+- **Fails if** an edit to an entry is lost without a conflict.
+
+### Keep — memory stays true, and nothing is lost
+
+**K1 — The decision or fact first, then the code** (v; d: What it is for)
+- **K1.1** To change behaviour that a decision or fact governs, change the entry first, then the code. Work that has to
+  go the other way is a matter for the project's workflow, not for memory.
+- **Fails if** git shows a commit changing the behaviour a decision or fact governs, with no change to that entry in the
+  same commit or an earlier one (judged).
+
+*K2 (the drift-check script) and K3 (the background subagent) were removed by EJ on 2026-10-12. Their numbers are not
+reused, because other text cites K4–K6. A mismatch between a decision and the code is now caught when the decision is
+read (Rd5).*
+
+**K4 — Never deleted, never expired by age** (v: nothing lost; d: What will not be put in)
+- **K4.1** An entry is never deleted. It is marked `superseded` or `retired`, links to what replaced it
+  (`superseded_by`), and keeps its old body.
+- **K4.2** Age alone never expires an entry. An entry is found out of date only when someone reads it and checks it
+  against the code (Rd5).
+- **K4.3** *Proposed:* a decision refined without changing its meaning is edited in place, with a `changed:` line; a
+  decision replaced by a different one gets a new entry that supersedes it. The design leaves this open.
+- **Fails if** git shows an entry file deleted, or a `superseded` or `retired` entry has no link.
+
+**K5 — The journal becomes entries** (v: nothing lost between sessions)
+- **K5.1** Task and project memory each keep a journal: a task's in `work/<task-id>/journal/`, the project's in
+  `journal/` for work not tied to a task. Both hold raw notes, one file per agent session, appended to and never
+  edited. Agent and user memory keep no journal under this design (EJ, 2026-10-12).
+- **K5.2** At the end of a task, and before a handoff or session end, an agent reads its task's journal (or the project
+  journal) written since the last read, writes what is worth keeping as entries, and logs that read in the task's `state.md`. A session cut off
+  before it can read loses nothing: the next read covers it (EJ, 2026-10-12: no separate milestones, the start and the
+  end already cover them).
+- **Fails if** a task's `state.md` shows it complete or handed off with no journal-read log line.
+
+**K6 — `INDEX.md` stays in step** (d: Where it is put; When to write)
+- **K6.1** `INDEX.md` is generated from `entries/`: one line per active entry, showing its id, kind and one-line
+  claim. It is never edited by hand.
+- **K6.2** It is regenerated right after any decision or fact is written, so the next session sees it.
+- **Open:** which tool generates it and what runs it (a build detail).
+- **Fails if** regenerating `INDEX.md` changes it, meaning it was out of step, or it lists a superseded entry as
+  active.
+
+### Read — the right memory reaches the agent at the right time
+
+**Rd1 — Where it lives, and readable from a clone alone** (v: plain files; never a database or service)
+- **Rd1.1** `AGENTS.md` sits at the repo root (`CLAUDE.md` only imports it). `project-memory/` holds `INDEX.md`,
+  `entries/`, `work/<task-id>/` (with `state.md`, `evidence/` and `journal/`), `journal/`, and `.cache/`, which is
+  optional and gitignored.
+- **Rd1.2** With no network, no cache and no private agent store, a fresh clone can read `INDEX.md` and every entry.
+- **Fails if** an entry exists only in a database, a cache or one agent's private memory.
+
+**Rd2 — Session start** (v: a fresh session carries on; d: When it will be used)
+- **Rd2.1** At session start, an agent reads `AGENTS.md`, `INDEX.md`, the `work/` listing and its task's `state.md`.
+  Agents skip optional reads, so these are loaded for the agent wherever its tool allows: an `@` import in
+  `CLAUDE.md`, the tool's own loading of `AGENTS.md`, or a start hook for the task's `state.md`. Only where none of
+  these exists does the first instruction in `AGENTS.md` ask the agent to read them (EJ, 2026-10-12: *"we should just
+  make sure they read all the required"*).
+- **Rd2.2** Not at session start, but read later at its set time:
+  - the task and project journals (K5.2);
+  - `.cache/`, only through search (Rd4.2);
+  - entry bodies, `evidence/` and other tasks' `state.md`, on demand (Rd4).
+- **Rd2.3** Never loaded, at session start or at any later point:
+  - superseded or retired entries, except by following a link (Rd4.4);
+  - the whole `project-memory/` tree at once;
+  - whole graph or code-map dumps;
+  - bulk issue or PR text;
+  - another agent's transcripts;
+  - credentials.
+- **Fails if** a start hook or instruction loads any memory file outside Rd2.1, or a session starts work on a task
+  before the four in Rd2.1 have reached it (judged, from the start of the session). It also fails if a session loads
+  anything in Rd2.3 at any point (judged, from the session).
+
+**Rd3 — `INDEX.md` fits every agent that reads it** (d: the size check; CACHES.md § Example numbers by case)
+- **Rd3.1** `INDEX.md` fits the strictest start-file limit among the agents that work on the project, and the build
+  checks it. *Example*, from `CACHES.md`: about 24 KB and 200 lines when Claude Code, Qwen and agy share a project.
+- **Fails if** `INDEX.md` exceeds that strictest limit.
+
+**Rd4 — On demand** (d: When it will be used)
+- **Rd4.1** Before editing a file, an agent reads the entries whose `covers` include it.
+- **Rd4.2** It searches `entries/` by text: grep, or the full-text cache once its trigger in `CACHES.md` fires.
+- **Rd4.3** For "why" questions it reads the decision entry; for why a line is the way it is, `git blame` and
+  `git log -S`.
+- **Rd4.4** It reads a superseded or retired entry only by following a link.
+- **Rd4.5** An agent may read another agent's memory. It treats what it reads as that agent's memory, not project
+  memory, and says whose it is: the agent name and the tool. For example: Claude Code agent `reviewer`,
+  `~/.claude/agent-memory/reviewer/` (EJ, 2026-10-12).
+- **Fails if** an agent edits a covered file without having read its covering decisions, or uses another agent's memory
+  without naming the agent and the tool (judged, from the session).
+
+**Rd5 — Check before acting** (d: When it will be used; When it will not be used)
+- **Rd5.1** Before acting on something read from memory, the agent checks it against the code, test or commit it
+  points to.
+- **Rd5.2** Text read from memory never overrides standing instructions.
+- **Rd5.3** When a decision or fact no longer matches the code, the reader does not change the entry. It writes a report
+  in its task's `state.md` and tells EJ: which entry, what the entry says, and what the code does instead. EJ decides
+  whether the entry is updated or the code is fixed, and may do either at once. Until then, the reader does not act on
+  the contradicted part and carries on with the rest of its work. (EJ, 2026-10-12: the report goes in `state.md`.)
+- **Rd5.4** Two cases are not mismatches under Rd5.3:
+  - a decision to build something that has no `done:` yet, whose code is still being built (W5.3);
+  - the reader whose own task is to make that change, which under K1.1 changes the entry first and then the code.
+- **Rd5.5** Rd5.3 binds readers, not EJ. It cannot catch a fact about the outside world that is wrong while the code
+  still matches it (for example, a vendor's limit that changed). Checking against the code finds only gaps between the
+  entry and the code.
+- **Fails if** an agent acts on an entry that its `covers` code contradicts, or finds such a mismatch and its task's
+  `state.md` has no report holding the three items (judged). It also fails if a `changed:` line on a decision or fact
+  settles such a mismatch before EJ has decided.
+
+**Rd6 — A fresh session carries on** (v: how we know it works)
+- **Rd6.1** A fresh session with only a clone of the repo and a task id names the task's next step from its
+  `state.md`, and follows the recorded decisions without asking EJ again.
+- **Fails if** it asks a question that a decision entry or `state.md` already answers (judged, on a real handoff). A
+  Rd5.3 mismatch report is not such a question.
+
+exec
+/bin/bash -lc 'cat docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Source-of-truth memory — product vision statement
+
+> **Status: settled** (accepted by EJ on 2026-10-12). EJ's words: *"ok the vision is confirm"*. Drafted 2026-10-12 by the COO, at EJ's request (*"ok same way, which I think
+> is the better way we define the vision first"*), from what EJ has already decided about this memory. Each line
+> names its basis:
+> - **[EJ]**: EJ's decision or words, with the date and the record that holds it;
+> - **[design]**: text of `SOURCE_OF_TRUTH.md` that EJ revised, but not his own sentence;
+> - **[proposed]**: the COO's wording, which EJ has not said.
+>
+> **Whose it is.** The product vision is EJ's (*"an agent may only write down what EJ has said"*, blueprint template).
+> He settled it on 2026-10-12.
+>
+> **Drawn from:** `docs/memory-system/SOURCE_OF_TRUTH.md`, the design this vision serves, and its run record
+> `runs/20261011-source-of-truth-design/` (decisions in `DESIGN-detailed-2026-10-12.md`).
+>
+> **Revised 2026-10-12:** the background subagent is removed, and a decision's start and completion are added (EJ:
+> *"ok remove both and update the doc"*).
+
+The source-of-truth memory is the project's written memory: plain markdown files kept in the repo with the code,
+which every agent and every person reads and may change [design, l.19–22]. It holds what the code cannot tell you
+[design, l.35]:
+- the **decisions and facts** the code must follow, written **before** the code;
+- what was **learned** after: lessons, observations and hypotheses.
+
+[EJ, 2026-10-12, DESIGN-detailed l.27–29]
+
+A decision to build something is started when it is written, and complete when its time, result and test results are
+added [EJ, 2026-10-12: *"when we put details says we decided to build soemthing. means it is a starting. when done, you
+put the time and results , test reuslt those into your memory , that means comeplte"*]. A standing rule is never
+complete [EJ, 2026-10-12, accepted from the four-reader round].
+
+**Who it is for.**
+- Every agent and every person working on the project. There are no owners and no approval gate: anyone may change
+  any entry, and every change is logged with when and which model or person made it [EJ, 2026-10-12, header l.8–9;
+  *"log when and which model changed it"*, agent-memory notes l.65].
+- Not one person's memory across projects (user memory), and not one agent's own memory (agent memory). Both live
+  outside the repo, in the home folder [EJ, 2026-10-12, agent-memory notes l.63, l.85]. Memory has four scopes (task,
+  project, agent, user), and this memory is the task and project ones. An agent may read another agent's memory, as
+  long as it knows and says whose it is: which agent, which tool [EJ, 2026-10-12: *"agent can read another agent
+  memory but they must know that is another agent memory, what agent what tools"*].
+
+**The problem it solves.** The context window is cleared at the start of every session, so anything learned is lost
+unless it is written down. A private agent store is invisible to the other agents [design, l.19, l.91].
+
+**What it will never do.**
+- It never copies what can be read directly from the code, the tests or the commit log, such as what a function does,
+  which test covers it, or what a commit changed. A copy goes stale when the code changes. The memory itself lives in
+  git; the rule is about what an entry says, not where it is stored [design, l.84, reworded after EJ's correction on
+  2026-10-12: *"the memory will be in git also right?"*].
+- It never needs a private store, a database or an outside service to be read. The caches are optional and rebuilt
+  from these files [design, l.21–22; CACHES.md, accepted].
+- An entry is never held back for approval. An entry is a memory once it is written [EJ, 2026-10-12: *"for example a
+  lesson learn, is it a memory, why got proposed and active?"*].
+- A decision or fact is never acted on unchecked. The decision or fact changes first, then the code. Whoever reads a
+  decision or fact checks it against the code before acting on it; when they no longer match, the reader reports it in
+  its task's `state.md` and to EJ, and does not edit it. Nothing else watches for this: no script and no background
+  subagent [EJ, 2026-10-12, DESIGN-detailed l.27, l.31; revised 2026-10-12: *"I think both can remove. memory is very
+  simple"*; *"state.md for the report"*].
+- Nothing is lost between sessions. Task and project memory keep a journal (a task's inside its own task folder; agent
+  and user memory keep none), and an agent reads it at the end of a
+  task and before a handoff or session end, and writes what is worth keeping as entries [EJ, 2026-10-12: *"task and
+  project memory need a journal"*; *"an agent will go read the journal when hit each milestone"*; revised 2026-10-12,
+  milestones dropped: *"if we said handoff or session end, then the simple start and end solution already cover
+  right?"*; task journal placed 2026-10-12: *"create task folder, the subfolder inside"*].
+
+**How we know it works.** [proposed] A fresh session with only a clone of the repo can carry on from where the last
+one stopped:
+- It reads `AGENTS.md`, `INDEX.md` and its task's `state.md`, and follows the recorded decisions without asking
+  again.
+- Every change to an entry shows who made it and when.
+
+exec
+/bin/bash -lc "rg -n '"'^(MAX_|def |class |    def test_|def test_)|uuid|Why:|header|limit|nothing to check|check_repo'"' tools/memory_index.py tests/test_memory_index.py" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+tests/test_memory_index.py:36:def isolated_env(env_extra=None):
+tests/test_memory_index.py:52:def git(repo, *args, check=True, env_extra=None):
+tests/test_memory_index.py:62:def make_repo(tmp_path, *, copy_tool=True):
+tests/test_memory_index.py:85:def write_entry(repo, name="D-one.md", *, id="D-20261012-a1", kind="decision",
+tests/test_memory_index.py:92:            "**Why:** locale order made collaborators rewrite the file.\n\n"
+tests/test_memory_index.py:99:def run_index(repo, *args, env_extra=None):
+tests/test_memory_index.py:106:def output(result):
+tests/test_memory_index.py:110:def stage_single_entry(repo):
+tests/test_memory_index.py:116:def snapshot_args(repo, mode):
+tests/test_memory_index.py:126:def size_numbers(result, expected):
+tests/test_memory_index.py:137:def test_only_direct_matching_entry_files_are_read(tmp_path, mode):
+tests/test_memory_index.py:148:def test_untracked_matching_entry_is_an_error(tmp_path):
+tests/test_memory_index.py:160:def test_untracked_inactive_entry_is_an_error(tmp_path, status):
+tests/test_memory_index.py:172:def test_write_reads_working_tree_for_git_known_entries(tmp_path, staged_only):
+tests/test_memory_index.py:187:def test_check_uses_snapshot_instead_of_working_tree(tmp_path, mode):
+tests/test_memory_index.py:192:    write_entry(repo, raw="broken working-tree header\n")
+tests/test_memory_index.py:202:def test_snapshot_reads_use_nul_paths_and_one_batch(tmp_path, mode):
+tests/test_memory_index.py:241:def test_header_reads_only_top_level_fields_and_strips_quotes(tmp_path):
+tests/test_memory_index.py:247:        "Use code-point order for the index.\n**Why:** reason\n"
+tests/test_memory_index.py:255:def test_claim_ends_at_why_and_collapses_whitespace(tmp_path):
+tests/test_memory_index.py:266:    "id: bad\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:267:    "\n---\nid: bad\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:268:    "---\nid: bad\nkind: decision\nstatus: active\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:269:    "---\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:270:    "---\nid: ''\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:271:    "---\n  id: nested-only\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:272:    "---\nid: bad\nkind: decision\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:273:    "---\nid: bad\nkind: decision\nstatus: unknown\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:274:    "---\nid: bad\nkind: unknown\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:275:    "---\nid: bad\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:276:    "---\nid: bad\nkind: fact\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:278:    "---\nid: bad\nkind: decision\nstatus: active\n---\n \t\n**Why:** reason\n",
+tests/test_memory_index.py:284:def test_malformed_entries_fail_without_writing(tmp_path, mode, raw):
+tests/test_memory_index.py:285:    """B2.1 B2.3 B2.4 C1.2 — malformed headers or active entries must fail before output is changed."""
+tests/test_memory_index.py:298:        "---\nid: bad\nkind: unknown\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:302:        "---\nid: bad\nkind: fact\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:310:        "---\nid: bad\nkind: decision\nstatus: active\n---\n \t\n**Why:** reason\n",
+tests/test_memory_index.py:314:def test_staged_malformed_active_entries_fail_without_writing(tmp_path, raw):
+tests/test_memory_index.py:328:def test_duplicate_ids_are_rejected_in_every_status(tmp_path, status, mode):
+tests/test_memory_index.py:343:    "---\nid: old\nkind: fact\nstatus: {status}\n---\nClaim.\n**Why:** reason\n",
+tests/test_memory_index.py:346:def test_inactive_content_problems_warn_without_blocking(tmp_path, status, raw, mode):
+tests/test_memory_index.py:361:def test_inactive_entries_still_require_id_and_status(tmp_path, status, field):
+tests/test_memory_index.py:375:def test_invalid_utf8_reports_filename_without_traceback(tmp_path, mode):
+tests/test_memory_index.py:379:    write_entry(repo, "F-bad-utf8.md", raw=b"---\nid: bad\nkind: fact\nstatus: active\n---\n\xff\n**Why:** reason\n")
+tests/test_memory_index.py:387:def test_all_validation_problems_are_reported(tmp_path):
+tests/test_memory_index.py:390:    for name, raw in (("D-a.md", "no header"), ("F-b.md", b"\xff"), ("L-c.md", "---\nid: c\nstatus: unknown\n---\n")):
+tests/test_memory_index.py:401:def test_golden_bytes_for_all_kinds_and_encoded_paths(tmp_path):
+tests/test_memory_index.py:424:def test_no_active_entries_has_fixed_placeholder(tmp_path, status):
+tests/test_memory_index.py:434:def test_locale_does_not_change_bytes(tmp_path):
+tests/test_memory_index.py:452:def test_crlf_entries_render_as_lf_utf8(tmp_path):
+tests/test_memory_index.py:463:def test_missing_index_is_created(tmp_path):
+tests/test_memory_index.py:473:def test_identical_index_is_not_rewritten(tmp_path):
+tests/test_memory_index.py:490:def test_size_line_counts_lines_and_utf8_bytes(tmp_path, mode):
+tests/test_memory_index.py:491:    """B4.1 B4.2 — every normal run must report actual line and UTF-8 byte counts against both limits."""
+tests/test_memory_index.py:499:def stage_overflow(repo, limit):
+tests/test_memory_index.py:505:    if limit == "lines":
+tests/test_memory_index.py:523:@pytest.mark.parametrize("limit", ["lines", "bytes"])
+tests/test_memory_index.py:524:def test_overflow_is_written_whole_with_warning(tmp_path, limit):
+tests/test_memory_index.py:525:    """B4.1 B4.3 — an index exceeding either limit must still be written whole with a warning and exit zero."""
+tests/test_memory_index.py:527:    expected = stage_overflow(repo, limit)
+tests/test_memory_index.py:535:@pytest.mark.parametrize("limit", ["lines", "bytes"])
+tests/test_memory_index.py:536:def test_check_rejects_equal_bytes_over_size_limit(tmp_path, limit):
+tests/test_memory_index.py:539:    expected = stage_overflow(repo, limit)
+tests/test_memory_index.py:547:@pytest.mark.parametrize("limit", ["lines", "bytes"])
+tests/test_memory_index.py:548:def test_reducing_index_below_limit_clears_check(tmp_path, limit):
+tests/test_memory_index.py:551:    expected = stage_overflow(repo, limit)
+tests/test_memory_index.py:570:def test_check_rejects_wrong_snapshot_index_with_diff(tmp_path, mode, change):
+tests/test_memory_index.py:592:def test_check_accepts_valid_equal_snapshot(tmp_path, mode):
+tests/test_memory_index.py:593:    """C1.1 C1.2 — valid matching snapshot bytes within the limits must pass."""
+tests/test_memory_index.py:601:def test_check_rejects_nonexistent_revision(tmp_path):
+tests/test_memory_index.py:611:def test_empty_snapshots_report_nothing_to_check(tmp_path, snapshot):
+tests/test_memory_index.py:612:    """C1.3 — absent memory snapshots and unborn HEAD must pass with nothing to check."""
+tests/test_memory_index.py:623:    assert "nothing to check" in output(result)
+tests/test_memory_index.py:629:def test_check_does_not_write_files_or_git_state(tmp_path, mode, valid):
+tests/test_memory_index.py:650:def test_repository_head_passes_committed_snapshot_check(tmp_path):
+tests/test_memory_index.py:658:def test_pre_commit_blocks_relevant_changes_with_wrong_index(tmp_path, change):
+tests/test_memory_index.py:683:def test_pre_commit_allows_consistent_memory_commit(tmp_path):
+tests/test_memory_index.py:698:def test_pre_commit_skips_unrelated_changes(tmp_path):
+tests/test_memory_index.py:713:def test_pre_merge_commit_delegates_to_pre_commit(tmp_path):
+tests/test_memory_index.py:738:def test_check_catches_commit_that_bypassed_hook(tmp_path):
+tests/test_memory_index.py:752:def test_index_merge_attribute_uses_normal_text(tmp_path):
+tests/test_memory_index.py:759:def test_conflicted_index_is_regenerated_from_merged_entries(tmp_path):
+tools/memory_index.py:30:# Rd3.1: INDEX.md must fit the strictest start-file limit of the agents that read it. These two numbers are the
+tools/memory_index.py:31:# design's example, not a measurement: the agy row of the start-load limits table in docs/memory-system/CACHES.md
+tools/memory_index.py:33:# examples until the readers' load paths are measured (B4.1). Nothing is ever cut to fit — over the limit, write
+tools/memory_index.py:35:MAX_LINES = 200
+tools/memory_index.py:36:MAX_BYTES = 24_000
+tools/memory_index.py:53:WHY = "**Why:**"
+tools/memory_index.py:65:class GitError(Exception):
+tools/memory_index.py:69:def report(text: str) -> None:
+tools/memory_index.py:79:class Entry:
+tools/memory_index.py:97:def parse_header(lines: list[str]) -> tuple[dict[str, str], int | None, str | None]:
+tools/memory_index.py:98:    """Read the top-level `id:`, `kind:` and `status:` from the header block.
+tools/memory_index.py:100:    Line 1 must be `---` and the header ends at the next line that is exactly `---`. Indented lines are nested
+tools/memory_index.py:104:        return {}, None, "no header"
+tools/memory_index.py:108:        return {}, None, "header is not closed"
+tools/memory_index.py:120:def unquote(value: str) -> str:
+tools/memory_index.py:121:    """Strip whitespace and one pair of surrounding quotes from a header value."""
+tools/memory_index.py:128:def read_claim(body: list[str]) -> tuple[str, bool]:
+tools/memory_index.py:129:    """Return the claim (the body up to `**Why:**`, blank lines dropped, whitespace runs collapsed) and whether
+tools/memory_index.py:130:    a `**Why:**` line was found."""
+tools/memory_index.py:141:def check_content(entry: Entry) -> None:
+tools/memory_index.py:143:    `**Why:**` line and a claim. The same content problems are only warnings in an inactive entry, which gets
+tools/memory_index.py:166:def parse_entry(name: str, text: str, *, tracked: bool = True) -> Entry:
+tools/memory_index.py:170:    fields, end, header_problem = parse_header(lines)
+tools/memory_index.py:171:    if header_problem:
+tools/memory_index.py:172:        entry.errors.append(header_problem)
+tools/memory_index.py:188:def is_utf8(text: str) -> bool:
+tools/memory_index.py:197:def entry_from_bytes(name: str, raw: bytes, *, tracked: bool = True) -> Entry:
+tools/memory_index.py:208:def flag_duplicate_ids(entries: list[Entry]) -> None:
+tools/memory_index.py:222:def index_link(name: str) -> str:
+tools/memory_index.py:227:def render_entry(entry: Entry) -> str:
+tools/memory_index.py:231:def active_entries(entries: list[Entry]) -> list[Entry]:
+tools/memory_index.py:236:def render_index(entries: list[Entry]) -> bytes:
+tools/memory_index.py:242:def measure(rendered: bytes) -> tuple[int, int]:
+tools/memory_index.py:246:def size_report(rendered: bytes) -> str:
+tools/memory_index.py:251:def over_limit(rendered: bytes) -> bool:
+tools/memory_index.py:256:def print_diff(current: bytes, built: bytes) -> None:
+tools/memory_index.py:267:def git(args: list[str], *, cwd: Path | None = None, stdin: bytes | None = None) -> bytes:
+tools/memory_index.py:278:def split_nul(raw: bytes) -> list[str]:
+tools/memory_index.py:283:def entry_name(path: str) -> str:
+tools/memory_index.py:288:def is_entry_path(path: str) -> bool:
+tools/memory_index.py:298:def repo_root() -> Path:
+tools/memory_index.py:303:def working_tree_paths(repo: Path) -> tuple[list[str], list[str]]:
+tools/memory_index.py:312:def snapshot_paths(repo: Path, rev: str | None) -> dict[str, str]:
+tools/memory_index.py:330:def records(raw: bytes) -> list[tuple[str, str]]:
+tools/memory_index.py:335:def is_object_id(value: str) -> bool:
+tools/memory_index.py:339:def cat_file_batch(repo: Path, shas: list[str]) -> dict[str, bytes]:
+tools/memory_index.py:348:        header = raw[position:newline].split()
+tools/memory_index.py:350:        if len(header) < 3:  # "<sha> missing" — the blob is gone
+tools/memory_index.py:352:        size = int(header[2])
+tools/memory_index.py:353:        blobs[header[0].decode("ascii")] = raw[position:position + size]
+tools/memory_index.py:361:def gather(entries: list[Entry]) -> None:
+tools/memory_index.py:372:def working_tree_entries(repo: Path) -> list[Entry]:
+tools/memory_index.py:405:def snapshot_memory(repo: Path, rev: str | None) -> tuple[list[Entry], bytes | None] | None:
+tools/memory_index.py:429:def write_index(repo: Path) -> int:
+tools/memory_index.py:445:    if over_limit(rendered):
+tools/memory_index.py:446:        print_over_limit()
+tools/memory_index.py:450:def write_atomically(path: Path, rendered: bytes) -> None:
+tools/memory_index.py:463:def check_index(repo: Path, rev: str | None) -> int:
+tools/memory_index.py:466:        print(f"nothing to check: HEAD names no commit yet, so {where} holds no snapshot")
+tools/memory_index.py:473:        print(f"nothing to check: no {MEMORY_DIR}/ in {where}")
+tools/memory_index.py:485:    if over_limit(rendered):
+tools/memory_index.py:486:        report(f"{INDEX_PATH} in {where} is over the limit. Nothing is cut to fit: retire or merge entries "
+tools/memory_index.py:493:def git_succeeds(repo: Path, args: list[str]) -> bool:
+tools/memory_index.py:502:def head_is_unborn(repo: Path) -> bool:
+tools/memory_index.py:509:def rev_is_commit(repo: Path, rev: str) -> bool:
+tools/memory_index.py:515:def print_over_limit() -> None:
+tools/memory_index.py:516:    print("warning: INDEX.md is over the limit. Nothing is cut to fit (B4.3): retire or merge entries instead.")
+tools/memory_index.py:519:def main() -> int:
+
+exec
+/bin/bash -lc 'rg --files .githooks' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+.githooks/pre-merge-commit
+.githooks/pre-commit
+
+exec
+/bin/bash -lc 'cat docs/index-md/BACKLOG.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# INDEX.md generator — backlog
+
+> Findings from building and testing the generator that fall **outside** the accepted criteria, so they did not
+> become work in the run that found them (method 3.6). Each line names the date, the run, and where it came from. EJ
+> decides what, if anything, becomes a requirement. Location agreed by EJ on 2026-10-12 (Q3 of run
+> `20261012-index-md-build`).
+
+## From run 20261012-index-md-build (2026-10-13)
+
+Sources:
+- `n4` is the blind review, `runs/20261012-index-md-build/nodes/n4-1.result.md`.
+- `n2` is the coder's "Choices not in the spec", `nodes/n2-2.result.md`.
+
+### Needs a ruling from EJ (the spec says two things)
+
+1. **"Every run prints the size" vs. an early exit** (n4 F4; n2 choice 3).
+   - B4.2 and DESIGN step 7 say the size line is printed on every run.
+   - DESIGN step 5 exits on any error before step 7 measures anything. The script follows step 5, so there is no size
+     line when entries are invalid, and none on "nothing to index", "nothing to check" or a bad rev.
+   - Decide: does "every run" mean every run that renders an index?
+
+### Silent passes (*not measured*; found by reading)
+
+2. **SHA-256 repositories** (n4 O1). `is_object_id` accepts only 40-hex ids. In a SHA-256 repo every listing is
+   dropped, and `--check` prints "nothing to check" and exits 0, so a wrong `INDEX.md` would pass.
+3. **The real-repo test checks nothing yet** (n4 O4). `--check HEAD` on this repo passes as "nothing to check" until
+   `project-memory/` exists. It starts guarding only when the first entry is committed.
+
+### Hardening
+
+4. **A rev that starts with `-`** is passed to git as an option (n4 O2). Guard it with `--end-of-options`.
+5. **A blank id**: `id: " "` gives the id `" "`, which is non-empty and renders `- [ ](…)` (n4 O5). Also, a
+   duplicate-id error names only the later file.
+6. **The unit tests import the tool in-process**, which may write `tools/__pycache__/` in the real repo (n4 O3).
+
+### Naming (house standard; outside the criteria)
+
+7. `gather` sorts, flags duplicates and prints. `parse_entry` also validates. `is_utf8` tests whether a string can be
+   encoded. One name, one job (n4 F6).
+
+### Choices the coder made where the spec is silent (kept; listed so EJ can see them)
+
+8. Write mode uses two `git ls-files` calls (`--cached`, then `--others`), not step 1's single call, so that untracked
+   files can be told apart.
+9. Problems go to stderr and status to stdout. Warnings end in `(warning)`.
+10. An unborn `HEAD` passes `--check` in both modes. A revision without `--check` is a usage error (exit 2).
+11. A file name that is not valid UTF-8 is reported as a problem.
+
+codex
+Two details need careful wording: an entry edit can leave the generated index unchanged, and the script’s size limits are still examples rather than measurements. I’ll account for both and make clear that regenerating the index does not resolve conflicting entry meanings.
+exec
+/bin/bash -lc 'cat .githooks/pre-commit .githooks/pre-merge-commit' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+#!/bin/sh
+# pre-commit — refuse a commit that leaves project-memory/INDEX.md out of step with its entries.
+#
+# Switch it on once per clone:   git config core.hooksPath .githooks
+#
+# Only a commit that touches the memory or the generator is checked; everything else passes straight through.
+# The check reads git objects only and writes nothing, so it cannot dirty the tree it is guarding.
+#
+# This hook is a convenience, not the guarantee: rebase, cherry-pick, fast-forward and --no-verify skip it, and
+# hooks are not cloned. `env -u NO_COLOR python3 -m pytest -q` runs the same check against the committed
+# snapshot on every change (tests/test_memory_index.py).
+set -e
+
+if [ -z "$(git diff --cached --name-only -- project-memory/ tools/memory_index.py)" ]; then
+    exit 0
+fi
+
+echo "pre-commit: project-memory/ or tools/memory_index.py changed; checking INDEX.md"
+exec python3 tools/memory_index.py --check#!/bin/sh
+exec "$(dirname "$0")/pre-commit"
+
+exec
+/bin/bash -lc "sed -n '235,264p' tests/test_memory_index.py" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+        for call in listings
+    ), calls
+    batches = [call for call in calls if "cat-file" in call]
+    assert len(batches) == 1 and "--batch" in batches[0], calls
+
+
+def test_header_reads_only_top_level_fields_and_strips_quotes(tmp_path):
+    """B2.1 — nested fields must not override top-level fields and quoted values must be stripped."""
+    repo = make_repo(tmp_path)
+    write_entry(repo, raw=(
+        "---\nid:   'D-20261012-a1'  \nkind:  \"decision\" \nstatus: 'active'\n"
+        "ignored:\n  id: nested\n  kind: fact\n  status: retired\n---\n"
+        "Use code-point order for the index.\n**Why:** reason\n"
+    ))
+    git(repo, "add", "-A")
+    result = run_index(repo)
+    assert result.returncode == 0, output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+def test_claim_ends_at_why_and_collapses_whitespace(tmp_path):
+    """B2.2 — claim lines must collapse into one sentence without Why or How text."""
+    repo = make_repo(tmp_path)
+    write_entry(repo, claim="\nUse\tcode-point\n\n order   for the index.\n")
+    git(repo, "add", "-A")
+    result = run_index(repo)
+    assert result.returncode == 0, output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+
+exec
+/bin/bash -lc "sed -n '490,557p' tests/test_memory_index.py" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+def test_size_line_counts_lines_and_utf8_bytes(tmp_path, mode):
+    """B4.1 B4.2 — every normal run must report actual line and UTF-8 byte counts against both limits."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    size_numbers(result, SINGLE_INDEX)
+
+
+def stage_overflow(repo, limit):
+    stage_single_entry(repo)
+    initial = run_index(repo)
+    assert initial.returncode == 0, output(initial)
+    max_lines, max_bytes = size_numbers(initial, SINGLE_INDEX)
+    (repo / ENTRIES / "D-one.md").unlink()
+    if limit == "lines":
+        rows = []
+        for number in range(max_lines - len(HEADER.splitlines()) + 1):
+            name = f"D-{number}.md"
+            write_entry(repo, name, id=str(number), claim="x")
+            rows.append((name, f"- [{number}](entries/{name}) decision: x\n"))
+        expected = HEADER + "".join(row for _, row in sorted(rows)).encode("utf-8")
+        assert len(expected.splitlines()) > max_lines
+    else:
+        base = HEADER + b"- [x](entries/D-x.md) decision: \n"
+        claim = "é" * (max(0, (max_bytes - len(base)) // 2) + 1)
+        write_entry(repo, "D-x.md", id="x", claim=claim)
+        expected = HEADER + f"- [x](entries/D-x.md) decision: {claim}\n".encode("utf-8")
+        assert len(expected) > max_bytes
+    git(repo, "add", "-A")
+    return expected
+
+
+@pytest.mark.parametrize("limit", ["lines", "bytes"])
+def test_overflow_is_written_whole_with_warning(tmp_path, limit):
+    """B4.1 B4.3 — an index exceeding either limit must still be written whole with a warning and exit zero."""
+    repo = make_repo(tmp_path)
+    expected = stage_overflow(repo, limit)
+    result = run_index(repo)
+    assert result.returncode == 0, output(result)
+    assert (repo / INDEX).read_bytes() == expected
+    size_numbers(result, expected)
+    assert SIZE_LINE.sub("", output(result)).strip(), "overflow must print a warning in addition to size"
+
+
+@pytest.mark.parametrize("limit", ["lines", "bytes"])
+def test_check_rejects_equal_bytes_over_size_limit(tmp_path, limit):
+    """B4.1 B4.3 C1.2 — matching index bytes must not make an oversized snapshot pass."""
+    repo = make_repo(tmp_path)
+    expected = stage_overflow(repo, limit)
+    (repo / INDEX).write_bytes(expected)
+    git(repo, "add", "-A")
+    result = run_index(repo, "--check")
+    assert result.returncode == 1, output(result)
+    size_numbers(result, expected)
+
+
+@pytest.mark.parametrize("limit", ["lines", "bytes"])
+def test_reducing_index_below_limit_clears_check(tmp_path, limit):
+    """B4.4 — reducing an oversized index must restore a passing check without approval state."""
+    repo = make_repo(tmp_path)
+    expected = stage_overflow(repo, limit)
+    (repo / INDEX).write_bytes(expected)
+    git(repo, "add", "-A")
+    result = run_index(repo, "--check")
+    assert result.returncode == 1, output(result)
+    for path in (repo / ENTRIES).iterdir():
+        path.unlink()
+
+exec
+/bin/bash -lc "sed -n '90,185p' tools/memory_index.py" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+    warnings: list[str] = field(default_factory=list)
+
+    @property
+    def is_active(self) -> bool:
+        return self.status == "active"
+
+
+def parse_header(lines: list[str]) -> tuple[dict[str, str], int | None, str | None]:
+    """Read the top-level `id:`, `kind:` and `status:` from the header block.
+
+    Line 1 must be `---` and the header ends at the next line that is exactly `---`. Indented lines are nested
+    fields, not top-level ones. Returns the fields, the index of the closing line, and the first problem.
+    """
+    if not lines or lines[0] != "---":
+        return {}, None, "no header"
+    try:
+        end = lines.index("---", 1)
+    except ValueError:
+        return {}, None, "header is not closed"
+    fields: dict[str, str] = {}
+    for line in lines[1:end]:
+        if not line or line[0].isspace():
+            continue
+        key, separator, value = line.partition(":")
+        name = key.strip()
+        if separator and name in ("id", "kind", "status"):
+            fields[name] = unquote(value)
+    return fields, end, None
+
+
+def unquote(value: str) -> str:
+    """Strip whitespace and one pair of surrounding quotes from a header value."""
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        return value[1:-1]
+    return value
+
+
+def read_claim(body: list[str]) -> tuple[str, bool]:
+    """Return the claim (the body up to `**Why:**`, blank lines dropped, whitespace runs collapsed) and whether
+    a `**Why:**` line was found."""
+    parts: list[str] = []
+    has_why = False
+    for line in body:
+        if line.startswith(WHY):
+            has_why = True
+            break
+        parts.append(" ".join(line.split()))
+    return " ".join(part for part in parts if part), has_why
+
+
+def check_content(entry: Entry) -> None:
+    """Every entry needs an id and a known status; an active entry needs a kind, a matching file prefix, a
+    `**Why:**` line and a claim. The same content problems are only warnings in an inactive entry, which gets
+    no line anyway (B2.5).
+
+    An entry git does not know about is an error in every status (B1.2): until it is staged it is not part of
+    the memory, so it can neither be checked nor indexed — naming it is what tells the writer to `git add` it.
+    """
+    if not entry.tracked:
+        entry.errors.append("not known to git, git add it first")
+    problems: list[str] = []
+    if entry.kind not in KINDS:
+        problems.append(f"kind {entry.kind!r} is not one of {' / '.join(KINDS)}")
+    elif PREFIX_KIND.get(entry.name[:1]) != entry.kind:
+        problems.append(f"kind {entry.kind!r} does not match the {entry.name[:1]}- file prefix")
+    if not entry.has_why:
+        problems.append(f"no {WHY} line")
+    if not entry.claim:
+        problems.append("empty claim")
+    if entry.is_active:
+        entry.errors.extend(problems)
+    else:
+        entry.warnings.extend(problems)
+
+
+def parse_entry(name: str, text: str, *, tracked: bool = True) -> Entry:
+    """Parse one entry's text. CRLF becomes LF; never raises."""
+    entry = Entry(name=name, tracked=tracked)
+    lines = text.replace("\r\n", "\n").split("\n")
+    fields, end, header_problem = parse_header(lines)
+    if header_problem:
+        entry.errors.append(header_problem)
+        return entry
+    entry.entry_id = fields.get("id", "")
+    entry.kind = fields.get("kind", "")
+    entry.status = fields.get("status", "")
+    entry.claim, entry.has_why = read_claim(lines[end + 1:])
+    if not entry.entry_id:
+        entry.errors.append("empty id")
+    if entry.status not in STATUSES:
+        entry.errors.append(f"status {entry.status!r} is not one of {' / '.join(STATUSES)}")
+    if not is_utf8(entry.name):
+        entry.errors.append("file name is not valid UTF-8")
+    check_content(entry)
+    return entry
+
+exec
+/bin/bash -lc "sed -n '640,658p' tests/test_memory_index.py" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+    refs_before = git(repo, "show-ref").stdout
+    result = run_index(repo, *args)
+    assert result.returncode == (0 if valid else 1), output(result)
+    paths = [path for path in repo.rglob("*") if path.is_file() and ".git" not in path.relative_to(repo).parts]
+    after = {path.relative_to(repo): (path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_ino) for path in paths}
+    assert after == before
+    assert (repo / ".git/index").read_bytes() == index_before
+    assert git(repo, "show-ref").stdout == refs_before
+
+
+def test_repository_head_passes_committed_snapshot_check(tmp_path):
+    """C2.1 C2.2 G2.3 — the real committed snapshot must pass even when commit hooks were bypassed."""
+    make_repo(tmp_path)
+    result = run_index(REPO, "--check", "HEAD")
+    assert result.returncode == 0, output(result)
+
+
+@pytest.mark.parametrize("change", ["entry", "index", "other-memory", "script"])
+def test_pre_commit_blocks_relevant_changes_with_wrong_index(tmp_path, change):
+
+codex
+I’ll leave the ID form and measured reader limits open for EJ. The report will propose that the person or agent carrying out a merge resolves entry conflicts, then regenerates the index, while preserving the existing rule for reporting decision/code mismatches.
+codex
+# INDEX.md changes to the design (codex)
+
+*proposed* — This is a proposal for EJ to decide. No files were changed and no tests were run. All new **Fails if** checks below are written by codex; they are review criteria, not independent evidence that the implementation meets them.
+
+*design* — Sources: the [accepted memory design](/home/smoke01/dev/ancient-games/docs/memory-system/SOURCE_OF_TRUTH.md), [settled vision](/home/smoke01/dev/ancient-games/docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md), and the INDEX.md [requirements](/home/smoke01/dev/ancient-games/docs/index-md/REQUIREMENTS.md) and [design](/home/smoke01/dev/ancient-games/docs/index-md/DESIGN.md).
+
+*proposed* — Requirement check: **source, unit, can it fail, basis and links — PASS** with the labels, citations and checks below. **One thing — FAIL** in the combined regeneration/commit and size/check statements; these are separated below. **Weak words — FAIL** where the ID form and reader limits remain unspecified; both remain explicitly open. **Level — PASS** when output consistency is treated as a requirement and the commands describe its method. The recommendations are design judgement, **not measured**; reconsider them when EJ decides this set.
+
+## 1. K6.2 and When to write
+
+*proposed* — **Recommendation:** Make the proposed change for every entry creation or edit, but require matching committed index content rather than an index diff when regeneration produces identical bytes.
+
+*design* — **Reason:** K6.1 says, “one line per active entry, showing its id, kind and one-line claim”; this includes lessons, observations and hypotheses, and a status change can remove a line.
+
+*proposed* — **Replace K6.2:** “After any entry is created or changed, whoever writes it regenerates `INDEX.md` immediately. This applies to every kind and every status change.”
+
+*proposed* — **Add a separate sentence to K6.2:** “The commit containing the entry change contains the index generated from that commit’s entries. If regeneration produces identical bytes, no index file change is required.”
+
+*proposed* — **K6 Fails if:** “Regenerating the index from a committed snapshot produces different bytes from that snapshot’s `INDEX.md`, or the index lists a superseded or retired entry. For K6.2’s timing, it also fails if a reviewer observes entry writing completed without regeneration.”
+
+*proposed* — **When to write — replace the Immediately row’s What cell:** “Decisions and facts, before the code. A human correction. The state of unfinished work before a handoff, an interruption or a context reduction.”
+
+*proposed* — **When to write — add a row:** **When:** “Immediately after any entry is created or changed.” **What:** “Regenerate `INDEX.md`, for every kind and every status change.”
+
+*proposed* — **Add after the table:** “The entry change and its matching generated index are committed together (K6.2). Regeneration that produces identical bytes requires no index diff.”
+
+*proposed* — **Replace K6’s Open line:** “Generator: `python3 tools/memory_index.py`, run by whoever creates or changes an entry. Stage new entries before running it. Stage the regenerated index before committing. The script does not stage or commit files.”
+
+*proposed* — **Add implementation guidance under K6:** “The committed git hooks run the snapshot check when enabled for a clone. They are a convenience, not the guarantee. The tests also check the committed snapshot when the test suite runs.”
+
+*proposed* — **Replace Still open under When to write:** “`INDEX.md` generation is described in K6; entry-file conflict resolution is described in W6. Whether a changed decision is edited in place or superseded remains proposed in K4.3.”
+
+## 2. K6.3, never hand-merge
+
+*proposed* — **Recommendation:** Add K6.3 as proposed and name whoever is carrying out the merge as the entry-conflict resolver.
+
+*design* — **Reason:** K6.1 already says, “It is never edited by hand”; resolving a conflict by editing generated lines would bypass that rule.
+
+*proposed* — **Add K6.3:** “`INDEX.md` is never hand-merged. When it conflicts, resolve the entry files first, then regenerate `INDEX.md` from those entries, stage it and complete the merge.”
+
+*proposed* — **K6.3 Fails if:** “A reviewer observes conflict resolution by hand-editing `INDEX.md`, or the merged index differs from regeneration over the merged entries.”
+
+*proposed* — **Replace W6’s Open line:** “Whoever carries out the merge resolves conflicts in the entry files and records entry changes under W4.2. This does not override Rd5.3: a reader who discovers a decision/code mismatch reports it for EJ to decide.”
+
+*proposed* — **W6 Fails if:** “An edit to an entry is lost without a conflict. It also fails if conflict resolution changes an entry without the `changed:` line required by W4.2.”
+
+*proposed* — Regeneration resolves the generated file’s content; it does not establish that the merged entries agree in meaning.
+
+## 3. Rd3.1, who checks the size
+
+*proposed* — **Recommendation:** Make the proposed wording change, while keeping the actual reader limits explicitly open.
+
+*design* — **Reason:** INDEX.md requirement C2.1 says, “`tests/test_memory_index.py` runs under the repo’s `pytest`”; this names an existing check path without inventing a build step.
+
+*proposed* — **Replace the matching line before Core requirements:** “`INDEX.md` must fit the strictest start-file limit of the agents that read it (Rd3). The generator checks its size. The tests exercise that check.”
+
+*proposed* — **Replace Rd3.1:** “`INDEX.md` fits the strictest start-file limit among the agents that read it.”
+
+*proposed* — **Add separate checking sentences to Rd3.1:** “`tools/memory_index.py` checks the index against the configured size limits; its check mode fails on overflow. `tests/test_memory_index.py` exercises the size check and checks the committed snapshot when the tests run.”
+
+*proposed* — **Add an Open line under Rd3:** “Which agents and load paths read `INDEX.md`, the units those paths limit, and their measured limits. The examples in `CACHES.md` are examples, not measured acceptance limits.”
+
+*proposed* — **Rd3 Fails if:** “`INDEX.md` exceeds a reader’s measured start-file limit. It also fails if check mode accepts an index above a configured limit, or the tests do not exercise rejection of an oversized index.”
+
+*design* — INDEX.md requirement B4.1 explicitly says its current constants come from the design’s example “until” the readers’ load paths are measured.
+
+*proposed* — Passing the script’s configured limits therefore does not yet establish that every reader can load the index. The existing test suite was inspected, not executed; its authorship was not established by this review.
+
+## 4. W1.1, the id
+
+*proposed* — **Recommendation:** Add the branch-independent allocation rule and duplicate rejection, leaving the identifier form open for EJ.
+
+*design* — **Reason:** W6.2 says, “Each agent works on its own branch or worktree”; choosing the next free number from a branch’s entries cannot account for additions on another branch.
+
+*proposed* — **Append to W1.1:** “An entry’s `id` is non-empty and unique across all entries, including superseded and retired entries.”
+
+*proposed* — **Add a separate allocation sentence:** “Writers choose new IDs without coordination between git branches; an ID is never allocated as ‘the next free number’ from the entries visible on one branch.”
+
+*proposed* — **Add a separate checking sentence:** “The index generator rejects duplicate IDs in the snapshot it reads.”
+
+*proposed* — **Add an Open line under W1:** “The form and local generation method of an entry ID.”
+
+*proposed* — **W1.1 Fails if:** “An entry has an empty ID, two entries share an ID, or a writer allocates an ID by taking the next free number from its branch. The existing filename, prefix and kind checks still apply.”
+
+*proposed* — This separates allocation from validation: checking one branch cannot establish uniqueness against unseen entries on another branch. A locally generated form still needs duplicate rejection when branches meet.
+
+## 5. W1.2 and W1.3, the format
+
+*proposed* — **Recommendation:** Adopt the explicit header boundaries and literal section markers, while retaining every existing field and section requirement.
+
+*design* — **Reason:** W1.3 already says, “The body is the claim in one or two sentences, then **Why:**, then **How to apply:**”; specifying their literal markdown spelling makes that structure readable by both people and the generator.
+
+*proposed* — **Append to W1.2:** “The file begins on its first line with `---`. The header ends at the next line containing exactly `---`.”
+
+*proposed* — **Add a separate field-format sentence:** “Header fields use `key: value` form. The `id`, `kind` and `status` fields are unindented top-level fields with their values on the same line.”
+
+*proposed* — **Add a separate parsing sentence:** “For these three fields, the generator removes surrounding whitespace and one matching pair of surrounding single or double quotes.”
+
+*proposed* — **W1.2 Fails if:** “A required field is missing, the opening or closing header delimiter is missing, or `id`, `kind` or `status` appears only as an indented field rather than a top-level field.”
+
+*proposed* — **Replace W1.3:** “The body begins after the closing header delimiter. It contains one claim in one or two sentences.”
+
+*proposed* — **Add separate section sentences:** “The claim ends at the first line beginning with the literal markdown `**Why:**`. The reason follows that marker. A later line begins with the literal markdown `**How to apply:**`, followed by how to apply the claim.”
+
+*proposed* — **W1.3 Fails if:** “The claim is empty, a reviewer finds more than one claim, or either section marker is missing, indented, spelled differently or placed out of order.”
+
+*proposed* — **What will be put in — replace its body-description sentence:** “Its header uses the delimiters and field format in W1.2. Its body contains the claim, then the literal `**Why:**` marker, then the literal `**How to apply:**` marker, as specified in W1.3.”
+
+*proposed* — The generator’s limited validation does not reduce W1’s requirements. In particular, accepting an entry for indexing does not establish that its author, evidence, change log and How to apply section are present.
+
+## What could go wrong
+
+*proposed* — Two branches edit the same decision: one changes its claim and the other changes its How to apply section. Git merges the different lines cleanly. Regeneration produces a matching index and the snapshot check passes, but the entry now gives contradictory instructions.
+
+*design* — The accepted design warns, “a clean merge does not mean the file is consistent.”
+
+*proposed* — This case requires reading the merged entry. Neither regeneration nor a matching index proves semantic consistency.
+
+## Questions for EJ
+
+*proposed* — What locally generated ID form should W1.1 name—for example, a randomly generated UUID? The form remains open in this proposal.
+
+*proposed* — Which agents and load paths must read `INDEX.md`? Their measured limits and counting units would replace Rd3’s open line and the script’s example limits.
+tokens used
+51,507

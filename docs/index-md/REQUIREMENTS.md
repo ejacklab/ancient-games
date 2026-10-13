@@ -30,10 +30,10 @@
 
 **B2 — What it parses** (p steps 3–4; r opencode 5, 6, 8, 9; agy 6, 7)
 - **B2.1** The header starts on line 1 with `---` and ends at the next line that is exactly `---`. Inside it, read
-  only top-level `id:`, `kind:` and `status:` as `key: value`, stripping whitespace and surrounding quotes. *Proposed*:
-  the design names the fields but not this format.
+  only top-level `id:`, `kind:` and `status:` as `key: value`, stripping whitespace and surrounding quotes. The format
+  is W1.2's.
 - **B2.2** The claim is the body after the header, up to the first line that starts with `**Why:**`. Blank lines are
-  dropped and runs of whitespace become one space. *Proposed:* W1.3 fixes the spelling `**Why:**`.
+  dropped and runs of whitespace become one space. The spelling `**Why:**` is W1.3's.
 - **B2.3** Every entry must have a readable header with a non-empty `id` and a `status` of `active`, `superseded` or
   `retired`. No two entries share an `id`.
 - **B2.4** An **active** entry must also have: a `kind` from the five (decision, fact, lesson, observation,
@@ -93,7 +93,7 @@
 
 ## G — Git: when it runs, and how branches meet
 
-**G1 — Who runs it** (p step 10; d K6.2, *proposed* change)
+**G1 — Who runs it** (p step 10; d K6.2)
 - **G1.1** Whoever creates or changes any entry file runs the script, of every kind and for every status change, and
   commits `INDEX.md` in the same commit as the entry.
 - **G1.2** This is written as an instruction where agents read it: `CLAUDE.md` today, because `AGENTS.md` only points
@@ -108,28 +108,21 @@
   the tests (C2) catch what it misses (r codex 1–2, opencode 1–2, agy 3).
 - **Fails if** a commit through the hook leaves a wrong `INDEX.md`, or a change to the script alone skips the check.
 
-**G3 — Merging** (p step 13; d W6; *proposed* new K6.3)
+**G3 — Merging** (p step 13; d W6, K6.3)
 - **G3.1** `INDEX.md` merges as normal text. There is no `merge=union`, no `merge=binary` and no custom merge driver.
 - **G3.2** When `INDEX.md` conflicts, nobody edits it. Resolve the entry files first, then run the script, stage
   `INDEX.md` and commit.
 - **Fails if** a merged `INDEX.md` differs from what the script builds from the merged entries.
 
-**G4 — Ids across branches** (p must-not 5; d W1.1, *proposed* change)
-- **G4.1** An entry's `id` is unique without coordination between branches. It is never "the next free number". The
-  form (a date, a hash or a nonce) is open.
+**G4 — Ids across branches** (p must-not 5; d W1.1)
+- **G4.1** An entry's `id` is unique without coordination between branches. It is never "the next free number". Its
+  form is W1.1's: `DD-MM-xxxxxx-YYYY` (EJ, 2026-10-13).
 - **G4.2** The script rejects a duplicate id (B2.3); it does not choose the form.
 - **Fails if** two branches can each create the same id and the clash shows only after a merge.
 
 ## Open, for EJ
 
 1. **The categories B / C / G** are proposed.
-2. **G4.1:** the form of an entry id.
-3. **B4:** which agents and load paths read `INDEX.md`; bytes or characters.
-4. **The design changes these requirements imply in `SOURCE_OF_TRUTH.md`:**
-   - K6.2 becomes "any entry, same commit", and the "When to write" table changes the same way;
-   - a new K6.3: never hand-merge `INDEX.md`;
-   - Rd3.1 "the build checks it" becomes "the script checks it, and the tests run the check";
-   - W1.1 gets the id rule;
-   - W1.2 and W1.3 get the header format and the `**Why:**` spelling.
+2. **B4:** which agents and load paths read `INDEX.md`; bytes or characters.
 
-   None of these is made yet.
+*The design changes these requirements implied in `SOURCE_OF_TRUTH.md` were made on 2026-10-13 (K6.2, K6.3, Rd3.1, W1.1–W1.3; run `runs/20261013-sot-index-md-changes/`).*

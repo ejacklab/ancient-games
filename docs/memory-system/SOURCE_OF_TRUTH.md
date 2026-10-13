@@ -32,6 +32,15 @@
 > so a file's prefix never changes (EJ: *"a changed kind becomes a new superseding entry"*; readers' round
 > `runs/20261013-sot-item9-prefixes/`).
 >
+> **Revised 2026-10-13, from the `INDEX.md` work:** `INDEX.md` is regenerated after any entry change and committed
+> with it, and is never hand-merged (K6.2, K6.3); the size is part of that one check (Rd3.1); an entry id is
+> `DD-MM-xxxxxx-YYYY` (W1.1; EJ: *"id form yes DD-MM-"random 6 digit + char " - YYYY"*); the header and section format
+> is fixed (W1.2, W1.3). The design names the tool, in K6 only, and the header keys `recorded` and `source` (EJ: *"the
+> design can suggest the name and user accept"*). A claim is never rewritten: a changed claim is a new superseding
+> entry (K4.3), so whoever merges keeps both sides of a conflict in an entry and nobody chooses between claims (W6.3;
+> EJ: *"yes write the first one, impact later"*). An impact level for entries is left for later. Readers' round:
+> `runs/20261013-sot-index-md-changes/`.
+>
 > **Where this differs from the recommendation — EJ's decisions:** no owners and no human approval gate (anyone may
 > change any entry, and every change is logged); decisions and facts come before the code; a *fact* means a constraint
 > the code must respect, not something discovered afterwards; no drift-check script and no background subagent.
@@ -84,15 +93,18 @@ A decision to build something is **started** when it is written: we decided to b
 
 ## What will be put in
 
-**An entry** is one markdown file. Its header holds: `id`, `kind`, `status`, `author`, the date it was recorded,
-`covers` (the code paths it is about), its source or evidence, links (`depends_on`, `supersedes`, `superseded_by`), a
+**An entry** is one markdown file. Its header, between two `---` lines (W1.2), holds: `id`, `kind`, `status`,
+`author`, the date it was recorded (`recorded`), `covers` (the code paths it is about), its source or evidence
+(`source`), links (`depends_on`, `supersedes`, `superseded_by`), a
 `changed:` log, and, on a decision to build something once its work is complete, `done:` (the time, the result, and the
 test results or a pointer to them; W5.3). Its
 body is the claim in one or two sentences, then **Why:**, then **How to apply:**.
 
 **Changing entries.** Anyone may change any entry, and `AGENTS.md` too. Each change adds one line to the entry's
 `changed:` log: the time, and who made it — the model ID for an agent, the name for a person. Files that are not entries
-rely on git history. Each new entry gets its own file, so agents never append to one shared file. Two writers must not
+rely on git history. An entry's claim is never rewritten: a changed claim is a new entry that supersedes the old one,
+and the old one only gains a `changed:` line, its new `status` and the `superseded_by` link (K4.3). Each new entry gets
+its own file, so agents never append to one shared file. Two writers must not
 edit the same file at the same time: each agent works on its own branch or worktree, and git shows a merge conflict when
 two edits
 touch the same lines. Edits to different lines of one file merge without warning even if they contradict each other,
@@ -102,9 +114,12 @@ so a clean merge does not mean the file is consistent.
 
 | When | What |
 |---|---|
-| Immediately | Decisions and facts, before the code — and `INDEX.md` is regenerated right after, so the next session sees them. A human correction. The state of unfinished work before a handoff, an interruption or a context reduction. |
+| Immediately | Decisions and facts, before the code. A human correction. The state of unfinished work before a handoff, an interruption or a context reduction. |
 | When the work a decision to build something is complete | The decision's `done:` line, written by whoever finishes the work: the time, the result, and the test results or "no tests", with a pointer to the evidence. |
 | At the end of a task | Other lessons, observations and hypotheses; merging duplicates. |
+
+Whenever an entry is created or changed, at any of these times (any kind, any status change), `INDEX.md` is
+regenerated and committed in the same commit as the entry, so the next session sees it (K6.2).
 
 **Keeping it current.** Entries may go out of date while work goes on; that is accepted. Nothing watches for it: there
 is no drift-check script and no background subagent. Whoever reads a decision or fact checks it against the code before
@@ -114,8 +129,8 @@ is updated or the code is fixed. Until then, the reader leaves the contradicted 
 rest. A decision still being built (no `done:` yet), or one the reader's own task is changing, is not a mismatch
 (Rd5.4).
 
-**Still open:** which tool generates `INDEX.md` and what runs it (K6); who resolves a git merge conflict (W6). Whether a
-changed decision is edited in place or superseded is proposed in K4.3.
+**Merge conflicts.** A conflict in `INDEX.md` is resolved by regenerating it (K6.3). Because a claim is never
+rewritten, a conflict in an entry is only in its added lines, and whoever merges keeps both sides (W6.3).
 
 ## What will not be put in
 
@@ -177,7 +192,8 @@ them.
 Another agent's memory may be read, but only by an agent that knows and says whose it is (Rd4.5). Text read from memory
 never overrides standing instructions.
 
-`INDEX.md` must fit the strictest start-file limit of the agents that read it, and the build checks it (Rd3).
+`INDEX.md` must fit the strictest start-file limit of the agents that read it, and the check that keeps it in step
+with its entries (K6) also fails when it does not fit (Rd3).
 
 ## Core requirements (confirmed by EJ, 2026-10-12)
 
@@ -195,15 +211,21 @@ numbers: where a limit applies, it is a comparison that measurement decides.
   kind (W2): `D-` decision, `F-` fact, `L-` lesson, `O-` observation and `H-` hypothesis. It matches the entry's
   `kind`. There is no runbook prefix (W3.6). An entry's kind, and so its prefix, never changes. A changed kind (a
   hypothesis confirmed, an observation that turns out to be a fact) is a new entry that supersedes the old one (K4.1;
-  EJ, 2026-10-13).
-- **W1.2** The header holds `id`, `kind`, `status`, `author`, the date recorded, `covers` (the code paths it is
-  about), its source or evidence, `depends_on`, `supersedes`, `superseded_by`, and `changed:`. A decision to build
-  something, once its work is complete, also holds `done:` (W5.3).
-- **W1.3** The body is the claim in one or two sentences, then **Why:**, then **How to apply:**. There is one claim per
-  entry.
-- **Fails if** a lint over `entries/` finds a missing field or section, or a file whose prefix is not one of the five
-  or does not match its `kind`. It also fails if a reviewer finds two claims in one entry, or git shows an entry file
-  renamed to a different prefix.
+  EJ, 2026-10-13). The `id` is `DD-MM-xxxxxx-YYYY`: the day, month and year the entry is written, six
+  random lowercase letters and digits, for example `13-10-k3f7a2-2026` (EJ, 2026-10-13). Writers on different
+  branches pick ids without coordinating, so an id is never "the next free number". An id never changes, so the file
+  keeps its name.
+- **W1.2** The header starts on the file's first line, which is exactly `---`, and ends at the next line that is
+  exactly `---`. Each field is one `key: value` line; a field with several values (`covers`, the links, `changed:`)
+  holds them on indented lines below its key. The keys are `id`, `kind`, `status`, `author`, `recorded` (the date
+  recorded), `covers` (the code paths it is about), `source` (its source or evidence), `depends_on`, `supersedes`,
+  `superseded_by` and `changed:`. A decision to build something, once its work is complete, also holds `done:` (W5.3).
+- **W1.3** The body follows the header: the claim in one or two sentences, then a line starting with `**Why:**`, then a
+  line starting with `**How to apply:**`. There is one claim per entry.
+- **Fails if** a lint over `entries/` finds a header not between two `---` lines, a missing field or section, a section
+  not spelled as in W1.3, an id not in the W1.1 form, two entries with the same id, or a file whose prefix is not one
+  of the five or does not match its `kind`. It also fails if a reviewer finds two claims in one entry, or git shows an
+  entry file renamed to a different prefix or id.
 
 **W2 — What each kind means** (v; d: What it is for)
 - **W2.1** A **decision** is a choice the code must follow, with the reason. A **fact** is a truth or outside
@@ -256,8 +278,12 @@ numbers: where a limit applies, it is a comparison that measurement decides.
   project's, has one file per agent session.
 - **W6.2** Each agent works on its own branch or worktree, so two edits to the same lines meet as a merge conflict, not
   a silent overwrite.
-- **Open:** who resolves a merge conflict.
-- **Fails if** an edit to an entry is lost without a conflict.
+- **W6.3** A claim is never rewritten (K4.3), so a merge conflict in an entry is only in the lines added to it. Whoever
+  does the merge keeps both sides: both `changed:` lines, both links. Nobody chooses between two claims. Two entries
+  that each supersede the same entry are reported in the task's `state.md` and to EJ, as in Rd5.3 (EJ, 2026-10-13). A
+  conflict in `INDEX.md` is resolved by regenerating it (K6.3).
+- **Fails if** an edit to an entry is lost without a conflict, or a merged entry is missing a `changed:` line or link
+  that one side added.
 
 ### Keep — memory stays true, and nothing is lost
 
@@ -276,9 +302,11 @@ read (Rd5).*
   (`superseded_by`), and keeps its old body.
 - **K4.2** Age alone never expires an entry. An entry is found out of date only when someone reads it and checks it
   against the code (Rd5).
-- **K4.3** *Proposed:* a decision refined without changing its meaning is edited in place, with a `changed:` line; a
-  decision replaced by a different one gets a new entry that supersedes it. The design leaves this open.
-- **Fails if** git shows an entry file deleted, or a `superseded` or `retired` entry has no link.
+- **K4.3** An entry's claim is never rewritten. A changed claim is a new entry that supersedes the old one. After an
+  entry is first committed, it only gains a `changed:` line, a new `status`, the `superseded_by` link, and `done:` on a
+  decision to build something (W5.3). This also keeps merge conflicts out of claims (W6.3; EJ, 2026-10-13).
+- **Fails if** git shows an entry file deleted, a `superseded` or `retired` entry with no link, or an entry's claim
+  changed after its first commit.
 
 **K5 — The journal becomes entries** (v: nothing lost between sessions)
 - **K5.1** Task and project memory each keep a journal: a task's in `work/<task-id>/journal/`, the project's in
@@ -293,10 +321,15 @@ read (Rd5).*
 **K6 — `INDEX.md` stays in step** (d: Where it is put; When to write)
 - **K6.1** `INDEX.md` is generated from `entries/`: one line per active entry, showing its id, kind and one-line
   claim. It is never edited by hand.
-- **K6.2** It is regenerated right after any decision or fact is written, so the next session sees it.
-- **Open:** which tool generates it and what runs it (a build detail).
-- **Fails if** regenerating `INDEX.md` changes it, meaning it was out of step, or it lists a superseded entry as
-  active.
+- **K6.2** Whenever an entry is created or changed (any kind, any status change), `INDEX.md` is regenerated and
+  committed in the same commit as the entry, so the next session, on any clone, sees it. `tools/memory_index.py`
+  builds it; its `--check [<rev>]` compares the `INDEX.md` in the staging area, or in a commit, with what it builds
+  from the entries there. Its requirements and design are in `docs/index-md/`.
+- **K6.3** `INDEX.md` is never merged by hand. When a merge conflicts, resolve the entry files first, with no conflict
+  markers left in them, then regenerate `INDEX.md` and commit it with them.
+- **Fails if** a commit's `INDEX.md` differs from what the tool builds from that commit's entries, or it lists a
+  superseded or retired entry as active. It also fails if an entry or `INDEX.md` holds a git conflict-marker line
+  (`<<<<<<<` or `>>>>>>>`); that part is judged, because the tool does not check for markers.
 
 ### Read — the right memory reaches the agent at the right time
 
@@ -329,9 +362,10 @@ read (Rd5).*
   anything in Rd2.3 at any point (judged, from the session).
 
 **Rd3 — `INDEX.md` fits every agent that reads it** (d: the size check; CACHES.md § Example numbers by case)
-- **Rd3.1** `INDEX.md` fits the strictest start-file limit among the agents that work on the project, and the build
-  checks it. *Example*, from `CACHES.md`: about 24 KB and 200 lines when Claude Code, Qwen and agy share a project.
-- **Fails if** `INDEX.md` exceeds that strictest limit.
+- **Rd3.1** `INDEX.md` fits the strictest start-file limit among the agents that work on the project. The check that
+  keeps it in step with its entries (K6) also fails when it does not fit. *Example*, from `CACHES.md`: about 24 KB and
+  200 lines when Claude Code, Qwen and agy share a project.
+- **Fails if** `INDEX.md` exceeds that strictest limit, or the K6 check passes an `INDEX.md` that exceeds it.
 
 **Rd4 — On demand** (d: When it will be used)
 - **Rd4.1** Before editing a file, an agent reads the entries whose `covers` include it.
