@@ -1,0 +1,55 @@
+# 范蠡 (Fan Li) — Fixing the 20 evaluator findings
+
+## Answer
+Fix the findings from the inside out in four strict groups, beginning by steadying what is tilting (the false-PASS leaks F1, F5, F4, and self-blindness F3), then securing workspace and state borders (F12, F10, F8, F2, F11), then containing runners and defining loop boundaries (F9, F6, F7), and touching low housekeeping (F13–F20) only if the working session allows. If time runs short in this single session, discard the low findings and complex multi-agent loop extensions entirely to ensure the core defensive promise never shifts.
+
+## How I decided
+1. **Steady what is tilting before regulating ordinary affairs (my #2).** In state affairs, there is keeping what is full, steadying what is tilting, and regulating affairs: 「夫國家之事，有持盈，有定傾，有節事。」/「持盈者與天，定傾者與人，節事者與地。」 (`quoted`). The evaluator's core is currently tilting where invalid results yield false confidence: an empty spec passes (F1), a crashing or hanging mutant awards a PASS (F5), a dirty product copy passes restoration (F4), and hyphenated case citations are dropped so the tool cannot evaluate itself (F3). These four corrupt the primary verdict, so steadying them comes before all else.
+2. **The core plan does not shift (my #5).** The plan made in the council hall must not be lost on the field: 「天節固然，唯謀不遷。」 / 「夫謀之廊廟，失之中原，其可乎？」 (`quoted`). The evaluator's founding promise is: never say PASS without proof; never say FAIL without a repro; missing proof must never become PASS. Any finding that allows an empty set to answer MEETS (F1), or turns a broken pytest process into a mutant kill (F5), throws away the plan. These must be sealed without compromise.
+3. **Examine the preparations until defenses cannot be breached (my #18).** Asked what makes it possible to fight, I asked: 「審備則可以戰乎？」 (`quoted`). The commentator notes this means defensive preparations so close-knit they cannot be broken into. The environment and data integrity (F12, F10, F8, F2, F11) form the fortress: if the workspace leaks product tests (F8), if reruns retain stale model proofs (F10), if `runId` escapes the directory (F12), or if the judge is secretly handed the answer key (F2), no verdict is trustworthy.
+4. **Separate internal governance from external boundaries (my #14).** Inside the borders belongs to one competence; outside the borders and decisive engagement belongs to another: 「四封之內，百姓之事，蠡不如種也。四封之外，敵國之制，立斷之事，種亦不如蠡也。」 (`quoted`). In this architecture, internal decision scripts (`verdict.py`, `probe_matrix.py`, `workspace.py`) must be fixed first by deterministic rules. External execution boundaries (Codex sandboxing in F9, runner communication in F17, F19) and cross-session loops (F6, F7) belong to outer mechanics.
+5. **Do not force what has not matured, and stop when the count is exhausted (my #3, my #10).** When the time has not come, growth cannot be forced: 「時不至，不可彊生；事不究，不可彊成。」 (`quoted`). Furthermore: 「無過天極，究數而止。」 (`quoted`). EJ has set a hard constraint: about one working session. Full repair loops (F6) and fresh-session re-judging (F7) require complex multi-step state orchestration. If trying to engineer new workflow protocols risks exceeding the session's limit, we must complete only the safe, bounded exit (voiding to UNKNOWN) rather than forcing an immature loop into production.
+6. **The Order of Fixes (my reading, synthesising my #2, my #5, my #18, my #10):**
+   - **Group 1: Core Verdict Defense (Fix first):** F1, F5, F4, F3. Fix the false PASSes and restore the citation parser.
+   - **Group 2: Isolation and State Cleanliness (Fix second):** F12, F10, F8, F2, F11. Contain `runId`, clean stale artifacts on rerun, exclude test files recursively, strip plant clues from judge input, and catch malformed JSON gracefully.
+   - **Group 3: Sandboxing and Workflow Loop Contracts (Fix third):** F9, F6, F7. Restrict runner sandboxes; bound repair and re-judging loops.
+   - **Group 4: Housekeeping and Observability (Fix last, or defer):** F13, F14, F15, F16, F17, F18, F19, F20.
+7. **Approach for High and Medium findings (my reading, guided by my #5, my #18, my #14):**
+   - **F1 (`verdict.py`):** Guard `all(...)`: if `len(requirement_rows) == 0`, `meets` must evaluate to `False` (or UNKNOWN), never `True`. Add a sabotage test verifying a 0-requirement run does not return MEETS.
+   - **F2 (`model_io.py`):** Strip `plant_case` entirely from `judge-input.json`. Keep the planted identity strictly in the evaluator's internal verification state so the judge reads only the code blind.
+   - **F3 (`probe_matrix.py`):** Update the citation regex from `[A-Za-z][A-Za-z0-9.]*-F[0-9]+` to support hyphenated group names, e.g. `[A-Za-z][A-Za-z0-9._-]*-[Ff][0-9]+`. Verify with probes citing `EV-P1-F2`.
+   - **F4 (`verdict.py`, `probe_matrix.py`):** Take the product workspace baseline hash *before* running any probes. In `verdict.py`, change `if matrix.get("restored") is False:` to strict verification: `if matrix.get("restored") is not True:`.
+   - **F5 (`probe_matrix.py`, `verdict.py`):** Distinguish test assertion failures from process timeouts and execution crashes. In `probe_matrix.py`, mark timeouts or unhandled test crashes as `error` or `invalid`, not `fail`. In `verdict.py`, count a mutant killed only when a probe produces an assertion failure, not when pytest crashes or times out.
+   - **F6 (Workflow / Contract):** In accordance with my #10 (stop when the count is exhausted), add at most a single bounded repair pass if the runner harness allows; if unfaithful after one pass (or if loop contracts cannot be finished in the session), void the confirmation and mark UNKNOWN, never PASS.
+   - **F7 (Workflow / Contract):** When a plant is missed, trigger at most one fresh session rerun with an alternate planted case. If that rerun misses or fails, set verdict to UNKNOWN.
+   - **F8 (`workspace.py`):** Replace shallow top-level `tests/` exclusion with recursive matching (`**/tests/**`, `**/*test*.py`, `**/conftest.py`, build notes). Ensure CLI `--exclude` arguments append to the default exclusions instead of replacing them.
+   - **F9 (Codex / Runner):** Confine Codex's sandbox working directory strictly to the specific mutant directory (`-C <mutant_dir>`) rather than repo root. Execute probes with constrained privileges and no write access to product paths.
+   - **F10 (`workspace.py`):** On rerun of an existing `runId`, purge all stale stage outputs (`mutants.json`, `probes/`, `confirm.json`, `judge-*.json`, `matrix.json`, `verdict.json`) before executing new steps.
+   - **F11 (`verdict.py`, `model_io.py`):** Validate model-written JSON against a strict schema. Catch parse and type errors, log the malformed entry, mark the affected requirement UNKNOWN, and exit with code 2 rather than unhandled traceback.
+   - **F12 (Workflow):** Validate `runId` against strict path characters (`^[a-zA-Z0-9_-]+$`) and resolve the destination to ensure it remains strictly contained inside `runs/`.
+8. **Know what can be abandoned when resources are constrained (my #17).** The reason to send the one who can part with wealth is that they can let money go when necessary: 「固爲其能棄財故也」 (`quoted`). In a single working session, EJ must be willing to abandon Group 4 (low findings F13–F20) without grief if Groups 1 and 2 consume the available hours.
+
+## What I need to know
+- If EJ expects the single working session to implement the full workflow coordination scripts for multi-turn repair (F6) and fresh re-judging sessions (F7), then workflow data contracts must be extended first; if EJ only requires that unfaithful probes and missed plants safely fail to UNKNOWN today without false PASSes, then workflow changes can be minimal.
+- If any product source directory legitimately contains the token `test` in its non-test module names (e.g. `speed_test_engine.py`), then F8's exclusion filter must match directory structure specifically rather than broad filename wildcards.
+- If EJ intentionally relies on reusing existing `runId` directories to inject manual inputs, then F10 must specifically delete generated stage files rather than wiping the entire directory tree.
+
+## Costs and risks
+- **Fixes that risk breaking existing functionality (my reading):**
+  - **F5 fix (distinguishing mutant crashes from assertion failures):** Risks turning mutants that currently count as killed (such as mutants raising unhandled exceptions) into UNKNOWN. *How to notice:* Run calibration against the 6 seeded faults; if detection drops below 5 of 6, verify whether any seeded fault relies on syntax crashes.
+  - **F8 fix (recursive test exclusion):** Risks accidentally excluding product source files if product code contains the word `test`. *How to notice:* Run product probes; import errors or missing module errors will immediately appear.
+  - **F3 fix (citation regex expansion):** Risks matching unintended text tokens in test docstrings as requirement IDs. *How to notice:* Run `probe_matrix.py` on the clean probe suite and check whether unexpected spurious IDs appear in the citation map.
+  - **F4 fix (stricter workspace restoration):** Probes that create benign temporary cache files (like `.pytest_cache`) could trigger false restoration alarms. *How to notice:* Clean product baseline check will flag `restored: false`.
+- **The cost of holding the plan (my #5):** Tightening F1, F4, F5, and F11 will cause tests and runs that previously appeared green to report UNKNOWN or FAIL. This reduces the apparent PASS rate, but restores truth.
+- **The risk of exceeding the limit (my #10):** Rushing complex multi-agent repair and re-judging loops (F6, F7) in this session risks creating unstable workflow states. Stopping when the count is exhausted means accepting UNKNOWN verdicts for unfaithful probes until a dedicated session builds the loops.
+- **The risk of hesitation (my #4):** Having obtained the time, do not slacken: 「得時無怠，時不再來，天予不取，反為之災。」 (`quoted`). The three high findings F1, F3, F5 are already confirmed; failing to land their sabotage tests immediately risks allowing invalid calibration to compound.
+
+## How we would know I was right
+1. **Existing tests hold:** All 762 existing tests pass without weakening any frozen test files.
+2. **Sabotage verification passes:** Each implemented fix has an accompanying sabotage test that fails when the fix is reverted and passes when applied.
+3. **Confirmed bugs invert:**
+   - An empty requirements specification produces MEETS: false under `verdict.py` (F1).
+   - A mutant that hangs or produces a syntax crash does not satisfy mutant killing and does not yield PASS (F5).
+   - Self-evaluation on the evaluator's own specification with hyphenated IDs (e.g. `EV-P1-F2`) extracts valid citations and eliminates spurious UNKNOWNs (F3).
+4. **Calibration preserved:** The evaluator catches at least 5 of 6 seeded faults on the real product without relying on mutant timeouts.
+5. **Session bounded:** Groups 1 and 2 are fully committed and verified within the single working session.

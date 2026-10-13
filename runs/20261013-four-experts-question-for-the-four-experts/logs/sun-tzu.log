@@ -1,0 +1,448 @@
+dsh: reasoning:
+Let me read the required files: the seat list and identity.
+dsh: reasoning:
+The brief asks me to be Sun Tzu and answer the question. This is a persona/expert answer task. I need to write a final message answer only (no files). Let me re-read the list fully — output capped at 303 lines; there are more lines? It said output capped showing lines 1-303. Let me read the rest (from 304).
+
+Let me check the remainder of the list file.
+dsh: reasoning:
+Now I need to answer the question as Sun Tzu, deciding through the rules. The question: how should we fix the 20 findings:
+1. order to fix
+2. approach for each high and medium finding
+3. which fixes risk breaking something else, and how we'd notice
+
+I should decide through my rules, citing items. This is a pure reasoning/writing task. Let me think carefully.
+
+First, let me consider whether I need more facts about the code. The brief says "Do not invent facts. If the answer depends on something you were not given... list it under 'What I need to know' and answer conditionally." The question is about order and approach for fixing 20 findings in an evaluator. I could inspect the actual repo? The brief says "You are Sun Tzu... Write exactly this, no preamble... Do not write files; your final message is the answer." It doesn't forbid reading the code. But the question is answerable from the findings list. However, to give grounded advice about which fixes risk breaking something, I might want to look at the code. But the role is an expert giving advice based on the list. The brief says the file:line refers to the evaluator's code. I'm in the repo. Hmm. But the question explicitly is a consulting question, and "Do not invent facts" — I could verify. But the seat's value is rules applied. Let me consider: The task is to answer as the expert, using my list. The list is about strategy. I should not over-engineer. But grounding in the actual code could help me give accurate risk analysis. However, the brief was clearly designed as a single-shot answer from the seat, with the 20 findings as the given facts. The "question" says "the tool" is described. Reading the code might help but also could be a distraction. The instruction "Do not write files; your final message is the answer" suggests no artifact. I think a good answer uses the given facts, with conditional statements where needed.
+
+Let me think about the actual strategic recommendation using Sun Tzu's rules.
+
+The 20 findings. High: F1 (empty requirements -> MEETS yes: false PASS). F2 (judge told plant_case). F3 (citation regex can't match hyphenated group ids -> self-evaluation impossible). Medium: F4 (restored missing counts as restored; baseline hash after product run), F5 (timeout/no report marks all fail -> PASS on mutant), F6 (no repair round), F7 (no rerun of plant), F8 (blind workspace leaks tests), F9 (sandbox/briefs-only isolation), F10 (stale model files on rerun), F11 (malformed model JSON -> traceback), F12 (runId path traversal). Low: F13-F20.
+
+The question asks:
+1. order
+2. approach for each high and medium finding
+3. which fixes risk breaking something else and how we'd notice.
+
+Sun Tzu's decision rules relevant:
+- #1 Reckon before battle: count before you commit. Five matters, seven comparisons. For this, the "count" is: establish the facts/measurements before fixing. Also the 度/量/數/稱/勝 chain. So first: measure the current state — write the sabotage tests, measure each finding's blast radius, count the findings by what they touch.
+- #2 Make yourself unbeatable first; win then seek battle: fix the self-protection first. The evaluator's own trustworthiness: fixes that prevent false PASS and false FAIL before adding features. Make yourself unbeatable: the evaluator cannot evaluate itself (F3) — fix that. Actually "unbeatable" in this context = the tool's core promise. Prioritize the fixes that make the tool not-lie (false PASS/FAIL) over its convenience/features.
+- #3 Whole over broken: strike plans first, walled cities last. This maps to: prefer small, whole changes over breaking rewrites. Attack the "plans" (the contract/design) first, the "walled cities" (the frozen tests, the risky rewrites) last. Also: the cheapest/highest-leverage fixes first, the expensive dangerous ones last.
+- #4 Know whether you can fight; know the other side and yourself: know the codebase and yourself. Fixes need the knowledge of what each finding touches. "Knowing the other side and yourself." 
+- #5 Move only on advantage, never from anger: don't fix out of annoyance/fear; move when the fix has a test (advantage) and stop when it doesn't. Don't rush a big rewrite because F1 scared us.
+- #6 Mix harm into benefit: for each fix, state the harm/risk.
+- #7 Deception: For a security/integrity problem (F9, F12), don't rely on the other side not attacking — hmm, that's #2/#9. Deception: the evaluator's blind-workspace promise is a "form" — but deception is for enemies. Maybe use #7 for: the F2 judge being told the plant_case is like revealing your hand; to fix, make yourself formless (don't hand the judge the answer). Actually #10 avoid the solid, strike the empty; have no constant form: the judge should be "formless" — the workflow should not tell the judge which case is planted. That's a nice mapping.
+- #8 Value victory not duration; speed: finish in one session. So time-box; the requirements say ~one working session. Prioritize, don't gold-plate. Also "take provisions from the enemy" — reuse existing test infrastructure/commands rather than building new ones. Hmm.
+- #9 Bring the other side to you; do not be brought: make the fixes conform to the existing data contract/tests rather than chasing each finding on its own terms. Or: fix in a controlled order where each fix is awaited (you set the tempo).
+- #10 Avoid solid, strike empty: attack the weak spots. Maybe: fix the root causes (shared weaknesses) rather than each symptom? F4/F5/F11 all in verdict/probe_matrix robustness -> one "malformed/absent data -> UNKNOWN/exit 2" path strikes multiple findings at once. That's striking the empty (the common root) rather than the solid (each finding separately).
+- #11 Foreknowledge from people, pay for it: The findings came from a blind review and confirmed by the COO. Need to know things from people — get the COO's confirmation for the unconfirmed? Actually F1, F3, F5 confirmed. The rest are read-only findings, unconfirmed. "Foreknowledge... must be got from people who know the enemy's situation." So before fixing, confirm the unconfirmed findings by running/observing (cheap: reproduce each). Pay for it — spend the effort.
+- #12 Seek it in 勢: change conditions not people. Maybe: design the fix so the structure prevents the failure (e.g., verdict default UNKNOWN), rather than relying on the model being careful.
+- #13 Not every road taken: not every finding needs a fix this session. "there are roads not to be taken." Some lows can be deferred/out of scope. But the question says fix the 20 — however it asks order and approach for high and medium; low not asked for approach. Sun Tzu's #13 supports: some of the 20 are "roads not to be taken" this round — name them.
+- #14 Choose action by ratio of forces: sizing — the effort vs. the risk. For each finding, choose the approach by ratio: the one-line guard vs. the architectural change.
+- #15 General's faults: five dangers, six defeats. This maps beautifully to: the evaluator's own design faults (false PASS from empty list, false PASS from timeout) are the general's faults, not heaven's disasters — internal, each with a cause. Fix the causes.
+- #16 Orders clear first then enforced: write the test/contract first, then enforce. The house rule: a fix counts only with a sabotage test. Also, the data contract must be clear (F6 says data contract has none).
+- #17 Learn by probing and signs: reproduce each finding (probe) before fixing; read signs (the failing tests, tracebacks).
+- #18 Spirit/heart/strength/change: avoid the keen, strike when it flags — little relevance. Maybe: don't fix when tired; sequence hard fixes after easy ones? Or attack the fresh danger first.
+- #19 Name the ground, act as prescribed: each finding is a different "ground" — classify by the type of defect and act per the type; troops with no way out fight. Maybe map high/medium/low to grounds.
+- #20 Which house falls first: judge by the unit/tax/what they breed — prioritizing by the "tax base"/cost structure. Hmm: judge which finding will cause the most damage by what it "breeds" — i.e., which defect propagates. F3 (cannot evaluate itself) and F1 (false MEETS) are the ones that "breed" — they undermine every result. Actually F3 means the evaluator can't evaluate itself (hyphenated ids) — that's a broad failure. F1's empty list. F5's timeout-to-PASS. These breed false confidence across all cases.
+
+This is a rich mapping. I should pick a focused set of rules and give a concrete ordered plan.
+
+Let me design the answer.
+
+Ordering principle (from #1 reckon, #2 unbeatable first, #3 plans before cities, #5/#6 advantage+harm, #13 not every road):
+
+The core promise order:
+- never say PASS without proof → F1, F5, F4 (false PASS paths) are the first order of business.
+- never say FAIL without a repro → F5 (false FAIL too: timeout marks all fail, which also could produce FAIL from a confirmed probe — actually timeout marks every probe fail, so a green product probe becomes red... wait on the product run: timeout marks all probes fail → probe not green on product → not PASS; but on a mutant it reads as proof → PASS. Also a timeout on product means no PASS. F5 creates false PASS. It can also create false FAIL? On product a timeout makes probes fail; on a mutant also fail; PASS requires green on product and red on mutant, so no. FAIL requires confirmed faithful red probe on product? "FAIL needs a confirmed faithful red probe" — a red probe on product. A timeout makes all probes red on product, and if confirmation is faithful, that's FAIL. So F5 can produce false FAIL too. Yes.)
+- never drop a requirement → F3 (cases UNKNOWN "no probe"), F14, F16, F20.
+- never read builder's tests → F8, F9, F10.
+- never change the product → F4 (probe writes into copy not detected), F9.
+
+So the "self" (unbeatable) is: the integrity of the verdict pipeline. Fix the ways it can lie first. Then containment/blind-workspace integrity (F8/F9/F10/F12) because those undermine the whole method's evidence. Then robustness (F11), then the missing loops (F6/F7), then lows.
+
+Concretely I'd propose an order:
+
+Phase 0 — Reckon (before touching code). Reproduce/confirm all unconfirmed findings and measure. Write the sabotage test for each fix first (house rule). Count the blast radius. Confirm F2, F4, F6–F12 (at least the medium ones) with a repro, since only F1/F3/F5 are confirmed. The seven comparisons for the fix plan: which module, which test file, which contract, who writes the test, engine, cost, blast radius. This is #1 (reckon), #17 (probe and signs), #11 (foreknowledge from people — get the COO's repro).
+
+Phase 1 — Stop the false PASS (make yourself unbeatable). F1, F5. Possibly F4. These are the vision's first promise. Rationale: #2 (unbeatable first), #3 (plans/cheapest-first? Actually these are cheap and high value), #5 (move on advantage), #15 (faults are internal). F1 fix: `meets = bool(requirement_rows) and all(...)`; or better, empty/parse-failure → exit 2/UNKNOWN, never MEETS. Since verdict.py: empty list means spec parsed to zero requirements — this is a parse failure, so exit 2. F5 fix: distinguish "timeout/no report" from "probe failed" — introduce a third state (error/UNKNOWN), never treat infrastructure failure as a red probe. F4 fix: `restored is not True` → not restored (treat missing/null as failure/UNKNOWN), and take baseline hash before the product run.
+
+Actually order within phase 1: F1 is one line and the most direct lie. F5 is the other false-PASS/false-FAIL source. Do F1 first (smallest, highest proof), then F5. F4 related to baseline integrity — pair with F5? F4 is medium but also a false-PASS path. I'd put F4 in phase 1 too, or phase 2. The question asks order of fixes; I should give a clear order and say grouping is by the promise they protect, not by severity label.
+
+Phase 2 — Protect the evidence/blindness. F8, F10, F9, F12, F2. Because these concern "never read the builder's tests" and "never change the product," and the isolation of the mutant writer. F3 also here? F3 is "cannot evaluate itself" — that's a self-trust issue but it's about requirement ids/hyphenated groups. Actually F3 belongs to "never drop a requirement" and also "the evaluator cannot evaluate itself." Hmm. F3 is one regex fix; it's high. Where? If the evaluator cannot evaluate itself, that's not about a false PASS on other products, but about coverage. I'd put F3 in phase 1 or 2. Let me think: #3 stroke plans first — F3 touches the citation contract (the plan/design), and it's cheap and high. I'd put F3 first or second, because it's a one-line regex plus tests, confirmed, and it unblocks self-evaluation (which is how we verify the rest!). Actually that's a strong argument: F3 is the means by which we can verify our own fixes on the evaluator's own spec (hyphenated ids). "Make yourself unbeatable" includes being able to measure yourself. So F3 first? Let me reason: The evaluator's core promise and the house rule (a fix counts only with a sabotage test) don't depend on F3. But the ability to self-evaluate does. And F3 is confirmed and cheap. So I'd put F3 as the first fix: one-line regex, confirmed, unblocks self-measurement — "make yourself unbeatable first" and "strike plans first." Hmm, but F1 is the most dangerous lie. Which first?
+
+Sun Tzu: #2 "First make yourself unbeatable, then wait." Being unbeatable is in your own hands. Both F1 and F3 are... F1 is the false MEETS. F3 is coverage. The most catastrophic outcome is a false PASS on a product that doesn't meet requirements — that's the vision's core. F1 gives MEETS on zero requirements, which is a false global PASS. F5 gives false per-case PASS. Those are "the enemy can defeat you" issues. F3 is "you cannot see part of the field" — also bad but it yields UNKNOWN, which is safe (UNKNOWN is the honest default). So safety-wise, F1/F5 > F3. But F3 unblocks self-eval. I'll order: F1, F5 first (stop the lie), then F3 (restore your own sight/coverage) — because it's confirmed, cheap, and the self-eval harness is how we check phases 2–4. Hmm, but if we fix F3 first, we can self-evaluate the later fixes with the tool. That's a strong practical reason. But F3's regex fix also affects the whole matrix. Let me structure by "stop the lie → restore sight → seal the workspace → harden the edges → close the missing loops → lows."
+
+Actually, let me reconsider: The order should also respect dependencies. F5's timeout handling and F11 malformed JSON are the same family: "absences and errors must land in UNKNOWN, never PASS/FAIL." F4's missing `restored` is the same principle. So there's a natural cluster: fail-closed verdicts. F1, F4, F5, F11 = "missing/ill-formed/erroring data must never be proof." Fix them together in one phase, with a shared helper/default. That's #10 "avoid the solid, strike the empty" — strike the common root (the default-trust in verdict.py) rather than each symptom. And #12 "seek it in 勢" — change the structure so the safe default is structural.
+
+Then cluster 2: isolation/blindness — F8, F9, F10, F12, F2. These are about the workspace and the run folder. F2 (judge told plant_case) is information leakage; F10 stale files; F8 test leakage; F9 sandbox. F12 runId traversal. Natural: one "containment" phase.
+
+Then cluster 3: requirement coverage/contract — F3, F14, F16, F20, F6, F7. F3 regex; F14 id bullets/raw count; F16 out-of-scope reason; F20 uncited probes report; F6 repair round; F7 rerun plant. Natural: "never drop a requirement" phase.
+
+Then cluster 4: operational/lows — F13 shell-quote, F15 duplicate classify, F17 done:false/file checks/model identity, F18 cost/time, F19 meets from verdict.json.
+
+Ordering by promise: false PASS/FAIL first (the first two promises), then coverage (never drop), then isolation (never read tests/never change product), then operations. Hmm, isolation is also core promise. But the false-PASS ones are the ones that make the tool actively wrong. Isolation weaknesses make the evidence untrustworthy (also bad). Which first?
+
+Sun Tzu #2: make yourself unbeatable. The tool's "unbeatable" state = cannot give a wrong verdict. Isolation weakness doesn't give a wrong verdict directly; it makes PASS unproven (elevates risk of false PASS). Actually F9 (probes run with full user rights; Codex has workspace-write over the repo) risks the product being changed → a probe could pass because the product was modified. That's a false PASS path too and also "never change the product" violation. F8 (builder's tests copied) lets the evaluator read the builder's tests against the promise, and could make probes pass because product tests exist? The probes are run on the copy; copied tests don't run unless pytest collects them. Actually workspace copies nested tests/test_*.py/conftest.py; then running pytest on the product copy could collect the builder's tests and they'd run — the evaluator would be running the builder's tests, violating "never read the builder's tests," and conftest.py could alter behavior. That's a real false-proof path. F10 stale files also false data.
+
+Given the one-session constraint and the confirmed ones, I think the order is:
+
+1. F1 — one line, confirmed, the most direct lie (MEETS on zero).
+2. F3 — confirmed, one regex + tests, restores the evaluator's ability to measure itself (and hyphenated ids are common in the real spec).
+3. F5 — confirmed, the timeout→PASS path; make infrastructure failure a third state.
+4. F4 + F11 — fail-closed family: missing restored / malformed model JSON must go to UNKNOWN or exit 2, never PASS.
+5. F10 — stale model files on rerun: reset the whole run folder, or a manifest check that every expected file was written this run. (Enables the "a model step wrote no file" check F17.)
+6. F2 — do not name plant_case in judge-input; hand the judge a randomized/hidden case; the second call on clean copy. This is #10 "have no constant form."
+7. F8 — workspace excludes: add defaults (nested tests, test_*.py, conftest.py), add to defaults not replace, drop build notes; pass --exclude from the workflow.
+8. F9 — sandbox/permissions: run the mutant writer read-only over the repo (or restrict -C to its run folder), run probes as an unprivileged user / in a container or at least with the workspace only writable in the run copy; verify by inspecting permissions and by a canary.
+9. F12 — runId containment: reject/sanitize `..`, `/`, absolute paths; assert resolved path under runs/.
+10. F6 — one repair round: add to the data contract and a bounded loop; a repair must be re-confirmed and sabotage-tested.
+11. F7 — rerun the plant once in a fresh session with a different plant: add the loop and a different seed; void only as fallback.
+12. F14, F16, F20 — coverage reporting: raw id count vs manifest; out-of-scope reason; uncited/unknown-case probes reported.
+13. F13, F15 — small correctness: shell-quote; duplicate classify → human.
+14. F17, F19 — workflow guards: done:false stops; "wrote no file" checks; model actually used; parse meets from verdict.json.
+15. F18 — cost/time recorded (SHOULD; if time runs out, defer).
+
+Hmm, but the question asks specifically "the approach you would take for each high and medium finding" — so F1–F12 (high + medium). Low findings need only be in the order, I think, and risk. Actually "which fixes risk breaking something else, and how we would notice" applies to all.
+
+Let me reconsider the order more carefully with Sun Tzu logic, because the order is the heart of the answer. The brief wants the order to be justified by rules.
+
+Sun Tzu's key ordering rules:
+- #2: make yourself unbeatable first, then seek to win. Apply: before fixing any coverage/feature issue, remove the ways the tool can beat itself (false verdicts). → F1, F5, F4, F11 first.
+- #1: reckon before battle; the chain 度→量→數→稱→勝. Apply: before the fixes, reproduce/measure each finding; the count determines the order. Also 七計.
+- #3: whole over broken; plans before cities. Apply: one-line guards before architecture rewrites; the "plan" = the verdict default and the data contract; the "walled city" = the sandbox/isolation change (F9) and the blind-workspace rewrite (F8), which are last among the mediums because they cost the most and break the most.
+- #8: speed/value, one session. Apply: fix cheap high-value first, defer lows and the SHOULD (F18).
+- #13: not every road is taken. Apply: F18 (and maybe some lows) deferred with a written reason, not silently dropped. Actually the question says fix the 20; but #13 lets me say which to do last/conditionally.
+- #6: mix harm into benefit for the risk column.
+
+For per-finding risk ("which fixes risk breaking something else, and how we would notice"):
+
+- F1 fix (empty → not MEETS): risk: a spec that legitimately has zero requirement groups? Or a caller depending on meets=true for empty. Real risk: change semantics for products with no requirements — but that's the point. Also if requirement_rows is empty because of a parse bug, verdict must exit 2, which changes exit codes and might break the workflow's relay parsing. Notice: sabotage test (remove a group from fixture → expect exit 2/MEETS:no); run against the real spec to confirm nonzero.
+- F3 regex fix: risk: the new regex could match too much (e.g., cite `B1-F2` inside a longer id, or match `EV-P1-F2` correctly but also match unintended patterns like `X-Y-F1`), or change which probes have citations → matrix changes → previously PASS cases might become different. Notice: run the fixed probe_matrix on the frozen fixture; assert the count of cited probes goes up and no previously-cited probe loses its citation (a regression comparison against matrix.json snapshot). This is the one where "notice" is a diff.
+- F5 fix: risk: treating timeout as UNKNOWN may turn some currently-PASS cases into UNKNOWN (reduces coverage) — but that's honest. Also the workflow/verdict may need to accept a third state; tests expecting only pass/fail may break. Notice: sabotage test with a hanging probe/syntax-error mutant; assert NOT PASS; re-run the existing 762 tests.
+- F4 fix: risk: treating missing/null restored as not-restored could flip existing cases to UNKNOWN/FAIL and change MEETS. Notice: full run diff on the calibration product; a fixture with restored missing.
+- F11 fix: risk: broad exception handling can swallow real bugs → a genuine defect becomes UNKNOWN. Notice: sabotage test per malformed shape; and assert that a valid-but-red probe still yields FAIL. Also exit code 2 must not be confused with a normal UNKNOWN.
+- F2 fix: risk: the plant case is used to check the judge; if we hide it entirely, how do we know the judge judged the plant case? We still need ground truth for scoring. Risk: removing plant_case from judge-input while the scoring step needs it — keep it out of the judge's file, keep it in the scoring file. Notice: inspect judge-input.json (must not contain plant_case); run a judge and confirm the plant is still detected/voided by the scorer.
+- F10 fix: risk: deleting the whole run folder on rerun destroys the previous run's evidence (the run folder is the journal). Better: use a fresh runId or move the old folder aside. Risky fix. Notice: rerun a runId and assert no pre-existing model file survives, and the previous run's evidence is archived.
+- F8 fix: risk: over-broad exclude patterns could exclude product source (e.g., a legit `test_utils.py` that is production code, or `conftest.py` at root that the product needs). Also `--exclude` semantics change (add vs replace) could break callers that rely on replace. Notice: after workspace copy, assert the copy has no test files and still has all non-test source; run the product's own entry point; compare file lists before/after.
+- F9 fix: risk: tightening Codex's sandbox to read-only or -C run folder may break the mutant writer (it needs to write mutants somewhere) and the probe runner (needs to run pytest, write caches). Biggest chance of breaking the pipeline. Notice: run the full pipeline end-to-end on the calibration product; assert mutants.json still produced and probes still run; add a canary write outside the run folder that must fail.
+- F12 fix: risk: rejecting runIds with hyphens? No. But legitimate runIds might contain `/`? Unlikely. Notice: test `../../x`, absolute path, `a/b`, and a normal id.
+- F6 fix: risk: adding a repair round changes counts (a probe that was UNKNOWN may now PASS) and could allow a model to "fix" a probe into unfaithfulness; also cost/time. Notice: sabotage test that a repair improves a probe and the re-confirmation voids an unfaithful repair; cap rounds at 1.
+- F7 fix: risk: rerunning judging doubles cost and could change verdicts; a different plant might be missed again. Notice: track cost/time (F18) and the plant result; a run with a missed plant reruns once and records both.
+
+Now which fixes risk breaking something else: the highest-risk are F9 (sandbox), F8 (workspace exclusions), F10 (rerun/reset), F6/F7 (new loops), and F3 (regex changes can shift the matrix). The low-risk are F1, F12, F13, F15, F20. F5/F4/F11 are medium risk because they change verdict semantics and will likely flip some current results to UNKNOWN.
+
+How we'd notice: the sabotage test (house rule), the 762-test suite, a full re-run on the calibration product and comparison of verdict.json/matrix.json before vs after, and the "6 seeded faults caught" measure — we should still catch 5 of 6 (or better), and MEETS/UNKNOWN counts should move in the honest direction, not toward more PASS. Key sign: after the fail-closed fixes, the number of PASS cases must not increase except where a previously-missed citation appears (F3); and the number of UNKNOWNs may rise. If PASS rises and UNKNOWN doesn't, we've weakened something (#2: don't let a fix manufacture victory).
+
+Also #11: foreknowledge from people — who confirms? The COO ran F1, F3, F5. For the rest, we need repros, not opinions. So "What I need to know": 
+- Which findings have a repro already, and can the COO confirm the 17 unconfirmed ones (or do we reproduce them ourselves)? 
+- Is the real REQUIREMENTS.md group-id format hyphenated (like EV-P1) — i.e., does F3 affect the real calibration product or only the evaluator's self-eval? 
+- What is the exit-code contract (does exit 2 mean something to the caller)? F1/F11 fixes depend on it.
+- Which engine writes each fix's tests (house rule: different engine), and is there budget/time for that?
+- Is the 762-test suite frozen in a way that forbids changing assertions, or only additions? The brief says do not weaken; add tests. So tests referencing current behavior of F1/F5 might need to change — can we modify a frozen test if the behavior was a bug? That's a real blocker. Ask: when a finding's current behavior is asserted by a frozen test, does "do not weaken" permit editing that test (it's not weakening; it's correcting)? This changes approach.
+- One working session: how many of the 20 do you want done in it? I'd propose high+medium and the cheap lows, defer F18.
+- Does the workflow relay parse `meets` from text (F19)? If so, changing verdict semantics may need F19 fixed together to avoid misreporting.
+
+Now, the "Answer" one or two sentences. Something like: "Fix the ways it can lie before the ways it can miss: F1, F3, F5, then the fail-closed trio F4/F11/F10, then the isolation cluster F2/F8/F9/F12, then the missing loops F6/F7 — with a repro (not just a finding) required before each, and the isolation changes (F8, F9, F10) attempted last and behind a full end-to-end re-run, because those are the ones that can break the pipeline while fixing it. Defer F18 and the cosmetic lows if the session fills."
+
+Let me now align each step with an item number.
+
+How I decided (numbered steps, each cites my #n or "my reading"):
+1. My #1 (reckon before battle): The "count" here is a repro and a measured blast radius for each finding; only 3 of 20 are confirmed. Before ordering, count what each fix touches and write the sabotage test first. If a fix has no failing test, it is unmeasured — do not commit to it. Also the 度→量→數→稱→勝 chain: measure (repro), then size (blast radius), then weigh (cost vs risk), then the win (the fix).
+2. My #2 (make yourself unbeatable first; win then seek battle): the tool's own unbeatable state is: it cannot return a verdict that the data does not support. F1, F5, F4, F11 are exactly this. They come first, before any coverage or convenience fix.
+3. My #15 (the six defeats are the general's faults, not heaven's): these failures are internal defaults, each with a nameable cause — so fix the cause at the verdict layer, not by exhorting the model briefs.
+4. My #10 (avoid the solid, strike the empty): F1, F4, F5, F11 are one weakness wearing four faces — an absent, null, timed-out or malformed datum is taken as proof. Strike it once: one fail-closed rule in verdict.py that any missing/ill-formed/erroring evidence yields UNKNOWN (or exit 2), never PASS/FAIL. That is cheaper and safer than four unrelated patches.
+5. My #12 (seek it in 勢, not in people): make the safe default structural — a single classifier of "evidence states" rather than relying on each branch to remember to check. Change the condition, not the people.
+6. My #3 (strike plans first, walled cities last): within the order, the one-line contract fixes (F1, F3, F12) are plans; the workspace/sandbox changes (F8, F9) are walled cities — attempt them last, after the cheaper fixes have made the tool trustworthy enough to check them.
+7. My #5 (move only on advantage, never from anger): Do not do the big isolation rewrite because F9 alarmed us; do it when the sabotage test and the full re-run can show advantage.
+8. My #8 (value victory not duration; clumsy speed over no speed; supply from the enemy): one session — sequence by cost; reuse the existing test harness and the calibration product's existing runs as the "supply" instead of building new fixtures.
+9. My #13 (not every road is taken): F18 and the cosmetic lows are roads not taken this session unless time allows; say so, do not drop them silently.
+10. My #6 (mix harm into benefit): each fix below carries its harm column. (My reading, applied.)
+11. My #11 (foreknowledge from people, pay for it): the 17 unconfirmed findings are not facts yet; get repros from the people who ran the code (COO) or run them yourself; never fix a finding on the reviewer's word alone.
+12. My #17 (probe and read the signs): reproduce each by probing the tool (a hanging mutant, an empty spec, a hyphenated id); read the traces as signs.
+
+That's a lot. Keep it tight but complete.
+
+Then the ordered plan with approaches for high and medium.
+
+Let me structure the body:
+
+## Answer
+One/two sentences.
+
+## How I decided
+Numbered steps.
+
+## The order and the approach (high and medium)
+I'll present a table or a list. The required output headings are fixed: Answer, How I decided, What I need to know, Costs and risks, How we would know I was right. The question asks three things (order, approach per high/medium, risks). I can put the order+approach in a section within "How I decided" or under "Answer"? The brief says "Write exactly this (no preamble)" with those five headings. It doesn't forbid subsections under them. Hmm — "no preamble" and "exactly this". I should keep to the five headings and put the plan under "How I decided" (as numbered steps) or under "Answer". To be safe, I'll keep the five H2 headings exactly, and put the plan content inside them. The order and per-finding approach can go inside "How I decided" as the numbered steps, or as a subsection. But "Write exactly this" might mean only these headings and their content. Additional H3 subheadings should be fine; but maybe safer to avoid extra headings and use bold lines. Actually I think using an ordered list under "How I decided" that includes the order, and then a compact table for approach... The template says "How I decided: numbered steps; each cites 'my #n'". So the order should be justified there. The per-finding approach with risks — those could be in Costs and risks and in How I decided. Let me organize:
+
+- Answer: the recommendation + order in one or two sentences (maybe a list of phases counts as one sentence? I'll keep it 2-3 sentences).
+- How I decided: numbered steps that establish the ordering principle, then a "The order" embedded. Then per-finding approach can be a table here or in Costs and risks. The template for "How I decided" is numbered steps. I can have step items that each cover a phase, naming approach for each finding. That fits.
+- What I need to know: questions.
+- Costs and risks: each with the item it comes from; include which fixes risk breaking something else and how we'd notice. Actually "how we would notice" overlaps "How we would know I was right" — but the question's part 3 is "which fixes risk breaking something else, and how would we notice." The template's "Costs and risks" fits part 3's first half; "How we would know I was right" fits the noticing. Hmm. I could put the "risk + how we'd notice" in Costs and risks, since the brief explicitly asks "Say what it costs" there, and "How we would know I was right" is the overall validation. I'll put per-fix risk+notice in Costs and risks, and the overall end-to-end measure in the last section.
+
+The template says Costs and risks: "each with the item it comes from" — so cite my #n. Good.
+
+Now let me be careful about quoting only from my list, exactly as written, keeping labels. I should quote Chinese sparingly, exactly. I can quote e.g. my #2 「勝兵先勝而後求戰」 (quoted). And 「無恃其不來，恃吾有以待之」. And 「合於利而動，不合於利而止」. And 「非利不動，非得不用，非危不戰」. And 「途有所不由」. And 「智者之慮，必雜於利害」. And 「求之於勢，不責於人」. And 「勝可知，而不可為」. Keep them exact and labelled quoted.
+
+Important: the brief says label a conclusion as quoted (with its id), my reading, or not measured; but that's from CLAUDE.md, and the brief says "Quote only from your list... keep its label (quoted, attributed)." I'll use "my #n" citations. I don't think I need the quoted/my reading labels beyond what the brief asks ("A step with no item is your own reading — say so").
+
+Now, do I need to inspect the code? The risk analysis would be more concrete with the actual code. But the findings give file:line and behavior. I could quickly look at verdict.py, probe_matrix.py, workspace.py, model_io.py to ground the approach. Given the instruction "Do not invent facts," and I have access to the repo, it would strengthen the answer. But it may also blow scope: the seat is supposed to answer from the list + the given facts. The brief says "If the answer depends on something you were not given ... list it under What I need to know and answer conditionally." That suggests they don't expect me to go read the code — the answer should be conditional on the unknown. But as an agent in the repo, I could. Hmm. The risk: reading code is allowed (read tool), doesn't write files, and makes the advice better. But the seat brief's step 2 explicitly frames unknowns as questions rather than as things to go fetch. And step 6: "Do not write files; your final message is the answer." It doesn't say don't read.
+
+I think the intended task is a single-shot expert answer. The other three experts presumably did the same without code access? Not necessarily. But the run folder is "four-experts-question-for-the-four-experts" and briefs were handed to seats. The facts given are comprehensive. I'll answer from them, and where I'd want code specifics, I'll state the check as part of "how we'd notice" (which is legitimate — the plan includes verification steps). I won't go read the code; the brief's "Do not invent facts" plus the fact sheet is the intended evidence base. Actually, let me reconsider: a stronger answer might verify a couple of claims, e.g., F1's `meets = all(...)`. But the brief already gives them, and the COO confirmed F1/F3/F5. Reading the code adds little to the strategic order. I'll stay within the brief. This also respects "one thing" and the seat's role.
+
+Hmm, but there's a risk the evaluator (the one running this run) expects the seat to consult only the seat files. The brief says "Read first" those two files. Fine.
+
+Let me now draft the answer carefully.
+
+---
+
+# 孫子 (Sun Tzu) — how to fix the twenty findings
+
+## Answer
+
+Fix what lets it lie before what lets it miss: first the false-verdict paths (F1, F5, then F4 and F11 as one fail-closed rule), then F3 so it can see and measure itself, then the evidence-isolation cluster (F2, F8, F10, F12, and F9 last among them), then the two missing loops (F6, F7), then the cheap lows; and require a reproduced finding and a failing sabotage test before each fix, not the reviewer's word. If the session fills, defer F18 and the cosmetic lows — say so in the journal rather than doing them badly (my #13).
+
+Wait — order of F3 vs F1/F5. Let me settle. I said F1, F5, F4, F11 first as fail-closed; F3 next. But I also argued F3 is cheap, confirmed, and unblocks self-measurement. Where does it go? Let me think about "make yourself unbeatable first." The tool being able to evaluate itself (F3) is part of making itself verifiable. But the biggest immediate danger is a false MEETS. Actually, consider: F1 fix is ~1 line + test; F3 is ~1 regex + test; F5 is a moderate change. The cost of doing F1 and F3 before F5 is trivial. Does F5 depend on F3? No. Does F3 help test F5? Self-evaluation isn't the test for F5; the sabotage test is. So F3 doesn't unblock the tests. Its value is coverage of hyphenated ids on real products. So ordering F1, F5, F4, F11 first is fine, F3 in the same first phase. I'll present phase 1 as F1 and F5 (stop the lie), with F3 alongside because it's confirmed and cheap, then F4/F11 (fail-closed family). Actually cleaner:
+
+Phase 1 (proof): F1 → F5 → F3. Rationale: F1 and F5 are confirmed and produce wrong verdicts; F3 is confirmed, cheap, and restores coverage. 
+Phase 2 (fail-closed family): F4 + F11, one rule.
+Phase 3 (isolation/containment): F10 → F2 → F8 → F12 → F9. Rationale: F10 (stale files) is cheap and enables the "wrote no file" check (F17); F2 (hide the plant) is a data-contract change; F8 (workspace excludes) is a behavior change; F12 (path containment) is small and can go with F10 actually. F9 last because it is the riskiest.
+Phase 4 (missing loops): F6 → F7.
+Phase 5 (lows, if time): F13, F15, F20, F14, F16, F17, F19, F18 (F18 deferred first).
+
+Hmm, but I earlier argued F4's baseline hash issue is about "never change the product." Fine, it's in the fail-closed family.
+
+Let me reconsider F12 placement: runId containment is a one-line guard, cheap, high safety. Put it right after F10 in phase 3, before F8. Good: F10, F12, F2, F8, F9.
+
+Now per-finding approach (F1–F12):
+
+F1: Make "no requirements" a parse failure, not a vacuous truth. `meets` must require at least one requirement row and all PASS; an empty parse exits 2 (never MEETS). Test: fixture spec with zero parsed groups → expect exit 2 / MEETS not yes; sabotage = revert the guard.
+F3: Fix the citation regex to match hyphenated group ids (allow `-` inside the group part, e.g. `[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*-F[0-9]+`), anchored to the docstring's citation. Test: a probe citing `EV-P1-F2` is counted. Approach: also add a raw-count assertion (ties to F14) so a whole class of probes can't vanish again. Notice: diff the citation count before/after.
+F5: Give infrastructure failure its own state. Timeout / no report / collection error = ERROR (or UNKNOWN), never "fail"; verdict.py only reads a red probe as proof when the run reported a result. Tests: a hanging probe, a syntax-error mutant, a missing report → never PASS.
+F4: `restored` must be exactly `True` to count as restored; missing/null = not restored = UNKNOWN. Take the baseline hash before the product run and re-hash after; a mismatch voids the run (or the affected probes). Test: missing restored → not restored; a probe that writes to the copy → detected.
+F11: Validate model JSON against the contract at the boundary; any wrong shape → UNKNOWN plus exit 2, with the offending entry named. Same fail-closed rule as F4/F5. Test each shape named in the finding.
+F6: Add the one repair round to the data contract (e.g. `confirm.repairs` with the original, the repaired probe, the re-confirmation) and cap it at one; a repaired probe must be re-confirmed and must still be red for its case. Test: a probe unfaithful on the first pass is repaired once; a repair that becomes faithful-but-green does not become PASS.
+F7: Make the missed plant a loop: rerun judging once in a fresh session with a different plant; only void if the rerun also misses. Add the plant and seed to the run record. Test: a forced miss triggers exactly one rerun and records both.
+F8: Add safe defaults to workspace.py and make `--exclude` additive: nested `tests/`, `test_*.py`, `conftest.py`, build notes excluded by default; the workflow passes its excludes; a reason is written for every exclusion. Test: a fixture product with nested tests and conftest → the copy has none, and all non-test source is still present.
+F9: Move the isolation from the briefs into the machinery: run the mutant writer without write access to the product tree (its run folder only), and run probes as a user that cannot write outside the run folder; verify by a canary write that must fail. This is the riskiest fix; do it last and behind a full end-to-end run.
+F2: Stop naming the plant to the judge. Keep `plant_case` in the scorer's file, remove it from `judge-input.json`; randomize the planted case and record it out of band. My #10: have no constant form. Test: judge-input contains no plant key; the scorer still scores the plant.
+F10: Rerun of an existing runId must clear or archive every model artifact, not only `workspace/`; add a per-run manifest so "a model step wrote no file" is checkable (this is the ground F17 needs). Test: pre-seed stale files, rerun, assert none survive and the old run is archived.
+F12: Contain runId at the boundary: reject absolute paths, `..`, and separators; assert the resolved path is under `runs/`. Test: `../../x`, `/tmp/x`, `a/b` rejected; a normal id accepted.
+
+Good. Now "Costs and risks" per phase/finding, citing items:
+- The whole plan's price: one session (my #8) and the high-risk changes concentrate in F9/F8/F10/F6/F7.
+- F1: risk = changes MEETS semantics for zero-requirement products and exit codes; could break workflow relay that expects MEETS yes/no. Notice: sabotage test + a full run on the calibration product; any new PASS must be explainable.
+- F3: regex can over- or under-match; matrix changes; previously PASS cases could move. Notice: before/after citation count and matrix diff; assert no cited probe loses its citation.
+- F5: converting timeouts to UNKNOWN will lower PASS count and may break tests that assert PASS. That's the honest direction; but it can hide a real product failure behind UNKNOWN (the harm side, my #6). Notice: the seeded-fault catch rate must stay at 5 of 6 or rise; the count of UNKNOWNs rises without any case losing a valid repro.
+- F4: same semantic shift; baseline-hash change could void legitimate runs where the product legitimately writes temp files. Notice: run the calibration product; if a legit run is voided, the hash must move to before the run and compare only the product tree, not the whole workspace.
+- F11: blanket handling can swallow real defects and turn a true FAIL into UNKNOWN (my #6). Notice: keep a positive test that a well-formed red probe still yields FAIL; log the offending entry.
+- F6/F7: add model calls → cost and time (my #8), and new loops can be gamed; a repair could make a probe faithful to the letter and useless in fact. Notice: cap at one round, re-confirm, record each round; if the catch rate or cost moves the wrong way, stop.
+- F8: over-broad excludes can remove production code or a needed root conftest. Notice: file-list diff between product and copy; the non-test source set must be identical.
+- F9: highest risk of breaking the pipeline — the writer must still write mutants, the runner must still run pytest. Notice: a full end-to-end run after the change; a canary that must fail; if the pipeline cannot run, revert to a narrower fix (restrict `-C` and drop `workspace-write`) rather than abandoning isolation.
+- F10: resetting a runId destroys the previous run's journal — evidence loss. Notice: archive instead of delete; assert the old folder is moved, not gone.
+- F12: legitimate ids with unusual characters — practically none; low risk. Notice: the four path tests.
+- F2: if the plant is hidden from the judge but still needed by the scorer, a wiring mistake could score nothing. Notice: the scorer test still finds the plant.
+
+Also state: my #2 says don't let a fix manufacture victory: after every phase, the PASS count must not rise except where a citation was restored.
+
+What I need to know:
+1. Are F2, F4, F6–F12 reproduced, and by whom? Only F1, F3, F5 are confirmed in the brief. I need the repro to order by measured harm, not by the label (my #1, #11).
+2. Does the real `REQUIREMENTS.md` use hyphenated group ids (so F3 bites live), or only the evaluator's own spec? (changes F3's rank)
+3. Is there an exit-code contract for verdict.py (what exit 2 means to the workflow/caller)? F1 and F11 fixes set it. (my #1)
+4. When a frozen test asserts the behaviour a finding calls a bug, does "do not weaken the frozen tests" allow correcting that assertion, or must the fix keep the old behaviour for that test? This changes the approach for F1, F4, F5, F11, F15.
+5. Who writes the tests for each fix (different engine, house rule), and is that engine available this session? (my #11, #12)
+6. Does the workflow parse `meets` from relayed text (F19)? If yes, the fix must include F19, or MEETS changes won't be seen. (my #10: strike the root)
+7. Do you want all twenty this session, or high+medium+cheap lows? (my #8, #13)
+8. For F9: may probes run under a separate unprivileged user / container, or must they run as the current user (limits what isolation is possible)? (my #14: choose the action by the ratio of forces)
+
+Only ask what changes the shape — these 8 all do. Maybe trim. The brief says ask questions whose answers would change the answer. I'll keep the strongest ~6.
+
+Costs and risks section — also include the overall price: the biggest cost is F9's isolation, and the biggest risk of the whole plan is doing it first. Also note the "notice" for the whole: end-to-end calibration rerun + seeded faults.
+
+How we would know I was right:
+- The sabotage check: each fix has a test that fails when the fix is undone (house rule). If a finding's fix has no such test, I was wrong about it being fixed.
+- The seeded-fault measure: it still catches at least 5 of 6 after all changes, and now with F3 fixed it can evaluate its own spec (hyphenated ids cited) — its own MEETS/verdict. 
+- The false-PASS probe: build a deliberately empty spec (F1), a hanging probe and a syntax-error mutant (F5), a missing `restored` (F4), a malformed model JSON (F11), a stale `mutants.json` (F10), a nested `tests/` (F8), a canary write (F9), a `../../x` runId (F12) — each must fail to produce PASS. If any still produces PASS or FAIL, I was wrong.
+- A before/after diff of matrix.json and verdict.json on the calibration product: no case becomes PASS without a new citation or a new faithful red probe; UNKNOWN may rise; MEETS does not rise.
+- The plant: F2's judge must not see `plant_case`; the scorer must still detect the plant. Observable in judge-input.json and the score file.
+
+Now, Sun Tzu tone: plain English, no theater, refer to EJ as they/them. Cite "my #n" for each step. I should not put words in Sun Tzu's mouth. Use quotes only from the list.
+
+Let me write with the exact required headings. Keep it plain, no preamble. The title: "# 孫子 (Sun Tzu) — how to fix the twenty findings" — the question in a few words.
+
+One concern: "Write exactly this (no preamble)" with H1 + five H2s. I'll follow exactly. Sub-lists and bold lines are fine.
+
+Let me also double-check I use item numbers correctly. The list numbers 1-20 as given. Let me map:
+#1 Reckon before battle (algorithm).
+#2 Make yourself unbeatable first.
+#3 Whole over broken; strike plans first, walled cities last.
+#4 Know whether you can fight; know other and self.
+#5 Move only on advantage; never from anger.
+#6 In deliberating, mix harm into benefit.
+#7 War is the way of deception.
+#8 Value victory not duration; speed; supply from enemy.
+#9 Bring the other side to you; do not be brought.
+#10 Avoid the solid, strike the empty; have no constant form.
+#11 Foreknowledge must come from people; pay for it.
+#12 Seek it in 勢, made of regular and irregular, not from the people.
+#13 Not every road is taken.
+#14 Choose the action by the ratio of forces.
+#15 The general's faults: five dangers, six defeats.
+#16 Orders clear first, then enforced.
+#17 Learn the enemy by probing and by signs.
+#18 Spirit/heart/strength/change.
+#19 Name the ground, act as prescribed.
+#20 Which house falls first.
+
+Good. I'll cite these.
+
+Let me make sure quotes are exact. From #2: 「無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 and 「勝兵先勝而後求戰」. From #1: 「多算勝，少算不勝，而況於無算乎？」 and the chain 「地生度，度生量，量生數，數生稱，稱生勝」. From #3: 「上兵伐謀，其次伐交，其次伐兵，其下攻城」, 「攻城之法，為不得已」. From #5: 「合於利而動，不合於利而止」, 「非利不動，非得不用，非危不戰」. From #6: 「智者之慮，必雜於利害」. From #8: 「兵聞拙速，未睹巧之久也」, 「因糧於敵」/「取用於國，因糧於敵」, 「兵貴勝，不貴久」. From #10: 「形人而我無形」. From #11: 「先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也。」 From #12: 「求之於勢，不責於人」, 「戰勢不過奇正」, 「勢者，因利而制權也」. From #13: 「途有所不由，軍有所不擊，城有所不攻，地有所不爭，君命有所不受。」, 「進不求名，退不避罪」. From #14: 「十則圍之，五則攻之」, 「兵非貴益多也，惟無武進，足以併力、料敵、取人而已」. From #15: 「凡此六者，非天之災，將之過也」. From #16: 「約束不明，申令不熟，將之罪也」. From #17: 「策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處」. From #19: 「九地之變，屈伸之利，人情之理，不可不察也」. From #20: the house reasoning — I might use "judge by the land unit, the tax, and what they breed" for prioritization.
+
+I'll use a handful and label them quoted where used.
+
+Now let me be careful: the brief says quote only from your list, keeping its label. I'll write e.g. my #5 (「合於利而動，不合於利而止」, quoted). Good.
+
+Let me write the final answer. Length: substantial but readable. Aim ~1100-1500 words.
+
+Draft:
+
+# 孫子 (Sun Tzu) — how to fix the twenty findings
+
+## Answer
+
+Fix, in this order: (1) F1, then F5, then F3 — the two confirmed ways it returns a verdict its data does not support, and the confirmed way it cannot see its own hyphenated cases; (2) F4 and F11 together, as one fail-closed rule that no missing, null, timed-out or malformed evidence can ever count as proof; (3) F10, F12, F2, F8, and F9 last — the evidence and containment cluster, where the risk of breaking the tool is highest; (4) F6 and F7 — the two missing loops; (5) the lows, F18 deferred first. Before any fix, require a repro of the finding and write the test that fails when the fix is undone (my #1, my #2, my #16). If the session fills, stop after (3) and record what was left.
+
+Hmm that's more than 2 sentences but the brief says "one or two sentences; conditional if it must be." I'll compress. Maybe 3 sentences is acceptable; keep it tight.
+
+## How I decided
+
+1. My #1 — reckon first. The brief confirms 3 of 20 (F1, F3, F5); 17 are another reader's account. Lay out each finding by module, blast radius, test file, engine and cost before fixing any — the chain 「地生度，度生量，量生數，數生稱，稱生勝」 (my #1, quoted). A finding with no repro is not yet a fact; a fix with no failing test is not yet a fix.
+2. My #11 — foreknowledge must come from people, and it must be paid for: get the repros from whoever can run the code (the COO ran three), not from the review text. 「先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也。」 (my #11, quoted)
+3. My #2 — make yourself unbeatable first. The tool's unbeatable state is: it cannot return PASS or FAIL that the evidence does not carry. F1 and F5 are exactly that; they go before everything. 「勝兵先勝而後求戰」 (my #2, quoted).
+4. My #15 — these false verdicts are the general's faults, not heaven's: 「凡此六者，非天之災，將之過也」 (my #15, quoted). Each has a nameable cause in verdict.py; fix the cause, not the briefs.
+5. My #10 — F1, F4, F5 and F11 are one weakness in four costumes: an absent, null, timed-out or malformed datum is taken as proof. Strike the empty once — a single evidence-state rule in verdict.py — instead of four unrelated patches. F3 is the same move on the citation side.
+6. My #12 — seek it in the structure, not in the people: 「求之於勢，不責於人」 (my #12, quoted). A structural default (unknown unless proven) cannot be forgotten by a model or a branch; a brief can.
+7. My #3 — plans first, walled cities last: 「上兵伐謀…其下攻城」 (my #3, quoted). The one-line contract fixes (F1, F3, F12, F10) come before the workspace and sandbox changes (F8, F9), which are the cities.
+8. My #5 and my #6 — move only where there is advantage, and write the harm column before the benefit: 「非利不動，非得不用，非危不戰」 (my #5, quoted), 「智者之慮，必雜於利害」 (my #6, quoted). F9 is not first because F9 alarmed us; it is last because it is the one most likely to break the pipeline.
+9. My #17 — learn by probing: 「角之而知有餘不足之處」 (my #17, quoted). Each finding is fixed only after a probe reproduces it (a hanging mutant, an empty spec, a hyphenated id, a stale file).
+10. My #8 and my #13 — one session, and not every road taken: 「兵聞拙速，未睹巧之久也」 (my #8, quoted); 「途有所不由」 (my #13, quoted). Sequence by cost, reuse the existing 762 tests and the calibration product's existing runs as supply, and defer F18.
+
+Then the plan. Maybe I put the plan as steps 11+ or as a separate bold block. To satisfy "approach for each high and medium finding", I'll add a block after the numbered steps: "The order, and the approach for each high and medium finding". But the template says How I decided is numbered steps. I can make the plan the final steps. Hmm. I think adding a labeled sub-block is fine: it's still content under the heading. Let me use bold lead-ins without an H3 to stay close to "exactly this."
+
+Actually, re-reading: "## How I decided <numbered steps; each cites 'my #n' or says 'my reading'>". The question's three asks need a home. The cleanest is:
+- How I decided: numbered steps 1-10 (principles and order justification).
+- Then, still under How I decided, a paragraph "The order and the approach:" with a numbered list for F1..F12. But that would double-number. I could fold the per-finding approach into the principles steps — e.g., step 3 covers F1/F5, step 5 covers F4/F11, etc. That satisfies both: each step cites a rule and states the fixes. I think that's elegant and matches the template. Let me do that: each numbered step names the fix(es) and approach, citing my #n.
+
+Let me restructure How I decided as ~12 numbered steps, each = a decision + the findings it orders.
+
+1. Reckon: repro all 20 before fixing (my #1, #17, #11). Approach: an inventory.
+2. Make yourself unbeatable first: F1 then F5 (my #2). Approach for F1, approach for F5.
+3. Can't see = can't win: F3 (my #1's count + my #4 knowing self). Approach for F3.
+4. One fail-closed rule: F4 + F11 (my #10, my #12). Approach.
+5. Seal the run folder: F10, F12 (my #3 plans; my #13? no). Approach.
+6. Hide the plant: F2 (my #10 "have no constant form"). Approach.
+7. The blind workspace: F8 (my #12 change the condition). Approach.
+8. The walled city last: F9 (my #3, my #5). Approach.
+9. Missing loops: F6, F7 (my #16 "orders clear first, then enforced"; my #8 bounded speed). Approach.
+10. The lows and the deferral: F13, F15, F20, F14, F16, F17, F19, defer F18 (my #13, my #8). Approach briefly.
+11. Guardrail: after each phase the PASS count must not rise (my #2, my #15).
+
+That's 11 steps, each citing a rule. 
+
+Wait: I should double check F17 is low but important (workflow guards). The question asks approach only for high and medium, but I can briefly name the lows' order. Good.
+
+Let me also include "my #4" (know whether you can fight; know the other side and yourself) — maps to knowing the codebase and our own tests before changing. And my #14 (ratio of forces) — map effort to finding. And my #9 (bring them to you) — maybe: the fixes should come to the existing contract rather than forcing new contracts. And my #18 (spirit/strength) — attack when it flags; not needed. And my #20 (which house falls first) — prioritize by what the defect breeds: F1/F5 breed false confidence in every verdict; F3 breeds silent UNKNOWN across a whole id class; F10 breeds stale evidence. This is a nice one for the order's rationale. Let me use my #20 for explaining why F1/F5 first: judge by what they breed, not by their line count. Good.
+
+Let me finalize the per-finding approaches concisely but concretely.
+
+F1 approach: `meets` must require a non-empty requirement set and all PASS; an empty parse is a parse failure, exit 2, never MEETS: yes. Test: a fixture spec parsing to zero groups → exit 2; sabotage the guard → test fails.
+
+F5 approach: give infrastructure failure a third state. A timeout, a collection error or a missing report is ERROR/UNKNOWN, never "probe failed"; verdict.py reads a red probe as proof only when a report exists and the run completed. Tests: hanging probe, syntax-error mutant, deleted report.
+
+F3 approach: widen the citation regex to allow hyphens in the group segment, and add the raw-count check (F14) so a whole class cannot vanish unnoticed. Test: `EV-P1-F2`; compare citation counts before/after.
+
+F4 approach: restored must be exactly True; baseline hash taken before the product run and compared after; a product-tree change voids the run. Tests: missing `restored`, a probe that writes to the copy.
+
+F11 approach: validate at the boundary; wrong shape → UNKNOWN and exit 2, naming the entry. Same fail-closed default as F4/F5, implemented once.
+
+F10 approach: on rerun, archive the whole run folder (don't delete — the journal is evidence) or write to a fresh runId; add a per-run manifest so "wrote no file" is checkable (this is the ground F17 stands on).
+
+F12 approach: reject runIds with separators, `..` or an absolute path; assert the resolved path is under runs/. Tests: `../../x`, `/tmp/x`, `a/b`, and a normal id.
+
+F2 approach: keep the plant out of `judge-input.json`; the scorer keeps ground truth separately; randomize the plant. Test: judge input has no plant key and the scorer still scores it.
+
+F8 approach: safe defaults added (not replaced) — nested `tests/`, `test_*.py`, `conftest.py`, build notes; the workflow passes `--exclude`; each exclusion is logged with a reason. Test: fixture with nested tests and root conftest → absent in copy; non-test source identical.
+
+F9 approach: move isolation from the brief into the machinery — mutant writer without write access to the product tree, probes with no write access outside the run folder; verify with a canary. Do last; if it cannot run, narrow it (drop `workspace-write`, restrict `-C`) rather than skip.
+
+F6 approach: add the one repair round to the data contract and the workflow, cap at one, re-confirm the repaired probe, and require it stays red for its case. Test: a first-pass unfaithful probe repaired; a green repair does not become PASS.
+
+F7 approach: turn the void into a bounded loop — rerun judging once in a fresh session with a different plant, record both; void only if the rerun also misses.
+
+Lows: F13 quote; F15 duplicate classify → human; F20 report uncited/unknown probes; F14 raw id count; F16 reasons; F17 done:false stops + file checks + model used; F19 parse meets from verdict.json; F18 cost/time — defer first.
+
+Now Costs and risks (each with item):
+- Whole plan: one session (my #8); the riskiest changes are F9, F8, F10, F6, F7 — they touch the pipeline, the copy and the loops (my #6 harm column).
+- F1: output semantics and exit codes change; a workflow that reads MEETS yes/no could break. Notice: relay test + full run; any rise in PASS must trace to a restored citation or a new faithful red probe.
+- F3: a wider regex can over-match or shift the matrix. Notice: before/after citation count; no cited probe loses its citation.
+- F5/F4/F11: honest UNKNOWNs rise, so PASS may fall and some current PASS cases may become UNKNOWN — that is the point, but it can hide a real product bug behind UNKNOWN (my #6). Notice: seeded-fault catch stays ≥5 of 6; every lost PASS must have a reason in the evidence log.
+- F2: if ground truth moves wrongly, the judge can no longer be scored. Notice: the scorer still reports the plant.
+- F8: over-broad excludes can remove production source or a needed conftest. Notice: product-vs-copy file-list diff; non-test source identical.
+- F9: highest chance of breaking the pipeline (the writer must still write, the runner must still run). Notice: one full end-to-end run, a canary write that must fail; revert to a narrower containment if it cannot run.
+- F10: a hard reset destroys the previous run's journal (evidence loss). Notice: archive, and assert the old folder still exists.
+- F6/F7: new model calls cost money and time (my #8), and a repaired or rerun judgment can be gamed. Notice: rounds capped and recorded; catch rate and cost compared before/after.
+- F12, F13, F15, F20: small; the cost is test time.
+
+What I need to know:
+- Which of F2, F4, F6–F12 are reproduced, and who ran them? (my #1, my #11)
+- Does the live REQUIREMENTS.md use hyphenated group ids? (changes F3's rank)
+- Is there an exit-code contract for verdict.py, and what does the workflow do with exit 2? (F1, F11)
+- When a frozen test asserts the very behaviour a finding calls a bug, may that assertion be corrected, or must the old behaviour stand? (F1, F4, F5, F11, F15) — this changes the approach.
+- Who writes each fix's test (different engine, house rule), and is that engine available now? (my #11, my #12)
+- Does the workflow parse MEETS from relayed text (F19)? If yes, F19 must be fixed with F1 or the change is invisible.
+- Do you want all twenty in the session, or high+medium+cheap lows? (my #8, my #13)
+- For F9, may probes run as a separate unprivileged user or in a container, or must they run as the current user? (my #14)
+
+Maybe that's too many; but they all change shape. Keep 7.
+
+How we would know I was right:
+- Sabotage: each fix has a test that fails when the fix is undone (house rule); if not, I was wrong.
+- False-PASS probes: empty spec (F1), hanging probe + syntax mutant (F5), missing restored (F4), malformed JSON (F11), stale mutants (F10), nested tests (F8), canary write (F9), `../../x` (F12) — none may produce PASS; F1 must exit 2; F5 must be UNKNOWN.
+- Calibration rerun: still catch at least 5 of 6 seeded faults; UNKNOWN may rise; PASS does not rise without a new citation or faithful red probe.
+- Self-evaluation: after F3, the evaluator's own hyphenated cases are cited and no longer all UNKNOWN.
+- Plant: `judge-input.json` contains no plant key; the scorer still detects the plant.
+
+That covers it. Let me write it in plain English and trim.
+
+One more consideration: the brief says "Refer to EJ as they/them." I'll do that if I address them. "Do not write files; your final message is the answer." I won't write files.
+
+Should I create a goal? No — this is a single-turn answer, not a long-running objective. The system prompt says create_goal for long-running objectives. This is a consulting answer. No goal.
+
+Also, no preamble. Start with the H1.
+
+Let me write the final message now. I'll be careful with the Chinese quotes (exact from the list).
+
+Double-check exact strings:
+- my #1: 「地生度，度生量，量生數，數生稱，稱生勝。」 yes.
+- my #1: 「多算勝，少算不勝，而況於無算乎？」 yes.
+- my #2: 「勝兵先勝而後求戰」 yes (from 「是故勝兵先勝而後求戰，敗兵先戰而後求勝。」).
+- my #2: 「無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 yes.
+- my #3: 「上兵伐謀，其次伐交，其次伐兵，其下攻城」 yes; 「攻城之法，為不得已」 yes.
+- my #5: 「非利不動，非得不用，非危不戰」 yes; 「合於利而動，不合於利而止」 yes.
+- my #6: 「智者之慮，必雜於利害」 yes.
+- my #8: 「兵聞拙速，未睹巧之久也」 yes; 「兵貴勝，不貴久」 yes.
+- my #10: 「形人而我無形」 yes.
+- my #11: 「先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也。」 yes.
+- my #12: 「求之於勢，不責於人」 yes.
+- my #13: 「途有所不由，軍有所不擊，城有所不攻，地有所不爭，君命有所不受。」 yes.
+- my #15: 「凡此六者，非天之災，將之過也」 yes.
+- my #16: 「約束不明，申令不熟，將之罪也」 yes (from my #16).
+- my #17: 「策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」 yes.
+
+I need to make sure each quote is labeled. The brief says keep its label (`quoted`, `attributed`). I'll write (quoted) after each. Note my #16's 行軍 quote is quoted; my #17 is quoted. Good.
+
+Now write. Keep it readable. I'll aim for a well-structured answer.
+
+Length check: ~1400 words. Fine.
+
+Let me produce the final answer.
