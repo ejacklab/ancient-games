@@ -1,0 +1,919 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a130d7-ccb8-7163-a828-1ee5ec69374b
+--------
+user
+Read /home/smoke01/dev/ancient-games/runs/20261012-sot-item8-runbooks/briefs/enhance.md and do what it says. Your engine name: codex. Print the whole report as your final answer; the launcher saves it to /home/smoke01/dev/ancient-games/runs/20261012-sot-item8-runbooks/reviews/codex.md.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the repository instructions and the enhancement brief, then produce the full report here for the launcher to save.
+exec
+/bin/bash -lc 'cat CLAUDE.md runs/20261012-sot-item8-runbooks/briefs/enhance.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `~/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+# Brief — one part of a memory design: runbooks
+
+You are one of four independent readers. You do not see the others' work. Your job is to **enhance**: think it
+through and propose one complete, simple answer for the owner, EJ, to decide.
+
+## Read first
+
+- `/home/smoke01/dev/ancient-games/docs/memory-system/SOURCE_OF_TRUTH.md`, the design, accepted by EJ. Read it whole.
+- `/home/smoke01/dev/ancient-games/docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md`,
+  the settled vision.
+- `/home/smoke01/.claude/skills/procedure-to-skill/SKILL.md`, a skill used in this environment that turns a "how do I deploy / run / fix X" procedure
+  into a runnable script plus a verify script, rather than a note.
+
+## The problem (review item 8)
+
+The vision lists what memory holds, from EJ's words:
+- the **decisions and facts** the code must follow, written before the code;
+- what was **learned** after: lessons, observations and hypotheses.
+
+The design has a third kind the vision never mentions, the **runbook**. It is defined as *"how to run or fix
+something; where possible it points at a script"* (What it is for; W2.2). It has the file prefix `R-` (layout, W1.1)
+and is written at the end of a task (the When-to-write table, W5.2). W2 cites the vision as its source, but the vision
+has no runbooks.
+
+The COO offered EJ two ways:
+- **(a)** Add runbooks to the vision as "how-to" memory, learned after the work, next to lessons.
+- **(b)** Drop runbooks from the design. Procedures become skills or scripts (see the skill above), and memory needs at
+  most a pointer.
+
+These two are a starting point, not a limit. A third way is welcome if it is simpler.
+
+## Your task
+
+1. **Recommend one way**, in one sentence.
+2. **Three reasons**, each grounded in the design, the vision or the skill. Quote the line you rely on.
+3. **The exact text changes** your way needs:
+   - in the vision;
+   - in the design, by section or requirement id (W1.1, W2.2, W5.2, the layout, What it is for, and any other place
+     that names runbooks).
+
+   Each requirement you change keeps a **Fails if** check.
+4. **What could go wrong** with your way: one concrete case.
+5. **Questions for EJ:** at most two, and only ones whose answer changes your text.
+
+Rules:
+- Keep it simple. The owner's rule is that memory is simple, and a mechanism that is not needed is removed. Don't add
+  folders, files or fields unless your way cannot work without them.
+- The design has four memory scopes: task, project, agent and user. Say which scope a runbook (or what replaces it)
+  belongs to.
+- Label each line *EJ's* (his words), *design* (already in the document) or *proposed* (yours).
+- Read only; do not change any file.
+
+## Output — one markdown report
+
+```
+# Item 8, runbooks (<your engine name>)
+
+## Recommendation
+## Three reasons
+## Text changes
+## What could go wrong
+## Questions for EJ
+```
+
+The launcher tells you your engine name and where the report goes.
+
+exec
+/bin/bash -lc 'cat docs/memory-system/SOURCE_OF_TRUTH.md docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md /home/smoke01/.claude/skills/procedure-to-skill/SKILL.md /home/smoke01/.agents/skills/requirement-check/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Source-of-Truth Memory Design
+
+> **Status: accepted by EJ on 2026-10-12** (EJ: *"yes I accept the source of truth design"*), with its vision and
+> its Write / Keep / Read requirements. Vision: `vision-statements/source-of-truth-memory-vision-statements.md`.
+> First written 2026-10-11 by `opencode` from
+> `runs/20261011-project-memory-engines/RECOMMENDATION.md`; revised with EJ on 2026-10-12.
+> Sources, citations and review history: `runs/20261011-source-of-truth-design/` (the full annotated version is
+> `DESIGN-detailed-2026-10-12.md`) and `runs/20261012-memory-update-timing/notes.md`.
+>
+> **Revised 2026-10-12:** the drift-check script and the background subagent are removed (EJ: *"ok remove both and
+> update the doc"*). A decision to build something is started when it is written and complete when its time, result
+> and test results are added; whoever reads a decision or fact checks it against the code before acting on it, and
+> reports a mismatch in the task's `state.md`. W5.3 and Rd5.3–Rd5.5 were refined after a four-reader round
+> (`runs/20261012-sot-w53-rd53-read/`; EJ: *"state.md for the report, apply all the proposed fixes"*).
+>
+> **Revised 2026-10-12, memory by scope (item 7):**
+> - Memory has four scopes: task, project, agent and user. Task and project memory keep a journal; agent and user
+>   memory keep none.
+> - A task's journal is `work/<task-id>/journal/` (EJ: *"create task folder, the subfolder inside"*).
+> - An agent may read another agent's memory if it knows and says whose it is (EJ: *"agent can read another agent
+>   memory but they must know that is another agent memory, what agent what tools"*).
+> - Rd2.2 is split into "not at session start" (Rd2.2) and "never" (Rd2.3), after a four-reader round
+>   (`runs/20261012-sot-item7-scopes/`).
+>
+> **Where this differs from the recommendation — EJ's decisions:** no owners and no human approval gate (anyone may
+> change any entry, and every change is logged); decisions and facts come before the code; a *fact* means a constraint
+> the code must respect, not something discovered afterwards; no drift-check script and no background subagent.
+>
+> **Not proven:** the timing split (what is written immediately and what later) is design judgement, not measured.
+> Where the recommendation's engines disagreed (session-start reads, one file per writer, SQLite, how often to write),
+> this design follows the majority.
+
+## Why we need this memory
+
+The context window is cleared at the start of every session, so anything learned is lost unless it is written down.
+Project memory is plain markdown files kept in the repo with the code. Every agent and every person reads the same
+files, a fresh clone has all of it, and every change shows up as a git diff. Reading it needs no private agent store,
+database or outside service.
+
+## Who it is for
+
+Every agent and every person working on this project. There are no owners and no approval gate: anyone may change any
+entry, and every change is logged. EJ decides the questions listed as not decided.
+
+Memory has four scopes (EJ, 2026-10-12):
+- **task:** `project-memory/work/<task-id>/`;
+- **project:** the rest of `project-memory/`, and `AGENTS.md`;
+- **agent:** memory belonging to one agent name;
+- **user:** memory about one person, across projects.
+
+This design covers task and project memory. Agent and user memory live outside the repo, in the home folder (agent
+memory at `~/.claude/agent-memory/<name>/`, the way Claude Code does it). For agent memory, this design says only how
+another agent may read it (Rd4.5).
+
+## What it is for
+
+It holds what the code cannot tell you, as typed entries:
+
+- **Requirements, written before the code.** A **decision** is a choice the code must follow, with the reason. A
+  **fact** is a truth or outside constraint the code must respect.
+- **What was learned, written after.** A **lesson** comes from a failure or a human correction. An **observation**
+  records what was seen. A **hypothesis** is a guess, labelled as one.
+- A **runbook** says how to run or fix something; where possible it points at a script.
+
+The order of work is: change the decision or fact first, then the code. Work that has to go the other way is a matter
+for the project's workflow, not for memory. A decision about this project is a project entry, whoever made it, EJ
+included.
+
+A decision to build something is **started** when it is written: we decided to build something, and why. It is
+**complete** when the time, the result and the test results are added to it (EJ, 2026-10-12). A standing rule, such as
+"all timestamps are UTC", is never complete.
+
+## What will be put in
+
+**An entry** is one markdown file. Its header holds: `id`, `kind`, `status`, `author`, the date it was recorded,
+`covers` (the code paths it is about), its source or evidence, links (`depends_on`, `supersedes`, `superseded_by`), a
+`changed:` log, and, on a decision to build something once its work is complete, `done:` (the time, the result, and the
+test results or a pointer to them; W5.3). Its
+body is the claim in one or two sentences, then **Why:**, then **How to apply:**.
+
+**Changing entries.** Anyone may change any entry, and `AGENTS.md` too. Each change adds one line to the entry's
+`changed:` log: the time, and who made it — the model ID for an agent, the name for a person. Files that are not entries
+rely on git history. Each new entry gets its own file, so agents never append to one shared file. Two writers must not
+edit the same file at the same time: each agent works on its own branch or worktree, and git shows a merge conflict when
+two edits
+touch the same lines. Edits to different lines of one file merge without warning even if they contradict each other,
+so a clean merge does not mean the file is consistent.
+
+**When to write.**
+
+| When | What |
+|---|---|
+| Immediately | Decisions and facts, before the code — and `INDEX.md` is regenerated right after, so the next session sees them. A human correction. The state of unfinished work before a handoff, an interruption or a context reduction. |
+| When the work a decision to build something is complete | The decision's `done:` line, written by whoever finishes the work: the time, the result, and the test results or "no tests", with a pointer to the evidence. |
+| At the end of a task | Other lessons, observations and hypotheses; merging duplicates; runbooks. |
+
+**Keeping it current.** Entries may go out of date while work goes on; that is accepted. Nothing watches for it: there
+is no drift-check script and no background subagent. Whoever reads a decision or fact checks it against the code before
+acting on it. When they no longer match, the reader does not change the entry. It writes a report in its task's
+`state.md` and tells EJ which entry, what the entry says, and what the code does instead. EJ decides whether the entry
+is updated or the code is fixed. Until then, the reader leaves the contradicted part alone and carries on with the
+rest. A decision still being built (no `done:` yet), or one the reader's own task is changing, is not a mismatch
+(Rd5.4).
+
+**Still open:** which tool generates `INDEX.md` and what runs it (K6); who resolves a git merge conflict (W6). Whether a
+changed decision is edited in place or superseded is proposed in K4.3.
+
+## What will not be put in
+
+- Anything that can be read directly from the code, the tests or the commit log (W3.1). The memory itself lives in git.
+- Credentials or sensitive data.
+- Guesses not labelled as a hypothesis.
+- Raw transcripts, or another agent's private state.
+- Work described as "verified" when it is only implemented.
+
+An entry is never deleted: it is marked `superseded` or `retired` and linked to what replaced it. Age alone never
+expires an entry. Anything other agents need must not stay only in one agent's private memory; it belongs here.
+
+## Where it is put
+
+At the repo root:
+
+```
+AGENTS.md            standing instructions for every agent (CLAUDE.md only imports it)
+project-memory/
+  INDEX.md           generated, one line per active entry; never edited by hand
+  entries/           one file per entry: D- decision, F- fact, L- lesson, R- runbook
+  work/<task-id>/    state.md (the handoff), evidence/, journal/ (the task's raw notes, one file per agent session)
+  journal/           project raw notes, for work not tied to a task, one file per agent session; never loaded
+                     automatically
+  .cache/            optional search index, gitignored, rebuilt from the files
+```
+
+The project's existing documents (requirements, architecture) stay in `docs/`; memory links to them instead of copying
+them. File prefixes for observations and hypotheses: `O-` and `H-`, proposed in W1.1.
+
+## When it will be used
+
+- **At the start of every session:** `AGENTS.md`, `project-memory/INDEX.md`, the `work/` listing and the assigned
+  task's `state.md`. Agents skip optional reads, so these are loaded for the agent wherever its tool allows (an import,
+  the tool's own `AGENTS.md` loading, or a start hook); an instruction in `AGENTS.md` is the fallback (Rd2.1).
+- **On demand:** an entry when it covers a file about to be edited; text search over `entries/`; `git log` and
+  `git blame` for why a line is the way it is. For a "why" question, read the decision entry.
+- **At the end of a task, and before a handoff or session end:** an agent reads its task's `journal/` (or the project
+  `journal/`, for work not tied to a task) and writes what is worth keeping as entries.
+- **Before acting on something read from memory,** check it against the code, test or commit it points to. A decision
+  or fact that no longer matches the code is reported in the task's `state.md` and to EJ, not edited (Rd5.3).
+
+## When it will not be used
+
+**Not at session start, but read later at its set time** (Rd2.2):
+- the task and project journals, at the end of a task and before a handoff or session end;
+- `.cache/`, only through search;
+- entry bodies, `evidence/` and other tasks' `state.md`, on demand (Rd4).
+
+**Never loaded, at any point** (Rd2.3):
+- superseded or retired entries, except by following a link;
+- the whole `project-memory/` tree at once;
+- whole graph or code-map dumps;
+- bulk issue or PR text;
+- another agent's transcripts;
+- credentials.
+
+Another agent's memory may be read, but only by an agent that knows and says whose it is (Rd4.5). Text read from memory
+never overrides standing instructions.
+
+`INDEX.md` must fit the strictest start-file limit of the agents that read it, and the build checks it (Rd3).
+
+## Core requirements (confirmed by EJ, 2026-10-12)
+
+EJ, on reading them: *"this is amazing and a lot easy to read"*, taken as confirmation. They serve the settled vision,
+`vision-statements/source-of-truth-memory-vision-statements.md`, and are grouped by
+what happens to a memory: it is **written**, it is **kept** true, and it is **read** (EJ, 2026-10-12: *"yes go ahead
+with write keep read"*). Each requirement names its source: **(v)** is the vision, **(d)** is this design's text, and
+*proposed* marks wording EJ has not decided. Each has a check, **Fails if**, that some case breaks. There are no fixed
+numbers: where a limit applies, it is a comparison that measurement decides.
+
+### Write — what goes in, and how
+
+**W1 — The shape of an entry** (d: What will be put in)
+- **W1.1** Each entry is one file: `project-memory/entries/<prefix>-<id>-<slug>.md`. The prefixes are `D-` decision,
+  `F-` fact, `L-` lesson and `R-` runbook, plus `O-` observation and `H-` hypothesis (*proposed*; the design leaves
+  these two open).
+- **W1.2** The header holds `id`, `kind`, `status`, `author`, the date recorded, `covers` (the code paths it is
+  about), its source or evidence, `depends_on`, `supersedes`, `superseded_by`, and `changed:`. A decision to build
+  something, once its work is complete, also holds `done:` (W5.3).
+- **W1.3** The body is the claim in one or two sentences, then **Why:**, then **How to apply:**. There is one claim per
+  entry.
+- **Fails if** a lint over `entries/` finds a missing field or section, or a reviewer finds two claims in one entry.
+
+**W2 — What each kind means** (v; d: What it is for)
+- **W2.1** A **decision** is a choice the code must follow, with the reason. A **fact** is a truth or outside
+  constraint the code must respect, not something discovered afterwards. Both are requirements: they are written
+  before the code.
+- **W2.2** A **lesson** comes from a failure or a human correction. An **observation** records what was seen. A
+  **hypothesis** is a guess, labelled as one. A **runbook** says how to run or fix something and points at a script
+  where one exists.
+- **Fails if** `kind` holds any other value, or a guess is recorded under any kind but hypothesis.
+
+**W3 — What never goes in** (v; d: What will not be put in)
+- **W3.1** Nothing that can be read directly from the code, the tests or the commit log: what a function does, which
+  test covers it, what a commit changed. The memory lives in git; the rule is about what an entry says.
+- **W3.2** No credentials or sensitive data.
+- **W3.3** No raw transcripts, and nothing from another agent's private state.
+- **W3.4** No work described as "verified" when it is only implemented.
+- **W3.5** No user memory (one person, across projects) and no agent memory (one agent name). Both live in the home
+  folder.
+- **W3.6** No copy of the project's existing documents (requirements, architecture in `docs/`): an entry links to them.
+- **Fails if** a secret scanner finds a credential (W3.2). For W3.1 and W3.3–W3.6, a reviewer finds such content.
+  Those are judged checks.
+
+**W4 — Who writes, and the change log** (v: no owners, every change logged)
+- **W4.1** Anyone, agent or person, may create or change any entry, and `AGENTS.md` too. There is no owner and no
+  approval: `status` is only `active`, `superseded` or `retired`. The one exception is Rd5.3: a reader who finds a
+  decision or fact out of step with the code reports it and does not settle it (EJ, 2026-10-12).
+- **W4.2** Every change to an entry adds one line to its `changed:` log: the time, and who made it (the model ID for an
+  agent, the name for a person). Earlier lines are never edited.
+- **W4.3** Files that are not entries (`state.md`, `journal/`, `AGENTS.md`) rely on git history.
+- **Fails if** git shows a change to an entry with no matching `changed:` line, or a `status` outside the three.
+
+**W5 — When to write** (d: When to write)
+- **W5.1** Written immediately: a decision or fact, before the code it governs; a human correction; and the state of
+  unfinished work, before a handoff, an interruption or a context reduction.
+- **W5.2** Written at the end of a task: other lessons, observations, hypotheses, and runbooks.
+- **W5.3** A decision to build something is started when it is written. When the work is complete, whoever finishes it
+  adds `done:` to the decision: the time, the result in one sentence, and the test results, or "no tests" said plainly.
+  `done:` points to the evidence (`runs/<run-id>/` or the commit) rather than copying test output (W3.1). A standing
+  rule, such as "all timestamps are UTC", is never complete and never gets `done:`. If the result differs from the
+  decision, that is a mismatch for Rd5.3: it is reported, not settled in `done:`. (EJ, 2026-10-12; refined after four
+  readers.)
+- **Fails if** a commit changes code under a new decision with no entry in that commit or an earlier one. For a human
+  correction, it fails if the session ends without one (judged). For W5.3, it fails if a reviewer of a finished task
+  finds that its decision has no `done:`, or a `done:` without a time, a result and test results or "no tests"
+  (judged; EJ, 2026-10-12).
+
+**W6 — Writers do not collide** (d: Changing entries)
+- **W6.1** Each new entry gets its own file. Agents never append to one shared file; each journal, the task's or the
+  project's, has one file per agent session.
+- **W6.2** Each agent works on its own branch or worktree, so two edits to the same lines meet as a merge conflict, not
+  a silent overwrite.
+- **Open:** who resolves a merge conflict.
+- **Fails if** an edit to an entry is lost without a conflict.
+
+### Keep — memory stays true, and nothing is lost
+
+**K1 — The decision or fact first, then the code** (v; d: What it is for)
+- **K1.1** To change behaviour that a decision or fact governs, change the entry first, then the code. Work that has to
+  go the other way is a matter for the project's workflow, not for memory.
+- **Fails if** git shows a commit changing the behaviour a decision or fact governs, with no change to that entry in the
+  same commit or an earlier one (judged).
+
+*K2 (the drift-check script) and K3 (the background subagent) were removed by EJ on 2026-10-12. Their numbers are not
+reused, because other text cites K4–K6. A mismatch between a decision and the code is now caught when the decision is
+read (Rd5).*
+
+**K4 — Never deleted, never expired by age** (v: nothing lost; d: What will not be put in)
+- **K4.1** An entry is never deleted. It is marked `superseded` or `retired`, links to what replaced it
+  (`superseded_by`), and keeps its old body.
+- **K4.2** Age alone never expires an entry. An entry is found out of date only when someone reads it and checks it
+  against the code (Rd5).
+- **K4.3** *Proposed:* a decision refined without changing its meaning is edited in place, with a `changed:` line; a
+  decision replaced by a different one gets a new entry that supersedes it. The design leaves this open.
+- **Fails if** git shows an entry file deleted, or a `superseded` or `retired` entry has no link.
+
+**K5 — The journal becomes entries** (v: nothing lost between sessions)
+- **K5.1** Task and project memory each keep a journal: a task's in `work/<task-id>/journal/`, the project's in
+  `journal/` for work not tied to a task. Both hold raw notes, one file per agent session, appended to and never
+  edited. Agent and user memory keep no journal under this design (EJ, 2026-10-12).
+- **K5.2** At the end of a task, and before a handoff or session end, an agent reads its task's journal (or the project
+  journal) written since the last read, writes what is worth keeping as entries, and logs that read in the task's `state.md`. A session cut off
+  before it can read loses nothing: the next read covers it (EJ, 2026-10-12: no separate milestones, the start and the
+  end already cover them).
+- **Fails if** a task's `state.md` shows it complete or handed off with no journal-read log line.
+
+**K6 — `INDEX.md` stays in step** (d: Where it is put; When to write)
+- **K6.1** `INDEX.md` is generated from `entries/`: one line per active entry, showing its id, kind and one-line
+  claim. It is never edited by hand.
+- **K6.2** It is regenerated right after any decision or fact is written, so the next session sees it.
+- **Open:** which tool generates it and what runs it (a build detail).
+- **Fails if** regenerating `INDEX.md` changes it, meaning it was out of step, or it lists a superseded entry as
+  active.
+
+### Read — the right memory reaches the agent at the right time
+
+**Rd1 — Where it lives, and readable from a clone alone** (v: plain files; never a database or service)
+- **Rd1.1** `AGENTS.md` sits at the repo root (`CLAUDE.md` only imports it). `project-memory/` holds `INDEX.md`,
+  `entries/`, `work/<task-id>/` (with `state.md`, `evidence/` and `journal/`), `journal/`, and `.cache/`, which is
+  optional and gitignored.
+- **Rd1.2** With no network, no cache and no private agent store, a fresh clone can read `INDEX.md` and every entry.
+- **Fails if** an entry exists only in a database, a cache or one agent's private memory.
+
+**Rd2 — Session start** (v: a fresh session carries on; d: When it will be used)
+- **Rd2.1** At session start, an agent reads `AGENTS.md`, `INDEX.md`, the `work/` listing and its task's `state.md`.
+  Agents skip optional reads, so these are loaded for the agent wherever its tool allows: an `@` import in
+  `CLAUDE.md`, the tool's own loading of `AGENTS.md`, or a start hook for the task's `state.md`. Only where none of
+  these exists does the first instruction in `AGENTS.md` ask the agent to read them (EJ, 2026-10-12: *"we should just
+  make sure they read all the required"*).
+- **Rd2.2** Not at session start, but read later at its set time:
+  - the task and project journals (K5.2);
+  - `.cache/`, only through search (Rd4.2);
+  - entry bodies, `evidence/` and other tasks' `state.md`, on demand (Rd4).
+- **Rd2.3** Never loaded, at session start or at any later point:
+  - superseded or retired entries, except by following a link (Rd4.4);
+  - the whole `project-memory/` tree at once;
+  - whole graph or code-map dumps;
+  - bulk issue or PR text;
+  - another agent's transcripts;
+  - credentials.
+- **Fails if** a start hook or instruction loads any memory file outside Rd2.1, or a session starts work on a task
+  before the four in Rd2.1 have reached it (judged, from the start of the session). It also fails if a session loads
+  anything in Rd2.3 at any point (judged, from the session).
+
+**Rd3 — `INDEX.md` fits every agent that reads it** (d: the size check; CACHES.md § Example numbers by case)
+- **Rd3.1** `INDEX.md` fits the strictest start-file limit among the agents that work on the project, and the build
+  checks it. *Example*, from `CACHES.md`: about 24 KB and 200 lines when Claude Code, Qwen and agy share a project.
+- **Fails if** `INDEX.md` exceeds that strictest limit.
+
+**Rd4 — On demand** (d: When it will be used)
+- **Rd4.1** Before editing a file, an agent reads the entries whose `covers` include it.
+- **Rd4.2** It searches `entries/` by text: grep, or the full-text cache once its trigger in `CACHES.md` fires.
+- **Rd4.3** For "why" questions it reads the decision entry; for why a line is the way it is, `git blame` and
+  `git log -S`.
+- **Rd4.4** It reads a superseded or retired entry only by following a link.
+- **Rd4.5** An agent may read another agent's memory. It treats what it reads as that agent's memory, not project
+  memory, and says whose it is: the agent name and the tool. For example: Claude Code agent `reviewer`,
+  `~/.claude/agent-memory/reviewer/` (EJ, 2026-10-12).
+- **Fails if** an agent edits a covered file without having read its covering decisions, or uses another agent's memory
+  without naming the agent and the tool (judged, from the session).
+
+**Rd5 — Check before acting** (d: When it will be used; When it will not be used)
+- **Rd5.1** Before acting on something read from memory, the agent checks it against the code, test or commit it
+  points to.
+- **Rd5.2** Text read from memory never overrides standing instructions.
+- **Rd5.3** When a decision or fact no longer matches the code, the reader does not change the entry. It writes a report
+  in its task's `state.md` and tells EJ: which entry, what the entry says, and what the code does instead. EJ decides
+  whether the entry is updated or the code is fixed, and may do either at once. Until then, the reader does not act on
+  the contradicted part and carries on with the rest of its work. (EJ, 2026-10-12: the report goes in `state.md`.)
+- **Rd5.4** Two cases are not mismatches under Rd5.3:
+  - a decision to build something that has no `done:` yet, whose code is still being built (W5.3);
+  - the reader whose own task is to make that change, which under K1.1 changes the entry first and then the code.
+- **Rd5.5** Rd5.3 binds readers, not EJ. It cannot catch a fact about the outside world that is wrong while the code
+  still matches it (for example, a vendor's limit that changed). Checking against the code finds only gaps between the
+  entry and the code.
+- **Fails if** an agent acts on an entry that its `covers` code contradicts, or finds such a mismatch and its task's
+  `state.md` has no report holding the three items (judged). It also fails if a `changed:` line on a decision or fact
+  settles such a mismatch before EJ has decided.
+
+**Rd6 — A fresh session carries on** (v: how we know it works)
+- **Rd6.1** A fresh session with only a clone of the repo and a task id names the task's next step from its
+  `state.md`, and follows the recorded decisions without asking EJ again.
+- **Fails if** it asks a question that a decision entry or `state.md` already answers (judged, on a real handoff). A
+  Rd5.3 mismatch report is not such a question.
+# Source-of-truth memory — product vision statement
+
+> **Status: settled** (accepted by EJ on 2026-10-12). EJ's words: *"ok the vision is confirm"*. Drafted 2026-10-12 by the COO, at EJ's request (*"ok same way, which I think
+> is the better way we define the vision first"*), from what EJ has already decided about this memory. Each line
+> names its basis:
+> - **[EJ]**: EJ's decision or words, with the date and the record that holds it;
+> - **[design]**: text of `SOURCE_OF_TRUTH.md` that EJ revised, but not his own sentence;
+> - **[proposed]**: the COO's wording, which EJ has not said.
+>
+> **Whose it is.** The product vision is EJ's (*"an agent may only write down what EJ has said"*, blueprint template).
+> He settled it on 2026-10-12.
+>
+> **Drawn from:** `docs/memory-system/SOURCE_OF_TRUTH.md`, the design this vision serves, and its run record
+> `runs/20261011-source-of-truth-design/` (decisions in `DESIGN-detailed-2026-10-12.md`).
+>
+> **Revised 2026-10-12:** the background subagent is removed, and a decision's start and completion are added (EJ:
+> *"ok remove both and update the doc"*).
+
+The source-of-truth memory is the project's written memory: plain markdown files kept in the repo with the code,
+which every agent and every person reads and may change [design, l.19–22]. It holds what the code cannot tell you
+[design, l.35]:
+- the **decisions and facts** the code must follow, written **before** the code;
+- what was **learned** after: lessons, observations and hypotheses.
+
+[EJ, 2026-10-12, DESIGN-detailed l.27–29]
+
+A decision to build something is started when it is written, and complete when its time, result and test results are
+added [EJ, 2026-10-12: *"when we put details says we decided to build soemthing. means it is a starting. when done, you
+put the time and results , test reuslt those into your memory , that means comeplte"*]. A standing rule is never
+complete [EJ, 2026-10-12, accepted from the four-reader round].
+
+**Who it is for.**
+- Every agent and every person working on the project. There are no owners and no approval gate: anyone may change
+  any entry, and every change is logged with when and which model or person made it [EJ, 2026-10-12, header l.8–9;
+  *"log when and which model changed it"*, agent-memory notes l.65].
+- Not one person's memory across projects (user memory), and not one agent's own memory (agent memory). Both live
+  outside the repo, in the home folder [EJ, 2026-10-12, agent-memory notes l.63, l.85]. Memory has four scopes (task,
+  project, agent, user), and this memory is the task and project ones. An agent may read another agent's memory, as
+  long as it knows and says whose it is: which agent, which tool [EJ, 2026-10-12: *"agent can read another agent
+  memory but they must know that is another agent memory, what agent what tools"*].
+
+**The problem it solves.** The context window is cleared at the start of every session, so anything learned is lost
+unless it is written down. A private agent store is invisible to the other agents [design, l.19, l.91].
+
+**What it will never do.**
+- It never copies what can be read directly from the code, the tests or the commit log, such as what a function does,
+  which test covers it, or what a commit changed. A copy goes stale when the code changes. The memory itself lives in
+  git; the rule is about what an entry says, not where it is stored [design, l.84, reworded after EJ's correction on
+  2026-10-12: *"the memory will be in git also right?"*].
+- It never needs a private store, a database or an outside service to be read. The caches are optional and rebuilt
+  from these files [design, l.21–22; CACHES.md, accepted].
+- An entry is never held back for approval. An entry is a memory once it is written [EJ, 2026-10-12: *"for example a
+  lesson learn, is it a memory, why got proposed and active?"*].
+- A decision or fact is never acted on unchecked. The decision or fact changes first, then the code. Whoever reads a
+  decision or fact checks it against the code before acting on it; when they no longer match, the reader reports it in
+  its task's `state.md` and to EJ, and does not edit it. Nothing else watches for this: no script and no background
+  subagent [EJ, 2026-10-12, DESIGN-detailed l.27, l.31; revised 2026-10-12: *"I think both can remove. memory is very
+  simple"*; *"state.md for the report"*].
+- Nothing is lost between sessions. Task and project memory keep a journal (a task's inside its own task folder; agent
+  and user memory keep none), and an agent reads it at the end of a
+  task and before a handoff or session end, and writes what is worth keeping as entries [EJ, 2026-10-12: *"task and
+  project memory need a journal"*; *"an agent will go read the journal when hit each milestone"*; revised 2026-10-12,
+  milestones dropped: *"if we said handoff or session end, then the simple start and end solution already cover
+  right?"*; task journal placed 2026-10-12: *"create task folder, the subfolder inside"*].
+
+**How we know it works.** [proposed] A fresh session with only a clone of the repo can carry on from where the last
+one stopped:
+- It reads `AGENTS.md`, `INDEX.md` and its task's `state.md`, and follows the recorded decisions without asking
+  again.
+- Every change to an entry shows who made it and when.
+---
+name: procedure-to-skill
+description: "Turn a 'how do I deploy/reinstall/run X' procedure into a skill — a runnable scripts/procedure.sh plus scripts/verify.sh — instead of a CLAUDE.md note or a chat answer that has to be re-explained next time. Use when about to write down a multi-step operational procedure anywhere other than a script: in CLAUDE.md, in a memory note, or as a one-off chat answer meant to be reused. NOT for a fact with no steps (that's a memory note or a CLAUDE.md line), or a procedure specific to one throwaway task."
+---
+
+# Procedure To Skill
+
+Grounded in `research/2026-09-agent-memory-systems.md` (`~/dev/research/`) — CLAUDE.md is
+context, not enforced configuration, capped at ~200 lines for adherence; its own guidance
+says a multi-step procedure belongs in a skill. This closes the gap between knowing that
+and actually doing it every time.
+
+## The rule
+
+**The procedure is the memory. A prose description of a procedure is a summary of the
+memory, and summaries drift** — the same failure mode as an extracted algorithm
+(`verify-extraction`), one layer up: here what's being extracted is a sequence of
+operational steps instead of a function's logic.
+
+## Procedure
+
+1. Scaffold: `python3 scripts/scaffold_skill.py <name> "<one-sentence description>"`
+   (defaults to `~/skills/<name>/`; refuses to overwrite an existing skill without
+   `--force`, so it never clobbers real work by accident).
+2. Fill `scripts/procedure.sh` with the actual steps. This file *is* the memory from now
+   on — when the real steps change, edit this, not a note somewhere else.
+3. Fill `scripts/verify.sh` with a real, **external** check: a health endpoint, a
+   process/pod status, a smoke test against the actual result. Not a check that only
+   re-reads the procedure script's own exit code — that would just restate "the script
+   ran," which is a weaker claim than "the thing worked," and only the second is safe to
+   report to a user.
+4. Both stubs exit non-zero by default and say so on stderr — an unfilled skill can never
+   be mistaken for a working one, before or after `--force`.
+5. Symlink into the loaded location if it isn't already there:
+   `ln -s ~/skills/<name> ~/.claude/skills/<name>` — the scaffolder prints this command
+   whenever `~/.claude/skills/<name>` doesn't exist yet.
+
+## When *not* to do this
+
+A single fact with no steps — a URL, a hostname, a config value — is a memory note or a
+CLAUDE.md line, not a skill; skills cost a name+description in every session's context,
+so reserve them for things worth that cost: a procedure someone will actually run again.
+
+## Related
+
+- `verify-extraction` — the same "make it runnable, don't trust the prose" rule, applied
+  to an algorithm read out of code instead of an operational procedure.
+- `e2e-probe` — a stable e2e probe spec is exactly the kind of procedure this scaffolds;
+  its `run.json` spec can live inside `scripts/procedure.sh` once it's finalized for one
+  environment.
+---
+name: requirement-check
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, unattributed or impossible to check.
+---
+
+# Requirement check
+
+A general standard (RFC 2119 / 8174), installed globally — not part of the Ancient Games framework. The
+worked failure in `meaningful-names` cites the Ancient Games as one example.
+
+A short gate between **hearing a rule** and **acting on it**. It exists because rules get written down that nobody
+can trace, that count two different things at once, or that nothing can ever fail — and the cost lands months later,
+when nobody can say whether the rule still means anything.
+
+Run it when someone states a rule, and run it on yourself before writing a normative line into any document.
+
+## The eight questions
+
+Ask them of **one statement**. Say which it passes and which it fails, then **ask the person about the failures** —
+do not fill the gaps yourself.
+
+1. **Source.** Who said this, and where? Can you point to the exact line? *"Mine"* is a valid answer. Unlabelled is
+   not.
+2. **One thing.** An "and", an "or", a "/", or a second number means it is **two** statements. Split them, and give
+   each its own source.
+3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
+   files?
+4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
+   failing inputs. If you cannot name one, it is not checkable — it is a wish.
+5. **Weak words.** *like, about, appropriate, as needed, logical, fast, enough, reasonable, only has to, TBD.* Replace
+   each with a value, **or mark the value open**. Never invent the number.
+6. **Level.** Is it **MUST** (a gate that stops work), **SHOULD** (a default that may be overridden with a stated
+   reason), or **guidance**? A safety bound earns MUST. **A method does not** — see the RFC note below.
+7. **Basis.** Measured, quoted from a source, or a guess? A guess is fine **if it is labelled** — `n=0`, with when it
+   will be looked at again.
+8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
+   part"*? The person probably did not say that. **A link is its own claim and needs its own source.**
+
+## Two rules for the agent
+
+- **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
+  is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
+  the time anyone notices.
+- **Never add structure that was not given.** No halves, no numbered reasons, no ordered pairs, no named phases,
+  unless the person said so. Quote them, state the operative sentence, stop. If a relationship between two rules is
+  wanted, that is a separate claim with its own evidence.
+
+## Two verified facts, worth quoting
+
+- **RFC 2119 §6, "Guidance in the use of these Imperatives":** imperatives *"must be used with care and sparingly…
+  they MUST only be used where it is actually required… they must not be used to try to impose a particular method."*
+  Most design rules are method. Method does not earn MUST.
+- **RFC 8174 (updates 2119):** the key words *"have the meanings specified herein only when they are in all
+  capitals."* Lowercase *must* and *should* carry no defined requirement meaning. If nothing marks which lines are
+  requirements, a reader cannot tell rules from explanation.
+
+## How to answer
+
+Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
+one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+
+Do not report a rule as complete when you chose its missing value. Say which values you left open.
+
+## A worked failure
+
+> *"At most 5 subagent roles per run and at most 3 running at once."*
+
+Four of the eight fail: **Source** — nobody could name one; **One thing** — a count of roles *and* a count of
+concurrent processes; **Unit** — two different units, one word ("subagent") used for both; **Level** — a method
+preference written as a cap. The sentence would not parse, and it took four days to find out why. The checklist
+catches it in thirty seconds.
+
+The same checklist, run on *"No single call runs longer than the ceiling: 8 hours"*, passes all eight — because it
+names who set it, counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail.
+
+## Limits
+
+The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
+feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
+and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
+paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
+quotes are checked. Treat the rest as a good working list, not as a citation.
+
+Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.
+
+codex
+The design names runbooks in five places; the settled vision names only requirements and things learned. I’m using the requirement-check skill to assess the proposed wording, with particular attention to procedure links, scope, and preserving existing entries.
+exec
+/bin/bash -lc "rg -n -i 'runbook|\\bR-' docs/memory-system/SOURCE_OF_TRUTH.md docs/memory-system/vision-statements/source-of-truth-memory-vision-statements.md; rg --files -g 'R-*.md' -g '*procedure*' -g 'AGENTS.md' -g '*INDEX.md' project-memory docs/memory-system runs/20261012-sot-item8-runbooks" in /home/smoke01/dev/ancient-games
+ exited 2 in 0ms:
+docs/memory-system/SOURCE_OF_TRUTH.md:63:- A **runbook** says how to run or fix something; where possible it points at a script.
+docs/memory-system/SOURCE_OF_TRUTH.md:95:| At the end of a task | Other lessons, observations and hypotheses; merging duplicates; runbooks. |
+docs/memory-system/SOURCE_OF_TRUTH.md:127:  entries/           one file per entry: D- decision, F- fact, L- lesson, R- runbook
+docs/memory-system/SOURCE_OF_TRUTH.md:182:  `F-` fact, `L-` lesson and `R-` runbook, plus `O-` observation and `H-` hypothesis (*proposed*; the design leaves
+docs/memory-system/SOURCE_OF_TRUTH.md:196:  **hypothesis** is a guess, labelled as one. A **runbook** says how to run or fix something and points at a script
+docs/memory-system/SOURCE_OF_TRUTH.md:224:- **W5.2** Written at the end of a task: other lessons, observations, hypotheses, and runbooks.
+rg: project-memory: No such file or directory (os error 2)
+
+codex
+The search confirms six runbook references to update. I’m recommending scripts or skills for reusable procedures, with links from existing memory entries when they support a decision or something learned. The report will also cover task-only instructions and manual steps that cannot be automated.
+codex
+# Item 8, runbooks (codex)
+
+## Recommendation
+
+[proposed] Choose **(b): remove runbooks as a memory kind, keep reusable procedures with the project as scripts or skills, and link to them from existing memory entries when they help apply a recorded claim.**
+
+## Three reasons
+
+1. [EJ’s] The vision names “the **decisions and facts** the code must follow, written **before** the code” and “what was **learned** after: lessons, observations and hypotheses.” [proposed] My reading: removing the extra kind brings the design into line with the settled vision without expanding what EJ said memory holds.
+
+2. [design] W3.1 says, “Nothing that can be read directly from the code, the tests or the commit log”; W3.6 says, “an entry links to them.” [proposed] My reading: a procedure and a memory entry should have different jobs. The procedure holds the steps; the entry holds a decision, constraint or learning, with a link when useful. A separate runbook entry adds another place for the steps to drift.
+
+3. [proposed] The supplied `procedure-to-skill` skill states, “The procedure is the memory. A prose description of a procedure is a summary of the memory, and summaries drift.” It also requires a “real, **external** check.” [proposed] My reading: making reusable steps executable, with verification of their result, gives the next worker something stronger than instructions to reinterpret. The skill’s exclusion of “a procedure specific to one throwaway task” also prevents turning every task’s instructions into a permanent skill.
+
+## Text changes
+
+[proposed] All replacement text below is a proposal for EJ to decide. The labels identify attribution and are not part of the replacement text.
+
+### Vision
+
+[proposed] **No text change.** Keep the existing list of decisions, facts, lessons, observations and hypotheses. A link to a procedure supports one of those entries; it introduces no additional memory kind.
+
+### Design — “What it is for”
+
+[design] Delete this bullet: “A **runbook** says how to run or fix something; where possible it points at a script.”
+
+[proposed] After the remaining two bullets, insert:
+
+[proposed] “Reusable procedures SHOULD be kept with the project as scripts or skills. Any manual steps stay with the procedure. An entry may link to it from **How to apply:** when the link helps apply that entry’s claim; the entry does not repeat the procedure.”
+
+[proposed] “A reusable procedure shared by the project belongs to **project scope** and is readable from the repo. Instructions specific to an unfinished task belong to **task scope**, in its existing `work/<task-id>/state.md`. Neither belongs solely to agent or user memory when project workers need it.”
+
+[proposed] “SHOULD marks a default; a departure is explained where the procedure is kept.”
+
+### Design — “When to write” table
+
+[design] The current end-of-task row includes “merging duplicates; runbooks.”
+
+[proposed] Replace that row with exactly:
+
+[proposed] `| At the end of a task | Other lessons, observations and hypotheses; merging duplicates. |`
+
+[proposed] Procedure maintenance follows the work that changes the procedure. It is no longer an end-of-task memory-entry obligation.
+
+### Design — layout
+
+[proposed] Replace the `entries/` line with exactly:
+
+[proposed] `  entries/           one file per entry: D- decision, F- fact, L- lesson`
+
+[design] Keep the following sentence about observation and hypothesis prefixes unchanged: “File prefixes for observations and hypotheses: `O-` and `H-`, proposed in W1.1.”
+
+[proposed] This review does not settle those existing prefix proposals.
+
+### Design — W1.1 and W1’s check
+
+[proposed] Replace W1.1 with:
+
+[proposed] “**W1.1** Each entry is one file: `project-memory/entries/<prefix>-<id>-<slug>.md`. The prefixes are `D-` decision, `F-` fact and `L-` lesson, plus `O-` observation and `H-` hypothesis (*proposed*; the design leaves these two open).”
+
+[proposed] Replace W1’s **Fails if** with:
+
+[proposed] “**Fails if** a lint over `entries/` finds a missing field or section, or a reviewer finds two claims in one entry or a prefix outside W1.1.”
+
+### Design — W2.2 and W2’s check
+
+[proposed] Replace W2.2 with:
+
+[proposed] “**W2.2** A **lesson** comes from a failure or a human correction. An **observation** records what was seen. A **hypothesis** is a guess, labelled as one.”
+
+[proposed] Replace W2’s **Fails if** with:
+
+[proposed] “**Fails if** `kind` holds a value other than decision, fact, lesson, observation or hypothesis, or a guess is recorded under any kind but hypothesis.”
+
+[proposed] This removes the unsupported runbook definition from the requirement attributed to the vision.
+
+### Design — W3.6 and W3’s check
+
+[proposed] Replace W3.6 with:
+
+[proposed] “**W3.6** No copy of the project’s existing documents or reusable procedures: an entry links to them.”
+
+[proposed] Keep W3’s **Fails if** unchanged:
+
+[proposed] “**Fails if** a secret scanner finds a credential (W3.2). For W3.1 and W3.3–W3.6, a reviewer finds such content. Those are judged checks.”
+
+[proposed] The revised W3.6 makes copied procedure steps part of that existing judged check.
+
+### Design — W5.2 and W5’s check
+
+[proposed] Replace W5.2 with:
+
+[proposed] “**W5.2** Written at the end of a task: other lessons, observations and hypotheses.”
+
+[proposed] Keep W5’s existing **Fails if** paragraph, including its decision, correction and completion checks. Append:
+
+[proposed] “For W5.2, it fails if a reviewer finds a lesson, observation or hypothesis selected for retention in the task’s closing journal read that was not written as an entry by task completion (judged).”
+
+### Boundaries and requirement check
+
+[proposed] These edits cover all six runbook references: **What it is for**, the timing table, the layout, W1.1, W2.2 and W5.2. They add no memory folders, files or header fields. **How to apply:** already supplies the place for a link.
+
+[design] K4.1 says, “An entry is never deleted.” [proposed] Keep that rule. The inspected checkout has no `project-memory/` directory, so this proposal needs no existing `R-` entry migration here.
+
+[proposed] I applied `requirement-check` to the proposed procedure-placement default:
+
+| Label | Criterion | Assessment |
+|---|---|---|
+| proposed | Source | **Pass:** codex’s proposal, grounded in the supplied skill and W3. |
+| proposed | One thing | **Pass:** placement, links and scope are stated separately. |
+| proposed | Unit | **Pass:** no numerical threshold is introduced. |
+| proposed | Can it fail | **Pass:** an entry that copies a reusable deployment procedure fails revised W3.6. |
+| proposed | Weak words | **Pass:** the replacement identifies the artifact, scope and link location. |
+| proposed | Level | **Pass:** procedure placement is SHOULD, with a stated reason for departure. |
+| proposed | Basis | **Pass:** design judgement, **n=0**; revisit on the first fresh-session reuse of a procedure. |
+| proposed | Links | **Pass:** the claimed relationship to W3 is quoted above and identified as my reading. |
+
+[proposed] The proposed check additions are written by codex. This was a read-only document review; their usefulness in real work is **not measured**, and no lint, procedure or independent verification was run.
+
+## What could go wrong
+
+[proposed] A database recovery procedure includes a manual step: identify the correct backup before running the restore script. A worker moves only the commands into a script and discards that instruction with the runbook. The script finishes successfully but restores the wrong backup.
+
+[proposed] The proposed wording keeps manual steps with the procedure. The supplied skill’s verification rule checks the actual recovery result rather than merely the script’s exit code. Whether a particular recovery check catches this failure remains **not measured**.
+
+## Questions for EJ
+
+[proposed] None. The proposal is complete for your decision; it leaves the existing observation/hypothesis prefix question untouched.
+tokens used
+23,384

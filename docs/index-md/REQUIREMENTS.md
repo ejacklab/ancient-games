@@ -20,7 +20,7 @@
 
 **B1 — What it reads** (p step 1; r opencode 3, codex 7)
 - **B1.1** Only files directly in `project-memory/entries/` whose name matches `^[DFLOH]-[^/]+\.md$`. No subfolders,
-  no dotfiles, not `INDEX.md`. The `O-` and `H-` prefixes are *proposed* in the design (W1.1); the script accepts them.
+  no dotfiles, not `INDEX.md`. The five prefixes are those of W1.1.
 - **B1.2** Write mode reads the working-tree content of the entry files git knows about (tracked or staged). An
   untracked entry file is an error that names the file and tells the writer to `git add` it.
 - **B1.3** Check mode reads git objects only: the staging area by default, or a commit with `--check <rev>`. Paths
