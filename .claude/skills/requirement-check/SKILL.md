@@ -21,8 +21,10 @@ do not fill the gaps yourself.
 
 1. **Source.** Who said this, and where? Can you point to the exact line? *"Mine"* is a valid answer. Unlabelled is
    not.
-2. **One thing.** An "and", an "or", a "/", or a second number means it is **two** statements. Split them, and give
-   each its own source.
+2. **One thing.** It is about **one action or one event**: one thing that happens, and what must be true when it
+   does. A condition or a record that belongs to that event is part of it, not a second statement. If it names two
+   events (a role is defined, a process starts), it is **two** — split them, and give each its own source. An "and",
+   an "or", a "/" or a second number is only a hint to look; it is not the verdict. *(EJ, 2026-10-12.)*
 3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
    files?
 4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
@@ -36,8 +38,13 @@ do not fill the gaps yourself.
 8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
    part"*? The person probably did not say that. **A link is its own claim and needs its own source.**
 
-## Two rules for the agent
+## Three rules for the agent
 
+- **Check the line you write, not only the reply you heard.** When the person answers your question briefly ("yes",
+  "flag them", "use git"), the requirement is **your question plus their answer**. Write that whole rule — what, when,
+  who, what happens next — run the eight questions on the written line, and only then put it in the document. A
+  pasted short reply fails *one thing*, *weak words* and *can it fail* on its own. *(EJ, 2026-10-12, after "flag
+  them" was written into a design alone and later misread.)*
 - **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
   is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
   the time anyone notices.
