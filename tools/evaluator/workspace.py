@@ -17,9 +17,18 @@ import shutil
 import sys
 from pathlib import Path
 
+EXCLUDED_SEGMENTS = {"tests", "test", ".git", "runs", "__pycache__"}
+STALE_OUTPUTS = ("classify.json", "probes", "mutants.json", "plants.json", "matrix.json",
+                 "confirm.json", "judge-1.json", "judge-2.json", "verdict.json")
+
 
 def _excluded(relative: Path, patterns: list[str]) -> bool:
     """Match a path or one of its parent directories against the product globs."""
+    if any(part in EXCLUDED_SEGMENTS for part in relative.parts):
+        return True
+    if (relative.name == "conftest.py" or fnmatch.fnmatchcase(relative.name, "test_*.py")
+            or fnmatch.fnmatchcase(relative.name, "*_test.py")):
+        return True
     candidates = [relative, *relative.parents]
     return any(fnmatch.fnmatchcase(path.as_posix(), pattern.rstrip("/"))
                for path in candidates if path != Path(".") for pattern in patterns)
@@ -38,6 +47,8 @@ def build_workspace(product: Path, spec: Path, run: Path,
                     excludes: list[str] | None) -> dict:
     """Copy the allowed product files and spec, write and return manifest.json."""
     product, spec, run = Path(product), Path(spec), Path(run)
+    if any((run / name).exists() or (run / name).is_symlink() for name in STALE_OUTPUTS):
+        raise OSError(22, "use a new runId", str(run))
     if not product.is_dir():
         raise OSError(2, "not a product directory", str(product))
     # Read mandatory inputs before changing any previous output.
@@ -57,7 +68,7 @@ def build_workspace(product: Path, spec: Path, run: Path,
     _reset_directory(workspace / "product")
     _reset_directory(workspace / "spec")
 
-    patterns = excludes if excludes else ["tests/"]
+    patterns = excludes or []
     manifest = {"copied": {}, "excluded": [], "skipped": []}
 
     def walk_error(error: OSError) -> None:
@@ -83,7 +94,7 @@ def build_workspace(product: Path, spec: Path, run: Path,
             key = relative.as_posix()
             if source.is_symlink():
                 manifest["skipped"].append(key)
-            elif name in {".git", "runs", "__pycache__"} or _excluded(relative, patterns):
+            elif _excluded(relative, patterns):
                 manifest["excluded"].append(key)
             else:
                 content = source.read_bytes()
@@ -111,9 +122,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--exclude", action="append")
     args = parser.parse_args(argv)
     try:
+        requirements = args.spec / "REQUIREMENTS.md"
+        if not requirements.is_file():
+            raise OSError(2, "not a requirements file", str(requirements))
+        runs = Path(__file__).resolve().parents[2] / "runs"
+        if args.run.resolve() == runs.resolve() or not args.run.resolve().is_relative_to(runs.resolve()):
+            raise OSError(22, "run must resolve inside the repository's runs/ folder", str(args.run))
         manifest = build_workspace(args.product, args.spec, args.run, args.exclude)
-    except OSError as error:
-        print(f"{error.filename or args.run}: {error.strerror or error}", file=sys.stderr)
+    except (OSError, ValueError, RuntimeError) as error:
+        print(f"{args.run}: {error}", file=sys.stderr)
         return 2
     print(f"wrote {args.run / 'workspace/manifest.json'}: {len(manifest['copied'])} files copied")
     return 0

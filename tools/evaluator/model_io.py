@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """model_io.py — prepare and check the files around the confirm and judge model steps.
 
-Run:  python3 tools/evaluator/model_io.py {confirm-input,confirm-check,judge-input,judged-merge} --run DIR
+Run:  python3 tools/evaluator/model_io.py SUBCOMMAND --run DIR
 
 DATA.md's last section supplies the file contract. Quotes are plain substrings
 after collapsing whitespace; only requirements.json is a required input.
@@ -14,6 +14,7 @@ import json
 import re
 import shutil
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 GROUP_HEADING = re.compile(r"^\*\*(?P<group>[A-Z][A-Za-z]*(?:-[A-Z][A-Za-z]*)?\d+(?:\.\d+)?) — .*?\*\*", re.MULTILINE)
@@ -38,8 +39,10 @@ def _read_json(path: Path, required: bool = False) -> dict | list:
         raise InputError(f"{path}: {error.strerror}") from None
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise InputError(f"{path}: {error}") from None
-    if not isinstance(document, (dict, list)) or (required and not isinstance(document, dict)):
-        raise InputError(f"{path}: expected a JSON {'object' if required else 'object or list'}")
+    if required and not isinstance(document, dict):
+        raise InputError(f"{path}: expected a JSON object")
+    if not isinstance(document, (dict, list)):
+        return {}
     return document
 
 
@@ -52,14 +55,35 @@ def _read_text(path: Path) -> str:
         raise InputError(f"{path}: {error}") from None
 
 
-def _write_json(path: Path, document: dict) -> None:
+def _write_json(path: Path, document: dict | list) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def _entries(document: dict | list) -> list[dict]:
-    rows = document if isinstance(document, list) else document.get("cases", [])
-    return [row for row in rows if isinstance(row, dict)]
+def _object(value) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _entries(document, filename: str = "input", problems: list[str] | None = None,
+             needs_probe: bool = False, bare_list: bool = False) -> list[dict]:
+    rows = (document if isinstance(document, list) else []) if bare_list else _object(document).get("cases", [])
+    if not isinstance(rows, list):
+        return []
+    entries = []
+    for index, row in enumerate(rows):
+        problem = ""
+        if not isinstance(row, dict):
+            problem = "expected an object"
+        elif not isinstance(row.get("case"), str):
+            problem = "case is not a string"
+        elif needs_probe and not isinstance(row.get("probe"), str):
+            problem = "probe is not a string"
+        if problem:
+            if problems is not None:
+                problems.append(f"{filename}: entry {index}: {problem}")
+        else:
+            entries.append(row)
+    return entries
 
 
 def _case_contexts(run: Path, requirements: dict) -> dict[str, dict]:
@@ -71,14 +95,21 @@ def _case_contexts(run: Path, requirements: dict) -> dict[str, dict]:
         end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
         blocks[heading["group"]] = text[heading.start():end]
     contexts = {}
+    for key in ("groups", "vision"):
+        if not isinstance(requirements.get(key, []), list):
+            raise InputError(f"requirements.json: {key} must be a list")
     for group in requirements.get("groups", []):
-        for case in group.get("cases", []):
+        if not isinstance(group, dict) or not isinstance(group.get("group"), str):
+            raise InputError("requirements.json: invalid group")
+        for case in _entries(group):
             contexts[case["case"]] = {
                 "case": case["case"], "case_text": case.get("text", ""),
                 "group_text": blocks.get(group["group"], ""),
             }
     for vision in requirements.get("vision", []):
-        for case in vision.get("cases", []):
+        if not isinstance(vision, dict):
+            raise InputError("requirements.json: invalid vision entry")
+        for case in _entries(vision):
             contexts[case["case"]] = {
                 "case": case["case"], "case_text": case.get("text", ""),
                 "group_text": vision.get("text", ""),
@@ -108,21 +139,26 @@ def _probe_key(probe: str) -> str:
 
 
 def confirm_input(run: Path, requirements: dict) -> dict:
-    matrix = _read_json(run / "matrix.json")
+    matrix = _object(_read_json(run / "matrix.json"))
     contexts = _case_contexts(run, requirements)
     sources = _probe_sources(run / "probes")
     rows = []
-    for probe, outcome in matrix.get("product", {}).items():
+    for probe, outcome in _object(matrix.get("product")).items():
         if outcome != "fail":
             continue
-        output = matrix.get("output", {}).get(probe, "")
-        citations = matrix.get("citations", {}).get(probe, [])
+        output = _object(matrix.get("output")).get(probe, "")
+        citations = _object(matrix.get("citations")).get(probe, [])
+        if not isinstance(citations, list):
+            citations = []
         case = citations[0] if citations else ""
+        if not isinstance(case, str):
+            case = ""
         context = contexts.get(case, {"case": case, "case_text": "", "group_text": ""})
         rows.append({**context, "probe": probe,
                      "probe_source": sources.get(_probe_key(probe).split('[')[0], ""),
                      "output": "\n".join(str(output).splitlines()[-OUTPUT_LINES:])})
     document = {"cases": rows}
+    (run / "confirm.json").unlink(missing_ok=True)
     _write_json(run / "confirm-input.json", document)
     print(f"{len(rows)} to confirm")
     return document
@@ -142,15 +178,21 @@ def _require_model_file(path: Path, step: str) -> None:
 
 
 def confirm_check(run: Path, requirements: dict) -> dict:
-    inputs = _entries(_read_json(run / "confirm-input.json"))
+    problems = []
+    inputs = _entries(_read_json(run / "confirm-input.json"), "confirm-input.json", problems, needs_probe=True)
     if inputs:
         _require_model_file(run / "confirm.json", "confirm")
-    answers = _entries(_read_json(run / "confirm.json"))
+    previous = _object(_read_json(run / "confirm.json"))
+    saved_problems = previous.get("input_problems", [])
+    if isinstance(saved_problems, list):
+        problems.extend(problem for problem in saved_problems if isinstance(problem, str))
+    answers = _entries(previous, "confirm.json", problems, needs_probe=True)
     manifest = _read_json(run / "workspace/manifest.json")
     # Files the blind workspace removed on purpose (EV-R2.1). A probe that fails because one is missing failed on
     # the evaluator's own exclusion, not on the product (calibration K1b, 2026-10-13: C2 checks the product's tests).
     # Only files are matched: every absolute path contains a removed folder name such as "runs".
-    removed = [path for path in (manifest.get("excluded", []) if isinstance(manifest, dict) else [])
+    excluded = _object(manifest).get("excluded", [])
+    removed = [path for path in (excluded if isinstance(excluded, list) else [])
                if isinstance(path, str) and "." in path.rsplit("/", 1)[-1]]
     voided = 0
     for answer in answers:
@@ -171,41 +213,63 @@ def confirm_check(run: Path, requirements: dict) -> dict:
             answer.update(faithful=False, note="quote not found")
             voided += 1
     document = {"cases": answers}
+    if problems:
+        document["input_problems"] = problems
     _write_json(run / "confirm.json", document)
-    print(f"{len(answers)} checked, {voided} voided")
+    script_notes = ("no failure output", "needs a file the blind workspace removed", "quote not found")
+    unfaithful = [answer for answer in answers
+                 if answer.get("faithful") is False and answer.get("note") not in script_notes]
+    if unfaithful and not (run / "repair.json").exists():
+        _write_json(run / "repair.json", {"round": 1, "cases": unfaithful})
+    print(f"{len(answers)} checked, {voided} voided, {len(unfaithful)} unfaithful")
     return document
 
 
 def _product_file(product: Path, relative: str) -> Path | None:
+    if not isinstance(relative, str):
+        return None
     target = product / relative
-    if product.resolve() not in target.resolve().parents or not target.is_file():
+    try:
+        if product.resolve() not in target.resolve().parents or not target.is_file():
+            return None
+    except (ValueError, OSError, RuntimeError):
         return None
     return target
 
 
-def judge_input(run: Path, requirements: dict) -> dict:
+def _judge_folder(run: Path) -> Path:
+    name = run.name
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name) or ".." in name:
+        raise InputError(f"{run}: invalid run folder name")
+    return Path("/tmp") / f"evaluator-judge-{name}"
+
+
+def _reset_directory(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.exists():
+        shutil.rmtree(path)
+    path.mkdir(parents=True)
+
+
+def judge_input(run: Path, requirements: dict, attempt: int = 1) -> dict:
     contexts = _case_contexts(run, requirements)
-    labels = {row.get("case"): row for row in _entries(_read_json(run / "classify.json"))}
+    problems = []
+    labels = {}
+    for row in _entries(_read_json(run / "classify.json"), "classify.json", problems):
+        case = row["case"]
+        labels[case] = {"kind": "human"} if case in labels else row
     rows = [context for case, context in contexts.items()
             if labels.get(case, {}).get("kind") == "judged"
-            and str(labels[case].get("reason") or "").strip()]
-    plants = _entries(_read_json(run / "plants.json"))
+            and isinstance(labels[case].get("reason"), str) and labels[case]["reason"].strip()]
+    plants = _entries(_read_json(run / "plants.json"), "plants.json", problems, bare_list=True)
     product = run / "workspace/product"
-    copy = run / "judge-copy"
-    if copy.is_symlink():
-        copy.unlink()
-    elif copy.exists():
-        shutil.rmtree(copy)
-    if product.is_dir():
-        shutil.copytree(product, copy, symlinks=True)
-    else:
-        copy.mkdir(parents=True)
-    plant_case = None
+    valid_plants = []
     for row in rows:
         for plant in plants:
             if plant.get("case") != row["case"]:
                 continue
-            target = _product_file(copy, str(plant.get("file", "")))
+            target = _product_file(product, plant.get("file", ""))
             old, new = plant.get("old"), plant.get("new")
             if target is None or not isinstance(old, str) or not old or not isinstance(new, str):
                 continue
@@ -215,14 +279,46 @@ def judge_input(run: Path, requirements: dict) -> dict:
                 continue
             if text.count(old) != 1:
                 continue
-            target.write_bytes(text.replace(old, new, 1).encode("utf-8"))
-            plant_case = row["case"]
+            valid_plants.append(plant)
             break
-        if plant_case is not None:
-            break
-    document = {"cases": rows, "plant_case": plant_case}
+    previous = _object(_read_json(run / ".coordinator/plant.json")).get("plant_case")
+    if attempt == 2:
+        previous_index = next((index for index, plant in enumerate(valid_plants)
+                               if plant["case"] == previous), None)
+        available = valid_plants[previous_index + 1:] if previous_index is not None else []
+        if not available:
+            print("no other plant")
+            return _object(_read_json(run / "judge-input.json"))
+    else:
+        available = valid_plants
+    plant = available[0] if available else None
+    folder = _judge_folder(run)
+    _reset_directory(folder)
+    copy = folder / "product"
+    if product.is_dir():
+        shutil.copytree(product, copy, symlinks=True)
+    else:
+        copy.mkdir()
+    plant_case = plant["case"] if plant else None
+    if plant:
+        target = _product_file(copy, plant["file"])
+        if target is None:
+            raise InputError("plants.json: plant target is outside the judge copy")
+        text = target.read_bytes().decode("utf-8")
+        target.write_bytes(text.replace(plant["old"], plant["new"], 1).encode("utf-8"))
+    # Fresh calls must not inherit answers from the previous attempt.
+    for filename in ("judge-1.json", "judge-2.json"):
+        (run / filename).unlink(missing_ok=True)
+    document = {"cases": rows}
     _write_json(run / "judge-input.json", document)
+    _write_json(folder / "judge-input.json", document)
+    coordinator = {"plant_case": plant_case, "attempt": attempt}
+    if problems:
+        coordinator["input_problems"] = problems
+    _write_json(run / ".coordinator/plant.json", coordinator)
     print(f"{len(rows)} to judge")
+    if plant_case:
+        print(f"plant {plant_case}")
     return document
 
 
@@ -234,7 +330,7 @@ def _code_quote_found(entry: dict, product: Path) -> bool:
     if match is None or (entry.get("holds") is not True and entry.get("holds") is not False):
         return False
     relative = match["file"]
-    for prefix in ("judge-copy/", "workspace/product/"):  # a judge may cite paths from the run folder (K1)
+    for prefix in ("judge-copy/", "workspace/product/", "product/"):
         if relative.startswith(prefix):
             relative = relative[len(prefix):]
     target = _product_file(product, relative)
@@ -243,17 +339,28 @@ def _code_quote_found(entry: dict, product: Path) -> bool:
 
 def judged_merge(run: Path, requirements: dict) -> dict:
     inputs = _read_json(run / "judge-input.json")
-    rows = _entries(inputs)
+    problems = []
+    rows = _entries(inputs, "judge-input.json", problems)
+    coordinator = _object(_read_json(run / ".coordinator/plant.json"))
+    saved_problems = coordinator.get("input_problems", [])
+    if isinstance(saved_problems, list):
+        problems.extend(problem for problem in saved_problems if isinstance(problem, str))
     if not rows:
         document = {"plant_found": True, "cases": []}
     else:
-        plant_case = inputs.get("plant_case")
-        _require_model_file(run / "judge-1.json", "first judge")
+        plant_case = coordinator.get("plant_case")
+        if not isinstance(plant_case, str):
+            plant_case = None
+        folder = _judge_folder(run)
+        _require_model_file(folder / "judge-1.json", "first judge")
         if plant_case is not None:
             _require_model_file(run / "judge-2.json", "second judge")
-        first = {entry.get("case"): entry for entry in _entries(_read_json(run / "judge-1.json"))
-                 if _code_quote_found(entry, run / "judge-copy")}
-        second = {entry.get("case"): entry for entry in _entries(_read_json(run / "judge-2.json"))
+        first_document = _read_json(folder / "judge-1.json")
+        shutil.copyfile(folder / "judge-1.json", run / "judge-1.json")
+        first = {entry["case"]: entry for entry in _entries(first_document, "judge-1.json", problems)
+                 if _code_quote_found(entry, folder / "product")}
+        second = {entry["case"]: entry for entry in _entries(_read_json(run / "judge-2.json"),
+                                                            "judge-2.json", problems)
                   if _code_quote_found(entry, run / "workspace/product")}
         cases = []
         for row in rows:
@@ -264,21 +371,93 @@ def judged_merge(run: Path, requirements: dict) -> dict:
         document = {"plant_case": plant_case,
                     "plant_found": plant_case is not None and first.get(plant_case, {}).get("holds") is False,
                     "cases": cases}
+    if problems:
+        document["input_problems"] = problems
     _write_json(run / "judged.json", document)
     print(f"plant_found: {str(document['plant_found']).lower()}")
     return document
 
 
+def check_output(run: Path, step: str) -> None:
+    """Validate the model's output file, independently of its done answer."""
+    try:
+        if step == "probes":
+            valid = any(path.is_file() for path in (run / "probes").glob("test_*.py"))
+        else:
+            path = run / f"{step}.json"
+            document = _read_json(path)
+            valid = path.is_file() and (
+                isinstance(document, dict) and isinstance(document.get("cases"), list)
+                if step == "classify" else isinstance(document, list))
+    except InputError as error:
+        raise ModelStepMissing(str(error)) from None
+    if not valid:
+        raise ModelStepMissing(f"{run}: {step} output missing or not valid")
+    print(f"{step}: valid")
+
+
+def stamp(run: Path, event: str, agents: int | None) -> dict:
+    cost = {} if event == "start" else _object(_read_json(run / "cost.json"))
+    cost[event] = datetime.now(timezone.utc).isoformat()
+    cost.update(tokens="not reported", models="requested, not verified")
+    if agents is not None:
+        cost["agents"] = agents
+    _write_json(run / "cost.json", cost)
+    if event == "start":
+        (run / "probe-scratch").mkdir(exist_ok=True)
+    print(f"{event} stamped")
+    return cost
+
+
+def mutant_view(run: Path, collect: bool) -> None:
+    view = run / "mutant-view"
+    if collect:
+        # Validate presence before copying either deliverable back into the run.
+        for filename in ("mutants.json", "plants.json"):
+            _require_model_file(view / filename, "mutants")
+        for filename in ("mutants.json", "plants.json"):
+            shutil.copyfile(view / filename, run / filename)
+        print("mutants and plants collected")
+    else:
+        _reset_directory(view)
+        for filename in ("requirements.json", "classify.json"):
+            shutil.copyfile(run / filename, view / filename)
+        shutil.copytree(run / "workspace", view / "workspace", symlinks=True)
+        print("mutant view built")
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("subcommand", choices=["confirm-input", "confirm-check", "judge-input", "judged-merge"])
+    parser.add_argument("subcommand", choices=["confirm-input", "confirm-check", "judge-input", "judged-merge",
+                                               "check-output", "stamp", "mutant-view"])
     parser.add_argument("--run", type=Path, required=True)
+    parser.add_argument("--step", choices=["classify", "probes", "mutants"])
+    parser.add_argument("--event", choices=["start", "end"])
+    parser.add_argument("--agents", type=int)
+    parser.add_argument("--attempt", type=int, choices=[1, 2], default=1)
+    parser.add_argument("--collect", action="store_true")
     args = parser.parse_args(argv)
+    if args.subcommand == "check-output" and args.step is None:
+        parser.error("check-output requires --step")
+    if args.subcommand == "stamp" and args.event is None:
+        parser.error("stamp requires --event")
+    if args.agents is not None and args.agents < 0:
+        parser.error("--agents must be non-negative")
     commands = {"confirm-input": confirm_input, "confirm-check": confirm_check,
                 "judge-input": judge_input, "judged-merge": judged_merge}
     try:
-        requirements = _read_json(args.run / "requirements.json", required=True)
-        commands[args.subcommand](args.run, requirements)
+        if args.subcommand == "stamp":
+            stamp(args.run, args.event, args.agents)
+        elif args.subcommand == "check-output":
+            check_output(args.run, args.step)
+        else:
+            requirements = _read_json(args.run / "requirements.json", required=True)
+            if args.subcommand == "judge-input":
+                judge_input(args.run, requirements, args.attempt)
+            elif args.subcommand == "mutant-view":
+                mutant_view(args.run, args.collect)
+            else:
+                commands[args.subcommand](args.run, requirements)
         return 0
     except ModelStepMissing as error:
         sys.stdout.flush()
@@ -288,9 +467,9 @@ def main(argv=None) -> int:
         sys.stdout.flush()
         print(error, file=sys.stderr)
         return 2
-    except OSError as error:
+    except (OSError, ValueError, TypeError, RuntimeError) as error:
         sys.stdout.flush()
-        print(f"{error.filename or args.run}: {error.strerror or error}", file=sys.stderr)
+        print(f"{args.run}: {error}", file=sys.stderr)
         return 2
 
 

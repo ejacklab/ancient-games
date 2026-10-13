@@ -285,15 +285,16 @@ they are: the new rules add to them.
   - A mutant's results count as proof for a case only when **all** of these hold:
     - (a) that mutant's run `status` is `"ok"`, or the `runs` key is absent (older matrices);
     - (b) the probe that is red on the mutant is not listed in that run's `errors`;
-    - (c) the mutant run has **2 or more** probe results and **not every one** of them is `fail`. This is Dave's
-      guarded rule: a mutant that turns everything red proves nothing.
+    - (c) **when** the mutant run has 2 or more probe results, **not every one** of them is `fail`. A single-probe
+      run is not judged by (c). This is Dave's *guarded* rule. *(Corrected 2026-10-13: the first wording required 2
+      or more results, which is the strict version Dave measured as breaking 4 frozen tests.)*
   - Otherwise the case is UNKNOWN, `"unproven: the mutant run was not healthy"`.
 - **F4 (`probe_matrix.py`, `verdict.py`).**
   - `probe_matrix` takes the product copy's baseline hashes **before** the product run, and records
     `"product_changed": true` if the product run changed any file. It still restores the copy, and `restored` is
     measured against that first baseline.
   - In `verdict.py`, when `matrix.json` exists, a `restored` that is not exactly `true`, or a `product_changed` that
-    is true, makes every executable or static case UNKNOWN: `"product copy not intact"`. Judged-only runs, which have
+    is true, makes every executable or static case UNKNOWN: `"product copy not restored or changed"`. Judged-only runs, which have
     no `matrix.json`, are unaffected. This is Dave's guarded version.
 - **F11 (`verdict.py`, `model_io.py`).**
   - Model-written JSON of the wrong shape never ends in a traceback. A root of the wrong type counts as empty. An

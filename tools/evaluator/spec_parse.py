@@ -6,7 +6,9 @@ Run:  python3 tools/evaluator/spec_parse.py --requirements REQUIREMENTS.md [--vi
 DATA.md's E1 section is the contract, and its rules 1 to 8 are the only thing this module knows about a spec file:
 a group heading, the ids under it, its **Fails if** lines split into cases, the open ids, and the two vision sections.
 Every requirement id read here lands in the manifest, because an id the run never reports on is a requirement the
-run claims to have covered (EV-P2.1), and an id the file marks open lands out of scope instead (EV-R1.1).
+run claims to have covered (EV-P2.1), and an id the file marks open lands out of scope instead (EV-R1.1). An id-shaped
+token in bold at the start of a bullet that never reached the manifest is listed in `unparsed_ids`, so it is visible
+rather than silently dropped (R1-F14), and a spec with an empty manifest is refused rather than run (R1-F1).
 
 `parse()` takes the two texts and returns requirements.json's content, with the `spec` paths null; only `main` fills
 them. That is why a test can hand the function a fixture's bytes and get the document a real run writes (EV-R1).
@@ -24,6 +26,9 @@ ID = r"[A-Z][A-Za-z]*(-[A-Z][A-Za-z]*)?\d+(\.\d+)?"
 GROUP_HEADING = re.compile(r"^\*\*(?P<group>" + ID + r") — (?P<title>.*?)\*\*")
 BULLET = re.compile(r"^(?P<indent> *)(?P<text>- .*|-$)\Z")
 ID_BOLD = re.compile(r"^\*\*(?P<id>" + ID + r")(?:\s+[^*]*)?\*\*")
+# R1-F14: the id token a bullet starts with, whether or not the parser could take the rest of the bold. The lookahead
+# keeps `**B1.20Oops**` out: an id is not an id when a letter or a digit carries straight on, or when `.n` follows.
+ID_LEADING = re.compile(r"^\*\*(?P<id>" + ID + r")(?!\w|\.\d)")
 
 # DATA.md E1 rule 5: an id whose own text says it is open gets no verdict. The word has to end a clause — `.`, `;`,
 # `,`, `)` or the end of the bullet — so "is open." and "leaves this open." count, while "is opened read-only" and
@@ -145,10 +150,10 @@ def _close(group: dict) -> dict:
             "cases": group["cases"], "open_ids": group["open_ids"]}
 
 
-def _read_groups(text: str) -> list[dict]:
-    """Every requirement group in the file, in file order (DATA.md E1 rules 1, 2, 3, 5, 6)."""
+def _read_groups(text: str) -> tuple[list[dict], list[str]]:
+    """Every requirement group in the file, in file order, and the id tokens the parser could not place (R1-F14)."""
     lines = text.splitlines()
-    groups, current, index = [], None, 0
+    groups, current, index, leading = [], None, 0, []
     while index < len(lines):
         heading = GROUP_HEADING.match(lines[index])
         if heading is not None:
@@ -157,21 +162,26 @@ def _read_groups(text: str) -> list[dict]:
             groups.append(current)
             index += 1
             continue
-        if current is None or BULLET.match(lines[index]) is None:
+        if BULLET.match(lines[index]) is None:
             index += 1
             continue
         body, index = _bullet_body(lines, index)
+        bold = ID_BOLD.match(body)
+        if bold is not None and current is not None:
+            current["ids"].append(bold.group("id"))
+            if _is_open(body[bold.end():]):
+                current["open_ids"].append(bold.group("id"))
+            continue
         fails_if = _fails_if(body)
-        if fails_if is not None:
+        if fails_if is not None and current is not None:
             current["fails"].append(fails_if)
             continue
-        bold = ID_BOLD.match(body)
-        if bold is None:
-            continue
-        current["ids"].append(bold.group("id"))
-        if _is_open(body[bold.end():]):
-            current["open_ids"].append(bold.group("id"))
-    return [_close(group) for group in groups]
+        # A bullet the parser could not read: before any group heading, or in a bold shape rule 2 does not take
+        # (`**B1.1:**`). It is named in unparsed_ids rather than dropped.
+        orphan = ID_LEADING.match(body)
+        if orphan is not None and orphan.group("id") not in leading:
+            leading.append(orphan.group("id"))
+    return [_close(group) for group in groups], leading
 
 
 # --- one vision file -----------------------------------------------------------------------
@@ -206,12 +216,13 @@ def _read_vision(text: str | None) -> list[dict]:
 
 def parse(requirements_text: str, vision_text: str | None = None) -> dict:
     """requirements.json's content for two texts, with the spec paths left null for `main` to fill (EV-R1)."""
-    groups = _read_groups(requirements_text)
+    groups, leading = _read_groups(requirements_text)
     vision = _read_vision(vision_text)
     manifest = [identifier for group in groups for identifier in group["ids"]]
     manifest += [entry["id"] for entry in vision]
+    unparsed = [identifier for identifier in leading if identifier not in manifest]
     return {"spec": {"requirements": None, "vision": None}, "groups": groups,
-            "vision": vision, "manifest": manifest}
+            "vision": vision, "manifest": manifest, "unparsed_ids": unparsed}
 
 
 # --- files and command line -----------------------------------------------------------------
@@ -252,6 +263,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         document = parse(_read_text(Path(args.requirements)),
                          _read_text(Path(args.vision)) if args.vision else None)
+        if not document["manifest"]:
+            # R1-F1: a run over no requirements would report MEETS on nothing at all.
+            raise InputError(f"{args.requirements}: no requirement ids found")
         document["spec"] = {"requirements": args.requirements, "vision": args.vision}
         _write_json(Path(args.out), document)
     except InputError as error:
