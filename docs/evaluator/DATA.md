@@ -117,6 +117,9 @@ An id matches `[A-Z][A-Za-z]*(-[A-Z][A-Za-z]*)?\d+(\.\d+)?`.
   results.
 - **Restoring.** `restored` is true only when every file of the product copy has the same sha256 as before the
   mutants (EV-C3.3).
+- **Failure output** *(added 2026-10-13, after calibration K1)*. `output` maps each probe key that is `fail` on the
+  product to its JUnit failure or error message. It is present only when some probe failed. The probes run on
+  absolute paths, so a relative `--run` works.
 
 ## E8 — `confirm.json`, written by the confirm step (a model)
 
@@ -245,6 +248,16 @@ prints. **The workflow never computes or changes a verdict** (EV-P1.3). If that 
 
 The quotes are checked by plain substring after collapsing whitespace runs. A missing input file counts as empty,
 except `requirements.json`, which exits 2.
+
+**Added 2026-10-13, after calibration K1:**
+- `confirm-check` also voids an entry whose probe has **no recorded failure output**, with
+  `note: "no failure output"`. Nothing then shows that the probe reached its check.
+- **A model step that had work and wrote no file exits 1**, so the workflow blocks (EV-C6.2):
+  - `confirm.json` missing while `confirm-input.json` has entries;
+  - `judge-1.json` missing while there are judged cases;
+  - `judge-2.json` missing while `plant_case` is set.
+- A judge's evidence path may start with `judge-copy/` or `workspace/product/`, and the prefix is stripped before
+  the lookup.
 
 `verdict.py` prints `MEETS: yes` or `MEETS: no` as its first stdout line. *(Added for the workflow. D2's tests do not
 check it; D4's harness does.)*

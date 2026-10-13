@@ -135,6 +135,9 @@ MATRIX = {"product_dir": "workspace/product", "probes_dir": "probes",
                         "test_b1::test_missing_file": ["B2-F1"]},
           "product": {"test_b1::test_sum": "fail", "test_b1::test_named_file": "pass",
                       "test_b1::test_missing_file": "fail"},
+          # the failing probes' messages, which probe_matrix records since calibration K1 (COO, 2026-10-13)
+          "output": {"test_b1::test_sum": "AssertionError: assert 5 == 6",
+                     "test_b1::test_missing_file": "AssertionError: assert False"},
           "mutants": {}, "restored": True}
 ALL_GREEN = {**MATRIX, "product": {key: "pass" for key in MATRIX["product"]}}
 

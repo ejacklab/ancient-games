@@ -25,6 +25,10 @@ class InputError(Exception):
     """An unreadable input, with its path in the message printed on stderr."""
 
 
+class ModelStepMissing(Exception):
+    """A model step had work and wrote nothing: exit 1, so the workflow blocks (EV-C6.2)."""
+
+
 def _read_json(path: Path, required: bool = False) -> dict | list:
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
@@ -131,8 +135,16 @@ def _quote_found(quote: str, source: str) -> bool:
     return bool(collapsed) and collapsed in " ".join(source.split())
 
 
+def _require_model_file(path: Path, step: str) -> None:
+    """A model step that had work but left no file failed; that blocks the run (EV-C6.2), it is never 'empty'."""
+    if not path.is_file():
+        raise ModelStepMissing(f"{path}: the {step} step had work but wrote no file")
+
+
 def confirm_check(run: Path, requirements: dict) -> dict:
     inputs = _entries(_read_json(run / "confirm-input.json"))
+    if inputs:
+        _require_model_file(run / "confirm.json", "confirm")
     answers = _entries(_read_json(run / "confirm.json"))
     voided = 0
     for answer in answers:
@@ -140,8 +152,13 @@ def confirm_check(run: Path, requirements: dict) -> dict:
                         if row.get("case") == answer.get("case")
                         and _probe_key(row.get("probe", ""))
                         == _probe_key(answer.get("probe", ""))), {})
-        if not (_quote_found(answer.get("requirement_quote", ""), context.get("group_text", ""))
-                and _quote_found(answer.get("probe_quote", ""), context.get("probe_source", ""))):
+        if not str(context.get("output") or "").strip():
+            # No recorded failure output: the probe may have died in setup, so nothing shows the product failed
+            # (calibration K1, 2026-10-13: 28 setup failures were confirmed from the probe source alone).
+            answer.update(faithful=False, note="no failure output")
+            voided += 1
+        elif not (_quote_found(answer.get("requirement_quote", ""), context.get("group_text", ""))
+                  and _quote_found(answer.get("probe_quote", ""), context.get("probe_source", ""))):
             answer.update(faithful=False, note="quote not found")
             voided += 1
     document = {"cases": answers}
@@ -207,7 +224,11 @@ def _code_quote_found(entry: dict, product: Path) -> bool:
     match = CODE_EVIDENCE.fullmatch(evidence)
     if match is None or (entry.get("holds") is not True and entry.get("holds") is not False):
         return False
-    target = _product_file(product, match["file"])
+    relative = match["file"]
+    for prefix in ("judge-copy/", "workspace/product/"):  # a judge may cite paths from the run folder (K1)
+        if relative.startswith(prefix):
+            relative = relative[len(prefix):]
+    target = _product_file(product, relative)
     return target is not None and _quote_found(match["quote"], _read_text(target))
 
 
@@ -218,6 +239,9 @@ def judged_merge(run: Path, requirements: dict) -> dict:
         document = {"plant_found": True, "cases": []}
     else:
         plant_case = inputs.get("plant_case")
+        _require_model_file(run / "judge-1.json", "first judge")
+        if plant_case is not None:
+            _require_model_file(run / "judge-2.json", "second judge")
         first = {entry.get("case"): entry for entry in _entries(_read_json(run / "judge-1.json"))
                  if _code_quote_found(entry, run / "judge-copy")}
         second = {entry.get("case"): entry for entry in _entries(_read_json(run / "judge-2.json"))
@@ -247,6 +271,10 @@ def main(argv=None) -> int:
         requirements = _read_json(args.run / "requirements.json", required=True)
         commands[args.subcommand](args.run, requirements)
         return 0
+    except ModelStepMissing as error:
+        sys.stdout.flush()
+        print(error, file=sys.stderr)
+        return 1
     except InputError as error:
         sys.stdout.flush()
         print(error, file=sys.stderr)

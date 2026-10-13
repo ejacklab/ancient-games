@@ -405,3 +405,23 @@ def test_cli_writes_matrix_contract(evaluation_run):
         "mutants": {"X1-F1": {"status": "applied", "results": {"test_calc::test_add": "fail"}}},
         "restored": True,
     }
+
+
+# --- regression tests added by the COO after calibration K1 (2026-10-13) ------------------------------------------
+def test_a_relative_run_path_still_finds_the_probes_and_the_product(evaluation_run, monkeypatch):
+    """EV-C3.2 — K1 ran with a relative --run; pytest's cwd is the run folder, so relative paths made every probe red."""
+    monkeypatch.chdir(evaluation_run.parent)
+    matrix = load_tool().build_matrix(Path(evaluation_run.name), timeout=10)
+    assert matrix["product"] == {"test_calc::test_add": "pass"}
+
+
+def test_a_failing_probe_records_its_failure_message(evaluation_run):
+    """EV-C4.1 — the confirm step must see why a probe failed, or it confirms setup errors as product failures."""
+    write_probes(evaluation_run, '''\
+        def test_red():
+            """X1-F2 — a failing assertion is red."""
+            assert calc.add(2, 3) == 999
+    ''')
+    matrix = build_matrix(evaluation_run)
+    assert matrix["product"] == {"test_calc::test_red": "fail"}
+    assert "999" in matrix["output"]["test_calc::test_red"]

@@ -62,4 +62,6 @@ illustration.
 
 ## Write the result to
 
+Write every file with the Write tool, not with shell redirection such as `cat > file`. Then list the file once to confirm it exists: a step whose file is missing has failed, and the run stops there.
+
 The probe files, then one reply line: the number of probes, and any case ids without a probe, each with its reason.

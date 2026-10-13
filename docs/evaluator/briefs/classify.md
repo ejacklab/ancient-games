@@ -47,4 +47,6 @@ Read only these:
 
 ## Write the result to
 
+Write every file with the Write tool, not with shell redirection such as `cat > file`. Then list the file once to confirm it exists: a step whose file is missing has failed, and the run stops there.
+
 `{RUN}/classify.json`, written to a temp name and renamed. Return one line: the counts per kind.

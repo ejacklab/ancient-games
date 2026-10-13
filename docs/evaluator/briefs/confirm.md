@@ -24,7 +24,12 @@ You see nothing else: not the product's code, not the mutants, not the other pro
             "probe_quote": "<the exact assertion that failed>"}]}
 ```
 
-- **faithful: true** means the failed assertion is what the sentence requires. The product is then wrong.
+- **First, read the failure output.** It must show **the quoted assertion itself failing**. A setup error, a
+  collection error, an import error, a missing file or path, or an empty output means the probe never reached its
+  check. Answer `faithful: false`, and say so in your reply. *(Calibration K1, 2026-10-13: 28 probes that never ran
+  were confirmed from their source alone.)*
+- **faithful: true** means the failed assertion is what the sentence requires, and the output shows that assertion
+  failing. The product is then wrong.
 - **faithful: false** means the assertion demands something the sentence does not say, or contradicts another sentence
   of the same spec. The probe is then wrong, and the case becomes UNKNOWN (EV-C4.2).
 
@@ -49,5 +54,7 @@ The sentence asks for "out of scope", not for an UNKNOWN verdict, so the probe i
 - One answer per listed probe. No answer counts as not faithful.
 
 ## Write the result to
+
+Write every file with the Write tool, not with shell redirection such as `cat > file`. Then list the file once to confirm it exists: a step whose file is missing has failed, and the run stops there.
 
 `{RUN}/confirm.json`. Reply in one line: the counts of faithful and not faithful.

@@ -78,6 +78,9 @@ def _citations_for(key: str, plan: dict[str, list[str]]) -> list[str]:
 
 def _run_probes(product: Path, probes: Path, plan: dict[str, list[str]], timeout: int) -> dict[str, str]:
     """One pytest call over every probe. A timeout or a missing report leaves every probe red, never green."""
+    # Absolute paths: pytest runs with the run folder as its cwd, so a relative --run would point it at nothing
+    # and every probe would come back red (calibration K1, 2026-10-13).
+    product, probes = product.resolve(), probes.resolve()
     environment = dict(os.environ)
     environment["EVAL_PRODUCT"] = str(product)
     environment["PYTHONDONTWRITEBYTECODE"] = "1"  # a stale .pyc in the copy would make `restored` a lie
@@ -95,6 +98,9 @@ def _run_probes(product: Path, probes: Path, plan: dict[str, list[str]], timeout
         return _read_report(report_file, plan)  # inside the scratch folder: it is gone once `with` ends
 
 
+LAST_OUTPUT: dict[str, str] = {}  # each failing probe's message from the latest report, for E8 (DATA.md)
+
+
 def _read_report(report_file: Path, plan: dict[str, list[str]]) -> dict[str, str]:
     """Every outcome under its JUnit key, or every probe red when the run left no report behind."""
     try:
@@ -106,6 +112,9 @@ def _read_report(report_file: Path, plan: dict[str, list[str]]) -> dict[str, str
         outcome = "pass"
         if case.find("failure") is not None or case.find("error") is not None:
             outcome = "fail"  # an error counts as fail (DATA.md E6)
+            problem = case.find("failure") if case.find("failure") is not None else case.find("error")
+            LAST_OUTPUT[f"{case.get('classname') or ''}::{case.get('name') or ''}"] = (
+                f"{problem.get('message') or ''}\n{problem.text or ''}".strip())
         elif case.find("skipped") is not None:
             outcome = "skip"
         results[f"{case.get('classname') or ''}::{case.get('name') or ''}"] = outcome
@@ -188,7 +197,9 @@ def build_matrix(run: Path, timeout: int = DEFAULT_TIMEOUT) -> dict:
     plan = _probe_plan(probes)
     mutants = _mutants(run)
 
+    LAST_OUTPUT.clear()
     product_results = _run_probes(product, probes, plan, timeout)
+    product_output = dict(LAST_OUTPUT)  # only the product run's messages are kept; E8 confirms those
     original = _bytes(product)  # the bytes every mutant is measured against
     before = {relative: hashlib.sha256(data).hexdigest() for relative, data in original.items()}
 
@@ -202,11 +213,15 @@ def build_matrix(run: Path, timeout: int = DEFAULT_TIMEOUT) -> dict:
             results[case] = {"status": "invalid"}
         _restore(product, original)
 
-    return {"product_dir": "workspace/product", "probes_dir": "probes",
-            "citations": {key: _citations_for(key, plan) for key in product_results},
-            "product": product_results,
-            "mutants": results,
-            "restored": _hashes(product) == before}
+    matrix = {"product_dir": "workspace/product", "probes_dir": "probes",
+              "citations": {key: _citations_for(key, plan) for key in product_results},
+              "product": product_results,
+              "mutants": results,
+              "restored": _hashes(product) == before}
+    output = {key: text for key, text in product_output.items() if product_results.get(key) == "fail"}
+    if output:  # optional in DATA.md: only failing probes have a message, and E8 needs it
+        matrix["output"] = output
+    return matrix
 
 
 def _write_matrix(run: Path, matrix: dict) -> None:

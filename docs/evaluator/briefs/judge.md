@@ -17,6 +17,8 @@ You see nothing else: no tests, no probes, no other run files.
 
 ## Template
 
+`<file>` is the path **relative to `{PRODUCT_COPY}`**, for example `tools/x.py`, not `judge-copy/tools/x.py`.
+
 ```json
 {"cases": [{"case": "<id>", "holds": true|false,
             "evidence": "<file>:<line> \"<the quoted code>\" — <one sentence why this holds or fails>"}]}
@@ -44,5 +46,7 @@ it. **Read the code, not the comments.**
   void (EV-C5.2).
 
 ## Write the result to
+
+Write every file with the Write tool, not with shell redirection such as `cat > file`. Then list the file once to confirm it exists: a step whose file is missing has failed, and the run stops there.
 
 `{RUN}/judge-{CALL}.json`. Reply in one line: the counts of holds and does not hold.
