@@ -15,7 +15,10 @@ Drawn from: EJ's words, 2026-10-13 (quoted below)
 **The problem it solves:** the four seats' final lists (run `20261013-four-seats`) are long Markdown files; EJ wants
 to read them comfortably on the phone, one person at a time.
 
-**What it will not do:** edit the lists, change the research, touch the rest of `ejai.ai`, track readers.
+**What it will not do:** edit the lists, change the research, touch the rest of `ejai.ai`, set cookies, or add any
+tracking of its own. The one measurement on the page is Cloudflare Web Analytics, which the `ejai.ai` zone adds to
+every subdomain and EJ chose to keep (`decisions.md` D1; requirement N2). *Changed 2026-10-13 — EJ: "fix the vision
+line to match D1"; it said "track readers", which D1 had made untrue.*
 
 **How we know it works:** the mobile tests pass at S25 Ultra size, the live URL serves the tested file, and EJ
 accepts it on the phone.
