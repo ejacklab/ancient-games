@@ -41,7 +41,7 @@ function shellArgument(value) {
 
 async function runCommand(label, command, title) {
   agentsUsed++
-  return await agent(`Run exactly this command from the repository root, then report: ${command}`, {
+  return await agent(`Run exactly this command from the repository root, with a Bash timeout of 600000 ms (some steps take minutes), then report: ${command}`, {
     label, phase: title, schema: runnerSchema, model: 'haiku', effort: 'low',
   })
 }

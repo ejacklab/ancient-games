@@ -200,7 +200,8 @@ harness stubs agents by label.
 `{status: "blocked", reason: "missing argument <name>"}` before any agent runs.
 
 **The runner** (model `haiku`, effort `low`). Its prompt is `Run exactly this command from the repository root,
-then report: <cmd>`. Its schema is
+with a Bash timeout of 600000 ms (some steps take minutes), then report: <cmd>`. *(The timeout was added on
+2026-10-13, before the first live run: Bash's default of 2 minutes would kill the Codex mutant step.)* Its schema is
 `{exit_code: integer, stdout_tail: string, stderr_tail: string}`, where each tail is the last 40 lines.
 
 | # | label | kind | command or brief | stop if |
