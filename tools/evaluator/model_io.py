@@ -146,6 +146,12 @@ def confirm_check(run: Path, requirements: dict) -> dict:
     if inputs:
         _require_model_file(run / "confirm.json", "confirm")
     answers = _entries(_read_json(run / "confirm.json"))
+    manifest = _read_json(run / "workspace/manifest.json")
+    # Files the blind workspace removed on purpose (EV-R2.1). A probe that fails because one is missing failed on
+    # the evaluator's own exclusion, not on the product (calibration K1b, 2026-10-13: C2 checks the product's tests).
+    # Only files are matched: every absolute path contains a removed folder name such as "runs".
+    removed = [path for path in (manifest.get("excluded", []) if isinstance(manifest, dict) else [])
+               if isinstance(path, str) and "." in path.rsplit("/", 1)[-1]]
     voided = 0
     for answer in answers:
         context = next((row for row in inputs
@@ -156,6 +162,9 @@ def confirm_check(run: Path, requirements: dict) -> dict:
             # No recorded failure output: the probe may have died in setup, so nothing shows the product failed
             # (calibration K1, 2026-10-13: 28 setup failures were confirmed from the probe source alone).
             answer.update(faithful=False, note="no failure output")
+            voided += 1
+        elif any(path in str(context.get("output")) for path in removed):
+            answer.update(faithful=False, note="needs a file the blind workspace removed")
             voided += 1
         elif not (_quote_found(answer.get("requirement_quote", ""), context.get("group_text", ""))
                   and _quote_found(answer.get("probe_quote", ""), context.get("probe_source", ""))):

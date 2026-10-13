@@ -45,7 +45,9 @@ def _repro_command(probe: str, matrix: dict) -> str:
     product = matrix.get("product_dir", "workspace/product")
     probes = matrix.get("probes_dir", "probes")
     test_file = str(Path(probes) / f"{module}.py")
-    return (f"EVAL_PRODUCT={shlex.quote(product)} python3 -m pytest -c /dev/null "
+    # Run from the run folder. "$PWD" makes the product path absolute: a probe that changes directory would not find
+    # a relative one, and the repro would fail for a reason that is not the product (calibration K1b, 2026-10-13).
+    return (f'EVAL_PRODUCT="$PWD"/{shlex.quote(product)} python3 -m pytest -c /dev/null '
             f"{shlex.quote(test_file)} -k {shlex.quote(name.split('[')[0])}")
 
 

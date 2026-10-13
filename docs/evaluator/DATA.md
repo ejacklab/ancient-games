@@ -261,3 +261,172 @@ except `requirements.json`, which exits 2.
 
 `verdict.py` prints `MEETS: yes` or `MEETS: no` as its first stdout line. *(Added for the workflow. D2's tests do not
 check it; D4's harness does.)*
+
+## Repair R1: fixes for the 20 blind-review findings (COO, 2026-10-13; EJ: "fix all 20")
+
+Sources:
+- the findings: `runs/20261013-calibration/d6-1.result.md`;
+- the order and the guarded versions: the four experts and Dave,
+  `runs/20261013-four-experts-question-for-the-four-experts/compare.md`.
+
+Each rule names its module. **Every rule gets a test that fails when the rule is undone.** The existing tests stay as
+they are: the new rules add to them.
+
+### Group A — no PASS or MEETS without proof
+
+- **F1 (`verdict.py`, `spec_parse.py`).**
+  - `meets` is true only when there is **at least one** in-scope requirement id or vision id, and every one is PASS.
+  - With none, `meets` is false, and `verdict.json` gets `"meets_reason": "no in-scope requirements"`.
+  - `spec_parse.py` exits 2, with `<path>: no requirement ids found`, when the manifest is empty.
+- **F5 (`probe_matrix.py`, `verdict.py`).**
+  - `probe_matrix` adds an optional top-level key `"runs"`:
+    `{"product": {"status": "ok"|"timeout"|"no-report", "errors": [probe keys that ended in a JUnit error, not a failure]}, "<case>": {...same...}}`.
+    Every existing key keeps its current shape.
+  - A mutant's results count as proof for a case only when **all** of these hold:
+    - (a) that mutant's run `status` is `"ok"`, or the `runs` key is absent (older matrices);
+    - (b) the probe that is red on the mutant is not listed in that run's `errors`;
+    - (c) the mutant run has **2 or more** probe results and **not every one** of them is `fail`. This is Dave's
+      guarded rule: a mutant that turns everything red proves nothing.
+  - Otherwise the case is UNKNOWN, `"unproven: the mutant run was not healthy"`.
+- **F4 (`probe_matrix.py`, `verdict.py`).**
+  - `probe_matrix` takes the product copy's baseline hashes **before** the product run, and records
+    `"product_changed": true` if the product run changed any file. It still restores the copy, and `restored` is
+    measured against that first baseline.
+  - In `verdict.py`, when `matrix.json` exists, a `restored` that is not exactly `true`, or a `product_changed` that
+    is true, makes every executable or static case UNKNOWN: `"product copy not intact"`. Judged-only runs, which have
+    no `matrix.json`, are unaffected. This is Dave's guarded version.
+- **F11 (`verdict.py`, `model_io.py`).**
+  - Model-written JSON of the wrong shape never ends in a traceback. A root of the wrong type counts as empty. An
+    entry that is not an object, or has no string `case` (or `probe`, where one is needed), is **skipped**, and its
+    position is listed in `verdict.json` `"input_problems": ["<file>: entry <n>: <problem>"]`.
+  - A skipped entry can only lower a verdict, toward UNKNOWN; it can never make a PASS or a FAIL.
+- **F15 (`verdict.py`).** Two or more `classify.json` entries for one case make that case `human`, with the reason
+  `"classified twice"`.
+- **F19 (workflow, `verdict.py`).**
+  - `verdict.py` prints `MEETS: yes|no run=<run folder name>` as its first line.
+  - The workflow accepts only a line whose `run=` equals its own `runId`, and returns
+    `authoritative: "runs/<runId>/verdict.json"` next to `meets`.
+
+### Group B — no requirement dropped or uncounted
+
+- **F3 (`probe_matrix.py`).** A citation is `<group id>-F<n>` or `V<n>-F<n>`. The group id uses the same grammar as
+  `spec_parse.ID`: import it, do not copy it. `EV-P1-F2`, `EV-C3.3-F1`, `B1-F1`, `W1.3-F2` and `V5-F1` must all be
+  read.
+- **F14 (`spec_parse.py`).**
+  - `requirements.json` gains `"unparsed_ids"`: every id-shaped token in bold at the start of a bullet
+    (`- **B1.1`, `- **B1.1 Title**`, `- **B1.1:**`) that is **not** in the manifest.
+  - `verdict.py`: a non-empty `unparsed_ids` makes `meets` false, with `meets_reason` naming them.
+- **F16 (`verdict.py`).** `out_of_scope` becomes a list of `{"id", "reason": "marked open in the spec"}`, and
+  `verdict.md` prints the reason.
+- **F20 (`verdict.py`).** `verdict.json` gains `"orphan_probes"`: probe keys that cite no case, or cite a case id
+  that is not in `requirements.json`. `verdict.md` lists them.
+- **F13 (`verdict.py`).** The repro shell-quotes the test file and the `-k` name. Keep the `"$PWD"` prefix.
+
+### Group C — blindness, run folder, and model steps
+
+- **F8 (`workspace.py`, workflow).**
+  - Default exclusions, at any depth:
+    - a path segment equal to `tests`, `test`, `.git`, `runs` or `__pycache__`;
+    - files named `test_*.py`, `*_test.py` or `conftest.py`.
+  - `--exclude GLOB` **adds** to the defaults; it no longer replaces them.
+  - The workflow takes an optional `exclude` argument, a list of globs (for build notes, chosen per product), and
+    passes each one as `--exclude`.
+- **F10 + F12 (`workspace.py`, workflow).**
+  - The workflow refuses any `runId` that does not match `^[A-Za-z0-9][A-Za-z0-9._-]*$`, or that contains `..`, and
+    returns `blocked` before any agent runs.
+  - `workspace.py` exits 2 when `--run` does not resolve inside the repository's `runs/` folder (symlinks
+    resolved).
+  - `workspace.py` also exits 2 when the run folder already holds any model or matrix output: `classify.json`,
+    `probes/`, `mutants.json`, `plants.json`, `matrix.json`, `confirm.json`, `judge-1.json`, `judge-2.json` or
+    `verdict.json`. The message is `use a new runId`. A rerun never reuses stale evidence.
+- **F17 (`model_io.py`, workflow).**
+  - A model step that returns `done: false` blocks the run.
+  - After `e3-classify`, `e4-probes` and `e5-mutants`, a runner calls
+    `model_io.py check-output --run <dir> --step classify|probes|mutants`. It exits 1 when the step's output is
+    missing or not valid:
+    - `classify.json` is an object with a `cases` list;
+    - `probes/` has at least one `test_*.py`;
+    - `mutants.json` is a list.
+
+    The workflow blocks on exit 1.
+  - The model actually used cannot be read from inside a Workflow script, so the run records
+    `"models": "requested, not verified"`.
+- **F18 (`model_io.py`, workflow).**
+  - At the start, a runner calls `model_io.py stamp --run <dir> --event start`; at the end, `--event end`. These
+    write `cost.json`: `{"start", "end"}` in UTC ISO time, `"agents": <count>`, and `"tokens": "not reported"`.
+  - The token count comes from the harness after the run. It is never written as 0.
+- **F2 (`model_io.py`, judge brief, workflow).**
+  - `judge-input.json` **no longer contains `plant_case`**.
+  - `model_io.py judge-input` writes the plant's identity only to `{RUN}/.coordinator/plant.json`.
+  - It builds the judge's folder **outside the run folder**, at `/tmp/evaluator-judge-<runId>/`. That folder holds
+    `judge-input.json` (cases only) and `product/` (the planted copy).
+  - Call 1 is given only that folder (`JUDGE_DIR`), never `RUN`.
+  - `judged-merge` reads the plant from `.coordinator/plant.json`, and reads `judge-1.json` from the judge folder.
+  - This narrows the leak; it does not close it. An agent that goes looking can still find the run folder, so this
+    is **narrowed, not enforced** (no OS-level isolation here).
+- **F7 (`model_io.py`, workflow).**
+  - When `judged-merge` reports `plant_found: false`, the workflow reruns the judging **once**:
+    `judge-input --attempt 2` picks the **next** valid plant in case order, the two judge calls run fresh, and
+    `judged-merge` runs again.
+  - A second miss leaves the judged cases UNKNOWN.
+  - With no second plant available, `judge-input --attempt 2` prints `no other plant`, and the run continues with
+    the first result.
+- **F6 (workflow, new brief `probes-repair.md`, `model_io.py`).**
+  - When `confirm-check` reports any probe whose answer is `faithful: false` **from the model** (not voided by the
+    script), the workflow runs **one** repair round:
+    1. A model step (`e8-repair`, sonnet, brief `docs/evaluator/briefs/probes-repair.md`) rewrites only those probes,
+       from the requirement sentence and the confirm answer's reason.
+    2. `e6-matrix`, `e8-input`, `e8-confirm` and `e8-check` run again.
+  - `model_io.py confirm-check` prints `<n> checked, <m> voided, <u> unfaithful`. The workflow reads `<u>`.
+  - The round is recorded in `{RUN}/repair.json`, and there is never a second round.
+- **F9 (workflow, mutants brief).**
+  - The mutant writer runs as `codex exec … --sandbox workspace-write -C runs/<runId>/mutant-view`.
+  - `model_io.py mutant-view --run <dir>` builds that folder: `requirements.json`, `classify.json` and a copy of
+    `workspace/` (spec and product), in the same layout as the run folder, so the mutants brief works unchanged with
+    `RUN=.`. It holds **no** probes. Codex writes `mutants.json` and `plants.json` there, and the same command, with `--collect`, copies them
+    back.
+  - Codex's writes are then confined by its sandbox, and the probes are not in its folder.
+  - Reads outside the folder are **not** prevented: narrowed, not enforced.
+  - Probes run with `HOME` and `TMPDIR` set to a scratch folder.
+
+### The workflow after R1: labels in order (this replaces the 14-row table above; the harness checks it)
+
+| # | label | kind | command, brief or rule |
+|---|---|---|---|
+| 1 | `e0-start` | runner | `python3 tools/evaluator/model_io.py stamp --run runs/<runId> --event start` |
+| 2 | `e1-spec` | runner | as before |
+| 3 | `e2-workspace` | runner | as before, plus ` --exclude <glob>` for each glob in the optional `exclude` argument |
+| 4 | `e3-classify` | model `haiku` | as before; `done: false` or null blocks |
+| 5 | `e3-check` | runner | `python3 tools/evaluator/model_io.py check-output --run runs/<runId> --step classify` |
+| 6 | `e4-probes` | model `sonnet` | as before; `done: false` or null blocks |
+| 7 | `e4-check` | runner | `… check-output --run runs/<runId> --step probes` |
+| 8 | `e5-view` | runner | `python3 tools/evaluator/model_io.py mutant-view --run runs/<runId>` |
+| 9 | `e5-mutants` | runner (wraps Codex) | `codex exec -m gpt-6.1-sol -c model_reasoning_effort=high --sandbox workspace-write -C runs/<runId>/mutant-view "Read docs/evaluator/briefs/mutants.md with RUN=. and do what it says." < /dev/null` |
+| 10 | `e5-collect` | runner | `… mutant-view --run runs/<runId> --collect` |
+| 11 | `e5-check` | runner | `… check-output --run runs/<runId> --step mutants` |
+| 12 | `e6-matrix` | runner | as before |
+| 13 | `e8-input` | runner | as before |
+| 14 | `e8-confirm` | model `sonnet` | as before; skipped on `0 to confirm` |
+| 15 | `e8-check` | runner | `confirm-check`; stdout `<n> checked, <m> voided, <u> unfaithful` |
+| 16–20 | `e8-repair`, `e6-matrix-2`, `e8-input-2`, `e8-confirm-2`, `e8-check-2` | model `sonnet` (brief `docs/evaluator/briefs/probes-repair.md`), then runners and model as in 12–15 | **only when `<u>` > 0** (F6); once, never again |
+| 21 | `e9-input` | runner | `judge-input --run runs/<runId> --attempt 1`; stdout `<n> to judge` and, when there is a plant, `plant <case>`; judges skipped on `0 to judge` |
+| 22 | `e9-judge-1` | model `sonnet` | brief `judge.md` with `CALL=1 JUDGE_DIR=/tmp/evaluator-judge-<runId>` (**no `RUN`**) |
+| 23 | `e9-judge-2` | model `sonnet` | brief `judge.md` with `CALL=2 RUN=runs/<runId> PRODUCT_COPY=runs/<runId>/workspace/product CASE=<plant case>` |
+| 24 | `e9-merge` | runner | `judged-merge`; stdout `plant_found: true|false` |
+| 25–28 | `e9-input-2`, `e9-judge-1b`, `e9-judge-2b`, `e9-merge-2` | as in 21–24, with `--attempt 2` | **only when `plant_found: false`** (F7); skipped when `e9-input-2` prints `no other plant` |
+| 29 | `e10-verdict` | runner | as before; first line `MEETS: yes|no run=<runId>`, which must match |
+| 30 | `e11-end` | runner | `… stamp --run runs/<runId> --event end --agents <count of agent() calls so far>` |
+
+**Arguments:** `{product, spec, runId, exclude?}`. `runId` must pass the F12 rule.
+
+**Return:** `{status: "done", runId, meets, authoritative: "runs/<runId>/verdict.json", verdict:
+"runs/<runId>/verdict.md", agents}`.
+
+**Judge file locations:** call 1 writes `judge-1.json` in `JUDGE_DIR`, and `judged-merge` copies it into the run
+folder as evidence. Call 2 writes `{RUN}/judge-2.json`.
+- **`judge-input` writes `judge-input.json` twice:**
+  - to `JUDGE_DIR`, for call 1;
+  - to `{RUN}/judge-input.json`, for call 2.
+
+  Both copies hold the cases only, with no `plant_case`. The plant's identity is only in
+  `{RUN}/.coordinator/plant.json`.

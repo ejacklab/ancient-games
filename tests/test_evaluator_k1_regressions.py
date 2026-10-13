@@ -29,6 +29,37 @@ def test_a_confirmation_with_no_failure_output_is_voided(tmp_path):
     assert answers and all(a["faithful"] is False and a["note"] == "no failure output" for a in answers)
 
 
+def test_a_failure_on_a_file_the_blind_workspace_removed_is_voided(tmp_path):
+    """EV-R2.1 EV-C4.1 — K1b: a probe that failed because the evaluator removed the product's tests is not a FAIL."""
+    run = build_run(tmp_path)
+    write_json(run / "workspace/manifest.json", {"copied": {}, "excluded": ["runs", "tests/test_calc.py"], "skipped": []})
+    matrix = dict(MATRIX, output={"test_b1::test_sum": "AssertionError: tests/test_calc.py is missing from the product",
+                                  "test_b1::test_missing_file": "AssertionError: /x/runs/abc/workspace assert False"})
+    write_json(run / "matrix.json", matrix)
+    cli_ok("confirm-input", run)
+    entries = read(run / "confirm-input.json")["cases"]
+    write_json(run / "confirm.json", {"cases": [
+        {"case": e["case"], "probe": e["probe"], "faithful": True,
+         "requirement_quote": e["group_text"].split("\n")[0], "probe_quote": e["probe_source"].split("\n")[0]}
+        for e in entries]})
+    cli_ok("confirm-check", run)
+    notes = {a["probe"]: a.get("note", "") for a in read(run / "confirm.json")["cases"]}
+    assert notes["test_b1::test_sum"] == "needs a file the blind workspace removed"
+    assert notes["test_b1::test_missing_file"] != "needs a file the blind workspace removed"  # 'runs' is a folder
+
+
+def test_a_fail_repro_runs_from_the_run_folder_with_an_absolute_product_path():
+    """EV-P2.1 — K1b: a relative EVAL_PRODUCT broke the repro inside a probe that changes directory."""
+    import importlib.util
+    from pathlib import Path
+    tool = Path(__file__).resolve().parents[1] / "tools/evaluator/verdict.py"
+    spec = importlib.util.spec_from_file_location("verdict_k1b", tool)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    repro = module._repro_command("test_b1::test_x[1]", {"product_dir": "workspace/product", "probes_dir": "probes"})
+    assert repro.startswith('EVAL_PRODUCT="$PWD"/workspace/product ')
+
+
 def test_confirm_check_blocks_when_the_confirm_step_wrote_nothing(tmp_path):
     """EV-C6.2 — work to confirm and no confirm.json is a failed model step: exit 1, never an empty answer."""
     run = build_run(tmp_path)
