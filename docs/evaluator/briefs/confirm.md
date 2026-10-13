@@ -30,13 +30,13 @@ You see nothing else: not the product's code, not the mutants, not the other pro
 
 ## Example (real sentence from the evaluator's spec, EV-R1.1)
 
-- **Sentence:** *"A requirement the file marks open is listed as out of scope, with that reason."*
+- **Sentence:** *"A requirement the file marks *open* is listed as out of scope, with that reason."*
 - **Probe:** asserts `verdict == "UNKNOWN"` for the open id `G4.1`.
 - **Output:** `KeyError: 'G4.1'`, because the id is in `out_of_scope` and has no verdict row.
 
 ```json
 {"case": "EV-R1-F2", "probe": "test_spec::test_open_id", "faithful": false,
- "requirement_quote": "A requirement the file marks open is listed as out of scope, with that reason.",
+ "requirement_quote": "A requirement the file marks *open* is listed as out of scope, with that reason.",
  "probe_quote": "assert row[\"verdict\"] == \"UNKNOWN\""}
 ```
 
