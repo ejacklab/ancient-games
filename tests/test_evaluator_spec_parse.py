@@ -99,7 +99,7 @@ def test_every_requirement_id_is_listed_and_the_open_one_is_marked():
     module = load_spec_parse()
     frozen = [(INDEX_REQUIREMENTS, 32, ["G4.1"], "G4"),
               (SOT_REQUIREMENTS, 44, ["K4.3"], "K4"),
-              (CACHES_REQUIREMENTS, 24, ["Rd3.4"], "Rd3")]
+              (CACHES_REQUIREMENTS, 24, [], None)]
     for path, id_count, open_ids, open_group in frozen:
         document = parse_file(module, path)
         ids = [i for group in document["groups"] for i in group["ids"]]
@@ -107,8 +107,9 @@ def test_every_requirement_id_is_listed_and_the_open_one_is_marked():
         assert len(set(ids)) == id_count, path.name
         opened = [i for group in document["groups"] for i in group["open_ids"]]
         assert opened == open_ids, path.name
-        assert group_of(document, open_group)["open_ids"] == open_ids, path.name
-        assert group_of(document, open_group)["status"] == "in_scope", path.name
+        if open_group:
+            assert group_of(document, open_group)["open_ids"] == open_ids, path.name
+            assert group_of(document, open_group)["status"] == "in_scope", path.name
 
 
 def test_every_group_with_ids_carries_a_fails_if_and_numbered_cases():
@@ -205,7 +206,7 @@ def test_the_coverage_manifest_lists_every_id_in_file_order():
     document = module.parse(INDEX_REQUIREMENTS.read_text(encoding="utf-8"),
                             INDEX_VISION.read_text(encoding="utf-8"))
     assert document["manifest"] == INDEX_IDS + [f"V{n}" for n in range(1, 9)]
-    anchors = [(SOT_REQUIREMENTS, "W1.1", "Rd6.1"), (CACHES_REQUIREMENTS, "B2.1", "Rd3.5")]
+    anchors = [(SOT_REQUIREMENTS, "W1.1", "Rd6.1"), (CACHES_REQUIREMENTS, "B1.0", "Rd3.5")]
     for path, first, last in anchors:
         manifest = parse_file(module, path)["manifest"]
         assert manifest[0] == first, path.name
