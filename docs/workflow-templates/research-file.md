@@ -11,14 +11,15 @@ Produced <date> by <who/what>. Question asked: <the question>.
 
 | id | Finding | Label | Source |
 |---|---|---|---|
-| F1 | <one claim> | verified / reported / unknown | <URL, or file:line> |
+| F1 | <one claim> | verified / reported / unproven / unknown | <URL, or file:line> |
 
 ## Gaps
-<what was not read or could not be settled>
+<what was not read or could not be settled; a search that found nothing, with its query and where>
 ```
 
-`verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled.
-Never upgrade a label. When sources disagree, give both rows.
+The Label is one of the four tags defined in `docs/RESEARCH_TAGS.md` (EJ, 2026-10-13) — the one copy; read it there.
+Reading a primary document that only asserts the claim does not make it `verified`. Never upgrade a label. When
+sources disagree, give both rows. An inference or a gap is prose, not a row, and carries no tag.
 
 ## `DIGEST.md` — the only part the COO reads (about 15 lines, no more than 20)
 
@@ -27,7 +28,7 @@ Never upgrade a label. When sources disagree, give both rows.
 Full findings: FINDINGS.md. Status: <open | parked | decided | negative result>.
 
 **Answer.** <the answer to the question asked, in a few lines>
-**Confidence.** <how many findings are verified / reported / unknown; what rests on one source>
+**Confidence.** <how many findings are verified / reported / unproven / unknown; what rests on one source>
 **Cautions.** <what could make the answer wrong, or risky>
 **Gaps.** <what to verify first>
 **Decision it triggers.** <what EJ or the COO must decide because of this, or "none">

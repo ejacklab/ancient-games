@@ -1,0 +1,211 @@
+[0m
+> plan · MiniMax-M3.1-Flash-Preview
+[0m
+[0m→ [0mRead runs/20261013-research-tags-retag/experts/unclear-spots/briefs/lao-tzu.md
+[0m→ [0mRead runs/20261013-research-tags-retag/experts/unclear-spots/seats/lao-tzu-list.md
+[0m→ [0mRead runs/20261013-research-tags-retag/experts/unclear-spots/seats/lao-tzu-identity.md
+[0m→ [0mRead runs/20261013-research-tags-retag/workflow-design.md
+[0m→ [0mRead runs/20261013-research-tags-retag/state.md
+[0m→ [0mRead runs/20261013-research-tags-retag/readiness.md
+[0m→ [0mRead docs/RESEARCH_TAGS.md
+[0m
+[0m$ [0mgit show HEAD:.claude/workflows/research-agent-memory.js | sed -n '58,90p'
+fatal: path '.claude/workflows/research-agent-memory.js' exists on disk, but not in 'HEAD'
+[0m
+[0m$ [0mpython3 - <<'PY'
+import re,glob
+pat=re.compile(r'verified|reported|unproven|unknown|primary|secondary',re.I)
+tot_f=tot_s=0
+rows=0
+for f in sorted(glob.glob('docs/research/20261011-agent-memory-graph-r2/FINDINGS-s*.md')):
+    fc=sc=0
+    for line in open(f,encoding='utf-8'):
+        if not line.strip().startswith('|'): continue
+        cells=[c.strip() for c in line.strip().strip('|').split('|')]
+        if len(cells)<3: continue
+        if cells[0] in ('ID','---','Id') or set(cells[0])<=set('-'): continue
+        if re.fullmatch(r'[A-Za-z]*\d+',cells[0]) is None and not cells[0].startswith(('F','s')): continue
+        rows+=1
+        if pat.search(cells[1]): fc+=1
+        if pat.search(' '.join(cells[2:])): sc+=1
+    print(f, 'finding-leaks',fc, 'source-leaks',sc)
+    tot_f+=fc; tot_s+=sc
+print('rows parsed',rows,'finding-cell leaks',tot_f,'source-cell leaks',tot_s)
+PY
+docs/research/20261011-agent-memory-graph-r2/FINDINGS-s1-architectures.md finding-leaks 6 source-leaks 29
+docs/research/20261011-agent-memory-graph-r2/FINDINGS-s2-graph-memory.md finding-leaks 2 source-leaks 18
+docs/research/20261011-agent-memory-graph-r2/FINDINGS-s3-project-graph.md finding-leaks 0 source-leaks 38
+docs/research/20261011-agent-memory-graph-r2/FINDINGS-s4-retrieval-consolidation.md finding-leaks 3 source-leaks 27
+docs/research/20261011-agent-memory-graph-r2/FINDINGS-s5-evaluation.md finding-leaks 3 source-leaks 31
+rows parsed 143 finding-cell leaks 14 source-cell leaks 143
+[0m
+[0m$ [0mgit status --short -- .claude/workflows/research-agent-memory.js; echo "--- ls-files:"; git ls-files -- .claude/workflows/ | head -20; echo "--- any HEAD ref:"; git log --oneline -3 -- .claude/workflows/research-agent-memory.js; echo "--- rev-parse:"; git rev-parse --short HEAD; echo "--- grep old defs in working tree:"; grep -n "unproven\|primary file or document was read\|secondary source" .claude/workflows/research-agent-memory.js | head -20
+?? .claude/workflows/research-agent-memory.js
+--- ls-files:
+.claude/workflows/enhance-ancient-games.js
+.claude/workflows/intake.js
+--- any HEAD ref:
+--- rev-parse:
+3d41c2b
+--- grep old defs in working tree:
+47:    question: 'Which benchmarks and metrics evaluate long- and short-term agent memory, what numbers are reported on them, how reproducible are those numbers, and which published claims are unproven or marketing?' },
+50:const LABELS = ['verified', 'reported', 'unknown', 'unproven']
+60:    | F1 | <one claim> | verified / reported / unknown / unproven | <URL, or file:line> |
+64:  Labels: one of verified / reported / unproven / unknown, defined in docs/RESEARCH_TAGS.md (the one copy; read its
+82:| F7 | The system cuts memory tokens by 60% on a conversational benchmark | unproven | https://<vendor>/blog (2026-04-02), quoted verbatim: "reduces memory tokens by 60%" |
+83:The label is \`unproven\`: the vendor's own blog asserts the 60% and gives no measurements and no locator for a benchmark.
+[0m
+[0m$ [0mpython3 - <<'PY'
+import re,glob
+pat=re.compile(r'verified|reported|unproven|unknown|primary|secondary',re.I)
+fids=set(); sids=set(); n=0
+for f in sorted(glob.glob('docs/research/20261011-agent-memory-graph-r2/FINDINGS-s*.md')):
+    for line in open(f,encoding='utf-8'):
+        if not line.strip().startswith('|'): continue
+        cells=[c.strip() for c in line.strip().strip('|').split('|')]
+        if len(cells)<4: continue
+        if not re.fullmatch(r'[A-Za-z]*\d+',cells[0]): continue
+        n+=1
+        # header guess: ID | Finding | Source | Label
+        src=cells[2] if len(cells)==4 else ' | '.join(cells[2:-1])
+        if pat.search(cells[1]): fids.add(cells[0])
+        if pat.search(src): sids.add(cells[0])
+print('rows',n)
+print('finding-cell leaks',len(fids),sorted(fids))
+print('source-cell leaks',len(sids),sorted(sids))
+PY
+rows 143
+finding-cell leaks 14 ['F10', 'F14', 'F15', 'F18', 'F19', 'F2', 'F20', 'F23', 'F26', 'F27', 'F28', 'F3', 'F4', 'F9']
+source-cell leaks 38 ['F1', 'F10', 'F11', 'F12', 'F13', 'F14', 'F15', 'F16', 'F17', 'F18', 'F19', 'F2', 'F20', 'F21', 'F22', 'F23', 'F24', 'F25', 'F26', 'F27', 'F28', 'F29', 'F3', 'F30', 'F31', 'F32', 'F33', 'F34', 'F35', 'F36', 'F37', 'F38', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9']
+[0m
+[0m→ [0mRead .claude/workflows/research-agent-memory.js[90m [offset=40, limit=55][0m
+[0m
+[0m$ [0mpython3 - <<'PY'
+import re,glob
+pat=re.compile(r'verified|reported|unproven|unknown|primary|secondary',re.I)
+n=0; fl=[]; sl=[]
+for f in sorted(glob.glob('docs/research/20261011-agent-memory-graph-r2/FINDINGS-s*.md')):
+    tag=f.split('FINDINGS-')[1][0]
+    for line in open(f,encoding='utf-8'):
+        if not line.strip().startswith('|'): continue
+        cells=[c.strip() for c in line.strip().strip('|').split('|')]
+        if len(cells)<4: continue
+        if not re.fullmatch(r'[A-Za-z]*\d+',cells[0]): continue
+        n+=1
+        rid=tag+cells[0]
+        if pat.search(cells[1]): fl.append(rid)
+        if pat.search(' | '.join(cells[3:])): sl.append(rid)
+print('rows',n)
+print('FINDING-cell leaks:',len(fl),fl)
+print('SOURCE-cell leaks:',len(sl),sl[:45])
+PY
+rows 143
+FINDING-cell leaks: 14 ['sF2', 'sF4', 'sF10', 'sF14', 'sF23', 'sF26', 'sF3', 'sF18', 'sF9', 'sF19', 'sF20', 'sF15', 'sF27', 'sF28']
+SOURCE-cell leaks: 4 ['sF10', 'sF22', 'sF15', 'sF19']
+[0m
+[0m$ [0mls -la .claude/workflows/ ; echo "--- reflog/stash:"; git stash list | head; echo "--- any copies:"; find . -name "research-agent-memory*" -not -path "*/node_modules/*" 2>/dev/null; echo "--- baseline status mentions:"; grep -n "research-agent-memory" runs/20261013-research-tags-retag/.baseline-git-status.txt
+total 112
+drwxr-xr-x 2 smoke01 smoke01  4096 Oct 12 16:03 .
+drwxr-xr-x 5 smoke01 smoke01  4096 Oct 13 13:57 ..
+-rw-r--r-- 1 smoke01 smoke01 20480 Sep 29 14:33 enhance-ancient-games.js
+-rw-r--r-- 1 smoke01 smoke01 55457 Oct 12 16:03 intake.js
+-rw------- 1 smoke01 smoke01 28000 Oct 13 21:10 research-agent-memory.js
+--- reflog/stash:
+stash@{0}: On master: tier rule 2026-09-22 (uncommitted), before merging origin/master 2026-09-25
+--- any copies:
+./.claude/workflows/research-agent-memory.js
+--- baseline status mentions:
+16:?? .claude/workflows/research-agent-memory.js
+[0m
+[0m$ [0mgrep -rn "the primary document was read\|primary file or document was read" --include=*.md --include=*.js --include=*.json --include=*.txt . 2>/dev/null | grep -v node_modules | head -20; echo "=== exit $?"
+./runs/20261013-four-experts-relay-tags/facts.md:7:   > `verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled.
+./runs/20261013-four-experts-relay-tags/facts.md:20:   "verified = the primary document was read; reported = a secondary source; unknown = not settled; unproven =
+./runs/20261013-four-experts-relay-tags/q-step5.md:74:   > `verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled.
+./runs/20261013-four-experts-relay-tags/q-step5.md:87:   "verified = the primary document was read; reported = a secondary source; unknown = not settled; unproven =
+./runs/20261013-four-experts-relay-tags/judge/B.md:11:   - The *control pass* tags under the old definitions, which are quoted from `docs/workflow-templates/research-file.md`: "`verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled".
+./runs/20261013-four-experts-relay-tags/q-step3.md:67:   > `verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled.
+./runs/20261013-four-experts-relay-tags/q-step3.md:80:   "verified = the primary document was read; reported = a secondary source; unknown = not settled; unproven =
+./runs/20261013-four-experts-relay-tags/copy-6-case3.md:9:   - The *control pass* tags under the old definitions, which are quoted from `docs/workflow-templates/research-file.md`: "`verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled".
+./runs/20261013-four-experts-relay-tags/step-3-sun-tzu/question.md:67:   > `verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled.
+./runs/20261013-four-experts-relay-tags/step-3-sun-tzu/question.md:80:   "verified = the primary document was read; reported = a secondary source; unknown = not settled; unproven =
+./runs/20261013-four-experts-relay-tags/step-3-sun-tzu/briefs/sun-tzu.md:80:   > `verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled.
+./runs/20261013-four-experts-relay-tags/step-3-sun-tzu/briefs/sun-tzu.md:93:   "verified = the primary document was read; reported = a secondary source; unknown = not settled; unproven =
+./runs/20261013-four-experts-relay-tags/step-1-linus/question.md:20:   > `verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled.
+./runs/20261013-four-experts-relay-tags/step-1-linus/question.md:33:   "verified = the primary document was read; reported = a secondary source; unknown = not settled; unproven =
+./runs/20261013-four-experts-relay-tags/step-1-linus/briefs/linus.md:33:   > `verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled.
+./runs/20261013-four-experts-relay-tags/step-1-linus/briefs/linus.md:46:   "verified = the primary document was read; reported = a secondary source; unknown = not settled; unproven =
+./runs/20261013-four-experts-relay-tags/q-step4.md:74:   > `verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled.
+./runs/20261013-four-experts-relay-tags/q-step4.md:87:   "verified = the primary document was read; reported = a secondary source; unknown = not settled; unproven =
+./runs/20261013-four-experts-relay-tags/copy-5.md:9:   - The *control pass* tags under the old definitions, which are quoted from `docs/workflow-templates/research-file.md`: "`verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled".
+./runs/20261013-four-experts-relay-tags/q-step2.md:66:   > `verified` = the primary file or document was read; `reported` = a secondary source; `unknown` = not settled.
+=== exit 0
+[0m
+[0m$ [0mgit ls-files -- runs/20261013-four-experts-relay-tags/facts.md runs/20261013-four-experts-relay-tags/q-step5.md | head; echo "--- HEAD has it?"; git cat-file -e HEAD:runs/20261013-four-experts-relay-tags/facts.md 2>&1 && echo YES; echo "--- mtime of js vs design:"; stat -c '%y %n' .claude/workflows/research-agent-memory.js runs/20261013-research-tags-retag/workflow-design.md
+--- HEAD has it?
+fatal: path 'runs/20261013-four-experts-relay-tags/facts.md' exists on disk, but not in 'HEAD'
+--- mtime of js vs design:
+2026-10-13 21:10:02.868618716 +0800 .claude/workflows/research-agent-memory.js
+2026-10-13 21:08:14.156749751 +0800 runs/20261013-research-tags-retag/workflow-design.md
+[0m
+[0m→ [0mRead runs/20261013-four-experts-relay-tags/facts.md[90m [limit=32][0m
+[0m
+[0m$ [0mpython3 - <<'PY'
+import re,glob
+pat=re.compile(r'verified|reported|unproven|unknown|primary|secondary',re.I)
+for f in sorted(glob.glob('docs/research/20261011-agent-memory-graph-r2/FINDINGS-s*.md')):
+    for line in open(f,encoding='utf-8'):
+        if not line.strip().startswith('|'): continue
+        c=[x.strip() for x in line.strip().strip('|').split('|')]
+        if len(c)<4 or not re.fullmatch(r'[A-Za-z]*\d+',c[0]): continue
+        hitf=pat.search(c[1]); hits=pat.search(' | '.join(c[3:]))
+        if hits and not hitf:
+            m=pat.search(' | '.join(c[3:]))
+            print('SOURCE-ONLY',f.split('FINDINGS-')[1][:2],c[0],'->',repr(' | '.join(c[3:])[:120]))
+print('--- sample finding-cell hits (word only):')
+n=0
+for f in sorted(glob.glob('docs/research/20261011-agent-memory-graph-r2/FINDINGS-s*.md')):
+    for line in open(f,encoding='utf-8'):
+        if not line.strip().startswith('|'): continue
+        c=[x.strip() for x in line.strip().strip('|').split('|')]
+        if len(c)<4 or not re.fullmatch(r'[A-Za-z]*\d+',c[0]): continue
+        m=pat.search(c[1])
+        if m:
+            n+=1; print(' ',f.split('FINDINGS-')[1][:2],c[0],m.group(0),'|',c[1][:90])
+print('total finding-cell hits',n)
+PY
+SOURCE-ONLY s3 F22 -> 'https://huggingface.co/blog/huggingface/relore-repository-memory (2026-09-21), quoted verbatim: "In one field test, the '
+SOURCE-ONLY s5 F19 -> 'https://github.com/getzep/zep-papers/issues/5 (**outside window**: filed 2025-05-08; origin of the current reproducibili'
+--- sample finding-cell hits (word only):
+  s1 F2 secondary | The short-term/long-term line is currently drawn with the vocabulary of cognitive science 
+  s1 F4 reported | Mem0's current shipping form has moved in the window, and the change is reported by a thir
+  s1 F10 primary | Letta's sleep-time agents (blog dated 2025-04-21, at the window's edge) make the split two
+  s1 F14 secondary | A secondary account reports MAGMA's LoCoMo judge score as 0.70, against 0.481 for full-con
+  s1 F23 reported | MIRIX's own LoCoMo claim (85.4%) is incompatible with the LoCoMo F1 scale used in the wind
+  s1 F26 reported | Anthropic's Claude Managed Agents memory (announced 2026-04-23) also puts long-term memory
+  s2 F3 primary | Graphiti presents itself as a real-time knowledge graph for AI agents and states that it s
+  s2 F18 reported | CONTROL — NOT FOUND. The system name "MagmaMem" does not exist as an agent-memory system. 
+  s4 F9 verified | LAM deduplicates deterministically on arrival, before prefill, in three layers: exact line
+  s4 F19 reported | Mem0's own paper reports its method attains 91% lower p95 latency and more than 90% token-
+  s4 F20 reported | Zep reports retrieval at 1.6k context tokens and 2.58-3.20 s against full-context 115k tok
+  s5 F15 reported | **Sources disagree (side 2).** A third-party reproduction of EverMemOS measured 38.38% on 
+  s5 F27 secondary | A secondary audit attributes an independent LongMemEval reproduction of Zep at 63.8% to ar
+  s5 F28 reported | A launched memory system reportedly advertised 100% on a memory benchmark, but its evaluat
+total finding-cell hits 14
+[0m
+[0m$ [0mgrep -rn "^| F18 " docs/research/20261011-agent-memory-graph-r2/FINDINGS-s2-graph-memory.md | cut -c1-260; echo "--- label counts incl CONTROL rows:"; python3 - <<'PY'
+import re,glob,collections
+c=collections.Counter(); ctrl=[]
+for f in sorted(glob.glob('docs/research/20261011-agent-memory-graph-r2/FINDINGS-s*.md')):
+    for line in open(f,encoding='utf-8'):
+        if not line.strip().startswith('|'): continue
+        x=[y.strip() for y in line.strip().strip('|').split('|')]
+        if len(x)<4 or not re.fullmatch(r'[A-Za-z]*\d+',x[0]): continue
+        c[x[2]]+=1
+        if 'CONTROL' in x[1] or 'NOT FOUND' in x[1]: ctrl.append((f.split('FINDINGS-')[1][:2],x[0],x[2]))
+print(c); print('control rows:',ctrl)
+PY
+26:| F18 | CONTROL — NOT FOUND. The system name "MagmaMem" does not exist as an agent-memory system. The exact-phrase queries `"MagmaMem" agent memory`, `"MagmaMem" graph memory system`, `MagmaMem knowledge graph memory` and `"MagmaMem"` returned no source n
+--- label counts incl CONTROL rows:
+Counter({'verified': 94, 'reported': 44, 'unproven': 3, 'unknown': 2})
+control rows: [('s2', 'F18', 'verified'), ('s4', 'F27', 'verified')]
+[0m

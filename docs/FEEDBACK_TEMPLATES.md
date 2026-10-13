@@ -20,12 +20,12 @@ loop's exit and the state file, not in the worker's summary. *"We are doing thin
 | 6 | `test data gen` | no | `Created / Schema / Coverage / Source` |
 | 7 | `document and explain` | no | `Written / Source (code + graph) / Format` |
 | 8 | `information extraction` | no | `Extracted / Source (code + graph) / Schema` |
-| 9 | `web search` | no | `Found (FACT / INFERRED / GAP) / Disputed` |
+| 9 | `web search` | no | `Found (tagged per RESEARCH_TAGS.md / INFERRED / GAP) / Disputed` |
 | 10 | `classification` | no | `Labels / Labeled / Unlabelable / Why` (batch; `T` from the brief) |
 | 11 | `code review` | no | `Against / Method / Findings (suggested fix) / Unclear` |
 | 12 | `multi step planning` | no | `Objective / Nodes / Coverage / Method / Unclear` |
 | 13 | `repo scanning` | no | `Scope / Coverage / Findings / Source (code graph) / Unclear` |
-| 14 | `research and reports` | no | `Answer / Findings (CONFIRMED / INFERRED / GAP / UNPROVEN) / Gaps` |
+| 14 | `research and reports` | no | `Answer / Findings (tagged per RESEARCH_TAGS.md) / Inferred / Gaps` |
 | 15 | `grade a run` | no | `Run / Against / Rubric / Unclear` |
 | 16 | `others` | — | `Done / Evidence / Findings` (+ `Effort` if the design runs it as a loop, + `Source` if it has one) |
 
@@ -44,15 +44,16 @@ carry the code-graph tool, and `Source` names the graph.
     <keyword>           — near | far     (results close to, or far from, the query)
     <refined keyword>   — near           (derived from "<original>" because <reason>)
 - Found:
-    FACT     <claim> — <publisher, published YYYY-MM-DD | "undated", URL>  [N sources — independent | same]
-    INFERRED <claim> — <why it follows from the FACT lines>
+    <id> <tag> <claim> — <publisher, published YYYY-MM-DD | "undated", URL>  [N sources — independent | same]
+    INFERRED <claim> — <why it follows from the finding ids it names>
     GAP      <asked fact> — not found; searched: <query, where>; or: exists at <URL> but undated
 - Disputed: <fact> — <k of n> say A (<sources>), <m> say B (<sources>), split <why>; or: none found
 ```
 
 `Searched` is the web-search `Effort`: the query log plus accuracy. "accurate" = the returned results are **near**
 the query (relevant), not off-topic — a `near | far` judgment the worker writes (only it saw the results). Refined
-keywords are marked with what they replaced and why. (EJ, 2026-10-06.)
+keywords are marked with what they replaced and why. (EJ, 2026-10-06.) `<tag>` is one of `verified / reported / unproven /
+unknown`, defined in `docs/RESEARCH_TAGS.md` (EJ, 2026-10-13); `INFERRED` and `GAP` lines are prose and carry no tag.
 
 ### `code review`
 
@@ -127,12 +128,14 @@ no `Verdict`.
 ```
 ## Summary
 - Answer:   <what is true in answer to the question, naming the finding ids it rests on; an unsettled part is written as unresolved>
-- Findings: <id claim — CONFIRMED | INFERRED | GAP | UNPROVEN — both sides: <A> | <B>; each side a file:line with a verbatim quote
+- Findings: <id claim — verified / reported / unproven / unknown — both sides: <A> | <B>; each side a file:line with a verbatim quote
              (>= 8 chars) or a URL with its published date (or "undated"); "— none" when no source opposes>
+- Inferred: <claim — the finding ids it follows from — why; no tag; or "none">
 - Gaps:     <what the question presupposed that no finding settles, where it was looked for, why open; or "none">
 ```
 
-`INFERRED` names the `CONFIRMED` rows it follows from; `GAP` names the query run and where. No `Disputed` (the
+Tags are defined in `docs/RESEARCH_TAGS.md` (EJ, 2026-10-13). An `Inferred` line names the finding ids it follows
+from and inherits no tag; a `Gaps` line names the query run and where. No `Disputed` (the
 both-side citation sits on the row), no `Effort`, no `Source`.
 
 ### `grade a run` (proposed, n=0)

@@ -1,0 +1,461 @@
+[0m
+> plan · MiniMax-M3.1-Flash-Preview
+[0m
+[0m→ [0mRead runs/20261013-four-experts-question-review-a-draft-claude/briefs/lao-tzu.md
+[0m→ [0mRead runs/20261013-four-experts-question-review-a-draft-claude/seats/lao-tzu-list.md
+[0m→ [0mRead runs/20261013-four-experts-question-review-a-draft-claude/seats/lao-tzu-identity.md
+[0m
+[0m$ [0mls /home/smoke01/dev/ancient-games/runs/20261013-four-experts-question-review-a-draft-claude/; echo "---"; ls /home/smoke01/dev/ancient-games/runs/20261013-four-experts-question-review-a-draft-claude/*/
+answers
+briefs
+logs
+question.md
+seats
+---
+/home/smoke01/dev/ancient-games/runs/20261013-four-experts-question-review-a-draft-claude/answers/:
+lao-tzu.md
+sun-tzu.md
+
+/home/smoke01/dev/ancient-games/runs/20261013-four-experts-question-review-a-draft-claude/briefs/:
+dave.md
+fan-li.md
+lao-tzu.md
+linus.md
+sun-tzu.md
+
+/home/smoke01/dev/ancient-games/runs/20261013-four-experts-question-review-a-draft-claude/logs/:
+lao-tzu.log
+linus.log
+sun-tzu.log
+
+/home/smoke01/dev/ancient-games/runs/20261013-four-experts-question-review-a-draft-claude/seats/:
+dave-identity.md
+dave-list.md
+fan-li-identity.md
+fan-li-list.md
+lao-tzu-identity.md
+lao-tzu-list.md
+linus-identity.md
+linus-list.md
+sun-tzu-identity.md
+sun-tzu-list.md
+[0m
+[0m$ [0mls -la /home/smoke01/dev/ancient-games/.claude/agents/ 2>/dev/null; echo "---TASK_TYPES---"; ls -la /home/smoke01/dev/ancient-games/TASK_TYPES.md 2>/dev/null; echo "---scripts---"; ls /home/smoke01/dev/ancient-games/scripts/ 2>/dev/null
+total 16
+drwxr-xr-x 2 smoke01 smoke01 4096 Oct 13 13:57 .
+drwxr-xr-x 5 smoke01 smoke01 4096 Oct 13 13:57 ..
+-rw-r--r-- 1 smoke01 smoke01 4169 Oct 13 13:57 researcher.md
+---TASK_TYPES---
+---scripts---
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games; wc -c runs/20261013-four-experts-question-review-a-draft-claude/answers/*.md; echo "--- lao-tzu.md head ---"; head -20 runs/20261013-four-experts-question-review-a-draft-claude/answers/lao-tzu.md; echo "--- repo root ---"; ls
+27 runs/20261013-four-experts-question-review-a-draft-claude/answers/lao-tzu.md
+ 0 runs/20261013-four-experts-question-review-a-draft-claude/answers/sun-tzu.md
+27 total
+--- lao-tzu.md head ---
+I'll read the brief first.
+--- repo root ---
+20260919-plan-critic-issues.md
+20260919-state.md
+AGENTS.md
+BOOTSTRAP_PROMPT.md
+CLAUDE.md
+DECISIONS.md
+PROJECT_OVERVIEW.md
+README.md
+SPEC.md
+TODO.md
+ablation
+ancient_games
+code_graph
+docs
+pyproject.toml
+runs
+site
+skills
+tests
+tools
+[0m
+[0m→ [0mRead .claude/agents/researcher.md
+[0m• [0mLocate repo method files[90m Explore Agent[0m
+[0m% [0mWebFetch https://docs.claude.com/en/docs/claude-code/sub-agents
+[0m✓ [0mLocate repo method files[90m Explore Agent[0m
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games; echo "=== CLAUDE.md size ==="; wc -c CLAUDE.md AGENTS.md; echo "=== validate_result.py digest kind ==="; sed -n '1,200p' .claude/skills/workflow-design/scripts/validate_result.py
+=== CLAUDE.md size ===
+9200 CLAUDE.md
+ 257 AGENTS.md
+9457 total
+=== validate_result.py digest kind ===
+#!/usr/bin/env python3
+"""validate_result.py — the script that checks a pass-back file (method 3.8). No model, stdlib only.
+
+  result  a node's result file: a header between two `---` lines, then the body (docs/workflow-templates/result-file.md)
+  digest  a research digest (docs/workflow-templates/research-file.md): capped length, required headings
+
+Usage:
+  validate_result.py FILE [--kind result|digest] [--node N] [--attempt K] [--model M] [--root DIR]
+                     [--max-lines N] [--summary N]
+Prints `ok <file>` or `fail <file>: <reason>; ...`, and with --summary N the first N body lines of a valid result
+(what the COO reads). Exit: 0 valid, 1 findings, 2 usage error.
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+RESULT_KEYS = ["node", "attempt", "engine", "model", "status", "started", "ended", "evidence"]
+STATUSES = {"ok", "fail", "partial"}
+DIGEST_HEADINGS = ["Answer", "Confidence", "Decision it triggers"]
+
+
+def split_header(text: str):
+    """The header is the first `---`…`---` block, wherever it is.
+
+    A strict "header at byte 0" contract failed a real run (2026-10-05): claude printed one sentence of context
+    before the header, and the whole node blocked on "no header". LLMs will keep adding a prelude, and the prelude
+    is harmless — the header and body are still well-formed. Discard whatever precedes the first `---`; require the
+    block itself to be well-formed.
+    """
+    lines = text.splitlines()
+    start = next((i for i, ln in enumerate(lines) if ln.strip() == "---"), None)
+    if start is None:
+        return None, text
+    for i in range(start + 1, len(lines)):
+        if lines[i].strip() == "---":
+            hdr = {}
+            for ln in lines[start + 1:i]:
+                if ":" in ln:
+                    k, v = ln.split(":", 1)
+                    hdr[k.strip()] = v.strip()
+            return hdr, "\n".join(lines[i + 1:])
+    return None, text
+
+
+def check_result(text: str, node=None, attempt=None, model=None, root: Path | None = None, require_model: bool = True):
+    f = []
+    hdr, body = split_header(text)
+    if hdr is None:
+        return ["no header between two '---' lines"], "", {}
+    for k in RESULT_KEYS:
+        if k == "model" and not require_model:
+            # an engine with no model of its own (dsh, script) has none to report; it is not a missing field
+            continue
+        if not hdr.get(k):
+            f.append(f"header is missing {k!r}")
+    if hdr.get("status") and hdr["status"] not in STATUSES:
+        f.append(f"status {hdr['status']!r} is not one of {sorted(STATUSES)}")
+    if node and hdr.get("node") and hdr["node"] != node:
+        f.append(f"node {hdr['node']!r} != contract {node!r}")
+    if attempt and hdr.get("attempt") and hdr["attempt"] != str(attempt):
+        f.append(f"attempt {hdr['attempt']!r} != {attempt}")
+    if model and hdr.get("model") and hdr["model"] != model:
+        f.append(f"model {hdr['model']!r} != contract {model!r}")
+    if hdr.get("status") == "ok":
+        if not body.strip():
+            f.append("status ok but the body is empty")
+        ev = hdr.get("evidence")
+        if ev and root is not None and not (root / ev).exists():
+            f.append(f"evidence path {ev!r} does not exist")
+    return f, body, hdr
+
+
+def check_digest(text: str, max_lines: int):
+    f = []
+    lines = [l for l in text.splitlines() if l.strip()]
+    if len(lines) > max_lines:
+        f.append(f"digest has {len(lines)} non-empty lines, cap is {max_lines}")
+    for h in DIGEST_HEADINGS:
+        if f"**{h}" not in text:
+            f.append(f"digest has no '**{h}' part")
+    return f
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("file")
+    ap.add_argument("--kind", choices=["result", "digest"], default="result")
+    ap.add_argument("--node"); ap.add_argument("--attempt"); ap.add_argument("--model")
+    ap.add_argument("--root"); ap.add_argument("--max-lines", type=int, default=20)
+    ap.add_argument("--summary", type=int, default=0)
+    a = ap.parse_args()
+    p = Path(a.file)
+    if not p.is_file():
+        print(f"fail {a.file}: file does not exist")
+        return 1
+    text = p.read_text(errors="replace")
+    if not text.strip():
+        print(f"fail {a.file}: file is empty")
+        return 1
+    if a.kind == "digest":
+        f = check_digest(text, a.max_lines); body = ""
+    else:
+        f, body, _ = check_result(text, a.node, a.attempt, a.model, Path(a.root) if a.root else None)
+    if f:
+        print(f"fail {a.file}: " + "; ".join(f))
+        return 1
+    print(f"ok {a.file}")
+    if a.summary and body:
+        print("\n".join(body.splitlines()[: a.summary]))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games; echo "=== control / planted ==="; grep -rn "control" docs/TASK_TYPES.md docs/WORKFLOW_DESIGN_METHOD.md docs/workflow-templates/ 2>/dev/null | head -40; echo; echo "=== check-findings.py ==="; cat runs/20261011-agent-memory-graph/check-findings.py
+=== control / planted ===
+docs/TASK_TYPES.md:72:dependency upgrades). Neither has a row; one is added when a real task of that kind arrives. Session-control
+docs/TASK_TYPES.md:136:6. **tiny + cats=[] is for session-control directives** (status, stop, restate, commit, one-step advice) and
+docs/WORKFLOW_DESIGN_METHOD.md:324:- **Dave** (Claude): what result would show this check can fail, and what is its control?
+docs/WORKFLOW_DESIGN_METHOD.md:522:- **Quality control** — a check per piece that can fail (3.5), a blind verifier and a contradiction check at joins
+docs/workflow-templates/workflow-design.md:94:## Quality control
+
+=== check-findings.py ===
+#!/usr/bin/env python3
+"""check-findings.py — the COO's deterministic check of a FINDINGS file.
+
+Why this exists: the workflow's own check runs on the *returned JSON*, so a row the brief allows (a month-precision
+date, a file:line source, the control row that cites queries) fails a node whose file on disk is fine. Runs 1 and 2
+both blocked on exactly that. This check runs on the **file**, which is the deliverable; the agent's return is only
+a digest (method 3.8 item 4).
+
+Usage: check-findings.py FILE [FILE ...] [--labels verified,reported,unknown,unproven] [--min-rows 5]
+Prints one line per file plus a per-row defect list. Exit 0 clean, 1 defects, 2 usage.
+"""
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from pathlib import Path
+
+LABELS = ("verified", "reported", "unknown", "unproven")
+CONTROL = "magmamem"
+CONTROL_NEGATED = re.compile(r"not.?found|no such|does not exist|no evidence|zero results|untrustworthy|fabricat|non.?existent", re.I)
+ROW = re.compile(r"^\|\s*(F\d+)\s*\|(.*)$")
+YEAR = re.compile(r"\b(19|20)\d{2}\b")
+URL_OR_PATH = re.compile(r"https?://|\b[\w./-]+\.(md|py|js|ts|json|ya?ml|txt)(:\d+)?\b|\b[\w./-]+:\d+\b")
+
+
+def rows(text: str):
+    for line in text.splitlines():
+        m = ROW.match(line)
+        if not m:
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 4:
+            yield m.group(1), line, None, None
+            continue
+        yield m.group(1), cells[1], cells[2], cells[3]
+
+
+def check(path: Path, labels: tuple, min_rows: int) -> list[str]:
+    bad: list[str] = []
+    text = path.read_text(errors="replace")
+    seen = list(rows(text))
+    if len(seen) < min_rows:
+        bad.append(f"{path.name}: only {len(seen)} finding rows (need >= {min_rows})")
+    for rid, claim, label, source in seen:
+        if label is None:
+            bad.append(f"{path.name}: {rid} has fewer than 4 cells")
+            continue
+        if label not in labels:
+            bad.append(f"{path.name}: {rid} label {label!r} not in {labels}")
+        is_control = CONTROL in (claim or "").lower()
+        if is_control and CONTROL_NEGATED.search(claim or ""):
+            continue  # the control row documents NOT FOUND; it cites queries, not a URL
+        if not YEAR.search(f"{claim} {source}"):
+            bad.append(f"{path.name}: {rid} carries no dated citation")
+        if not URL_OR_PATH.search(source or ""):
+            bad.append(f"{path.name}: {rid} source carries no URL or file:line")
+    if CONTROL not in text.lower():
+        bad.append(f"{path.name}: no control-query row (the MagmaMem sabotage did not run)")
+    return bad
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("files", nargs="+")
+    ap.add_argument("--labels", default=",".join(LABELS))
+    ap.add_argument("--min-rows", type=int, default=5)
+    a = ap.parse_args()
+    labels = tuple(x.strip() for x in a.labels.split(",") if x.strip())
+    findings: list[str] = []
+    total = 0
+    for f in a.files:
+        p = Path(f)
+        if not p.exists():
+            findings.append(f"{p}: missing")
+            continue
+        n = len(list(rows(p.read_text(errors="replace"))))
+        total += n
+        findings += check(p, labels, a.min_rows)
+        print(f"{p.name}: {n} rows")
+    print(f"total rows: {total}")
+    if findings:
+        print("\n".join(findings))
+        print(f"FAIL: {len(findings)} defect(s)")
+        return 1
+    print("PASS: every file satisfies the file-level check")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games; echo "=== control / void rules ==="; grep -rn "magmamem\|control query\|control-query\|void the control\|never be named" docs/ .claude/ --include=*.md 2>/dev/null | head -30; echo; echo "=== executor-kinds researcher rows ==="; grep -n -B2 -A6 "Researcher" .claude/skills/workflow-design/references/executor-kinds.md | head -40
+=== control / void rules ===
+docs/research/20261011-agent-memory-graph-r2/FINDINGS-s4-retrieval-consolidation.md:39:- The control query "MagmaMem" is recorded as NOT FOUND (F27). The only system the searches surfaced is MAGMA (arXiv:2601.03236); the near-name match is a tokenization coincidence, and no MagmaMem system document was found.
+docs/research/20261011-agent-memory-graph-r2/REPORT.md:59:A control query for a graph-memory system called "MagmaMem" returned no source naming it, and the index records that absence rather than presenting the system as real (s2-F18).
+docs/research/20261011-agent-memory-graph/FINDINGS-s3-project-graph.md:36:- The control query "MagmaMem" returns NOT FOUND. No source describes any system by that name; exact-term searches returned only the differently-named MAGMA multi-graph memory architecture (ACL 2026) and a Magma DDR4 memory product. Nothing here is a finding about MagmaMem, and no row was written for it.
+docs/TASK_TYPES_LEDGER.md:21:| 2026-10-11 | 20261011-agent-memory-graph (run 1) | research and reports (sectioning + join) + multi step planning + code review | default | — | — | ≈450k tokens (range 300k–700k), 10 node runs, 1.5–3 h, at most 5 resident sessions alive | not instrumented: 11 DSH subagent calls (1 scope + 5 sections, 3 of them with a repair attempt), no external engines; ~25 min wall clock (13:57–14:22 UTC); no token roll-up for DSH subagents | BLOCKED at Sections: 5/5 findings files written (149 rows — 89 verified, 58 reported, 2 unknown) and the MagmaMem control query returned NOT FOUND in all five; 2/5 sections passed their checks; join, index verification, report and the acceptance gate never ran, so nothing is verified. 2 of the 3 blockers were defects in the design's own checks (a control row that documented NOT FOUND was failed; the section field's id-versus-title) and 1 was an executor null return mis-counted as a spent attempt — all three fixed and sabotage-proven after the run (harness 7 → 11 cases, exit 0) | no — token cost not measured |
+
+=== executor-kinds researcher rows ===
+58-| Coder | Codex | `gpt-6.1-sol`, high effort (*verified* 2026-10-03 on the CLI) |
+59-| Reviewer, verifier | Codex, fresh session, never the coder's | `gpt-6.1-sol`, default effort; `gpt-6-astra` when the review is a high-thinking one |
+60:| Researcher — docs, papers, web (method 3.8 item 9) | `subagent_researcher` on the DeepSeek Harness (web search and fetch in its tool filter); `agy` by rule 2 above; a Claude subagent on Claude Code | `deepseek-flash`, low; `agy` per its own row; the session model on Claude Code |
+61-| Explorer — existing code, read-only (method 3.8 item 10) | `subagent_explorer` on the DeepSeek Harness: read-only, `bash` allowed so a claim can be marked `ran`, no `write` or `edit`; the COO herself when the affected area is small | `deepseek-flash`, low; EJ, 2026-10-03, n=0 |
+62-| Any other `agy` node | `agy` | `gemini-3.8-flash-medium` |
+63-| Classifier | DeepSeek (`subagent`, kind `deepseek`) | `deepseek-flash` — EJ, 2026-10-04: "multi step planning, classification, is using Deepseek v4.1 flash". This row said `agy`/`gemini-3.1-pro-high` and contradicted the routing table below it and line 146; corrected 2026-10-05 (register 4.4) |
+64-| Small task | the COO herself | her own model |
+65-
+66-**Model and effort.**
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games; echo "=== CLAUDE.md ==="; cat CLAUDE.md
+=== CLAUDE.md ===
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `.claude/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games; git status --short .claude/agents/ 2>/dev/null; echo "--- tracked? ---"; git ls-files .claude/agents/ ; echo "(empty = untracked)"; echo "--- settings deny Agent? ---"; ls .claude/settings*.json 2>/dev/null && grep -n "Agent\|subagent" .claude/settings*.json 2>/dev/null | head
+?? .claude/agents/
+--- tracked? ---
+(empty = untracked)
+--- settings deny Agent? ---
+[0m

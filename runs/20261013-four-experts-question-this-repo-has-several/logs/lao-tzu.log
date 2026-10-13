@@ -1,0 +1,269 @@
+[0m
+> plan · MiniMax-M3.1-Flash-Preview
+[0m
+[0m→ [0mRead runs/20261013-four-experts-question-this-repo-has-several/briefs/lao-tzu.md
+[0m→ [0mRead runs/20261013-four-experts-question-this-repo-has-several/seats/lao-tzu-list.md
+[0m→ [0mRead runs/20261013-four-experts-question-this-repo-has-several/seats/lao-tzu-identity.md
+[0m
+[0m$ [0mls /home/smoke01/dev/ancient-games/docs/ /home/smoke01/dev/ancient-games/docs/workflow-templates/ 2>&1
+/home/smoke01/dev/ancient-games/docs/:
+ABLATION_1.md
+ABLATION_2.md
+ABLATION_3.md
+ABLATION_4.md
+ABLATION_4_DESIGN.md
+ABLATION_4_IMPL.md
+ABLATION_5.md
+ABLATION_6.md
+ABLATION_7.md
+AUTONOMY_DESIGN.md
+AUTONOMY_REVIEW.md
+DISPATCHER_DESIGN.md
+DKIND_MIRROR_RESEARCH.md
+EXECUTOR_KINDS.md
+FEEDBACK_TEMPLATES.md
+HYBRID_BRIEF.md
+HYBRID_SEQUENCES.md
+HYBRID_SPEC.md
+INTERFACE_FIXES_IMPL.md
+INTERFACE_FIXES_PLAN.md
+KNOWLEDGE_GRAPH_DESIGN.md
+METHOD_CHANGELOG.md
+SQLITE_INDEX_DESIGN.md
+STORE_DESIGN_DECISION.md
+TASK_TYPES.md
+TASK_TYPES_LEDGER.md
+WORKFLOW_DESIGN_DIAGRAM.md
+WORKFLOW_DESIGN_METHOD.md
+ancient-games-algorithm.html
+code-graph
+evaluator
+index-md
+memory-system
+research
+workflow-design-algorithm.html
+workflow-templates
+
+/home/smoke01/dev/ancient-games/docs/workflow-templates/:
+blueprint.md
+explorer-file.md
+node-brief.md
+prompt-file.md
+readiness.md
+research-file.md
+result-file.md
+state.md
+workflow-design.md
+[0m
+[0m→ [0mRead docs/workflow-templates/research-file.md
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && rg -n "CONFIRMED|INFERRED|UNPROVEN|GAP\b" docs/FEEDBACK_TEMPLATES.md docs/TASK_TYPES.md CLAUDE.md 2>&1 | head -60
+docs/FEEDBACK_TEMPLATES.md:23:| 9 | `web search` | no | `Found (FACT / INFERRED / GAP) / Disputed` |
+docs/FEEDBACK_TEMPLATES.md:28:| 14 | `research and reports` | no | `Answer / Findings (CONFIRMED / INFERRED / GAP / UNPROVEN) / Gaps` |
+docs/FEEDBACK_TEMPLATES.md:48:    INFERRED <claim> — <why it follows from the FACT lines>
+docs/FEEDBACK_TEMPLATES.md:49:    GAP      <asked fact> — not found; searched: <query, where>; or: exists at <URL> but undated
+docs/FEEDBACK_TEMPLATES.md:130:- Findings: <id claim — CONFIRMED | INFERRED | GAP | UNPROVEN — both sides: <A> | <B>; each side a file:line with a verbatim quote
+docs/FEEDBACK_TEMPLATES.md:135:`INFERRED` names the `CONFIRMED` rows it follows from; `GAP` names the query run and where. No `Disputed` (the
+docs/TASK_TYPES.md:100:| research and reports | no | single node, or sectioning + join | agy (EJ, 2026-10-04) | answers the question; every finding carries both-side citations and a CONFIRMED/INFERRED/GAP/UNPROVEN label; missing proof never reads as PASS; join contradiction = stop | seed a known divergence → it must appear as a row with both citations; seed conflicting sources → the join stops |
+[0m
+[0m→ [0mRead docs/FEEDBACK_TEMPLATES.md[90m [offset=30, limit=80][0m
+[0m→ [0mRead docs/FEEDBACK_TEMPLATES.md[90m [offset=120, limit=40][0m
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && cat runs/20261011-agent-memory-graph/check-findings.py 2>&1 | head -80; echo "=== explorer template ==="; rg -n "read|ran" docs/workflow-templates/explorer-file.md | head -20; echo "=== CLAUDE.md quoted/reading ==="; rg -n "quoted|my reading|not measured" CLAUDE.md | head -20
+#!/usr/bin/env python3
+"""check-findings.py — the COO's deterministic check of a FINDINGS file.
+
+Why this exists: the workflow's own check runs on the *returned JSON*, so a row the brief allows (a month-precision
+date, a file:line source, the control row that cites queries) fails a node whose file on disk is fine. Runs 1 and 2
+both blocked on exactly that. This check runs on the **file**, which is the deliverable; the agent's return is only
+a digest (method 3.8 item 4).
+
+Usage: check-findings.py FILE [FILE ...] [--labels verified,reported,unknown,unproven] [--min-rows 5]
+Prints one line per file plus a per-row defect list. Exit 0 clean, 1 defects, 2 usage.
+"""
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from pathlib import Path
+
+LABELS = ("verified", "reported", "unknown", "unproven")
+CONTROL = "magmamem"
+CONTROL_NEGATED = re.compile(r"not.?found|no such|does not exist|no evidence|zero results|untrustworthy|fabricat|non.?existent", re.I)
+ROW = re.compile(r"^\|\s*(F\d+)\s*\|(.*)$")
+YEAR = re.compile(r"\b(19|20)\d{2}\b")
+URL_OR_PATH = re.compile(r"https?://|\b[\w./-]+\.(md|py|js|ts|json|ya?ml|txt)(:\d+)?\b|\b[\w./-]+:\d+\b")
+
+
+def rows(text: str):
+    for line in text.splitlines():
+        m = ROW.match(line)
+        if not m:
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 4:
+            yield m.group(1), line, None, None
+            continue
+        yield m.group(1), cells[1], cells[2], cells[3]
+
+
+def check(path: Path, labels: tuple, min_rows: int) -> list[str]:
+    bad: list[str] = []
+    text = path.read_text(errors="replace")
+    seen = list(rows(text))
+    if len(seen) < min_rows:
+        bad.append(f"{path.name}: only {len(seen)} finding rows (need >= {min_rows})")
+    for rid, claim, label, source in seen:
+        if label is None:
+            bad.append(f"{path.name}: {rid} has fewer than 4 cells")
+            continue
+        if label not in labels:
+            bad.append(f"{path.name}: {rid} label {label!r} not in {labels}")
+        is_control = CONTROL in (claim or "").lower()
+        if is_control and CONTROL_NEGATED.search(claim or ""):
+            continue  # the control row documents NOT FOUND; it cites queries, not a URL
+        if not YEAR.search(f"{claim} {source}"):
+            bad.append(f"{path.name}: {rid} carries no dated citation")
+        if not URL_OR_PATH.search(source or ""):
+            bad.append(f"{path.name}: {rid} source carries no URL or file:line")
+    if CONTROL not in text.lower():
+        bad.append(f"{path.name}: no control-query row (the MagmaMem sabotage did not run)")
+    return bad
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("files", nargs="+")
+    ap.add_argument("--labels", default=",".join(LABELS))
+    ap.add_argument("--min-rows", type=int, default=5)
+    a = ap.parse_args()
+    labels = tuple(x.strip() for x in a.labels.split(",") if x.strip())
+    findings: list[str] = []
+    total = 0
+    for f in a.files:
+        p = Path(f)
+        if not p.exists():
+            findings.append(f"{p}: missing")
+            continue
+        n = len(list(rows(p.read_text(errors="replace"))))
+        total += n
+        findings += check(p, labels, a.min_rows)
+        print(f"{p.name}: {n} rows")
+=== explorer template ===
+3:What an explorer node writes (method 3.8 item 10). Findings go to a file; the COO reads the digest. Each finding
+13:| X1 | <one claim about the code> | read / ran | path/to/file.py:120 or path:120-124 | `a short verbatim piece of those lines` | <for ran: the command and where its output is saved; for read: —> |
+16:<what was not read; claims a build depends on that are still `read`>
+19:- **Kind.** `read` = inferred from reading the code. `ran` = confirmed by running it (a test, a differential run,
+20:  `~/skills/verify-extraction`); it must name its evidence. Only `ran` claims may feed a node that builds.
+29:| X1 | The Gate splits a capability list when it is longer than three | read | ancient_games/stages.py:109-111 | `if count > 3:` | — |
+30:| X2 | A long list is split into groups of three | read | ancient_games/stages.py:111 | `k = math.ceil(count / 3)` | — |
+31:| X3 | An unreadable skills directory is reported as unknown, not a crash | ran | .claude/skills/workflow-design/scripts/readiness.py:180-181 | `except OSError as e: return Check(group, item, UNKNOWN, f"unreadable: {e}", str(p))` | `pytest tests/test_readiness.py -k rt_22` (passes; fails with the guard removed) |
+=== CLAUDE.md quoted/reading ===
+109:- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+110:  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "=== scripts/agents parsing tag words ==="; rg -ln --glob '!runs/**/FINDINGS*' --glob '!docs/research/**' -e '\bverified\b|\breported\b|\bunproven\b|\bCONFIRMED\b|\bINFERRED\b' . 2>/dev/null | head -30; echo "=== label lists in code ==="; rg -n "LABELS|labels=|--labels" --glob '*.py' . | head -20; echo "=== memory graph schema uses tags? ==="; rg -n "tag|label" runs/20261011-agent-memory-graph/*.md 2>/dev/null | head -20
+=== scripts/agents parsing tag words ===
+./CLAUDE.md
+./tools/export_skills.py
+./skills/requirement-check/SKILL.md
+./ablation/README.md
+./skills/meaningful-names/SKILL.md
+./tests/operator-prompt-list.md
+./skills/BOOTSTRAP_PROMPT.md
+./tests/test_dispatch.py
+./skills/README.md
+./tests/test_readiness.py
+./skills/bootstrap/SKILL.md
+./ancient_games/hybrid/tools/ingest_return.py
+./skills/workflow-design/SKILL.md
+./ancient_games/hybrid/tools/localize.py
+./tests/fixtures/T1_trace.md
+./skills/workflow-design/scripts/harvest_run.py
+./skills/workflow-design/scripts/dispatch.py
+./tests/fixtures/V3_3_SPEC.md
+./skills/workflow-design/scripts/quote_check.py
+./tests/fixtures/V3_6_SPEC.md
+./docs/workflow-templates/explorer-file.md
+./skills/workflow-design/scripts/readiness.py
+./tests/fixtures/operator_prompts_r2.jsonl
+./ablation/runs/attempt3/UC2J.journal.jsonl
+./skills/workflow-design/scripts/engines.py
+./docs/workflow-templates/research-file.md
+./tests/fixtures/operator_prompts_r1.jsonl
+./ancient_games/hybrid/supervise.py
+./docs/ABLATION_4.md
+./tests/test_localize_ansi.py
+=== label lists in code ===
+./tests/test_readiness.py:25:MCP_LABELS = {"~/.claude/settings.json", "~/.claude.json", "~/.qwen/settings.json",
+./tests/test_readiness.py:147:    assert {c["item"] for c in mcp} == MCP_LABELS
+./tests/test_readiness.py:164:    assert {c["item"] for c in checks if c["group"] == "MCP"} == MCP_LABELS
+./tests/test_readiness.py:485:        assert {c["item"] for c in checks if c["group"] == "MCP"} == MCP_LABELS
+./runs/20261011-agent-memory-graph/check-findings.py:9:Usage: check-findings.py FILE [FILE ...] [--labels verified,reported,unknown,unproven] [--min-rows 5]
+./runs/20261011-agent-memory-graph/check-findings.py:19:LABELS = ("verified", "reported", "unknown", "unproven")
+./runs/20261011-agent-memory-graph/check-findings.py:66:    ap.add_argument("--labels", default=",".join(LABELS))
+=== memory graph schema uses tags? ===
+runs/20261011-agent-memory-graph/design.md:14:model calls: `runs/20261011-agent-memory-graph/sabotage-harness.mjs` (11 cases, all behave as designed, 2026-10-11).
+runs/20261011-agent-memory-graph/design.md:24:| Q5 | **A contradiction in the table.** Labelling rule 8 says external sources → `web search` "even when the output is a report", but the `web search` row's default is a single node, while the `research and reports` row's default is "single node, or sectioning + join" and fixture `t11-report-clis` (external sources, report deliverable) is expected `research and reports`. Which rule wins for a sectioned external-source report? | the row with the matching default pattern wins (sectioning lives in `research and reports`); the sections are relabelled accordingly, and `web search` is kept for a deliverable that *is* a search (fixture `t09-search-mcp`) | none |
+runs/20261011-agent-memory-graph/design.md:25:| Q6 | **Two vocabularies.** The `research and reports` row's check names CONFIRMED / INFERRED / GAP / UNPROVEN; `docs/workflow-templates/research-file.md` names verified / reported / unknown (with a Gaps section for what is unread). The design uses **verified / reported / unknown / unproven**. Which vocabulary is the repo's? | the template's three, plus UNPROVEN from the row so a claim without evidence never reads as PASS; the row's GAP is the template's Gaps section. Correct the labels in `questions.json` and the briefs before the run if EJ rules otherwise | none |
+runs/20261011-agent-memory-graph/design.md:36:verified/reported/unknown/unproven label, and disagreements shown as rows rather than averaged away.
+runs/20261011-agent-memory-graph/design.md:53:an unlabelled report would read as PASS while resting on one vendor post — the risk tier is **high** for the
+runs/20261011-agent-memory-graph/design.md:56:dated URL and a verbatim quote, labels are never upgraded, a control query for a nonexistent system must return
+runs/20261011-agent-memory-graph/design.md:60:sectioning+join shape. The pieces below carry the real labels; they replace this one, and after the blind review
+runs/20261011-agent-memory-graph/design.md:65:- Kind of task: **not a product change** (research and a report only — `docs/TASK_TYPES.md`, labelling rule 5:
+runs/20261011-agent-memory-graph/design.md:86:- **Check:** script — the five ids appear exactly once and no field is empty. Sabotage: delete one entry → the
+runs/20261011-agent-memory-graph/design.md:111:  report piece (rule 1: no secondary label for work inside the primary). The blind review flagged the earlier
+runs/20261011-agent-memory-graph/design.md:112:  `web search` label — that row's default is a single node — and the relabelling is the repair; the tension
+runs/20261011-agent-memory-graph/design.md:115:- **Builds:** no. **Check:** every returned row has a date, an http(s) URL and a verbatim quote; label ∈
+runs/20261011-agent-memory-graph/design.md:119:  dropped after the blind review). **Sabotage:** the MagmaMem control query — a fabricated finding row for it
+runs/20261011-agent-memory-graph/design.md:126:- **State:** reads the s-question, window and run id; writes the section's status, path, count and label counts.
+runs/20261011-agent-memory-graph/design.md:128:  label vocabulary, the control query. **Withheld:** the other four sections' findings and any draft answer.
+runs/20261011-agent-memory-graph/design.md:140:  finding id and source; every disagreement is a CONTESTED row; no row averages two sources. **Sabotage:** plant
+runs/20261011-agent-memory-graph/design.md:149:- **Context — given:** the five findings files, their digests, the reconciliation rules, the label vocabulary.
+runs/20261011-agent-memory-graph/design.md:160:- **Check:** five binary verdicts with file:line; missing proof is UNKNOWN, never PASS. **Sabotage:** the brief
+runs/20261011-agent-memory-graph/design.md:180:  marked GAP; no claim stronger than its label; `validate_result.py --kind digest` on `DIGEST.md`.
+runs/20261011-agent-memory-graph/design.md:181:  **Sabotage:** one sentence with no id and one label upgraded — the check must fail on both.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && rg -n "CONFIRMED|INFERRED|UNPROVEN|GAP|FACT|verified|reported|unknown" ancient_games/hybrid/tools/ingest_return.py ancient_games/hybrid/tools/localize.py ancient_games/hybrid/supervise.py 2>/dev/null | head -30
+ancient_games/hybrid/tools/ingest_return.py:10:event on disk while the call reported failure, so a retry duplicated them.
+ancient_games/hybrid/tools/localize.py:14:# reported "no failure located"). Strip them before matching.
+ancient_games/hybrid/supervise.py:49:    Order matters: a finished run is reported as finished even if its last call also tripped a
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && rg -n "verified|reported|unknown|unproven|CONFIRMED|INFERRED|UNPROVEN" skills/workflow-design/scripts/*.py skills/*/SKILL.md CLAUDE.md 2>/dev/null | head -25
+skills/workflow-design/scripts/workload.py:172:        v = n.get("verified_by") or n.get("verifier")
+skills/workflow-design/scripts/design_gate.py:9:  G1 category unknown
+skills/workflow-design/scripts/design_gate.py:72:    return "unknown"
+skills/workflow-design/scripts/design_gate.py:176:PLACEHOLDER = {"tbd", "todo", "unresolved", "unknown", "n/a", "na", "?", "??", "???", "-", "--", "---",
+skills/workflow-design/scripts/design_gate.py:188:    return head.startswith(("tbd", "todo", "unresolved", "fixme", "unknown ", "n/a"))
+skills/workflow-design/scripts/design_gate.py:226:            f.append(f"G1: unknown category {c!r}")
+skills/workflow-design/scripts/design_gate.py:281:                f.append(f"G4: node {n.get('id')} needs unknown node {dep!r}")
+skills/workflow-design/scripts/design_gate.py:286:        f.append(f"G4: unknown pipeline {pipe!r}")
+skills/workflow-design/scripts/design_gate.py:329:                if rk == "unknown" or rk in constraint:
+skills/workflow-design/scripts/design_gate.py:343:        # pass — `engine_kind` returned 'unknown' and nothing objected. A node whose engine cannot be dispatched
+skills/workflow-design/scripts/design_gate.py:346:        if kind == "unknown":
+skills/workflow-design/scripts/design_gate.py:351:    # to change the product in one step. Method 3.3's own table says what an unknown gets: a *bounded explore
+skills/workflow-design/scripts/dispatch.py:4:pass-back check, the engine-reported model check, repair rounds
+skills/workflow-design/scripts/dispatch.py:170:                f.append(f"{nid}: needs unknown node {d!r}")
+skills/workflow-design/scripts/dispatch.py:173:        # No fallback (removed 2026-10-05 at EJ's direction): a node that fails is blocked and reported, and the
+skills/workflow-design/scripts/dispatch.py:288:        text, reported = adapter.parse(stdout, out_file)
+skills/workflow-design/scripts/dispatch.py:291:    if engine != "script" and reported and reported != model:
+skills/workflow-design/scripts/dispatch.py:292:        return {"outcome": "executor", "why": f"tool reports model {reported!r}, plan says {model!r}", "result": ""}
+skills/workflow-design/scripts/dispatch.py:306:    return {"outcome": "ok", "why": "" if reported else "model unverified (tool did not report it)",
+skills/workflow-design/scripts/dispatch.py:331:    """One node to done, or raise Stop. Executor failure: blocked and reported. Check failure: repair
+skills/workflow-design/scripts/dispatch.py:347:            # Blocked, and reported. The engine failed; that is a fact for the COO, not something to paper over by
+skills/bootstrap/SKILL.md:19:   `references/executor-kinds.md`, "Reads which instruction file", including its uncertain/reported labels;
+skills/bootstrap/SKILL.md:36:| `references/method.md` §§3.0–3.8, §4 | design order, readiness, verified handoffs, node contracts, state and project memory |
+skills/bootstrap/SKILL.md:95:   result and evidence, and has that result verified before any dependent node starts. On failure, feed back the
+skills/bootstrap/SKILL.md:96:   check's actual output and follow the bounded repair/exit rule; on success, pass the verified returns and evidence
+[0m
+[0m% [0mWebFetch https://www.cebm.ox.ac.uk/resources/ebm-tools/l levels-of-evidence
+[0m% [0mWebFetch https://www.cebm.ox.ac.uk/resources/ebm-tools/levels-of-evidence
+[0m✗ [0mWebFetch https://www.gradeworkinggroup.org/what-is-grade failed
+[91m[1mError: [0mStatusCode: non 2xx status code (404 GET https://www.gradeworkinggroup.org/what-is-grade)
+[0m% [0mWebFetch https://www.gradeworkinggroup.org/
+[0m% [0mWebFetch https://html.duckduckgo.com/html/?q=%22information+spectrum%22+health+information+credibility+messenger+message+proximity
+[0m% [0mWebFetch https://lite.duckduckgo.com/lite/?q=%22information+spectrum%22+credibility+health+information+tool
+[0m% [0mWebFetch https://georgiasouthern.libguides.com/InformationSpectrum
+[0m% [0mWebFetch https://lite.duckduckgo.com/lite/?q=CEBM+%22Levels+of+Evidence%22+2011+table+systematic+review+expert+opinion
+[0m% [0mWebFetch https://www.cebm.net/wp-content/uploads/2014/06/CEBM-Levels-of-Evidence-Introduction-2.1.pdf

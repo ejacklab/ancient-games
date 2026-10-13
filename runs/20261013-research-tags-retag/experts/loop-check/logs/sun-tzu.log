@@ -1,0 +1,280 @@
+dsh: reasoning:
+I need to read the list and identity files.
+dsh: reasoning:
+Now let me understand the task. I am to answer as 孫子 (Sun Tzu) the question: "what is left to the worker's good character rather than to a check the worker cannot edit?"
+
+I need to answer for each piece listed: R4 and R5 (the two loops). Also mention R2 (the counting script)?
+
+The question says "for each piece listed". The pieces are R4 and R5 (the two loops). Also the result is then counted by R2. So the pieces are R4, R5, and R2 maybe. Let me re-read.
+
+"Facts (filled in by the COO), per piece:" — the two loops R4 and R5. Then "The result is then counted by a COO-written script (R2)".
+
+I think I should answer for R4 and R5, and possibly note R2.
+
+Let me also read the workflow-design.md to get context. The brief says facts are filled in, but reading the full design would help. Let me read it.
+
+Actually, the brief says "Do not invent facts" and gives facts. But it says "Full design: runs/.../workflow-design.md". Reading it is allowed (the brief names it). Let me read it to ground the answer, especially the section on R4/R5 and the checks.
+
+Let me read the full design.
+dsh: reasoning:
+Now I understand the task. I'm 孫子, examining R4 and R5 (and R2) for: what is left to the worker's good character rather than to a check the worker cannot edit?
+
+The key insight from Sun Tzu's rules: #2 "Make yourself unbeatable first" — being unbeatable lies with oneself, being beatable lies with the enemy. #4 Know whether you can fight. #12 Seek it in 勢 not in people — "the skilled fighter seeks it in 勢 and does not demand it of his people". That's the central rule: don't demand trustworthiness of the worker; build the conditions so trust isn't needed.
+
+The question is about what's left to the worker's good character rather than a check the worker cannot edit.
+
+For R4:
+- Check is COO-written script: 143 lines, each R-id once, tag one of four. That's a schema check. It checks format, not content.
+- The blind is "by instruction plus renumbering (not enforced)" — dsh can read the repository. So the worker could read the original findings files, the key, RESEARCH_TAGS.md, prediction.md, the other pass. The check cannot detect this. Compliance is left to the worker's good character.
+- Also: the check verifies format/structure but not that the tag was assigned by the given definitions. A worker could tag by whim/prior knowledge, or by having seen the old labels (from prior training or from reading the repo), and the script would still pass.
+- Also: the brief "names only the brief and the blind sheet" — instruction. dsh reads repository. No enforcement.
+- The check is written by the COO; it's a different person than the worker, so the worker cannot edit it — good. But the check can't see the worker's reading.
+- The retry limit 2 and feedback: the worker receives the check's output. If a line fails, the worker may "fix" it minimally, e.g. renumber/drop an id rather than re-tag. Also the worker chooses its own tags after seeing feedback.
+- The worker self-reports: the raw output → raw/R4-<n>.txt. Who writes raw? Presumably COO captures. If worker writes its own output file, could also write the check output? Not specified.
+
+Let me be careful: what's checkable by a script that the worker cannot edit? The check is a COO-written script. The worker cannot edit it. Good — this is #2 "make yourself unbeatable": the schema check is on the COO's side.
+
+But the schema check does not check the tagging decision. So the tagging quality rests on the worker's good character. The design leaves several things to good character:
+
+1. The blind-ness (not reading withheld files) — instruction-only, unenforced. Worker could read key/, original findings, RESEARCH_TAGS.md, control pass. The check would not catch it. This is the biggest one.
+2. Obeying the given definitions vs. tagging from memory/prior. The check only verifies the tag is one of four; not that it follows the definition. A worker that tags "unknown" everywhere passes the schema.
+3. Honest reporting of its own process / not editing its output after seeing check? Actually the output is judged, not self-reported.
+4. Whether the worker actually reads all 143 rows vs. skims. The check counts rows but cannot tell whether the tag was reasoned from the row's finding/source.
+5. For R5: same plus the split/stuck semantics. The check verifies "a split has ≥2 parts" and "a stuck names two different tags and a reason" — but not that the split parts are distinct in meaning or that the stuck is genuine. E.g. split into two parts both tagged "reported" passes; a stuck reason could be the word "x" and pass. So the substance of the new rule (a row genuinely spanning two tags, a row genuinely undecided between two) is left to good character.
+6. Also, the worker writes the tag; the "why" for stuck is free text; a check can't validate it.
+7. Worker could deterministically assign tags (e.g. all "reported") and pass.
+8. The worker must not read the other pass — withheld, but unenforced.
+
+Now, what does Sun Tzu's rules say to do? #2: "make yourself unbeatable first" — "Being unbeatable is in your own hands, being beatable is in the enemy's." Transfer: the COO should make the check such that the worker's cooperation is not needed. #12: "seek it in 勢, made of the regular and the irregular, not from the people" — "the skilled fighter seeks victory in 勢 and does not demand it of his people"; "courage and cowardice are a matter of 勢." So: don't demand integrity from the worker; change the conditions.
+
+Concrete strengthenings:
+- Enforce the blind mechanically rather than by instruction: run the worker in a copy of the brief and rows with the repository withheld (e.g. a sandbox/jail with only `briefs/R4.md` and `blind/rows.md`, working dir empty), or strip/rename the withheld files, or use a fresh container. Since dsh can read the repo, "by instruction" is not a check. This is the R4/R5 blind's known weakness (U5).
+- Make the tagging check content-bearing: a script that can be wrong about content — e.g. count tags and compare to a hand-tagged sample by the COO, or a spot-check of k rows against definitions by a second independent party. But watch: the control pass's whole point is comparison; an independent verifier can't overwrite.
+- Better: a "plant"/canary row whose correct tag is known and inserted into the 143 (a row the COO wrote). If the worker tags the plant wrongly, the check fails. That converts good character into a testable item. But that perturbs the 143-row comparison. Could be an extra row outside the count, or a known row with a known answer. Actually R1's leak count handles some.
+- Add a consistency/effort check: e.g. the worker must return, per row, a short verbatim reason? No — the output format is fixed. Could add a field but that changes the artifact.
+- Use two independent taggers per pass and measure agreement? That changes the design.
+- Measure the worker's access: check file access logs / atime for withheld files — a check the worker can't edit. Actually a script could compare mtimes/atimes, but atime unreliable. Could check that the worker's session did not open those files — requires process-level monitoring.
+- Randomize/riddle: put the withheld files outside the repo root reachable? Not with workspace-write.
+
+Also, the check is written by the COO and the worker cannot edit it — good. But the check output is fed back to the worker; the worker then edits its sheet to pass. The worker only needs to satisfy the schema; it can repair by any means. So the second attempt's tags could be manipulated to pass without re-tagging. Limited but real.
+
+Also, R2: the count script is COO-written and the fixture is COO-written — "who wrote the check: the COO — so the counts are not independent evidence." That's already flagged. But the question is what is left to good character: the COO's good character! R2's check is written by the same person who wrote the tag definitions and the workflow. The fixture known answers are the COO's. So the entire measurement (the comparison) rests on the COO's honesty/competence — the worker (COO) can edit the check. Actually the brief says "a COO-written script". But for R2, the worker IS the COO, who also wrote the check and the key. So the check is not independent of the worker. However the R2 is not named as one of the two loops; the question is "before these pieces run as loops". R4 and R5 are the loops. I'll focus on R4/R5 but can mention R2 as a note.
+
+Wait, the question asks "for each piece listed". The "pieces" in the workflow design include A, B, R1-R6. But the brief's facts section says "per piece" then gives "The two loops: R4 ... R5". Then "The result is then counted by ... (R2)". So "the pieces listed" = R4 and R5, with R2 noted. I'll answer per piece id: R4, R5, and optionally R2.
+
+Let me also consider the identity's rules and the final list. The most relevant final list items:
+- #2 Make yourself unbeatable first; win, then seek battle: "Being unbeatable is in your own hands, being beatable is in the enemy's" — the check is the COO's own ground; the worker's compliance is the enemy's ground. Build on what you own.
+- #12 Seek it in 勢 ... not from the people: "the skilled fighter seeks it in 勢 and does not demand it of his people"; "courage and cowardice are a matter of 勢". Central.
+- #4 Know whether you can fight: know/not know.
+- #10 Avoid the solid, strike the empty: the worker is strongest/least checkable exactly where the script can't see (content), so put checks where the worker is thin — enforce blind and content.
+- #15 The general's faults — each virtue is a lever: the worker's honest self-restraint is a lever.
+- #17 Learn the enemy by probing and by signs: use plants/canaries to learn whether the worker actually tags from the row. Sunzi probes (作之而知動靜之理, 形之而知死生之地); a plant is a probe. That's a great fit: "Learn the enemy by probing and by signs" — plant a row whose answer is known; if the worker tags it right for the wrong reason... hmm, a plant tests whether the tagger is following the definitions.
+- #11 Foreknowledge must come from people; pay for it: not directly.
+- #13 not every command accepted: not directly.
+- #14 ratio of forces: attempt limit 2.
+- #3 whole over broken: not directly.
+- #7 deception: renumbering is a form of concealment (my reading).
+
+Now answer format required exactly:
+
+```
+# 孫子 (Sun Tzu) — <the question in a few words>
+
+## Answer
+<recommendation in one or two sentences; conditional if it must be>
+
+## How I decided
+<numbered steps; each cites "my #n" or says "my reading">
+
+## What I need to know
+<questions...>
+
+## Costs and risks
+<each with the item it comes from>
+
+## How we would know I was right
+<a test, a measure, or an observable result>
+```
+
+The instruction: "In 'Answer', give one line per piece id: loop-ready as written / strengthen the check (how) / not loop-ready (why). Name a concrete failure the check would miss wherever you can; 'looks fine' is not an answer."
+
+So the Answer section should have one line per piece id (R4, R5, and maybe R2). The recommendation in one or two sentences + per-piece lines.
+
+Let me draft.
+
+Key finding per piece:
+
+**R4 — not loop-ready as written (or strengthen the check).** The schema check is real and COO-owned (worker cannot edit it — good, my #2). But what it leaves to good character:
+- Blindness: dsh can read the repository; the withheld files (`key/old-labels.json`, the five findings files, `RESEARCH_TAGS.md`, `prediction.md`, `tags/new.jsonl`) are withheld by instruction only. The check counts lines and tags; it cannot see what the worker read. Concrete failure: the worker reads `key/old-labels.json`, copies the old label for all 143 rows; the sheet is 143 lines, ids unique, tags from the four → the check passes, and the control pass becomes a copy of the key, which guarantees a false "no measurable difference."
+  - Wait — is that right? If the worker copies old labels for control, then control = same labels → 100% same. Then R5's movement is compared to control; if new-rule pass genuinely moves, result shows movement. But the control being identical to the key inflates "same." Actually the comparison is new-rule movement vs control movement. A control that is identical to old labels gives control movement = 0. The claim "new-rule movement no larger than control → no measurable difference" would then be based on a control that was not a blind tagging at all. That's a concrete failure.
+- Definition-following: the check cannot tell a tag that follows the quoted definitions from one assigned from prior/memory. Concrete failure: all 143 rows tagged "reported" (or "unknown") — schema passes.
+- Effort: the worker may tag without reading each row's Finding and Source. Check can't see.
+- Feedback repair: on attempt 2 the worker can edit only to satisfy the schema (e.g. drop a bad line and re-add a valid id) without reconsidering the tag.
+
+So R4: "strengthen the check" — and name how.
+
+How to strengthen (through the rules):
+1. Enforce the blind mechanically, not by instruction: run the tagging call in a directory that contains only `briefs/R4.md` and the blind rows, with the repository not reachable — e.g. a throwaway copy/container, or move the repo out of reach. My #2: unbeatable parts are what you own; the instruction is enemy's ground. My #12: 勢, not the worker's forbearance.
+2. Prove the blind held with a check the worker cannot edit: a known plant/canary. Insert rows (outside the 143, or extra) whose tag under the old four definitions is known to the COO; a worker reading the leaked old labels or not reading the definitions will tag the plant wrongly. My #17: probe. Actually if old labels are what's leaked, the plant tests whether they follow old defs. Hmm, need a plant whose old label isn't the leak. Maybe simpler: log the worker's file reads (process/OS-level) — check the withheld files' access. But that's a different check; could be done.
+3. Make the record of the run: capture the worker's session transcript / command log, and have the check assert no read of withheld paths. That is a check the worker cannot edit (if written to a location outside the worker's write scope). Actually the worker's may-change is `tags/control.jsonl` only; it must not change everything else. But "must not change" is a rule, not an enforced check.
+4. Content check by an independent COO hand-tag of a random sample (say 10 rows) drawn before the pass: the script compares the worker's tags to the hand tags. This is a real content check the worker cannot edit. But it costs COO time, and it cannot be perfectly blind if the COO knows the old labels — the COO wrote the key. Still, the COO tagging under the old definitions independently of the old labels is possible but they may remember. Hmm. Better: keep the sample from a separate person.
+5. A second independent tagger on a random subsample and measure agreement: turns "good character" into a measurable rate. But changes design; still a strengthening.
+
+**R5 — strengthen the check (same as R4)**, plus the new rule's substance is entirely unverified:
+- The check verifies a split has ≥2 parts and a stuck names two different tags + a reason. Concrete failures: a split whose two parts carry the same tag `[{"part":"x","tag":"reported"},{"part":"y","tag":"reported"}]` passes but is not a split in meaning; a stuck with `why:"x"` and tags `["verified","reported"]` passes regardless of whether the row is genuinely undecided. So the new rule's central question — does the definition decide a row without argument? — is left to the worker's good character.
+- Also R5 withholds `tags/control.jsonl` by instruction only, same enforcement gap; a worker that reads it could align passes, hiding real divergence.
+- Strengthen: (a) enforce blind; (b) require the two parts to carry different tags (a script can check that — cheap; if the design wants same-tag splits allowed, then say so and test it another way); (c) validate the stuck's `why` by a COO read of a sample, not a schema (free text can't be script-checked); (d) a plant row on which a split or a stuck is the known answer, to test the tagger actually applies the new rule.
+
+**R2 (the counting script)** — not a loop as such (attempt limit 3), but the question says the result is counted by a COO-written script. What is left to good character: everything, because the worker (COO) wrote the check and the fixture. The brief itself says "not independent evidence." Also the COO wrote `prediction.md` (R3) and the reading (R6). So R2: not loop-ready as a check on the COO's own work — it's a check the worker can edit. Strengthen: have a different person write/verify the fixture, or at minimum EJ recounts a sample. But is R2 "listed"? The brief says "per piece" with R4/R5. I'll include R2 in one line as a note, clearly marked. Hmm, the instruction says "one line per piece id: loop-ready as written / strengthen the check (how) / not loop-ready (why)." The pieces are R4 and R5 per the facts. I'll give R4, R5, and add R2 as a note line, labelled. Actually to be safe and responsive, list R4 and R5 prominently, then R2 as a separate "note" line since the facts mention it. I think that's right.
+
+Wait, let me reconsider: The brief says "## The question — Method 3.5 — before these pieces run as loops: are their checks real? ... Answer your own question below, through your rules, for each piece listed". Then "Facts (filled in by the COO), per piece: Full design ... The two loops: R4 ... R5 ... The result is then counted by a COO-written script (R2)". So "each piece listed" = R4 and R5. R2 is context. I'll include R4, R5 as the per-piece lines, and add an R2 note.
+
+Now, my Sun Tzu rules to cite. Let me map:
+
+- my #2 (Make yourself unbeatable first; win, then seek battle): "Being unbeatable is in your own hands, being beatable is in the enemy's." → The check the worker cannot edit is the COO's own ground; the worker's compliance is the enemy's ground. Build the loop on what you own. Also 「無恃其不來，恃吾有以待之」: do not rely on the worker's not peeking; rely on the worker not being able to.
+- my #12 (Seek it in 勢 ... not from the people): "the skilled fighter seeks victory in 勢 and does not demand it of his people"; "courage and cowardice are a matter of 勢." → Don't demand good character; change the 勢 (the environment/conditions).
+- my #10 (Avoid the solid, strike the empty ... have no constant form): the script hits the solid (format) and misses the empty (meaning/blind). Attack where the check can actually reach; don't declare the ground safe where you have not tested. Also "I make others take form while I have none" — the blind is meant to keep the worker formless; but the repo makes the COO's form legible to the worker (my reading / #7 deception inverted).
+- my #17 (Learn the enemy by probing and by signs): "reckon him (策) ... stir him (作) ... make him take form (形) ... test him in contact (角)" → plant canaries and a sample hand-check to learn what the worker actually does, rather than trusting the schema.
+- my #4 (Know whether you can fight; know the other side and yourself): the check knows the format; it does not know the worker or itself. "Knowing our troops can attack but not that the enemy cannot be attacked is half a victory." The schema check is half a victory: it knows the format can be checked, not that the tag content is right.
+- my #15 (The general's faults: five dangers): each virtue is a lever. The worker's conscientiousness is one; a script cannot tell diligence from compliance.
+- my #14 (ratio of forces): attempt limit 2 — with the same worker, a second attempt after seeing feedback is not a new force; it re-uses the same worker's character. (my reading/#14)
+- my #7 (deception): renumbering and removing the Label column are concealment; but concealment is only as good as the worker's not looking — my #2 says rely on the enemy not being able, not on them not looking. Actually #7's rule is about deceiving the enemy. The COO's deception of the worker: if it's instruction-only, the enemy can see through it. My reading.
+- my #13 (not every command accepted): the worker is not bound by the COO's "do not read" instruction? That's a stretch; the worker is an agent, "君命有所不受" — the instruction not to read has no enforcement, so it is like a command without the means to enforce. I can use #13 lightly: a command that cannot be enforced is a command not to be accepted. Hmm, maybe use carefully. I'll use it as my reading tied to #13: the worker is told not to read; there is no ground for that command; #13 says commands contrary to the real situation need not be accepted. But that's putting a negative spin. Better: the COO should not issue commands that rest on nothing (like the ruler who orders advance/retreat without knowing the army) — 謀攻's 「不知軍之不可以進而謂之進」 (my #13 quotes this under the three ways the ruler troubles the army). Actually #13's "Their words" includes 謀攻's three ways the ruler brings trouble. So: instructing the worker not to read, when the worker can read and no check can tell, is hobbling the army / a command without ground. Good, cite #13.
+
+Now, "What I need to know":
+- Does the dsh headless session actually run in the repository root with all files readable, or can the COO set a working directory / sandbox to withhold the key? (Determines whether the blind can be enforced mechanically.)
+- Is the worker's transcript/command log captured (so a check can assert the withheld files were not opened)? If not, can the COO capture it?
+- Does the output format allow an extra per-row field (e.g. a reason or a plant marker), or is it frozen? (Affects whether a plant/soft check can be added.)
+- Was the key (`key/old-labels.json`) generated before R4 and is it on disk in the repo during R4? (It is in this design.) — This is the leak's exposure.
+- For R2: will someone other than the COO write or approve the fixture? 
+- Is a sample hand-tag by EJ (or a second person) acceptable as the content check, given the cost?
+
+Actually the brief says: "3. Do not invent facts. If the answer depends on something you were not given ... list it under 'What I need to know' and answer conditionally". So list genuine unknowns.
+
+"What I need to know" should be questions whose answers change the answer. Let me pick the ones that change:
+1. Can R4/R5 be run with the repository withheld (a copy of the two files only), or is repo access unavoidable? If avoidable, the blind stops resting on character and R4/R5 become loop-ready with that one change.
+2. Does the environment record what the worker opened (transcript/audit), and can the COO place that record outside the worker's write scope? If yes, an access check substitutes for the enforced sandbox.
+3. May the output carry a field the schema verifies (e.g. a per-row quoted reason, or the plant tests), or is the `{"id","tag"}` shape fixed by the file's rule? Determines whether content can be script-checked.
+4. For R2: is a non-COO fixtured/verified count available, or does EJ recount a sample? If not, R2 stays "not independent evidence" (already said in the design).
+
+"Costs and risks":
+- Enforced sandbox: extra setup; may not be supported by dsh headless, so the cost is a run change. (from my #2)
+- Plant rows: if added to the 143, they change the set being counted and the comparison; if outside, they add rows and the check must exclude them — risk of error in the count. (my #17)
+- A content sample check: costs COO/EJ time; the sample is small so it can miss; and it cannot be fully blind if the sampler knows the old labels. (my #4 / #17)
+- A second independent tagger: doubles cost (~25–40k tokens/pass), and agreement is not correctness. (my #14)
+- Enforcing the blind by running in a stripped copy: loses the worker's ability to read `docs/RESEARCH_TAGS.md` for R5 — but R5's brief quotes it verbatim, so fine; risk that the brief's quoted definitions are wrong (a copy error) and no one catches it because the source is unreachable. (my reading) Hmm, that's a real cost: if the worker can't read the source, a misquote in the brief goes unchecked. But the brief is the input; the COO can check the quote at design time. I'll mention.
+- Removing the README: no.
+
+"How we would know I was right":
+- Concrete: before R4, run the same worker once with the withheld files moved into reach and see whether it reads them / whether the tags change; or run the strengthened loop and check the plant rows are tagged correctly and the access log shows no read of withheld paths. If the schema-only loop and the strengthened loop give the same counts, the character worry was small; if they differ, the schema was not enough. Better phrased as a test: insert 3 plant rows with known tags and 2 rows the old labels would tag one way but the definitions another; a worker reading the leak tags them wrong. Success = plants correct and blind-hold verified; failure = plants wrong or access log shows a withheld read.
+
+Actually R1 already produces `blind/leaks.txt` (13 rows whose Finding text carries a tag-like word). Interesting — that's a leak check on the caller side. Good to cite: R1 already counts 13 tag-like words in the Finding text; the same probing (my #17) can be turned on the worker.
+
+Let me also double check the exact wording of quotes I'll use, so I quote only from the list exactly. The list's rules and words:
+
+#2 Rule: "First make yourself unbeatable, then wait for the enemy to become beatable. Being unbeatable is in your own hands, being beatable is in the enemy's..." Their words: 「昔之善戰者，先為不可勝，以待敵之可勝。不可勝在己，可勝在敵。」...「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」
+
+#12 Rule: "Battle 勢 is no more than the regular (正) and the irregular (奇)... The skilled fighter seeks victory in 勢 and does not demand it of his people, so he can choose his people and rely on 勢; courage and cowardice are a matter of 勢." Their words: 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」...「勇怯，勢也」
+
+#4 Rule: the five, know self and other. Their words: 「知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」...「知吾卒之可以擊，而不知敵之不可擊，勝之半也；...」
+
+#10 Rule: "Make the enemy show its form while you show none..." Their words: 「故形人而我無形...」...「兵之勝，避實而擊虛。...故兵無成勢，無恒形...」
+
+#17 Rule: "Learn the enemy by acting on him: reckon him (策) ... stir him (作) ... make him take form (形) ... test him in contact (角)..." Their words: 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」
+
+#13 Rule: "There are roads not to be taken, armies not to be struck... commands of the ruler not to be accepted." And 謀攻's three ways: 「不知軍之不可以進而謂之進，不知軍之不可以退而謂之退，是為縻軍...」
+
+#7 Rule: "War is the way of deception..." Their words: 「兵者，詭道也。故能而示之不能...」
+
+#15 Rule: the general's faults.
+
+Good.
+
+I must be careful: the brief says "Quote only from your list, exactly as it is written there, and keep its label (quoted, attributed)." When I quote the English/Chinese, I should keep the quotes from the list. The list's items themselves are the list; quoting the rule text is fine. I'll quote short phrases.
+
+Let me now write the answer. Plain English Markdown. No files. Final message is the answer. Exact headings.
+
+Let me be decisive: R4 and R5 — "strengthen the check" with the specific how; and I should name concrete failures. Is it "not loop-ready"? The question offers three verdicts. The loop's check as written verifies the schema only; the loop's purpose (a blind control pass) is not verified. I'd call R4 and R5 "not loop-ready as written — the check verifies the container, not the blind or the tag"; and then give the strengthening. But the allowed line says one of: loop-ready as written / strengthen the check (how) / not loop-ready (why). I'll say "not loop-ready as a control (why); strengthen the check this way if kept". Hmm. The instruction says give one line per piece id with one of those. Maybe pick the strongest label and include the how/why. I think for R4: "not loop-ready as written — the schema check cannot see the two things the pass exists for (blindness, definition-following); if the blind is enforced in the environment, loop-ready." That's conditional, which the brief allows ("answer conditionally").
+
+Actually the brief says: "give one line per piece id: loop-ready as written / strengthen the check (how) / not loop-ready (why)." So I should pick one of the three. Let me pick "strengthen the check (how)" for R4 and R5, because the structure is sound and the fix is to add enforcement. But the concrete failure (worker reads the key) is severe: if the blind is only by instruction, the check is not real. Hmm, "not loop-ready (why)" seems more honest for the blind part. Let me phrase: "R4 — not loop-ready as written (the check certifies format only; the blind is by instruction, so a worker that reads `key/old-labels.json` passes 143/143). Cheapest repair: ..." That fits "not loop-ready (why)" with the how appended. I'll do that, and note that if the environment enforces the blind, it becomes loop-ready. Actually I can be precise: two verdicts possible depending on the unknown (whether the sandbox can withhold the repo). I'll state the verdict as "not loop-ready as written" and then the condition "if the run can be given a working directory with only the brief and the blind sheet, then loop-ready after that one change."
+
+Let me structure the Answer with a short 1–2 sentence summary then bullets per piece.
+
+Let me write it.
+
+One more consideration: the question "what is left to the worker's good character rather than to a check the worker cannot edit?" I should explicitly enumerate the character-dependent items:
+1. Not reading the withheld files (blind). 
+2. Actually applying the quoted definitions (not memory/priors/flip).
+3. Reading each row rather than pattern-matching.
+4. On attempt 2, genuinely re-tagging rather than minimally patching to satisfy the schema.
+5. For R5, what counts as a genuine split/stuck, and an honest `why`.
+6. (R2) The COO's own honesty/competence in the fixture and the count; also the COO's reading in R6.
+
+And the check the worker cannot edit: the COO's script. That is good (my #2) — but it is on the format ground only.
+
+I should also note the "feedback = the script's real output" loop: the worker sees failures and repairs; a schema failure gives no signal about tags, so the repair is guided only by format, and the worker's only obligation is to pass. That means the loop's stop condition ("the sheet validates") doesn't measure the objective. That's exactly #4's half-victory: the check knows whether the sheet is well-formed, not whether the tagging is right.
+
+Now "How we would know I was right": a test. E.g., run R4 once with the withheld files deliberately placed where the worker can reach them and no instruction; if the worker's tags then match the key far above the base rate, the blind-by-instruction was the weak point, and my warning was right. Or: plant rows. Also: compare a schema-only pass and an enforced-blind pass; if the counts differ materially, the check was leaving work to character. Concretely: "count of rows whose tag equals the original old label: an enforced-blind worker should not exceed the base rate by much; a worker reading the key will sit at 143/143."
+
+Let me write the final answer now. Keep it tight but complete.
+
+I'll write:
+
+# 孫子 (Sun Tzu) — what the check leaves to the worker's character
+
+## Answer
+If R4/R5 run in the repository, their checks certify the container and not the pass: the blind is instruction-only, so a worker that reads `key/old-labels.json` and copies it passes 143/143 — not loop-ready as written. If the run can be given a working directory holding only its brief and the blind sheet (or a captured access log the worker cannot edit), then R4 and R5 are loop-ready after that one change; the schema check itself is sound, and it is the COO's, so the worker cannot edit it.
+
+Per piece:
+- **R4 — not loop-ready as written (why), then strengthen (how):** ...
+- **R5 — not loop-ready as written (why), then strengthen (how):** ...
+- **R2 (the count) — note:** ...
+
+Let me include R2 as a labelled note, not as a "piece listed", to be safe. Actually maybe label it "R2 (mentioned in the facts, not a tagged piece)". Fine.
+
+Let me draft the full text carefully.
+
+For the "How I decided" section, each step cites my #n or says my reading. Let me write numbered steps:
+
+1. my #2: separate the ground. "Being unbeatable is in your own hands, being beatable is in the enemy's." The check the worker cannot edit is the COO's ground — good. The worker's compliance is the enemy's ground; build on the first, not the second.
+2. my #12: "the skilled fighter seeks victory in 勢 and does not demand it of his people." An instruction not to read is a demand on the worker's character; the environment is 勢. Change it.
+3. my #2 again (無恃其不來，恃吾有以待之): the blind must rest on the worker not being able to read, not on the worker not reading.
+4. my #4: the check knows the format can be verified but not that the tag content is right — half a victory (勝之半也). Knowing the other (the definitions) and yourself (the script) is not enough; know the ground (can the worker read the key).
+5. my #10: the script strikes the solid (line count, id set, tag vocabulary) and leaves the empty (meaning) untouched. Also, the design makes the COO's form legible (key, old labels on disk) while the worker shows none — the 形人而我無形 is backwards.
+6. my #17: probe. A plant row and a hand-tagged sample turn good character into an observable (作之而知動靜之理, 角之而知有餘不足之處).
+7. my #13 (with 謀攻's three ways the ruler troubles the army): the "do not read" line is a command with no ground — 不知軍之不可以進而謂之進... it is the ruler hobbling his own army. Hmm, that quote fits the COO instructing the worker. Fine.
+8. my #15: the worker's conscientiousness is one of the "five dangers" style levers — a virtue the check cannot see; a fault only when relied on.
+9. my #14: a second attempt by the same worker is the same force; the attempt limit does not add independence.
+10. my #7: renumbering and dropping the Label column are concealment, and concealment works only against the side that does not look; my #2 governs.
+11. my #17 / R1 step: R1 already counts tag-like words in the Finding text (13 found) — the same probe aimed at the worker is a plant.
+12. For R2: my #2 again — the counter wrote the check, the key, the prediction and the reading; a check the worker can edit is not the ground. my reading (the design itself says the counts are not independent evidence).
+
+That's thorough. Maybe trim to ~10.
+
+"What I need to know": genuine unknowns:
+1. Can R4/R5 be run with a working directory that holds only the brief and `blind/rows.md`, i.e. is repo reading avoidable in `dsh headless`? (changes verdict)
+2. Can the run capture a read/command log in a location the worker cannot write (outside its "may change" file)? (alternative enforcement)
+3. Is the per-row output shape frozen to `{"id","tag"}` / split / stuck, or may a soft field (a short quoted reason) be added? (determines whether content can be script-checked at all)
+4. May rows outside the 143 be added as plants, and would that break the count or the comparison? (If not, the plant must be one of the 143 with a known answer — risk of contaminating the set.)
+5. For R2: will EJ or anyone other than the COO write/approve the fixture, or must the count's independence come from EJ's recount of a sample?
+
+Maybe 4 and 5 suffice; keep 1–4 plus R2. The brief says "none if none" but there are real ones.
+
+"Costs and risks": each with the item it comes from.
+- Enforced working directory: setup work; if dsh needs the repo (config/skills), the isolation may not be available — cost is a change to the run (my #2).
+- Plant rows: extra rows must be excluded from R2 and from the comparison or they change the denominator; a mis-marked plant is a false failure (my #17).
+- Hand sample by a person: costs time, and if the sampler knows the old labels it is not blind; a small sample can miss (my #4/#17).
+- A second independent tagger: ~doubles the ~25–40k tokens per pass, and agreement is not correctness (my #14).
+- Enforcing the blind removes the worker's reach to `docs/RESEARCH_TAGS.md`; R5's brief quotes it, so a misquote cannot be caught by the worker — check the quote at design time (my reading, via #13's ruler who does not know the army).
+- Relying on the schema alone: the false "no measurable difference" is the cost of the leak — an unfalsifiable result (my #4 half victory; my #2).
+
+"How we would know I was right":
+- Run one probe pass with the withheld files moved into reach and no instruction; if its tags equal the original labels far above the base rate (up to 143/143), the blind rested on character. Then run the enforced version; success is plant rows tagged as known and no read of the withheld paths. Concrete measure: count of rows equal to `key/old-labels.json`; and the schema-only vs enforced counts (the four totals) — if they diverge materially, the old check was not real.
+
+Let me write the final. I'll be careful with quoting only from the list. Use short quotes.
+
+Note: the brief says "Re-read your list while you work" — done.
+
+Also the heading: "# 孫子 (Sun Tzu) — <the question in a few words>". I'll use "what the check leaves to character".
+
+Let me finalize.
