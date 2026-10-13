@@ -1,0 +1,242 @@
+{
+ "categories": [
+  "multi step planning",
+  "information extraction",
+  "test script gen",
+  "ui/ux dev",
+  "code review",
+  "others"
+ ],
+ "builds": true,
+ "touched_paths": [
+  "site/ancients/"
+ ],
+ "pipeline": null,
+ "design_source": "default",
+ "nodes": [
+  {
+   "id": "P0-blueprint",
+   "category": "multi step planning",
+   "engine": "claude-opus-5-5",
+   "check": "EJ accepts the drafted blueprint sections (Q5), dated in state.md",
+   "five_things": [
+    "tools",
+    "context",
+    "contract",
+    "evidence",
+    "state"
+   ],
+   "needs": [],
+   "sabotage": "a requirement with no checkable criterion -> requirement-check fails it",
+   "brief_given": "EJ's challenge text and his Kindle preference, verbatim; readiness.md; the blueprint template. Withheld: nothing — no worker output exists yet",
+   "intent": "fix the target: vision, R1-R6, N1-N3 and the DOM contract the tests use",
+   "stop": {
+    "criteria": "every requirement passes requirement-check and EJ accepts the sections (Q5)",
+    "baseline": "no product exists yet; nothing to keep passing",
+    "must_not_change": "everything outside site/ancients/docs/blueprint/"
+   },
+   "returns": "site/ancients/docs/blueprint/{README,vision,requirements,ui-ux,architecture,data-model}.md",
+   "state_reads": "Questions for EJ, answers",
+   "state_writes": "EJ's acceptance line, dated",
+   "tools": [
+    "COO"
+   ],
+   "evidence": [
+    "runs/20261013-ancients-page/state.md"
+   ]
+  },
+  {
+   "id": "P3-tests",
+   "category": "test script gen",
+   "engine": "codex gpt-6.1-sol",
+   "check": "test_mobile.py all red on an empty page and the matching tests red on a planted-broken page",
+   "five_things": [
+    "tools",
+    "context",
+    "contract",
+    "evidence",
+    "state"
+   ],
+   "needs": [
+    "P0-blueprint"
+   ],
+   "sabotage": "panels without scroll-snap and one altered quote -> the R2.1 and R5.1 tests fail",
+   "brief_given": "requirements.md, ui-ux.md (DOM contract), data-model.md, the S25 Ultra viewport numbers. Withheld: any page code, P1's content",
+   "intent": "tests written from the criteria before the page exists, by a different engine from the builder",
+   "stop": {
+    "criteria": "one test per criterion id; all red on an empty page; R2.1 and R5.1 red on the planted-broken page",
+    "baseline": "its own first run is the red baseline, recorded in state.md",
+    "must_not_change": "everything outside site/ancients/tests/"
+   },
+   "returns": "site/ancients/tests/test_mobile.py and the two red runs' output",
+   "state_reads": "the accepted blueprint",
+   "state_writes": "baseline output; test count per criterion",
+   "tools": [
+    "codex",
+    "playwright"
+   ],
+   "evidence": [
+    "runs/20261013-ancients-page/nodes/P3-red.txt"
+   ],
+   "loop": {
+    "limit": 2,
+    "exit": "fresh Codex node with the failing output; then EJ",
+    "feedback": "the test run's real output, verbatim"
+   }
+  },
+  {
+   "id": "P1-content",
+   "category": "information extraction",
+   "engine": "dsh deepseek-flash",
+   "check": "check_content.py: schema valid, <=20 items, every field a verbatim substring of its source md, every Chinese quote found in sources/",
+   "five_things": [
+    "tools",
+    "context",
+    "contract",
+    "evidence",
+    "state"
+   ],
+   "needs": [
+    "P0-blueprint"
+   ],
+   "sabotage": "alter one character in one quote -> check_content.py fails",
+   "loop": {
+    "limit": 3,
+    "exit": "fresh Codex gpt-6.1-sol node with a handoff note, limit 2; then EJ",
+    "feedback": "check_content.py failing lines, verbatim"
+   },
+   "brief_given": "data-model.md schema; one person's identity/<seat>.md and final list (per Q1); the instruction to copy every field verbatim. Withheld: other persons' files, the page design",
+   "intent": "the page's data, copied exactly from the lists, checked by script",
+   "stop": {
+    "criteria": "check_content.py passes for all four persons (R1.2 data, R5.1, R5.2)",
+    "baseline": "test_mobile.py results no worse than the recorded baseline",
+    "must_not_change": "runs/20261013-four-seats/** and everything outside site/ancients/content/ and site/ancients/tools/"
+   },
+   "returns": "site/ancients/content/ancients.json",
+   "state_reads": "Q1, Q2 answers",
+   "state_writes": "items per person, check pass/fail",
+   "tools": [
+    "dsh",
+    "python3"
+   ],
+   "evidence": [
+    "runs/20261013-ancients-page/nodes/P1-check.txt"
+   ]
+  },
+  {
+   "id": "P2-build",
+   "category": "ui/ux dev",
+   "engine": "opencode MiniMax-M3.1-Flash-Preview",
+   "check": "test_mobile.py all green at S25 Ultra viewport and build.py exits 0",
+   "five_things": [
+    "tools",
+    "context",
+    "contract",
+    "evidence",
+    "state"
+   ],
+   "needs": [
+    "P0-blueprint",
+    "P1-content",
+    "P3-tests"
+   ],
+   "sabotage": "break the snap container -> R2.1 goes red",
+   "loop": {
+    "limit": 3,
+    "exit": "fresh Codex gpt-6.1-sol node (high), limit 2; then EJ",
+    "feedback": "test_mobile.py failing output, verbatim"
+   },
+   "brief_given": "the accepted blueprint, content/ancients.json, test_mobile.py (run only, not edit), the kindle-page skill's template. Withheld: P3's reasoning",
+   "intent": "the page itself: four sideways panels, vertical reading, the Kindle look",
+   "stop": {
+    "criteria": "test_mobile.py green for R1-R4, R6.1, N1, N2 and build.py exits 0",
+    "baseline": "every test the baseline recorded stays runnable; none deleted or skipped",
+    "must_not_change": "site/ancients/tests/, site/ancients/content/, ~/skills/kindle-page"
+   },
+   "returns": "site/ancients/build.py, templates/, dist/index.html, Makefile",
+   "state_reads": "content check result, test file path",
+   "state_writes": "attempt, pass/fail, dist sha256",
+   "tools": [
+    "opencode",
+    "python3",
+    "playwright"
+   ],
+   "evidence": [
+    "runs/20261013-ancients-page/nodes/P2-attempt.txt"
+   ]
+  },
+  {
+   "id": "P4-review",
+   "category": "code review",
+   "engine": "claude-sonnet-5-5",
+   "check": "fixed checklist against ui-ux.md finds the planted defect; EJ accepts on the S25 Ultra",
+   "five_things": [
+    "tools",
+    "context",
+    "contract",
+    "evidence",
+    "state"
+   ],
+   "needs": [
+    "P2-build"
+   ],
+   "sabotage": "a planted UI defect the reviewer must report, else the review is void",
+   "brief_given": "dist/index.html, the P3 screenshots, ui-ux.md, the fixed checklist. Withheld: P2's reasoning and attempt history, which defect was planted",
+   "intent": "a blind check of the look and feel, then EJ's own check on the phone",
+   "stop": {
+    "criteria": "the checklist is complete and the planted defect is reported; EJ accepts on the S25 Ultra",
+    "baseline": "test_mobile.py still green",
+    "must_not_change": "site/ancients/** (review is read-only)"
+   },
+   "returns": "runs/20261013-ancients-page/nodes/P4-review.md and EJ's verdict",
+   "state_reads": "dist sha256",
+   "state_writes": "review verdict, preview URL, EJ's verdict",
+   "tools": [
+    "claude-sonnet-5-5",
+    "cloudflare-api"
+   ],
+   "evidence": [
+    "runs/20261013-ancients-page/nodes/P4-review.md"
+   ]
+  },
+  {
+   "id": "P5-deploy",
+   "category": "others",
+   "engine": "claude-opus-5-5",
+   "check": "live sha256 == P2's dist sha256; test_mobile.py green against the live URL; ejai.ai homepage hash unchanged",
+   "five_things": [
+    "tools",
+    "context",
+    "contract",
+    "evidence",
+    "state"
+   ],
+   "needs": [
+    "P4-review"
+   ],
+   "sabotage": "point the hash check at a modified file -> it must fail",
+   "brief_given": "the accepted dist/index.html and its sha256, Q3's host, the zone ejai.ai. Withheld: nothing",
+   "intent": "the accepted file live at ancients.ejai.ai, nothing else on ejai.ai touched",
+   "stop": {
+    "criteria": "live sha256 equals P2's; test_mobile.py green against the live URL (N1, N2); ejai.ai homepage hash unchanged (N3)",
+    "baseline": "test_mobile.py green",
+    "must_not_change": "every other DNS record and the ejai.ai site"
+   },
+   "returns": "runs/20261013-ancients-page/nodes/P5-deploy.txt with API ids, hashes and the live test output",
+   "state_reads": "EJ's go-ahead",
+   "state_writes": "live URL, hashes, done",
+   "tools": [
+    "cloudflare-api",
+    "curl",
+    "playwright"
+   ],
+   "evidence": [
+    "runs/20261013-ancients-page/nodes/P5-deploy.txt"
+   ]
+  }
+ ],
+ "baseline": {
+  "command": "python3 site/ancients/tests/test_mobile.py",
+  "captured_by": "P3-tests"
+ }
+}

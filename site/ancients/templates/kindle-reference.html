@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="__LANG__">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Noto+Serif+TC:wght@400;600&family=Noto+Sans+TC:wght@400;600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+/* Themes: approximations of the Kindle app's page colours, not Amazon's published values. */
+:root, [data-theme="white"] { --bg:#ffffff; --fg:#1a1a1a; --muted:#6b6b6b; --rule:#d8d8d8; --link:#1f5f99; --panel:#f4f4f4; }
+[data-theme="sepia"] { --bg:#f4ecd8; --fg:#5b4636; --muted:#8a7560; --rule:#d9caa9; --link:#7a4b1e; --panel:#ebe0c6; }
+[data-theme="green"] { --bg:#cce8cf; --fg:#22352a; --muted:#4f6b57; --rule:#a9cdb0; --link:#1d5a3a; --panel:#bddfc1; }
+[data-theme="black"] { --bg:#000000; --fg:#d2d2d2; --muted:#8a8a8a; --rule:#333333; --link:#8fb8e8; --panel:#161616; }
+
+html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); }
+body { -webkit-text-size-adjust:100%; transition:background .2s, color .2s; overflow:hidden; }
+body.scroll { overflow:auto; }
+
+/* Reading area. --size, --leading, --margin, --font, --align are set from the reader's settings. */
+#viewport { position:fixed; top:2.4rem; bottom:2.4rem; left:0; right:0; }
+body.scroll #viewport { position:static; padding:2.4rem 0; }
+#book {
+  height:100%; max-width:var(--measure); margin:0 auto; padding:0 var(--margin); box-sizing:border-box;
+  font-family:var(--font); font-size:var(--size); line-height:var(--leading); text-align:var(--align);
+  hyphens:auto; -webkit-hyphens:auto; overflow:hidden; font-kerning:normal; font-variant-ligatures:common-ligatures;
+  column-fill:auto; column-gap:calc(2 * var(--margin));
+}
+body.scroll #book { height:auto; overflow:visible; columns:auto !important; }
+
+#book p { margin:0 0 .75em; }
+#book h1, #book h2, #book h3, #book h4 { line-height:1.25; text-align:left; font-weight:600; break-after:avoid; hyphens:manual; }
+#book h1 { font-size:1.6em; text-align:center; margin:1.2em 0 1em; break-before:column; }
+#book .chapter:first-child h1 { break-before:auto; }
+#book h2 { font-size:1.25em; margin:1.4em 0 .5em; }
+#book h3 { font-size:1.08em; margin:1.2em 0 .4em; }
+#book h4 { font-size:1em; margin:1em 0 .3em; font-style:italic; }
+#book blockquote { margin:.8em 0 .8em 1.2em; padding-left:.8em; border-left:2px solid var(--rule); color:var(--fg); }
+#book ul, #book ol { padding-left:1.4em; margin:0 0 .75em; }
+#book li { margin:.2em 0; }
+#book a { color:var(--link); text-decoration:none; border-bottom:1px solid var(--rule); }
+#book code { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.86em; background:var(--panel); padding:.05em .3em; border-radius:3px; }
+#book pre { font-size:.82em; background:var(--panel); padding:.7em .9em; border-radius:4px; overflow-x:auto; white-space:pre-wrap; text-align:left; break-inside:avoid; }
+#book pre code { background:none; padding:0; }
+#book hr { border:0; text-align:center; margin:1.5em 0; }
+#book hr::after { content:"\2022\00a0\00a0\2022\00a0\00a0\2022"; color:var(--muted); }
+#book table { display:block; overflow-x:auto; border-collapse:collapse; font-size:.82em; line-height:1.4; margin:.6em 0 1em; text-align:left; break-inside:avoid; max-width:100%; }
+#book th, #book td { border-bottom:1px solid var(--rule); padding:.35em .6em; vertical-align:top; }
+#book th { font-weight:600; }
+#book img { max-width:100%; max-height:80vh; display:block; margin:.6em auto; }
+#book strong { font-weight:600; }
+
+/* Kindle-style header and footer: quiet, small, muted. */
+.bar { position:fixed; left:0; right:0; height:2.4rem; display:flex; align-items:center; justify-content:space-between;
+  padding:0 1rem; box-sizing:border-box; font:12px/1 system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--muted); z-index:2; }
+#top { top:0; justify-content:center; }
+#bottom { bottom:0; cursor:pointer; user-select:none; }
+#top span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70vw; }
+
+/* Tap zones: left third = back, right two thirds = forward, top strip = menu (like Kindle). */
+#tapzones { position:fixed; top:2.4rem; bottom:2.4rem; left:0; right:0; display:flex; z-index:1; }
+#tapzones div:first-child { width:33%; } #tapzones div:last-child { flex:1; }
+body.scroll #tapzones { display:none; }
+
+/* Menu: the "Aa" panel and contents. */
+#menu { position:fixed; top:0; left:0; right:0; z-index:5; background:var(--panel); color:var(--fg);
+  border-bottom:1px solid var(--rule); transform:translateY(-105%); transition:transform .2s;
+  font:14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; max-height:85vh; overflow:auto; }
+#menu.open { transform:none; }
+#menu .inner { max-width:34rem; margin:0 auto; padding:.8rem 1rem 1rem; }
+#menu .row { display:flex; align-items:center; gap:.5rem; margin:.55rem 0; flex-wrap:wrap; }
+#menu .row > label { width:6.5rem; color:var(--muted); font-size:13px; }
+#menu button { font:inherit; color:var(--fg); background:var(--bg); border:1px solid var(--rule); border-radius:6px; padding:.35rem .7rem; cursor:pointer; min-width:2.4rem; }
+#menu button.on { outline:2px solid var(--fg); outline-offset:-1px; }
+#menu .swatch { width:2.2rem; height:2.2rem; border-radius:50%; padding:0; }
+#menu h3 { font-size:13px; color:var(--muted); margin:1rem 0 .3rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+#toc a { display:block; color:var(--fg); text-decoration:none; padding:.3rem 0; border-bottom:1px solid var(--rule); }
+#toc a.sub { padding-left:1rem; font-size:13px; color:var(--muted); }
+#close { float:right; }
+</style>
+</head>
+<body>
+<div id="top" class="bar"><span>__TITLE__</span></div>
+<div id="viewport"><div id="book">
+__CONTENT__
+</div></div>
+<div id="tapzones"><div id="prev"></div><div id="next"></div></div>
+<div id="bottom" class="bar" title="Tap to change what is shown"><span id="left"></span><span id="right"></span></div>
+
+<div id="menu" aria-hidden="true"><div class="inner">
+  <button id="close" type="button">Done</button>
+  <h3>Aa — Display</h3>
+  <div class="row"><label>Font</label><span id="fonts"></span></div>
+  <div class="row"><label>Size</label><button type="button" id="smaller">A−</button><span id="sizeval"></span><button type="button" id="bigger">A+</button></div>
+  <div class="row"><label>Spacing</label><span id="leadings"></span></div>
+  <div class="row"><label>Margins</label><span id="margins"></span></div>
+  <div class="row"><label>Alignment</label><span id="aligns"></span></div>
+  <div class="row"><label>Page colour</label><span id="themes"></span></div>
+  <div class="row"><label>Layout</label><span id="modes"></span></div>
+  <h3>Contents</h3>
+  <nav id="toc"></nav>
+</div></div>
+
+<script>
+(function () {
+  "use strict";
+  // Defaults baked in by kindle_page.py from the reader's prefs file; the page's own saved settings win over them.
+  var DEFAULTS = __PREFS__;
+  var DOC_ID = __DOC_ID__;
+  var FONTS = {
+    literata: { name: "Literata", css: "'Literata', 'Noto Serif TC', 'Songti TC', 'PMingLiU', Georgia, serif" },
+    georgia:  { name: "Georgia",  css: "Georgia, 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif" },
+    sans:     { name: "Sans",     css: "system-ui, -apple-system, 'Segoe UI', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif" },
+    hyper:    { name: "Hyperlegible", css: "'Atkinson Hyperlegible', 'Noto Sans TC', 'PingFang TC', sans-serif" }
+  };
+  var SIZES = [14, 15, 16, 17, 18, 19, 20, 22, 24, 26, 28, 32];
+  var LEADINGS = { compact: 1.35, normal: 1.6, loose: 1.9 };
+  var MARGINS = { narrow: 0.04, normal: 0.08, wide: 0.14 };  // fraction of the page width
+  var ALIGNS = { justify: "justify", left: "left" };
+  var THEMES = ["white", "sepia", "green", "black"];
+  var MODES = { pages: "Pages", scroll: "Scroll" };
+  var FOOTER = ["page", "location", "time", "none"];
+
+  // Storage can be missing or throw (private window, blocked site data); the page must work without it.
+  function load(key) { try { return JSON.parse(localStorage.getItem(key) || "null"); } catch (e) { return null; } }
+  function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+
+  var prefs = Object.assign({}, DEFAULTS, load("kindle-page:prefs") || {});
+  var book = document.getElementById("book"), body = document.body;
+  var page = 0, pages = 1, pageWidth = 1, started = false;
+
+  function apply() {
+    var s = document.documentElement.style;
+    s.setProperty("--font", (FONTS[prefs.font] || FONTS.literata).css);
+    s.setProperty("--size", prefs.size + "px");
+    s.setProperty("--leading", LEADINGS[prefs.leading] || 1.6);
+    s.setProperty("--margin", ((MARGINS[prefs.margin] || 0.08) * 100) + "%");
+    s.setProperty("--align", ALIGNS[prefs.align] || "justify");
+    s.setProperty("--measure", prefs.measure || "42em");
+    document.documentElement.setAttribute("data-theme", prefs.theme);
+    body.classList.toggle("scroll", prefs.mode === "scroll");
+    document.getElementById("sizeval").textContent = " " + prefs.size + " ";
+    renderChoices();
+    save("kindle-page:prefs", prefs);
+    relayout(true);
+  }
+
+  function choiceRow(id, options, key, labelOf) {
+    var el = document.getElementById(id); el.innerHTML = "";
+    Object.keys(options).forEach(function (k) {
+      var b = document.createElement("button"); b.type = "button";
+      b.textContent = labelOf ? labelOf(k) : k.charAt(0).toUpperCase() + k.slice(1);
+      if (prefs[key] === k) b.className = "on";
+      b.onclick = function () { prefs[key] = k; apply(); };
+      el.appendChild(b);
+    });
+  }
+  function renderChoices() {
+    choiceRow("fonts", FONTS, "font", function (k) { return FONTS[k].name; });
+    choiceRow("leadings", LEADINGS, "leading");
+    choiceRow("margins", MARGINS, "margin");
+    choiceRow("aligns", ALIGNS, "align");
+    choiceRow("modes", MODES, "mode", function (k) { return MODES[k]; });
+    var t = document.getElementById("themes"); t.innerHTML = "";
+    THEMES.forEach(function (k) {
+      var b = document.createElement("button"); b.type = "button"; b.title = k;
+      b.className = "swatch" + (prefs.theme === k ? " on" : "");
+      b.setAttribute("data-theme", k); b.style.background = "var(--bg)"; b.style.color = "var(--fg)"; b.textContent = "A";
+      b.onclick = function () { prefs.theme = k; apply(); };
+      t.appendChild(b);
+    });
+  }
+
+  // Pagination with CSS columns: one column per screen, turned by moving scrollLeft.
+  function relayout(keepPlace) {
+    var frac = keepPlace ? progress() : null;
+    if (prefs.mode === "scroll") { book.style.cssText = ""; footer(); return; }
+    // Padding, column width and gap all in px from one width, so one page turn moves exactly one page.
+    book.style.cssText = "";
+    var w = book.clientWidth, pad = Math.round(w * (MARGINS[prefs.margin] || 0.08));
+    book.style.paddingLeft = book.style.paddingRight = pad + "px";
+    book.style.columnWidth = (w - 2 * pad) + "px";
+    book.style.columnGap = (2 * pad) + "px";
+    pageWidth = w;
+    pages = Math.max(1, Math.ceil((book.scrollWidth - 1) / pageWidth));
+    if (frac !== null) page = Math.min(pages - 1, Math.round(frac * (pages - 1)));
+    go(page);
+  }
+  function count() {  // recount every turn: late-loading fonts (e.g. CJK subsets) change the page count
+    if (prefs.mode !== "scroll") pages = Math.max(1, Math.ceil((book.scrollWidth - 1) / pageWidth));
+  }
+  function go(n) {
+    count();
+    page = Math.max(0, Math.min(pages - 1, n));
+    book.scrollLeft = page * pageWidth;
+    footer();
+    save("kindle-page:pos:" + DOC_ID, progress());
+  }
+  function progress() {
+    if (prefs.mode === "scroll") {
+      var max = document.documentElement.scrollHeight - innerHeight;
+      return max > 0 ? scrollY / max : 0;
+    }
+    return pages > 1 ? page / (pages - 1) : 0;
+  }
+
+  // Footer: % on the right; page / location / time left in chapter on the left — tap to cycle, like Kindle.
+  var chapters = Array.prototype.slice.call(book.querySelectorAll(".chapter"));
+  function chapterIndexAt(frac) {
+    if (prefs.mode === "scroll") {
+      var y = scrollY + innerHeight * 0.3, idx = 0;
+      chapters.forEach(function (c, i) { if (c.offsetTop <= y) idx = i; });
+      return idx;
+    }
+    var x = page * pageWidth + 1, idx2 = 0;
+    chapters.forEach(function (c, i) { if (c.offsetLeft - book.offsetLeft <= x + pageWidth / 2) idx2 = i; });
+    return idx2;
+  }
+  function minutesLeftInChapter() {
+    var c = chapters[chapterIndexAt()]; if (!c) return 0;
+    var units = Number(c.getAttribute("data-units")) || 0;  // English words + CJK characters/2, counted at build time
+    var start, end, here;
+    if (prefs.mode === "scroll") { start = c.offsetTop; end = start + c.offsetHeight; here = scrollY; }
+    else { start = c.offsetLeft - book.offsetLeft; end = start + c.scrollWidth; here = page * pageWidth; }
+    var left = end > start ? Math.max(0, Math.min(1, (end - here) / (end - start))) : 0;
+    return Math.max(1, Math.round(units * left / (prefs.wpm || 230)));
+  }
+  function footer() {
+    var pct = Math.round(progress() * 100) + "%";
+    var mode = prefs.footer || "page", left = "";
+    if (mode === "page") left = prefs.mode === "scroll" ? "" : "Page " + (page + 1) + " of " + pages;
+    if (mode === "location") left = "Loc " + Math.max(1, Math.round(progress() * TOTAL_LOC)) + " of " + TOTAL_LOC;
+    if (mode === "time") left = minutesLeftInChapter() + " min left in chapter";
+    document.getElementById("left").textContent = left;
+    document.getElementById("right").textContent = mode === "none" ? "" : pct;
+  }
+  var TOTAL_LOC = __TOTAL_LOC__;
+  document.getElementById("bottom").onclick = function () {
+    prefs.footer = FOOTER[(FOOTER.indexOf(prefs.footer || "page") + 1) % FOOTER.length];
+    save("kindle-page:prefs", prefs); footer();
+  };
+
+  // Contents.
+  var toc = document.getElementById("toc");
+  book.querySelectorAll("h1, h2").forEach(function (h, i) {
+    if (!h.id) h.id = "h-" + i;
+    var a = document.createElement("a"); a.href = "#" + h.id; a.textContent = h.textContent;
+    if (h.tagName === "H2") a.className = "sub";
+    a.onclick = function (e) { e.preventDefault(); closeMenu(); jumpTo(h); };
+    toc.appendChild(a);
+  });
+  function jumpTo(el) {
+    if (prefs.mode === "scroll") { el.scrollIntoView(); return; }
+    go(Math.floor((el.offsetLeft - book.offsetLeft) / pageWidth));
+  }
+
+  // Menu open/close: tap the header strip, press "m", or Escape to close.
+  var menu = document.getElementById("menu");
+  function openMenu() { menu.classList.add("open"); menu.setAttribute("aria-hidden", "false"); }
+  function closeMenu() { menu.classList.remove("open"); menu.setAttribute("aria-hidden", "true"); }
+  document.getElementById("top").onclick = openMenu;
+  document.getElementById("close").onclick = closeMenu;
+  document.getElementById("smaller").onclick = function () { var i = SIZES.indexOf(prefs.size); prefs.size = SIZES[Math.max(0, (i < 0 ? 4 : i) - 1)]; apply(); };
+  document.getElementById("bigger").onclick = function () { var i = SIZES.indexOf(prefs.size); prefs.size = SIZES[Math.min(SIZES.length - 1, (i < 0 ? 4 : i) + 1)]; apply(); };
+
+  // Page turning: tap zones, arrow keys / space / PageUp-Down, and swipe.
+  document.getElementById("prev").onclick = function () { if (menu.classList.contains("open")) return closeMenu(); go(page - 1); };
+  document.getElementById("next").onclick = function () { if (menu.classList.contains("open")) return closeMenu(); go(page + 1); };
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") return closeMenu();
+    if (e.key === "m" || e.key === "M") return menu.classList.contains("open") ? closeMenu() : openMenu();
+    if (prefs.mode === "scroll") return;
+    if (["ArrowRight", "PageDown", " "].indexOf(e.key) >= 0) { e.preventDefault(); go(page + 1); }
+    if (["ArrowLeft", "PageUp"].indexOf(e.key) >= 0) { e.preventDefault(); go(page - 1); }
+    if (e.key === "Home") go(0);
+    if (e.key === "End") go(pages - 1);
+  });
+  var tx = null;
+  document.addEventListener("touchstart", function (e) { tx = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener("touchend", function (e) {
+    if (tx === null || prefs.mode === "scroll") return;
+    var dx = e.changedTouches[0].clientX - tx; tx = null;
+    if (Math.abs(dx) > 40) go(page + (dx < 0 ? 1 : -1));
+  }, { passive: true });
+  window.addEventListener("scroll", function () { if (prefs.mode === "scroll") { footer(); save("kindle-page:pos:" + DOC_ID, progress()); } });
+  var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(function () { relayout(true); }, 150); });
+
+  // Start where the reader left off, after fonts have loaded (they change the page count).
+  function start() {
+    var saved = load("kindle-page:pos:" + DOC_ID);  // read before apply(), which saves the current place
+    started = true;
+    apply();
+    if (typeof saved === "number") {
+      if (prefs.mode === "scroll") scrollTo(0, saved * (document.documentElement.scrollHeight - innerHeight));
+      else go(Math.round(saved * (pages - 1)));
+    }
+  }
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(start);
+    document.fonts.addEventListener("loadingdone", function () { if (started) relayout(true); });
+  } else start();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+# P5 live deploy — 2026-10-13 (run by COO on EJ's message: "cd ~/dev/ancient-games/site/ancients && npx --yes wrangler@4 deploy --domain ancients.ejai.ai")
+wrangler 4.149.0, version e6f2838b-ecd1-4cf8-83cb-3745451a8436 → https://ancients.hojipago.workers.dev + ancients.ejai.ai (custom domain)
+live sha256 (curl):  01045e24d7606590208cd295a8504b281d93b15daf60cbe1e8ede6c89b1bc38f
+dist sha256:         01045e24d7606590208cd295a8504b281d93b15daf60cbe1e8ede6c89b1bc38f   → same
+ejai.ai sha256:      9a61057f6ea122fbd7cde16dd1fac37391585e5140b8a478f4895a4efbc8f771   → same as before-snapshot (N3)
+DNS after: the 7 before-records unchanged; one added: AAAA ancients.ejai.ai 100:: proxied (created by the custom domain)
+Worker custom domains: neurosync.ejai.ai -> neurosync (unchanged), ancients.ejai.ai -> ancients (new)
+GET https://ancients.ejai.ai/ → 200 text/html, no Set-Cookie
+test_mobile.py --url https://ancients.ejai.ai/ → 13/14. R1.1–R5.1 PASS. N2 FAIL:
+  the browser is served static.cloudflareinsights.com/beacon.min.js and calls ancients.ejai.ai/cdn-cgi/rum
+  cause: Cloudflare Web Analytics on zone ejai.ai, auto_install=true, one rule host "*" paths "*" inclusive (created 2026-01-22),
+  ruleset 0354b65e-889d-4702-811e-0642255259a2, site_tag fa2f7f4f…; injected only into browser HTML (curl's copy matches dist).
+  Not changed: it is EJ's zone-wide setting — decision put to EJ.
+
+## After EJ's decision (2026-10-13: "Cloudflare analytics on ancients.ejai.ai can keep") — decisions.md D1
+N2 widened (blueprint 08) and test updated: allowed = own document, Google Fonts, static.cloudflareinsights.com, own-host /cdn-cgi/rum.
+test_mobile.py --url https://ancients.ejai.ai/ → 14/14; local dist → 14/14.
+Sabotage: dist copy with <img src="https://example.com/t.gif"> → N2 FAIL (forbidden requests=['https://example.com/t.gif', …]), 13/14. The widened check still fails on any other host.
