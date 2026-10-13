@@ -25,7 +25,8 @@ if (options.exclude !== undefined && (!Array.isArray(options.exclude) || options
   return { status: 'blocked', reason: 'exclude must be a list of globs' }
 }
 const run = `runs/${runId}`
-const probeEnvironment = `HOME="$PWD"/${shellArgument(`${run}/probe-scratch`)} TMPDIR="$PWD"/${shellArgument(`${run}/probe-scratch`)}`
+// R1-F9: probe_matrix.py itself runs the probes with HOME and TMPDIR in a scratch folder (keeping PYTHONUSERBASE);
+// a HOME prefix here would also move the matrix script's own HOME and hide a user-site pytest (COO, after K1d).
 let agentsUsed = 0
 const runnerSchema = {
   type: 'object',
@@ -106,7 +107,7 @@ try {
   await runCommand('e5-mutants', `codex exec -m gpt-6.1-sol -c model_reasoning_effort=high --sandbox workspace-write -C ${shellArgument(`${run}/mutant-view`)} "Read $PWD/docs/evaluator/briefs/mutants.md with RUN=. and do what it says." < /dev/null`, 'Probes')
   await runCommand('e5-collect', `python3 tools/evaluator/model_io.py mutant-view --run ${shellArgument(run)} --collect`, 'Probes')
   await runCommand('e5-check', `python3 tools/evaluator/model_io.py check-output --run ${shellArgument(run)} --step mutants`, 'Probes')
-  await runCommand('e6-matrix', `${probeEnvironment} python3 tools/evaluator/probe_matrix.py --run ${shellArgument(run)}`, 'Probes')
+  await runCommand('e6-matrix', `python3 tools/evaluator/probe_matrix.py --run ${shellArgument(run)}`, 'Probes')
 
   phase('Confirm')
   const checked = await confirmProbes()
@@ -114,7 +115,7 @@ try {
   if (unfaithful && Number(unfaithful[1]) > 0) {
     await runModel('e8-repair', 'docs/evaluator/briefs/probes-repair.md', 'sonnet', 'Confirm',
       `RUN=${run}\nRewrite only probes listed in ${run}/repair.json, using their requirement sentence and the confirm answer's reason. This is the single repair round.`)
-    await runCommand('e6-matrix-2', `${probeEnvironment} python3 tools/evaluator/probe_matrix.py --run ${shellArgument(run)}`, 'Probes')
+    await runCommand('e6-matrix-2', `python3 tools/evaluator/probe_matrix.py --run ${shellArgument(run)}`, 'Probes')
     await confirmProbes('-2')
   }
 
