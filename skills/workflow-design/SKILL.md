@@ -52,12 +52,17 @@ method section named beside it.
    different kind, or context room.
 3. **List every unclear spot before resolving any** (method 3.3): its kind (information · decision · unknown), what
    it blocks, what it depends on. Questions go to the person as one batch, each with a provisional assumption.
+   In a workflow design, **ask the experts once the list is written**: the `four-experts` skill with
+   `--only linus,sun-tzu,lao-tzu,dave` and its `unclear-spots` question. Their answers are advice: a raised spot is
+   added and marked, a "drop it" goes to EJ as a question, never silently.
 4. **Size** (method 3.4). Up to 3 steps with nothing unclear except decisions that have a default → a prompt file;
    otherwise a workflow design, **default-first** from `references/task-types.md`. Never hand an engine one huge
    prompt: hours-long work splits into six or more logical pieces. Judge risk separately from size.
 5. **Clear pieces run as loops** (method 3.5) while the unclear spots are being resolved — only when loop-ready: the
    five conditions are in method 3.5. A loop closes only on an objective check; escalation is a fresh node on a
-   stronger tier, never a switch inside the session.
+   stronger tier, never a switch inside the session. Before a piece runs as a loop, **ask the experts about its
+   check**: `four-experts` with `--only linus,fan-li,sun-tzu,dave` and its `loop-check` question; a failure the
+   check would miss strengthens the check or sends the piece back to the unclear list.
 6. **The rest is a knowledge graph** (method 3.6). Nodes, edges, a result verified before anything that depends on
    it starts, joins where contradictions are a stop. The design's edges schedule; role agents do not decide who
    works next. The design and the plan are compared by `scripts/dispatch.py validate PLAN --design DESIGN`.

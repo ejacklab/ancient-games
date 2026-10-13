@@ -56,8 +56,10 @@ Needed sections not settled: <section: draft | incomplete | missing, …, or non
 
 ## Unclear spots
 
-| Id | What is unclear | Kind (information / decision / unknown) | Blueprint section (or none) | Blocks steps | Depends on spot |
-|---|---|---|---|---|---|
+| Id | What is unclear | Kind (information / decision / unknown) | Blueprint section (or none) | Blocks steps | Depends on spot | Raised by (COO / EJ / an expert) |
+|---|---|---|---|---|---|---|
+
+Experts asked (method 3.3): <the four-experts run folder, or "not asked: <reason>">
 
 ## Questions for EJ (one batch)
 

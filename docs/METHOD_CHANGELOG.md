@@ -28,6 +28,7 @@ verbatim from the text they replaced.
 - 2026-10-11 — Appendix A: `accepted` defined as *traceable and internally consistent*, not *true*, and added to the word list on line 11 (EJ: *"please add these to your memory"*, after the agent-memory run was reported as accepted when the item-6 check was a script the COO wrote and the different-kind verifiers had not run); n=1. The three presentation rules that came with it live in `CLAUDE.md`, with their own basis.
 
 - 2026-10-12 — 3.0: the vision and requirements a task serves, named at the end of 3.0 for every task except a tiny one (research, design and documentation included); requirements drafted by the agent when missing, and work does not start until EJ confirms them (EJ: *"I notice you perform better when I give you a vision and requirements"*; then *"b, apply to every task except tiny ones"*); n=1 (runs `20261012-memory-caches`, `-caches-routing`, `-caches-merge`).
+- 2026-10-13 — 3.3 and 3.5: ask the experts (the `four-experts` skill) — at 3.3 Linus, 孫子, 老子 and Dave once the unclear-spot list is written; at 3.5 Linus, 范蠡, 孫子 and Dave on each loop's check before it runs; advice only, a "drop it" goes to EJ, never silently (EJ: *"ok, put them to the 3.3 and 3.5, update the algorithm and skills"*, after the experts' own placement run `runs/20261013-four-experts-where-in-ej-s-workflow/`); n=0. The state template gained a *Raised by* column and an *Experts asked* line; the design template a per-piece *Experts on the check* line.
 
 ## Removed or changed
 

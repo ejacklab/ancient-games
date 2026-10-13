@@ -238,6 +238,27 @@ before the designed workflow runs. Blueprint questions are the exception in both
 and they hold back only the pieces that build on them (3.1). Where spots are resolved separately, one
 joining step compares the answers. A contradiction is a stop: pick one and say why, never average.
 
+**Ask the experts once the list is written** (EJ, 2026-10-13; SHOULD; n=0). In a workflow design — not a prompt
+file — after every spot is listed and before the questions go to EJ, the COO runs the `four-experts` skill with
+`--only linus,sun-tzu,lao-tzu,dave` on the algorithm and the spot list (question template
+`.claude/skills/four-experts/assets/questions/unclear-spots.md`). Each answers its own question:
+
+- **Linus** (Codex): which choices depend on missing technical facts, and what would make a mistaken choice reversible?
+- **孫子** (dsh): for each piece, do we know that our engines and tools can do it, that the task as posed can be done,
+  and that the ground (files, blueprint, information) permits it — and which is only half known?
+- **老子** (opencode): which spots can be answered by giving up a step rather than by resolving it?
+- **Dave** (Claude): for each *unknown*, what is the smallest reversible experiment, what is predicted before it
+  runs, and when does it stop?
+
+Their answers are advice. A spot an expert raises goes into the table with *raised by* that expert. A spot an
+expert says can be dropped goes to EJ as a question — never dropped silently: 老子 named the risk himself, his rules
+reward subtraction where the method needs coverage. A proposed experiment becomes a bounded explore loop only when
+the COO or EJ accepts it. Experts who disagree are shown side by side, under the contradiction rule above. The state
+file records the expert run's folder, or *not asked* with the reason. Basis: four of the five experts named 3.3 as
+where their rules help most (`runs/20261013-four-experts-where-in-ej-s-workflow/compare.md`) — their own reading,
+not measured. Look again after the first three designs that use it: count the spots the experts added, dropped or
+changed, and whether the run still reached its stop.
+
 ### 3.4 Size
 
 - Up to 3 steps and nothing unclear except decisions that have a provisional assumption → one piece → a prompt
@@ -290,6 +311,23 @@ A piece is loop-ready only if it has all five:
 
 A loop only closes when its check is objective. (n=1: a planner/critic loop whose check was "try to reject it" ran
 three rounds, 6 → 5 → 4 problems, and never closed. See `20260919-plan-critic-issues.md`.)
+
+**Ask the experts before calling a piece loop-ready** (EJ, 2026-10-13; SHOULD; n=0). In a workflow design, before
+a piece runs as a loop, the COO runs the `four-experts` skill with `--only linus,fan-li,sun-tzu,dave` on the piece,
+its check (conditions 1 and 5) and its attempt limit (condition 2); several pieces may go in one call (question
+template `.claude/skills/four-experts/assets/questions/loop-check.md`). Each answers its own question:
+
+- **Linus** (Codex): could this check pass while the requested result is wrong or an existing user workflow breaks?
+- **孫子** (dsh): what is left to the worker's good character rather than to a check it cannot edit?
+- **范蠡** (agy): what bounds the attempts before the loop must exit, and how promptly must it close when the check
+  passes?
+- **Dave** (Claude): what result would show this check can fail, and what is its control?
+
+A concrete failure the check would miss means the check is strengthened before the loop runs, or the piece is not
+loop-ready and goes back to the unclear list. 老子 is left out: he named 3.5 as a place where his rules are not
+reliable. The state file records the expert run's folder per piece, or *not asked* with the reason. Same basis and
+the same review as the 3.3 paragraph: count the checks the experts changed, and whether a later failure was one
+they had named.
 
 Attempts start on the cheapest tier that could plausibly do the piece; a stronger tier, which costs many times more
 per token, is bought only for what the cheap one could not finish; escalation is item 4's exit.

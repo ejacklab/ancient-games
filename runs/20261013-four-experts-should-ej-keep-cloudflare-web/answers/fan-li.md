@@ -1,0 +1,25 @@
+# 范蠡 (Fan Li) — Turn off Cloudflare Web Analytics on ancients.ejai.ai
+
+## Answer
+Turn off Cloudflare Web Analytics for `ancients.ejai.ai` by adding an exclude rule for this hostname, preserving the page's original requirement N2 ("one file, no tracking"). If EJ later actively distributes the page and has a stated need to examine visitor traffic, that decision can be addressed when the time arrives.
+
+## How I decided
+1. **The plan agreed at court must not shift without necessity (my #5):** Requirement N2 established the original pact: "one file, no tracking", no cookies, and no network requests beyond Google Fonts. Abandoning or widening this standard simply because an ambient zone-wide rule swept over it breaks the plan without any operational demand on the ground: 「夫謀之廊廟，失之中原，其可乎？…天節固然，唯謀不遷。」 (`quoted` — "To plan it in the temple hall and lose it on the central plain — can that be right? … Heaven's rhythm is like that; only the plan does not move.") A tenured discipline should not be discarded in a morning.
+2. **Do not plan or gather early for what has not occurred (my #7):** EJ currently reads the page alone on a phone and has no stated intention to inspect traffic numbers. Collecting analytics merely because the page "may later be shared" is premature scheming: 「未可也。蠡聞之，上帝不考，時反是守，彊索者不祥。…有奪，有予，有不予，王無蚤圖。」 (`quoted` — "Not yet. I have heard: when the Lord on High has not completed it, keep watch for the time to turn; one who seeks by force is unlucky. … There is taking back, there is giving, there is not giving. Do not plan early.") Forcing telemetry in advance of an actual audience is seeking by force.
+3. **When the time has not arrived, remain as you are (my #3):** The page presently fulfills its sole purpose as a personal reading instrument. When no new necessity has appeared, do not force artificial growth: 「時不至，不可彊生；事不究，不可彊成。自若以處，以度天下，待其來者而正之，因時之所宜而定之。」 (`quoted` — "When the time has not come, growth cannot be forced; when the matter has not run its course, completion cannot be forced. Stay as you are and take the measure of the world; wait for what comes and set it right; settle it by what the time makes fitting.")
+4. **Regulating affairs requires moderation, not overflow (my #2):** Regulating affairs corresponds to Earth, following Heaven's measure: 「天道盈而不溢，盛而不驕，勞而不矜其功。」 (`quoted` — "Heaven's way is full but does not overflow, flourishes but is not arrogant, labours but does not boast of its work.") Injecting external JavaScript (`static.cloudflareinsights.com`) and beacon requests (`/cdn-cgi/rum`) into a solitary reading text that sells nothing and requires no login is superfluous overflow.
+5. **Defensive preparations must be tight and close-knit (my #18):** When considering readiness, defensive posture must be examined: 「審備則可以戰乎？」 (`quoted` — "If the preparations are examined, can we then fight?"). Eliminating unneeded external script executions and beacon endpoints tightens the perimeter and closes gaps.
+6. **The required intervention uses minimal force (my reading citing my #11):** Adding one exclude rule for this hostname removes the tracking script without disturbing the rest of the zone, achieving full adherence to N2 with minimal effort: 「用力甚少而名聲章明」 (`quoted` — "very little force is used and the name shines").
+
+## What I need to know
+- **Whether EJ has an immediate, concrete need to track distribution (my reading):** If EJ plans an imminent public rollout where measuring readership is essential to governing the project, then widen N2 deliberately and keep analytics. If EJ has no such plan and reads privately on a phone, turn it off.
+- **Whether maintaining an exclude rule introduces significant configuration burden (my reading):** If a single hostname exclude rule in Cloudflare requires zero ongoing maintenance, apply it immediately.
+
+## Costs and risks
+- **Cost of widening the contract if kept (my #5):** Keeping analytics requires compromising and rewriting requirement N2, eroding the discipline of the specification for data EJ does not even plan to view.
+- **Risk of unrecorded historical visits if turned off (my #4, my #7):** If the page is shared unexpectedly and attracts readers before analytics are revisited, early visitor counts will be permanently unrecorded. By obeying the rule to not "plan early" (my #7), one accepts that ungathered early data is forfeited.
+- **Configuration divergence across subdomains (my reading):** Creating a hostname exception means `ancients.ejai.ai` diverges from the standard zone-wide rule applied across `ejai.ai`, adding one custom rule to maintain in Cloudflare.
+
+## How we would know I was right
+- **Observable technical verification:** Loading `ancients.ejai.ai` in developer tools shows zero network requests to `static.cloudflareinsights.com` and `/cdn-cgi/rum`, confirming that N2 is strictly satisfied without breaking font rendering or page readability.
+- **Observable operational verification:** Over months of phone reading, EJ experiences no operational impediment or deficit from the absence of visitor dashboards, confirming that gathering those numbers would have been idle waste.

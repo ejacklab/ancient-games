@@ -27,7 +27,8 @@ flowchart TD
   SPOT -->|"a step does not"| U["an UNCLEAR SPOT.<br/>a step with no check you can name counts<br/>as unclear, however tidy it looks"]
   SPOT -->|"all of them do"| S3
   U --> S3["3 LIST EVERY SPOT BEFORE RESOLVING ANY, 3.3<br/>kind, what it blocks, what it depends on.<br/>listing first matters: one answer often<br/>removes another spot"]
-  S3 --> K{"kind of spot?"}
+  S3 --> XP["ASK THE EXPERTS, 3.3 (workflow designs)<br/>four-experts: Linus, 孫子, 老子, Dave.<br/>advice only: a raised spot is added and marked,<br/>a 'drop it' goes to EJ as a question"]
+  XP --> K{"kind of spot?"}
   K -->|"missing information"| RES["a research piece"]
   K -->|"a decision"| ASK["one batch of questions to EJ,<br/>each with a provisional assumption<br/>so it can be answered in a few words"]
   K -->|"unknown"| EXP["a bounded explore loop"]
@@ -108,7 +109,10 @@ and never closed (`20260919-plan-critic-issues.md`).
 flowchart TD
   P["a piece that is clear and not blocked"] --> R{"loop-ready? ALL FIVE must be there, 3.5<br/>1 a check: a script is best, next a fixed checklist<br/>judged by a separate agent, last EJ's own judgment<br/>2 a limit on attempts<br/>3 specific feedback: the check's real output<br/>4 an exit for when the limit is hit<br/>5 a check the worker cannot edit, and that is<br/>known to be able to fail: the sabotage check"}
   R -->|"any of the five missing"| NOT["it is not a loop yet.<br/>it stays on the unclear list"]
-  R -->|"all five"| T["start on the CHEAPEST tier that could<br/>plausibly do the piece. a stronger tier costs<br/>many times more per token and is bought only<br/>for what the cheap one could not finish"]
+  R -->|"all five"| XC{"ASK THE EXPERTS about the check, 3.5<br/>four-experts: Linus, 范蠡, 孫子, Dave.<br/>a failure the check would miss?"}
+  XC -->|"yes"| FIX["strengthen the check,<br/>or the piece is not loop-ready"]
+  FIX --> R
+  XC -->|"none named"| T["start on the CHEAPEST tier that could<br/>plausibly do the piece. a stronger tier costs<br/>many times more per token and is bought only<br/>for what the cheap one could not finish"]
   T --> ATT["the agent attempts"]
   ATT --> CHK["the check runs"]
   CHK -->|"pass"| CLOSE["close the loop.<br/>a loop closes only when its check is objective"]
@@ -186,6 +190,7 @@ algorithms" means C/D/B/E/A; in step 2 above, "write the algorithm" means write 
 | The restatement step (3.0) | added 2026-10-01 at EJ's request; not encoded in intake.js yet (`TODO.md`) | **0** |
 | Task types, the 20% rule, the design gate | added 2026-10-01 at EJ's request; `design_gate.py` + 16-prompt corpus green offline | **0** |
 | The tier exit (3.5) | added 2026-09-22, after ablation 7 ran | **0** |
+| Asking the experts (3.3, 3.5) | added 2026-10-13 at EJ's request, from the experts' own placement run `runs/20261013-four-experts-where-in-ej-s-workflow/` | **0** |
 | The blueprint check (3.1, diagram 2) | added 2026-09-25, after ablation 7 ran | **0** |
 | Executor kinds, models, the COO contract | `docs/EXECUTOR_KINDS.md`, 2026-09-29/30 | **0** |
 
