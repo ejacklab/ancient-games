@@ -1,0 +1,963 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a133ca-5257-7093-9c31-4ce1ececc9be
+--------
+user
+Read /home/smoke01/dev/ancient-games/runs/20261013-four-seats/briefs/codex-review-sun-tzu.md and do what it says.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the repository instructions and the review brief, then carry out the requested review.
+exec
+/bin/bash -lc 'cat CLAUDE.md runs/20261013-four-seats/briefs/codex-review-sun-tzu.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `~/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+Read /home/smoke01/dev/ancient-games/runs/20261013-four-seats/briefs/codex-review-common.md and do what it says.
+Your seat: sun-tzu — list: runs/20261013-four-seats/top12/sun-tzu.md; sources: runs/20261013-four-seats/sources/sun-tzu/.
+
+exec
+/bin/bash -lc 'cat runs/20261013-four-seats/briefs/codex-review-common.md runs/20261013-four-seats/top12/sun-tzu.md /home/smoke01/.agents/skills/requirement-check/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Codex review brief — the top 12, second engine
+
+You are an independent reviewer for EJ's Ancient Games project. Another engine (opencode, MiniMax) researched ONE
+person and produced their **top 12 mindsets, decision rules or algorithms**. Review it. You are read-only: write
+nothing; your final message is your review.
+
+Read:
+- the list under review: `runs/20261013-four-seats/top12/<seat>.md` (named in your seat brief)
+- the source texts: `runs/20261013-four-seats/sources/<seat>/` (see `sources/README.md`; in the Chinese wikitext,
+  `{{*|…}}` is a commentator's note, not the main text). Search them with `grep`/`rg`. You have no web access; if a
+  quote's source is not in this folder, say "not checkable here", do not guess.
+
+For each of the 12 items, judge four things:
+1. **Quote** — are the quoted words in the source, and spoken by this person (not a commentator, historian or
+   another speaker)?
+2. **Step** — does the plain-English rule actually follow from the quote, or does it add something the quote does not
+   say? This is the main question: a rule that reads well but is not in the words is the failure we are looking for.
+3. **Kind** — is "mindset / decision rule / algorithm" right?
+4. **Rank** — is it in the right place, or merged with / duplicating another item?
+
+Also check the file's **Gaps** and **Review of the top 10** sections for any claim that the source texts contradict.
+
+## Write exactly this (Markdown, no preamble)
+
+# <seat> — codex review of the top 12
+
+## Per item
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+One row per item. Quote/Step/Kind/Rank: `ok` · `issue` · `not checkable`. Verdict: `keep` · `change` · `drop`.
+
+## Claims elsewhere in the file that the sources contradict
+- ... (or "none found")
+
+## Missing
+Anything this person is clearly known for deciding by, that the 12 leave out — only if the source texts here show it.
+
+## Overall
+Two or three sentences. Label each conclusion `quoted`, `my reading` or `not measured`.
+I'll read that brief first.
+Full received text retrieved. Let me check the one place the research flagged as the highest-value remaining lead (〈吳問〉).
+# 孫武 / Sun Tzu — top 12, reviewed
+
+I re-fetched the full received text (`zh.wikisource.org/wiki/孫子兵法`, raw wikitext, all 13 chapters + 答話 + the editorial notes) and verified every clause below against it directly, rather than relying on the research's quotations.
+
+---
+
+## Review of the top 10
+
+**1. Count before you commit — change.** This is the book's own opening gate and it is correctly identified, but it is two things merged: a calculation procedure (五事 + 七計) and an epistemology of where knowledge may come from (用間's 「先知者…必取於人」). Split them. The five factors and seven comparisons are an ordered procedure and should be labelled *algorithm*; the 用間 clause is a separate sourcing rule and is better kept as a short corollary, since 用間's real substance — five kinds of spy, funded, staffed, and protected — went unused. Ranking at #1 is right; this is chapter one and everything else is downstream. Strongest available quote is already the one used.
+
+**2. Subdue without battle; the four-tier escalation — keep, but widen.** Correctly identified, correctly ranked in the first ten, and the 攻城 cost-pricing (「三月而後成」, 「殺士三分之一，而城不拔者，此攻之災也」) is the right supporting evidence. But the rule as written starts at 「是故百戰百勝」, which skips 謀攻's *first* sentence — 「全國為上，破國次之；全軍為上，破軍次之…」 — the preservation ladder that ranks intact over broken at five levels of scale. That is the underlying principle, not an illustration of it. Dropped from #2 to #4 only because the two gates above it (can I fight? can I be beaten?) fire earlier in any real decision.
+
+**3. Make yourself unbeatable first — keep, high.** Distinct, precisely stated, and the quote is the strongest Sun Tzu has for it. One defect to fix: the gloss reads "unb defeatable" / "defeatable-able" seven times. It should read *unbeatable* / *beatable*. That typo will propagate straight into any artifact built from this. Merge in 九變's 「無恃其不來，恃吾有以待之」 — that is the same orientation stated again, and it costs nothing.
+
+**4. Prefer quick over thorough — change (this is the weakest rule in the ten).** As stated it is contradicted by two other chapters.軍爭第七 is entirely about the price of *march speed* (「百里而爭利，則擒三軍將」), and 九地 says flatly 「故兵之情主速，乘人之不及」. So the received text does not say "be quick." It says: duration is a cost you must price and cap (「故兵貴勝，不貴久」), and speed of manoeuvre is mandatory and carries its own casualty rate. What the chapter is really for is the **cost ledger** — 「日費千金，然後十萬之師舉矣」, 「百姓之費，十去其七」 — i.e. price the campaign in money and months *before* starting. That belongs inside rule 1 as the calculation's third arm, not as a standalone tempo rule.
+
+**5. Change the conditions, not the people — keep.** 「求之於勢，不責於人」 is the most portable single rule in the book for anyone managing anyone. Two fixes: the clause 「形之，敵必從之；予之，敵必取之。以利動之，以卒待之」 is *Sun Tzu manipulating the enemy*, and is misfiled here — it belongs with the deception rule. And the strongest supporting quote is missing: 「亂生於治，怯生於勇，弱生於強。治亂，數也；勇怯，勢也；強弱，形也。」 — courage, cowardice, strength and weakness are *outputs of position*, which is the rule's actual claim, stated as arithmetic.
+
+**6. Make them come to you — change.** Two rules merged: (a) own the tempo (「致人而不致於人」, 「我欲戰…攻其所必救也」), and (b) be invisible (「形人而我無形」, 「微乎微乎，至於無形」). (b) is not distinct from top-10 #7 and largely duplicates it. Split: keep (a), move (b) into #7. Ranked #6 → #6, unchanged in place but half its size.
+
+**7. Deceive deliberately — keep, high.** 「兵者，詭道也」 in chapter one, twelve named tells, and 「兵以詐立」 as method in 軍爭 — this is genuinely load-bearing and the quote is the strongest available. Upgrade it: three strong lines were left unused — 「形人而我無形，則我專而敵分」, 「人皆知我所以勝之形，而莫知吾所以制勝之形」 (win in a shape nobody can copy), and the tempo quartet 「其疾如風，其徐如林，侵掠如火，不動如山」.
+
+**8. Test against harm as well as benefit — keep, but recast as two, and the second is the better one.** 「必雜於利害」 is a general principle that overlaps rule 1. The 五危 list is the sharpest thing in the chapter and it was relegated to a supporting note: *every virtue is a lever against you* — 「必死，可殺也；必生，可虜也；忿速，可侮也；廉潔，可辱也；愛民，可煩也」. Promote it to the centre of the item. Ranked #8 → #12, but for the opposite reason: it is narrow, one chapter, one check — not because it is weak.
+
+**9. Never rely on their restraint — keep, but merge.** 「無恃其不來，恃吾有以待之」 is the same rule as 軍形's 「不可勝在己，可勝在敵」 and belongs beside it. Standalone it is thin. Also: **the quote as printed is wrong by one character.** The received text reads 「恃吾有以待**之**」, not 「以待也」 — the quote-check caught this and the research did not correct it. Fix before use.
+
+**10. Don't let anger start a war — change, and promote.** Correctly identified, and the placement note is a genuine catch that I confirmed: 「主不可以怒而興師」 closes **火攻第十二** in the received text, not 謀攻 where it is usually cited. But the rule is too narrow as framed. Two unused pieces make it a top-eight item: (a) 「合於利而動，不合於利而止」 appears **twice** — 火攻第十二 *and* 九地第十一 — which makes it not a line in one chapter but his standing go/no-go gate; (b) 「夫戰勝攻取，而不修其功者凶，命曰『費留』」 — victory won and then not carried through is *worse* than a plan that failed. The research noticed 費留 and did not rank it.
+
+---
+
+## What the top 10 missed
+
+**The knowledge-to-authority procedure (謀攻第三 + 地形第十).** 「知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆」 is the most quoted line in the book and it is absent from all ten. More useful is what surrounds it, because it is a graded procedure: five preconditions for a fight worth having (「知可以戰與不可以戰者勝，識衆寡之用者勝，上下同欲者勝，以虞待不虞者勝，將能而君不御者勝」), then a partial-victory scale — knowing your troops can be struck but not that the enemy cannot is *half* a victory, three times over (地形第十) — and then the authority clause the top10 never noticed: 「故戰道必勝，主曰無戰，必戰可也；戰道不勝，主曰必戰，無戰可也。」 The assessment overrules the stated wish, and you are protected for it. Rule 1 counts; this decides and then licenses.
+
+**A systematic situation→response grammar, in five places.** The top 10 has no lookup-table item at all, which is strange, because this is the most mechanical content in the book: 九變's five postures (「圮地無舍，衢地合交，絕地無留，圍地則謀，死地則戰」); 九地's nine postures each with its one prescribed response (「散地則無戰，輕地則無止，爭地則無攻…死地則戰」) *and* a second, different answer to the same posture when you are the guest rather than the defender; 軍爭's four ordered pairs (治氣 / 治心 / 治力 / 治變) plus nine explicit "don'ts" (「佯北勿從…圍師必闕，窮寇勿迫」); 行軍's tell-table; 地形's six terrains, six defeats and six named causes (「將不能料敵，以少合衆，以弱擊強，兵無選鋒，曰北」). It is the same grammar at five scales. Three of these become items below.
+
+**The four probes (虛實第六).** 「策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處」 — an ordered procedure for reading an opponent, each probe aimed at a different question. Combined with 行軍's sign table (「辭卑而益備者，進也；辭強而進驅者，退也；半進半退者，誘也；杖而立者，飢也；鳥集者，虛也」) this is his observation algorithm, and it is the single most mechanically useful passage in the book for anyone building a decision procedure.
+
+**Courage is a variable of the hour (軍爭第七).** 「三軍可奪氣，將軍可奪心。是故朝氣銳，晝氣惰，暮氣歸。」 — morale is not a property of men, it is a function of time since the last engagement. This is the sharpest possible support for rule 5's real claim, and it belongs there.
+
+**Benevolence without firmness produces a spoiled child (地形第十).** 「視卒如嬰兒，故可以與之赴深溪；視卒如愛子，故可與之俱死。厚而不能使，愛而不能令，亂而不能治，譬若驕子，不可用也。」 Care is not sufficient; care without the ability to command yields someone useless. Genuinely his own thought and in no list.
+
+**Near misses, for the record.** 「凡治衆如治寡，分數是也；鬥衆如鬥寡，形名是也」 plus 「令之以文，齊之以武」 (軍爭, 行軍) — build the control system so it works without heroism, distinct from 任勢. 用間's five kinds of spy, 「非仁義不能用間」, and 「間事未發而先聞者，間與所告者皆死」 — intelligence as a funded, staffed, *protected* system. 九地's 「將軍之事，靜以幽，正以治。能愚士卒之耳目，使之無知…帥與之期，如登高而去其梯」 and 「犯之以事，勿告以言」 — commit by deed, not by telling. 「凡戰者，以正合，以奇勝」 — hold the front straight, win with the irregular. 謀攻's 「君之所以患於軍者三」 — the three ways a superior ruins an army from above. 「故善用兵者，譬如率然」 — coordination without micromanagement.
+
+---
+
+## Top 12
+
+**1. Count before you commit — and if the count fails, go.**
+- **Kind:** algorithm
+- **In plain English:** Three arms, then a personnel decision. (1) Name the five factors — 道 / 天 / 地 / 將 / 法. (2) Run the seven comparisons — whose way, whose general, whose terrain, whose law, whose numbers, whose troops, whose rewards. (3) Price it: chariots, horses, the 100,000 levy, a thousand *li* of supply, ten thousand gold a day — and cap the duration. If the general will listen, keep him; if not, he will lose and you leave. Three chapters in, Sunzi says the *tempo* rule is the output of this gate, not a separate preference: value victory, not duration.
+- **Their words:** 「兵者，國之大事，死生之地，存亡之道，不可不察也。故經之以五事，校之以七計，而索其情：一曰道，二曰天，三曰地，四曰將，五曰法。」…「故校之以七計而索其情，曰：主孰有道？將孰有能？天地孰得？法令孰行？兵眾孰強？士卒孰練？賞罰孰明？吾以此知勝負矣。」…「將聽吾計，用之必勝，留之；將不聽吾計，用之必敗，去之。」…「多算勝，少算不勝，而況於無算乎？」 — "War is a great matter of state… it must not go unexamined. Examine it by five things and compare it by seven calculations… Whose way is right? Whose general is capable? Who has heaven and earth? Whose laws are carried out? Whose numbers are stronger? Whose troops are trained? Whose rewards and punishments are clear? By this I know victory and defeat. If the general will listen to my plan, he will surely win — keep him; if he will not, he will surely lose — leave him. More calculation wins, less calculation loses, how much more so *none*."
+- **Source:** 《孫子兵法》始計第一 (五事, 七計, 留去, 多算); cost ledger and 「故兵貴勝，不貴久」 from 作戰第二.
+- **Label:** `quoted`
+- **From:** top-10 #1 (changed) + top-10 #4 folded in
+
+**2. Decide whether you can fight — and let the decision overrule the wish.**
+- **Kind:** algorithm
+- **In plain English:** Five preconditions for a fight worth having: you know whether it can be fought, you can use what you have, ruler and soldiers want the same thing, you are ready and they are not, and your general can act without interference. Then grade your knowledge: knowing both sides is safe, knowing only yourself is a coin-flip, knowing neither is death — and knowing one side but not the other is *half* a victory, whichever side you know. Then act on the assessment regardless of what was ordered: if the way says you can win, you fight even if the ruler says do not; if it says you cannot, you do not fight even if he says you must.
+- **Their words:** 「故知勝有五：知可以戰與不可以戰者勝，識衆寡之用者勝，上下同欲者勝，以虞待不虞者勝，將能而君不御者勝。」…「故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」…「知吾卒之可以擊，而不知敵之不可擊，勝之半也；知敵之可擊，而不知吾卒之不可以擊，勝之半也；知敵之可擊，知吾卒之可以擊，而不知地形之不可以戰，勝之半也。」…「故戰道必勝，主曰無戰，必戰可也；戰道不勝，主曰必戰，無戰可也。是故進不求名，退不避罪，唯民是保，而利合於主，國之寶也。」 — "There are five ways to know you will win: know whether it can be fought and cannot; know how to use your numbers; have ruler and people wanting the same; be prepared against the unprepared; and have a general the ruler does not interfere with… Know the enemy and know yourself and a hundred battles leave no danger; not knowing the enemy but knowing yourself, one win one loss; knowing neither, every battle is fatal… Knowing your troops can be struck but not that the enemy cannot be struck is half a victory… Therefore when the way of war says you can win, though the ruler says do not fight, fight — and when it says you cannot, though he says you must, do not. So advance seeking no glory, retreat declining no charge, protect only the people — and let the gain accord with the ruler's. This is a country's treasure."
+- **Source:** 《孫子兵法》謀攻第三 (五知勝, 知彼知己); 地形第十 (three half-victories, 戰道必勝).
+- **Label:** `quoted`
+- **From:** new
+
+**3. Make yourself unbeatable; never build on their restraint.**
+- **Kind:** decision rule
+- **In plain English:** Split the question of victory in two. Being unbeatable lies with you, being beatable lies with them — so you work only on your half and wait for theirs. You can make yourself unbeatable; you cannot manufacture their error. Corollary: beat what is easy to beat, and let the victory leave no signature — no reputation for cleverness, no reputation for courage, nothing for the enemy to study.
+- **Their words:** 「昔之善戰者，先為不可勝，以待敵之可勝。不可勝在己，可勝在敵。故善戰者，能為不可勝，不能使敵之必可勝。故曰：勝可知，而不可為。」…「古之所謂善戰者，勝於易勝者也。故善戰者之勝也，無智名，無勇功。故其戰勝不忒。」…「故無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 — "The ancients' good commanders first made themselves unbeatable and waited for the enemy to become beatable. Being unbeatable lies with yourself; being beatable lies with the enemy. Hence the skilled commander can make himself unbeatable; he cannot make the enemy necessarily beatable. Victory can be known; it cannot be manufactured… Those the ancients called good commanders defeated those who were easy to defeat. So the skilled commander's victories bear no name for cunning and no credit for courage… Therefore do not rely on their not coming — rely on your having a preparation; do not rely on their not attacking — rely on your having what cannot be attacked."
+- **Source:** 《孫子兵法》軍形第四 (先為不可勝, 勝於易勝者); the second quotation is 九變第八, not 軍形 — quote the received text as 「恃吾有以待**之**」.
+- **Label:** `quoted`
+- **From:** top-10 #3 (kept) + top-10 #9 merged in
+
+**4. Escalate down a cost ladder, and rank intact above broken.**
+- **Kind:** decision rule
+- **In plain English:** At every level — state, army, brigade, battalion, squad — keeping it whole beats breaking it, so rank options by damage before you rank them by difficulty. Then work down a ladder: attack plans, then alliances, then troops, and walls last. Siege is the resort of the desperate and he prices it: three months of equipment, three more to close the breach, a third of your soldiers dead and the city still standing.
+- **Their words:** 「凡用兵之法，全國為上，破國次之；全軍為上，破軍次之；全旅為上，破旅次之；全卒為上，破卒次之；全伍為上，破伍次之。是故百戰百勝，非善之善者也；不戰而屈人之兵，善之善者也。故上兵伐謀，其次伐交，其次伐兵，其下攻城。攻城之法，為不得已。」…「故善用兵者，屈人之兵而非戰也，拔人之城而非攻也，毀人之國而非久也，必以全爭於天下，故兵不頓而利可全，此謀攻之法也。」 — "For preserving the whole state is best, breaking it next; preserving the whole army is best, breaking it next; and so down… A hundred battles won is not the best of the good; to subdue the enemy without battle is the best of the good. Hence the best army attacks plans; the next, alliances; the next, troops; the lowest, walls. Besieging a city is a last resort… The skilled wielder of troops subdues without battle, takes the city without assaulting it, and does not wear down the state — contending for all under heaven, so his troops never tire and his gain is kept whole. This is the method of 謀攻."
+- **Source:** 《孫子兵法》謀攻第三, whole chapter.
+- **Label:** `quoted`
+- **From:** top-10 #2 (kept, widened to open on 全國為上)
+
+**5. Deceive deliberately, in twelve named ways; win in a shape nobody can copy.**
+- **Kind:** decision rule
+- **In plain English:** Not a trick but the foundation — if your real capability is legible, you lose it. Advertise the opposite of each capability, consistently enough to be acted on. Then let them see your form while yours stays invisible, and pick your tempo to suit the intent. Finally, the best victory is the one that leaves nothing to copy: everyone knows the shape in which you won; nobody knows the shape in which you won.
+- **Their words:** 「兵者，詭道也。故能而示之不能，用而示之不用，近而示之遠，遠而示之近。利而誘之，亂而取之，實而備之，強而避之，怒而撓之，卑而驕之，佚而勞之，親而離之。攻其無備，出其不意。」…「故兵以詐立，以利動，以分合為變者也。故其疾如風，其徐如林，侵掠如火，不動如山。」…「故形人而我無形，則我專而敵分。」…「人皆知我所以勝之形，而莫知吾所以制勝之形。」 — "War is the way of deception. When able, appear unable; when using, appear not to be using; when near, appear far; when far, appear near. Lure them where advantage lies and take them in disorder; when solid, be ready; when strong, avoid; when angry, harry; when humble, make them overconfident; when rested, tire them; when close, divide them. Attack the unprepared, emerge from the unexpected… War stands on deception, is moved by advantage, varies by dividing and combining. So be swift as wind, quiet as forest, ravaging as fire, immovable as mountain… Let them show their form while yours stays formless, and you are concentrated while they are spread. Everyone knows the shape in which I won; none knows the shape in which I made it win."
+- **Source:** 《孫子兵法》始計第一 (twelve tells); 軍爭第七 (詐立, four tempos); 虛實第六 (形人我無形, 制勝之形).
+- **Label:** `quoted`
+- **From:** top-10 #7 (kept, widened)
+
+**6. Own the tempo: let the conditions decide whether and where the contest happens.**
+- **Kind:** decision rule
+- **In plain English:** Whoever arrives and waits has the advantage; whoever comes chasing has laboured for nothing. So decide before you engage whether *you* want the fight at all, and if you do, go where they cannot avoid coming — attack what they must rescue; if you do not, go where their orders forbid them to come. Move toward what they are not drawn to, away from what they expect.
+- **Their words:** 「凡先處戰地而待敵者佚，後處戰地而趨戰者勞。故善戰者，致人而不致於人。」…「出其所不趨，趨其所不意。」…「故我欲戰，敵雖高壘深溝，不得不與我戰者，攻其所必救也；我不欲戰，雖畫地而守之，敵不得與我戰者，乖其所之也。」 — "Whoever is first in position and waits is at ease; whoever comes later and presses has laboured. Hence the skilled commander draws the enemy in and is not drawn in… Move by what they are not drawn toward; approach by what they do not expect… When I want to fight, the enemy, though behind high ramparts and deep moats, must fight me — I attack what they must rescue; when I do not want to fight, though I draw a line and hold, the enemy cannot fight me — I go where their orders carry them."
+- **Source:** 《孫子兵法》虛實第六.
+- **Label:** `quoted`
+- **From:** top-10 #6 (changed — the invisibility half moved to #5)
+
+**7. Change the conditions, not the people.**
+- **Kind:** decision rule
+- **In plain English:** When output is short, do not push harder on the people — change the shape of the situation until the right behaviour is the easy behaviour. And accept that character is an output: order produces disorder and disorder produces panic, calm produces courage and courage produces weakness — because these are functions of count, of situation, and of formation. Build the command system so that large numbers behave like a few (division and rank), and bodies engage like single men (labels and signals).
+- **Their words:** 「故善戰者，求之於勢，不責於人，故能擇人而任勢。任勢者，其戰人也，如轉木石。木石之性，安則靜，危則動，方則止，圓則行。」…「亂生於治，怯生於勇，弱生於強。治亂，數也；勇怯，勢也；強弱，形也。」…「凡治衆如治寡，分數是也；鬥衆如鬥寡，形名是也。」 — "The skilled commander seeks it in the situation and does not blame the men; being able to select men and put them in the situation. One who commands situation fights as one who rolls wood and stone: the nature of wood and stone is, at rest still, on a slope moving; square they stop, round they roll… Disorder is born of order, cowardice of courage, weakness of strength. Order and disorder are a matter of numbers; courage and cowardice of situation; strength and weakness of formation… To command a mass as a few: division and rank. To fight a mass as a few: labels and signals."
+- **Source:** 《孫子兵法》兵勢第五, whole chapter.
+- **Label:** `quoted`
+- **From:** top-10 #5 (kept;形之/予之 removed — that clause manipulates the enemy and belongs to #5)
+
+**8. Move only on advantage; and finish it, or lose it.**
+- **Kind:** decision rule
+- **In plain English:** One gate, stated twice in the received text: move when it accords with advantage, stop when it does not. The corollary is about reversibility — anger can become joy again and resentment can become pleasure again, but a destroyed state cannot be restored and the dead cannot come back — so the burden of proof sits with whoever proposes to act. And the second half: a victory won and not carried through to completion is worse than a defeat, because you paid for it and hold nothing. He has a name for it — 費留, "wasted leave."
+- **Their words:** 「夫戰勝攻取，而不修其功者凶，命曰『費留』。故曰：明主慮之，良將修之，非利不動，非得不用，非危不戰。主不可以怒而興師，將不可以慍而致戰。合於利而動，不合於利而止。怒可以復喜，慍可以復悅，亡國不可以復存，死者不可以復生。」 — "To win battles and take cities and then not complete the work is bad; it is called *feiliu*, wasted leave. Therefore do not move without advantage, do not act without gain, do not fight without necessity. A ruler may not raise an army in anger; a general may not go to battle in resentment. Move when it accords with advantage; stop when it does not. Anger can become joy again; resentment can become pleasure again; a destroyed state cannot be restored; the dead cannot be brought back."
+- **Source:** 《孫子兵法》火攻第十二 (closing passage — *not* 謀攻, where it is commonly cited; verified in this base text). 「合於利而動，不合於利而止」 also closes the relevant movement in 九地第十一, which is why I rank it as a standing gate rather than a chapter line.
+- **Label:** `quoted`
+- **From:** top-10 #10 (changed — broadened to the advantage gate and 費留)
+
+**9. Match their state, not their strength.**
+- **Kind:** algorithm
+- **In plain English:** Four checks, in order: match their spirit with yours ordered, theirs disordered; match their agitation with yours calm; match their resources with yours better supplied; match their battle with yours one that is not a set-piece. Underneath all four lies the observation that morale is a clock — sharpest at dawn, slack by noon, spent by dusk. Then the nine refusals: do not attack up a slope, do not pursue a feigned retreat, do not attack fresh troops, do not block a returning army, do not close the gap of a surrounded enemy, do not press a cornered one.
+- **Their words:** 「三軍可奪氣，將軍可奪心。是故朝氣銳，晝氣惰，暮氣歸。故善用兵者，避其銳氣，擊其惰歸，此治氣者也；以治待亂，以靜待嘩，此治心者也；以近待遠，以佚待勞，以飽待饑，此治力者也；無邀正正之旗，無擊堂堂之陣，此治變者也。」…「高陵勿向，背丘勿逆，佯北勿從，銳卒勿攻，餌兵勿食，歸師勿遏，圍師必闕，窮寇勿迫，此用兵之法也。」 — "The army's spirit can be taken, the general's heart can be taken. Morning spirit is sharp, midday spirit slack, evening spirit spent. Hence the skilled commander avoids their sharp spirit and strikes their spent return — this is managing spirit; waits order with disorder, stillness with uproar — this is managing the heart; meets near with far, ease with labour, fed with hunger — this is managing strength; does not intercept an army in array, does not strike a formation in order — this is managing change… Do not attack up a slope, do not meet one against a ridge, do not follow a feigned retreat, do not attack fresh troops, do not take bait, do not block a returning army, leave a gap to a surrounded enemy, do not press a cornered foe."
+- **Source:** 《孫子兵法》軍爭第七.
+- **Label:** `quoted`
+- **From:** new
+
+**10. Read which situation you are in, then do the one prescribed thing.**
+- **Kind:** algorithm
+- **In plain English:** Nine postures, each with a fixed response and nothing else: do not fight / do not halt / do not attack / do not sever / join / forage / advance / plan / fight. Then run it again from the other side — the same posture as an invader has a different answer, which is the part almost everyone misses. Only after the identification comes the move he is famous for: when there is no way back, there is no longer anything to fear, and that is exactly when to advance.
+- **Their words:** 「是故散地則無戰，輕地則無止，爭地則無攻，交地則無絕，衢地則合交，重地則掠，圮地則行，圍地則謀，死地則戰。」…「故兵之情：圍則禦，不得已則鬥，過則從。」…「投之亡地然後存，陷之死地然後生。夫衆陷於害，然後能為勝敗。」 — "Therefore: in scattered ground, do not fight; in light ground, do not halt; on contested ground, do not attack; in interlocked ground, do not sever; on thoroughfare ground, join with allies; in deep ground, forage; in broken ground, advance; in encirclement, plan; in dead ground, fight… The nature of troops: surrounded, they resist; with no choice, they fight; past it, they follow… Throw them where there is no going, and they survive; drop them into dead ground, and they live. A force trapped in harm is only then able to win or lose."
+- **Source:** 《孫子兵法》九地第十一. Note the same chapter gives a *second* nine for the invader (「入深者，重地也」…) and then nine dispositions of the commander to match.
+- **Label:** `quoted`
+- **From:** new
+
+**11. Probe, then read the signs, before you judge anything.**
+- **Kind:** algorithm
+- **In plain English:** Four probes, each aimed at a different question — probe to learn the balance of advantage, provoke to learn their tempo, shape to learn where the ground is killing them, and measure to learn where they are thin. Then a tell-table: infer intent from observable behaviour before you accept their account. Polite deference that is increasing preparation means they are advancing; aggressive speech with the columns pressing forward means they are withdrawing; a request for negotiation with no accord means a trap.
+- **Their words:** 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」…「敵近而靜者，恃其險也；遠而挑戰者，欲人之進也。」…「辭卑而益備者，進也；辭強而進驅者，退也；輕車先出，居其側者，陣也；無約而請和者，謀也；奔走而陳兵者，期也；半進半退者，誘也；杖而立者，飢也；汲而先飲者，渴也；見利而不進者，勞也；鳥集者，虛也；夜呼者，恐也；軍擾者，將不重也；旌旗動者，亂也。」 — "Therefore probe them and learn the balance of gain and loss; move them and learn the rhythm of their movement; shape them and learn where death lies; measure them and learn where surplus and shortage are… They are near and quiet: they rely on their ground. Far off and provoking: they want you to advance. Their words humble and their preparations increase: they are advancing. Their words strong and they press forward in formation: they are withdrawing. Light chariots come out first and take the flank: a battle-array. They ask for terms without accord: a plot. They run about and deploy: a date is set. Half advancing, half withdrawing: a lure. They stand on their staffs: they are hungry. They draw water and drink first: they are thirsty. They see advantage and do not advance: they are weary. Birds gather: it is empty. Night calls: they are afraid. The camp is in uproar: the general is not held in respect. The banners move without order: they are disordered."
+- **Source:** 《孫子兵法》虛實第六 (four probes); 行軍第九 (sign table; the same chapter's terrain rules — 「絕山依谷，視生處高，戰隆無登」 — are the movement half of the same procedure).
+- **Label:** `quoted`
+- **From:** new
+
+**12. Interleave harm with benefit — and audit your own virtues as levers.**
+- **Kind:** algorithm
+- **In plain English:** Two passes before committing. First: mix the harm column into the benefit column as you think, so the plan is trusted for its upside and the trouble is already dissolved. Second: run yourself against five checks, each of which is a virtue that an opponent can use against you — the need to die, the need to live, anger and haste, incorruptibility, love of your people. Every one is a handle.
+- **Their words:** 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」…「故將有五危︰必死，可殺也﹔必生，可虜也 DISTRACTION erectile:忿速，可侮也SPDHH;:廉潔，可辱也SPDHH;:愛民，可煩也SPDHH:。凡此五者，將之過也，用兵之災也。覆軍殺將，必以五危，不可不察也。」 — "Therefore the wise person's deliberation must be mixed with benefit and harm: mixed in with benefit, the affair can be trusted; mixed in with harm, the affliction can be dissolved… The general has five dangers: the habit of seeking death can be used to kill him; the habit of seeking life can be used to capture him; anger and haste can be used to insult him; incorruptibility can be used to shame him; love of the people can be used to trouble him. These five are the general's faults, the disasters of using troops. Overrunning the army and killing the general comes of the five dangers, and one must not fail to examine them."
+- **Source:** 《孫子兵法》九變第八 (both passages).
+- **Label:** `quoted`
+- **From:** top-10 #8 (changed — 利害 demoted to a pass, 五危 promoted to the centre)
+
+---
+
+## Gaps
+
+- **〈吳問〉 — not sourced, and I should correct an expectation here.** The research pointed at 〈吳問〉 as the place to look for Sun Tzu's own voice in the oldest text. I checked: it is **not** in the Wikisource received text. The 答話 section that text does carry is entirely the 吳王問孫武 exchanges on the nine terrains (散地, 輕地, 爭地, 交地, 衢地, 重地, 圮地, 圍地), plus the 吳王/subjects dialogue about entering郢, and it ends with the Song editors' note 「何氏引此文，亦云『兵法曰』…」. 〈吳問〉 belongs to the 曹操 edition; its title is on the 銀雀山 篇題木牍 per 李學勤 as quoted by Wang Jiaxiang. I could not obtain its wording. **An 吳問 item would be `attributed` at best, and I did not verify a single clause of it, so I have not put one in the twelve.**
+- **One base text only, as in the research.** Every quotation above is verified against zh.wikisource 孫子兵法 (received, Wikisource's 宋本-based text) — I read the raw wikitext of all thirteen chapters plus 答話. I did **not** collate against 曹操's edition, the 十一家本, or the 銀雀山 bamboo text. I therefore cannot certify that any of these twelve wording-wise in the oldest witness. That caveat is inherited and unchanged.
+- **One variant inside my own item set.** The base text reads 「故曰：勝可<另>擅|為</別>也。敵雖衆，可使無鬥」 in 虛實第六, flagged in Wikisource as 勝可擅一作『為』也 — which sits awkwardly against 軍形's 「勝可知，而不可為」 that item 3 turns on. I used 軍形's line, not 虛實's, but anyone building on #3 should know the received text carries the tension at both ends.
+- **Defects found in the research's own text, for correction before reuse:** (a) rule 9 misquotes 「恃吾有以待也」 where the source reads 「恃吾有以待**之**」; (b) rule 3's gloss reads "unb defeatable" / "defeatable-able" throughout, which should be *unbeatable* / *beatable*; (c) rule 5 files 「形之，敵必從之；予之，敵必取之」 under "change conditions for your own team" when the clause is about manipulating the opponent.
+- **Not reviewed.** I reviewed the ten decision rules, not the biography. The 史記's 「西破彊楚，入郢，北威齊晉」 and the concubine-drilling episode are single-source and contested, as the research itself says, and I add nothing.
+- **Not used.** ctext.org (blocked), 《孫臏兵法》, 銀雀山 transcriptions, 孫子略解, 孫子集注. A collation against the bamboo text remains the single highest-value outstanding check for all twelve items.
+---
+name: requirement-check
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, unattributed or impossible to check.
+---
+
+# Requirement check
+
+A general standard (RFC 2119 / 8174), installed globally — not part of the Ancient Games framework. The
+worked failure in `meaningful-names` cites the Ancient Games as one example.
+
+A short gate between **hearing a rule** and **acting on it**. It exists because rules get written down that nobody
+can trace, that count two different things at once, or that nothing can ever fail — and the cost lands months later,
+when nobody can say whether the rule still means anything.
+
+Run it when someone states a rule, and run it on yourself before writing a normative line into any document.
+
+## The eight questions
+
+Ask them of **one statement**. Say which it passes and which it fails, then **ask the person about the failures** —
+do not fill the gaps yourself.
+
+1. **Source.** Who said this, and where? Can you point to the exact line? *"Mine"* is a valid answer. Unlabelled is
+   not.
+2. **One thing.** An "and", an "or", a "/", or a second number means it is **two** statements. Split them, and give
+   each its own source.
+3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
+   files?
+4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
+   failing inputs. If you cannot name one, it is not checkable — it is a wish.
+5. **Weak words.** *like, about, appropriate, as needed, logical, fast, enough, reasonable, only has to, TBD.* Replace
+   each with a value, **or mark the value open**. Never invent the number.
+6. **Level.** Is it **MUST** (a gate that stops work), **SHOULD** (a default that may be overridden with a stated
+   reason), or **guidance**? A safety bound earns MUST. **A method does not** — see the RFC note below.
+7. **Basis.** Measured, quoted from a source, or a guess? A guess is fine **if it is labelled** — `n=0`, with when it
+   will be looked at again.
+8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
+   part"*? The person probably did not say that. **A link is its own claim and needs its own source.**
+
+## Two rules for the agent
+
+- **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
+  is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
+  the time anyone notices.
+- **Never add structure that was not given.** No halves, no numbered reasons, no ordered pairs, no named phases,
+  unless the person said so. Quote them, state the operative sentence, stop. If a relationship between two rules is
+  wanted, that is a separate claim with its own evidence.
+
+## Two verified facts, worth quoting
+
+- **RFC 2119 §6, "Guidance in the use of these Imperatives":** imperatives *"must be used with care and sparingly…
+  they MUST only be used where it is actually required… they must not be used to try to impose a particular method."*
+  Most design rules are method. Method does not earn MUST.
+- **RFC 8174 (updates 2119):** the key words *"have the meanings specified herein only when they are in all
+  capitals."* Lowercase *must* and *should* carry no defined requirement meaning. If nothing marks which lines are
+  requirements, a reader cannot tell rules from explanation.
+
+## How to answer
+
+Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
+one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+
+Do not report a rule as complete when you chose its missing value. Say which values you left open.
+
+## A worked failure
+
+> *"At most 5 subagent roles per run and at most 3 running at once."*
+
+Four of the eight fail: **Source** — nobody could name one; **One thing** — a count of roles *and* a count of
+concurrent processes; **Unit** — two different units, one word ("subagent") used for both; **Level** — a method
+preference written as a cap. The sentence would not parse, and it took four days to find out why. The checklist
+catches it in thirty seconds.
+
+The same checklist, run on *"No single call runs longer than the ceiling: 8 hours"*, passes all eight — because it
+names who set it, counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail.
+
+## Limits
+
+The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
+feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
+and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
+paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
+quotes are checked. Treat the rest as a good working list, not as a citation.
+
+Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.
+
+exec
+/bin/bash -lc 'cat runs/20261013-four-seats/sources/README.md; rg --files runs/20261013-four-seats/sources/sun-tzu; nl -ba runs/20261013-four-seats/top12/sun-tzu.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Source texts
+
+Fetched 2026-10-13 by Claude (main session) for quote checking: Chinese texts are Wikisource raw wikitext
+(`action=raw`; the 帛書 text via the API, pageid 39831), kernel docs are docs.kernel.org HTML (7.3.0-rc7 render).
+In the wikitext, `{{*|…}}` is inline commentary (e.g. 韋昭 in 國語, 王弼 / 陸德明 in 道德經), not the main text.
+runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt
+runs/20261013-four-seats/sources/sun-tzu/史記_卷065.txt
+     1	I'll read that brief first.
+     2	Full received text retrieved. Let me check the one place the research flagged as the highest-value remaining lead (〈吳問〉).
+     3	# 孫武 / Sun Tzu — top 12, reviewed
+     4	
+     5	I re-fetched the full received text (`zh.wikisource.org/wiki/孫子兵法`, raw wikitext, all 13 chapters + 答話 + the editorial notes) and verified every clause below against it directly, rather than relying on the research's quotations.
+     6	
+     7	---
+     8	
+     9	## Review of the top 10
+    10	
+    11	**1. Count before you commit — change.** This is the book's own opening gate and it is correctly identified, but it is two things merged: a calculation procedure (五事 + 七計) and an epistemology of where knowledge may come from (用間's 「先知者…必取於人」). Split them. The five factors and seven comparisons are an ordered procedure and should be labelled *algorithm*; the 用間 clause is a separate sourcing rule and is better kept as a short corollary, since 用間's real substance — five kinds of spy, funded, staffed, and protected — went unused. Ranking at #1 is right; this is chapter one and everything else is downstream. Strongest available quote is already the one used.
+    12	
+    13	**2. Subdue without battle; the four-tier escalation — keep, but widen.** Correctly identified, correctly ranked in the first ten, and the 攻城 cost-pricing (「三月而後成」, 「殺士三分之一，而城不拔者，此攻之災也」) is the right supporting evidence. But the rule as written starts at 「是故百戰百勝」, which skips 謀攻's *first* sentence — 「全國為上，破國次之；全軍為上，破軍次之…」 — the preservation ladder that ranks intact over broken at five levels of scale. That is the underlying principle, not an illustration of it. Dropped from #2 to #4 only because the two gates above it (can I fight? can I be beaten?) fire earlier in any real decision.
+    14	
+    15	**3. Make yourself unbeatable first — keep, high.** Distinct, precisely stated, and the quote is the strongest Sun Tzu has for it. One defect to fix: the gloss reads "unb defeatable" / "defeatable-able" seven times. It should read *unbeatable* / *beatable*. That typo will propagate straight into any artifact built from this. Merge in 九變's 「無恃其不來，恃吾有以待之」 — that is the same orientation stated again, and it costs nothing.
+    16	
+    17	**4. Prefer quick over thorough — change (this is the weakest rule in the ten).** As stated it is contradicted by two other chapters.軍爭第七 is entirely about the price of *march speed* (「百里而爭利，則擒三軍將」), and 九地 says flatly 「故兵之情主速，乘人之不及」. So the received text does not say "be quick." It says: duration is a cost you must price and cap (「故兵貴勝，不貴久」), and speed of manoeuvre is mandatory and carries its own casualty rate. What the chapter is really for is the **cost ledger** — 「日費千金，然後十萬之師舉矣」, 「百姓之費，十去其七」 — i.e. price the campaign in money and months *before* starting. That belongs inside rule 1 as the calculation's third arm, not as a standalone tempo rule.
+    18	
+    19	**5. Change the conditions, not the people — keep.** 「求之於勢，不責於人」 is the most portable single rule in the book for anyone managing anyone. Two fixes: the clause 「形之，敵必從之；予之，敵必取之。以利動之，以卒待之」 is *Sun Tzu manipulating the enemy*, and is misfiled here — it belongs with the deception rule. And the strongest supporting quote is missing: 「亂生於治，怯生於勇，弱生於強。治亂，數也；勇怯，勢也；強弱，形也。」 — courage, cowardice, strength and weakness are *outputs of position*, which is the rule's actual claim, stated as arithmetic.
+    20	
+    21	**6. Make them come to you — change.** Two rules merged: (a) own the tempo (「致人而不致於人」, 「我欲戰…攻其所必救也」), and (b) be invisible (「形人而我無形」, 「微乎微乎，至於無形」). (b) is not distinct from top-10 #7 and largely duplicates it. Split: keep (a), move (b) into #7. Ranked #6 → #6, unchanged in place but half its size.
+    22	
+    23	**7. Deceive deliberately — keep, high.** 「兵者，詭道也」 in chapter one, twelve named tells, and 「兵以詐立」 as method in 軍爭 — this is genuinely load-bearing and the quote is the strongest available. Upgrade it: three strong lines were left unused — 「形人而我無形，則我專而敵分」, 「人皆知我所以勝之形，而莫知吾所以制勝之形」 (win in a shape nobody can copy), and the tempo quartet 「其疾如風，其徐如林，侵掠如火，不動如山」.
+    24	
+    25	**8. Test against harm as well as benefit — keep, but recast as two, and the second is the better one.** 「必雜於利害」 is a general principle that overlaps rule 1. The 五危 list is the sharpest thing in the chapter and it was relegated to a supporting note: *every virtue is a lever against you* — 「必死，可殺也；必生，可虜也；忿速，可侮也；廉潔，可辱也；愛民，可煩也」. Promote it to the centre of the item. Ranked #8 → #12, but for the opposite reason: it is narrow, one chapter, one check — not because it is weak.
+    26	
+    27	**9. Never rely on their restraint — keep, but merge.** 「無恃其不來，恃吾有以待之」 is the same rule as 軍形's 「不可勝在己，可勝在敵」 and belongs beside it. Standalone it is thin. Also: **the quote as printed is wrong by one character.** The received text reads 「恃吾有以待**之**」, not 「以待也」 — the quote-check caught this and the research did not correct it. Fix before use.
+    28	
+    29	**10. Don't let anger start a war — change, and promote.** Correctly identified, and the placement note is a genuine catch that I confirmed: 「主不可以怒而興師」 closes **火攻第十二** in the received text, not 謀攻 where it is usually cited. But the rule is too narrow as framed. Two unused pieces make it a top-eight item: (a) 「合於利而動，不合於利而止」 appears **twice** — 火攻第十二 *and* 九地第十一 — which makes it not a line in one chapter but his standing go/no-go gate; (b) 「夫戰勝攻取，而不修其功者凶，命曰『費留』」 — victory won and then not carried through is *worse* than a plan that failed. The research noticed 費留 and did not rank it.
+    30	
+    31	---
+    32	
+    33	## What the top 10 missed
+    34	
+    35	**The knowledge-to-authority procedure (謀攻第三 + 地形第十).** 「知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆」 is the most quoted line in the book and it is absent from all ten. More useful is what surrounds it, because it is a graded procedure: five preconditions for a fight worth having (「知可以戰與不可以戰者勝，識衆寡之用者勝，上下同欲者勝，以虞待不虞者勝，將能而君不御者勝」), then a partial-victory scale — knowing your troops can be struck but not that the enemy cannot is *half* a victory, three times over (地形第十) — and then the authority clause the top10 never noticed: 「故戰道必勝，主曰無戰，必戰可也；戰道不勝，主曰必戰，無戰可也。」 The assessment overrules the stated wish, and you are protected for it. Rule 1 counts; this decides and then licenses.
+    36	
+    37	**A systematic situation→response grammar, in five places.** The top 10 has no lookup-table item at all, which is strange, because this is the most mechanical content in the book: 九變's five postures (「圮地無舍，衢地合交，絕地無留，圍地則謀，死地則戰」); 九地's nine postures each with its one prescribed response (「散地則無戰，輕地則無止，爭地則無攻…死地則戰」) *and* a second, different answer to the same posture when you are the guest rather than the defender; 軍爭's four ordered pairs (治氣 / 治心 / 治力 / 治變) plus nine explicit "don'ts" (「佯北勿從…圍師必闕，窮寇勿迫」); 行軍's tell-table; 地形's six terrains, six defeats and six named causes (「將不能料敵，以少合衆，以弱擊強，兵無選鋒，曰北」). It is the same grammar at five scales. Three of these become items below.
+    38	
+    39	**The four probes (虛實第六).** 「策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處」 — an ordered procedure for reading an opponent, each probe aimed at a different question. Combined with 行軍's sign table (「辭卑而益備者，進也；辭強而進驅者，退也；半進半退者，誘也；杖而立者，飢也；鳥集者，虛也」) this is his observation algorithm, and it is the single most mechanically useful passage in the book for anyone building a decision procedure.
+    40	
+    41	**Courage is a variable of the hour (軍爭第七).** 「三軍可奪氣，將軍可奪心。是故朝氣銳，晝氣惰，暮氣歸。」 — morale is not a property of men, it is a function of time since the last engagement. This is the sharpest possible support for rule 5's real claim, and it belongs there.
+    42	
+    43	**Benevolence without firmness produces a spoiled child (地形第十).** 「視卒如嬰兒，故可以與之赴深溪；視卒如愛子，故可與之俱死。厚而不能使，愛而不能令，亂而不能治，譬若驕子，不可用也。」 Care is not sufficient; care without the ability to command yields someone useless. Genuinely his own thought and in no list.
+    44	
+    45	**Near misses, for the record.** 「凡治衆如治寡，分數是也；鬥衆如鬥寡，形名是也」 plus 「令之以文，齊之以武」 (軍爭, 行軍) — build the control system so it works without heroism, distinct from 任勢. 用間's five kinds of spy, 「非仁義不能用間」, and 「間事未發而先聞者，間與所告者皆死」 — intelligence as a funded, staffed, *protected* system. 九地's 「將軍之事，靜以幽，正以治。能愚士卒之耳目，使之無知…帥與之期，如登高而去其梯」 and 「犯之以事，勿告以言」 — commit by deed, not by telling. 「凡戰者，以正合，以奇勝」 — hold the front straight, win with the irregular. 謀攻's 「君之所以患於軍者三」 — the three ways a superior ruins an army from above. 「故善用兵者，譬如率然」 — coordination without micromanagement.
+    46	
+    47	---
+    48	
+    49	## Top 12
+    50	
+    51	**1. Count before you commit — and if the count fails, go.**
+    52	- **Kind:** algorithm
+    53	- **In plain English:** Three arms, then a personnel decision. (1) Name the five factors — 道 / 天 / 地 / 將 / 法. (2) Run the seven comparisons — whose way, whose general, whose terrain, whose law, whose numbers, whose troops, whose rewards. (3) Price it: chariots, horses, the 100,000 levy, a thousand *li* of supply, ten thousand gold a day — and cap the duration. If the general will listen, keep him; if not, he will lose and you leave. Three chapters in, Sunzi says the *tempo* rule is the output of this gate, not a separate preference: value victory, not duration.
+    54	- **Their words:** 「兵者，國之大事，死生之地，存亡之道，不可不察也。故經之以五事，校之以七計，而索其情：一曰道，二曰天，三曰地，四曰將，五曰法。」…「故校之以七計而索其情，曰：主孰有道？將孰有能？天地孰得？法令孰行？兵眾孰強？士卒孰練？賞罰孰明？吾以此知勝負矣。」…「將聽吾計，用之必勝，留之；將不聽吾計，用之必敗，去之。」…「多算勝，少算不勝，而況於無算乎？」 — "War is a great matter of state… it must not go unexamined. Examine it by five things and compare it by seven calculations… Whose way is right? Whose general is capable? Who has heaven and earth? Whose laws are carried out? Whose numbers are stronger? Whose troops are trained? Whose rewards and punishments are clear? By this I know victory and defeat. If the general will listen to my plan, he will surely win — keep him; if he will not, he will surely lose — leave him. More calculation wins, less calculation loses, how much more so *none*."
+    55	- **Source:** 《孫子兵法》始計第一 (五事, 七計, 留去, 多算); cost ledger and 「故兵貴勝，不貴久」 from 作戰第二.
+    56	- **Label:** `quoted`
+    57	- **From:** top-10 #1 (changed) + top-10 #4 folded in
+    58	
+    59	**2. Decide whether you can fight — and let the decision overrule the wish.**
+    60	- **Kind:** algorithm
+    61	- **In plain English:** Five preconditions for a fight worth having: you know whether it can be fought, you can use what you have, ruler and soldiers want the same thing, you are ready and they are not, and your general can act without interference. Then grade your knowledge: knowing both sides is safe, knowing only yourself is a coin-flip, knowing neither is death — and knowing one side but not the other is *half* a victory, whichever side you know. Then act on the assessment regardless of what was ordered: if the way says you can win, you fight even if the ruler says do not; if it says you cannot, you do not fight even if he says you must.
+    62	- **Their words:** 「故知勝有五：知可以戰與不可以戰者勝，識衆寡之用者勝，上下同欲者勝，以虞待不虞者勝，將能而君不御者勝。」…「故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」…「知吾卒之可以擊，而不知敵之不可擊，勝之半也；知敵之可擊，而不知吾卒之不可以擊，勝之半也；知敵之可擊，知吾卒之可以擊，而不知地形之不可以戰，勝之半也。」…「故戰道必勝，主曰無戰，必戰可也；戰道不勝，主曰必戰，無戰可也。是故進不求名，退不避罪，唯民是保，而利合於主，國之寶也。」 — "There are five ways to know you will win: know whether it can be fought and cannot; know how to use your numbers; have ruler and people wanting the same; be prepared against the unprepared; and have a general the ruler does not interfere with… Know the enemy and know yourself and a hundred battles leave no danger; not knowing the enemy but knowing yourself, one win one loss; knowing neither, every battle is fatal… Knowing your troops can be struck but not that the enemy cannot be struck is half a victory… Therefore when the way of war says you can win, though the ruler says do not fight, fight — and when it says you cannot, though he says you must, do not. So advance seeking no glory, retreat declining no charge, protect only the people — and let the gain accord with the ruler's. This is a country's treasure."
+    63	- **Source:** 《孫子兵法》謀攻第三 (五知勝, 知彼知己); 地形第十 (three half-victories, 戰道必勝).
+    64	- **Label:** `quoted`
+    65	- **From:** new
+    66	
+    67	**3. Make yourself unbeatable; never build on their restraint.**
+    68	- **Kind:** decision rule
+    69	- **In plain English:** Split the question of victory in two. Being unbeatable lies with you, being beatable lies with them — so you work only on your half and wait for theirs. You can make yourself unbeatable; you cannot manufacture their error. Corollary: beat what is easy to beat, and let the victory leave no signature — no reputation for cleverness, no reputation for courage, nothing for the enemy to study.
+    70	- **Their words:** 「昔之善戰者，先為不可勝，以待敵之可勝。不可勝在己，可勝在敵。故善戰者，能為不可勝，不能使敵之必可勝。故曰：勝可知，而不可為。」…「古之所謂善戰者，勝於易勝者也。故善戰者之勝也，無智名，無勇功。故其戰勝不忒。」…「故無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 — "The ancients' good commanders first made themselves unbeatable and waited for the enemy to become beatable. Being unbeatable lies with yourself; being beatable lies with the enemy. Hence the skilled commander can make himself unbeatable; he cannot make the enemy necessarily beatable. Victory can be known; it cannot be manufactured… Those the ancients called good commanders defeated those who were easy to defeat. So the skilled commander's victories bear no name for cunning and no credit for courage… Therefore do not rely on their not coming — rely on your having a preparation; do not rely on their not attacking — rely on your having what cannot be attacked."
+    71	- **Source:** 《孫子兵法》軍形第四 (先為不可勝, 勝於易勝者); the second quotation is 九變第八, not 軍形 — quote the received text as 「恃吾有以待**之**」.
+    72	- **Label:** `quoted`
+    73	- **From:** top-10 #3 (kept) + top-10 #9 merged in
+    74	
+    75	**4. Escalate down a cost ladder, and rank intact above broken.**
+    76	- **Kind:** decision rule
+    77	- **In plain English:** At every level — state, army, brigade, battalion, squad — keeping it whole beats breaking it, so rank options by damage before you rank them by difficulty. Then work down a ladder: attack plans, then alliances, then troops, and walls last. Siege is the resort of the desperate and he prices it: three months of equipment, three more to close the breach, a third of your soldiers dead and the city still standing.
+    78	- **Their words:** 「凡用兵之法，全國為上，破國次之；全軍為上，破軍次之；全旅為上，破旅次之；全卒為上，破卒次之；全伍為上，破伍次之。是故百戰百勝，非善之善者也；不戰而屈人之兵，善之善者也。故上兵伐謀，其次伐交，其次伐兵，其下攻城。攻城之法，為不得已。」…「故善用兵者，屈人之兵而非戰也，拔人之城而非攻也，毀人之國而非久也，必以全爭於天下，故兵不頓而利可全，此謀攻之法也。」 — "For preserving the whole state is best, breaking it next; preserving the whole army is best, breaking it next; and so down… A hundred battles won is not the best of the good; to subdue the enemy without battle is the best of the good. Hence the best army attacks plans; the next, alliances; the next, troops; the lowest, walls. Besieging a city is a last resort… The skilled wielder of troops subdues without battle, takes the city without assaulting it, and does not wear down the state — contending for all under heaven, so his troops never tire and his gain is kept whole. This is the method of 謀攻."
+    79	- **Source:** 《孫子兵法》謀攻第三, whole chapter.
+    80	- **Label:** `quoted`
+    81	- **From:** top-10 #2 (kept, widened to open on 全國為上)
+    82	
+    83	**5. Deceive deliberately, in twelve named ways; win in a shape nobody can copy.**
+    84	- **Kind:** decision rule
+    85	- **In plain English:** Not a trick but the foundation — if your real capability is legible, you lose it. Advertise the opposite of each capability, consistently enough to be acted on. Then let them see your form while yours stays invisible, and pick your tempo to suit the intent. Finally, the best victory is the one that leaves nothing to copy: everyone knows the shape in which you won; nobody knows the shape in which you won.
+    86	- **Their words:** 「兵者，詭道也。故能而示之不能，用而示之不用，近而示之遠，遠而示之近。利而誘之，亂而取之，實而備之，強而避之，怒而撓之，卑而驕之，佚而勞之，親而離之。攻其無備，出其不意。」…「故兵以詐立，以利動，以分合為變者也。故其疾如風，其徐如林，侵掠如火，不動如山。」…「故形人而我無形，則我專而敵分。」…「人皆知我所以勝之形，而莫知吾所以制勝之形。」 — "War is the way of deception. When able, appear unable; when using, appear not to be using; when near, appear far; when far, appear near. Lure them where advantage lies and take them in disorder; when solid, be ready; when strong, avoid; when angry, harry; when humble, make them overconfident; when rested, tire them; when close, divide them. Attack the unprepared, emerge from the unexpected… War stands on deception, is moved by advantage, varies by dividing and combining. So be swift as wind, quiet as forest, ravaging as fire, immovable as mountain… Let them show their form while yours stays formless, and you are concentrated while they are spread. Everyone knows the shape in which I won; none knows the shape in which I made it win."
+    87	- **Source:** 《孫子兵法》始計第一 (twelve tells); 軍爭第七 (詐立, four tempos); 虛實第六 (形人我無形, 制勝之形).
+    88	- **Label:** `quoted`
+    89	- **From:** top-10 #7 (kept, widened)
+    90	
+    91	**6. Own the tempo: let the conditions decide whether and where the contest happens.**
+    92	- **Kind:** decision rule
+    93	- **In plain English:** Whoever arrives and waits has the advantage; whoever comes chasing has laboured for nothing. So decide before you engage whether *you* want the fight at all, and if you do, go where they cannot avoid coming — attack what they must rescue; if you do not, go where their orders forbid them to come. Move toward what they are not drawn to, away from what they expect.
+    94	- **Their words:** 「凡先處戰地而待敵者佚，後處戰地而趨戰者勞。故善戰者，致人而不致於人。」…「出其所不趨，趨其所不意。」…「故我欲戰，敵雖高壘深溝，不得不與我戰者，攻其所必救也；我不欲戰，雖畫地而守之，敵不得與我戰者，乖其所之也。」 — "Whoever is first in position and waits is at ease; whoever comes later and presses has laboured. Hence the skilled commander draws the enemy in and is not drawn in… Move by what they are not drawn toward; approach by what they do not expect… When I want to fight, the enemy, though behind high ramparts and deep moats, must fight me — I attack what they must rescue; when I do not want to fight, though I draw a line and hold, the enemy cannot fight me — I go where their orders carry them."
+    95	- **Source:** 《孫子兵法》虛實第六.
+    96	- **Label:** `quoted`
+    97	- **From:** top-10 #6 (changed — the invisibility half moved to #5)
+    98	
+    99	**7. Change the conditions, not the people.**
+   100	- **Kind:** decision rule
+   101	- **In plain English:** When output is short, do not push harder on the people — change the shape of the situation until the right behaviour is the easy behaviour. And accept that character is an output: order produces disorder and disorder produces panic, calm produces courage and courage produces weakness — because these are functions of count, of situation, and of formation. Build the command system so that large numbers behave like a few (division and rank), and bodies engage like single men (labels and signals).
+   102	- **Their words:** 「故善戰者，求之於勢，不責於人，故能擇人而任勢。任勢者，其戰人也，如轉木石。木石之性，安則靜，危則動，方則止，圓則行。」…「亂生於治，怯生於勇，弱生於強。治亂，數也；勇怯，勢也；強弱，形也。」…「凡治衆如治寡，分數是也；鬥衆如鬥寡，形名是也。」 — "The skilled commander seeks it in the situation and does not blame the men; being able to select men and put them in the situation. One who commands situation fights as one who rolls wood and stone: the nature of wood and stone is, at rest still, on a slope moving; square they stop, round they roll… Disorder is born of order, cowardice of courage, weakness of strength. Order and disorder are a matter of numbers; courage and cowardice of situation; strength and weakness of formation… To command a mass as a few: division and rank. To fight a mass as a few: labels and signals."
+   103	- **Source:** 《孫子兵法》兵勢第五, whole chapter.
+   104	- **Label:** `quoted`
+   105	- **From:** top-10 #5 (kept;形之/予之 removed — that clause manipulates the enemy and belongs to #5)
+   106	
+   107	**8. Move only on advantage; and finish it, or lose it.**
+   108	- **Kind:** decision rule
+   109	- **In plain English:** One gate, stated twice in the received text: move when it accords with advantage, stop when it does not. The corollary is about reversibility — anger can become joy again and resentment can become pleasure again, but a destroyed state cannot be restored and the dead cannot come back — so the burden of proof sits with whoever proposes to act. And the second half: a victory won and not carried through to completion is worse than a defeat, because you paid for it and hold nothing. He has a name for it — 費留, "wasted leave."
+   110	- **Their words:** 「夫戰勝攻取，而不修其功者凶，命曰『費留』。故曰：明主慮之，良將修之，非利不動，非得不用，非危不戰。主不可以怒而興師，將不可以慍而致戰。合於利而動，不合於利而止。怒可以復喜，慍可以復悅，亡國不可以復存，死者不可以復生。」 — "To win battles and take cities and then not complete the work is bad; it is called *feiliu*, wasted leave. Therefore do not move without advantage, do not act without gain, do not fight without necessity. A ruler may not raise an army in anger; a general may not go to battle in resentment. Move when it accords with advantage; stop when it does not. Anger can become joy again; resentment can become pleasure again; a destroyed state cannot be restored; the dead cannot be brought back."
+   111	- **Source:** 《孫子兵法》火攻第十二 (closing passage — *not* 謀攻, where it is commonly cited; verified in this base text). 「合於利而動，不合於利而止」 also closes the relevant movement in 九地第十一, which is why I rank it as a standing gate rather than a chapter line.
+   112	- **Label:** `quoted`
+   113	- **From:** top-10 #10 (changed — broadened to the advantage gate and 費留)
+   114	
+   115	**9. Match their state, not their strength.**
+   116	- **Kind:** algorithm
+   117	- **In plain English:** Four checks, in order: match their spirit with yours ordered, theirs disordered; match their agitation with yours calm; match their resources with yours better supplied; match their battle with yours one that is not a set-piece. Underneath all four lies the observation that morale is a clock — sharpest at dawn, slack by noon, spent by dusk. Then the nine refusals: do not attack up a slope, do not pursue a feigned retreat, do not attack fresh troops, do not block a returning army, do not close the gap of a surrounded enemy, do not press a cornered one.
+   118	- **Their words:** 「三軍可奪氣，將軍可奪心。是故朝氣銳，晝氣惰，暮氣歸。故善用兵者，避其銳氣，擊其惰歸，此治氣者也；以治待亂，以靜待嘩，此治心者也；以近待遠，以佚待勞，以飽待饑，此治力者也；無邀正正之旗，無擊堂堂之陣，此治變者也。」…「高陵勿向，背丘勿逆，佯北勿從，銳卒勿攻，餌兵勿食，歸師勿遏，圍師必闕，窮寇勿迫，此用兵之法也。」 — "The army's spirit can be taken, the general's heart can be taken. Morning spirit is sharp, midday spirit slack, evening spirit spent. Hence the skilled commander avoids their sharp spirit and strikes their spent return — this is managing spirit; waits order with disorder, stillness with uproar — this is managing the heart; meets near with far, ease with labour, fed with hunger — this is managing strength; does not intercept an army in array, does not strike a formation in order — this is managing change… Do not attack up a slope, do not meet one against a ridge, do not follow a feigned retreat, do not attack fresh troops, do not take bait, do not block a returning army, leave a gap to a surrounded enemy, do not press a cornered foe."
+   119	- **Source:** 《孫子兵法》軍爭第七.
+   120	- **Label:** `quoted`
+   121	- **From:** new
+   122	
+   123	**10. Read which situation you are in, then do the one prescribed thing.**
+   124	- **Kind:** algorithm
+   125	- **In plain English:** Nine postures, each with a fixed response and nothing else: do not fight / do not halt / do not attack / do not sever / join / forage / advance / plan / fight. Then run it again from the other side — the same posture as an invader has a different answer, which is the part almost everyone misses. Only after the identification comes the move he is famous for: when there is no way back, there is no longer anything to fear, and that is exactly when to advance.
+   126	- **Their words:** 「是故散地則無戰，輕地則無止，爭地則無攻，交地則無絕，衢地則合交，重地則掠，圮地則行，圍地則謀，死地則戰。」…「故兵之情：圍則禦，不得已則鬥，過則從。」…「投之亡地然後存，陷之死地然後生。夫衆陷於害，然後能為勝敗。」 — "Therefore: in scattered ground, do not fight; in light ground, do not halt; on contested ground, do not attack; in interlocked ground, do not sever; on thoroughfare ground, join with allies; in deep ground, forage; in broken ground, advance; in encirclement, plan; in dead ground, fight… The nature of troops: surrounded, they resist; with no choice, they fight; past it, they follow… Throw them where there is no going, and they survive; drop them into dead ground, and they live. A force trapped in harm is only then able to win or lose."
+   127	- **Source:** 《孫子兵法》九地第十一. Note the same chapter gives a *second* nine for the invader (「入深者，重地也」…) and then nine dispositions of the commander to match.
+   128	- **Label:** `quoted`
+   129	- **From:** new
+   130	
+   131	**11. Probe, then read the signs, before you judge anything.**
+   132	- **Kind:** algorithm
+   133	- **In plain English:** Four probes, each aimed at a different question — probe to learn the balance of advantage, provoke to learn their tempo, shape to learn where the ground is killing them, and measure to learn where they are thin. Then a tell-table: infer intent from observable behaviour before you accept their account. Polite deference that is increasing preparation means they are advancing; aggressive speech with the columns pressing forward means they are withdrawing; a request for negotiation with no accord means a trap.
+   134	- **Their words:** 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」…「敵近而靜者，恃其險也；遠而挑戰者，欲人之進也。」…「辭卑而益備者，進也；辭強而進驅者，退也；輕車先出，居其側者，陣也；無約而請和者，謀也；奔走而陳兵者，期也；半進半退者，誘也；杖而立者，飢也；汲而先飲者，渴也；見利而不進者，勞也；鳥集者，虛也；夜呼者，恐也；軍擾者，將不重也；旌旗動者，亂也。」 — "Therefore probe them and learn the balance of gain and loss; move them and learn the rhythm of their movement; shape them and learn where death lies; measure them and learn where surplus and shortage are… They are near and quiet: they rely on their ground. Far off and provoking: they want you to advance. Their words humble and their preparations increase: they are advancing. Their words strong and they press forward in formation: they are withdrawing. Light chariots come out first and take the flank: a battle-array. They ask for terms without accord: a plot. They run about and deploy: a date is set. Half advancing, half withdrawing: a lure. They stand on their staffs: they are hungry. They draw water and drink first: they are thirsty. They see advantage and do not advance: they are weary. Birds gather: it is empty. Night calls: they are afraid. The camp is in uproar: the general is not held in respect. The banners move without order: they are disordered."
+   135	- **Source:** 《孫子兵法》虛實第六 (four probes); 行軍第九 (sign table; the same chapter's terrain rules — 「絕山依谷，視生處高，戰隆無登」 — are the movement half of the same procedure).
+   136	- **Label:** `quoted`
+   137	- **From:** new
+   138	
+   139	**12. Interleave harm with benefit — and audit your own virtues as levers.**
+   140	- **Kind:** algorithm
+   141	- **In plain English:** Two passes before committing. First: mix the harm column into the benefit column as you think, so the plan is trusted for its upside and the trouble is already dissolved. Second: run yourself against five checks, each of which is a virtue that an opponent can use against you — the need to die, the need to live, anger and haste, incorruptibility, love of your people. Every one is a handle.
+   142	- **Their words:** 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」…「故將有五危︰必死，可殺也﹔必生，可虜也 DISTRACTION erectile:忿速，可侮也SPDHH;:廉潔，可辱也SPDHH;:愛民，可煩也SPDHH:。凡此五者，將之過也，用兵之災也。覆軍殺將，必以五危，不可不察也。」 — "Therefore the wise person's deliberation must be mixed with benefit and harm: mixed in with benefit, the affair can be trusted; mixed in with harm, the affliction can be dissolved… The general has five dangers: the habit of seeking death can be used to kill him; the habit of seeking life can be used to capture him; anger and haste can be used to insult him; incorruptibility can be used to shame him; love of the people can be used to trouble him. These five are the general's faults, the disasters of using troops. Overrunning the army and killing the general comes of the five dangers, and one must not fail to examine them."
+   143	- **Source:** 《孫子兵法》九變第八 (both passages).
+   144	- **Label:** `quoted`
+   145	- **From:** top-10 #8 (changed — 利害 demoted to a pass, 五危 promoted to the centre)
+   146	
+   147	---
+   148	
+   149	## Gaps
+   150	
+   151	- **〈吳問〉 — not sourced, and I should correct an expectation here.** The research pointed at 〈吳問〉 as the place to look for Sun Tzu's own voice in the oldest text. I checked: it is **not** in the Wikisource received text. The 答話 section that text does carry is entirely the 吳王問孫武 exchanges on the nine terrains (散地, 輕地, 爭地, 交地, 衢地, 重地, 圮地, 圍地), plus the 吳王/subjects dialogue about entering郢, and it ends with the Song editors' note 「何氏引此文，亦云『兵法曰』…」. 〈吳問〉 belongs to the 曹操 edition; its title is on the 銀雀山 篇題木牍 per 李學勤 as quoted by Wang Jiaxiang. I could not obtain its wording. **An 吳問 item would be `attributed` at best, and I did not verify a single clause of it, so I have not put one in the twelve.**
+   152	- **One base text only, as in the research.** Every quotation above is verified against zh.wikisource 孫子兵法 (received, Wikisource's 宋本-based text) — I read the raw wikitext of all thirteen chapters plus 答話. I did **not** collate against 曹操's edition, the 十一家本, or the 銀雀山 bamboo text. I therefore cannot certify that any of these twelve wording-wise in the oldest witness. That caveat is inherited and unchanged.
+   153	- **One variant inside my own item set.** The base text reads 「故曰：勝可<另>擅|為</別>也。敵雖衆，可使無鬥」 in 虛實第六, flagged in Wikisource as 勝可擅一作『為』也 — which sits awkwardly against 軍形's 「勝可知，而不可為」 that item 3 turns on. I used 軍形's line, not 虛實's, but anyone building on #3 should know the received text carries the tension at both ends.
+   154	- **Defects found in the research's own text, for correction before reuse:** (a) rule 9 misquotes 「恃吾有以待也」 where the source reads 「恃吾有以待**之**」; (b) rule 3's gloss reads "unb defeatable" / "defeatable-able" throughout, which should be *unbeatable* / *beatable*; (c) rule 5 files 「形之，敵必從之；予之，敵必取之」 under "change conditions for your own team" when the clause is about manipulating the opponent.
+   155	- **Not reviewed.** I reviewed the ten decision rules, not the biography. The 史記's 「西破彊楚，入郢，北威齊晉」 and the concubine-drilling episode are single-source and contested, as the research itself says, and I add nothing.
+   156	- **Not used.** ctext.org (blocked), 《孫臏兵法》, 銀雀山 transcriptions, 孫子略解, 孫子集注. A collation against the bamboo text remains the single highest-value outstanding check for all twelve items.
+
+exec
+/bin/bash -lc 'nl -ba runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+     1	{{Textquality|75%}}
+     2	{{header
+     3	|title=孫子兵法
+     4	|section=
+     5	|author=孫武
+     6	|previous=
+     7	|next=
+     8	|notes={{wikipedia|孫子兵法}}另見《[[孫子略解]]》、《[[孫子集注]]》
+     9	}}
+    10	
+    11	== 始計第一 ==
+    12	[[wikipedia:zh:孙武|孫子]]曰：兵者，國之大事，死生之地，存亡之道，不可不察也。故經之以五事，校之以七計，而索其情：一曰道，二曰天，三曰地，四曰將，五曰法。
+    13	
+    14	道者，令民與上同意，可與之死，可與之生，而不畏危也。天者，陰陽、寒暑、時制也。地者，高下、遠近、險易、廣狹、死生也。將者，智、信、仁、勇、嚴也。法者，曲制、官道、主用也。凡此五者，將莫不聞，知之者勝，不知者不勝。故校之以七計而索其情，曰：主孰有道？將孰有能？天地孰得？法令孰行？兵眾孰強？士卒孰練？賞罰孰明？吾以此知勝負矣。
+    15	
+    16	將聽吾計，用之必勝，留之；將不聽吾計，用之必敗，去之。計利以聽，乃為之勢，以佐其外。勢者，因利而制權也。兵者，詭道也。故能而示之不能，用而示之不用，近而示之遠，遠而示之近。利而誘之，亂而取之，實而備之，強而避之，怒而撓之，卑而驕之，佚而勞之，親而離之。攻其無備，出其不意。此兵家之勝，不可先傳也。
+    17	
+    18	夫未戰而廟算勝者，得算多也；未戰而廟算不勝者，得算少也。多算勝，少算不勝，而況於無算乎？吾以此觀之，勝負見矣。
+    19	
+    20	== 作戰第二 ==
+    21	孫子曰：凡用兵之法，馳車千駟，革車千乘，帶甲十萬，千里饋糧，則內外之費，賓客之用，膠漆之材，車甲之奉，日費千金，然後十萬之師舉矣。其用戰也，貴勝，久則鈍兵挫銳，攻城則力屈，久暴師則國用不足。夫鈍兵挫銳，屈力殫貨，則諸侯乘其弊而起，雖有智者，不能善其後矣。故兵聞拙速，未睹巧之久也。夫兵久而國利者，未之有也。故不盡知用兵之害者，則不能盡知用兵之利也。
+    22	
+    23	善用兵者，役不再籍，糧不三載；取用於國，因糧於敵，故軍食可足也。
+    24	
+    25	國之貧於師者遠輸，遠輸則百姓貧；近師者貴賣，貴賣則百姓財竭，財竭則急於丘役。力屈財殫，中原內虛於家。百姓之費，十去其七；公家之費，破車罷馬，甲胄矢弩，戟楯蔽櫓，丘牛大車，十去其六。
+    26	
+    27	故智將務食於敵，食敵一鍾，當吾二十鍾；萁稈一石，當吾二十石。
+    28	
+    29	故殺敵者，怒也；取敵之利者，貨也。故車戰，得車十乘以上，賞其先得者，而更其旌旗。車雜而乘之，卒善而養之，是謂勝敵而益強。
+    30	
+    31	故兵貴勝，不貴久。故知兵之將，民之司命，國家安危之主也。
+    32	
+    33	== 謀攻第三 ==
+    34	孫子曰：凡用兵之法，全國為上，破國次之；全軍為上，破軍次之；全旅為上，破旅次之；全卒為上，破卒次之；全伍為上，破伍次之。是故百戰百勝，非善之善者也；不戰而屈人之兵，善之善者也。
+    35	
+    36	故上兵伐謀，其次伐交，其次伐兵，其下攻城。攻城之法，為不得已。修櫓轒轀，具器械，三月而後成；距闉，又三月而後已。將不勝其忿，而蟻附之，殺士三分之一，而城不拔者，此攻之災也。
+    37	
+    38	故善用兵者，屈人之兵而非戰也，拔人之城而非攻也，毀人之國而非久也，必以全爭於天下，故兵不頓而利可全，此謀攻之法也。
+    39	
+    40	故用兵之法，十則圍之，五則攻之，倍則分之，敵則能戰之，少則能守之，不若則能避之。故小敵之堅，大敵之擒也。
+    41	
+    42	夫將者，國之輔也。輔周則國必強，輔隙則國必弱。
+    43	
+    44	故君之所以患於軍者三：不知軍之不可以進而謂之進，不知軍之不可以退而謂之退，是為縻軍；不知三軍之事，而同三軍之政，則軍士惑矣；不知三軍之權，而同三軍之任，則軍士疑矣。三軍既惑且疑，則諸侯之難至矣，是謂亂軍引勝。
+    45	
+    46	故知勝有五：知可以戰與不可以戰者勝，識衆寡之用者勝，上下同欲者勝，以虞待不虞者勝，將能而君不御者勝。此五者，知勝之道也。
+    47	
+    48	故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。
+    49	
+    50	== 軍形第四 ==
+    51	孫子曰：昔之善戰者，先為不可勝，以待敵之可勝。不可勝在己，可勝在敵。故善戰者，能為不可勝，不能使敵之必可勝。故曰：勝可知，而不可為。
+    52	
+    53	不可勝者，守也；可勝者，攻也。守則不足，攻則有餘。善守者，藏於九地之下；善攻者，動於九天之上，故能自保而全勝也。
+    54	
+    55	見勝不過衆人之所知，非善之善者也；戰勝而天下曰善，非善之善者也。故舉秋毫不為多力，見日月不為明目，聞雷霆不為聰耳。
+    56	
+    57	古之所謂善戰者，勝於易勝者也。故善戰者之勝也，無智名，無勇功。故其戰勝不忒。不忒者，其所措必勝，勝已敗者也。故善戰者，立於不敗之地，而不失敵之敗也。是故勝兵先勝而後求戰，敗兵先戰而後求勝。善用兵者，修道而保法，故能為勝敗之政。
+    58	
+    59	兵法：一曰度，二曰量，三曰數，四曰稱，五曰勝。地生度，度生量，量生數，數生稱，稱生勝。故勝兵若以鎰稱銖，敗兵若以銖稱鎰。勝者之戰民也，若決積水於千仞之溪者，形也。
+    60	
+    61	== 兵勢第五 ==
+    62	孫子曰：凡治衆如治寡，分數是也；鬥衆如鬥寡，形名是也；三軍之衆，可使必受敵而無敗者，奇正是也；兵之所加，如以碫投卵者，虛實是也。
+    63	
+    64	凡戰者，以正合，以奇勝。故善出奇者，無窮如天地，不竭如江海。終而復始，日月是也。死而復生，四時是也。聲不過五，五聲之變，不可勝聽也；色不過五，五色之變，不可勝觀也；味不過五，五味之變，不可勝嘗也；戰勢不過奇正，奇正之變，不可勝窮也。奇正相生，如循環之無端，孰能窮之哉？
+    65	
+    66	激水之疾，至於漂石者，勢也；鷙鳥之疾，至於毀折者，節也。故善戰者，其勢險，其節短。勢如彍弩，節如發機。
+    67	
+    68	紛紛紜紜，鬥亂而不可亂也；渾渾沌沌，形圓而不可敗也。亂生於治，怯生於勇，弱生於強。治亂，數也；勇怯，勢也；強弱，形也。
+    69	
+    70	故善動敵者，形之，敵必從之；予之，敵必取之。以利動之，以卒待之。
+    71	
+    72	故善戰者，求之於勢，不責於人，故能擇人而任勢。任勢者，其戰人也，如轉木石。木石之性，安則靜，危則動，方則止，圓則行。故善戰人之勢，如轉圓石於千仞之山者，勢也。
+    73	
+    74	== 虛實第六 ==
+    75	孫子曰：凡先處戰地而待敵者佚，後處戰地而趨戰者勞。故善戰者，致人而不致於人。
+    76	
+    77	能使敵自至者，利之也；能使敵不得至者，害之也。故敵佚能勞之，飽能饑之，安能動之。出其所不趨，趨其所不意。
+    78	
+    79	行千里而不勞者，行於無人之地也。攻而必取者，攻其所不守也；守而必固者，守其所不攻也。故善攻者，敵不知其所守；善守者，敵不知其所攻。微乎微乎！至于無形；神乎神乎！至于無聲，故能為敵之司命。
+    80	
+    81	進而不可禦者，沖其虛也；退而不可追者，速而不可及也。故我欲戰，敵雖高壘深溝，不得不與我戰者，攻其所必救也；我不欲戰，雖畫地而守之，敵不得與我戰者，乖其所之也。
+    82	
+    83	故形人而我無形，則我專而敵分。我專為一，敵分為十，是以十攻其一也，則我衆而敵寡。能以衆擊寡者，則吾之所與戰者，約矣。吾所與戰之地不可知，不可知，則敵所備者多，敵所備者多，則吾之所與戰者寡矣。故備前則後寡，備後則前寡，備左則右寡，備右則左寡，無所不備，則無所不寡。寡者，備人者也；衆者，使人備己者也。
+    84	
+    85	故知戰之地，知戰之日，則可千里而會戰；不知戰之地，不知戰之日，則左不能救右，右不能救左，前不能救後，後不能救前，而況遠者數十里，近者數里乎！以吾度之，越人之兵雖多，亦奚益於勝敗哉！故曰：勝可{{另|擅|為}}也。敵雖衆，可使無鬥。
+    86	
+    87	故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。故形兵之極，至於無形。無形，則深間不能窺，智者不能謀。因形而措勝於衆，衆不能知。人皆知我所以勝之形，而莫知吾所以制勝之形。故其戰勝不復，而應形於無窮。
+    88	
+    89	夫兵形象水，水之行，避高而趨下；兵之勝，避實而擊虛。水因地而制行，兵因敵而制勝。故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。故五行無常勝，四時無常位，日有短長，月有死生。
+    90	
+    91	== 軍爭第七 ==
+    92	孫子曰：凡用兵之法，將受命於君，合軍聚衆，交和而舍，莫難於軍爭。軍爭之難者，以迂為直，以患為利。故迂其途，而誘之以利，後人發，先人至，此知迂直之計者也。
+    93	
+    94	故軍爭為利，軍爭為危。舉軍而爭利，則不及；委軍而爭利，則輜重捐。是故卷甲而趨，日夜不處，倍道兼行，百里而爭利，則擒三軍將，勁者先，疲者後，其法十一而至；五十里而爭利，則蹶上軍將，其法半至；三十里而爭利，則三分之二至。是故軍無輜重則亡，無糧食則亡，無委積則亡。故不知諸侯之謀者，不能豫交；不知山林、險阻、沮澤之形者，不能行軍；不用鄉導者，不能得地利。
+    95	
+    96	故兵以詐立，以利動，以分合為變者也。故其疾如風，其徐如林，侵掠如火，不動如山，難知如陰，動如雷震。掠鄉分衆，廓地分利，懸權而動。先知迂直之計者勝，此軍爭之法也。
+    97	
+    98	《軍政》曰：「言不相聞，故為金鼓；視不相見，故為旌旗。」夫金鼓旌旗者，所以一民之耳目也。民既專一，則勇者不得獨進，怯者不得獨退，此用衆之法也。故夜戰多金鼓，晝戰多旌旗，所以變人之耳目也。
+    99	
+   100	三軍可奪氣，將軍可奪心。是故朝氣銳，晝氣惰，暮氣歸。故善用兵者，避其銳氣，擊其惰歸，此治氣者也；以治待亂，以靜待嘩，此治心者也；以近待遠，以佚待勞，以飽待饑，此治力者也；無邀正正之旗，無擊堂堂之陣，此治變者也。
+   101	
+   102	故用兵之法，高陵勿向，背丘勿逆，佯北勿從，銳卒勿攻，餌兵勿食，歸師勿遏，圍師必闕，窮寇勿迫，此用兵之法也。
+   103	
+   104	== 九變第八 ==
+   105	孫子曰：凡用兵之法，將受命於君，合軍聚眾。圮地無舍，衢地合交，絕地無留，圍地則謀，死地則戰。途有所不由，軍有所不擊，城有所不攻，地有所不爭，君命有所不受。故將通於九變之利者，知用兵矣；將不通於九變之利，雖知地形，不能得地之利矣；治兵不知九變之術，雖知地利，不能得人之用矣。
+   106	
+   107	是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。是故屈諸侯者以害，役諸侯者以業，趨諸侯者以利。
+   108	
+   109	故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。
+   110	
+   111	故將有五危︰必死，可殺也﹔必生，可虜也﹔忿速，可侮也﹔廉潔，可辱也﹔愛民，可煩也。凡此五者，將之過也，用兵之災也。覆軍殺將，必以五危，不可不察也。
+   112	
+   113	== 行軍第九 ==
+   114	孫子曰：凡處軍相敵，絕山依谷，視生處高，戰隆無登，此處山之軍也。絕水必遠水，客絕水而來，勿迎之于水內，令半濟而擊之，利；欲戰者，無附于水而迎客，視生處高，無迎水流，此處水上之軍也。絕斥澤，惟亟去無留，若交軍於斥澤之中，必依水草，而背衆樹，此處斥澤之軍也。平陸處易，而右背高，前死後生，此處平陸之軍也。凡此四軍之利，黃帝之所以勝四帝也。
+   115	
+   116	凡軍好高而惡下，貴陽而賤陰，養生而處實，軍無百疾，是謂必勝。丘陵堤防，必處其陽，而右背之，此兵之利，地之助也。上雨，水沫至，欲涉者，待其定也。
+   117	
+   118	凡地有絕澗，遇天井、天牢、天羅、天陷、天隙，必亟去之，勿近也。吾遠之，敵近之；吾迎之，敵背之。軍旁有險阻、潢井、葭葦、林木、蘙薈者，必謹覆索之，此伏奸之所處也。
+   119	
+   120	敵近而靜者，恃其險也；遠而挑戰者，欲人之進也；其所居易者，利也；衆樹動者，來也；衆草多障者，疑也；鳥起者，伏也；獸駭者，覆也；塵高而銳者，車來也；卑而廣者，徒來也；散而條達者，樵采也；少而往來者，營軍也；辭卑而益備者，進也；辭強而進驅者，退也；輕車先出，居其側者，陣也；無約而請和者，謀也；奔走而陳兵者，期也；半進半退者，誘也；杖而立者，饑也；汲而先飲者，渴也；見利而不進者，勞也；鳥集者，虛也；夜呼者，恐也；軍擾者，將不重也；旌旗動者，亂也；吏怒者，倦也；粟馬肉食，軍無懸缻，而不返其舍者，窮寇也；諄諄翕翕，徐與人言者，失衆也；數賞者，窘也；數罰者，困也；先暴而後畏其衆者，不精之至也；來委謝者，欲休息也。兵怒而相迎，久而不合，又不相去，必謹察之。
+   121	
+   122	故兵非貴{{另|益多也|益多}}，惟無武進，足以併力、料敵、取人而已。夫惟無慮而易敵者，必擒於人。
+   123	
+   124	卒未親附而罰之，則不服，不服則難用也。卒已親附而罰不行，則不可用也。故令之以文，齊之以武，是謂必取。令素行以教其民，則民服；令素不行以教其民，則民不服。令素行者，與衆相得也。
+   125	
+   126	== 地形第十 ==
+   127	孫子曰：凡地形有通者、有掛者、有支者、有隘者、有險者、有遠者。我可以往，彼可以來，曰通。通形者，先居高陽，利糧道，以戰則利。可以往，難以返，曰掛。掛形者，敵無備，出而勝之；敵若有備，出而不勝，難以返，不利。我出而不利，彼出而不利，曰支。支形者，敵雖利我，我無出也，引而去之，令敵半出而擊之，利。隘形者，我先居之，必盈之以待敵。若敵先居之，盈而勿從，不盈而從之。險形者，我先居之，必居高陽以待敵；若敵先居之，引而去之，勿從也。遠形者，勢均，難以挑戰，戰而不利。凡此六者，地之道也，將之至任，不可不察也。
+   128	
+   129	故兵有走者、有弛者、有陷者、有崩者、有亂者、有北者。凡此六者，非天之災，將之過也。夫勢均，以一擊十，曰走；卒强吏弱，曰弛；吏强卒弱，曰陷；大吏怒而不服，遇敵懟而自戰，將不知其能，曰崩；將弱不嚴，教道不明，吏卒無常，陳兵縱橫，曰亂；將不能料敵，以少合衆，以弱擊強，兵無選鋒，曰北。凡此六者，敗之道也，將之至任，不可不察也。
+   130	
+   131	夫地形者，兵之助也。料敵制勝，計險厄遠近，上將之道也。知此而用戰者必勝，不知此而用戰者必敗。故戰道必勝，主曰無戰，必戰可也；戰道不勝，主曰必戰，無戰可也。是故進不求名，退不避罪，唯民是保，而利合於主，國之寶也。
+   132	
+   133	視卒如嬰兒，故可以與之赴深溪；視卒如愛子，故可與之俱死。厚而不能使，愛而不能令，亂而不能治，譬若驕子，不可用也。
+   134	
+   135	知吾卒之可以擊，而不知敵之不可擊，勝之半也；知敵之可擊，而不知吾卒之不可以擊，勝之半也；知敵之可擊，知吾卒之可以擊，而不知地形之不可以戰，勝之半也。故知兵者，動而不迷，舉而不窮。故曰：知彼知己，勝乃不殆；知天知地，勝乃可全。
+   136	
+   137	== 九地第十一 ==
+   138	孫子曰：凡用兵之法，有散地，有輕地，有爭地，有交地，有衢地，有重地，有圮地，有圍地，有死地。諸侯自戰其地者，為散地；入人之地而不深者，為輕地；我得則利，彼得亦利者，為爭地；我可以往，彼可以來者，為交地；諸侯之地三屬，先至而得天下之衆者，為衢地；入人之地深，背城邑多者，為重地；山林、險阻、沮澤，凡難行之道者，為圮地；所由入者隘，所從歸者迂，彼寡可以擊吾之衆者，為圍地；疾戰則存，不疾戰則亡者，為死地。是故散地則無戰，輕地則無止，爭地則無攻，交地則無絕，衢地則合交，重地則掠，圮地則行，圍地則謀，死地則戰。
+   139	
+   140	所謂古之善用兵者，能使敵人前後不相及，衆寡不相恃，貴賤不相救，上下不相收，卒離而不集，兵合而不齊。合於利而動，不合於利而止。敢問︰「敵衆整而將來，待之若何？」曰：「先奪其所愛，則聽矣。」故兵之情主速，乘人之不及，由不虞之道，攻其所不戒也。
+   141	
+   142	凡為客之道，深入則專，主人不克。掠于饒野，三軍足食。謹養而勿勞，併氣積力，運兵計謀，為不可測。投之無所往，死且不北。死焉不得，士人盡力。兵士甚陷則不懼，無所往則固，深入則拘，不得已則鬥。是故其兵不修而戒，不求而得，不約而親，不令而信。禁祥去疑，至死無所之。吾士無餘財，非惡貨也；無餘命，非惡壽也。令發之日，士卒坐者涕沾襟，偃臥者淚交頤。投之無所往者，則諸、劌之勇也。
+   143	
+   144	故善用兵者，譬如率然。率然者，常山之蛇也。擊其首則尾至，擊其尾則首至，擊其中則首尾俱至。敢問︰「兵可使如率然乎？」曰︰「可。夫吳人與越人相惡也，當其同舟而濟。遇風，其相救也，如左右手。」是故方馬埋輪，未足恃也；齊勇如一，政之道也；剛柔皆得，地之理也。故善用兵者，攜手若使一人，不得已也。
+   145	
+   146	將軍之事，靜以幽，正以治。能愚士卒之耳目，使之無知；易其事，革其謀，使人無識；易其居，迂其途，使人不得慮。帥與之期，如登高而去其梯；帥與之深入諸侯之地，而發其機，焚舟破釜，若驅群羊。驅而往，驅而來，莫知所之。聚三軍之衆，投之於險，此謂將軍之事也。九地之變，屈伸之利，人情之理，不可不察也。
+   147	
+   148	凡為客之道，深則專，淺則散。去國越境而師者，絕地也；四達者，衢地也；入深者，重地也；入淺者，輕地也；背固前隘者，圍地也；無所往者，死地也。是故散地，吾將一其志；輕地，吾將使之屬；爭地，吾將趨其後；交地，吾將謹其守；衢地，吾將固其結；重地，吾將繼其食；圮地，吾將進其途；圍地，吾將塞其闕；死地，吾將示之以不活。故兵之情：圍則禦，不得已則鬥，過則從。
+   149	
+   150	是故不知諸侯之謀者，不能豫交；不知山林、險阻、沮澤之形者，不能行軍；不用鄉導者，不能得地利。四五者，不知一，非霸王之兵也。夫霸王之兵，伐大國，則其衆不得聚；威加於敵，則其交不得合。是故不爭天下之交，不養天下之權，信己之私，威加於敵，則其城可拔，其國可隳。施無法之賞，懸無政之令。犯三軍之衆，若使一人。犯之以事，勿告以言；犯之以利，勿告以害。投之亡地然後存，陷之死地然後生。夫衆陷於害，然後能為勝敗。故為兵之事，在於佯順敵之意，併敵一向，千里殺將，是謂巧能成事者也。
+   151	
+   152	是故政舉之日，夷關折符，無通其使；厲於廊廟之上，以誅其事。敵人開闔，必亟入之，先其所愛，微與之期，踐墨隨敵，以決戰事。是故始如處女，敵人開戶；後如脫兔，敵不及拒。
+   153	
+   154	== 火攻第十二 ==
+   155	孫子曰：凡火攻有五：一曰火人，二曰火積，三曰火輜，四曰火庫，五曰火隊。行火必有因，烟火必素具。發火有時，起火有日。時者，天之燥也。日者，月在箕、壁、翼、軫也。凡此四宿者，風起之日也。
+   156	
+   157	凡火攻，必因五火之變而應之：火發於內，則早應之於外；火發而其兵靜者，待而勿攻，極其火力，可從而從之，不可從則止；火可發於外，無待於內，以時發之；火發上風，無攻下風；晝風久，夜風止。凡軍必知有五火之變，以數守之。故以火佐攻者明，以水佐攻者強。水可以絕，不可以奪。
+   158	
+   159	夫戰勝攻取，而不修其功者凶，命曰「費留」。故曰：明主慮之，良將修之，非利不動，非得不用，非危不戰。主不可以怒而興師，將不可以慍而致戰。合於利而動，不合於利而止。怒可以復喜，慍可以復悅，亡國不可以復存，死者不可以復生。故明主慎之，良將警之，此安國全軍之道也。
+   160	
+   161	== 用間第十三 ==
+   162	孫子曰：凡興師十萬，出征千里，百姓之費，公家之奉，日費千金，內外騷動，怠于道路，不得操事者，七十萬家。相守數年，以爭一日之勝，而愛爵祿百金，不知敵之情者，不仁之至也，非人之將也，非主之佐也，非勝之主也。故明君賢將，所以動而勝人，成功出於眾者，先知也。先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也。
+   163	
+   164	故用間有五：有鄉間，有內間，有反間，有死間，有生間。五間俱起，莫知其道，是謂「神紀」，人君之寶也。鄉間者，因其鄉人而用之；內間者，因其官人而用之；反間者，因其敵間而用之；死間者，為誑事於外，令吾間知之，而傳於敵間也；生間者，反報也。
+   165	
+   166	故三軍之事，莫親於間，賞莫厚於間，事莫密於間，非聖智不能用間，非仁義不能使間，非微妙不能得間之實。微哉！微哉！無所不用間也。間事未發而先聞者，間與所告者皆死。
+   167	
+   168	凡軍之所欲擊，城之所欲攻，人之所欲殺，必先知其守將、左右、謁者、門者、舍人之姓名，令吾間必索知之。必索敵人之間來間我者，因而利之，導而舍之，故反間可得而用也；因是而知之，故鄉間、內間可得而使也；因是而知之，故死間為誑事，可使告敵；因是而知之，故生間可使如期。五間之事，主必知之，知之必在於反間，故反間不可不厚也。
+   169	
+   170	昔殷之興也，伊摯在夏；周之興也，呂牙在殷。故明君賢將，能以上智為間者，必成大功。此兵之要，三軍之所恃而動也。
+   171	
+   172	== 答話 ==
+   173	「吳王謂子胥、孫武曰：『始子言郢不可入，今果何如？』二將曰：『夫戰，借勝以成其威，非常勝之道。』吳王曰：『何謂也？』二將曰：『楚之為兵，天下彊敵也。今臣與之爭鋒，十亡一存，而王入郢者，天也，臣不敢必。』吳王曰：『吾欲復擊楚，奈何而有功？』伍胥、孫武曰：『囊瓦者，貪而多過於諸侯，而唐、蔡怨之。王必伐，得唐、蔡。』」
+   174	
+   175	吳王問孫武曰：「散地士卒顧家，不可與戰，則必固守不出。若敵攻我小城，掠吾田野，禁吾樵採，塞吾要道，待吾空虛而急來攻，則如之何？」武曰：「敵人深入吾都，多背城邑，士卒以軍為家，專志輕鬥。吾兵在國，安土懷生，以陣則不堅，以鬥則不勝，當集人合衆，聚穀蓄帛，保城備險，遣輕兵絶其糧道，彼挑戰不得，轉輸不至，野無所掠，三軍困餒，因而誘之，可以有功。若與野戰，則必因勢，依險設伏，無險則隱於天氣陰晦昏霧，出其不意，襲擊懈怠，可以有功。」
+   176	
+   177	吳王問孫武曰：「吾至輕地，始入敵境，士卒思還，難進易退，未背險阻，三軍恐懼，大將欲進，士卒欲退，上下異心，敵守其城壘，整其車騎，或當吾前，或擊吾後，則如之何？」武曰：「軍至輕地，士卒未專，以入為務。無以戰為故，無近其名城，無由其通路，設疑徉惑，示若將去，乃選驍騎，銜枚先入，掠其牛馬六畜。三軍見得，進乃不懼。分吾良卒，密有所伏。敵人若來，擊之勿疑。若其不至，舍之而去。」
+   178	
+   179	吳王問孫武曰：「爭地，敵先至，據要保利，簡兵練卒，或出或守，以備我奇，則如之何？」武曰：「爭地之法，讓之者得，爭之者失。敵得其處，慎勿攻之。引而佯走，建旗鳴鼓，趨其所愛，曳柴揚塵，惑其耳目。分吾良卒，密有所伏，敵必出救。人慾我與，人棄吾取。此爭先之道。若我先至而敵用此術，則選吾銳卒，固守其所，輕兵追之，分伏險阻。敵人還鬥，伏兵旁起，此全勝之道也。」
+   180	
+   181	吳王問孫武曰：「交地，吾將絶敵，令不得來，必全吾邊城，修其所備，深絶通道，固其隘塞。若不先圖，敵人已備，彼可得來，而吾不可往，為寡又均，則如之何？」武曰：「既我不可以往彼可以來，吾分卒匿之，守而易怠，示其不能，敵人且至，設伏隱廬，出其不意，可以有功也。」
+   182	
+   183	吳王問孫武曰：「衢地必先，吾道遠，發後，雖馳車驟馬，至不能先，則如之何？」武曰：「諸侯參屬，其道四通，我與敵相當，而傍有國。所謂先者，必重幣輕使，約和傍國，交親結恩，兵雖後至，為以屬矣。簡兵練卒，阻利而處，親吾軍事，實吾資糧，令吾車騎出入膽候。我有衆助，彼失其黨，諸國犄角，震鼓齊攻，敵人驚恐，莫知所當。」
+   184	
+   185	吳王問孫武曰：「吾引兵深入重地，多所逾越，糧道絶塞，設欲歸還，勢不可過，欲食於敵，持兵不失，則如之何？」武曰：「凡居重地，士卒輕勇，轉輪不通，則掠以繼食。下得粟帛，皆貢於上，多者有賞，士無歸意。若欲還出，切實戒備，深溝高壘，示敵且久，敵疑通途，私除要害之道，乃令輕車銜枚而行，塵埃氣揚，以牛馬為餌。敵人若出，鳴鼓隨之，陰伏吾士，與之中期。內外相應，其敗可知。」
+   186	
+   187	吳王問孫武曰：「吾入圮地，山川險阻，難從之道，行久卒勞，敵在吾前，而伏吾後，營居吾左，而守吾右，良車驍騎，要吾隘道，則如之何？」武曰：「先進輕車，去軍十裏，與敵相候。接期險阻，或分而左，或分而右，大將四觀，擇空而取，皆會中道，倦而乃止。」
+   188	吳王問孫武曰：「吾入圍地，前有強敵，後有險難，敵絶糧道，利我走勢，敵鼓噪不進，以觀吾能，則如之何？」武曰：「圍地之宜，必塞其闕，示無所往，則以軍？家，萬人同心。三軍齊力，並炊數日，無見火煙，故？毀亂寡弱之形，敵人見我，備之必輕。告勵士卒，令其奮怒。陣伏良卒，左右險阻，擊鼓而出，敵人若當，疾擊務突，前鬥後拓，左右犄角。」
+   189	
+   190	又問曰：「敵在吾圍，伏而深謀，示我以利，縈我以旗，紛紛若亂，不知所之，奈何？」武曰：「千人操旌，分塞要道，輕兵進挑，陣而勿搏，交而勿去，此敗謀之法。」
+   191	
+   192	又曰：「軍入敵境，敵人固壘不戰，士卒思歸，欲退且難，謂之輕地。當選驍騎伏要路，我退敵追，來則擊之也。」
+   193	
+   194	吳王問孫武曰：「吾師出境，軍於敵人之地，敵人大至，圍我數重。欲突以出，四塞不通，欲勵士勵衆，使之投命潰圍，則如之何？」武曰：「深溝高壘，示衆守備，安靜勿動，以隱吾能，告令三軍，示不得已，殺牛燔車，以饗吾士，燒盡糧食，填夷井實，割發捐冠，絶去生慮，將無餘謀，士有死志，於是砥甲礪刃，並氣一力，或攻兩勞，震鼓疾噪，敵人亦懼，莫知所當，銳卒分兵，疾攻其後，此是失道而求生。故曰：困而不謀者窮，窮而不戰者亡。」吳王曰：「若我圍敵，則如之何？」武曰：「山峻谷險，難以逾越，謂之窮寇。擊之之法，伏卒隱廬，開其去道，示其走路，求生逃出，必無鬥志。因而擊之，雖衆必破。《兵法》又曰：若敵人在死地，士卒勇氣，欲擊之法，順而勿抗，陰守其利，絶其糧道，恐有奇隱而不睹，使吾弓弩俱守其所。」按︰何氏引此文，亦云「兵法曰」，則知問答之詞亦在八十二篇之內也。
+   195	
+   196	吳王問孫武曰：「敵勇不懼，驕而無虞，兵眾而強，圖之奈何？」武曰：「詘而待之，以順其意，令無省覺，以益其懈怠。因敵遷移，潛伏候待，前行不瞻，後往不顧，中而擊之，雖衆可取。攻驕之道，不可爭鋒。」
+   197	
+   198	吳王問孫武曰：「敵人保據山險，擅利而處之，糧食又足，挑之則不出，乘間則侵掠，為之奈何？」武曰：「分兵守要，謹備勿懈；潛探其情，密候其怠；以利誘之，禁其樵採。久無所得，自然變改；待離其固，奪其所愛。敵據險隘，我能破之也。」
+   199	
+   200	孫子曰：「將者︰智也，仁也，敬也，信也，勇也，嚴也。」是故智以折敵，仁以附衆，敬以招賢，信以必賞，勇以益氣，嚴以一令。故折敵，則能合變；衆附，則思力戰；賢智集，則陰謀利；賞罰必，則士盡力；氣勇益，則兵威令自倍；威令一，則惟將所使。
+   201	
+   202	《孫子占》曰：「三軍將行，其旌旗從容以向前，是為天送，必亟擊之，得其大將。三軍將行，其旌旗墊然音店若雨，是為天霑，其帥失。三軍將行，旌旗亂於上，東西南北無所主方，其軍不還。三軍將陣，雨師，是為浴師，勿用陣戰。三軍將戰，有云其上而赤，勿用陣，先陣戰者，莫復其迹。三軍方行，大風飄起於軍前，右周絶軍，其將亡；右周中，其師得糧。」
+   203	
+   204	又按︰《北堂書鈔》引《孫子兵法》云︰「貴之而無驕，委之而不專，扶之而無隱，危之而不懼。故良將之動心，猶璧玉之不可污也。」《太平御覽》以為出諸葛亮《兵要》。又引《孫子兵法祕要》云︰「良將思計如飢，所以戰必勝，攻必克也。」按︰《兵法祕要》，孫子無其書。魏武有《兵法接要》一卷，或亦名為《孫子兵法接要》，猶魏武所作《兵法》，亦名為《續孫子兵法》也。《北堂書鈔》又引《孫子兵法論》云︰「非文無以平治，非武無以治亂。善用兵者，有三畧焉︰上畧伐智，中畧伐義，下畧伐勢。」按︰此亦不似孫武語，蓋後世兵多祖孫武，故作《兵法論》，即名為《孫子兵法論》也。附識於此，以備考。
+   205	
+   206	{{gototop}}
+   207	
+   208	[[Category:兵法]]
+   209	[[Category:武經七書]]
+
+codex
+My reading so far: most Chinese quotations are present, but several English rules add ordered steps, guarantees, or comparisons the text does not state. I also found corrupted text in item 12’s quotation and a claim in Gaps that conflicts with the local 答話 section.
+exec
+/bin/bash -lc "nl -ba runs/20261013-four-seats/sources/sun-tzu/史記_卷065.txt; rg -n '日費|先知|九地|孫子占|非仁義|故兵聞拙速|九變|無恒形|治氣|五危|吳問' runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+     1	{{header2
+     2	| title    = [[../]]
+     3	| section  = 卷六十五 孫子吳起列傳 第五
+     4	| author   = 司馬遷
+     5	| previous = [[../卷064|司馬穰苴列傳第四]]
+     6	| next     = [[../卷066|伍子胥列傳第六]]
+     7	| notes    = [[史記三家註/卷065|註釋版]]
+     8	}}__TOC__
+     9	
+    10	==孫武==
+    11	{{wikipedia|孫武}}
+    12	
+    13	孫子武者，齊人也。以兵法見於吳王闔廬。闔廬曰：「子之十三篇，吾盡觀之矣，可以小試勒兵乎？」對曰：「可。」闔廬曰：「可試以婦人乎？」曰：「可。」於是許之，出宮中美女，得百八十人。孫子分為二隊，以王之寵姬二人各為隊長，皆令持戟。令之曰：「汝知而心與左右手背乎？」婦人曰：「知之。」孫子曰：「前，則視心；左，視左手；右，視右手；後，即視背。」婦人曰：「諾。」約束既布，乃設鈇鉞，即三令五申之。於是鼓之右，婦人大笑。孫子曰：「約束不明，申令不熟，將之罪也。」復三令五申而鼓之左，婦人復大笑。孫子曰：「約束不明，申令不熟，將之罪也；既已明而不如法者，吏士之罪也。」乃欲斬左右隊長。吳王從臺上觀，見且斬愛姬，大駭。趣使使下令曰：「寡人已知將軍能用兵矣。寡人非此二姬，食不甘味，願勿斬也。」孫子曰：「臣既已受命為將，將在軍，君命有所不受。」遂斬隊長二人以徇。用其次為隊長，於是復鼓之。婦人左右前後跪起皆中規矩繩墨，無敢出聲。於是孫子使使報王曰：「兵既整齊，王可試下觀之，唯王所欲用之，雖赴水火猶可也。」吳王曰：「將軍罷休就舍，寡人不願下觀。」孫子曰：「王徒好其言，不能用其實。」於是闔廬知孫子能用兵，卒以為將。西破彊楚，入郢，北威齊晉，顯名諸侯，孫子與有力焉。
+    14	
+    15	==孫臏==
+    16	{{wikipedia|孫臏}}
+    17	
+    18	孫武既死，後百餘歲有孫臏。臏生阿鄄之閒，臏亦孫武之後世子孫也。孫臏嘗與龐涓俱學兵法。龐涓既事魏，得為惠王將軍，而自以為能不及孫臏，乃陰使召孫臏。臏至，龐涓恐其賢於己，疾之，則以法刑斷其兩足而黥之，欲隱勿見。
+    19	
+    20	齊使者如梁，孫臏以刑徒陰見，說齊使。齊使以為奇，竊載與之齊。齊將田忌善而客待之。忌數與齊諸公子馳逐重射。孫子見其馬足不甚相遠，馬有上、中、下、輩。於是孫子謂田忌曰：「君弟重射，臣能令君勝。」田忌信然之，與王及諸公子逐射千金。及臨質，孫子曰：「今以君之下駟與彼上駟，取君上駟與彼中駟，取君中駟與彼下駟。」既馳三輩畢，而田忌一不勝而再勝，卒得王千金。於是忌進孫子於威王。威王問兵法，遂以為師。
+    21	
+    22	其後魏伐趙，趙急，請救於齊。齊威王欲將孫臏，臏辭謝曰：「刑餘之人不可。」於是乃以田忌為將，而孫子為師，居輜車中，坐為計謀。田忌欲引兵之趙，孫子曰：「夫解雜亂紛糾者不控棬，救鬬者不搏撠，批亢擣虛，形格勢禁，則自為解耳。今梁趙相攻，輕兵銳卒必竭於外，老弱罷於內。君不若引兵疾走大梁，據其街路，衝其方虛，彼必釋趙而自救。是我一舉解趙之圍而收獘於魏也。」田忌從之，魏果去邯鄲，與齊戰於桂陵，大破梁軍。
+    23	
+    24	後十三歲，魏與趙攻韓，韓告急於齊。齊使田忌將而往，直走大梁。魏將龐涓聞之，去韓而歸，齊軍既已過而西矣。孫子謂田忌曰：「彼三晉之兵素悍勇而輕齊，齊號為怯，善戰者因其勢而利導之。兵法，百里而趣利者蹶上將，五十里而趣利者軍半至。使齊軍入魏地為十萬灶，明日為五萬灶，又明日為三萬灶。」龐涓行三日，大喜，曰：「我固知齊軍怯，入吾地三日，士卒亡者過半矣。」乃棄其步軍，與其輕銳倍日并行逐之。孫子度其行，暮當至馬陵。馬陵道陜，而旁多阻隘，可伏兵，乃斫大樹白而書之曰「龐涓死于此樹之下」。於是令齊軍善射者萬弩，夾道而伏，期曰「暮見火舉而俱發」。龐涓果夜至斫木下，見白書，乃鉆火燭之。讀其書未畢，齊軍萬弩俱發，魏軍大亂相失。龐涓自知智窮兵敗，乃自剄，曰：「遂成豎子之名！」齊因乘勝盡破其軍，虜魏太子申以歸。孫臏以此名顯天下，世傳其兵法。
+    25	
+    26	==吳起==
+    27	{{wikipedia|吳起}}
+    28	
+    29	吳起者，衛人也，好用兵。嘗學於曾子，事魯君。齊人攻魯，魯欲將吳起，吳起取齊女為妻，而魯疑之。吳起於是欲就名，遂殺其妻，以明不與齊也。魯卒以為將。將而攻齊，大破之。
+    30	
+    31	魯人或惡吳起曰：「起之為人，猜忍人也。其少時，家累千金，游仕不遂，遂破其家，鄉黨笑之，吳起殺其謗己者三十餘人，而東出衛郭門。與其母訣，齧臂而盟曰：『起不為卿相，不復入衛。』遂事曾子。居頃之，其母死，起終不歸。曾子薄之，而與起絕。起乃之魯，學兵法以事魯君。魯君疑之，起殺妻以求將。夫魯小國，而有戰勝之名，則諸侯圖魯矣。且魯衛兄弟之國也，而君用起，則是棄衛。」魯君疑之，謝吳起。
+    32	
+    33	吳起於是聞魏文侯賢，欲事之。文侯問李克曰：「吳起何如人哉？」李克曰：「起貪而好色，然用兵司馬穰苴不能過也。」於是魏文侯以為將，擊秦，拔五城。
+    34	
+    35	起之為將，與士卒最下者同衣食。臥不設席，行不騎乘，親裹贏糧，與士卒分勞苦。卒有病疽者，起為吮之。卒母聞而哭之。人曰：「子卒也，而將軍自吮其疽，何哭為？」母曰：「非然也。往年吳公吮其父，其父戰不旋踵，遂死於敵。吳公今又吮其子，妾不知其死所矣。是以哭之。」
+    36	
+    37	文侯以吳起善用兵，廉平，盡能得士心，乃以為西河守，以拒秦、韓。魏文侯既卒，起事其子武侯。武侯浮西河而下，中流，顧而謂吳起曰：「美哉乎山河之固，此魏國之寶也！」起對曰：「在德不在險。昔三苗氏左洞庭，右彭蠡，德義不修，禹滅之。夏桀之居，左河濟，右泰華，伊闕在其南，羊腸在其北，修政不仁，湯放之。殷紂之國，左孟門，右太行，常山在其北，大河經其南，修政不德，武王殺之。由此觀之，在德不在險。若君不修德，舟中之人盡為敵國也。」武侯曰：「善。」
+    38	
+    39	（即封）吳起為西河守，甚有聲名。魏置相，相田文。吳起不悅，謂田文曰：「請與子論功，可乎？」田文曰：「可。」起曰：「將三軍，使士卒樂死，敵國不敢謀，子孰與起？」文曰：「不如子。」起曰：「治百官，親萬民，實府庫，子孰與起？」文曰：「不如子。」起曰：「守西河而秦兵不敢東鄉，韓趙賓從，子孰與起？」文曰：「不如子。」起曰：「此三者，子皆出吾下，而位加吾上，何也？」文曰：「主少國疑，大臣未附，百姓不信，方是之時，屬之於子乎？屬之於我乎？」起默然良久，曰：「屬之子矣。」文曰：「此乃吾所以居子之上也。」吳起乃自知弗如田文。
+    40	
+    41	田文既死，公叔為相，尚魏公主，而害吳起。公叔之僕曰：「起易去也。」公叔曰：「柰何？」其僕曰：「吳起為人節廉而自喜名也。君因先與武侯言曰：『夫吳起賢人也，而侯之國小，又與彊秦壤界，臣竊恐起之無留心也。』武侯即曰：『柰何？』君因謂武侯曰：『試延以公主，起有留心則必受之。無留心則必辭矣。以此卜之。』君因召吳起而與歸，即令公主怒而輕君。吳起見公主之賤君也，則必辭。」於是吳起見公主之賤魏相，果辭魏武侯。武侯疑之而弗信也。吳起懼得罪，遂去，即之楚。
+    42	
+    43	楚悼王素聞起賢，至則相楚。明法審令，捐不急之官，廢公族疏遠者，以撫養戰鬬之士。要在彊兵，破馳說之言從橫者。於是南平百越；北并陳蔡，卻三晉；西伐秦。諸侯患楚之彊。故楚之貴戚盡欲害吳起。及悼王死，宗室大臣作亂而攻吳起，吳起走之王尸而伏之。擊起之徒因射刺吳起，并中悼王。悼王既葬，太子立，乃使令尹盡誅射吳起而并中王尸者。坐射起而夷宗死者七十餘家。
+    44	
+    45	==太史公曰==
+    46	
+    47	太史公曰：世俗所稱師旅，皆道孫子十三篇，[[吳起兵法]]，世多有，故弗論，論其行事所施設者。語曰：「能行之者未必能言，能言之者未必能行。」孫子籌策龐涓明矣，然不能蚤救患於被刑。吳起說武侯以形勢不如德，然行之於楚，以刻暴少恩亡其軀。悲夫！
+    48	
+    49	[[fr:Shiji/LXV]]
+21:孫子曰：凡用兵之法，馳車千駟，革車千乘，帶甲十萬，千里饋糧，則內外之費，賓客之用，膠漆之材，車甲之奉，日費千金，然後十萬之師舉矣。其用戰也，貴勝，久則鈍兵挫銳，攻城則力屈，久暴師則國用不足。夫鈍兵挫銳，屈力殫貨，則諸侯乘其弊而起，雖有智者，不能善其後矣。故兵聞拙速，未睹巧之久也。夫兵久而國利者，未之有也。故不盡知用兵之害者，則不能盡知用兵之利也。
+53:不可勝者，守也；可勝者，攻也。守則不足，攻則有餘。善守者，藏於九地之下；善攻者，動於九天之上，故能自保而全勝也。
+89:夫兵形象水，水之行，避高而趨下；兵之勝，避實而擊虛。水因地而制行，兵因敵而制勝。故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。故五行無常勝，四時無常位，日有短長，月有死生。
+96:故兵以詐立，以利動，以分合為變者也。故其疾如風，其徐如林，侵掠如火，不動如山，難知如陰，動如雷震。掠鄉分衆，廓地分利，懸權而動。先知迂直之計者勝，此軍爭之法也。
+100:三軍可奪氣，將軍可奪心。是故朝氣銳，晝氣惰，暮氣歸。故善用兵者，避其銳氣，擊其惰歸，此治氣者也；以治待亂，以靜待嘩，此治心者也；以近待遠，以佚待勞，以飽待饑，此治力者也；無邀正正之旗，無擊堂堂之陣，此治變者也。
+104:== 九變第八 ==
+105:孫子曰：凡用兵之法，將受命於君，合軍聚眾。圮地無舍，衢地合交，絕地無留，圍地則謀，死地則戰。途有所不由，軍有所不擊，城有所不攻，地有所不爭，君命有所不受。故將通於九變之利者，知用兵矣；將不通於九變之利，雖知地形，不能得地之利矣；治兵不知九變之術，雖知地利，不能得人之用矣。
+111:故將有五危︰必死，可殺也﹔必生，可虜也﹔忿速，可侮也﹔廉潔，可辱也﹔愛民，可煩也。凡此五者，將之過也，用兵之災也。覆軍殺將，必以五危，不可不察也。
+137:== 九地第十一 ==
+146:將軍之事，靜以幽，正以治。能愚士卒之耳目，使之無知；易其事，革其謀，使人無識；易其居，迂其途，使人不得慮。帥與之期，如登高而去其梯；帥與之深入諸侯之地，而發其機，焚舟破釜，若驅群羊。驅而往，驅而來，莫知所之。聚三軍之衆，投之於險，此謂將軍之事也。九地之變，屈伸之利，人情之理，不可不察也。
+162:孫子曰：凡興師十萬，出征千里，百姓之費，公家之奉，日費千金，內外騷動，怠于道路，不得操事者，七十萬家。相守數年，以爭一日之勝，而愛爵祿百金，不知敵之情者，不仁之至也，非人之將也，非主之佐也，非勝之主也。故明君賢將，所以動而勝人，成功出於眾者，先知也。先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也。
+166:故三軍之事，莫親於間，賞莫厚於間，事莫密於間，非聖智不能用間，非仁義不能使間，非微妙不能得間之實。微哉！微哉！無所不用間也。間事未發而先聞者，間與所告者皆死。
+168:凡軍之所欲擊，城之所欲攻，人之所欲殺，必先知其守將、左右、謁者、門者、舍人之姓名，令吾間必索知之。必索敵人之間來間我者，因而利之，導而舍之，故反間可得而用也；因是而知之，故鄉間、內間可得而使也；因是而知之，故死間為誑事，可使告敵；因是而知之，故生間可使如期。五間之事，主必知之，知之必在於反間，故反間不可不厚也。
+202:《孫子占》曰：「三軍將行，其旌旗從容以向前，是為天送，必亟擊之，得其大將。三軍將行，其旌旗墊然音店若雨，是為天霑，其帥失。三軍將行，旌旗亂於上，東西南北無所主方，其軍不還。三軍將陣，雨師，是為浴師，勿用陣戰。三軍將戰，有云其上而赤，勿用陣，先陣戰者，莫復其迹。三軍方行，大風飄起於軍前，右周絶軍，其將亡；右周中，其師得糧。」
+
+codex
+# sun-tzu — codex review of the top 12
+
+## Per item
+
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+| 1 | ok | issue | issue | issue | change | Five factors, seven comparisons and campaign costs are supported. But the source does not prescribe “three arms, then a personnel decision,” a duration cap, or leaving **if the count fails**: 留／去 follows listening to the plan. The daily cost is **千金**, not ten thousand. Separate the sourced assessment from the assembled algorithm; distinguish its scope from #2. 始計 [lines 12–18](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:12), 作戰 [line 21](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:21). |
+| 2 | issue | issue | issue | issue | change | Chinese quotations are present. “吾卒之可以擊” means our troops **can attack**, not “can be struck.” “每戰必殆” states danger, not inevitable death; “一勝一負” supplies no measured coin-flip probability. The third half-victory case includes knowledge of both armies but ignorance of terrain, defeating the gloss “whichever side you know.” The source gives criteria and an authority rule, not the claimed ordered grading algorithm. Overlaps #1. 謀攻 [lines 46–48](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:46), 地形 [lines 131–135](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:131). |
+| 3 | ok | issue | ok | issue | change | Preparation before seeking victory is supported. “Cannot make the enemy **necessarily** beatable” does not forbid influencing their vulnerability: “以利動之” expressly does that. “無智名，無勇功” concerns uncelebrated, easy victories; it does not say leave “nothing for the enemy to study.” Remove that corollary, which overlaps #5. 軍形 [lines 51–57](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:51), 兵勢 [line 70](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:70). |
+| 4 | issue | issue | ok | ok | change | The preservation preference and hierarchy are explicit. They do not require trying each option sequentially or ranking damage **before difficulty**. “距闉，又三月” concerns siege earthworks, not closing a breach. The English quotation also changes “毀人之國而非久也” into “does not wear down the state,” losing destruction without protracted campaigning. Keep the preference, correct the translation and remove the invented comparison procedure. 謀攻 [lines 34–38](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:34). |
+| 5 | ok | issue | ok | ok | change | Deception and concealing the means of victory are supported. “If your real capability is legible, you lose it” is an added guarantee. Only the opening four clauses explicitly advertise opposites; preparing against solidity and avoiding strength are different responses. “Then let them see your form” reverses “形人而我無形.” “Nobody knows the shape in which you won” also contradicts the preceding “人皆知我所以勝之形”: visible winning form differs from the means that produced victory. 始計 [line 16](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:16), 虛實 [lines 83–87](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:83). |
+| 6 | issue | issue | ok | ok | change | Initiative, rest and attacking what must be rescued are supported. “勞” means fatigued, not having “laboured for nothing.” “乖其所之” concerns frustrating or diverting the enemy’s direction; neither “their orders forbid them to come” nor the English quotation’s “I go where their orders carry them” follows. Keep the initiative rule without inventing enemy orders. 虛實 [lines 75–81](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:75). |
+| 7 | ok | issue | ok | ok | change | Seeking advantage through 勢 and organizing large forces are supported. The English adds nonexistent links: “disorder produces panic” and “calm produces courage.” The text says “亂生於治，怯生於勇，弱生於強,” in the context of apparent disorder without actual disorder. A universal claim that character is an output exceeds this passage; “擇人” also explicitly retains personnel selection. 兵勢 [lines 62–72](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:62). |
+| 8 | ok | issue | ok | ok | change | The advantage gate, anger prohibition and irreversibility argument are explicit. “不修其功者凶” does **not** compare unfinished victory with defeat, say that nothing is held, or assign a formal burden of proof. Retain the gate and warning; label broader applications as interpretation. The repeated advantage sentence is correctly located in 九地 and 火攻. 九地 [line 140](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:140), 火攻 [line 159](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:159). |
+| 9 | issue | issue | issue | issue | change | The Chinese is present, but the first English check substitutes order/disorder for avoiding sharp morale and striking slack morale. “以治待亂” means awaiting their disorder with your own order. No mandatory check order is stated. The quoted closing list contains **eight** prescriptions, including the positive “圍師必闕,” not nine refusals. This is a set of conditional decision rules; its terrain component overlaps #10. 軍爭 [lines 100–102](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:100). |
+| 10 | ok | issue | ok | ok | change | A terrain-to-response algorithm is a defensible kind. “One prescribed thing … and nothing else” is contradicted by additional dispositions for those same terrains. The later invader definitions enumerate six situations, not a second set of nine; the ensuing nine dispositions are complementary instructions, not simply answers from the opposite side. Entrapment and fighting are supported, but “exactly when to advance” adds a universal action. 九地 [lines 138–150](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:138). |
+| 11 | ok | issue | ok | ok | change | The probes and sign table are present; 飢／饑 is an orthographic difference. An observation algorithm is a reasonable classification. However, “probe, **then** read signs, **before you judge anything**” combines separate chapters into an unstated mandatory sequence. 動靜 concerns movement and stillness, not necessarily tempo; 死生之地 does not specifically say ground is already killing them. Keep the diagnostic actions without those restrictions. 虛實 [line 87](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:87), 行軍 [line 120](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:120). |
+| 12 | issue | issue | issue | issue | change | The printed quotation contains foreign inserted strings absent from the source. Two ordered passes and benefit/harm columns are invented. The source calls the five tendencies “五危” and “將之過”; anger and haste are not presented as virtues. “患可解” states that trouble **can** be resolved, not that it is already dissolved. Separate balanced deliberation from the vulnerability checks; classify them as decision rules unless an algorithm is explicitly supplied as interpretation. 九變 [lines 107–111](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:107). |
+
+## Claims elsewhere in the file that the sources contradict
+
+- **Review #4:** “The received text does not say ‘be quick’” overlooks “故兵聞拙速，未睹巧之久也” and “故兵之情主速.” Speed has conditions and costs, but is expressly advocated. 軍爭 is also broader than march speed: it covers deception, signals, morale and attack restrictions. 作戰 [line 21](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:21), 九地 [line 140](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:140), 軍爭 [lines 96–102](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:96).
+- **Review #8:** “Every virtue is a lever against you” generalizes five specified dangers into all virtues. The source explicitly calls these five “將之過.” 九變 [line 111](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:111).
+- **Review #10:** Uncompleted victory being “worse than a plan that failed” is absent; the passage calls it 凶 without that comparison. 火攻 [line 159](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:159).
+- **What the top 10 missed:** “You are protected for it” exceeds “退不避罪,” which says the general does not avoid blame or punishment when retreating. “Morale … is a function of time since the last engagement” introduces an elapsed-time variable absent from 朝／晝／暮. 地形 [line 131](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:131), 軍爭 [line 100](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:100).
+- **Near misses:** “非仁義不能用間” misquotes “非仁義不能**使**間”; 用間 belongs to the preceding 聖智 clause. 用間 [line 166](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:166).
+- **Gaps:** 答話 is not entirely the listed eight terrain exchanges plus entering 郢, and does not end at the 何氏 note. It continues with dead-ground tactics, attacks against arrogant or entrenched enemies, generalship qualities, 《孫子占》 material and editorial attribution cautions. [Lines 194–204](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:194).
+- **Not checkable here:** The claims about 〈吳問〉 belonging to the 曹操 edition, its bamboo title and the cited scholars are unsupported by the supplied files. Likewise, these files cannot verify modern historical controversy, the author’s fetching process, or collation against older witnesses.
+
+## Missing
+
+- **Human intelligence as the basis of foreknowledge:** “先知者 … 必取於人，知敵之情者也,” followed by five spy types and the central role of recruited enemy spies. Observation in #11 does not cover this sourcing rule or intelligence system. 用間 [lines 162–168](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:162).
+- **Adaptation without a fixed winning form:** “兵無成勢，無恒形，能因敵變化而取勝者，謂之神.” This supplies a clearer rule than #5’s promise of an uncopyable victory or #10’s exclusive fixed response. 虛實 [lines 87–89](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:87).
+- **Combining ordinary and extraordinary forces:** “以正合，以奇勝” and “奇正相生” describe a distinct combat method omitted from the twelve. 兵勢 [line 64](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:64).
+- **Care joined to enforceable discipline:** “卒未親附而罰之，則不服” and “厚而不能使，愛而不能令 … 不可用也.” These qualify #7’s broad instruction to change conditions rather than people. 行軍 [line 124](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:124), 地形 [line 133](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:133).
+
+## Overall
+
+**My reading:** All twelve retain a sourced core, but each needs correction because the English adds structure, changes meaning, or overstates what follows; item 12 also contains a corrupted quotation. **My reading:** I performed this comparison against the supplied texts; it establishes local textual support, without independently establishing historical authorship or the ranking. **Not measured:** The effectiveness of these rules as an agent workflow remains untested here.
+tokens used
+49,300
+# sun-tzu — codex review of the top 12
+
+## Per item
+
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+| 1 | ok | issue | issue | issue | change | Five factors, seven comparisons and campaign costs are supported. But the source does not prescribe “three arms, then a personnel decision,” a duration cap, or leaving **if the count fails**: 留／去 follows listening to the plan. The daily cost is **千金**, not ten thousand. Separate the sourced assessment from the assembled algorithm; distinguish its scope from #2. 始計 [lines 12–18](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:12), 作戰 [line 21](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:21). |
+| 2 | issue | issue | issue | issue | change | Chinese quotations are present. “吾卒之可以擊” means our troops **can attack**, not “can be struck.” “每戰必殆” states danger, not inevitable death; “一勝一負” supplies no measured coin-flip probability. The third half-victory case includes knowledge of both armies but ignorance of terrain, defeating the gloss “whichever side you know.” The source gives criteria and an authority rule, not the claimed ordered grading algorithm. Overlaps #1. 謀攻 [lines 46–48](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:46), 地形 [lines 131–135](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:131). |
+| 3 | ok | issue | ok | issue | change | Preparation before seeking victory is supported. “Cannot make the enemy **necessarily** beatable” does not forbid influencing their vulnerability: “以利動之” expressly does that. “無智名，無勇功” concerns uncelebrated, easy victories; it does not say leave “nothing for the enemy to study.” Remove that corollary, which overlaps #5. 軍形 [lines 51–57](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:51), 兵勢 [line 70](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:70). |
+| 4 | issue | issue | ok | ok | change | The preservation preference and hierarchy are explicit. They do not require trying each option sequentially or ranking damage **before difficulty**. “距闉，又三月” concerns siege earthworks, not closing a breach. The English quotation also changes “毀人之國而非久也” into “does not wear down the state,” losing destruction without protracted campaigning. Keep the preference, correct the translation and remove the invented comparison procedure. 謀攻 [lines 34–38](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:34). |
+| 5 | ok | issue | ok | ok | change | Deception and concealing the means of victory are supported. “If your real capability is legible, you lose it” is an added guarantee. Only the opening four clauses explicitly advertise opposites; preparing against solidity and avoiding strength are different responses. “Then let them see your form” reverses “形人而我無形.” “Nobody knows the shape in which you won” also contradicts the preceding “人皆知我所以勝之形”: visible winning form differs from the means that produced victory. 始計 [line 16](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:16), 虛實 [lines 83–87](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:83). |
+| 6 | issue | issue | ok | ok | change | Initiative, rest and attacking what must be rescued are supported. “勞” means fatigued, not having “laboured for nothing.” “乖其所之” concerns frustrating or diverting the enemy’s direction; neither “their orders forbid them to come” nor the English quotation’s “I go where their orders carry them” follows. Keep the initiative rule without inventing enemy orders. 虛實 [lines 75–81](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:75). |
+| 7 | ok | issue | ok | ok | change | Seeking advantage through 勢 and organizing large forces are supported. The English adds nonexistent links: “disorder produces panic” and “calm produces courage.” The text says “亂生於治，怯生於勇，弱生於強,” in the context of apparent disorder without actual disorder. A universal claim that character is an output exceeds this passage; “擇人” also explicitly retains personnel selection. 兵勢 [lines 62–72](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:62). |
+| 8 | ok | issue | ok | ok | change | The advantage gate, anger prohibition and irreversibility argument are explicit. “不修其功者凶” does **not** compare unfinished victory with defeat, say that nothing is held, or assign a formal burden of proof. Retain the gate and warning; label broader applications as interpretation. The repeated advantage sentence is correctly located in 九地 and 火攻. 九地 [line 140](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:140), 火攻 [line 159](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:159). |
+| 9 | issue | issue | issue | issue | change | The Chinese is present, but the first English check substitutes order/disorder for avoiding sharp morale and striking slack morale. “以治待亂” means awaiting their disorder with your own order. No mandatory check order is stated. The quoted closing list contains **eight** prescriptions, including the positive “圍師必闕,” not nine refusals. This is a set of conditional decision rules; its terrain component overlaps #10. 軍爭 [lines 100–102](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:100). |
+| 10 | ok | issue | ok | ok | change | A terrain-to-response algorithm is a defensible kind. “One prescribed thing … and nothing else” is contradicted by additional dispositions for those same terrains. The later invader definitions enumerate six situations, not a second set of nine; the ensuing nine dispositions are complementary instructions, not simply answers from the opposite side. Entrapment and fighting are supported, but “exactly when to advance” adds a universal action. 九地 [lines 138–150](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:138). |
+| 11 | ok | issue | ok | ok | change | The probes and sign table are present; 飢／饑 is an orthographic difference. An observation algorithm is a reasonable classification. However, “probe, **then** read signs, **before you judge anything**” combines separate chapters into an unstated mandatory sequence. 動靜 concerns movement and stillness, not necessarily tempo; 死生之地 does not specifically say ground is already killing them. Keep the diagnostic actions without those restrictions. 虛實 [line 87](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:87), 行軍 [line 120](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:120). |
+| 12 | issue | issue | issue | issue | change | The printed quotation contains foreign inserted strings absent from the source. Two ordered passes and benefit/harm columns are invented. The source calls the five tendencies “五危” and “將之過”; anger and haste are not presented as virtues. “患可解” states that trouble **can** be resolved, not that it is already dissolved. Separate balanced deliberation from the vulnerability checks; classify them as decision rules unless an algorithm is explicitly supplied as interpretation. 九變 [lines 107–111](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:107). |
+
+## Claims elsewhere in the file that the sources contradict
+
+- **Review #4:** “The received text does not say ‘be quick’” overlooks “故兵聞拙速，未睹巧之久也” and “故兵之情主速.” Speed has conditions and costs, but is expressly advocated. 軍爭 is also broader than march speed: it covers deception, signals, morale and attack restrictions. 作戰 [line 21](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:21), 九地 [line 140](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:140), 軍爭 [lines 96–102](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:96).
+- **Review #8:** “Every virtue is a lever against you” generalizes five specified dangers into all virtues. The source explicitly calls these five “將之過.” 九變 [line 111](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:111).
+- **Review #10:** Uncompleted victory being “worse than a plan that failed” is absent; the passage calls it 凶 without that comparison. 火攻 [line 159](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:159).
+- **What the top 10 missed:** “You are protected for it” exceeds “退不避罪,” which says the general does not avoid blame or punishment when retreating. “Morale … is a function of time since the last engagement” introduces an elapsed-time variable absent from 朝／晝／暮. 地形 [line 131](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:131), 軍爭 [line 100](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:100).
+- **Near misses:** “非仁義不能用間” misquotes “非仁義不能**使**間”; 用間 belongs to the preceding 聖智 clause. 用間 [line 166](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:166).
+- **Gaps:** 答話 is not entirely the listed eight terrain exchanges plus entering 郢, and does not end at the 何氏 note. It continues with dead-ground tactics, attacks against arrogant or entrenched enemies, generalship qualities, 《孫子占》 material and editorial attribution cautions. [Lines 194–204](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:194).
+- **Not checkable here:** The claims about 〈吳問〉 belonging to the 曹操 edition, its bamboo title and the cited scholars are unsupported by the supplied files. Likewise, these files cannot verify modern historical controversy, the author’s fetching process, or collation against older witnesses.
+
+## Missing
+
+- **Human intelligence as the basis of foreknowledge:** “先知者 … 必取於人，知敵之情者也,” followed by five spy types and the central role of recruited enemy spies. Observation in #11 does not cover this sourcing rule or intelligence system. 用間 [lines 162–168](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:162).
+- **Adaptation without a fixed winning form:** “兵無成勢，無恒形，能因敵變化而取勝者，謂之神.” This supplies a clearer rule than #5’s promise of an uncopyable victory or #10’s exclusive fixed response. 虛實 [lines 87–89](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:87).
+- **Combining ordinary and extraordinary forces:** “以正合，以奇勝” and “奇正相生” describe a distinct combat method omitted from the twelve. 兵勢 [line 64](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:64).
+- **Care joined to enforceable discipline:** “卒未親附而罰之，則不服” and “厚而不能使，愛而不能令 … 不可用也.” These qualify #7’s broad instruction to change conditions rather than people. 行軍 [line 124](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:124), 地形 [line 133](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt:133).
+
+## Overall
+
+**My reading:** All twelve retain a sourced core, but each needs correction because the English adds structure, changes meaning, or overstates what follows; item 12 also contains a corrupted quotation. **My reading:** I performed this comparison against the supplied texts; it establishes local textual support, without independently establishing historical authorship or the ranking. **Not measured:** The effectiveness of these rules as an agent workflow remains untested here.

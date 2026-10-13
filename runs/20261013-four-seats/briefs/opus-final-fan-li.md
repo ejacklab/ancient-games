@@ -1,0 +1,3 @@
+Read /home/smoke01/dev/ancient-games/runs/20261013-four-seats/briefs/agy-final-common.md and do what it says (it was written for agy; the task is the same for you).
+Your seat: fan-li. Files: runs/20261013-four-seats/identity/fan-li.md, top12/fan-li.md, codex-review/fan-li.md, sources/fan-li/.
+Differences for you: (1) write your answer to runs/20261013-four-seats/final-opus/fan-li.md and change no other file; (2) do NOT read runs/20261013-four-seats/final/ — another engine is doing the same task and your list must be independent of it; (3) use web search and fetch for the research. Return a 5-line summary: item count, counts of kept/corrected/merged/dropped, number of new items, biggest disagreement with codex if any.

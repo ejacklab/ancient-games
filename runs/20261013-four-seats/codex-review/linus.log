@@ -1,0 +1,1809 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a133ca-a079-7af1-98ce-998a93c524fc
+--------
+user
+Read /home/smoke01/dev/ancient-games/runs/20261013-four-seats/briefs/codex-review-linus.md and do what it says.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the folder instructions and the review brief, then carry out the review it specifies.
+exec
+/bin/bash -lc 'cat CLAUDE.md runs/20261013-four-seats/briefs/codex-review-linus.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `~/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+Read /home/smoke01/dev/ancient-games/runs/20261013-four-seats/briefs/codex-review-common.md and do what it says.
+Your seat: linus — list: runs/20261013-four-seats/top12/linus.md; sources: runs/20261013-four-seats/sources/linus/.
+
+exec
+/bin/bash -lc 'cat runs/20261013-four-seats/briefs/codex-review-common.md /home/smoke01/.agents/skills/coding-discipline/SKILL.md /home/smoke01/.agents/skills/requirement-check/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Codex review brief — the top 12, second engine
+
+You are an independent reviewer for EJ's Ancient Games project. Another engine (opencode, MiniMax) researched ONE
+person and produced their **top 12 mindsets, decision rules or algorithms**. Review it. You are read-only: write
+nothing; your final message is your review.
+
+Read:
+- the list under review: `runs/20261013-four-seats/top12/<seat>.md` (named in your seat brief)
+- the source texts: `runs/20261013-four-seats/sources/<seat>/` (see `sources/README.md`; in the Chinese wikitext,
+  `{{*|…}}` is a commentator's note, not the main text). Search them with `grep`/`rg`. You have no web access; if a
+  quote's source is not in this folder, say "not checkable here", do not guess.
+
+For each of the 12 items, judge four things:
+1. **Quote** — are the quoted words in the source, and spoken by this person (not a commentator, historian or
+   another speaker)?
+2. **Step** — does the plain-English rule actually follow from the quote, or does it add something the quote does not
+   say? This is the main question: a rule that reads well but is not in the words is the failure we are looking for.
+3. **Kind** — is "mindset / decision rule / algorithm" right?
+4. **Rank** — is it in the right place, or merged with / duplicating another item?
+
+Also check the file's **Gaps** and **Review of the top 10** sections for any claim that the source texts contradict.
+
+## Write exactly this (Markdown, no preamble)
+
+# <seat> — codex review of the top 12
+
+## Per item
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+One row per item. Quote/Step/Kind/Rank: `ok` · `issue` · `not checkable`. Verdict: `keep` · `change` · `drop`.
+
+## Claims elsewhere in the file that the sources contradict
+- ... (or "none found")
+
+## Missing
+Anything this person is clearly known for deciding by, that the 12 leave out — only if the source texts here show it.
+
+## Overall
+Two or three sentences. Label each conclusion `quoted`, `my reading` or `not measured`.
+---
+name: coding-discipline
+description: Baseline engineering discipline for any hands-on task in a repository. Use when writing, editing, refactoring, debugging or reviewing code, when running builds, tests or linters, when adding a dependency, or when preparing a git commit.
+---
+
+# Coding discipline
+
+Baseline rules for working in a repository. They apply regardless of language,
+framework or project.
+
+## Before changing anything
+
+- Read the actual file first. Never write or edit from an assumption about its contents.
+- Read a neighbouring example of the same kind of thing — a sibling module, an existing
+  test, an existing endpoint — and match it. The repository's own conventions outrank
+  your preferences on naming, formatting, typing, file layout and error style.
+- Confirm a dependency is already in use in the project, via its manifest, existing
+  imports or neighbouring code, before reaching for it. Do not add a new dependency to
+  solve something the existing ones already cover.
+
+## Keep the change minimal
+
+- Do the task that was asked. Not the adjacent task, not the cleanup you noticed on the
+  way past, not the refactor that would leave this nicer than you found it.
+- No speculative abstraction. Three similar lines beat a helper with one caller.
+- No error handling, fallbacks or validation for conditions that cannot occur. Validate
+  at boundaries only: user input, external APIs, data arriving from outside the process.
+- Comments explain *why*, and only where the code cannot carry it. No comment that
+  narrates what the next line does, and never a comment addressed to the reader about
+  the changes you are making.
+- Existing code you did not expect to find is someone's in-progress work. Leave it alone
+  unless the task requires otherwise, and stop to ask if it conflicts with what you were
+  asked to do.
+
+## Verify instead of assuming
+
+- Find the project's real check commands from its README, Makefile or package manifest.
+  Never assume `npm test`, `pytest` or `make build` is correct for this repo.
+- Run them after the change. A change you did not run is a change you did not finish.
+- Report what actually happened. If a check failed, show the failure. If you could not
+  run a check, say so and say why. Never describe unverified work as working, and never
+  skip, suppress or weaken a failing check to produce a clean result.
+
+## Git
+
+- Before committing, run `git status`, `git diff HEAD` and `git log -n 3` — to separate
+  your change from what was already in the working tree, and to match the repository's
+  commit message style.
+- Stage only the paths that belong to this change. No `git add -A` while unrelated
+  modifications are present.
+- Draft the commit message yourself, weighted toward why rather than what.
+- Never push, force-push, amend a published commit, delete a branch, or rewrite history
+  unless explicitly asked to in this conversation. Prior approval does not carry over to
+  a later commit.
+- Do not revert work that is not yours. Revert your own change only if it caused a
+  failure or you are asked to.
+- For history questions, `git log` and `git blame` are authoritative. Run the command
+  rather than reasoning from memory of the codebase.
+
+## When blocked or unsure
+
+- Ask one focused question when only the user can decide, and keep it to a single round.
+- Otherwise choose the safe default, do the work, and state which default you chose so
+  it can be corrected.
+- Investigate before working around an obstacle: read the error, check your assumption,
+  address the root cause. Do not bypass a guard, a lock or a failing check just to make
+  the obstacle go away.
+- Clean up scratch files you created. Leave the working tree containing only the change
+  you were asked for.
+---
+name: requirement-check
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, unattributed or impossible to check.
+---
+
+# Requirement check
+
+A general standard (RFC 2119 / 8174), installed globally — not part of the Ancient Games framework. The
+worked failure in `meaningful-names` cites the Ancient Games as one example.
+
+A short gate between **hearing a rule** and **acting on it**. It exists because rules get written down that nobody
+can trace, that count two different things at once, or that nothing can ever fail — and the cost lands months later,
+when nobody can say whether the rule still means anything.
+
+Run it when someone states a rule, and run it on yourself before writing a normative line into any document.
+
+## The eight questions
+
+Ask them of **one statement**. Say which it passes and which it fails, then **ask the person about the failures** —
+do not fill the gaps yourself.
+
+1. **Source.** Who said this, and where? Can you point to the exact line? *"Mine"* is a valid answer. Unlabelled is
+   not.
+2. **One thing.** An "and", an "or", a "/", or a second number means it is **two** statements. Split them, and give
+   each its own source.
+3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
+   files?
+4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
+   failing inputs. If you cannot name one, it is not checkable — it is a wish.
+5. **Weak words.** *like, about, appropriate, as needed, logical, fast, enough, reasonable, only has to, TBD.* Replace
+   each with a value, **or mark the value open**. Never invent the number.
+6. **Level.** Is it **MUST** (a gate that stops work), **SHOULD** (a default that may be overridden with a stated
+   reason), or **guidance**? A safety bound earns MUST. **A method does not** — see the RFC note below.
+7. **Basis.** Measured, quoted from a source, or a guess? A guess is fine **if it is labelled** — `n=0`, with when it
+   will be looked at again.
+8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
+   part"*? The person probably did not say that. **A link is its own claim and needs its own source.**
+
+## Two rules for the agent
+
+- **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
+  is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
+  the time anyone notices.
+- **Never add structure that was not given.** No halves, no numbered reasons, no ordered pairs, no named phases,
+  unless the person said so. Quote them, state the operative sentence, stop. If a relationship between two rules is
+  wanted, that is a separate claim with its own evidence.
+
+## Two verified facts, worth quoting
+
+- **RFC 2119 §6, "Guidance in the use of these Imperatives":** imperatives *"must be used with care and sparingly…
+  they MUST only be used where it is actually required… they must not be used to try to impose a particular method."*
+  Most design rules are method. Method does not earn MUST.
+- **RFC 8174 (updates 2119):** the key words *"have the meanings specified herein only when they are in all
+  capitals."* Lowercase *must* and *should* carry no defined requirement meaning. If nothing marks which lines are
+  requirements, a reader cannot tell rules from explanation.
+
+## How to answer
+
+Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
+one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+
+Do not report a rule as complete when you chose its missing value. Say which values you left open.
+
+## A worked failure
+
+> *"At most 5 subagent roles per run and at most 3 running at once."*
+
+Four of the eight fail: **Source** — nobody could name one; **One thing** — a count of roles *and* a count of
+concurrent processes; **Unit** — two different units, one word ("subagent") used for both; **Level** — a method
+preference written as a cap. The sentence would not parse, and it took four days to find out why. The checklist
+catches it in thirty seconds.
+
+The same checklist, run on *"No single call runs longer than the ceiling: 8 hours"*, passes all eight — because it
+names who set it, counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail.
+
+## Limits
+
+The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
+feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
+and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
+paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
+quotes are checked. Treat the rest as a good working list, not as a citation.
+
+Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.
+
+exec
+/bin/bash -lc 'cat runs/20261013-four-seats/top12/linus.md runs/20261013-four-seats/sources/README.md; rg --files runs/20261013-four-seats/sources/linus' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+I'll read that brief first.
+# Linus Torvalds — top 12, reviewed
+
+## Review of the top 10
+
+1. **Keep**, and it is correctly first — the "name of the game is to avoid having to make a decision" sentence is the doc's headline and the strongest evidence for it. But note it is one half of a single mechanism whose other half is #2; they only separate because one answers *who decides* and the other *what commitment is allowed*.
+2. **Keep**, ranked 2 — reversibility is the test that #1 uses, and the paragraph makes that explicit ("the key difference between a big decision and a small one is whether you can fix your decision afterwards"). The "can't we just do both?" fallback is a *tactic*, not the rule; it is quoted twice in the item and reads as a second thing.
+3. **Change → widen into a mindset** — as written it is only a manager tactic. The sentences around it in §1 and §3 ("admitting up-front that you don't have a friggin' clue", "we're not the sharpest knife around") make it a standing attitude. Widening matters because the top 10 contains **no mindset at all** — all ten are triggered rules.
+4. **Change → add the size cap** — "If you cannot condense your patch set into a smaller set of patches, then only post say 15 or so at a time and wait for review and integration" is missing, and it is the only quantitative rule in the three documents: it is what makes the loop bounded. As an algorithm the item should read split → order → build at every point → cap the batch.
+5. **Keep** — solid, well quoted, correctly ranked among the acceptance rules. Its first quote (resubmission hygiene) is the weaker half; the weight is in "quantify" plus "describe the expected downsides".
+6. **Drop** — its strong form is contradicted two sections later in the same file: checkpatch "should be viewed as a guide, not as a replacement for human judgment" and "You should be able to justify all violations that remain in your patch". Its second quote is about his own inbox rather than about work, and the MIME/shabby-formatting material is 2003-era etiquette with little transfer value. Salvage: fold the mechanical test into item 12, and note the one real exception it contains (a move-only patch must not be edited in the same patch).
+7. **Keep** — quote is verbatim (including the `-avoid-`). It is really two rules (route to the owner; keep the arbiter's queue small) but they belong together. Ranked 8 only because it is about kernel structure rather than judgement — though it is the most directly transferable dispatch rule he has.
+8. **Keep, strengthened** — "burn the GNU standards" is the famous line and the weakest evidence of the rule. §9 carries the real principle: the emacs defaults "are worse than random typing", "an infinite number of monkeys typing into GNU emacs would never make a good program", and "remember: `indent` is not a fix for bad programming".
+9. **Change → merge into item 12** — it is three rules with three triggers (naming, comments, function size) and fails one-thing. The transferable half — "do just one thing", "a human brain can generally easily keep track of about 7 different things", "maybe you'd like to understand what you did 2 weeks from now" — survives inside item 12; naming and comments are enforced by the same single filter.
+10. **Change → split into two** (items 5 and 6) — "be blunt" and "take the blame for someone else" are different acts with different triggers: one is how you deliver a no, the other whose name carries the cost. Merged, a reader cannot tell which applies when a rejection is correct *and* unpopular. Also fix the quote: the file says "**There's** one thing people hate…", not "There is one thing" (the quote check caught this).
+
+## What the top 10 missed
+
+- **A standing attitude at all.** The top 10 has none. The docs are saturated with one: everyone is fallible and you are no exception, so uncertainty is announced in advance rather than concealed.
+- **How he finds the decision-maker, not just how he refuses to be one.** §3 "People II — the Good Kind" is a whole method the list skips: find whoever is better than you at this thing, coast, say "Sounds like a good idea - go wild", and — the part that is easy to miss — *expertise is local, so prod lightly and do not push hard*.
+- **The artifact that survives.** The top 10 talks about patch justification but not the commit log, which is the thing that has to stand alone for a reader with no memory of the discussion.
+- **The one big decision he does take.** `management-style.rst` says avoid big decisions; the documented release process says he personally opens a ~2-week merge window per cycle, merges at scale, and then only fixes until release. Read alone, the top 10 implies he never decides anything. He decides once per cycle, on a schedule, with a named owner — which is the most transferable rule on this list.
+- **The thing he got backwards in the top 10:** the style gate is a guide, not an oracle; a violation you can justify may stay, and moving code is never combined with editing it.
+
+## Top 12
+
+1. **Never make the technical decision yourself — hand it to whoever wrote the code.**
+   - **Kind:** decision rule
+   - **In plain English:** when a maintainer brings you a choice between two designs, refuse the binary and push it back down to the person who knows the details; your own judgement is not the input that matters.
+   - **Their words:** "The name of the game is to **avoid** having to make a decision. In particular, if somebody tells you 'choose (a) or (b), we really need you to decide on this', you're in trouble as a manager. The people you manage had better know the details better than you, so if they come to you for a technical decision, you're screwed."
+     → English original; operative sense: being asked to choose proves you are the wrong person to choose.
+   - **Source:** `Documentation/process/management-style.rst` §1 "Decisions" — https://docs.kernel.org/process/management-style.html
+   - **Label:** `quoted`
+   - **From:** top-10 #1 (kept)
+
+2. **Only take decisions you can undo; make every big decision into two small ones.**
+   - **Kind:** decision rule
+   - **In plain English:** the test for a decision is not its size but whether you can back it out; if you can always undo it, then being wrong is cheap and the decision was never big. Never commit to something you cannot walk back.
+   - **Their words:** "It helps to realize that the key difference between a big decision and a small one is whether you can fix your decision afterwards. Any decision can be made small by just always making sure that if you were wrong (and you **will** be wrong), you can always undo the damage later by backtracking. Suddenly, you get to be doubly managerial for making **two** inconsequential decisions - the wrong one **and** the right one." … "Thus the key to avoiding big decisions becomes to just avoiding to do things that can't be undone. Don't get ushered into a corner from which you cannot escape."
+     → English original; operative sense: reversibility is the whole criterion, and admitting you will be wrong is assumed, not exceptional.
+   - **Source:** `Documentation/process/management-style.rst` §1 "Decisions"
+   - **Label:** `quoted`
+   - **From:** top-10 #2 (kept)
+
+3. **Nobody is above suspicion and you are not above it either: say "I don't know" before you act, and sell doubt rather than confidence.**
+   - **Kind:** mindset
+   - **In plain English:** a standing attitude applied to yourself first — announce in advance that a decision is preliminary and may be wrong, reserve the right to change your mind visibly, and prefer leaving people thinking twice over giving them your assurance.
+   - **Their words:** "Happily, both of these reasons can be mitigated effectively by just admitting up-front that you don't have a friggin' clue, and telling people ahead of the fact that your decision is purely preliminary, and might be the wrong thing. You should always reserve the right to change your mind, and make people very **aware** of that." … "The best thing you can do as a manager is not to instill confidence, but rather a healthy dose of critical thinking on what they do. […] Make them at least think twice before they embark on a big endeavor." … "we should also admit that we're not the sharpest knife around, and that there will be other people that are less of an idiot than you are."
+     → English original; operative sense: uncertainty is cheap to state and expensive to hide; your job is to make people doubt, not believe you.
+   - **Source:** `Documentation/process/management-style.rst` §1, §3 "People II - the Good Kind"
+   - **Label:** `quoted`
+   - **From:** top-10 #3 (changed)
+
+4. **Actively recruit the people who are better than you at the thing, then coast; expertise is local, so prod lightly.**
+   - **Kind:** decision rule
+   - **In plain English:** find whoever understands the area better than you do, make them the decision-maker, and do the job of saying "sounds like a good idea — go wild" or "that sounds good, but what about X?"; never push hard in a direction, because being sharp in one area does not transfer to another.
+   - **Their words:** "Some people react badly to smart people. Others take advantage of them. Make sure that you, as a kernel maintainer, are in the second group. Suck up to them, because they are the people who will make your job easier. In particular, they'll be able to make your decisions for you, which is what the game is all about." … "So when you find somebody smarter than you are, just coast along. Your management responsibilities largely become ones of saying 'Sounds like a good idea - go wild', or 'That sounds good, but what about xxx?'." … "One thing to look out for is to realize that greatness in one area does not necessarily translate to other areas. […] just don't push too hard."
+     → English original; operative sense: the top 10 had only the refusal; this is the positive move that replaces the refusal, plus its limit.
+   - **Source:** `Documentation/process/management-style.rst` §3 "People II - the Good Kind"
+   - **Label:** `quoted`
+   - **From:** new
+
+5. **Take the blame yourself, in public; deliver the correction in private.**
+   - **Kind:** decision rule
+   - **In plain English:** when something breaks, take the fall openly — it buys you the authority to manage — then tell the person who actually caused it privately, because that is also how you learn who can fix it next time.
+   - **Their words:** "Which brings us to the best way of taking the blame: do it for someone else. You'll feel good for taking the fall, they'll feel good about not getting blamed, and the person who lost their whole 36GB porn-collection because of your incompetence will grudgingly admit that you at least didn't try to weasel out of it." … "Then make the developer who really screwed up (if you can find them) know **in private** that they screwed up. Not just so they can avoid it in the future, but so that they know they owe you one. And, perhaps even more importantly, they're also likely the person who can fix it."
+     → English original; operative sense: public blame is the price of the role and should be paid first, in cash, without excuse.
+   - **Source:** `Documentation/process/management-style.rst` §4 "Placing blame"
+   - **Label:** `quoted`
+   - **From:** top-10 #10 (changed — split, this half)
+
+6. **Be blunt, never sanctimonious: no politeness that hides the problem, no public name-calling, and apologise when you slipped.**
+   - **Kind:** decision rule
+   - **In plain English:** deliver a rejection directly and without softening — politeness ends up hiding the problem and "nobody can hear you being subtle" — but the insult must not be sanctimonious and never public; the two rules that matter are "don't call people d*ckheads" and "learn how to apologize", because alienating someone is irreversible and the rejection is not.
+   - **Their words:** "There's just a few simple rules here: (1) don't call people d*ckheads (at least not in public) (2) learn how to apologize when you forgot rule (1)." … "There's one thing people hate even more than being called 'd*ckhead', and that is being called a 'd*ckhead' in a sanctimonious voice." … "Similarly, don't be too polite or subtle about things. Politeness easily ends up going overboard and hiding the problem, and as they say, 'On the internet, nobody can hear you being subtle'. Use a big blunt object to hammer the point in, because you can't really depend on people getting your point otherwise." … "It turns out that alienating people is fairly easy, and un-alienating them is hard. Thus 'alienating' immediately falls under the heading of 'not reversible'."
+     → English original; operative sense: bluntness is required, sanctimony is fatal, and the relationship is the irreversible part.
+   - **Source:** `Documentation/process/management-style.rst` §2 "People", §5 "Things to avoid"
+   - **Label:** `quoted`
+   - **From:** top-10 #10 (changed — split, this half; quote corrected)
+
+7. **Take the one big irreversible decision, once per cycle, at a scheduled moment — then take only fixes until it ships.**
+   - **Kind:** algorithm
+   - **In plain English:** steps: collect and stage changes before the cycle → open a roughly two-week merge window and merge everything that is ready at scale → close the window and cut -rc1 → accept only bug fixes for the next six to ten weeks, releasing -rc kernels weekly → release final. A feature that missed the window waits for the next cycle.
+   - **Their words:** "The merge window lasts for approximately two weeks. At the end of this time, Linus Torvalds will declare that the window is closed and release the first of the 'rc' kernels." … "The -rc1 release is the signal that the time to merge new features has passed, and that the time to stabilize the next kernel has begun." … "Over the next six to ten weeks, only patches which fix problems should be submitted to the mainline." … "As a general rule, if you miss the merge window for a given feature, the best thing to do is to wait for the next development cycle."
+     → English original, but **not his words** — the kernel's own documentation describing his practice in the third person.
+   - **Source:** `Documentation/process/2.Process.rst` §"The Merge Window" (and `howto.rst` for the cycle) — https://docs.kernel.org/process/2.Process.html
+   - **Label:** `attributed` (the project's description of his practice; no first-person source found)
+   - **From:** new
+
+8. **Route work to the owner of the code and keep the top arbiter's queue small.**
+   - **Kind:** decision rule
+   - **In plain English:** a patch belongs to the subsystem maintainer named in MAINTAINERS; the final arbiter's address is listed so people can *avoid* it, because very few patches go through him directly. He stays the exception path, not the default path.
+   - **Their words:** "Linus Torvalds is the final arbiter of all changes accepted into the Linux kernel. His e-mail address is <torvalds@linux-foundation.org>. He gets a lot of e-mail, and, at this point, very few patches go through Linus directly, so typically you should do your best to -avoid- sending him e-mail."
+     → English original; operative sense: the escalation address is published precisely to be avoided.
+   - **Source:** `Documentation/process/submitting-patches.rst` §"Select the recipients for your patch" — https://docs.kernel.org/process/submitting-patches.html
+   - **Label:** `quoted`
+   - **From:** top-10 #7 (kept)
+
+9. **The commit message is permanent documentation, written for a competent stranger who has forgotten the discussion.**
+   - **Kind:** algorithm
+   - **In plain English:** steps: one-line summary of at most ~70–75 characters naming what changes *and* why it may be necessary, in imperative mood; body wrapped at 75 columns explaining the problem, the user-visible impact and the reasoning; tags below; anything version-specific goes *after* the `---` marker so the permanent record stays clean. The test is the reader months or years later, searching the log.
+   - **Their words:** "the ``summary`` must be no more than 70-75 characters, and it must describe both what the patch changes, as well as why the patch might be necessary." … "The explanation body will be committed to the permanent source changelog, so should make sense to a competent reader who has long since forgotten the immediate details of the discussion that might have led to this patch." … "The text should be written in such detail so that when read weeks, months or even years later, it can give the reader the needed details to grasp the reasoning for **why** the patch was created." … "The body of the explanation, line wrapped at 75 columns, which will be copied to the permanent changelog to describe this patch."
+     → English original; operative sense: the log is the only thing that survives the people who wrote it, so it is written for a stranger.
+   - **Source:** `Documentation/process/submitting-patches.rst` §"The canonical patch format" → "Subject Line", "Explanation Body", "Commentary"
+   - **Label:** `quoted`
+   - **From:** new
+
+10. **One logical change per patch; the tree must build and run after every patch in the series; never post more than about fifteen without review.**
+    - **Kind:** algorithm
+    - **In plain English:** steps: split a mixed change into one logical change per patch (bug fix apart from performance work, API change apart from the driver that uses it); keep a single change across many files in one patch; order the series so the kernel builds and runs at every point, because `git bisect` will cut anywhere; note any dependency; if the series cannot be condensed, send ~15 patches and wait.
+    - **Their words:** "Solve only one problem per patch. If your description starts to get long, that's a sign that you probably need to split up your patch." … "take special care to ensure that the kernel builds and runs properly after each patch in the series. Developers using git bisect to track down a problem can end up splitting your patch series at any point; they will not thank you if you introduce bugs in the middle." … "If you cannot condense your patch set into a smaller set of patches, then only post say 15 or so at a time and wait for review and integration."
+      → English original; operative sense: every intermediate state must be valid, and the batch size is capped on purpose.
+    - **Source:** `Documentation/process/submitting-patches.rst` §"Describe your changes" and §"Separate your changes"
+    - **Label:** `quoted`
+    - **From:** top-10 #4 (changed — added the batch cap and the bisect reason)
+
+11. **The justification must stand alone: quantify the claimed win and state your own costs.**
+    - **Kind:** decision rule
+    - **In plain English:** a patch that only makes sense to people already in the thread is not acceptable — resend the full description, not "this is v2"; if you claim a performance or size improvement, give numbers; and name the downsides you expect, so the reviewer can weigh cost against benefit.
+    - **Their words:** "When you submit or resubmit a patch or patch series, include the complete patch description and justification for it. Don't just say that this is version N of the patch (series). […] the patch (series) and its description should be self-contained." … "Quantify optimizations and trade-offs. If you claim improvements in performance, memory consumption, stack footprint, or binary size, include numbers that back them up. But also describe non-obvious costs. […] Describe the expected downsides of your optimization so that the reviewer can weigh costs against benefits."
+      → English original; operative sense: the claim must survive without the thread, and it must come with its own downside attached.
+    - **Source:** `Documentation/process/submitting-patches.rst` §"Describe your changes"
+    - **Label:** `quoted`
+    - **From:** top-10 #5 (kept)
+
+12. **One filter for all code: can the people who must maintain it still read and grep it in two weeks? No external standard has authority, and no formatter is a fix.**
+    - **Kind:** decision rule
+    - **In plain English:** the only test is maintainability by whoever has to keep it, so conventions are his own rather than GNU's or a tool's; the mechanical consequences are descriptive names, comments that say what and not how, and functions that do one thing and stay small. Where the checker and his judgement disagree, his judgement wins — but he must be able to justify every violation left standing.
+    - **Their words:** "Coding style is very personal, and I won't **force** my views on anybody, but this is what goes for anything that I have to be able to maintain, and I'd prefer it for most other things too. Please at least consider the points made here." … "First off, I'd suggest printing out a copy of the GNU coding standards, and NOT read it. Burn them, it's a great symbolic gesture." … "the defaults it uses are less than desirable (in fact, they are worse than random typing - an infinite number of monkeys typing into GNU emacs would never make a good program)" … "remember: `indent` is not a fix for bad programming." … "Functions should be short and sweet, and do just one thing. […] A human brain can generally easily keep track of about 7 different things, anything more and it gets confused. You know you're brilliant, but maybe you'd like to understand what you did 2 weeks from now." … "NEVER try to explain HOW your code works in a comment: […] Generally, you want your comments to tell WHAT your code does, not HOW."
+      → English original; operative sense: one filter (maintainability), expressed as conventions he owns, with tools subordinate to it.
+    - **Source:** `Documentation/process/coding-style.rst` opening, §4 "Naming", §6 "Functions", §8 "Commenting", §9 "You've made a mess of it" — plus `submitting-patches.rst` §"Style-check your changes" for the checker-is-a-guide exception: "the style checker should be viewed as a guide, not as a replacement for human judgment" / "You should be able to justify all violations that remain in your patch" — https://docs.kernel.org/process/coding-style.html
+    - **Label:** `quoted`
+    - **From:** top-10 #8 and #9 (changed — merged into one filter; the checker's subordination is now stated)
+
+## Gaps
+
+- **Nothing here is sourced from outside the kernel's own documentation, and that is a hard limit in this environment, not a choice.** `lore.kernel.org` returns 403 (Anubis proof-of-work); `groups.google.com` returns 429; the Wayback Machine has **no** snapshot of the 1991 `comp.os.minix` announcement; no general web search is reachable. So there is **no** item from the NFS "I'M A COMPLETE IDIOT" mail, the `[GIT PULL]` rants, the 2.6.12/3.0 release announcements, the 2007 Git talk's "10 rules", the 2018 Code-of-Conduct apology, or the "just a hobby" announcement. The research's largest gap is real and I could not close it. Anyone wanting his actual decision-making *in the act*, the mails are the corpus and this list is not.
+- **My list leans harder on the least verifiable source than the research's did.** Six of twelve items come from `management-style.rst`, whose authorship is still asserted rather than proven by commit — the same caveat the research recorded, and it now matters more, not less. Treat those six as his words on the strength of attribution only.
+- **Item 7 is not in his words.** It is the kernel's documentation (`2.Process.rst`, third person, other authors) describing his release practice. Labelled `attributed`; no first-person source was found. Without item 7, items 1–2 over-read as "he never decides anything", which is false.
+- **`stable-api-nonsense.rst` is Greg Kroah-Hartman's, not Torvalds's.** It must not be used as evidence for the famous "the kernel has no stable in-kernel API" position; that rule is widely attributed to him and I could not source it in his own words.
+- **The canonical patch format's original statement is unverified.** `submitting-patches.rst` cites Linus's 2005 mail (`Pine.LNX.4.58.0504071023190.28951@ppc970.osdl.org`) as the source of §"The canonical patch format"; I could not open it (lore blocked). Item 9's rules therefore carry the same later-editor risk the research flagged for `coding-style.rst` §10+.
+- **Provenance discipline inherited unchanged:** only `coding-style.rst` §1–§9 and the opening are used (§22 and later chapters excluded, per the research's own authorship finding); the CoC file in the tree is Contributor Covenant text, not his, so nothing from it is used.
+- **Quote verification:** I re-checked every quote I reuse against the files I fetched, and the only defect found is the one the quote check already flagged — "There is one thing" should be "There's one thing". No other rewording found in the reused material.
+# Source texts
+
+Fetched 2026-10-13 by Claude (main session) for quote checking: Chinese texts are Wikisource raw wikitext
+(`action=raw`; the 帛書 text via the API, pageid 39831), kernel docs are docs.kernel.org HTML (7.3.0-rc7 render).
+In the wikitext, `{{*|…}}` is inline commentary (e.g. 韋昭 in 國語, 王弼 / 陸德明 in 道德經), not the main text.
+runs/20261013-four-seats/sources/linus/management-style.html
+runs/20261013-four-seats/sources/linus/submitting-patches.html
+runs/20261013-four-seats/sources/linus/coding-style.html
+runs/20261013-four-seats/sources/linus/2.Process.html
+
+codex
+The list marks the release-process item as third-party documentation, but several other items also draw on kernel guidance whose speaker needs checking. I’ll check attribution separately from whether each rule follows from the quoted words. I’m also applying the requirement-check skill to look for added absolutes and combined rules.
+exec
+/bin/bash -lc "wc -l runs/20261013-four-seats/sources/linus/*.html; rg -n 'author|Linus|Greg|15 or|70-75|two weeks|six to|only|quantif|violations|checkpatch|decision|blame|stupid|idiot' runs/20261013-four-seats/sources/linus/*.html" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+   692 runs/20261013-four-seats/sources/linus/2.Process.html
+  1271 runs/20261013-four-seats/sources/linus/coding-style.html
+   472 runs/20261013-four-seats/sources/linus/management-style.html
+  1033 runs/20261013-four-seats/sources/linus/submitting-patches.html
+  3468 total
+runs/20261013-four-seats/sources/linus/submitting-patches.html:241:vendor/product-specific trees that cherry-pick only specific patches
+runs/20261013-four-seats/sources/linus/submitting-patches.html:259:<p>Solve only one problem per patch.  If your description starts to get
+runs/20261013-four-seats/sources/linus/submitting-patches.html:359:then only post say 15 or so at a time and wait for review and integration.</p>
+runs/20261013-four-seats/sources/linus/submitting-patches.html:363:<p>Check your patch for basic style violations, details of which can be
+runs/20261013-four-seats/sources/linus/submitting-patches.html:375:(scripts/checkpatch.pl).  Note, though, that the style checker should be
+runs/20261013-four-seats/sources/linus/submitting-patches.html:386:<p>You should be able to justify all violations that remain in your
+runs/20261013-four-seats/sources/linus/submitting-patches.html:404:<p>Linus Torvalds is the final arbiter of all changes accepted into the
+runs/20261013-four-seats/sources/linus/submitting-patches.html:407:Linus directly, so typically you should do your best to -avoid-
+runs/20261013-four-seats/sources/linus/submitting-patches.html:430:<p>Linus and other kernel developers need to be able to read and comment
+runs/20261013-four-seats/sources/linus/submitting-patches.html:447:code.  A MIME attachment also takes Linus a bit more time to process,
+runs/20261013-four-seats/sources/linus/submitting-patches.html:514:patch or patch series - “RESEND” only applies to resubmission of a
+runs/20261013-four-seats/sources/linus/submitting-patches.html:520:<p>Due to high e-mail traffic to Linus, and to linux-kernel, it is common
+runs/20261013-four-seats/sources/linus/submitting-patches.html:521:convention to prefix your subject line with [PATCH].  This lets Linus
+runs/20261013-four-seats/sources/linus/submitting-patches.html:574:<p>Any further SoBs (Signed-off-by:’s) following the author’s SoB are from
+runs/20261013-four-seats/sources/linus/submitting-patches.html:577:as it was propagated to the maintainers and ultimately to Linus, with
+runs/20261013-four-seats/sources/linus/submitting-patches.html:578:the first SoB entry signalling primary authorship of a single author.</p>
+runs/20261013-four-seats/sources/linus/submitting-patches.html:588:affected code in one way or another.  Most commonly, the maintainer when that
+runs/20261013-four-seats/sources/linus/submitting-patches.html:591:knowledge (e.g. the original author of the code being modified), userspace-side
+runs/20261013-four-seats/sources/linus/submitting-patches.html:616:the discussion. Note, this is one of only three tags you might be able to use
+runs/20261013-four-seats/sources/linus/submitting-patches.html:620:it is used to give attribution to co-authors (in addition to the author
+runs/20261013-four-seats/sources/linus/submitting-patches.html:622:Co-developed-by: denotes authorship, every Co-developed-by: must be immediately
+runs/20261013-four-seats/sources/linus/submitting-patches.html:623:followed by a Signed-off-by: of the associated co-author.  Standard sign-off
+runs/20261013-four-seats/sources/linus/submitting-patches.html:626:the author is attributed via From: or Co-developed-by:.  Notably, the last
+runs/20261013-four-seats/sources/linus/submitting-patches.html:628:<p>Note, the From: tag is optional when the From: author is also the person (and
+runs/20261013-four-seats/sources/linus/submitting-patches.html:630:<p>Example of a patch submitted by the From: author:</p>
+runs/20261013-four-seats/sources/linus/submitting-patches.html:633:Co-developed-by: First Co-Author &lt;first@coauthor.example.org&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:634:Signed-off-by: First Co-Author &lt;first@coauthor.example.org&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:635:Co-developed-by: Second Co-Author &lt;second@coauthor.example.org&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:636:Signed-off-by: Second Co-Author &lt;second@coauthor.example.org&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:637:Signed-off-by: From Author &lt;from@author.example.org&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:640:<p>Example of a patch submitted by a Co-developed-by: author:</p>
+runs/20261013-four-seats/sources/linus/submitting-patches.html:641:<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>From: From Author &lt;from@author.example.org&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:645:Co-developed-by: Random Co-Author &lt;random@coauthor.example.org&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:646:Signed-off-by: Random Co-Author &lt;random@coauthor.example.org&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:647:Signed-off-by: From Author &lt;from@author.example.org&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:648:Co-developed-by: Submitting Co-Author &lt;sub@coauthor.example.org&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:649:Signed-off-by: Submitting Co-Author &lt;sub@coauthor.example.org&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:661:of only three tags you might be able to use without explicit permission of the
+runs/20261013-four-seats/sources/linus/submitting-patches.html:701:or reviewer, should be added by author to the applicable patches when sending
+runs/20261013-four-seats/sources/linus/submitting-patches.html:710:future. Note, this is one of only three tags you might be able to use without
+runs/20261013-four-seats/sources/linus/submitting-patches.html:762:<li><p>A <code class="docutils literal notranslate"><span class="pre">from</span></code> line specifying the patch author, followed by an empty
+runs/20261013-four-seats/sources/linus/submitting-patches.html:763:line (only needed if the person sending the patch is not the author).</p></li>
+runs/20261013-four-seats/sources/linus/submitting-patches.html:790:patch.  It will also be the only thing that people may quickly see
+runs/20261013-four-seats/sources/linus/submitting-patches.html:794:<p>For these reasons, the <code class="docutils literal notranslate"><span class="pre">summary</span></code> must be no more than 70-75
+runs/20261013-four-seats/sources/linus/submitting-patches.html:823:<div><p>From: Patch Author &lt;<a class="reference external" href="mailto:author&#37;&#52;&#48;example&#46;com">author<span>&#64;</span>example<span>&#46;</span>com</a>&gt;</p>
+runs/20261013-four-seats/sources/linus/submitting-patches.html:825:<p>The <code class="docutils literal notranslate"><span class="pre">from</span></code> line specifies who will be credited as the author of the
+runs/20261013-four-seats/sources/linus/submitting-patches.html:828:the patch author in the changelog.</p>
+runs/20261013-four-seats/sources/linus/submitting-patches.html:829:<p>The author may indicate their affiliation or the sponsor of the work
+runs/20261013-four-seats/sources/linus/submitting-patches.html:833:<div><p>From: Patch Author (Company) &lt;<a class="reference external" href="mailto:author&#37;&#52;&#48;example&#46;com">author<span>&#64;</span>example<span>&#46;</span>com</a>&gt;</p>
+runs/20261013-four-seats/sources/linus/submitting-patches.html:883:<p>Other comments relevant only to the moment or the maintainer, not
+runs/20261013-four-seats/sources/linus/submitting-patches.html:897:Signed-off-by: Author &lt;author@mail&gt;
+runs/20261013-four-seats/sources/linus/submitting-patches.html:975:and not in some internal, accessible only to you tree - otherwise it
+runs/20261013-four-seats/sources/linus/submitting-patches.html:982:help with things like tracking dependencies, running checkpatch and
+runs/20261013-four-seats/sources/linus/submitting-patches.html:992:<dt>Greg Kroah-Hartman, “How to piss off a kernel subsystem maintainer”.</dt><dd><p>&lt;<a class="reference external" href="http://www.kroah.com/log/linux/maintainer.html">http://www.kroah.com/log/linux/maintainer.html</a>&gt;</p>
+runs/20261013-four-seats/sources/linus/submitting-patches.html:1002:<dt>Linus Torvalds’s mail on the canonical patch format:</dt><dd><p>&lt;<a class="reference external" href="https://lore.kernel.org/r/Pine.LNX.4.58.0504071023190.28951&#64;ppc970.osdl.org">https://lore.kernel.org/r/Pine.LNX.4.58.0504071023190.28951&#64;ppc970.osdl.org</a>&gt;</p>
+runs/20261013-four-seats/sources/linus/management-style.html:197:<p>Management style is very personal and much harder to quantify than
+runs/20261013-four-seats/sources/linus/management-style.html:217:<section id="decisions">
+runs/20261013-four-seats/sources/linus/management-style.html:218:<span id="id2"></span><h2>1) Decisions<a class="headerlink" href="#decisions" title="Permalink to this heading">¶</a></h2>
+runs/20261013-four-seats/sources/linus/management-style.html:219:<p>Everybody thinks managers make decisions, and that decision-making is
+runs/20261013-four-seats/sources/linus/management-style.html:220:important.  The bigger and more painful the decision, the bigger the
+runs/20261013-four-seats/sources/linus/management-style.html:223:<p>The name of the game is to <strong>avoid</strong> having to make a decision.  In
+runs/20261013-four-seats/sources/linus/management-style.html:227:you for a technical decision, you’re screwed.  You’re clearly not
+runs/20261013-four-seats/sources/linus/management-style.html:228:competent to make that decision for them.</p>
+runs/20261013-four-seats/sources/linus/management-style.html:233:<p>So the name of the game is to <strong>avoid</strong> decisions, at least the big and
+runs/20261013-four-seats/sources/linus/management-style.html:234:painful ones.  Making small and non-consequential decisions is fine, and
+runs/20261013-four-seats/sources/linus/management-style.html:238:<p>It helps to realize that the key difference between a big decision and a
+runs/20261013-four-seats/sources/linus/management-style.html:239:small one is whether you can fix your decision afterwards.  Any decision
+runs/20261013-four-seats/sources/linus/management-style.html:243:<strong>two</strong> inconsequential decisions - the wrong one <strong>and</strong> the right one.</p>
+runs/20261013-four-seats/sources/linus/management-style.html:246:<p>Thus the key to avoiding big decisions becomes to just avoiding to do
+runs/20261013-four-seats/sources/linus/management-style.html:250:<p>It turns out that since nobody would be stupid enough to ever really let
+runs/20261013-four-seats/sources/linus/management-style.html:253:huge amounts of money that you might not be able to repay, the only
+runs/20261013-four-seats/sources/linus/management-style.html:254:thing you can backtrack on is a technical decision, and there
+runs/20261013-four-seats/sources/linus/management-style.html:257:work you had people work on for the last year.  Suddenly the decision
+runs/20261013-four-seats/sources/linus/management-style.html:258:you made a year ago wasn’t a big decision after all, since it could be
+runs/20261013-four-seats/sources/linus/management-style.html:264:<li><p>admitting you were an idiot is harder than it looks.  We all like to
+runs/20261013-four-seats/sources/linus/management-style.html:272:the first place, and your decision ended up being a big one after
+runs/20261013-four-seats/sources/linus/management-style.html:278:people ahead of the fact that your decision is purely preliminary, and
+runs/20261013-four-seats/sources/linus/management-style.html:281:to admit that you are stupid when you haven’t <strong>yet</strong> done the really
+runs/20261013-four-seats/sources/linus/management-style.html:282:stupid thing.</p>
+runs/20261013-four-seats/sources/linus/management-style.html:283:<p>Then, when it really does turn out to be stupid, people just roll their
+runs/20261013-four-seats/sources/linus/management-style.html:295:<p>Btw, another way to avoid a decision is to plaintively just whine “can’t
+runs/20261013-four-seats/sources/linus/management-style.html:303:smelling like roses, and you avoided yet another decision that you could
+runs/20261013-four-seats/sources/linus/management-style.html:308:<p>Most people are idiots, and being a manager means you’ll have to deal
+runs/20261013-four-seats/sources/linus/management-style.html:319:no-no according to <a class="reference internal" href="#decisions"><span class="std std-ref">1) Decisions</span></a>.</p>
+runs/20261013-four-seats/sources/linus/management-style.html:334:<p>To solve this problem, you really only have two options:</p>
+runs/20261013-four-seats/sources/linus/management-style.html:356:<p>While it turns out that most people are idiots, the corollary to that is
+runs/20261013-four-seats/sources/linus/management-style.html:361:other people that are less of an idiot than you are.</p>
+runs/20261013-four-seats/sources/linus/management-style.html:365:easier. In particular, they’ll be able to make your decisions for you,
+runs/20261013-four-seats/sources/linus/management-style.html:381:<section id="placing-blame">
+runs/20261013-four-seats/sources/linus/management-style.html:382:<h2>4) Placing blame<a class="headerlink" href="#placing-blame" title="Permalink to this heading">¶</a></h2>
+runs/20261013-four-seats/sources/linus/management-style.html:383:<p>Things will go wrong, and people want somebody to blame. Tag, you’re it.</p>
+runs/20261013-four-seats/sources/linus/management-style.html:384:<p>It’s not actually that hard to accept the blame, especially if people
+runs/20261013-four-seats/sources/linus/management-style.html:386:best way of taking the blame: do it for someone else. You’ll feel good
+runs/20261013-four-seats/sources/linus/management-style.html:387:for taking the fall, they’ll feel good about not getting blamed, and the
+runs/20261013-four-seats/sources/linus/management-style.html:396:<p>Taking the blame is also why you get to be manager in the first place.
+runs/20261013-four-seats/sources/linus/management-style.html:436:<p>Since your main responsibility seems to be to take the blame for other
+runs/20261013-four-seats/sources/linus/coding-style.html:260:<p>Coding style is all about readability and maintainability using commonly
+runs/20261013-four-seats/sources/linus/coding-style.html:267:are placed substantially to the right.  A very commonly used style
+runs/20261013-four-seats/sources/linus/coding-style.html:348:<p>This does not apply if only one branch of a conditional statement is a single
+runs/20261013-four-seats/sources/linus/coding-style.html:434:<p>GLOBAL variables (to be used only if you <strong>really</strong> need them) need to
+runs/20261013-four-seats/sources/linus/coding-style.html:440:those, and it only confuses the programmer.</p>
+runs/20261013-four-seats/sources/linus/coding-style.html:483:useful only for:</p>
+runs/20261013-four-seats/sources/linus/coding-style.html:488:<p>Example: <code class="docutils literal notranslate"><span class="pre">pte_t</span></code> etc. opaque objects that you can only access using
+runs/20261013-four-seats/sources/linus/coding-style.html:517:<p>Although it would only take a short amount of time for the eyes and
+runs/20261013-four-seats/sources/linus/coding-style.html:722:<div class="highlight-elisp notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="nb">defun</span><span class="w"> </span><span class="nv">c-lineup-arglist-tabs-only</span><span class="w"> </span><span class="p">(</span><span class="nv">ignored</span><span class="p">)</span>
+runs/20261013-four-seats/sources/linus/coding-style.html:737:<span class="w">                </span><span class="p">(</span><span class="nv">arglist-close</span><span class="w">         </span><span class="o">.</span><span class="w"> </span><span class="nv">c-lineup-arglist-tabs-only</span><span class="p">)</span>
+runs/20261013-four-seats/sources/linus/coding-style.html:739:<span class="w">                    </span><span class="p">(</span><span class="nv">c-lineup-gcc-asm-reg</span><span class="w"> </span><span class="nv">c-lineup-arglist-tabs-only</span><span class="p">))</span>
+runs/20261013-four-seats/sources/linus/coding-style.html:777:recognize the authority of K&amp;R (the GNU people aren’t evil, they are
+runs/20261013-four-seats/sources/linus/coding-style.html:1007:only once is always a win since there is no space tradeoff. While this is
+runs/20261013-four-seats/sources/linus/coding-style.html:1046:only evaluate to 0 or 1, and implicit or explicit conversion to bool
+runs/20261013-four-seats/sources/linus/coding-style.html:1178:<p>In general, the decision to crash the kernel belongs to the user, rather
+runs/20261013-four-seats/sources/linus/coding-style.html:1182:<p><code class="xref c c-func broken_xref docutils literal notranslate"><span class="pre">panic()</span></code> should be used with care and primarily only during system boot.
+runs/20261013-four-seats/sources/linus/2.Process.html:210:but 9 is incremented only if x is deemed large enough (e.g.
+runs/20261013-four-seats/sources/linus/2.Process.html:226:<p>The merge window lasts for approximately two weeks.  At the end of this
+runs/20261013-four-seats/sources/linus/2.Process.html:227:time, Linus Torvalds will declare that the window is closed and release the
+runs/20261013-four-seats/sources/linus/2.Process.html:233:<p>Over the next six to ten weeks, only patches which fix problems should be
+runs/20261013-four-seats/sources/linus/2.Process.html:243:time.  Linus releases new -rc kernels about once a week; a normal series
+runs/20261013-four-seats/sources/linus/2.Process.html:301:“stable team,” currently consists of Greg Kroah-Hartman and Sasha Levin. The
+runs/20261013-four-seats/sources/linus/2.Process.html:400:merged into the mainline repository managed by Linus Torvalds.  More
+runs/20261013-four-seats/sources/linus/2.Process.html:422:repository: Linus Torvalds. But, for example, of the over 9,500 patches
+runs/20261013-four-seats/sources/linus/2.Process.html:423:which went into the 2.6.38 kernel, only 112 (around 1.3%) were directly
+runs/20261013-four-seats/sources/linus/2.Process.html:424:chosen by Linus himself. The kernel project has long since grown to a size
+runs/20261013-four-seats/sources/linus/2.Process.html:438:maintainers to track a list of patches, including authorship information
+runs/20261013-four-seats/sources/linus/2.Process.html:441:<p>When the merge window opens, top-level maintainers will ask Linus to “pull”
+runs/20261013-four-seats/sources/linus/2.Process.html:443:Linus agrees, the stream of patches will flow up into his repository,
+runs/20261013-four-seats/sources/linus/2.Process.html:444:becoming part of the mainline kernel.  The amount of attention that Linus
+runs/20261013-four-seats/sources/linus/2.Process.html:446:that, sometimes, he looks quite closely.  But, as a general rule, Linus
+runs/20261013-four-seats/sources/linus/2.Process.html:456:finding the right maintainer.  Sending patches directly to Linus is not
+runs/20261013-four-seats/sources/linus/2.Process.html:484:an appropriate subsystem tree or be sent directly to Linus.  In a typical
+runs/20261013-four-seats/sources/linus/2.Process.html:515:<p>Greg Kroah-Hartman currently maintains the staging tree.  Drivers that
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+import re,html
+from pathlib import Path
+ranges={'management-style.html':[(190,448)],'coding-style.html':[(202,272),(418,448),(531,596),(652,710),(751,786)],'submitting-patches.html':[(195,290),(320,418),(750,816),(838,890),(994,1005)],'2.Process.html':[(195,269),(413,450)]}
+for name,spans in ranges.items():
+ print('\\nFILE',name)
+ lines=(Path('runs/20261013-four-seats/sources/linus')/name).read_text().splitlines()
+ for lo,hi in spans:
+  for i in range(lo-1,hi):
+   s=html.unescape(re.sub('<["'^>]+>'"','',lines[i]))
+   if s.strip(): print(f'{i+1}: {s}')
+PY" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+
+FILE management-style.html
+191: Linux kernel management style¶
+192: This is a short document describing the preferred (or made up, depending
+193: on who you ask) management style for the linux kernel.  It’s meant to
+194: mirror the process/coding-style.rst document to some
+195: degree, and mainly written to avoid answering [1]  the same (or similar)
+196: questions over and over again.
+197: Management style is very personal and much harder to quantify than
+198: simple coding style rules, so this document may or may not have anything
+199: to do with reality.  It started as a lark, but that doesn’t mean that it
+200: might not actually be true. You’ll have to decide for yourself.
+201: Btw, when talking about “kernel manager”, it’s all about the technical
+202: lead persons, not the people who do traditional management inside
+203: companies.  If you sign purchase orders or you have any clue about the
+204: budget of your group, you’re almost certainly not a kernel manager.
+205: These suggestions may or may not apply to you.
+206: First off, I’d suggest buying “Seven Habits of Highly Effective
+207: People”, and NOT read it.  Burn it, it’s a great symbolic gesture.
+210: [1]
+211: This document does so not so much by answering the question, but by
+212: making it painfully obvious to the questioner that we don’t have a clue
+213: to what the answer is.
+216: Anyway, here goes:
+218: 1) Decisions¶
+219: Everybody thinks managers make decisions, and that decision-making is
+220: important.  The bigger and more painful the decision, the bigger the
+221: manager must be to make it.  That’s very deep and obvious, but it’s not
+222: actually true.
+223: The name of the game is to avoid having to make a decision.  In
+224: particular, if somebody tells you “choose (a) or (b), we really need you
+225: to decide on this”, you’re in trouble as a manager.  The people you
+226: manage had better know the details better than you, so if they come to
+227: you for a technical decision, you’re screwed.  You’re clearly not
+228: competent to make that decision for them.
+229: (Corollary:if the people you manage don’t know the details better than
+230: you, you’re also screwed, although for a totally different reason.
+231: Namely that you are in the wrong job, and that they should be managing
+232: your brilliance instead).
+233: So the name of the game is to avoid decisions, at least the big and
+234: painful ones.  Making small and non-consequential decisions is fine, and
+235: makes you look like you know what you’re doing, so what a kernel manager
+236: needs to do is to turn the big and painful ones into small things where
+237: nobody really cares.
+238: It helps to realize that the key difference between a big decision and a
+239: small one is whether you can fix your decision afterwards.  Any decision
+240: can be made small by just always making sure that if you were wrong (and
+241: you will be wrong), you can always undo the damage later by
+242: backtracking.  Suddenly, you get to be doubly managerial for making
+243: two inconsequential decisions - the wrong one and the right one.
+244: And people will even see that as true leadership (cough bullshit
+245: cough).
+246: Thus the key to avoiding big decisions becomes to just avoiding to do
+247: things that can’t be undone.  Don’t get ushered into a corner from which
+248: you cannot escape.  A cornered rat may be dangerous - a cornered manager
+249: is just pitiful.
+250: It turns out that since nobody would be stupid enough to ever really let
+251: a kernel manager have huge fiscal responsibility anyway, it’s usually
+252: fairly easy to backtrack.  Since you’re not going to be able to waste
+253: huge amounts of money that you might not be able to repay, the only
+254: thing you can backtrack on is a technical decision, and there
+255: back-tracking is very easy: just tell everybody that you were an
+256: incompetent nincompoop, say you’re sorry, and undo all the worthless
+257: work you had people work on for the last year.  Suddenly the decision
+258: you made a year ago wasn’t a big decision after all, since it could be
+259: easily undone.
+260: It turns out that some people have trouble with this approach, for two
+261: reasons:
+264: admitting you were an idiot is harder than it looks.  We all like to
+265: maintain appearances, and coming out in public to say that you were
+266: wrong is sometimes very hard indeed.
+267: having somebody tell you that what you worked on for the last year
+268: wasn’t worthwhile after all can be hard on the poor lowly engineers
+269: too, and while the actual work was easy enough to undo by just
+270: deleting it, you may have irrevocably lost the trust of that
+271: engineer.  And remember: “irrevocable” was what we tried to avoid in
+272: the first place, and your decision ended up being a big one after
+273: all.
+276: Happily, both of these reasons can be mitigated effectively by just
+277: admitting up-front that you don’t have a friggin’ clue, and telling
+278: people ahead of the fact that your decision is purely preliminary, and
+279: might be the wrong thing.  You should always reserve the right to change
+280: your mind, and make people very aware of that.  And it’s much easier
+281: to admit that you are stupid when you haven’t yet done the really
+282: stupid thing.
+283: Then, when it really does turn out to be stupid, people just roll their
+284: eyes and say “Oops, not again”.
+285: This preemptive admission of incompetence might also make the people who
+286: actually do the work also think twice about whether it’s worth doing or
+287: not.  After all, if they aren’t certain whether it’s a good idea, you
+288: sure as hell shouldn’t encourage them by promising them that what they
+289: work on will be included.  Make them at least think twice before they
+290: embark on a big endeavor.
+291: Remember: they’d better know more about the details than you do, and
+292: they usually already think they have the answer to everything.  The best
+293: thing you can do as a manager is not to instill confidence, but rather a
+294: healthy dose of critical thinking on what they do.
+295: Btw, another way to avoid a decision is to plaintively just whine “can’t
+296: we just do both?” and look pitiful.  Trust me, it works.  If it’s not
+297: clear which approach is better, they’ll eventually figure it out.  The
+298: answer may end up being that both teams get so frustrated by the
+299: situation that they just give up.
+300: That may sound like a failure, but it’s usually a sign that there was
+301: something wrong with both projects, and the reason the people involved
+302: couldn’t decide was that they were both wrong.  You end up coming up
+303: smelling like roses, and you avoided yet another decision that you could
+304: have screwed up on.
+307: 2) People¶
+308: Most people are idiots, and being a manager means you’ll have to deal
+309: with it, and perhaps more importantly, that they have to deal with
+310: you.
+311: It turns out that while it’s easy to undo technical mistakes, it’s not
+312: as easy to undo personality disorders.  You just have to live with
+313: theirs - and yours.
+314: However, in order to prepare yourself as a kernel manager, it’s best to
+315: remember not to burn any bridges, bomb any innocent villagers, or
+316: alienate too many kernel developers. It turns out that alienating people
+317: is fairly easy, and un-alienating them is hard. Thus “alienating”
+318: immediately falls under the heading of “not reversible”, and becomes a
+319: no-no according to 1) Decisions.
+320: There’s just a few simple rules here:
+323: don’t call people d*ckheads (at least not in public)
+324: learn how to apologize when you forgot rule (1)
+327: The problem with #1 is that it’s very easy to do, since you can say
+328: “you’re a d*ckhead” in millions of different ways [2], sometimes without
+329: even realizing it, and almost always with a white-hot conviction that
+330: you are right.
+331: And the more convinced you are that you are right (and let’s face it,
+332: you can call just about anybody a d*ckhead, and you often will be
+333: right), the harder it ends up being to apologize afterwards.
+334: To solve this problem, you really only have two options:
+337: get really good at apologies
+338: spread the “love” out so evenly that nobody really ends up feeling
+339: like they get unfairly targeted.  Make it inventive enough, and they
+340: might even be amused.
+343: The option of being unfailingly polite really doesn’t exist. Nobody will
+344: trust somebody who is so clearly hiding their true character.
+347: [2]
+348: Paul Simon sang “Fifty Ways to Leave Your Lover”, because quite
+349: frankly, “A Million Ways to Tell a Developer They’re a D*ckhead” doesn’t
+350: scan nearly as well.  But I’m sure he thought about it.
+355: 3) People II - the Good Kind¶
+356: While it turns out that most people are idiots, the corollary to that is
+357: sadly that you are one too, and that while we can all bask in the secure
+358: knowledge that we’re better than the average person (let’s face it,
+359: nobody ever believes that they’re average or below-average), we should
+360: also admit that we’re not the sharpest knife around, and there will be
+361: other people that are less of an idiot than you are.
+362: Some people react badly to smart people.  Others take advantage of them.
+363: Make sure that you, as a kernel maintainer, are in the second group.
+364: Suck up to them, because they are the people who will make your job
+365: easier. In particular, they’ll be able to make your decisions for you,
+366: which is what the game is all about.
+367: So when you find somebody smarter than you are, just coast along.  Your
+368: management responsibilities largely become ones of saying “Sounds like a
+369: good idea - go wild”, or “That sounds good, but what about xxx?”.  The
+370: second version in particular is a great way to either learn something
+371: new about “xxx” or seem extra managerial by pointing out something the
+372: smarter person hadn’t thought about.  In either case, you win.
+373: One thing to look out for is to realize that greatness in one area does
+374: not necessarily translate to other areas.  So you might prod people in
+375: specific directions, but let’s face it, they might be good at what they
+376: do, and suck at everything else.  The good news is that people tend to
+377: naturally gravitate back to what they are good at, so it’s not like you
+378: are doing something irreversible when you do prod them in some
+379: direction, just don’t push too hard.
+382: 4) Placing blame¶
+383: Things will go wrong, and people want somebody to blame. Tag, you’re it.
+384: It’s not actually that hard to accept the blame, especially if people
+385: kind of realize that it wasn’t all your fault.  Which brings us to the
+386: best way of taking the blame: do it for someone else. You’ll feel good
+387: for taking the fall, they’ll feel good about not getting blamed, and the
+388: person who lost their whole 36GB porn-collection because of your
+389: incompetence will grudgingly admit that you at least didn’t try to weasel
+390: out of it.
+391: Then make the developer who really screwed up (if you can find them) know
+392: in private that they screwed up.  Not just so they can avoid it in the
+393: future, but so that they know they owe you one.  And, perhaps even more
+394: importantly, they’re also likely the person who can fix it.  Because, let’s
+395: face it, it sure ain’t you.
+396: Taking the blame is also why you get to be manager in the first place.
+397: It’s part of what makes people trust you, and allow you the potential
+398: glory, because you’re the one who gets to say “I screwed up”.  And if
+399: you’ve followed the previous rules, you’ll be pretty good at saying that
+400: by now.
+403: 5) Things to avoid¶
+404: There’s one thing people hate even more than being called “d*ckhead”,
+405: and that is being called a “d*ckhead” in a sanctimonious voice.  The
+406: first you can apologize for, the second one you won’t really get the
+407: chance.  They likely will no longer be listening even if you otherwise
+408: do a good job.
+409: We all think we’re better than anybody else, which means that when
+410: somebody else puts on airs, it really rubs us the wrong way.  You may
+411: be morally and intellectually superior to everybody around you, but
+412: don’t try to make it too obvious unless you really intend to irritate
+413: somebody [3].
+414: Similarly, don’t be too polite or subtle about things. Politeness easily
+415: ends up going overboard and hiding the problem, and as they say, “On the
+416: internet, nobody can hear you being subtle”. Use a big blunt object to
+417: hammer the point in, because you can’t really depend on people getting
+418: your point otherwise.
+419: Some humor can help pad both the bluntness and the moralizing.  Going
+420: overboard to the point of being ridiculous can drive a point home
+421: without making it painful to the recipient, who just thinks you’re being
+422: silly.  It can thus help get through the personal mental block we all
+423: have about criticism.
+426: [3]
+427: Hint: internet newsgroups that are not directly related to your work
+428: are great ways to take out your frustrations at other people. Write
+429: insulting posts with a sneer just to get into a good flame every once in
+430: a while, and you’ll feel cleansed. Just don’t crap too close to home.
+435: 6) Why me?¶
+436: Since your main responsibility seems to be to take the blame for other
+437: peoples mistakes, and make it painfully obvious to everybody else that
+438: you’re incompetent, the obvious question becomes one of why do it in the
+439: first place?
+440: First off, while you may or may not get screaming teenage girls (or
+441: boys, let’s not be judgmental or sexist here) knocking on your dressing
+442: room door, you will get an immense feeling of personal accomplishment
+443: for being “in charge”.  Never mind the fact that you’re really leading
+444: by trying to keep up with everybody else and running after them as fast
+445: as you can.  Everybody will still think you’re the person in charge.
+446: It’s a great job if you can hack it.
+
+FILE coding-style.html
+202: a block of control starts and ends.  Especially when you’ve been looking
+203: at your screen for 20 straight hours, you’ll find it a lot easier to see
+204: how the indentation works if you have large indentations.
+205: Now, some people will claim that having 8-character indentations makes
+206: the code move too far to the right, and makes it hard to read on a
+207: 80-character terminal screen.  The answer to that is that if you need
+208: more than 3 levels of indentation, you’re screwed anyway, and should fix
+209: your program.
+210: In short, 8-char indents make things easier to read, and have the added
+211: benefit of warning you when you’re nesting your functions too deep.
+212: Heed that warning.
+213: The preferred way to ease multiple indentation levels in a switch statement is
+214: to align the switch and its subordinate case labels in the same column
+215: instead of double-indenting the case labels.  E.g.:
+216: switch (suffix) {
+217: case 'G':
+218: case 'g':
+219:         mem <<= 30;
+220:         break;
+221: case 'M':
+222: case 'm':
+223:         mem <<= 20;
+224:         break;
+225: case 'K':
+226: case 'k':
+227:         mem <<= 10;
+228:         fallthrough;
+229: default:
+230:         break;
+231: }
+234: Don’t put multiple statements on a single line unless you have
+235: something to hide:
+236: if (condition) do_this;
+237:   do_something_everytime;
+240: Don’t use commas to avoid using braces:
+241: if (condition)
+242:         do_this(), do_that();
+245: Always use braces for multiple statements:
+246: if (condition) {
+247:         do_this();
+248:         do_that();
+249: }
+252: Don’t put multiple assignments on a single line either.  Kernel coding style
+253: is super simple.  Avoid tricky expressions.
+254: Outside of comments, documentation and except in Kconfig, spaces are never
+255: used for indentation, and the above example is deliberately broken.
+256: Get a decent editor and don’t leave whitespace at the end of lines.
+259: 2) Breaking long lines and strings¶
+260: Coding style is all about readability and maintainability using commonly
+261: available tools.
+262: The preferred limit on the length of a single line is 80 columns.
+263: Statements longer than 80 columns should be broken into sensible chunks,
+264: unless exceeding 80 columns significantly increases readability and does
+265: not hide information.
+266: Descendants are always substantially shorter than the parent and
+267: are placed substantially to the right.  A very commonly used style
+268: is to align descendants to a function open parenthesis.
+269: These same rules are applied to function headers with a long argument list.
+270: However, never break user-visible strings such as printk messages because
+271: that breaks the ability to grep for them.
+418: Git will warn you about patches that introduce trailing whitespace, and can
+419: optionally strip the trailing whitespace for you; however, if applying a series
+420: of patches, this may make later patches in the series fail by changing their
+421: context lines.
+425: 4) Naming¶
+426: C is a Spartan language, and your naming conventions should follow suit.
+427: Unlike Modula-2 and Pascal programmers, C programmers do not use cute
+428: names like ThisVariableIsATemporaryCounter. A C programmer would call that
+429: variable tmp, which is much easier to write, and not the least more
+430: difficult to understand.
+431: HOWEVER, while mixed-case names are frowned upon, descriptive names for
+432: global variables are a must.  To call a global function foo is a
+433: shooting offense.
+434: GLOBAL variables (to be used only if you really need them) need to
+435: have descriptive names, as do global functions.  If you have a function
+436: that counts the number of active users, you should call that
+437: count_active_users() or similar, you should not call it cntusr().
+438: Encoding the type of a function into the name (so-called Hungarian
+439: notation) is asinine - the compiler knows the types anyway and can check
+440: those, and it only confuses the programmer.
+441: LOCAL variable names should be short, and to the point.  If you have
+442: some random integer loop counter, it should probably be called i.
+443: Calling it loop_counter is non-productive, if there is no chance of it
+444: being mis-understood.  Similarly, tmp can be just about any type of
+445: variable that is used to hold a temporary value.
+446: If you are afraid to mix up your local variable names, you have another
+447: problem, which is called the function-growth-hormone-imbalance syndrome.
+448: See chapter 6 (Functions).
+531: with userspace.
+535: Maybe there are other cases too, but the rule should basically be to NEVER
+536: EVER use a typedef unless you can clearly match one of those rules.
+537: In general, a pointer, or a struct that has elements that can reasonably
+538: be directly accessed should never be a typedef.
+541: 6) Functions¶
+542: Functions should be short and sweet, and do just one thing.  They should
+543: fit on one or two screenfuls of text (the ISO/ANSI screen size is 80x24,
+544: as we all know), and do one thing and do that well.
+545: The maximum length of a function is inversely proportional to the
+546: complexity and indentation level of that function.  So, if you have a
+547: conceptually simple function that is just one long (but simple)
+548: case-statement, where you have to do lots of small things for a lot of
+549: different cases, it’s OK to have a longer function.
+550: However, if you have a complex function, and you suspect that a
+551: less-than-gifted first-year high-school student might not even
+552: understand what the function is all about, you should adhere to the
+553: maximum limits all the more closely.  Use helper functions with
+554: descriptive names (you can ask the compiler to in-line them if you think
+555: it’s performance-critical, and it will probably do a better job of it
+556: than you would have done).
+557: Another measure of the function is the number of local variables.  They
+558: shouldn’t exceed 5-10, or you’re doing something wrong.  Re-think the
+559: function, and split it into smaller pieces.  A human brain can
+560: generally easily keep track of about 7 different things, anything more
+561: and it gets confused.  You know you’re brilliant, but maybe you’d like
+562: to understand what you did 2 weeks from now.
+563: In source files, separate functions with one blank line.  If the function is
+564: exported, the EXPORT macro for it should follow immediately after the
+565: closing function brace line.  E.g.:
+566: int system_is_up(void)
+567: {
+568:         return system_state == SYSTEM_RUNNING;
+569: }
+570: EXPORT_SYMBOL(system_is_up);
+574: 6.1) Function prototypes¶
+575: In function prototypes, include parameter names with their data types.
+576: Although this is not required by the C language, it is preferred in Linux
+577: because it is a simple way to add valuable information for the reader.
+578: Do not use the extern keyword with function declarations as this makes
+579: lines longer and isn’t strictly necessary.
+580: When writing function prototypes, please keep the order of elements regular.
+581: For example, using this function declaration example:
+582: __init void * __must_check action(enum magic value, size_t size, u8 count,
+583:                                   char *fmt, ...) __printf(4, 5) __malloc;
+586: The preferred order of elements for a function prototype is:
+588: storage class (below, static __always_inline, noting that __always_inline
+589: is technically an attribute but is treated like inline)
+590: storage class attributes (here, __init -- i.e. section declarations, but also
+591: things like __cold)
+592: return type (here, void *)
+593: return type attributes (here, __must_check)
+594: function name (here, action)
+595: function parameters (here, (enum magic value, size_t size, u8 count, char *fmt, ...),
+596: noting that parameter names should always be included)
+652:         kfree(buffer);
+653:         return result;
+654: }
+657: A common type of bug to be aware of is one err bugs which look like this:
+658: err:
+659:         kfree(foo->bar);
+660:         kfree(foo);
+661:         return ret;
+664: The bug in this code is that on some exit paths foo is NULL.  Normally the
+665: fix for this is to split it up into two error labels err_free_bar: and
+666: err_free_foo::
+667: err_free_bar:
+668:         kfree(foo->bar);
+669: err_free_foo:
+670:         kfree(foo);
+671:         return ret;
+674: Ideally you should simulate errors to test all exit paths.
+677: 8) Commenting¶
+678: Comments are good, but there is also a danger of over-commenting.  NEVER
+679: try to explain HOW your code works in a comment: it’s much better to
+680: write the code so that the working is obvious, and it’s a waste of
+681: time to explain badly written code.
+682: Generally, you want your comments to tell WHAT your code does, not HOW.
+683: Also, try to avoid putting comments inside a function body: if the
+684: function is so complex that you need to separately comment parts of it,
+685: you should probably go back to chapter 6 for a while.  You can make
+686: small comments to note or warn about something particularly clever (or
+687: ugly), but try to avoid excess.  Instead, put the comments at the head
+688: of the function, telling people what it does, and possibly WHY it does
+689: it.
+690: When commenting the kernel API functions, please use the kernel-doc format.
+691: See the files at Documentation/doc-guide/ and
+692: tools/docs/kernel-doc for details. Note that the danger of over-commenting
+693: applies to kernel-doc comments all the same. Do not add boilerplate
+694: kernel-doc which simply reiterates what’s obvious from the signature
+695: of the function.
+696: The preferred style for long (multi-line) comments is:
+697: /*
+698:  * This is the preferred style for multi-line
+699:  * comments in the Linux kernel source code.
+700:  * Please use it consistently.
+701:  *
+702:  * Description:  A column of asterisks on the left side,
+703:  * with beginning and ending almost-blank lines.
+704:  */
+707: It’s also important to comment data, whether they are basic types or derived
+708: types.  To this end, use just one data declaration per line (no commas for
+709: multiple data declarations).  This leaves you room for a small comment on each
+710: item, explaining its use.
+751:                 (inclass               . +)
+752:                 (inher-cont            . c-lineup-multi-inher)
+753:                 (knr-argdecl-intro     . 0)
+754:                 (label                 . -1000)
+755:                 (statement             . 0)
+756:                 (statement-block-intro . +)
+757:                 (statement-case-intro  . +)
+758:                 (statement-cont        . +)
+759:                 (substatement          . +)
+760:                 ))
+761:         (indent-tabs-mode . t)
+762:         (show-trailing-whitespace . t)
+763:         ))))
+765: (dir-locals-set-directory-class
+766:  (expand-file-name "~/src/linux-trees")
+767:  'linux-kernel)
+770: This will make emacs go better with the kernel coding style for C
+771: files below ~/src/linux-trees.
+772: But even if you fail in getting emacs to do sane formatting, not
+773: everything is lost: use indent.
+774: Now, again, GNU indent has the same brain-dead settings that GNU emacs
+775: has, which is why you need to give it a few command line options.
+776: However, that’s not too bad, because even the makers of GNU indent
+777: recognize the authority of K&R (the GNU people aren’t evil, they are
+778: just severely misguided in this matter), so you just give indent the
+779: options -kr -i8 (stands for K&R, 8 character indents), or use
+780: scripts/Lindent, which indents in the latest style.
+781: indent has a lot of options, and especially when it comes to comment
+782: re-formatting you may want to take a look at the man page.  But
+783: remember: indent is not a fix for bad programming.
+784: Note that you can also use the clang-format tool to help you with
+785: these rules, to quickly re-format parts of your code automatically,
+786: and to review full files in order to spot coding style mistakes,
+
+FILE submitting-patches.html
+196: Submitting patches: the essential guide to getting your code into the kernel¶
+197: For a person or company who wishes to submit a change to the Linux
+198: kernel, the process can sometimes be daunting if you’re not familiar
+199: with “the system.”  This text is a collection of suggestions which
+200: can greatly increase the chances of your change being accepted.
+201: This document contains a large number of suggestions in a relatively terse
+202: format.  For detailed information on how the kernel development process
+203: works, see A guide to the Kernel Development Process. Also, read
+204: Linux Kernel patch submission checklist
+205: for a list of items to check before submitting code.
+206: For device tree binding patches, read
+207: Submitting Devicetree (DT) binding patches.
+208: This documentation assumes that you’re using git to prepare your patches.
+209: If you’re unfamiliar with git, you would be well-advised to learn how to
+210: use it, it will make your life as a kernel developer and in general much
+211: easier.
+212: Some subsystems and maintainer trees have additional information about
+213: their workflow and expectations, see
+214: Subsystem and maintainer tree specific development process notes.
+216: Obtain a current source tree¶
+217: If you do not have a repository with the current kernel source handy, use
+218: git to obtain one.  You’ll want to start with the mainline repository,
+219: which can be grabbed with:
+220: git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+223: Note, however, that you may not want to develop against the mainline tree
+224: directly.  Most subsystem maintainers run their own trees and want to see
+225: patches prepared against those trees.  See the T: entry for the subsystem
+226: in the MAINTAINERS file to find that tree, or simply ask the maintainer if
+227: the tree is not listed there.
+230: Describe your changes¶
+231: Describe your problem.  Whether your patch is a one-line bug fix or
+232: 5000 lines of a new feature, there must be an underlying problem that
+233: motivated you to do this work.  Convince the reviewer that there is a
+234: problem worth fixing and that it makes sense for them to read past the
+235: first paragraph.
+236: Describe user-visible impact.  Straight up crashes and lockups are
+237: pretty convincing, but not all bugs are that blatant.  Even if the
+238: problem was spotted during code review, describe the impact you think
+239: it can have on users.  Keep in mind that the majority of Linux
+240: installations run kernels from secondary stable trees or
+241: vendor/product-specific trees that cherry-pick only specific patches
+242: from upstream, so include anything that could help route your change
+243: downstream: provoking circumstances, excerpts from dmesg, crash
+244: descriptions, performance regressions, latency spikes, lockups, etc.
+245: Quantify optimizations and trade-offs.  If you claim improvements in
+246: performance, memory consumption, stack footprint, or binary size,
+247: include numbers that back them up.  But also describe non-obvious
+248: costs.  Optimizations usually aren’t free but trade-offs between CPU,
+249: memory, and readability; or, when it comes to heuristics, between
+250: different workloads.  Describe the expected downsides of your
+251: optimization so that the reviewer can weigh costs against benefits.
+252: Once the problem is established, describe what you are actually doing
+253: about it in technical detail.  It’s important to describe the change
+254: in plain English for the reviewer to verify that the code is behaving
+255: as you intend it to.
+256: The maintainer will thank you if you write your patch description in a
+257: form which can be easily pulled into Linux’s source code management
+258: system, git, as a “commit log”.  See The canonical patch format.
+259: Solve only one problem per patch.  If your description starts to get
+260: long, that’s a sign that you probably need to split up your patch.
+261: See Separate your changes.
+262: When you submit or resubmit a patch or patch series, include the
+263: complete patch description and justification for it.  Don’t just
+264: say that this is version N of the patch (series).  Don’t expect the
+265: subsystem maintainer to refer back to earlier patch versions or referenced
+266: URLs to find the patch description and put that into the patch.
+267: I.e., the patch (series) and its description should be self-contained.
+268: This benefits both the maintainers and reviewers.  Some reviewers
+269: probably didn’t even receive earlier versions of the patch.
+270: Describe your changes in imperative mood, e.g. “make xyzzy do frotz”
+271: instead of “[This patch] makes xyzzy do frotz” or “[I] changed xyzzy
+272: to do frotz”, as if you are giving orders to the codebase to change
+273: its behaviour.
+274: If you want to refer to a specific commit, don’t just refer to the
+275: SHA-1 ID of the commit. Please also include the oneline summary of
+276: the commit, to make it easier for reviewers to know what it is about.
+277: Example:
+278: Commit e21d2170f36602ae2708 ("video: remove unnecessary
+279: platform_set_drvdata()") removed the unnecessary
+280: platform_set_drvdata(), but left the variable "dev" unused,
+281: delete it.
+284: You should also be sure to use at least the first twelve characters of the
+285: SHA-1 ID.  The kernel repository holds a lot of objects, making
+286: collisions with shorter IDs a real possibility.  Bear in mind that, even if
+287: there is no collision with your six-character ID now, that condition may
+288: change five years from now.
+289: If related discussions or any other background information behind the change
+290: can be found on the web, add ‘Link:’ tags pointing to it. If the patch is a
+320: Fixes: 54a4f0239f2e ("KVM: MMU: make kvm_mmu_zap_page() return the number of pages it actually freed")
+323: The following git config settings can be used to add a pretty format for
+324: outputting the above style in the git log or git show commands:
+325: [core]
+326:         abbrev = 12
+327: [pretty]
+328:         fixes = Fixes: %h (\"%s\")
+331: An example call:
+332: $ git log -1 --pretty=fixes 54a4f0239f2e
+333: Fixes: 54a4f0239f2e ("KVM: MMU: make kvm_mmu_zap_page() return the number of pages it actually freed")
+338: Separate your changes¶
+339: Separate each logical change into a separate patch.
+340: For example, if your changes include both bug fixes and performance
+341: enhancements for a single driver, separate those changes into two
+342: or more patches.  If your changes include an API update, and a new
+343: driver which uses that new API, separate those into two patches.
+344: On the other hand, if you make a single change to numerous files,
+345: group those changes into a single patch.  Thus a single logical change
+346: is contained within a single patch.
+347: The point to remember is that each patch should make an easily understood
+348: change that can be verified by reviewers.  Each patch should be justifiable
+349: on its own merits.
+350: If one patch depends on another patch in order for a change to be
+351: complete, that is OK.  Simply note “this patch depends on patch X”
+352: in your patch description.
+353: When dividing your change into a series of patches, take special care to
+354: ensure that the kernel builds and runs properly after each patch in the
+355: series.  Developers using git bisect to track down a problem can end up
+356: splitting your patch series at any point; they will not thank you if you
+357: introduce bugs in the middle.
+358: If you cannot condense your patch set into a smaller set of patches,
+359: then only post say 15 or so at a time and wait for review and integration.
+362: Style-check your changes¶
+363: Check your patch for basic style violations, details of which can be
+364: found in Linux kernel coding style.
+365: Failure to do so simply wastes
+366: the reviewers time and will get your patch rejected, probably
+367: without even being read.
+368: One significant exception is when moving code from one file to
+369: another -- in this case you should not modify the moved code at all in
+370: the same patch which moves it.  This clearly delineates the act of
+371: moving the code and your changes.  This greatly aids review of the
+372: actual differences and allows tools to better track the history of
+373: the code itself.
+374: Check your patches with the patch style checker prior to submission
+375: (scripts/checkpatch.pl).  Note, though, that the style checker should be
+376: viewed as a guide, not as a replacement for human judgment.  If your code
+377: looks better with a violation then its probably best left alone.
+379: The checker reports at three levels:
+380: ERROR: things that are very likely to be wrong
+381: WARNING: things requiring careful review
+382: CHECK: things requiring thought
+386: You should be able to justify all violations that remain in your
+387: patch.
+390: Select the recipients for your patch¶
+391: You should always copy the appropriate subsystem maintainer(s) and list(s) on
+392: any patch to code that they maintain; look through the MAINTAINERS file and the
+393: source code revision history to see who those maintainers are.  The script
+394: scripts/get_maintainer.pl can be very useful at this step (pass paths to your
+395: patches as arguments to scripts/get_maintainer.pl).  If you cannot find a
+396: maintainer for the subsystem you are working on, Andrew Morton
+397: (akpm@linux-foundation.org) serves as a maintainer of last resort.
+398: linux-kernel@vger.kernel.org should be used by default for all patches, but the
+399: volume on that list has caused a number of developers to tune it out.  Please
+400: do not spam unrelated lists and unrelated people, though.
+401: Many kernel-related lists are hosted at kernel.org; you can find a list
+402: of them at https://subspace.kernel.org.  There are kernel-related lists
+403: hosted elsewhere as well, though.
+404: Linus Torvalds is the final arbiter of all changes accepted into the
+405: Linux kernel.  His e-mail address is <torvalds@linux-foundation.org>.
+406: He gets a lot of e-mail, and, at this point, very few patches go through
+407: Linus directly, so typically you should do your best to -avoid-
+408: sending him e-mail.
+409: If you have a patch that fixes an exploitable security bug, send that patch
+410: to security@kernel.org.  For severe bugs, a short embargo may be considered
+411: to allow distributors to get the patch out to users; in such cases,
+412: obviously, the patch should not be sent to any public lists. See also
+413: Security bugs.
+414: Patches that fix a severe bug in a released kernel should be directed
+415: toward the stable maintainers by putting a line like this:
+416: Cc: stable@vger.kernel.org
+750: that, if you have your patches stored in a git repository, proper patch
+751: formatting can be had with git format-patch.  The tools cannot create
+752: the necessary text, though, so read the instructions below anyway.
+754: Subject Line¶
+755: The canonical patch subject line is:
+756: Subject: [PATCH 001/123] subsystem: summary phrase
+759: The canonical patch message body contains the following:
+762: A from line specifying the patch author, followed by an empty
+763: line (only needed if the person sending the patch is not the author).
+764: The body of the explanation, line wrapped at 75 columns, which will
+765: be copied to the permanent changelog to describe this patch.
+766: An empty line.
+767: The Signed-off-by: lines, described above, which will
+768: also go in the changelog.
+769: A marker line containing simply ---.
+770: Any additional comments not suitable for the changelog.
+771: The actual patch (diff output).
+774: The Subject line format makes it very easy to sort the emails
+775: alphabetically by subject line - pretty much any email reader will
+776: support that - since because the sequence number is zero-padded,
+777: the numerical and alphabetic sort is the same.
+778: The subsystem in the email’s Subject should identify which
+779: area or subsystem of the kernel is being patched.
+780: The summary phrase in the email’s Subject should concisely
+781: describe the patch which that email contains.  The summary
+782: phrase should not be a filename.  Do not use the same summary
+783: phrase for every patch in a whole patch series (where a patch
+784: series is an ordered sequence of multiple, related patches).
+785: Bear in mind that the summary phrase of your email becomes a
+786: globally-unique identifier for that patch.  It propagates all the way
+787: into the git changelog.  The summary phrase may later be used in
+788: developer discussions which refer to the patch.  People will want to
+789: google for the summary phrase to read discussion regarding that
+790: patch.  It will also be the only thing that people may quickly see
+791: when, two or three months later, they are going through perhaps
+792: thousands of patches using tools such as gitk or git log
+793: --oneline.
+794: For these reasons, the summary must be no more than 70-75
+795: characters, and it must describe both what the patch changes, as well
+796: as why the patch might be necessary.  It is challenging to be both
+797: succinct and descriptive, but that is what a well-written summary
+798: should do.
+799: The summary phrase may be prefixed by tags enclosed in square
+800: brackets: “Subject: [PATCH <tag>...] <summary phrase>”.  The tags are
+801: not considered part of the summary phrase, but describe how the patch
+802: should be treated.  Common tags might include a version descriptor if
+803: the multiple versions of the patch have been sent out in response to
+804: comments (i.e., “v1, v2, v3”), or “RFC” to indicate a request for
+805: comments.
+806: If there are four patches in a patch series the individual patches may
+807: be numbered like this: 1/4, 2/4, 3/4, 4/4. This assures that developers
+808: understand the order in which the patches should be applied and that
+809: they have reviewed or applied all of the patches in the patch series.
+810: Here are some good example Subjects:
+811: Subject: [PATCH 2/5] ext2: improve scalability of bitmap searching
+812: Subject: [PATCH v2 01/27] x86: fix eflags tracking
+813: Subject: [PATCH v2] sub/sys: Condensed patch summary
+814: Subject: [PATCH v2 M/N] sub/sys: Condensed patch summary
+838: The explanation body will be committed to the permanent source
+839: changelog, so should make sense to a competent reader who has long since
+840: forgotten the immediate details of the discussion that might have led to
+841: this patch. Including symptoms of the failure which the patch addresses
+842: (kernel log messages, oops messages, etc.) are especially useful for
+843: people who might be searching the commit logs looking for the applicable
+844: patch. The text should be written in such detail so that when read
+845: weeks, months or even years later, it can give the reader the needed
+846: details to grasp the reasoning for why the patch was created.
+847: If a patch fixes a compile failure, it may not be necessary to include
+848: _all_ of the compile failures; just enough that it is likely that
+849: someone searching for the patch can find it. As in the summary
+850: phrase, it is important to be both succinct as well as descriptive.
+852: Backtraces in commit messages¶
+853: Backtraces help document the call chain leading to a problem. However,
+854: not all backtraces are helpful. For example, early boot call chains are
+855: unique and obvious. Copying the full dmesg output verbatim, however,
+856: adds distracting information like timestamps, module lists, register and
+857: stack dumps.
+858: Therefore, the most useful backtraces should distill the relevant
+859: information from the dump, which makes it easier to focus on the real
+860: issue. Here is an example of a well-trimmed backtrace:
+861: unchecked MSR access error: WRMSR to 0xd51 (tried to write 0x0000000000000064)
+862: at rIP: 0xffffffffae059994 (native_write_msr+0x4/0x20)
+863: Call Trace:
+864: mba_wrmsr
+865: update_domains
+866: rdtgroup_mkdir
+872: Commentary¶
+873: The --- marker line serves the essential purpose of marking for
+874: patch handling tools where the changelog message ends.
+875: One good use for the additional comments after the --- marker is
+876: for a diffstat, to show what files have changed, and the number of
+877: inserted and deleted lines per file. A diffstat is especially useful
+878: on bigger patches. If you are going to include a diffstat after the
+879: --- marker, please use diffstat options -p 1 -w 70 so that
+880: filenames are listed from the top of the kernel source tree and don’t
+881: use too much horizontal space (easily fit in 80 columns, maybe with some
+882: indentation). (git generates appropriate diffstats by default.)
+883: Other comments relevant only to the moment or the maintainer, not
+884: suitable for the permanent changelog, should also go here. A good
+885: example of such comments might be patch changelogs which describe
+886: what has changed between the v1 and v2 version of the patch.
+887: Please put this information after the --- line which separates
+888: the changelog from the rest of the patch. The version information is
+889: not part of the changelog which gets committed to the git tree. It is
+890: additional information for the reviewers. If it’s placed above the
+994: <http://www.kroah.com/log/linux/maintainer-03.html>
+995: <http://www.kroah.com/log/linux/maintainer-04.html>
+996: <http://www.kroah.com/log/linux/maintainer-05.html>
+997: <http://www.kroah.com/log/linux/maintainer-06.html>
+1000: Kernel Linux kernel coding style
+1002: Linus Torvalds’s mail on the canonical patch format:<https://lore.kernel.org/r/Pine.LNX.4.58.0504071023190.28951@ppc970.osdl.org>
+1004: Andi Kleen, “On submitting kernel patches”Some strategies to get difficult or controversial changes in.
+1005: http://halobates.de/on-submitting-patches.pdf
+
+FILE 2.Process.html
+195: how the process works is required in order to be an effective part of it.
+197: 2.1. The big picture¶
+198: The Linux kernel uses a loosely time-based, rolling release development
+199: model.  A new major kernel release (which we will call, as an example, 9.x)
+200: [1] happens every two or three months, which comes with new features,
+201: internal API changes, and more. A typical release can contain about 13,000
+202: changesets with changes to several hundred thousand lines of code. Recent
+203: releases, along with their dates, can be found at Wikipedia.
+206: [1]
+207: Strictly speaking, the Linux kernel does not use semantic versioning
+208: number scheme, but rather the 9.x pair identifies major release
+209: version as a whole number. For each release, x is incremented,
+210: but 9 is incremented only if x is deemed large enough (e.g.
+211: Linux 5.0 is released following Linux 4.20).
+214: A relatively straightforward discipline is followed with regard to the
+215: merging of patches for each release.  At the beginning of each development
+216: cycle, the “merge window” is said to be open.  At that time, code which is
+217: deemed to be sufficiently stable (and which is accepted by the development
+218: community) is merged into the mainline kernel.  The bulk of changes for a
+219: new development cycle (and all of the major changes) will be merged during
+220: this time, at a rate approaching 1,000 changes (“patches,” or “changesets”)
+221: per day.
+222: (As an aside, it is worth noting that the changes integrated during the
+223: merge window do not come out of thin air; they have been collected, tested,
+224: and staged ahead of time.  How that process works will be described in
+225: detail later on).
+226: The merge window lasts for approximately two weeks.  At the end of this
+227: time, Linus Torvalds will declare that the window is closed and release the
+228: first of the “rc” kernels.  For the kernel which is destined to be 9.x,
+229: for example, the release which happens at the end of the merge window will
+230: be called 9.x-rc1.  The -rc1 release is the signal that the time to
+231: merge new features has passed, and that the time to stabilize the next
+232: kernel has begun.
+233: Over the next six to ten weeks, only patches which fix problems should be
+234: submitted to the mainline.  On occasion a more significant change will be
+235: allowed, but such occasions are rare; developers who try to merge new
+236: features outside of the merge window tend to get an unfriendly reception.
+237: As a general rule, if you miss the merge window for a given feature, the
+238: best thing to do is to wait for the next development cycle.  (An occasional
+239: exception is made for drivers for previously-unsupported hardware; if they
+240: touch no in-tree code, they cannot cause regressions and should be safe to
+241: add at any time).
+242: As fixes make their way into the mainline, the patch rate will slow over
+243: time.  Linus releases new -rc kernels about once a week; a normal series
+244: will get up to somewhere between -rc6 and -rc9 before the kernel is
+245: considered to be sufficiently stable and the final release is made.
+246: At that point the whole process starts over again.
+247: As an example, here is how the 5.4 development cycle went (all dates in
+248: 2019):
+252: September 15
+253: 5.3 stable release
+255: September 30
+256: 5.4-rc1, merge window closes
+258: October 6
+259: 5.4-rc2
+261: October 13
+262: 5.4-rc3
+264: October 20
+265: 5.4-rc4
+267: October 27
+268: 5.4-rc5
+414: One of the largest mistakes made by kernel developers (or their employers)
+415: is to try to cut the process down to a single “merging into the mainline”
+416: step.  This approach invariably leads to frustration for everybody
+417: involved.
+420: 2.3. How patches get into the Kernel¶
+421: There is exactly one person who can merge patches into the mainline kernel
+422: repository: Linus Torvalds. But, for example, of the over 9,500 patches
+423: which went into the 2.6.38 kernel, only 112 (around 1.3%) were directly
+424: chosen by Linus himself. The kernel project has long since grown to a size
+425: where no single developer could possibly inspect and select every patch
+426: unassisted. The way the kernel developers have addressed this growth is
+427: through the use of a lieutenant system built around a chain of trust.
+428: The kernel code base is logically broken down into a set of subsystems:
+429: networking, specific architecture support, memory management, video
+430: devices, etc.  Most subsystems have a designated maintainer, a developer
+431: who has overall responsibility for the code within that subsystem.  These
+432: subsystem maintainers are the gatekeepers (in a loose way) for the portion
+433: of the kernel they manage; they are the ones who will (usually) accept a
+434: patch for inclusion into the mainline kernel.
+435: Subsystem maintainers each manage their own version of the kernel source
+436: tree, usually (but certainly not always) using the git source management
+437: tool.  Tools like git (and related tools like quilt or mercurial) allow
+438: maintainers to track a list of patches, including authorship information
+439: and other metadata.  At any given time, the maintainer can identify which
+440: patches in his or her repository are not found in the mainline.
+441: When the merge window opens, top-level maintainers will ask Linus to “pull”
+442: the patches they have selected for merging from their repositories.  If
+443: Linus agrees, the stream of patches will flow up into his repository,
+444: becoming part of the mainline kernel.  The amount of attention that Linus
+445: pays to specific patches received in a pull operation varies.  It is clear
+446: that, sometimes, he looks quite closely.  But, as a general rule, Linus
+447: trusts the subsystem maintainers to not send bad patches upstream.
+448: Subsystem maintainers, in turn, can pull patches from other maintainers.
+449: For example, the networking tree is built from patches which accumulated
+450: first in trees dedicated to network device drivers, wireless networking,
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+import re,html
+from pathlib import Path
+ranges={'coding-style.html':[(165,199),(541,575),(651,710),(755,786)],'submitting-patches.html':[(195,268)]}
+for name,spans in ranges.items():
+ print('\\nFILE',name)
+ lines=(Path('runs/20261013-four-seats/sources/linus')/name).read_text().splitlines()
+ for lo,hi in spans:
+  for i in range(lo-1,hi):
+   s=html.unescape(re.sub('<["'^>]+>'"','',lines[i]))
+   if s.strip(): print(f'{i+1}: {s}')
+PY" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+
+FILE coding-style.html
+171: English
+175: Chinese (Simplified)
+177: Chinese (Traditional)
+179: Italian
+181: Spanish
+186: Linux kernel coding style¶
+187: This is a short document describing the preferred coding style for the
+188: linux kernel.  Coding style is very personal, and I won’t force my
+189: views on anybody, but this is what goes for anything that I have to be
+190: able to maintain, and I’d prefer it for most other things too.  Please
+191: at least consider the points made here.
+192: First off, I’d suggest printing out a copy of the GNU coding standards,
+193: and NOT read it.  Burn them, it’s a great symbolic gesture.
+194: Anyway, here goes:
+196: 1) Indentation¶
+197: Tabs are 8 characters, and thus indentations are also 8 characters.
+198: There are heretic movements that try to make indentations 4 (or even 2!)
+199: characters deep, and that is akin to trying to define the value of PI to
+541: 6) Functions¶
+542: Functions should be short and sweet, and do just one thing.  They should
+543: fit on one or two screenfuls of text (the ISO/ANSI screen size is 80x24,
+544: as we all know), and do one thing and do that well.
+545: The maximum length of a function is inversely proportional to the
+546: complexity and indentation level of that function.  So, if you have a
+547: conceptually simple function that is just one long (but simple)
+548: case-statement, where you have to do lots of small things for a lot of
+549: different cases, it’s OK to have a longer function.
+550: However, if you have a complex function, and you suspect that a
+551: less-than-gifted first-year high-school student might not even
+552: understand what the function is all about, you should adhere to the
+553: maximum limits all the more closely.  Use helper functions with
+554: descriptive names (you can ask the compiler to in-line them if you think
+555: it’s performance-critical, and it will probably do a better job of it
+556: than you would have done).
+557: Another measure of the function is the number of local variables.  They
+558: shouldn’t exceed 5-10, or you’re doing something wrong.  Re-think the
+559: function, and split it into smaller pieces.  A human brain can
+560: generally easily keep track of about 7 different things, anything more
+561: and it gets confused.  You know you’re brilliant, but maybe you’d like
+562: to understand what you did 2 weeks from now.
+563: In source files, separate functions with one blank line.  If the function is
+564: exported, the EXPORT macro for it should follow immediately after the
+565: closing function brace line.  E.g.:
+566: int system_is_up(void)
+567: {
+568:         return system_state == SYSTEM_RUNNING;
+569: }
+570: EXPORT_SYMBOL(system_is_up);
+574: 6.1) Function prototypes¶
+575: In function prototypes, include parameter names with their data types.
+651: out_free_buffer:
+652:         kfree(buffer);
+653:         return result;
+654: }
+657: A common type of bug to be aware of is one err bugs which look like this:
+658: err:
+659:         kfree(foo->bar);
+660:         kfree(foo);
+661:         return ret;
+664: The bug in this code is that on some exit paths foo is NULL.  Normally the
+665: fix for this is to split it up into two error labels err_free_bar: and
+666: err_free_foo::
+667: err_free_bar:
+668:         kfree(foo->bar);
+669: err_free_foo:
+670:         kfree(foo);
+671:         return ret;
+674: Ideally you should simulate errors to test all exit paths.
+677: 8) Commenting¶
+678: Comments are good, but there is also a danger of over-commenting.  NEVER
+679: try to explain HOW your code works in a comment: it’s much better to
+680: write the code so that the working is obvious, and it’s a waste of
+681: time to explain badly written code.
+682: Generally, you want your comments to tell WHAT your code does, not HOW.
+683: Also, try to avoid putting comments inside a function body: if the
+684: function is so complex that you need to separately comment parts of it,
+685: you should probably go back to chapter 6 for a while.  You can make
+686: small comments to note or warn about something particularly clever (or
+687: ugly), but try to avoid excess.  Instead, put the comments at the head
+688: of the function, telling people what it does, and possibly WHY it does
+689: it.
+690: When commenting the kernel API functions, please use the kernel-doc format.
+691: See the files at Documentation/doc-guide/ and
+692: tools/docs/kernel-doc for details. Note that the danger of over-commenting
+693: applies to kernel-doc comments all the same. Do not add boilerplate
+694: kernel-doc which simply reiterates what’s obvious from the signature
+695: of the function.
+696: The preferred style for long (multi-line) comments is:
+697: /*
+698:  * This is the preferred style for multi-line
+699:  * comments in the Linux kernel source code.
+700:  * Please use it consistently.
+701:  *
+702:  * Description:  A column of asterisks on the left side,
+703:  * with beginning and ending almost-blank lines.
+704:  */
+707: It’s also important to comment data, whether they are basic types or derived
+708: types.  To this end, use just one data declaration per line (no commas for
+709: multiple data declarations).  This leaves you room for a small comment on each
+710: item, explaining its use.
+755:                 (statement             . 0)
+756:                 (statement-block-intro . +)
+757:                 (statement-case-intro  . +)
+758:                 (statement-cont        . +)
+759:                 (substatement          . +)
+760:                 ))
+761:         (indent-tabs-mode . t)
+762:         (show-trailing-whitespace . t)
+763:         ))))
+765: (dir-locals-set-directory-class
+766:  (expand-file-name "~/src/linux-trees")
+767:  'linux-kernel)
+770: This will make emacs go better with the kernel coding style for C
+771: files below ~/src/linux-trees.
+772: But even if you fail in getting emacs to do sane formatting, not
+773: everything is lost: use indent.
+774: Now, again, GNU indent has the same brain-dead settings that GNU emacs
+775: has, which is why you need to give it a few command line options.
+776: However, that’s not too bad, because even the makers of GNU indent
+777: recognize the authority of K&R (the GNU people aren’t evil, they are
+778: just severely misguided in this matter), so you just give indent the
+779: options -kr -i8 (stands for K&R, 8 character indents), or use
+780: scripts/Lindent, which indents in the latest style.
+781: indent has a lot of options, and especially when it comes to comment
+782: re-formatting you may want to take a look at the man page.  But
+783: remember: indent is not a fix for bad programming.
+784: Note that you can also use the clang-format tool to help you with
+785: these rules, to quickly re-format parts of your code automatically,
+786: and to review full files in order to spot coding style mistakes,
+
+FILE submitting-patches.html
+196: Submitting patches: the essential guide to getting your code into the kernel¶
+197: For a person or company who wishes to submit a change to the Linux
+198: kernel, the process can sometimes be daunting if you’re not familiar
+199: with “the system.”  This text is a collection of suggestions which
+200: can greatly increase the chances of your change being accepted.
+201: This document contains a large number of suggestions in a relatively terse
+202: format.  For detailed information on how the kernel development process
+203: works, see A guide to the Kernel Development Process. Also, read
+204: Linux Kernel patch submission checklist
+205: for a list of items to check before submitting code.
+206: For device tree binding patches, read
+207: Submitting Devicetree (DT) binding patches.
+208: This documentation assumes that you’re using git to prepare your patches.
+209: If you’re unfamiliar with git, you would be well-advised to learn how to
+210: use it, it will make your life as a kernel developer and in general much
+211: easier.
+212: Some subsystems and maintainer trees have additional information about
+213: their workflow and expectations, see
+214: Subsystem and maintainer tree specific development process notes.
+216: Obtain a current source tree¶
+217: If you do not have a repository with the current kernel source handy, use
+218: git to obtain one.  You’ll want to start with the mainline repository,
+219: which can be grabbed with:
+220: git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+223: Note, however, that you may not want to develop against the mainline tree
+224: directly.  Most subsystem maintainers run their own trees and want to see
+225: patches prepared against those trees.  See the T: entry for the subsystem
+226: in the MAINTAINERS file to find that tree, or simply ask the maintainer if
+227: the tree is not listed there.
+230: Describe your changes¶
+231: Describe your problem.  Whether your patch is a one-line bug fix or
+232: 5000 lines of a new feature, there must be an underlying problem that
+233: motivated you to do this work.  Convince the reviewer that there is a
+234: problem worth fixing and that it makes sense for them to read past the
+235: first paragraph.
+236: Describe user-visible impact.  Straight up crashes and lockups are
+237: pretty convincing, but not all bugs are that blatant.  Even if the
+238: problem was spotted during code review, describe the impact you think
+239: it can have on users.  Keep in mind that the majority of Linux
+240: installations run kernels from secondary stable trees or
+241: vendor/product-specific trees that cherry-pick only specific patches
+242: from upstream, so include anything that could help route your change
+243: downstream: provoking circumstances, excerpts from dmesg, crash
+244: descriptions, performance regressions, latency spikes, lockups, etc.
+245: Quantify optimizations and trade-offs.  If you claim improvements in
+246: performance, memory consumption, stack footprint, or binary size,
+247: include numbers that back them up.  But also describe non-obvious
+248: costs.  Optimizations usually aren’t free but trade-offs between CPU,
+249: memory, and readability; or, when it comes to heuristics, between
+250: different workloads.  Describe the expected downsides of your
+251: optimization so that the reviewer can weigh costs against benefits.
+252: Once the problem is established, describe what you are actually doing
+253: about it in technical detail.  It’s important to describe the change
+254: in plain English for the reviewer to verify that the code is behaving
+255: as you intend it to.
+256: The maintainer will thank you if you write your patch description in a
+257: form which can be easily pulled into Linux’s source code management
+258: system, git, as a “commit log”.  See The canonical patch format.
+259: Solve only one problem per patch.  If your description starts to get
+260: long, that’s a sign that you probably need to split up your patch.
+261: See Separate your changes.
+262: When you submit or resubmit a patch or patch series, include the
+263: complete patch description and justification for it.  Don’t just
+264: say that this is version N of the patch (series).  Don’t expect the
+265: subsystem maintainer to refer back to earlier patch versions or referenced
+266: URLs to find the patch description and put that into the patch.
+267: I.e., the patch (series) and its description should be self-contained.
+268: This benefits both the maintainers and reviewers.  Some reviewers
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+import html,re
+from pathlib import Path
+p=Path('runs/20261013-four-seats/sources/linus/coding-style.html')
+for i,s in enumerate(p.read_text().splitlines(),1):
+ if 710<=i<=722: print(f'{i}: {html.unescape(re.sub(\"<["'^>]+>","",s))}'"')
+PY
+rg -n 'Author|Written|Linus|Torvalds|Copyright' runs/20261013-four-seats/sources/linus/management-style.html runs/20261013-four-seats/sources/linus/coding-style.html" in /home/smoke01/dev/ancient-games
+ exited 1 in 0ms:
+710: item, explaining its use.
+711: 
+712: 
+713: 9) You’ve made a mess of it¶
+714: That’s OK, we all do.  You’ve probably been told by your long-time Unix
+715: user helper that GNU emacs automatically formats the C sources for
+716: you, and you’ve noticed that yes, it does do that, but the defaults it
+717: uses are less than desirable (in fact, they are worse than random
+718: typing - an infinite number of monkeys typing into GNU emacs would never
+719: make a good program).
+720: So, you can either get rid of GNU emacs, or change it to use saner
+721: values.  To do the latter, you can stick the following in your .emacs file:
+722: (defun c-lineup-arglist-tabs-only (ignored)
+
+codex
+The main problems are in the derived rules: #1 turns avoidance into “never,” #7 calls the release cycle a single irreversible decision, and #12 claims no external standard has authority even though the source explicitly recognizes K&R. I also found a reordered quotation in #3 and a false claim that the roughly fifteen-patch batch is the documents’ only quantitative rule.
+codex
+# linus — codex review of the top 12
+
+## Per item
+
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+| 1 | not checkable | issue | ok | issue | change | Words match [management-style.html:223](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:223), but this copy does not establish authorship. “Never,” “whoever wrote the code,” and “your own judgement is not the input that matters” exceed the passage. Lines 233–243 explicitly allow small decisions. Substantially overlaps #4; distinguish avoiding uninformed arbitration from supporting local expertise. |
+| 2 | not checkable | issue | ok | ok | change | Text matches [management-style.html:238](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:238); speaker attribution remains unproven here. The “two” decisions are the wrong decision and its correction, not a prescribed decomposition into two decisions. “Being wrong is cheap” also overlooks lines 267–273: deleting work can irreversibly destroy an engineer’s trust. |
+| 3 | issue | ok | ok | ok | change | The uncertainty and fallibility mindset follows the text. However, the quotation reverses two passages: “Make them at least think twice” occurs at [management-style.html:289](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:289), before “The best thing you can do…” at lines 292–294. Present these as separate excerpts rather than one forward-running quotation. Authorship is also not checkable here. |
+| 4 | not checkable | issue | ok | issue | change | Words match [management-style.html:362](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:362), subject to the authorship caveat. “Actively recruit” adds a recruitment instruction: the text says take advantage of smart people and “when you find somebody smarter…coast along.” The expertise limit and light prodding are supported. Overlaps #1. |
+| 5 | not checkable | ok | ok | ok | keep | [management-style.html:383](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:383) supports taking blame, then privately notifying the developer, who is likely able to fix the problem. Preserve “if you can find them.” The wording is present; attribution to Torvalds remains unverified in this corpus. |
+| 6 | not checkable | issue | ok | ok | change | Excerpts match [management-style.html:320](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:320) and lines 404–418, with unverified authorship. “Without softening” overstates “don’t be **too** polite or subtle.” Lines 419–423 explicitly recommend humor to soften bluntness and make criticism less painful. Preserve clarity, apology, and avoidance of sanctimony without banning softening. |
+| 7 | issue | issue | ok | issue | change | Words are present, but explicitly third-party narration in [2.Process.html:226](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/2.Process.html:226). Nothing establishes “one big irreversible decision” or “once” per cycle. This is a window containing many merges. Lines 233–241 allow rare significant changes and qualifying new drivers after the window; “only fixes” and mandatory deferral suppress those exceptions. Its claimed rank rests on the unsupported irreversible-decision framing. |
+| 8 | issue | ok | ok | ok | change | The routing rule follows [submitting-patches.html:391](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/submitting-patches.html:391) and lines 404–408. However, the quotation talks **about** Linus in the third person; it is not established as his speech. Relabel as documented kernel practice and cite the maintainer-routing passage alongside the email passage. |
+| 9 | not checkable | ok | ok | ok | change | The instructions match [submitting-patches.html:759](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/submitting-patches.html:759), lines 794–798, 838–846, and 883–889; imperative mood is supported at lines 270–273. The bibliography links a Torvalds mail, but that mail is absent: exact wording and later additions cannot be attributed to him here. Keep the procedure as documentation guidance, with that qualification. |
+| 10 | not checkable | issue | ok | ok | change | Words match [submitting-patches.html:339](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/submitting-patches.html:339), but their personal authorship is not established. The body preserves the condition; the headline’s “never” turns conditional, approximate advice into a universal cap. The source says “**If you cannot condense**…only post **say 15 or so**.” Retain that condition and approximation. |
+| 11 | not checkable | ok | ok | ok | change | The self-contained justification and quantified trade-offs follow [submitting-patches.html:245](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/submitting-patches.html:245) and lines 262–267. The source does not establish these as Torvalds’s own words. Relabel as kernel submission guidance; the rule itself is well supported. |
+| 12 | not checkable | issue | ok | issue | change | Most quoted text is present, but authorship of the assembled passages is not established here. “No external standard has authority” conflicts with [coding-style.html:777](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/coding-style.html:777), which recognizes K&R’s authority and recommends configured formatting tools. “The only test” is an invented universal filter. Naming also distinguishes descriptive globals from short locals (lines 431–445). Merging naming, comments, function size, and checker exceptions under this filter obscures their distinct instructions. |
+
+## Claims elsewhere in the file that the sources contradict
+
+- **Review #4: the fifteen-patch advice is “the only quantitative rule in the three documents.”** False. [coding-style.html:197](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/coding-style.html:197) specifies eight-character tabs; lines 543–544 discuss one or two screenfuls; lines 557–562 give local-variable and cognitive-load quantities. The patch-format document also gives character and column limits.
+- **Review #4: the batch advice “makes the loop bounded.”** It limits an approximate batch under a condition; it specifies no total iteration limit or stopping condition.
+- **Review #2: “reversibility is the test that #1 uses.”** The opening technical-arbitration passage uses comparative knowledge of details. Reversibility appears afterward as a way to reduce consequential decisions; the source does not equate those tests.
+- **“What the top 10 missed”: “He decides once per cycle, on a schedule, with a named owner.”** [2.Process.html:441](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/2.Process.html:441) describes repeated pull requests that enter mainline **if Linus agrees**, with varying scrutiny. A release window is not a single decision.
+- **Gaps: the contraction correction was the only quote defect.** Item #3 also silently reverses the order of quoted sentences.
+
+The network failures, Wayback coverage, earlier research’s authorship findings, and original top-10 contents are **not checkable here**. They are unsupported by these four source files, rather than demonstrated contradictions.
+
+## Missing
+
+- **Keep competing approaches alive when superiority is unclear.** [management-style.html:295](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:295) offers “can’t we just do both?” and explains that eventual abandonment can expose problems with both proposals. The review mentions this tactic, but the final twelve omit it.
+- **Trust subsystem maintainers while retaining selective scrutiny.** [2.Process.html:441](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/2.Process.html:441) describes Linus sometimes looking closely and generally trusting maintainers. This adds a documented acceptance practice beyond routing work away from his inbox. It is third-party evidence, not his quoted speech.
+
+## Overall
+
+**My reading:** The strongest substantive failures are added absolutes and invented relationships: “never,” a single irreversible release decision, and one exclusive maintainability filter. **My reading:** Several useful rules survive with narrower wording, but their labels must distinguish source text from verified Torvalds speech; this review is my comparison against the supplied corpus, not independent authorship evidence. **Not measured:** These files do not establish the twelve rules’ relative importance or how consistently Torvalds follows them in practice.
+tokens used
+39,501
+# linus — codex review of the top 12
+
+## Per item
+
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+| 1 | not checkable | issue | ok | issue | change | Words match [management-style.html:223](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:223), but this copy does not establish authorship. “Never,” “whoever wrote the code,” and “your own judgement is not the input that matters” exceed the passage. Lines 233–243 explicitly allow small decisions. Substantially overlaps #4; distinguish avoiding uninformed arbitration from supporting local expertise. |
+| 2 | not checkable | issue | ok | ok | change | Text matches [management-style.html:238](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:238); speaker attribution remains unproven here. The “two” decisions are the wrong decision and its correction, not a prescribed decomposition into two decisions. “Being wrong is cheap” also overlooks lines 267–273: deleting work can irreversibly destroy an engineer’s trust. |
+| 3 | issue | ok | ok | ok | change | The uncertainty and fallibility mindset follows the text. However, the quotation reverses two passages: “Make them at least think twice” occurs at [management-style.html:289](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:289), before “The best thing you can do…” at lines 292–294. Present these as separate excerpts rather than one forward-running quotation. Authorship is also not checkable here. |
+| 4 | not checkable | issue | ok | issue | change | Words match [management-style.html:362](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:362), subject to the authorship caveat. “Actively recruit” adds a recruitment instruction: the text says take advantage of smart people and “when you find somebody smarter…coast along.” The expertise limit and light prodding are supported. Overlaps #1. |
+| 5 | not checkable | ok | ok | ok | keep | [management-style.html:383](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:383) supports taking blame, then privately notifying the developer, who is likely able to fix the problem. Preserve “if you can find them.” The wording is present; attribution to Torvalds remains unverified in this corpus. |
+| 6 | not checkable | issue | ok | ok | change | Excerpts match [management-style.html:320](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:320) and lines 404–418, with unverified authorship. “Without softening” overstates “don’t be **too** polite or subtle.” Lines 419–423 explicitly recommend humor to soften bluntness and make criticism less painful. Preserve clarity, apology, and avoidance of sanctimony without banning softening. |
+| 7 | issue | issue | ok | issue | change | Words are present, but explicitly third-party narration in [2.Process.html:226](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/2.Process.html:226). Nothing establishes “one big irreversible decision” or “once” per cycle. This is a window containing many merges. Lines 233–241 allow rare significant changes and qualifying new drivers after the window; “only fixes” and mandatory deferral suppress those exceptions. Its claimed rank rests on the unsupported irreversible-decision framing. |
+| 8 | issue | ok | ok | ok | change | The routing rule follows [submitting-patches.html:391](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/submitting-patches.html:391) and lines 404–408. However, the quotation talks **about** Linus in the third person; it is not established as his speech. Relabel as documented kernel practice and cite the maintainer-routing passage alongside the email passage. |
+| 9 | not checkable | ok | ok | ok | change | The instructions match [submitting-patches.html:759](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/submitting-patches.html:759), lines 794–798, 838–846, and 883–889; imperative mood is supported at lines 270–273. The bibliography links a Torvalds mail, but that mail is absent: exact wording and later additions cannot be attributed to him here. Keep the procedure as documentation guidance, with that qualification. |
+| 10 | not checkable | issue | ok | ok | change | Words match [submitting-patches.html:339](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/submitting-patches.html:339), but their personal authorship is not established. The body preserves the condition; the headline’s “never” turns conditional, approximate advice into a universal cap. The source says “**If you cannot condense**…only post **say 15 or so**.” Retain that condition and approximation. |
+| 11 | not checkable | ok | ok | ok | change | The self-contained justification and quantified trade-offs follow [submitting-patches.html:245](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/submitting-patches.html:245) and lines 262–267. The source does not establish these as Torvalds’s own words. Relabel as kernel submission guidance; the rule itself is well supported. |
+| 12 | not checkable | issue | ok | issue | change | Most quoted text is present, but authorship of the assembled passages is not established here. “No external standard has authority” conflicts with [coding-style.html:777](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/coding-style.html:777), which recognizes K&R’s authority and recommends configured formatting tools. “The only test” is an invented universal filter. Naming also distinguishes descriptive globals from short locals (lines 431–445). Merging naming, comments, function size, and checker exceptions under this filter obscures their distinct instructions. |
+
+## Claims elsewhere in the file that the sources contradict
+
+- **Review #4: the fifteen-patch advice is “the only quantitative rule in the three documents.”** False. [coding-style.html:197](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/coding-style.html:197) specifies eight-character tabs; lines 543–544 discuss one or two screenfuls; lines 557–562 give local-variable and cognitive-load quantities. The patch-format document also gives character and column limits.
+- **Review #4: the batch advice “makes the loop bounded.”** It limits an approximate batch under a condition; it specifies no total iteration limit or stopping condition.
+- **Review #2: “reversibility is the test that #1 uses.”** The opening technical-arbitration passage uses comparative knowledge of details. Reversibility appears afterward as a way to reduce consequential decisions; the source does not equate those tests.
+- **“What the top 10 missed”: “He decides once per cycle, on a schedule, with a named owner.”** [2.Process.html:441](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/2.Process.html:441) describes repeated pull requests that enter mainline **if Linus agrees**, with varying scrutiny. A release window is not a single decision.
+- **Gaps: the contraction correction was the only quote defect.** Item #3 also silently reverses the order of quoted sentences.
+
+The network failures, Wayback coverage, earlier research’s authorship findings, and original top-10 contents are **not checkable here**. They are unsupported by these four source files, rather than demonstrated contradictions.
+
+## Missing
+
+- **Keep competing approaches alive when superiority is unclear.** [management-style.html:295](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/management-style.html:295) offers “can’t we just do both?” and explains that eventual abandonment can expose problems with both proposals. The review mentions this tactic, but the final twelve omit it.
+- **Trust subsystem maintainers while retaining selective scrutiny.** [2.Process.html:441](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/sources/linus/2.Process.html:441) describes Linus sometimes looking closely and generally trusting maintainers. This adds a documented acceptance practice beyond routing work away from his inbox. It is third-party evidence, not his quoted speech.
+
+## Overall
+
+**My reading:** The strongest substantive failures are added absolutes and invented relationships: “never,” a single irreversible release decision, and one exclusive maintainability filter. **My reading:** Several useful rules survive with narrower wording, but their labels must distinguish source text from verified Torvalds speech; this review is my comparison against the supplied corpus, not independent authorship evidence. **Not measured:** These files do not establish the twelve rules’ relative importance or how consistently Torvalds follows them in practice.

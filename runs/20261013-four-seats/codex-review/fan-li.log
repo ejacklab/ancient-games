@@ -1,0 +1,672 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a133ca-32d9-7310-9e07-a556a5eb00a9
+--------
+user
+Read /home/smoke01/dev/ancient-games/runs/20261013-four-seats/briefs/codex-review-fan-li.md and do what it says.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the folder instructions and the review brief, then carry out the review.
+
+exec
+/bin/bash -lc 'cat CLAUDE.md runs/20261013-four-seats/briefs/codex-review-fan-li.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `~/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+Read /home/smoke01/dev/ancient-games/runs/20261013-four-seats/briefs/codex-review-common.md and do what it says.
+Your seat: fan-li — list: runs/20261013-four-seats/top12/fan-li.md; sources: runs/20261013-four-seats/sources/fan-li/.
+
+exec
+/bin/bash -lc 'cat runs/20261013-four-seats/briefs/codex-review-common.md /home/smoke01/.agents/skills/requirement-check/SKILL.md /home/smoke01/.agents/skills/coding-discipline/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Codex review brief — the top 12, second engine
+
+You are an independent reviewer for EJ's Ancient Games project. Another engine (opencode, MiniMax) researched ONE
+person and produced their **top 12 mindsets, decision rules or algorithms**. Review it. You are read-only: write
+nothing; your final message is your review.
+
+Read:
+- the list under review: `runs/20261013-four-seats/top12/<seat>.md` (named in your seat brief)
+- the source texts: `runs/20261013-four-seats/sources/<seat>/` (see `sources/README.md`; in the Chinese wikitext,
+  `{{*|…}}` is a commentator's note, not the main text). Search them with `grep`/`rg`. You have no web access; if a
+  quote's source is not in this folder, say "not checkable here", do not guess.
+
+For each of the 12 items, judge four things:
+1. **Quote** — are the quoted words in the source, and spoken by this person (not a commentator, historian or
+   another speaker)?
+2. **Step** — does the plain-English rule actually follow from the quote, or does it add something the quote does not
+   say? This is the main question: a rule that reads well but is not in the words is the failure we are looking for.
+3. **Kind** — is "mindset / decision rule / algorithm" right?
+4. **Rank** — is it in the right place, or merged with / duplicating another item?
+
+Also check the file's **Gaps** and **Review of the top 10** sections for any claim that the source texts contradict.
+
+## Write exactly this (Markdown, no preamble)
+
+# <seat> — codex review of the top 12
+
+## Per item
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+One row per item. Quote/Step/Kind/Rank: `ok` · `issue` · `not checkable`. Verdict: `keep` · `change` · `drop`.
+
+## Claims elsewhere in the file that the sources contradict
+- ... (or "none found")
+
+## Missing
+Anything this person is clearly known for deciding by, that the 12 leave out — only if the source texts here show it.
+
+## Overall
+Two or three sentences. Label each conclusion `quoted`, `my reading` or `not measured`.
+---
+name: requirement-check
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, unattributed or impossible to check.
+---
+
+# Requirement check
+
+A general standard (RFC 2119 / 8174), installed globally — not part of the Ancient Games framework. The
+worked failure in `meaningful-names` cites the Ancient Games as one example.
+
+A short gate between **hearing a rule** and **acting on it**. It exists because rules get written down that nobody
+can trace, that count two different things at once, or that nothing can ever fail — and the cost lands months later,
+when nobody can say whether the rule still means anything.
+
+Run it when someone states a rule, and run it on yourself before writing a normative line into any document.
+
+## The eight questions
+
+Ask them of **one statement**. Say which it passes and which it fails, then **ask the person about the failures** —
+do not fill the gaps yourself.
+
+1. **Source.** Who said this, and where? Can you point to the exact line? *"Mine"* is a valid answer. Unlabelled is
+   not.
+2. **One thing.** An "and", an "or", a "/", or a second number means it is **two** statements. Split them, and give
+   each its own source.
+3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
+   files?
+4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
+   failing inputs. If you cannot name one, it is not checkable — it is a wish.
+5. **Weak words.** *like, about, appropriate, as needed, logical, fast, enough, reasonable, only has to, TBD.* Replace
+   each with a value, **or mark the value open**. Never invent the number.
+6. **Level.** Is it **MUST** (a gate that stops work), **SHOULD** (a default that may be overridden with a stated
+   reason), or **guidance**? A safety bound earns MUST. **A method does not** — see the RFC note below.
+7. **Basis.** Measured, quoted from a source, or a guess? A guess is fine **if it is labelled** — `n=0`, with when it
+   will be looked at again.
+8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
+   part"*? The person probably did not say that. **A link is its own claim and needs its own source.**
+
+## Two rules for the agent
+
+- **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
+  is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
+  the time anyone notices.
+- **Never add structure that was not given.** No halves, no numbered reasons, no ordered pairs, no named phases,
+  unless the person said so. Quote them, state the operative sentence, stop. If a relationship between two rules is
+  wanted, that is a separate claim with its own evidence.
+
+## Two verified facts, worth quoting
+
+- **RFC 2119 §6, "Guidance in the use of these Imperatives":** imperatives *"must be used with care and sparingly…
+  they MUST only be used where it is actually required… they must not be used to try to impose a particular method."*
+  Most design rules are method. Method does not earn MUST.
+- **RFC 8174 (updates 2119):** the key words *"have the meanings specified herein only when they are in all
+  capitals."* Lowercase *must* and *should* carry no defined requirement meaning. If nothing marks which lines are
+  requirements, a reader cannot tell rules from explanation.
+
+## How to answer
+
+Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
+one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+
+Do not report a rule as complete when you chose its missing value. Say which values you left open.
+
+## A worked failure
+
+> *"At most 5 subagent roles per run and at most 3 running at once."*
+
+Four of the eight fail: **Source** — nobody could name one; **One thing** — a count of roles *and* a count of
+concurrent processes; **Unit** — two different units, one word ("subagent") used for both; **Level** — a method
+preference written as a cap. The sentence would not parse, and it took four days to find out why. The checklist
+catches it in thirty seconds.
+
+The same checklist, run on *"No single call runs longer than the ceiling: 8 hours"*, passes all eight — because it
+names who set it, counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail.
+
+## Limits
+
+The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
+feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
+and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
+paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
+quotes are checked. Treat the rest as a good working list, not as a citation.
+
+Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.
+---
+name: coding-discipline
+description: Baseline engineering discipline for any hands-on task in a repository. Use when writing, editing, refactoring, debugging or reviewing code, when running builds, tests or linters, when adding a dependency, or when preparing a git commit.
+---
+
+# Coding discipline
+
+Baseline rules for working in a repository. They apply regardless of language,
+framework or project.
+
+## Before changing anything
+
+- Read the actual file first. Never write or edit from an assumption about its contents.
+- Read a neighbouring example of the same kind of thing — a sibling module, an existing
+  test, an existing endpoint — and match it. The repository's own conventions outrank
+  your preferences on naming, formatting, typing, file layout and error style.
+- Confirm a dependency is already in use in the project, via its manifest, existing
+  imports or neighbouring code, before reaching for it. Do not add a new dependency to
+  solve something the existing ones already cover.
+
+## Keep the change minimal
+
+- Do the task that was asked. Not the adjacent task, not the cleanup you noticed on the
+  way past, not the refactor that would leave this nicer than you found it.
+- No speculative abstraction. Three similar lines beat a helper with one caller.
+- No error handling, fallbacks or validation for conditions that cannot occur. Validate
+  at boundaries only: user input, external APIs, data arriving from outside the process.
+- Comments explain *why*, and only where the code cannot carry it. No comment that
+  narrates what the next line does, and never a comment addressed to the reader about
+  the changes you are making.
+- Existing code you did not expect to find is someone's in-progress work. Leave it alone
+  unless the task requires otherwise, and stop to ask if it conflicts with what you were
+  asked to do.
+
+## Verify instead of assuming
+
+- Find the project's real check commands from its README, Makefile or package manifest.
+  Never assume `npm test`, `pytest` or `make build` is correct for this repo.
+- Run them after the change. A change you did not run is a change you did not finish.
+- Report what actually happened. If a check failed, show the failure. If you could not
+  run a check, say so and say why. Never describe unverified work as working, and never
+  skip, suppress or weaken a failing check to produce a clean result.
+
+## Git
+
+- Before committing, run `git status`, `git diff HEAD` and `git log -n 3` — to separate
+  your change from what was already in the working tree, and to match the repository's
+  commit message style.
+- Stage only the paths that belong to this change. No `git add -A` while unrelated
+  modifications are present.
+- Draft the commit message yourself, weighted toward why rather than what.
+- Never push, force-push, amend a published commit, delete a branch, or rewrite history
+  unless explicitly asked to in this conversation. Prior approval does not carry over to
+  a later commit.
+- Do not revert work that is not yours. Revert your own change only if it caused a
+  failure or you are asked to.
+- For history questions, `git log` and `git blame` are authoritative. Run the command
+  rather than reasoning from memory of the codebase.
+
+## When blocked or unsure
+
+- Ask one focused question when only the user can decide, and keep it to a single round.
+- Otherwise choose the safe default, do the work, and state which default you chose so
+  it can be corrected.
+- Investigate before working around an obstacle: read the error, check your assumption,
+  address the root cause. Do not bypass a guard, a lock or a failing check just to make
+  the obstacle go away.
+- Clean up scratch files you created. Leave the working tree containing only the change
+  you were asked for.
+
+exec
+/bin/bash -lc 'cat runs/20261013-four-seats/top12/fan-li.md runs/20261013-four-seats/sources/README.md
+rg --files runs/20261013-four-seats/sources/fan-li' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+I'll read the brief first.
+Sources fetched. Let me extract the text and verify quotes.
+Now let me check 史記/卷129 and search for other 范蠡 sources (淮南子, 越絕書, 吳越春秋).
+# 范蠡 (Fan Li) — top 12, reviewed
+
+## Review of the top 10
+
+1. **Change.** This is two rules welded together. The first (two gates) is really the first two channels of rule 5 — 天時 and 人事 *are* 與天 and 與人. The second (the 申胥 audience) is a different rule entirely: a sign of decay is not yet the decay. Keep only the first here and split the second out; both are promoted below, and the whole framework is merged into one algorithm at #1.
+2. **Keep, extend.** The right rule, but it stops half a step. 國語 gives the other half immediately: 「得時不成，天有還形。天節不遠，五年復反，小凶則近，大凶則遠」 — if you get the moment and fail to finish, Heaven reverses and the window returns within five years. Merged in at #4. Also one factual slip: 玄月 is the **ninth** month (爾雅曰：「九月為玄」, and 韋昭 dates it to 魯哀十六年九月), not "the last month of the year."
+3. **Change.** Right rule, sloppy quote. 「唯謀不遷」 quoted alone loses its subject; the actual clause is 「天節固然，唯謀不遷」 — Heaven's season is solid, *only the plan* does not shift. The contrast is the argument. Also 「夫十年謀之，一朝而棄之」 is the same rule a second time; one quote is enough. Promoted to #6.
+4. **Keep, fix the quote.** The quote silently splices: the source reads 「…始於人者，人之所卒也；**淫佚之事，上帝之禁也，**先行此者，不利。」 The dropped clause is a separate charge (debauchery is forbidden by Heaven), not part of the "whoever begins it is destroyed by it" argument, and the cut is unmarked. The 史記 parallel 「試身於所末，上帝禁之，行者不利」 has no such gap. Promoted to #7.
+5. **Change — merged into #1.** As written it is only the diagnostic half. Its own words 「有持盈，有定傾，有節事」 are immediately answered by 「持盈者與天，定傾者與人，節事者與地」, and then the *decision* half follows: 「天時不作，弗為人客；人事不起，弗為之始」. One framework, not two rules. The "How it decides" line is also the best in the top 10 — it shows the three answers being produced in order.
+6. **Keep.** Clean, single-trigger, and correctly kept in 國語's wording rather than reconciled with 史記's. Promoted to #9.
+7. **Change — this is the biggest rewrite.** It kept the labels and threw away the method. The passage says 「**用人無藝，往從其所**」 — 韋昭 glosses this as 「因敵為制，不豫設也」, *do not pre-set the method; take it from the enemy*. The top 10 dropped that clause and kept only 後則用陰／宜為人客, which are the labels, not the rule. It also dropped the three checks that actually gate an engagement (「必因天地之災」「又觀其民之飢飽勞逸以參之」「盡其陽節、盈吾陰節而奪之」) and the battlefield instruction 「彼來從我，固守勿與」. Rewritten at #8.
+8. **Keep.** Best-shaped rule in the set: one trigger, one action, and he names his own weakness in his own mouth. Promoted to #10.
+9. **Change — and it is a mindset, not a decision rule.** Three different moments merged: the warning letter (misjudge the ruler), 「君行令，臣行意」 (the servant's own will), and the Qi resignation (a commoner has reached his ceiling). They are one posture, but the top 10 never states the *reason* he gives first — 「今事已濟矣，蠡請從會稽之罰」: the debt was incurred in hardship and is discharged when the work is done. Also a sourcing defect: 「君行**令**，臣行意」 is 史記/卷41. 國語/卷21 reads 「君行**制**，臣行意」 (韋昭: 制，法也；意，志也). The source line lists both under one heading, so the string checks out in 史記 and the error is invisible. Rewritten as one mindset at #5.
+10. **Drop from the top 12, keep in the file.** This is the weakest-attributed rule of the ten: none of it is in his voice. 「與時逐而不責於人」 and 「十九年之中三致千金」 are 史記's narrator in 貨殖列傳; the doctrine itself is 計然's (「知斗則修備，時用則知物…財幣欲其行如流水」), and the research says so correctly in its Gaps. 「此天下之中，交易有無之路通」 is also 史記's narrator. Nothing here is a *decision* he is recorded making — it is a biography's judgement of a career. If the seat ever needs commerce rules, re-promote 「與時逐而不責於人。故善治生者，能擇人而任時」 (史記/卷129) as a personnel rule: choose the people, then use the timing.
+
+## What the top 10 missed
+
+- **What you do while you wait.** The top 10 says "wait" six times and never once says what to *do* during the wait. 國語 answers it directly: 「時不至，不可彊生；事不究，不可彊成。**自若以處，以度天下，待其來者而正之，因時之所宜而定之。**…**事無閒，時無反，則撫民保教以須之**」 — make no forced move, measure everything, fix what the season fixes, and if no turn comes, govern and protect the people until it does. The research noticed 「無曠其眾，以為亂梯」 and filed it in Gaps; it is half of a larger answer it did not see. Promoted to #2 — for a seat whose whole job is "is it the right time?", this is the most useful thing he says.
+- **The omen is not the thing.** 「逆節萌生。天地未形，而先為之征，其事是以不成，雜受其刑。」 He refuses when the evidence looks *best* — the enemy has just executed its best minister, which is the clearest possible sign. The visible sign is a 征, a symptom; the form has not appeared. Promoted to #3.
+- **Do not pre-set the method.** See review of #7. 「用人無藝，往從其所」 is the operative rule and it was cut.
+- **The criterion for a good victory.** 「是故戰勝而不報，取地而不反，兵勝於外，福生於內，用力甚少而名聲章明」 — win so there is nothing to come back for, take ground without needing to return it, win outside so the inside grows, spend almost nothing and let the reputation announce itself. The top 10 has rules about *when* to fight and *how* to fight and none about what counts as a win. Promoted to #11.
+- **Making yourself smaller than the other side's rhetoric.** 「余雖靦然而人面哉，吾猶禽獸也，又安知是諓諓者乎？」 — he answers 吴's envoy by denying he can understand language, so the envoy has nothing to report. Then: 「君王已委制於執事之人矣。子往矣，無使執事之人得罪於子」 — release the envoy unharmed so he is not punished for carrying the refusal. Then he does not re-consult the king at all: 「范蠡不報於王，擊鼓興師以隨使者」. A communication procedure, entirely absent. Promoted to #12.
+- **「臣聞之」 as a stance.** Six times in 國語/卷21 he opens with 臣聞之, 臣聞古之善用兵者, 臣聞命矣. He never says "I think"; he says "I heard it." It is a genuine epistemic habit — he executes transmitted doctrine rather than claiming invention — and it is the mechanism behind his best quote about the economy (the doctrine is 計然's, not his). Left out of the 12 because it never changes a decision on its own; it is the frame, not the rule.
+- **Send the hard job to whoever has known hardship.** 「彼非不愛其弟，顧有所不能忍者也…至如少弟者，生而見我富，乘堅驅良逐狡兔，豈知財所從來，故輕棄之」 (史記/卷41). The research filed it in Gaps as well-sourced but "not a war or money rule" — it is a selection rule, and the seat has one. Also from Gaps: 「無曠其眾，以為亂梯」, now at #2.
+- **Independent sources the research did not check.** It said no independent source was consulted for 越絕書/吳越春秋. 吳越春秋·勾踐歸國外傳第八 (勾踐九年) gives a Fan Li strategy that is *not* in 國語 or 史記 and is not the wait-for-the-moment strategy: 「臣請按師整兵，待其壞敗，隨而襲之，兵不血刃，士不旋踵。臣願大王匿聲無見其動，以觀其靜」 — sit on the army until their structure fails, then take them without blood, and hide your own movements while you do. The same chapter has 「外郭築城而缺西北，示服事吳也，不敢壅塞，內以取吳，故缺西北，而吳不知也」 — build the capital with a deliberate gap facing the overlord, which reads as submission and is actually the hole you will expand through. Both `attributed`, from a ~2nd-century text whose chronology conflicts with 史記. Not promoted: too late to sit beside 國語 on equal footing, but worth knowing it exists.
+- **The persona.** 史記三家註·正義 quoting 會稽典錄: 「范蠡字少伯…本是楚宛三戶人，**佯狂倜儻負俗**」, and 文種's report of him: 「范蠡本國狂人，生有此病」 — answered with 「吾聞士有賢俊之姿，必有佯狂之譏，內懷獨見之明，外有不知之毀」. Inner clarity, outer apparent madness. That is the register 國語's 「吾猶禽獸也」 is written in, so it corroborates #12 rather than standing alone.
+
+## Top 12
+
+1. **Kind:** algorithm
+   **In plain English:** Every situation has one of three forms — holding the full, steadying the leaning, ordering affairs — and each is answered by a different authority: the full follows Heaven, the leaning follows people, affairs follow the ground. Then two gates decide your role: if Heaven's timing has not ripened, do not be the attacker; if human conditions have not risen, do not be the initiator. If both are ripe, you are the attacker and you go.
+   **Their words:** 「夫國家之事，有持盈，有定傾，有節事。」/「持盈者與天，定傾者與人，節事者與地。」/「夫聖人隨時以行，是謂守時。天時不作，弗為人客；人事不起，弗為之始。」 — "Matters of state have three forms: holding the full, steadying the leaning, ordering affairs." / "To hold the full, accord with Heaven; to steady the leaning, accord with people; to order affairs, accord with the ground." / "The sage moves with the season; that is keeping the season. When Heaven's timing does not arise, do not be the guest [attacker]; when human conditions do not arise, do not be the one who begins."
+   **Source:** 國語/卷21 §1 「范蠡進諫句踐持盈定傾節事」, the exchange beginning 「王曰：為三者，奈何？」 — Wikisource 國語/卷21. Variant in 史記/卷041: 「持滿者與天，定傾者與人，節事者以地」.
+   **Label:** `quoted`
+   **From:** top-10 #1 and #5 merged
+
+2. **Kind:** algorithm
+   **In plain English:** The steps for waiting. (1) Do not force what is not yet in season. (2) Stay as you are — no improvised moves. (3) Measure everything while you wait. (4) Fix what the season says should be fixed, nothing else. (5) Put the people to work — open the fields, fill the granaries — and never leave anyone idle, because idle people become the ladder disorder climbs. (6) If no opening and no turn, govern and protect and keep waiting.
+   **Their words:** 「時不至，不可彊生；事不究，不可彊成。自若以處，以度天下，待其來者而正之，因時之所宜而定之。同男女之功，除民之害，以避天殃。田野開闢，府倉實，民眾殷。無曠其眾，以為亂梯。…事無閒，時無反，則撫民保教以須之。」 — "When the season has not come, do not force growth; when the matter is not exhausted, do not force completion. Be as you are, measure the world, and when it comes, set it right; fix what is fixed by the season. Do men's and women's work, remove the people's harms, avoid Heaven's punishment. Open the fields, fill the granaries, make the people numerous. Never leave your people idle, or idleness becomes the ladder of disorder… If there is no opening and no turn, then govern the people, protect and teach them, and wait."
+   **Source:** 國語/卷21 §1, the answer to 「王問於范蠡曰：節事奈何？」
+   **Label:** `quoted`
+   **From:** new
+
+3. **Kind:** decision rule
+   **In plain English:** A visible sign that the enemy is decaying is not the decay. Rebellion and disorder only *sprout*; until Heaven and Earth have taken their actual form, acting on the sign is what makes the enterprise fail and is what brings the punishment on you.
+   **Their words:** 「逆節萌生。天地未形，而先為之征，其事是以不成，雜受其刑。王姑待之。」 — "Inverted discipline is sprouting. Heaven and Earth have not yet taken form, and you act first on the symptom — that is why the affair does not succeed, and you take the penalty along with it. For now, wait."
+   **Source:** 國語/卷21 §4 「范蠡謂先為之征其事不成」, in answer to the news that 申胥 was killed for repeated remonstrance.
+   **Label:** `quoted`
+   **From:** new (the second rule inside top-10 #1)
+
+4. **Kind:** decision rule
+   **In plain English:** When the moment arrives, everything at once — the whole army, that season, before the window closes. And the corollary: if the moment arrived and you did not finish, Heaven reverses and the window comes back within five years, closer for a small disaster and farther for a great one. So the urgency is real but it is not panic.
+   **Their words:** 「臣聞從時者，猶救火、追亡人也，蹶而趨之，唯恐弗及。」/「得時無怠，時不再來，天予不取，反為之災。」/「得時不成，天有還形。天節不遠，五年復反，小凶則近，大凶則遠。」 — "To follow the moment is like fighting a fire or chasing a fugitive: run and press, fearing only that you arrive too late." / "With the moment obtained, do not slacken; the moment does not come twice. What Heaven gives and you do not take turns into a disaster." / "If the moment is obtained and the work is not done, Heaven has a shape in which to turn it back. Heaven's season is not far; it returns within five years — near for a small ill, far for a great one."
+   **Source:** 國語/卷21 §6 「越興師伐吳而弗與戰」 (first two) and §7 「范蠡諫句踐勿許吳成卒滅吳」 (third).
+   **Label:** `quoted`
+   **From:** top-10 #2, extended
+
+5. **Kind:** mindset
+   **In plain English:** Your obligation to a ruler is incurred in hardship and discharged when the work is done — not renewed by success. So: the ruler who shared your hardship will not share your triumph; a high name is a place of danger; and to hold an honoured name for long is unlucky. This is why he leaves, and it is a standing judgement he applies to himself before anyone offers him anything.
+   **Their words:** 「臣聞之，為人臣者，君憂臣勞，君辱臣死…今事已濟矣，蠡請從會稽之罰。」/「蜚鳥盡，良弓藏；狡兔死，走狗烹。越王為人長頸鳥喙，可與共患難，不可與共樂。子何不去？」/「范蠡以為大名之下，難以久居」/「居家則致千金，居官則至卿相，此布衣之極也。久受尊名，不祥。」 — "I have heard: of a ruler's servant, when the ruler worries the servant labours, when the ruler is humiliated the servant dies… now the matter is accomplished, I ask to answer for the punishment of 會稽." / "When the birds are gone the good bow is stored; when the cunning hare is dead the hunting dog is cooked. The King of Yue is long-necked and bird-beaked: he can share hardship with you, not happiness. Why do you not leave?" / "Fan Li considered that beneath a great name it is hard to stay long." / "At home you reach a thousand gold; in office the rank of minister — that is the limit of a commoner. To hold an honoured name for long is unlucky."
+   **Source:** 國語/卷21 §8 「范蠡乘輕舟以浮於五湖」 (first, with 「君行制，臣行意」); 史記/卷041, 范蠡 section (letter to 文種, 「大名之下」, and the Qi resignation).
+   **Label:** `quoted`
+   **From:** top-10 #9, rewritten
+
+6. **Kind:** decision rule
+   **In plain English:** Heaven's season is solid; only the plan shifts, and it does not. A plot settled in the ancestral temple is not re-opened on the plain — and years of preparation are not thrown away for one day of feeling.
+   **Their words:** 「天節固然，唯謀不遷。」/「夫謀之廊廟，失之中原，其可乎？王姑勿許也。」 — "Heaven's season is of course solid; only the plan does not shift." / "A plot lost in the ancestral temple and lost again on the plain — is that permissible? For now, do not agree to it."
+   **Source:** 國語/卷21 §6, said when Wu challenged five times in one day and the king could not bear it; 韋昭 on 唯謀不遷: 「謀必素定，不可遷易」. 史記/卷041 has the doctrine without these words: 「謀之二十二年，一旦而棄之，可乎？」
+   **Label:** `quoted`
+   **From:** top-10 #3, requoted
+
+7. **Kind:** decision rule
+   **In plain English:** Force is the last thing in affairs, not the first. Attacking is against virtue, weapons are lethal instruments, secret plotting is against virtue, whoever begins against a man is destroyed by him, and doing it first is not to your advantage. Debauchery is separately forbidden by Heaven.
+   **Their words:** 「夫勇者，逆德也；兵者，凶器也；爭者，事之末也。陰謀逆德，好用凶器，始於人者，人之所卒也；淫佚之事，上帝之禁也，先行此者，不利。」 — "Courage that attacks is against virtue; weapons are lethal instruments; contention is the last thing in affairs. To plot secretly is against virtue, to use lethal instruments; whoever begins against a man is destroyed by him; debauchery is a thing Heaven forbids; to do this first is not to your advantage."
+   **Source:** 國語/卷21 §1, second audience, immediately before the army loses at 五湖 and takes refuge at 會稽. 史記/卷041: 「臣聞兵者凶器也，戰者逆德也，爭者事之末也…試身於所末，上帝禁之，行者不利」.
+   **Label:** `quoted`
+   **From:** top-10 #4, un-spliced
+
+8. **Kind:** algorithm
+   **In plain English:** Do not pre-set the method — take it from the opponent. Steps: (1) If they come to you, hold and do not engage. (2) If you must engage, require three things together — a Heaven-sent disaster, and their people hungry or tired — and take the measure of all three. (3) Wait until their yang is spent and your own yin is full, then take. (4) When it suits you to attack: hard and fast, and do not expect to take them while their yang is unspent. When it suits you to defend: calm, slow, solid, and unforceable while their yin is unspent. (5) Deploy so that your formation follows theirs.
+   **Their words:** 「用人無藝，往從其所」/「彼來從我，固守勿與。若將與之，必因天地之災，又觀其民之飢飽勞逸以參之。盡其陽節、盈吾陰節而奪之。宜為人客，剛彊而力疾；陽節不盡，輕而不可取。宜為人主，安徐而重固；陰節不盡，柔而不可迫。」 — "In employing men there is no fixed rule; go and follow where they are." / "If they come to me, hold fast and do not join battle. If you are going to join them, it must be because of a Heaven-sent disaster, and you must weigh in their people's hunger, fullness, labour and ease. Only when their yang season is spent and your own yin season is full do you take it." / "When it suits you to be the guest [attacker], be fierce and fast; while their yang is not yet spent, do not attack lightly and expect to take them. When it suits you to be the host, be calm, slow and solid; while their yin is not yet spent, soft though they are, they cannot be forced." — 韋昭 on 用人無藝: 「因敵為制，不豫設也」
+   **Source:** 國語/卷21 §6, the whole 臣聞古之善用兵者 passage.
+   **Label:** `quoted` (the gloss 因敵為制 is `attributed` to 韋昭, c. 3rd c. CE)
+   **From:** top-10 #7, rewritten
+
+9. **Kind:** decision rule
+   **In plain English:** When you are losing, buy peace by putting yourself on the table, not the country. Humble your words, honour their ritual, give treasures and singing-girls, dignify them with titles. If that does not end it, put your own person in the market — that is, go as servant, hand over the state seals and keys, and give your women as their wives. Not the territory.
+   **Their words:** 「卑辭尊禮，玩好女樂，尊之以名。如此不已，又身與之市。」 — "Humble your words, honour their ritual; offer treasures and singing-girls, dignify them with titles. If it does not stop at that, then put your person on the market." — 韋昭: 「市，利也，謂委管籥屬國家，以身隨之」
+   **Source:** 國語/卷21 §1, given to the king *after* the army had already lost at 五湖 and was besieged at 會稽. 史記/卷041: 「卑辭厚禮以遺之，不許，而身與之市」.
+   **Label:** `quoted`
+   **From:** top-10 #6, kept
+
+10. **Kind:** decision rule
+    **In plain English:** Give every job to the person better at it — including the jobs you are better at — and say so out loud. He names himself the wrong man for governing his own country and asks for the external and military command instead. And the deeper version, from the son's death: send the hard job to whoever has known hardship, because the person raised comfortable does not know where the money came from and so spends it lightly.
+    **Their words:** 「四封之內，百姓之事，蠡不如種也。四封之外，敵國之制，立斷之事，種亦不如蠡也。」/「兵甲之事，種不如蠡；填撫國家，親附百姓，蠡不如種。」/「彼非不愛其弟，顧有所不能忍者也…至如少弟者，生而見我富，乘堅驅良逐狡兔，豈知財所從來，故輕棄之」 — "Inside the four borders, the people's business: I am not as good as 種. Outside the four borders, the enemy's pressure and the decisive stroke: 種 is not as good as I am." / "Arms and armour: 種 is not as good as I am; settling and cherishing the state, winning the people: I am not as good as 種." / "It is not that he did not love his brother; it is that there was something he could not bear. …As for the younger son, born to see me rich, riding firm chariots and driving good horses chasing cunning hares — how would he know where the wealth came from, and so he values it lightly and spends it."
+    **Source:** 國語/卷21 §1 (in answer to 「王曰：蠡為我守於國」, and again when the king offers him the whole state); 史記/卷041, 范蠡 section (compact form; the son). The son's speech is 史記's record of what he said, built on the 莊生 anecdote — see Gaps.
+    **Label:** `quoted` (the son passage is `attributed`)
+    **From:** top-10 #8, extended with the research's own Gaps item
+
+11. **Kind:** decision rule
+    **In plain English:** Judge a victory by whether it can be left alone. Win so the enemy cannot strike back, take ground so you need not give it back, win outside so that blessing grows inside — and spend as little as possible, letting the fame announce itself.
+    **Their words:** 「是故戰勝而不報，取地而不反，兵勝於外，福生於內，用力甚少而名聲章明，種亦不如蠡也。」 — "Therefore to win a battle and have no repayment come, to take land and not have to give it back: to win in arms outside and have fortune arise within; to use very little force and have the reputation become manifest."
+    **Source:** 國語/卷21 §1, the closing clause of his answer on 四封之外, immediately before 「王曰：諾。令大夫種為之。」 He hands this part to 文種, which is why it is easy to miss.
+    **Label:** `quoted`
+    **From:** new
+
+12. **Kind:** decision rule
+    **In plain English:** When you are the weaker party and the other side has the better rhetoric, make yourself smaller than their argument: disclaim the ability to understand it, so there is nothing to report back. Release their messenger unharmed so he is not punished for carrying your refusal. Then decide on the spot and do not go back to the king — raise the drum and follow the envoy out.
+    **Their words:** 「余雖靦然而人面哉，吾猶禽獸也，又安知是諓諓者乎？」/「君王已委制於執事之人矣。子往矣，無使執事之人得罪於子。」/「范蠡不報於王，擊鼓興師以隨使者。」 — "Though I have a human face, I am ashamed of it; I am still a beast — how would I know anything about this glib talk?" / "The king has already committed the matter into the hands of the officer in charge. Go your way; do not let the officer in charge be put in the wrong by you." / "Fan Li did not report back to the king; he beat the drum, raised the army and followed the envoy."
+    **Source:** 國語/卷21 §7 「范蠡諫句踐勿許吳成卒滅吳」.
+    **Label:** `quoted`
+    **From:** new
+
+## Gaps
+
+- **The design's own Fan Li quote is not his.** design.md line 29 gives 「時不至，不可強生；事不究，不可強成」 to 國語·越語下. It is in 國語/卷21, but **inside 韋昭's note on 節事者與地** — the wikitext reads 「節事者與地。{{*|與地，法地也。時不至不可彊生，事不究不可彊成之屬。}}」. Those are a third-century CE commentator's words, glossing 與地, and 范蠡 does not speak them. The quote-check confirmed the characters are present in the named source, which is exactly the limit of what it was written to establish. If that line goes into a seat, it must be labelled 韋昭, not 范蠡.
+- **Verification method.** I re-fetched Wikisource 國語/卷21, 史記/卷041, 史記/卷129, 吳越春秋/勾踐歸國外傳, 史記三家註/卷041 and 越絕書/卷14 and tested every clause above against the source text with the glosses stripped and variant characters normalised. Every clause in the Top 12 matched its named source. Two strings I had to correct from the research's wording rather than from the source: 「君行令」 (史記) vs 「君行制」 (國語), and the 玄月 date. All of these are Wikisource re-editions with no critical apparatus — a Zhonghua 史記 remains the final check, as the research said.
+- **ctext.org still blocked**, as in the original run. 史記正義 (which carries 會稽典錄) is available on Wikisource and is how I sourced the 佯狂 material; a Zhonghua edition of the 集解/索隱/正義 triple would be better.
+- **越絕書: partially checked, and it is not neutral.** I read 卷十四 (越絕德序外傳記第十八) and found three things worth a line — 「若卑辭以地讓之」 (cede the land as well as the person, a variant of #9), 「范蠡內視若盲，反聽若聾，度天關，涉天機」, and 「貴微而賤獲」. The same chapter says 「范蠡恐懼，逃於五湖」, which flatly contradicts the deliberate, reasoned exit in 國語 §8 and 史記 — a reason to treat the text's 序 as late and unreliable rather than as evidence. **I could not read 越絕書 卷1–13 or 15**: the fetches were refused, so I cannot claim there is no other 范蠡 material there. Worth one more pass.
+- **吳越春秋 was not usable as equal evidence.** The 兵不血刃 and 缺西北 passages are real and verified, but 吳越春秋 is ~2nd c. CE, its campaign chronology conflicts with 史記, and 韋昭 is citing it by a chapter name ("某則") rather than quoting it — so it is being used as corroboration of later readers, not as a text of the 春秋 period.
+- **Two late, uncorroborated sources I deliberately did not use.** 無能子/范蠡說 (Tang) gives 「吾聞陰謀人者，其禍必復」 and a long exchange in which 文種 argues that removing a menace is not the same as sinning against Heaven — good, but a Tang fictional dialogue with no manuscript pedigree I could check. 春秋戰國異辭 (late Qing) carries a farewell speech not in 國語 or 史記 — 「臣聞君子俟時計，不數謀；死不被疑，內不自欺」 — which would be a genuinely new item if true, but the page returned a redirect and I could not verify the text. Both are named here so a later run can decide.
+- **史記's son-in-Chu speech stays `attributed`.** It is built on the 莊生 anecdote and is 史記's record of what he said, not a transcript. I have kept it inside #10 rather than standing it alone, so nothing depends on it.
+- **未收於十二 but real, in case the seat is re-scoped:** 「善治生者，能擇人而任時」 (史記/卷129 — choose the people, then use the timing); 「王乃遣工以良金寫范蠡之狀而朝禮之，環會稽三百里者以為范蠡地」 (國語 §8 — the state wrote his image in gold and made him a hereditary fief, which is the other half of #5 and complicates it); 「持盈者與天…節事者與地」的 史記 variant 以地 for 與地, still unreconciled.
+# Source texts
+
+Fetched 2026-10-13 by Claude (main session) for quote checking: Chinese texts are Wikisource raw wikitext
+(`action=raw`; the 帛書 text via the API, pageid 39831), kernel docs are docs.kernel.org HTML (7.3.0-rc7 render).
+In the wikitext, `{{*|…}}` is inline commentary (e.g. 韋昭 in 國語, 王弼 / 陸德明 in 道德經), not the main text.
+runs/20261013-four-seats/sources/fan-li/國語_卷21.txt
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt
+runs/20261013-four-seats/sources/fan-li/史記_卷129.txt
+
+codex
+I’m applying the requirement-check skill to the proposed rules, focusing on whether each action follows from Fan Li’s words. The file’s claim that every quote matched needs checking against the main text, with commentator notes kept separate.
+
+exec
+/bin/bash -lc 'nl -ba runs/20261013-four-seats/sources/fan-li/國語_卷21.txt' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+     1	{{Header|title=國語卷第二十一|author=左丘明|section=越語下|times=春秋|previous=[[../卷20|越語上]]|type=|from=|notes=}}
+     2	== 范蠡進諫句踐持盈定傾節事 ==
+     3	越王句踐即位三年而欲伐吳，{{*|句踐三年，魯哀元年也。}}范蠡進諫曰：「夫國家之事，有持盈，{{*|持，守也。盈，滿也。}}有定傾，{{*|定，安也。傾，危也。}}有節事。」{{*|節，制也。}}王曰：「為三者，奈何？」對曰：「持盈者與天，{{*|與天，法天也。天道盈而不溢，盛而不驕。}}定傾者與人，{{*|與人，取人之心也。人道好謙，傾危之中，當卑辭尊禮，玩好女樂，尊之以名。}}節事者與地。{{*|與地，法地也。時不至不可彊生，事不究不可彊成之屬。}}王不問，蠡不敢言。天道盈而不溢，{{*|陽盛則損，日滿則虧。}}盛而不驕，{{*|盛，元氣廣大時。不驕，不自縱弛。}}勞而不矜其功。{{*|勞，動而不已也。矜，大也。不自大其功，施而不德也。}}夫聖人隨時以行，是謂守時。{{*|隨時，時行則行，時止則止。}}天時不作，弗為人客；{{*|作，起也。攻者為客。起謂天時、利害、災變之應。}}人事不起，弗為之始。{{*|人事，謂怨叛、逆亂之萌也。先動為始。}}今君王未盈而溢，{{*|未盈，國未富實而君意溢。}}未盛而驕，{{*|道化未盛而自驕泰。}}不勞而矜其功，{{*|未有勤勞而自大其功。}}天時不作而先為人客，{{*|吳未有天災而欲伐之。}}人事不起而創為之始，此逆於天而不和於人。{{*|天應未至，人事不起，故逆於天而失人和也。}}王若行之，將妨於國家，靡王躬身。」{{*|妨，害也。靡，損也。}}王弗聽。
+     4	
+     5	范蠡進諫曰：「夫勇者，逆德也；{{*|德尚禮讓，勇則攻奪。}}兵者，凶器也；{{*|言害人也。}}爭者，事之末也。{{*|言賢者修其政德，而遠方附事之德不行，然後用武，故曰：「爭者，事之末也。」}}陰謀逆德，好用凶器，{{*|陰謀，兵謀也。勇為逆德。}}始於人者，人之所卒也；{{*|始以伐人，人終害之。}}淫佚之事，上帝之禁也，{{*|淫佚，放盪。}}先行此者，不利。」王曰：「無是貳言也，吾已斷之矣！」{{*|貳言，陰謀、淫佚也。}}果興師而伐吳，戰於五湖，{{*|五湖，今太湖。}}不勝，棲於會稽。
+     6	
+     7	王召范蠡而問焉，曰：「吾不用子之言，以至於此，為之奈何？」范蠡對曰：「君王其忘之乎？持盈者與天，定傾者與人，節事者與地。」王曰：「與人奈何？」{{*|已在傾危，故先問與人。}}對曰：「卑辭尊禮，{{*|言當卑約其辭、尊重其禮以求平。}}玩好女樂，{{*|玩好，珍寶也。女樂，謂士女女於士，大夫女女於大夫。}}尊之以名。{{*|謂之天王。}}如此不已，{{*|不已，謂吳不釋也。}}又身與之市。」{{*|市，利也，謂委管籥屬國家，以身隨之。}}王曰：「諾。」乃令大夫種行成於吳，曰：「請士女女於士，大夫女女於大夫，隨之以國家之重器。」{{*|重器，寶器也。}}吳人不許。大夫種來而復往，曰：「請委管籥屬國家，以身隨之，君王制之。」{{*|委，歸也。屬，付也。管籥，取鍵器也。月令曰：「修鍵閉，慎管籥。」}}吳人許諾。王曰：「蠡為我守於國。」對曰：「四封之內，百姓之事，蠡不如種也。四封之外，敵國之制，立斷之事，種亦不如蠡也。」王曰：「諾。」令大夫種守於國，與范蠡入宦於吳。{{*|宦，為臣隸也。}}
+     8	
+     9	三年，而吳人遣之。{{*|句踐以魯哀元年棲會稽，吳與之平而去之。句踐改修國政，然後卑事夫差，在吳三年，而吳人遣之，此則魯哀五年也。}}歸及至於國，王問於范蠡曰：「節事奈何？」{{*|欲更修政，故問節事。}}對曰：「節事者與地。唯地能包萬物以為一，其事不失。{{*|為一，不偏也。不失，不失時也。}}生萬物，容畜禽獸，然後受其名而兼其利。{{*|受其名，受其功名也。利，謂萬物終歸于地。}}美惡皆成，以養其生。{{*|物之美惡，各有所宜，皆成之以養人也。}}時不至，不可彊生；{{*|物生各有時。}}事不究，不可彊成。{{*|究，窮也。窮則變，生可因而成之。}}自若以處，{{*|若，如也。自如，無妄動也。}}以度天下，待其來者而正之，{{*|不先唱，待其來而就正之。}}因時之所宜而定之。同男女之功，{{*|功，農穡、絲枲之功。}}除民之害，以避天殃。田野開闢，府倉實，{{*|貨財曰府，米粟曰倉。}}民眾殷。{{*|殷，盛也。}}無曠其眾，以為亂梯。{{*|曠，空也。梯，階也。無令空日廢業，使人困乏，以生怨亂，為禍階也。}}時將有反，事將有閒，{{*|時，天時。事，人事。反，還也。閒，隟也。時還則祚在越，而吳事有釁隟也。}}必有以知天地之恆制，乃可以有天下之成利。{{*|恆，常也。制，度也。}}事無閒，時無反，{{*|吳事無釁隟，天時未在越。}}則撫民保教以須之。」{{*|保，守也。}}
+    10	
+    11	王曰：「不穀之國家，蠡之國家也，蠡其圖之！」對曰：「四封之內，百姓之事，時節三樂，{{*|三樂，三時之務，使人勸事樂業。}}不亂民功，不逆天時，{{*|從事有業，故功不亂。因時順氣，故不逆。}}五穀睦熟，民乃蕃滋，{{*|睦，和也。蕃，息也。滋，益也。}}君臣上下交得其志，蠡不如種也。{{*|交，俱也。}}四封之外，敵國之制，立斷之事，因陰陽之恆，順天地之常，{{*|陰陽，謂剛柔、晦明、三光盈縮、用兵利鈍之常數。}}柔而不屈，{{*|外雖柔順，內不可屈。}}彊而不剛，{{*|內雖彊盛，行不以剛。}}德虐之行，因以為常；{{*|唐尚書云：「言無德行虐習以為常。」昭謂：德，有所懷柔及爵賞也。虐，有所斬伐及黜奪也。以為常，以為常法也。}}死生因天地之刑，{{*|死，殺也。刑，法也。殺生必因天地四時之法，推亡固存亦是也。}}天因人，{{*|因人善惡而福禍之。}}聖人因天；{{*|天垂象，聖人則之。}}人自生之，天地形之，{{*|形，見也，見其吉凶之象。}}聖人因而成之。{{*|因吉凶以誅賞也。}}是故戰勝而不報，{{*|敵家不能報也。}}取地而不反，{{*|不復反敵家也。}}兵勝於外，福生於內，用力甚少而名聲章明，種亦不如蠡也。」王曰：「諾。」令大夫種為之。{{*|為，治國也。}}
+    12	== 范蠡勸句踐無蚤圖吳 ==
+    13	四年，王召范蠡而問焉，{{*|說云：「魯哀三年。」昭謂：四年，反國四年，魯哀九年。}}曰：「先人就世，不穀即位。{{*|先人，允常。就世，終世也。}}吾年既少，未有恆常，出則禽荒，入則酒荒。吾百姓之不圖，唯舟與車。{{*|好游田，故唯舟與車。}}上天降禍於越，委制於吳。{{*|委，歸也。}}吳人之那不穀，亦又甚焉。{{*|那，於也。甚焉，言見困苦。}}吾欲與子謀之，其可乎？」對曰：「未可也。蠡聞之，上帝不考，時反是守，{{*|考，成也。言天未成越，當守天時，天時反，乃可以動。}}彊索者不祥。{{*|索，求也。}}得時不成，反受其殃。{{*|言得天時而人弗能成，則反受其殃。夫差克越，可取而不取，後反見滅是也。}}失德滅名，流走死亡。有奪，有予，有不予，{{*|有奪，予而復奪也。有予，天所授也。不予，天所去也。}}王無蚤圖。夫吳，君王之吳也，王若蚤圖之，其事又將未可知也。」{{*|未可知，或時不得也。}}王曰：「諾。」
+    14	== 范蠡謂人事至而天應未至 ==
+    15	又一年，{{*|反國五年，魯哀十年。}}王召范蠡而問焉，曰：「吾與子謀吳，子曰：『未可也』。今吳王淫於樂而忘其百姓，{{*|樂，聲色也。}}亂民功，逆天時；信讒喜優，{{*|優，謂俳優。}}憎輔遠弼，{{*|相導為輔，矯過為弼。}}聖人不出，{{*|聖，通也。通智之人皆隱遁也。}}忠臣解骨；{{*|賈、唐二君云：「解骨，子胥伏屬鏤也。」昭謂：是時子胥未死。解骨，謂忠良之臣見其如此，皆骨體解倦，不復念忠。}}皆曲相御，莫適相非，上下相偷。其可乎？」{{*|御，猶將也，言皆曲意取容，轉相將望，無復相非以不忠正者也。偷，苟且也。}}對曰：「人事至矣，天應未也，王姑待之。」王曰：「諾。」
+    16	== 范蠡謂先為之征其事不成 ==
+    17	又一年，{{*|反國六年，魯哀十一年。}}王召范蠡而問焉，曰：「吾與子謀吳，子曰：『未可也』。今申胥驟諫其王，王怒而殺之，其可乎？」{{*|子胥數諫，王不聽，知吳必亡，使於齊，屬其子於鮑氏。王聞之，賜之屬鏤以死。在魯哀十一年。}}對曰：「逆節萌生。{{*|害殺忠正，故為逆節。萌，兆也。}}天地未形，而先為之征，{{*|形，見也，天地之占未見。征，征伐也。}}其事是以不成，雜受其刑。{{*|雜，猶俱也。刑，害也。}}王姑待之。」王曰：「諾。」
+    18	== 范蠡謂人事與天地相參乃可以成功 ==
+    19	又一年，{{*|反國七年，魯哀十二年。}}王召范蠡而問焉，曰：「吾與子謀吳，子曰：『未可也』。今其稻蟹不遺種，其可乎？」{{*|蟹食稻。　案攷異卷四：「禮記月令疏引韋注『稻蟹，謂蟹食稻也』，疑此為韋注完本。」}}對曰：「天應至矣，人事未盡也，{{*|謂飢困、愁怨之事，未盡極也。}}王姑待之。」王怒曰：「道固然乎，{{*|固，故也。}}妄其欺不穀邪？吾與子言人事，子應我以天時；今天應至矣，子應我以人事。何也？」范蠡對曰：「王姑勿怪。夫人事必將與天地相參，然後乃可以成功。{{*|參，三也。天、地、人事三合，乃可以成大功。}}今其禍新民恐，{{*|稻蟹，新也。}}其君臣上下，皆知其資財之不足以支長久也，{{*|支，猶堪也。}}彼將同其力，致其死，猶尚殆。{{*|殆，危也。言伐吳，於事尚危。}}王其且馳騁弋獵，無至禽荒；{{*|使越王為此者，示不以吳為念。}}宮中之樂，無至酒荒；肆與大夫觴飲，無忘國常。{{*|肆，放也。常，舊法。}}彼其上將薄其德，民將盡其力，{{*|言吳王見越馳騁射獵，不以為意；必不修德而縱私好，以盡民力。}}又使之望而不得食，{{*|怨望於上，而天又奪之食。}}乃可以致天地之殛。{{*|殛，誅也。}}王姑待之。」{{*|且待時也。自此後四年，乃遂伐吳。}}
+    20	== 越興師伐吳而弗與戰 ==
+    21	至於玄月，{{*|爾雅曰：「九月為玄。」謂魯哀十六年九月也，至十七年三月，越伐吳。}}王召范蠡而問焉，曰：「諺有之{{*|諺，俗之善語。}}曰：『觥飯不及壺飧。』{{*|觥，大也。大飯，謂盛饌。盛饌未具，不能以虛待之，不及壺飧之救飢疾。言己欲滅吳，取快意得之而已，不能待有餘力。}}今歲晚矣，子將奈何？」對曰：「微君王之言，{{*|微，無也。}}臣故將謁之。{{*|謁，請也，請伐吳也。}}臣聞從時者，猶救火、追亡人也，蹶而趨之，唯恐弗及。」{{*|蹶，走也。}}王曰：「諾。」遂興師伐吳，至於五湖。
+    22	
+    23	吳人聞之，出而挑戰，一日五反。王弗忍，欲許之。{{*|不忍其忿。}}范蠡進諫曰：「夫謀之廊廟，失之中原，其可乎？王姑勿許也。臣聞之，得時無怠，時不再來，天予不取，反為之災。贏縮轉化，後將悔之。{{*|贏縮，進退也。轉化，變易也。}}天節固然，{{*|固然，有轉化也。}}唯謀不遷。」{{*|謀必素定，不可遷易。}}王曰：「諾。」弗許。
+    24	
+    25	范蠡曰：「臣聞古之善用兵者，{{*|謂若黃帝、湯、武。}}贏縮以為常，四時以為紀，{{*|以為常，隨其贏縮也。紀，猶法也。四時有轉運，用兵有利鈍也。周語曰「王欲合是五位三所而用之」是也。}}無過天極，究數而止。{{*|極，至也。究，窮也。無過天道之所至，窮其數而止也。}}天道皇皇，日月以為常，{{*|皇皇，著明也。常，象也。}}明者以為法，微者則是行。{{*|明，謂日月盛滿時。微，謂虧損薄蝕時。法，其明者以進取。行，其微時以隱遁。}}陽至而陰，陰至而陽；{{*|至，謂極也。}}日困而還，月盈而匡。{{*|困，窮也。匡，虧也。}}古之善用兵者，因天地之常，與之俱行。{{*|隨其轉運、虧盈、晦明之常。}}後則用陰，先則用陽；{{*|後，後動。先，先動。用陰，謂沈重固密。用陽，謂輕疾猛厲。}}近則用柔，遠則用剛。{{*|敵近則用柔順，示之以弱；遠則抗威厲，辭以亢禦。}}後無陰蔽，先無陽察，{{*|後動者太舒靜，為陰蔽也。先動者太顯露，為陽察也。}}用人無藝，往從其所{{*|藝，射的也。無藝，無常所也。行軍用人之道，因敵為制，不豫設也，故曰從其所也。　案述聞卷二一：「韋說非也。『用人無藝』，當屬上二句為義；『往從其所』，則屬下句為義。『用人無藝』者，人，猶眾也，言用眾之道無常也。『後無陰蔽，先無陽察，用人無藝』，三『無』字相應為文。『往從其所』者，『其所』，敵人之所也，言往從敵人之所，而彼尚能以剛彊禦我，則其陽節未盡，未可即滅，故曰『不死其野』也。『蔽』、『察』、{{annotate|古讀若『際』。}}『藝』為韻，『所』、『禦』、『野』、『與』為韻，以是明之。」}}剛彊以禦，陽節不盡，不死其野。{{*|言敵以剛彊來禦己，其陽節未盡，尚未可克，故曰不死其野。}}彼來從我，固守勿與。{{*|勿與戰也。}}若將與之，必因天地之災，{{*|彼有災變，則可。}}又觀其民之饑飽勞逸以參之。{{*|言雖有災，民尚逸，飽則未也。}}盡其陽節、盈吾陰節而奪之。{{*|彼陽勢已盡，而吾陰節盛滿，則能奪之。}}宜為人客，剛彊而力疾；陽節不盡，輕而不可取。{{*|先動為客。於時宜為人客，剛彊力疾，陽數未盡，雖輕易人猶不可得取也。}}宜為人主，安徐而重固；陰節不盡，柔而不可迫。{{*|時宜為主人，安徐重固，陰數未盡，雖柔不可困迫之。}}凡陳之道，設右以為牝，益左以為牡，{{*|陳其牝牡，使相受之。在陰為牝，在陽為牡。}}蚤晏無失，必順天道，{{*|晏，晚也。}}周旋無究。{{*|究，窮也；無窮，若日月然也。}}今其來也，剛彊而力疾，{{*|言吳陽勢未盡，未可擊也。}}王姑待之。」王曰：「諾。」弗與戰。
+    26	
+    27	== 范蠡諫句踐勿許吳成卒滅吳 ==
+    28	居軍三年，吳師自潰。{{*|魯哀二十年冬十一月，越圍吳。二十二年冬十一月丁卯，滅吳。}}吳王帥其賢良，與其重祿，以上姑蘇。{{*|姑蘇，宮之臺也，在吳閶門外，近湖。或云：「賢，賢妃。良，良貨。」唐尚書云：「重祿，寶璧也。」昭謂：賢良，親近之士，猶越言君子，齊言士。吳語曰：「越王以其私卒君子六千人為中軍。」賈侍中云：「重祿，大臣也。」}}使王孫雒行成於越，{{*|雒，吳大夫；王孫，姓也。}}曰：「昔者上天降禍於吳，得罪於會稽。{{*|使越棲於會稽時也。}}今君王其圖不穀，不穀請復會稽之和。」王弗忍，欲許之。范蠡進諫曰：「臣聞之，聖人之功，時為之庸。{{*|庸，用也，因天時以為功用也。}}得時不成，天有還形。{{*|還，反也。形，體也。}}天節不遠，五年復反，{{*|節，期也。五年再閏，天數一終，故復反也。}}小凶則近，大凶則遠。{{*|小凶，謂危敗。大凶，謂死滅。近，五年。遠，十年或二十年。}}先人有言曰：『伐柯者其則不遠。』{{*|先人，詩人也。「執柯伐柯，其則不遠」，以言吳昔不滅越，故有此敗，此戒亦不遠也。}}今君王不斷，其忘會稽之事乎？」王曰：「諾。」不許。
+    29	
+    30	使者往而復來，辭愈卑，禮愈尊，{{*|愈，益也。}}王又欲許之。范蠡諫曰：「孰使我蚤朝而晏罷者，非吳乎？與我爭三江、五湖之利者，非吳耶？夫十年謀之，一朝而棄之，其可乎？{{*|十年不收於國，勤身以謀吳也。}}王姑勿許，其事將易冀已。」{{*|冀，望也。易望已，謂不勤難也。}}王曰：「吾欲勿許，而難對其使者，子其對之。」范蠡乃左提鼓，右援枹，以應使者，{{*|提，挈也。}}曰：「昔者上天降禍於越，委制於吳，而吳不受。今將反此義以報此禍，吾王敢無聽天之命，而聽君王之命乎？」王孫雒曰：「子范子，先人有言曰：『無助天為虐，助天為虐者不祥。』今吳稻蟹不遺種，子將助天為虐，不忌其不祥乎？」{{*|忌，惡也。}}范蠡曰：「王孫子，昔吾先君固周室之不成子也，{{*|子，爵也，言越本蠻夷小國，於周室爵列不能成子也。周禮，諸子之國，封彊方二百里。}}故濱於東海之陂，{{*|濱，近也。陂，涯也。}}黿鼉魚鱉之與處，而鼃黽之與同渚。{{*|鼃黽，蝦蟆也。水邊亦曰渚。}}余雖靦然而人面哉，吾猶禽獸也，又安知是諓諓者乎？」{{*|靦，面目之貌。諓諓，巧辯之言。方欲距吳之請，故自卑薄以不知禮義。}}王孫雒曰：「子范子將助天為虐，助天為虐不祥。雒請反辭於王。」{{*|請以辭告越王。}}范蠡曰：「君王已委制於執事之人矣。{{*|執事，蠡自謂也。}}子往矣，無使執事之人得罪於子。」{{*|無使我為子得罪。}}
+    31	
+    32	使者辭反。{{*|反報吳也。}}范蠡不報於王，擊鼓興師以隨使者，至於姑蘇之宮，不傷越民，遂滅吳。{{*|「事將易冀」是也。}}
+    33	== 范蠡乘輕舟以浮於五湖 ==
+    34	反至五湖，范蠡辭於王曰：「君王勉之，臣不復入越國矣。」{{*|勉王以德，欲隱遁也。}}王曰：「不穀疑子之所謂者何也？」對曰：「臣聞之，為人臣者，君憂臣勞，君辱臣死。昔者君王辱於會稽，臣所以不死者，為此事也。今事已濟矣，蠡請從會稽之罰。」王曰：「所不掩子之惡，揚子之美者，使其身無終沒於越國。子聽吾言，與子分國。不聽吾言，身死，妻子為戮。」范蠡對曰：「臣聞命矣。君行制，臣行意。」{{*|制，法也。意，志也。}}遂乘輕舟以浮於五湖，莫知其所終極。
+    35	
+    36	王命工以良金寫范蠡之狀而朝禮之，{{*|以善金鑄其形狀，而自朝禮也。}}浹日而令大夫朝之，{{*|從甲至甲曰浹。浹，帀也。}}環會稽三百里者以為范蠡地，{{*|環，周也。}}曰：「後世子孫，有敢侵蠡之地者，使無終沒於越國，{{*|此誓告也。}}皇天后土、四鄉地主正之。」{{*|鄉，方也。天神地祇、四方神主當征討之，正其封疆也。}}
+
+exec
+/bin/bash -lc "rg -n '范蠡|計然|與時逐|善治生|莊生|少子|少弟|大名|久受|君行|謀之|卑辭' runs/20261013-four-seats/sources/fan-li/史記_卷041.txt runs/20261013-four-seats/sources/fan-li/史記_卷129.txt" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+runs/20261013-four-seats/sources/fan-li/史記_卷129.txt:21:=== 范蠡 ===
+runs/20261013-four-seats/sources/fan-li/史記_卷129.txt:22:昔者越王句踐困於會稽之上，乃用范蠡、計然。計然曰：「知斗則修備，時用則知物，二者形則萬貨之情可得而觀已。故歲在金，穰；水，毀；木，饑；火，旱。旱則資舟，水則資車，物之理也。六歲穰，六歲旱，十二歲一大饑。夫糶，二十病農，九十病末。末病則財不出，農病則草不辟矣。上不過八十，下不減三十，則農末俱利，平糶齊物，關市不乏，治國之道也。積著之理，務完物，無息幣。以物相貿易，腐敗而食之貨勿留，無敢居貴。論其有餘不足，則知貴賤。貴上極則反賤，賤下極則反貴。貴出如糞土，賤取如珠玉。財幣欲其行如流水。」修之十年，國富，厚賂戰士，士赴矢石，如渴得飲，遂報彊吳，觀兵中國，稱號「五霸」。
+runs/20261013-four-seats/sources/fan-li/史記_卷129.txt:24:范蠡既雪會稽之恥，乃喟然而嘆曰：「計然之策七，越用其五而得意。既已施於國，吾欲用之家。」乃乘扁舟浮於江湖，變名易姓，適齊為鴟夷子皮，之陶為朱公。朱公以為陶天下之中，諸侯四通，貨物所交易也。乃治產積居。與時逐而不責於人。故善治生者，能擇人而任時。十九年之中三致千金，再分散與貧交疏昆弟。此所謂富好行其德者也。後年衰老而聽子孫，子孫修業而息之，遂至巨萬。故言富者皆稱陶朱公。
+runs/20261013-four-seats/sources/fan-li/史記_卷129.txt:99:塞之斥也，唯橋姚已致馬千匹，牛倍之，羊萬頭，粟以萬鐘計。吳楚七國兵起時，長安中列侯封君行從軍旅，齎貸子錢，子錢家以為侯邑國在關東，關東成敗未決，莫肯與。唯無鹽氏出捐千金貸，其息什之。三月，吳楚平，一歲之中，則無鹽氏之息什倍，用此富埒關中。
+runs/20261013-four-seats/sources/fan-li/史記_卷129.txt:112:【索隱述贊】貨殖之利，工商是營。廢居善積，倚巿邪贏。白圭富國，計然強兵。倮參朝請，女築懷清。素封千戶，卓鄭齊名。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:18:越王謂-{范}-蠡曰：「以不-{聽}-子故至-{於}-此，爲之柰何？」蠡對曰：「持滿者與天，定傾者與人，節事者以地。卑辭厚禮以遺之，不許，而身與之市。」句踐曰：「諾。」乃令大夫-{種}-行成-{於}-呉，膝行頓首曰：「君王亡臣句踐使陪臣-{種}-敢告下執事：句踐請爲臣，妻爲妾。」呉王將許之。子胥言-{於}-呉王曰：「天以越賜呉，勿許也。」-{種}-還，以報句踐。句踐欲殺妻子，燔寶器，觸戰以死。-{種}-止句踐曰：「夫呉太宰嚭貪，可誘以利，請閒行言之。」-{於}-是句踐以美女寶器令-{種}-閒獻呉太宰嚭。嚭受，乃見大夫-{種}--{於}-呉王。-{種}-頓首言曰：「-{願}-大王赦句踐之罪，盡入其寶器。不幸不赦，句踐將盡殺其妻子，燔其寶器，悉五千人觸戰，必有當也。」嚭因説呉王曰：「越以服爲臣，若將赦之，此國之利也。」呉王將許之。子胥進諫曰：「今不滅越，-{後}-必悔之。句踐賢君，-{種}-、蠡良臣，若反國，將爲亂。」呉王弗-{聽}-，卒赦越，罷兵而歸。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:32:其-{後}-四年，越-{復}-伐呉。呉士民罷弊，輕鋭盡死-{於}-齊、晉。而越大破呉，因而留圍之三年，呉師敗，越遂-{復}-棲呉王-{於}-姑蘇之山。呉王使公孫雄肉袒膝行而前，請成越王曰：「孤臣夫差敢布腹心，異日嘗得罪-{於}-會稽，夫差不敢逆命，得與君王成以歸。今君王舉玉趾而誅孤臣，孤臣惟命是-{聽}-，意者亦欲如會稽之赦孤臣之罪乎？」句踐不忍，欲許之。-{范}-蠡曰：「會稽之事，天以越賜呉，呉不取。今天以呉賜越，越其可逆天乎？且夫君王蚤朝晏罷，非爲呉邪？謀之二十二年，一旦而棄之，可乎？且夫天與弗取，反受其咎。『伐柯者其則不遠』，君忘會稽之蚯？」句踐曰：「吾欲-{聽}-子言，吾不忍其使者。」-{范}-蠡乃鼓進兵，曰：「王已屬政-{於}-執事，使者去，不者且得罪。」呉使者泣而去。句踐憐之，乃使人謂呉王曰：「吾置王甬東，君百家。」呉王謝曰：「吾老矣，不能事君王！」遂自殺。乃蔽其-{面}-，曰：「吾無-{面}-以見子胥也！」越王乃葬呉王而誅太宰嚭。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:56:-{范}-蠡事越王句踐，旣苦身力，與句踐深謀二十-{餘}-年，竟滅呉，報會稽之恥，北渡兵-{於}-淮以臨齊、晉，號令中國，以尊周室，句踐以霸，而-{范}-蠡稱上將軍。還反國，-{范}-蠡以爲大名之下，難以久居，且句踐爲人可與同患，難與處安，爲書辭句踐曰：「臣聞主憂臣勞，主辱臣死。昔者君王辱-{於}-會稽，所以不死，爲此事也。今旣以雪恥，臣請從會稽之誅。」句踐曰：「孤將與子分國而有之。不然，將加誅-{于}-子。」-{范}-蠡曰：「君行令，臣行意。」乃裝其輕寶珠玉，自與其私徒屬乘舟浮海以行，終不反。-{於}-是句踐表會稽山以爲-{范}-蠡奉邑。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:58:-{范}-蠡浮海出齊，變姓名，自謂鴟夷子皮，耕-{于}-海畔，苦身戮力，父子治産。居無-{幾}-何，致産數十萬。齊人聞其賢，以爲相。-{范}-蠡喟然嘆曰：「居家則致千金，居官則至卿相，此布衣之極也。久受尊名，不祥。」乃歸相印，盡散其財，以分與知友鄕黨，而懷其重寶，閒行以去，止-{于}-陶，以爲此天下之中，交易有無之路通，爲生可以致富矣。-{於}-是自謂陶朱公。-{復}-約要父子耕畜，廢居，候時轉物，逐什一之利。居無何，則致貲累巨萬。天下稱陶朱公。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:60:朱公居陶，生少子。少子及壯，而朱公中男殺人，囚-{於}-楚。朱公曰：「殺人而死，職也。然吾聞千金之子不死-{於}-市。」告其少子往視之。乃裝黃金千溢，置褐器中，載以一牛車。且遣其少子，朱公長男固請欲行，朱公不-{聽}-。長男曰：「家有長子曰家督，今弟有罪，大人不遣，乃遺少弟，是吾不肖。」欲自殺。其母爲言曰：「今遣少子，未必能生中子也，而先空亡長男，柰何？」朱公不得已而遣長子，爲一封書遺故所善莊生。曰：「至則進千金-{于}-莊生所，-{聽}-其所爲，愼無與爭事。」長男旣行，亦自私齎數百金。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:62:至楚，莊生家負郭，披藜藋到門，居甚貧。然長男-{發}-書進千金，如其父言。莊生曰：「可疾去矣，愼毋留！卽弟出，勿問所以然。」長男旣去，不過莊生而私留，以其私齎獻遺楚國貴人用事者。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:64:莊生雖居窮閻，然以廉直聞-{於}-國，自楚王以下皆師尊之。及朱公進金，非有意受也，欲以成事-{後}--{復}-歸之以爲信耳。故金至，謂其婦曰：「此朱公之金。有如病不宿誡，-{後}--{復}-歸，勿動。」而朱公長男不知其意，以爲殊無短長也。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:66:莊生閒時入見楚王，言「某星宿某，此則害-{於}-楚」。楚王素信莊生，曰：「今爲柰何？」莊生曰：「獨以德爲可以除之。」楚王曰：「生休矣，寡人將行之。」王乃使使者封三錢之府。楚貴人驚告朱公長男曰：「王且赦。」曰：「何以也？」曰：「毎王且赦，常封三錢之府。昨暮王使使封之。」朱公長男以爲赦，弟固當出也，重千金虚棄莊生，無所爲也，乃-{復}-見莊生。莊生驚曰：「若不去邪？」長男曰：「固未也。初爲事弟，弟今議自赦，故辭生去。」莊生知其意欲-{復}-得其金，曰：「若自入室取金。」長男卽自入室取金持去，獨自歡幸。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:68:莊生羞爲兒子所賣，乃入見楚王曰：「臣前言某星事，王言欲以修德報之。今臣出，道路皆言陶之富人朱公之子殺人囚楚，其家多持金錢賂王左右，故王非能恤楚國而赦，乃以朱公子故也。」楚王大怒曰：「寡人雖不德耳，柰何以朱公之子故而施惠乎！」令論殺朱公子，明日遂下赦令。朱公長男竟持其弟喪歸。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:70:至，其母及邑人盡哀之，唯朱公獨笑，曰：「吾固知必殺其弟也！彼非不愛其弟，顧有所不能忍者也。是少與我倶，見苦，爲生難，故重棄財。至如少弟者，生而見我富，乘堅驅良逐狡兔，豈知財所從來，故輕棄之，非所惜吝。前日吾所爲欲遣少子，固爲其能棄財故也。而長者不能，故卒以殺其弟，事之理也，無足悲者。吾日夜固以望其喪之來也。」
+
+exec
+/bin/bash -lc "rg -n '臣聞|蠡聞|兵者|計然|陶天下|此天下' runs/20261013-four-seats/sources/fan-li/國語_卷21.txt runs/20261013-four-seats/sources/fan-li/史記_卷041.txt runs/20261013-four-seats/sources/fan-li/史記_卷129.txt" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+runs/20261013-four-seats/sources/fan-li/史記_卷129.txt:22:昔者越王句踐困於會稽之上，乃用范蠡、計然。計然曰：「知斗則修備，時用則知物，二者形則萬貨之情可得而觀已。故歲在金，穰；水，毀；木，饑；火，旱。旱則資舟，水則資車，物之理也。六歲穰，六歲旱，十二歲一大饑。夫糶，二十病農，九十病末。末病則財不出，農病則草不辟矣。上不過八十，下不減三十，則農末俱利，平糶齊物，關市不乏，治國之道也。積著之理，務完物，無息幣。以物相貿易，腐敗而食之貨勿留，無敢居貴。論其有餘不足，則知貴賤。貴上極則反賤，賤下極則反貴。貴出如糞土，賤取如珠玉。財幣欲其行如流水。」修之十年，國富，厚賂戰士，士赴矢石，如渴得飲，遂報彊吳，觀兵中國，稱號「五霸」。
+runs/20261013-four-seats/sources/fan-li/史記_卷129.txt:24:范蠡既雪會稽之恥，乃喟然而嘆曰：「計然之策七，越用其五而得意。既已施於國，吾欲用之家。」乃乘扁舟浮於江湖，變名易姓，適齊為鴟夷子皮，之陶為朱公。朱公以為陶天下之中，諸侯四通，貨物所交易也。乃治產積居。與時逐而不責於人。故善治生者，能擇人而任時。十九年之中三致千金，再分散與貧交疏昆弟。此所謂富好行其德者也。後年衰老而聽子孫，子孫修業而息之，遂至巨萬。故言富者皆稱陶朱公。
+runs/20261013-four-seats/sources/fan-li/史記_卷129.txt:112:【索隱述贊】貨殖之利，工商是營。廢居善積，倚巿邪贏。白圭富國，計然強兵。倮參朝請，女築懷清。素封千戶，卓鄭齊名。
+runs/20261013-four-seats/sources/fan-li/國語_卷21.txt:5:范蠡進諫曰：「夫勇者，逆德也；{{*|德尚禮讓，勇則攻奪。}}兵者，凶器也；{{*|言害人也。}}爭者，事之末也。{{*|言賢者修其政德，而遠方附事之德不行，然後用武，故曰：「爭者，事之末也。」}}陰謀逆德，好用凶器，{{*|陰謀，兵謀也。勇為逆德。}}始於人者，人之所卒也；{{*|始以伐人，人終害之。}}淫佚之事，上帝之禁也，{{*|淫佚，放盪。}}先行此者，不利。」王曰：「無是貳言也，吾已斷之矣！」{{*|貳言，陰謀、淫佚也。}}果興師而伐吳，戰於五湖，{{*|五湖，今太湖。}}不勝，棲於會稽。
+runs/20261013-four-seats/sources/fan-li/國語_卷21.txt:13:四年，王召范蠡而問焉，{{*|說云：「魯哀三年。」昭謂：四年，反國四年，魯哀九年。}}曰：「先人就世，不穀即位。{{*|先人，允常。就世，終世也。}}吾年既少，未有恆常，出則禽荒，入則酒荒。吾百姓之不圖，唯舟與車。{{*|好游田，故唯舟與車。}}上天降禍於越，委制於吳。{{*|委，歸也。}}吳人之那不穀，亦又甚焉。{{*|那，於也。甚焉，言見困苦。}}吾欲與子謀之，其可乎？」對曰：「未可也。蠡聞之，上帝不考，時反是守，{{*|考，成也。言天未成越，當守天時，天時反，乃可以動。}}彊索者不祥。{{*|索，求也。}}得時不成，反受其殃。{{*|言得天時而人弗能成，則反受其殃。夫差克越，可取而不取，後反見滅是也。}}失德滅名，流走死亡。有奪，有予，有不予，{{*|有奪，予而復奪也。有予，天所授也。不予，天所去也。}}王無蚤圖。夫吳，君王之吳也，王若蚤圖之，其事又將未可知也。」{{*|未可知，或時不得也。}}王曰：「諾。」
+runs/20261013-four-seats/sources/fan-li/國語_卷21.txt:21:至於玄月，{{*|爾雅曰：「九月為玄。」謂魯哀十六年九月也，至十七年三月，越伐吳。}}王召范蠡而問焉，曰：「諺有之{{*|諺，俗之善語。}}曰：『觥飯不及壺飧。』{{*|觥，大也。大飯，謂盛饌。盛饌未具，不能以虛待之，不及壺飧之救飢疾。言己欲滅吳，取快意得之而已，不能待有餘力。}}今歲晚矣，子將奈何？」對曰：「微君王之言，{{*|微，無也。}}臣故將謁之。{{*|謁，請也，請伐吳也。}}臣聞從時者，猶救火、追亡人也，蹶而趨之，唯恐弗及。」{{*|蹶，走也。}}王曰：「諾。」遂興師伐吳，至於五湖。
+runs/20261013-four-seats/sources/fan-li/國語_卷21.txt:23:吳人聞之，出而挑戰，一日五反。王弗忍，欲許之。{{*|不忍其忿。}}范蠡進諫曰：「夫謀之廊廟，失之中原，其可乎？王姑勿許也。臣聞之，得時無怠，時不再來，天予不取，反為之災。贏縮轉化，後將悔之。{{*|贏縮，進退也。轉化，變易也。}}天節固然，{{*|固然，有轉化也。}}唯謀不遷。」{{*|謀必素定，不可遷易。}}王曰：「諾。」弗許。
+runs/20261013-four-seats/sources/fan-li/國語_卷21.txt:25:范蠡曰：「臣聞古之善用兵者，{{*|謂若黃帝、湯、武。}}贏縮以為常，四時以為紀，{{*|以為常，隨其贏縮也。紀，猶法也。四時有轉運，用兵有利鈍也。周語曰「王欲合是五位三所而用之」是也。}}無過天極，究數而止。{{*|極，至也。究，窮也。無過天道之所至，窮其數而止也。}}天道皇皇，日月以為常，{{*|皇皇，著明也。常，象也。}}明者以為法，微者則是行。{{*|明，謂日月盛滿時。微，謂虧損薄蝕時。法，其明者以進取。行，其微時以隱遁。}}陽至而陰，陰至而陽；{{*|至，謂極也。}}日困而還，月盈而匡。{{*|困，窮也。匡，虧也。}}古之善用兵者，因天地之常，與之俱行。{{*|隨其轉運、虧盈、晦明之常。}}後則用陰，先則用陽；{{*|後，後動。先，先動。用陰，謂沈重固密。用陽，謂輕疾猛厲。}}近則用柔，遠則用剛。{{*|敵近則用柔順，示之以弱；遠則抗威厲，辭以亢禦。}}後無陰蔽，先無陽察，{{*|後動者太舒靜，為陰蔽也。先動者太顯露，為陽察也。}}用人無藝，往從其所{{*|藝，射的也。無藝，無常所也。行軍用人之道，因敵為制，不豫設也，故曰從其所也。　案述聞卷二一：「韋說非也。『用人無藝』，當屬上二句為義；『往從其所』，則屬下句為義。『用人無藝』者，人，猶眾也，言用眾之道無常也。『後無陰蔽，先無陽察，用人無藝』，三『無』字相應為文。『往從其所』者，『其所』，敵人之所也，言往從敵人之所，而彼尚能以剛彊禦我，則其陽節未盡，未可即滅，故曰『不死其野』也。『蔽』、『察』、{{annotate|古讀若『際』。}}『藝』為韻，『所』、『禦』、『野』、『與』為韻，以是明之。」}}剛彊以禦，陽節不盡，不死其野。{{*|言敵以剛彊來禦己，其陽節未盡，尚未可克，故曰不死其野。}}彼來從我，固守勿與。{{*|勿與戰也。}}若將與之，必因天地之災，{{*|彼有災變，則可。}}又觀其民之饑飽勞逸以參之。{{*|言雖有災，民尚逸，飽則未也。}}盡其陽節、盈吾陰節而奪之。{{*|彼陽勢已盡，而吾陰節盛滿，則能奪之。}}宜為人客，剛彊而力疾；陽節不盡，輕而不可取。{{*|先動為客。於時宜為人客，剛彊力疾，陽數未盡，雖輕易人猶不可得取也。}}宜為人主，安徐而重固；陰節不盡，柔而不可迫。{{*|時宜為主人，安徐重固，陰數未盡，雖柔不可困迫之。}}凡陳之道，設右以為牝，益左以為牡，{{*|陳其牝牡，使相受之。在陰為牝，在陽為牡。}}蚤晏無失，必順天道，{{*|晏，晚也。}}周旋無究。{{*|究，窮也；無窮，若日月然也。}}今其來也，剛彊而力疾，{{*|言吳陽勢未盡，未可擊也。}}王姑待之。」王曰：「諾。」弗與戰。
+runs/20261013-four-seats/sources/fan-li/國語_卷21.txt:28:居軍三年，吳師自潰。{{*|魯哀二十年冬十一月，越圍吳。二十二年冬十一月丁卯，滅吳。}}吳王帥其賢良，與其重祿，以上姑蘇。{{*|姑蘇，宮之臺也，在吳閶門外，近湖。或云：「賢，賢妃。良，良貨。」唐尚書云：「重祿，寶璧也。」昭謂：賢良，親近之士，猶越言君子，齊言士。吳語曰：「越王以其私卒君子六千人為中軍。」賈侍中云：「重祿，大臣也。」}}使王孫雒行成於越，{{*|雒，吳大夫；王孫，姓也。}}曰：「昔者上天降禍於吳，得罪於會稽。{{*|使越棲於會稽時也。}}今君王其圖不穀，不穀請復會稽之和。」王弗忍，欲許之。范蠡進諫曰：「臣聞之，聖人之功，時為之庸。{{*|庸，用也，因天時以為功用也。}}得時不成，天有還形。{{*|還，反也。形，體也。}}天節不遠，五年復反，{{*|節，期也。五年再閏，天數一終，故復反也。}}小凶則近，大凶則遠。{{*|小凶，謂危敗。大凶，謂死滅。近，五年。遠，十年或二十年。}}先人有言曰：『伐柯者其則不遠。』{{*|先人，詩人也。「執柯伐柯，其則不遠」，以言吳昔不滅越，故有此敗，此戒亦不遠也。}}今君王不斷，其忘會稽之事乎？」王曰：「諾。」不許。
+runs/20261013-four-seats/sources/fan-li/國語_卷21.txt:34:反至五湖，范蠡辭於王曰：「君王勉之，臣不復入越國矣。」{{*|勉王以德，欲隱遁也。}}王曰：「不穀疑子之所謂者何也？」對曰：「臣聞之，為人臣者，君憂臣勞，君辱臣死。昔者君王辱於會稽，臣所以不死者，為此事也。今事已濟矣，蠡請從會稽之罰。」王曰：「所不掩子之惡，揚子之美者，使其身無終沒於越國。子聽吾言，與子分國。不聽吾言，身死，妻子為戮。」范蠡對曰：「臣聞命矣。君行制，臣行意。」{{*|制，法也。意，志也。}}遂乘輕舟以浮於五湖，莫知其所終極。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:16:三年，句踐聞呉王夫差日夜勒兵，且以報越，越欲先呉未-{發}-往伐之。-{范}-蠡諫曰：「不可。臣聞兵者凶器也，戰者逆德也，爭者事之末也。陰謀逆德，好用凶器，試身-{於}-所末，上帝禁之，行者不利。」越王曰：「吾已決之矣。」遂興師。呉王聞之，悉-{發}-精兵撃越，敗之夫椒。越王乃以-{餘}-兵五千人保棲-{於}-會稽。呉王追而圍之。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:26:居二年，呉王將伐齊。子胥諫曰：「未可。臣聞句踐食不重味，與百姓同苦樂。此人不死，必爲國患。呉有越，腹心之疾，齊與呉，疥癬也。-{願}-王釋齊先越。」呉王弗-{聽}-，遂伐齊，敗之艾陵，虜齊髙、國以歸。讓子胥。子胥曰：「王毋喜！」王怒，子胥欲自殺，王聞而止之。越大夫-{種}-曰：「臣觀呉王政驕矣，請試嘗之貸粟，以-{卜}-其事。」請貸，呉王欲與，子胥諫勿與，王遂與之，越乃私喜。子胥言曰：「王不-{聽}-諫，-{後}-三年呉其墟乎！」太宰嚭聞之，乃數與子胥爭越議，因讒子胥曰：「伍員貌忠而實忍人，其父兄不顧，安能顧王？王前欲伐齊，員彊諫，已而有功，用是反怨王。王不備伍員，員必爲亂。」與逢同共謀，讒之王。王始不從，乃使子胥-{於}-齊，聞其讬子-{於}-鮑氏，王乃大怒，曰：「伍員果欺寡人！」役反，使人賜子胥屬鏤劍以自殺。子胥大笑曰：「我令而父霸，我又立若，若初欲分呉國半予我，我不受，已，今若反以讒誅我。嗟乎，嗟乎，一人固不能獨立！」報使者曰：「必取吾眼置呉東門，以觀越兵入也！」-{於}-是呉任嚭政。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:46:王無彊時，越興師北伐齊，西伐楚，與中國爭彊。當楚威王之時，越北伐齊，齊威王使人説越王曰：「越不伐楚，大不王，小不伯。圖越之所爲不伐楚者，爲不得晉也。韓、魏固不攻楚。韓之攻楚，覆其軍，殺其將，則-{葉}-、陽翟危；魏亦覆其軍，殺其將，則陳、上蔡不安。故二晉之事越也，不至-{於}-覆軍殺將，馬汗之力不效。所重-{於}-得晉者何也？」越王曰：「所求-{於}-晉者，不至頓刃接兵，而況-{于}-攻城圍邑乎？-{願}-魏以聚大梁之下，-{願}-齊之試兵南陽莒地，以聚常、郯之境，則方城之外不南，淮、泗之閒不東，商、-{於}-、析、酈、宗胡之地，夏路以左，不足以備秦，江南、泗上不足以待越矣。則齊、秦、韓、魏得-{志}--{於}-楚也，是二晉不戰分地，不耕而穫之。不此之爲，而頓刃-{於}-河山之閒以爲齊秦用，所待者如此其失計，柰何其以此王也！」齊使者曰：「幸也越之不亡也！吾不貴其用智之如目，見豪毛而不見其睫也。今王知晉之失計，而不自知越之過，是目論也。王所待-{於}-晉者，非有馬汗之力也，又非可與合軍連和也，將待之以分楚衆也。今楚衆已分，何待-{於}-晉？」越王曰：「柰何？」曰：「楚三大夫張九軍，北圍-{曲}-沃、-{於}-中，以至無假之關者三千七百-{里}-，景翠之軍北聚魯、齊、南陽，分有大此者乎？且王之所求者，-{鬬}-晉楚也；晉楚不-{鬬}-，越兵不起，是知二五而不知十也。此時不攻楚，臣以是知越大不王，小不伯。-{復}-讎、龐、長沙，楚之粟也；竟澤陵，楚之材也。越窺兵通無假之關，此四邑者不上貢事-{於}-郢矣。臣聞之，圖王不王，其敝可以伯。然而不伯者，王道失也。故-{願}-大王之轉攻楚也。」
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:56:-{范}-蠡事越王句踐，旣苦身力，與句踐深謀二十-{餘}-年，竟滅呉，報會稽之恥，北渡兵-{於}-淮以臨齊、晉，號令中國，以尊周室，句踐以霸，而-{范}-蠡稱上將軍。還反國，-{范}-蠡以爲大名之下，難以久居，且句踐爲人可與同患，難與處安，爲書辭句踐曰：「臣聞主憂臣勞，主辱臣死。昔者君王辱-{於}-會稽，所以不死，爲此事也。今旣以雪恥，臣請從會稽之誅。」句踐曰：「孤將與子分國而有之。不然，將加誅-{于}-子。」-{范}-蠡曰：「君行令，臣行意。」乃裝其輕寶珠玉，自與其私徒屬乘舟浮海以行，終不反。-{於}-是句踐表會稽山以爲-{范}-蠡奉邑。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:58:-{范}-蠡浮海出齊，變姓名，自謂鴟夷子皮，耕-{于}-海畔，苦身戮力，父子治産。居無-{幾}-何，致産數十萬。齊人聞其賢，以爲相。-{范}-蠡喟然嘆曰：「居家則致千金，居官則至卿相，此布衣之極也。久受尊名，不祥。」乃歸相印，盡散其財，以分與知友鄕黨，而懷其重寶，閒行以去，止-{于}-陶，以爲此天下之中，交易有無之路通，爲生可以致富矣。-{於}-是自謂陶朱公。-{復}-約要父子耕畜，廢居，候時轉物，逐什一之利。居無何，則致貲累巨萬。天下稱陶朱公。
+
+exec
+/bin/bash -lc "sed -n '30,42p' runs/20261013-four-seats/sources/fan-li/史記_卷041.txt
+rg -n '蜚鳥|飛鳥|狡兔|長頸|走狗|子何不去' runs/20261013-four-seats/sources/fan-li" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+至明年春，呉王北會諸侯-{於}-黃池，呉國精兵從王，惟獨老弱與太子留守。句踐-{復}-問-{范}-蠡，蠡曰「可矣」。乃-{發}-習流二千人，教士四萬人，君子六千人，諸-{御}-千人，伐呉。呉師敗，遂殺呉太子。呉告急-{於}-王，王方會諸侯-{於}-黃池，懼天下聞之，乃祕之。呉王已盟黃池，乃使人厚禮以請成越。越自度亦未能滅呉，乃與呉平。
+
+其-{後}-四年，越-{復}-伐呉。呉士民罷弊，輕鋭盡死-{於}-齊、晉。而越大破呉，因而留圍之三年，呉師敗，越遂-{復}-棲呉王-{於}-姑蘇之山。呉王使公孫雄肉袒膝行而前，請成越王曰：「孤臣夫差敢布腹心，異日嘗得罪-{於}-會稽，夫差不敢逆命，得與君王成以歸。今君王舉玉趾而誅孤臣，孤臣惟命是-{聽}-，意者亦欲如會稽之赦孤臣之罪乎？」句踐不忍，欲許之。-{范}-蠡曰：「會稽之事，天以越賜呉，呉不取。今天以呉賜越，越其可逆天乎？且夫君王蚤朝晏罷，非爲呉邪？謀之二十二年，一旦而棄之，可乎？且夫天與弗取，反受其咎。『伐柯者其則不遠』，君忘會稽之蚯？」句踐曰：「吾欲-{聽}-子言，吾不忍其使者。」-{范}-蠡乃鼓進兵，曰：「王已屬政-{於}-執事，使者去，不者且得罪。」呉使者泣而去。句踐憐之，乃使人謂呉王曰：「吾置王甬東，君百家。」呉王謝曰：「吾老矣，不能事君王！」遂自殺。乃蔽其-{面}-，曰：「吾無-{面}-以見子胥也！」越王乃葬呉王而誅太宰嚭。
+
+句踐已平呉，乃以兵北渡淮，與齊、晉諸侯會-{於}-徐州，致貢-{於}-周。周元王使人賜句踐胙，命爲伯。句踐已去，渡淮南，以淮上地與楚，歸呉所侵宋地-{於}-宋，與魯泗東方百-{里}-。當是時，越兵橫行-{於}-江、淮東，諸侯畢賀，號稱霸王。
+
+-{范}-蠡遂去，自齊遺大夫-{種}-書曰：「蜚鳥盡，良弓藏；狡兔死，走狗烹。越王爲人長頸鳥喙，可與共患難，不可與共樂。子何不去？」-{種}-見書，稱病不朝。人或讒-{種}-且作亂，越王乃賜-{種}-劍曰：「子教寡人伐呉七-{術}-，寡人用其三而敗呉，其四在子，子爲我從先王試之。」-{種}-遂自殺。
+
+句踐卒，子王鼫與立。
+
+==鼫與、不壽、翁、翳、之侯==
+
+王鼫與卒，子王不壽立。王不壽卒，子王翁立。王翁卒，子王翳立。王翳卒，子王之侯立。王之侯卒，子王無彊立。
+runs/20261013-four-seats/sources/fan-li/史記_卷129.txt:69:由此觀之，賢人深謀於廊廟，論議朝廷，守信死節隱居巖穴之士設為名高者安歸乎？歸於富厚也。是以廉吏久，久更富，廉賈歸富。富者，人之情性，所不學而俱欲者也。故壯士在軍，攻城先登，陷陣卻敵，斬將搴旗，前蒙矢石，不避湯火之難者，為重賞使也。其在閭巷少年，攻剽椎埋，劫人作姦，掘冢鑄幣，任俠并兼，借交報仇，篡逐幽隱，不避法禁，走死地如騖者，其實皆為財用耳。今夫趙女鄭姬，設形容，揳鳴琴，揄長袂，躡利屣，目挑心招，出不遠千里，不擇老少者，奔富厚也。游閒公子，飾冠劍，連車騎，亦為富貴容也。弋射漁獵，犯晨夜，冒霜雪，馳阬谷，不避猛獸之害，為得味也。博戲馳逐，鬬雞走狗，作色相矜，必爭勝者，重失負也。醫方諸食技術之人，焦神極能，為重糈也。吏士舞文弄法，刻章偽書，不避刀鋸之誅者，沒於賂遺也。農工商賈畜長，固求富益貨也。此有知盡能索耳，終不餘力而讓財矣。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:36:-{范}-蠡遂去，自齊遺大夫-{種}-書曰：「蜚鳥盡，良弓藏；狡兔死，走狗烹。越王爲人長頸鳥喙，可與共患難，不可與共樂。子何不去？」-{種}-見書，稱病不朝。人或讒-{種}-且作亂，越王乃賜-{種}-劍曰：「子教寡人伐呉七-{術}-，寡人用其三而敗呉，其四在子，子爲我從先王試之。」-{種}-遂自殺。
+runs/20261013-four-seats/sources/fan-li/史記_卷041.txt:70:至，其母及邑人盡哀之，唯朱公獨笑，曰：「吾固知必殺其弟也！彼非不愛其弟，顧有所不能忍者也。是少與我倶，見苦，爲生難，故重棄財。至如少弟者，生而見我富，乘堅驅良逐狡兔，豈知財所從來，故輕棄之，非所惜吝。前日吾所爲欲遣少子，固爲其能棄財故也。而長者不能，故卒以殺其弟，事之理也，無足悲者。吾日夜固以望其喪之來也。」
+
+codex
+Several rules add claims the sources do not support; two reverse the meaning. The son-selection story favors the son raised in comfort because he can part with money, and the envoy passage warns against making Fan Li offend the envoy. The Gaps section also wrongly says “時不至，不可彊生” appears only in commentary: it appears in Fan Li’s main-text speech too.
+
+codex
+# fan-li — codex review of the top 12
+
+## Per item
+
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+| 1 | ok | issue | ok | ok | change | The quotations are Fan Li’s speech (國語21:3). But “if both are ripe, you are the attacker and you go” turns prohibitions into sufficient permission. 國語21:19 additionally requires conditions to coincide and considers whether disaster has united the enemy. The three categories are not stated as mutually exclusive forms. |
+| 2 | ok | issue | ok | ok | change | All quoted clauses occur in his main-text speech (國語21:9), including 「時不至，不可彊生」. Productive waiting is supported. The numbered sequence and “nothing else” are additions; the summary also omits 「必有以知天地之恆制」, the requirement to understand the governing regularities before obtaining lasting benefit. |
+| 3 | issue | issue | ok | ok | change | The Chinese is his speech (國語21:17), but 征 is mistranslated as “symptom.” 韋昭 explicitly glosses it 「征，征伐也」—military campaigning. The supported rule is to wait rather than campaign before the conditions manifest; the distinction between a “sign” and “actual decay” is the reviewer’s construction. |
+| 4 | ok | issue | ok | ok | change | The quotations are his (國語21:21,23,28). Urgency is supported; “everything at once,” “the whole army,” and a favorable window returning “within five years” are not. The final passage warns of reversal and misfortune. 韋昭’s note gives five years for the nearer case and ten or twenty for the farther, contradicting the proposed five-year ceiling. |
+| 5 | issue | issue | ok | ok | change | The letter and Qi resignation are direct speech (史記41:36,58); 「范蠡以為大名之下，難以久居」 is narration (41:56), not his spoken words. 「蠡請從會稽之罰」 requests the punishment previously deferred; it does not state a general doctrine that obligation is discharged by success. The warning about sharing happiness concerns Goujian specifically, not every ruler. |
+| 6 | issue | issue | ok | ok | change | The Chinese is his speech (國語21:23), but both translations distort it. 「謀之廊廟，失之中原」 means planning at court and losing the plan on the battlefield—not losing it twice. “Heaven’s season is solid” conflicts with preceding 「贏縮轉化」 and 韋昭’s 「固然，有轉化也」. Preserve the supported rule: do not abandon the settled plan under provocation. |
+| 7 | ok | ok | ok | ok | keep | 國語21:5 directly records his warning against aggressive courage, destructive weapons, initiating hostilities, and debauchery. “Force is the last thing” fairly compresses 「爭者，事之末也」 in this context. The repaired quotation marks the separate clause correctly. |
+| 8 | ok | issue | ok | ok | change | The main-text quotations are his; 韋昭’s gloss is correctly attributed separately (國語21:25). However, “three things together” imposes a checklist on an instruction to assess 天地之災 and 饑飽勞逸. “Formation follows theirs” is absent from the formation passage. The same supplied note also preserves 述聞’s explicit disagreement with 韋昭’s parsing, so the “do not pre-set” interpretation needs that qualification. |
+| 9 | ok | issue | ok | ok | change | His escalation from respectful concessions to 「身與之市」 is present (國語21:7). “Not the country” and “Not the territory” are unsupported: the ensuing offer explicitly says 「委管籥屬國家，以身隨之，君王制之」, placing the state as well as the person under Wu’s control. Retain negotiated submission; remove the exclusion of the country. |
+| 10 | ok | issue | ok | issue | change | Comparative competence is supported (國語21:7,11; 史記41:24). The son-selection rule is reversed: Fan Li preferred the younger son precisely because comfortable upbringing made him able to relinquish money; hardship made the elder reluctant to spend it (史記41:70). Separate competence-based assignment from selection for willingness to spend. “Every job” also exceeds the stated examples. |
+| 11 | ok | issue | issue | issue | change | These are his words (國語21:11), describing his competence and desirable military results. Turning them into an explicit victory-assessment rule is an inference. “As little as possible” strengthens 「甚少」 into an optimization instruction. This is also part of the same competence comparison used by #10; merge it there or label the extracted criterion as interpretation. |
+| 12 | issue | issue | issue | ok | change | The first two Chinese quotations are his; the final action is narration (國語21:30,32). The English reverses 「無使執事之人得罪於子」: Fan Li warns against being made to offend the envoy, not against the envoy being punished for reporting refusal. Yue is victorious here, not the weaker party. “Nothing to report back” is unsupported. A multi-step communication procedure would better fit the proposed kind, but its trigger and purpose need rewriting. |
+
+## Claims elsewhere in the file that the sources contradict
+
+- **Gaps: “范蠡 does not speak” 「時不至，不可強生；事不究，不可強成」.** The phrase occurs in 韋昭’s note at 國語21:3 **and** in Fan Li’s main-text speech at 21:9. The latter directly supports its attribution to him.
+- **Review #3: “Heaven’s season is solid.”** 國語21:23 describes 「贏縮轉化」; 韋昭 explains 固然 as 「有轉化也」. The contrast is changing conditions versus the settled plan.
+- **Review #2: the window returns “within five years.”** 國語21:28 does not promise another favorable opportunity within that ceiling; its commentary explicitly distinguishes five years from ten or twenty.
+- **Review #6: “Clean, single-trigger” endorses the submission rule without correcting its exclusion of the country.** 國語21:7 includes 「屬國家」 in the offer.
+- **What the top 10 missed: “Send the hard job to whoever has known hardship.”** 史記41:70 supports the opposite selection in this case: send the person able to part with money, which Fan Li attributes to the younger son’s comfortable upbringing.
+- **#11’s explanatory note: “He hands this part to 文種.”** 國語21:11 says 文種 is inferior at the external work; 「令大夫種為之」 concerns governing the country, as 韋昭 explicitly glosses 「為，治國也」.
+- **Review #10: “Nothing here is a decision he is recorded making.”** Although the commercial maxims cited are narration or 計然’s doctrine, 史記129:24 records Fan Li’s explicit decision: 「既已施於國，吾欲用之家」.
+- **Verification claim: “Every clause … matched its named source” after commentary removal.** The supplied Chinese quotations are present, but that check does not establish speaker attribution, accurate translation, or faithful rules. The file’s own Gaps attribution claim and several English rules fail those further checks.
+- Claims about 越絕書, 吳越春秋, 史記三家註, 無能子, and 春秋戰國異辭 are **not checkable here**: those texts are absent from the supplied Fan Li source folder.
+
+## Missing
+
+- **A fresh enemy disaster can strengthen resistance.** 國語21:19 explains that newly frightened rulers and people may unite their effort and fight desperately: 「彼將同其力，致其死，猶尚殆」. This supplies an important counterexample to treating disaster as permission to attack. The same speech recommends restrained outward recreation while preserving normal government, allowing Wu’s ruler to underestimate Yue and exhaust his people.
+- **Transfer a successful method to another domain, with its origin acknowledged.** 史記129:24 gives his own decision: 「計然之策七，越用其五而得意。既已施於國，吾欲用之家。」 This supports reuse of 計然’s tested statecraft in household commerce without presenting 計然’s doctrine as Fan Li’s invention.
+
+## Overall
+
+**My reading:** The list captures patient preparation and disciplined timing, but several English rules add unsupported conditions, and #10 and #12 reverse consequential meanings. **My reading:** My independent textual review finds that the earlier reviewer’s reported string check cannot support the file’s stronger claims about attribution and interpretation. **Not measured:** Historical authenticity and an objective importance ranking are not established by these supplied texts.
+tokens used
+45,343
+# fan-li — codex review of the top 12
+
+## Per item
+
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+| 1 | ok | issue | ok | ok | change | The quotations are Fan Li’s speech (國語21:3). But “if both are ripe, you are the attacker and you go” turns prohibitions into sufficient permission. 國語21:19 additionally requires conditions to coincide and considers whether disaster has united the enemy. The three categories are not stated as mutually exclusive forms. |
+| 2 | ok | issue | ok | ok | change | All quoted clauses occur in his main-text speech (國語21:9), including 「時不至，不可彊生」. Productive waiting is supported. The numbered sequence and “nothing else” are additions; the summary also omits 「必有以知天地之恆制」, the requirement to understand the governing regularities before obtaining lasting benefit. |
+| 3 | issue | issue | ok | ok | change | The Chinese is his speech (國語21:17), but 征 is mistranslated as “symptom.” 韋昭 explicitly glosses it 「征，征伐也」—military campaigning. The supported rule is to wait rather than campaign before the conditions manifest; the distinction between a “sign” and “actual decay” is the reviewer’s construction. |
+| 4 | ok | issue | ok | ok | change | The quotations are his (國語21:21,23,28). Urgency is supported; “everything at once,” “the whole army,” and a favorable window returning “within five years” are not. The final passage warns of reversal and misfortune. 韋昭’s note gives five years for the nearer case and ten or twenty for the farther, contradicting the proposed five-year ceiling. |
+| 5 | issue | issue | ok | ok | change | The letter and Qi resignation are direct speech (史記41:36,58); 「范蠡以為大名之下，難以久居」 is narration (41:56), not his spoken words. 「蠡請從會稽之罰」 requests the punishment previously deferred; it does not state a general doctrine that obligation is discharged by success. The warning about sharing happiness concerns Goujian specifically, not every ruler. |
+| 6 | issue | issue | ok | ok | change | The Chinese is his speech (國語21:23), but both translations distort it. 「謀之廊廟，失之中原」 means planning at court and losing the plan on the battlefield—not losing it twice. “Heaven’s season is solid” conflicts with preceding 「贏縮轉化」 and 韋昭’s 「固然，有轉化也」. Preserve the supported rule: do not abandon the settled plan under provocation. |
+| 7 | ok | ok | ok | ok | keep | 國語21:5 directly records his warning against aggressive courage, destructive weapons, initiating hostilities, and debauchery. “Force is the last thing” fairly compresses 「爭者，事之末也」 in this context. The repaired quotation marks the separate clause correctly. |
+| 8 | ok | issue | ok | ok | change | The main-text quotations are his; 韋昭’s gloss is correctly attributed separately (國語21:25). However, “three things together” imposes a checklist on an instruction to assess 天地之災 and 饑飽勞逸. “Formation follows theirs” is absent from the formation passage. The same supplied note also preserves 述聞’s explicit disagreement with 韋昭’s parsing, so the “do not pre-set” interpretation needs that qualification. |
+| 9 | ok | issue | ok | ok | change | His escalation from respectful concessions to 「身與之市」 is present (國語21:7). “Not the country” and “Not the territory” are unsupported: the ensuing offer explicitly says 「委管籥屬國家，以身隨之，君王制之」, placing the state as well as the person under Wu’s control. Retain negotiated submission; remove the exclusion of the country. |
+| 10 | ok | issue | ok | issue | change | Comparative competence is supported (國語21:7,11; 史記41:24). The son-selection rule is reversed: Fan Li preferred the younger son precisely because comfortable upbringing made him able to relinquish money; hardship made the elder reluctant to spend it (史記41:70). Separate competence-based assignment from selection for willingness to spend. “Every job” also exceeds the stated examples. |
+| 11 | ok | issue | issue | issue | change | These are his words (國語21:11), describing his competence and desirable military results. Turning them into an explicit victory-assessment rule is an inference. “As little as possible” strengthens 「甚少」 into an optimization instruction. This is also part of the same competence comparison used by #10; merge it there or label the extracted criterion as interpretation. |
+| 12 | issue | issue | issue | ok | change | The first two Chinese quotations are his; the final action is narration (國語21:30,32). The English reverses 「無使執事之人得罪於子」: Fan Li warns against being made to offend the envoy, not against the envoy being punished for reporting refusal. Yue is victorious here, not the weaker party. “Nothing to report back” is unsupported. A multi-step communication procedure would better fit the proposed kind, but its trigger and purpose need rewriting. |
+
+## Claims elsewhere in the file that the sources contradict
+
+- **Gaps: “范蠡 does not speak” 「時不至，不可強生；事不究，不可強成」.** The phrase occurs in 韋昭’s note at 國語21:3 **and** in Fan Li’s main-text speech at 21:9. The latter directly supports its attribution to him.
+- **Review #3: “Heaven’s season is solid.”** 國語21:23 describes 「贏縮轉化」; 韋昭 explains 固然 as 「有轉化也」. The contrast is changing conditions versus the settled plan.
+- **Review #2: the window returns “within five years.”** 國語21:28 does not promise another favorable opportunity within that ceiling; its commentary explicitly distinguishes five years from ten or twenty.
+- **Review #6: “Clean, single-trigger” endorses the submission rule without correcting its exclusion of the country.** 國語21:7 includes 「屬國家」 in the offer.
+- **What the top 10 missed: “Send the hard job to whoever has known hardship.”** 史記41:70 supports the opposite selection in this case: send the person able to part with money, which Fan Li attributes to the younger son’s comfortable upbringing.
+- **#11’s explanatory note: “He hands this part to 文種.”** 國語21:11 says 文種 is inferior at the external work; 「令大夫種為之」 concerns governing the country, as 韋昭 explicitly glosses 「為，治國也」.
+- **Review #10: “Nothing here is a decision he is recorded making.”** Although the commercial maxims cited are narration or 計然’s doctrine, 史記129:24 records Fan Li’s explicit decision: 「既已施於國，吾欲用之家」.
+- **Verification claim: “Every clause … matched its named source” after commentary removal.** The supplied Chinese quotations are present, but that check does not establish speaker attribution, accurate translation, or faithful rules. The file’s own Gaps attribution claim and several English rules fail those further checks.
+- Claims about 越絕書, 吳越春秋, 史記三家註, 無能子, and 春秋戰國異辭 are **not checkable here**: those texts are absent from the supplied Fan Li source folder.
+
+## Missing
+
+- **A fresh enemy disaster can strengthen resistance.** 國語21:19 explains that newly frightened rulers and people may unite their effort and fight desperately: 「彼將同其力，致其死，猶尚殆」. This supplies an important counterexample to treating disaster as permission to attack. The same speech recommends restrained outward recreation while preserving normal government, allowing Wu’s ruler to underestimate Yue and exhaust his people.
+- **Transfer a successful method to another domain, with its origin acknowledged.** 史記129:24 gives his own decision: 「計然之策七，越用其五而得意。既已施於國，吾欲用之家。」 This supports reuse of 計然’s tested statecraft in household commerce without presenting 計然’s doctrine as Fan Li’s invention.
+
+## Overall
+
+**My reading:** The list captures patient preparation and disciplined timing, but several English rules add unsupported conditions, and #10 and #12 reverse consequential meanings. **My reading:** My independent textual review finds that the earlier reviewer’s reported string check cannot support the file’s stronger claims about attribution and interpretation. **Not measured:** Historical authenticity and an objective importance ranking are not established by these supplied texts.

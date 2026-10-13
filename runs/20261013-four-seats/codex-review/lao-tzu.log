@@ -1,0 +1,4149 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a133ca-7966-7242-87bb-680d3472b524
+--------
+user
+Read /home/smoke01/dev/ancient-games/runs/20261013-four-seats/briefs/codex-review-lao-tzu.md and do what it says.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the folder instructions and the review brief, then carry out the requested review.
+exec
+/bin/bash -lc 'cat CLAUDE.md runs/20261013-four-seats/briefs/codex-review-lao-tzu.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `~/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+Read /home/smoke01/dev/ancient-games/runs/20261013-four-seats/briefs/codex-review-common.md and do what it says.
+Your seat: lao-tzu — list: runs/20261013-four-seats/top12/lao-tzu.md; sources: runs/20261013-four-seats/sources/lao-tzu/.
+
+exec
+/bin/bash -lc 'cat runs/20261013-four-seats/briefs/codex-review-common.md runs/20261013-four-seats/top12/lao-tzu.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Codex review brief — the top 12, second engine
+
+You are an independent reviewer for EJ's Ancient Games project. Another engine (opencode, MiniMax) researched ONE
+person and produced their **top 12 mindsets, decision rules or algorithms**. Review it. You are read-only: write
+nothing; your final message is your review.
+
+Read:
+- the list under review: `runs/20261013-four-seats/top12/<seat>.md` (named in your seat brief)
+- the source texts: `runs/20261013-four-seats/sources/<seat>/` (see `sources/README.md`; in the Chinese wikitext,
+  `{{*|…}}` is a commentator's note, not the main text). Search them with `grep`/`rg`. You have no web access; if a
+  quote's source is not in this folder, say "not checkable here", do not guess.
+
+For each of the 12 items, judge four things:
+1. **Quote** — are the quoted words in the source, and spoken by this person (not a commentator, historian or
+   another speaker)?
+2. **Step** — does the plain-English rule actually follow from the quote, or does it add something the quote does not
+   say? This is the main question: a rule that reads well but is not in the words is the failure we are looking for.
+3. **Kind** — is "mindset / decision rule / algorithm" right?
+4. **Rank** — is it in the right place, or merged with / duplicating another item?
+
+Also check the file's **Gaps** and **Review of the top 10** sections for any claim that the source texts contradict.
+
+## Write exactly this (Markdown, no preamble)
+
+# <seat> — codex review of the top 12
+
+## Per item
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+One row per item. Quote/Step/Kind/Rank: `ok` · `issue` · `not checkable`. Verdict: `keep` · `change` · `drop`.
+
+## Claims elsewhere in the file that the sources contradict
+- ... (or "none found")
+
+## Missing
+Anything this person is clearly known for deciding by, that the 12 leave out — only if the source texts here show it.
+
+## Overall
+Two or three sentences. Label each conclusion `quoted`, `my reading` or `not measured`.
+I'll read that brief first.
+# 老子 — top 12, reviewed
+
+## Review of the top 10
+
+Overall: the manuscript notes are the best part of this research and they are reliable — I re-checked every silk chapter number and every Guodian claim against 老子 (帛書校勘版) and the Murphy-derived Guodian table, and **all ten are correct**. Eight of ten rules cite the received text, which the research itself says is "demonstrably later and re-edited"; ranking should prefer what all three witnesses carry. Three rules are mis-framed (1, 3, 6), two are merged (2, 6), one is two rules (9), one is a contents list (10).
+
+1. **Rule 1 (無為) — change.** The anchor is the book's most famous line, and it is the one passage where the manuscript disagrees: 帛書 81 (无名, = 王弼 37) reads 道恆无名，侯王若守之，萬物將自化 with no 無為. But the note's conclusion is wrong: "that formula is a received-text feature" is false of the silk, which has損之又損，以至於無為，**無為而無不為** verbatim at 帛書 48 (= 王弼 48). The formula is early; the *ch. 37 placement* is late. Re-anchor on ch. 48 and make it an ordered procedure.
+2. **Rule 2 (timing, Shiji) — change.** Correct to label `attributed` and correct to call it the only recorded decision. But the rule as written merges three: timing (得其時則駕), concealed display (深藏若虛／盛德容貌若愚), and stripping the addressee's appetites (去子之驕氣與多欲). Keep only the timing, and note what the research skipped: 吾所以告子，若是而已 — the counsel itself is "this is all I have to tell you," which is the rule.
+3. **Rule 3 (曲則全) — change.** Two faults. "Less-travelled" is nowhere in the text, and 少則得／多則惑 is about *quantity held*, not about choosing the smaller option — that is a famous-line misreading. And the plain English drops what the manuscript has: 帛書 67 (執一, = 王弼 22) runs straight on 不自視故彰，不自見故明，不自伐故有功，弗矜故能長，夫唯不爭，故莫能與之爭. The earliest witness makes this one passage. Merge with ch. 24.
+4. **Rule 4 (上善若水) — change.** Keep the manuscript note verbatim — 帛書 52 reads 上善**治水**…水善利萬物而**有靜**, not 若水／不爭 — it is the sharpest single finding in the file. But change the rule: the text's decision content is the **eight 善** (居善地…動善時), a checklist the research dropped entirely, and the silk changes the third rung (予善**天**, not 與善**仁**). "Take the low useful position" is a fair gloss of one clause, not of the chapter.
+5. **Rule 5 (功遂身退) — keep.** A real trigger ("the work is done") and an action ("leave"), attested at Guodian 甲 unit 5 and 帛書 53. Two refinements: the silk's 功**述**身**芮** is a good catch, but 遂 is not a lost emendation — the silk keeps 成功**遂**事 at 帛書 61 and 78; and the silk reads 成**功**成而弗居 where Wang Bi has 功**成**而弗居.
+6. **Rule 6 (為之於未有) — change.** Two rules in one ("act before it breaks" and "hold the last step"), and it omits the chapter that states the first better: ch. 63's 圖難於其易，為大於其細 (Guodian 甲 unit 1) and 輕諾必寡信，多易必多難. Its own finding is right and should stay load-bearing: Guodian has ch. 64 only at beginning and end, so the two most-quoted images (千里之行, 起於累土) have no fourth-century-BCE attestation and the silk reads 百仞之高／羸土.
+7. **Rule 7 (天下神器) — keep.** Right kind, right trigger, and the silk's sharper 非可為者也 earns the rank. Two additions: the silk's third prescription is 去甚，去**大**，去楮 (drop the grand scale), which is the text's own version of Rule 3; and ch. 60's 治大國若烹小鮮 — the operational form of the same rule, fully in the silk at 帛書 23 — is never used, although this project's own design review leans on it.
+8. **Rule 8 (自知者明) — change.** Under-quoted: the silk keeps seven rungs (帛書 77盡己) and the research used two. The dropped rungs are the operative ones — 知足者富，強行者有志，不失其所者久. "Do not lose your ground" is a decision rule with a trigger and it is absent from the whole top 10.
+9. **Rule 9 (柔弱勝剛) — change, into Rule 8's neighbour.** The silk joins this chapter to the reversal procedure: 帛書 80 (微明) = 將欲翕之必固張之…柔弱勝強，魚不可脫於淵. So standalone it is half a rule. Also drop "stand down and give way" as the whole gloss — the chapter's own sting is 天下莫不知莫能行: a principle everyone can recite and nobody applies is the one to verify before relying on it.
+10. **Rule 10 (三寶) — drop.** As written it is a contents list, not a rule; the decision line "when you cannot keep all three" is invented to fit; and 不敢為天下先 duplicates ch. 8's 不爭 and the功遂身退 mood. The one durable part is 慈故能勇，夫慈以戰則勝，以守則固 — a claim about courage that the plain English never states. The research's variant work here is good and should not be lost: 帛書 32 writes 一曰**茲**、二曰**檢**, and 天將**建**之，如以茲垣之 against Wang Bi's 天將**救**之，以慈衛之.
+
+## What the top 10 missed
+
+- **ch. 13, the root cause of error:** 吾所以有大患者，為吾有身，及吾無身，吾有何患 (王弼 13; 帛書 57 寵辱; Guodian 乙 unit 1). Nothing in the top 10 ever names what makes this seat's own advice wrong. Now #2.
+- **ch. 24, do not answer to your own display:** 自見者不明，自是者不彰，自伐者無功，自矜者不長 (王弼 24; 帛書 66 弗居, which has 自**視**者不彰 and 炊者不立, and 有**欲**者弗居). Now folded into #4, because the silk already joins it to ch. 22.
+- **ch. 36, the reversal procedure:** 將欲弱之，必固強之；將欲廢之，必固興之；將欲奪之，必固與之 (王弼 36; 帛書 80 微明, which also carries 柔弱勝強 and gives a fourth pair — 將欲去之，必固與之). The only genuine *algorithm* of political timing in the book, and it has a manuscript for the shape. Now #8.
+- **ch. 71, what the research cut and flagged:** 知不知上，不知知病 (王弼 71; 帛書 36 知病 reads 知不知 尚矣 **不知不知** 病矣). Now #9.
+- **ch. 8's eight 善:** 居善地，心善淵，與善仁，言善信，正善治，事善能，動善時 — a checklist, and the silk's third rung is 予善**天**, not 與善**仁**. Now #11.
+- **ch. 11, where the usefulness lives:** 三十輻共一轂，當其無，有車之用…故有之以為利，無之以為用 (王弼 11; 帛書 55 玄中; Guodian 甲 unit 5). The book never says what to *optimise for*; this does — the empty part is the part that works.
+- **ch. 68, an actual conflict procedure:** 善為士者不武，善戰者不怒，善勝敵者弗與，善用人者為之下 (王弼 68; 帛書 33 不爭, where the last line is 是謂用人 against Wang Bi's 是謂用人之力). Four ordered checks, no famous line.
+- **ch. 20, the one other triggerless attitude:** 眾人皆皆有以，我獨頑似鄙…吾欲獨異於人，而貴食母 (王弼 20; 帛書 64 食母; Guodian 乙 unit 1). This is the mindset the top 10 most obviously lacks; it did not make the 12 only because #6 was the better-attested one.
+- **ch. 60,** 治大國若烹小鮮 (王弼 60; 帛書 23 居位) — never used.
+- **ch. 12,** 為腹不為目 (王弼 12; 帛書 56; Guodian 甲 unit 4) — never used.
+- **ch. 44,** 名與身孰親…知止不殆，可以長久 (王弼 44; 帛書 44 立戒; Guodian 甲 unit 5) — your standing and your stopping point, which rules #2 and #9 both require and the top 10 never supplies.
+- **ch. 81 / 帛書 31,** 信言不美，美言不信；善者不辯，辯者不善 — the closing test for your own words; Guodian 丙 unit 3 has the end of ch. 31.
+- **ch. 5 is not actually open.** The research listed 多聞數窮 (帛書 49 用中) vs 多言數窮 as an unresolved gap; Guodian 甲 unit 2 preserves part of ch. 5. Only the wording is contested, not the rule's existence.
+
+## Top 12
+
+1. **Kind:** algorithm. **In plain English:** Learning and the Way pull in opposite directions — for the Way, every act of doing is a loss. So: add to your knowledge; subtract from your doing; subtract again until there is no action left; and at that point nothing is left undone. The procedure is subtraction run to its end, not a stance of passivity. **Their words:** 為學日益，為道日損。損之又損，以至於無為。無為而無不為。取天下常以無事，及其有事，不足以取天下。 — "Learning grows daily; the Way loses daily. Lose and lose again, until there is no doing. No doing, and nothing is left undone. Taking the world is always by having no business; and when business appears, it is not enough to take the world." **Source:** 道德經 四十八章 (王弼本); 帛書校勘版 第四十八章 无为, which reads 為學者日益，聞道者日損 (聞道 not為道) and carries 無為而無不為; Guodian 乙 unit 1 preserves the beginning. **Label:** `quoted`. **From:** top-10 #1 (changed).
+2. **Kind:** decision rule. **In plain English:** Find your own stake before you trust your own advice, because the stake is the defect — not the situation, and not the other person. **Their words:** 吾所以有大患者，為吾有身，及吾無身，吾有何患？ — "My great troubles come from having a body of my own; once I have no self of my own, what trouble have I?" **Source:** 道德經 十三章 (王弼本); 帛書 第五十七章 寵辱 (為吾有身也…及吾无身有何患), whose closing swaps the two allegories — 貴為身於為天下…愛以身為天下 — against Wang Bi's 貴以身為天下…愛以身為天下; Guodian 乙 unit 1. **Label:** `quoted`. **From:** new.
+3. **Kind:** decision rule. **In plain English:** Never take hold of the whole system. Aim at a part, leave the outcome unheld, and cut the three excess magnitudes — the severe, the grand, the extravagant. **Their words:** 將欲取天下而為之，吾見其不得已。天下神器，不可為也，為者敗之，執者失之。是以聖人去甚，去奢，去泰。 — "Whoever wants to seize the world and work on it, I see him fail to get it. The world is a sacred vessel; it is not to be worked on. To work on it ruins it; to grip it loses it. So the sage drops the severe, the extravagant, the excessive." **Source:** 道德經 二十九章 (王弼本); 帛書 第七十三章 自然, with the sharper 天下神器也，**非可為者也** and its own third prescription 去甚，去**大**，去楮. Absent from Guodian. **Label:** `quoted`. **From:** top-10 #7 (kept).
+4. **Kind:** algorithm. **In plain English:** Stay in the bent, worn, uncredited position — then take your own display away, in this order: don't look at yourself, don't show yourself, don't claim credit for what you did, don't stand on your achievement. The gain and the restraint are one procedure. **Their words:** 曲則全，枉則正，洼則盈，敝則新，少則得，多則惑。是以聖人執一以為天下牧，不自視故彰，不自見故明，不自伐故有功，弗矜故能長，夫唯不爭，故莫能與之爭。 — "Bent, it is whole; strained, it is upright; hollow, it is full; worn, it is new. Less, it is gained; more, it is confused. So the sage holds to the one and shepherds the world: not looking at himself, he is manifest; not showing himself, he is clear; not claiming his work, he has merit; not standing on it, he endures. Because he does not contend, none can contend with him." **Source:** 王弼本二十二章 + 二十四章; 帛書 第六十七章 執一 (= 王弼 22 + 24, with 枉則**正** and 為天下**牧**; full ch. 24 at 帛書 66: 炊者不立…自**視**者不彰…有**欲**者弗居). Neither chapter is in Guodian. **Label:** `quoted`; the joining of the two is the manuscript's, not mine. **From:** top-10 #3 (changed).
+5. **Kind:** algorithm. **In plain English:** The two cheap moments are the unformed beginning and the nearly-finished end; the expensive moment is the middle. Act before disorder starts, plan the hard thing while it is still easy, do the great thing while it is still small — and do not relax one step before the last. **Their words:** 圖難於其易，為大於其細…夫輕諾必寡信，多易必多難。是以聖人猶難之，故終無難矣。…為之於未有，治之於未亂。…民之從事，常於幾成而敗之。慎終如始，則無敗事。 — "Take the difficulty at its easy; do the great at its small… Promise lightly and credit is short; take things lightly and difficulty is plentiful. So the sage still treats them as difficult, and so he has no difficulty at the end… Do the thing before it exists; govern it before it is out of order… People in the middle of a task most often fail as it nears completion. Be as careful at the end as at the start, and nothing fails." **Source:** 王弼本 六十三章 + 六十四章; 帛書 第二十六章 无難 + 第二十七章 輔物 (圖難乎亓易也…為之於亓未有也…恆於亓成而敗之，故慎終若始); Guodian 甲 unit 1 has ch. 63 at beginning and end and ch. 64 only at beginning and end, so the famous middle (千里之行, 起於累土) is unattested — the silk reads 百仞之高 /羸土. **Label:** `quoted`. **From:** top-10 #6 (changed).
+6. **Kind:** mindset. **In plain English:** Standing attitude — on the right work, the result looks wrong from inside it. The Way-lit looks dim; progress looks like retreat; level ground looks rough; the highest good looks like a valley; the clearest white looks like disgrace; the great vessel is late-made; the greatest tone is faint; the greatest form has no form. Judge the direction by what it produces, never by how it looks while you are in it. **Their words:** 明道若昧，進道若退，夷道若纇，上德若谷，大白若辱，廣德若不足，質真如渝，大方無隅，大器晚成，大音希聲，大象無形。 — "Where the Way is lit it looks dim; where progress goes it looks like retreat; where the Way is level it looks uneven; the highest good looks like a valley; plain white looks like disgrace; broad good looks like want; plain truth looks like adulteration. Great square has no corner; the great vessel is late-completed; great tone is faint sound; great form has no shape." **Source:** 王弼本 四十一章; 帛書 第三章 闻道, which reads 明道如**費**, 上德如**浴**, 大器**免**成, **天**象无形, 道**殷**无名 — 免/晚 and 殷/隱 are the silk's standing loan substitutions, so 大器晚成 is a restored word; 費 and 昧 are not homophones, so that image is not secured. Guodian 乙 unit 2 preserves ch. 41. **Label:** `quoted`. **From:** new.
+7. **Kind:** decision rule. **In plain English:** When the work is done and running without you, stop attending to it and take no standing credit — and precisely because you don't dwell, the result doesn't leave. **Their words:** 功遂身退，天之道。…萬物作而不辭，生而不有，為而不恃，功成而弗居。夫唯弗居，是以不去。 — "When the work is accomplished, withdraw — that is heaven's Way… All things arise and it does not refuse them; beget them and does not own them; do them and does not rely on them; accomplish and does not dwell on them. Precisely because it does not dwell, it does not depart." **Source:** 王弼本 九章 + 二章; 帛書 第五十三章 持盈 reads 功**述**身**芮** (芮 for 退, cf. 帛書 51 芮亓身而身先 against 王弼 7 退其身), and 帛書 46 觀徼 reads 成**功**而弗居. 遂 survives in the silk at 成功遂事 (帛書 61, 78), so the received wording is an emendation, not a invention. Guodian 甲 unit 5 has ch. 9. **Label:** `quoted`. **From:** top-10 #5 (kept).
+8. **Kind:** algorithm. **In plain English:** To contract something, widen it first; to weaken it, strengthen it first; to retire it, promote it first; to take it, give it first. Then stop and let the thing move against you. **Their words:** 將欲翕之，必固張之；將欲弱之，必固強之；將欲去之，必固與之；將欲奪之，必固予之。是謂微明。 — "To close it up, you must first spread it open; to weaken it, first make it strong; to take it away, first give it away; to take it, first bestow it. This is called subtle clarity." **Source:** 王弼本三十六章 (with 將欲廢之，必固興之); 帛書 第八十章 微明, which adds a fourth pair and then runs straight into 柔弱勝強，魚不可脫於淵，邦利器不可以示人 — the silk has this procedure and the weak-over-strong claim in one chapter. 陸德明《經典釋文》 on the opening word: 簡文作歙，又作洽。河上本作㬛也 (I do not know what he means by 簡文). Absent from Guodian, whose 70–81 may not yet exist. **Label:** `quoted`. **From:** new.
+9. **Kind:** decision rule. **In plain English:** Admitting you don't know is the higher performance; performing knowledge you don't have is the illness. And the cure is the same move as the disease: treat the illness as illness and you are not ill. **Their words:** 知不知上，不知知病。夫唯病病，是以不病。聖人不病，以其病病，是以不病。 — "Knowing that one does not know is the higher; not knowing that one knows is the illness. Only by treating the illness as illness is one not ill. The sage is not ill, because he treats the illness as illness, and so is not ill." **Source:** 王弼本 七十一章; 帛書 第三十六章 知病 reads 知不知 尚矣 **不知不知** 病矣 — praise attaches to the first clause, blame to a *doubled* negation, so the two witnesses differ in sense, not wording. **Label:** `quoted`. **From:** new (the research flagged and cut this in its Gaps).
+10. **Kind:** decision rule. **In plain English:** The ladder runs from judging others to judging yourself to knowing when enough is enough to not losing your ground. Self-measurement is the harder reading, and it is the one that lasts. **Their words:** 知人者智，自知者明。勝人者有力，自勝者強。知足者富。強行者有志。不失其所者久。 — "To know others is knowledge; to know oneself is clarity. To overcome others is strength; to overcome oneself is real strength. To know enough is richness. To force one's way is to have a purpose. Not to lose one's ground is to last." **Source:** 王弼本 三十三章; 帛書 第七十七章 尽己, which keeps all seven rungs and reads 知人者**知**也 (知 not智), 不失亓所者久也, 死**不忘**者壽也. Absent from Guodian. **Label:** `quoted`. **From:** top-10 #8 (changed).
+11. **Kind:** algorithm. **In plain English:** Go where the crowd finds distasteful, benefit everything, and do not contend — then run the eight checks in order: choose your ground, keep your depth, treat people well, keep your word, keep things in order, do the job well, and move at the right time. **Their words:** 上善若水。水善利萬物而不爭，處眾人之所惡，故幾於道。居善地，心善淵，與善仁，言善信，正善治，事善能，動善時。夫唯不爭，故無尤。 — "The highest good is like water. Water benefits all things and does not contend; it dwells where the crowd finds distasteful — so it is close to the Way. Dwell well in your ground, be deep of heart, be humane toward others, keep faith in your word, set things in order, do the work well, move at the right time. Because it does not contend, it is without blame." **Source:** 王弼本 八章; 帛書 第五十二章 治水 reads 上善**治水**…水善利萬物而**有靜** (the virtue named is stillness; 不爭 survives only in the closing line) and **予善天** for the third rung. Not in Guodian at all. **Label:** `quoted`. **From:** top-10 #4 (changed).
+12. **Kind:** decision rule. **In plain English:** Check the timing before anything else. If the time has come, drive out and give one short answer; if it has not, wander off, unpressured. And when you do speak, show less appetite than you feel. **Their words:** 且君子得其時則駕，不得其時則蓬累而行。吾聞之，良賈深藏若虛，君子盛德容貌若愚。去子之驕氣與多欲，態色與淫志，是皆無益於子之身。吾所以告子，若是而已。 — "A gentleman, when his time comes, drives out; when it does not, he drifts along, bundled, and goes. I have heard that the skilled merchant hides his goods deep as though his store were empty; a man of great virtue wears the face of a fool. Your arrogance and your many desires, your proud bearing and your wanton aims — none of these serve your body. This is all I have to tell you." **Source:** 史記 卷六十三老子韓非列傳, wikisource 史記/卷063 — Sima Qian's report of Laozi speaking to Confucius, not a text of the 道德經; nothing to collate. **Label:** `attributed`. **From:** top-10 #2 (changed — timing only).
+
+## Gaps
+
+- **I could not read a single word of Guodian.** Wikisource still has no Guodian transcription; I used the chapter list only (en.wikipedia Bamboo Texts of Guodian, citing Murphy 2006). It confirms every Guodian claim in the research — ch. 9, 37 and 64 present with 64 in fragments; 3, 8, 22, 29, 33, 67, 78 absent — and it is why items3, 4, 8, 9, 10, 11 above carry no fourth-century-BCE attestation. I have added no Guodian readings, and for ch. 48 I can say Guodian preserves the beginning but not which words.
+- **陸德明's 簡文 remains unidentified.** I confirmed his note at ch. 37 (簡文作不) and added his note at ch. 36 (簡文作歙，又作洽), but the term predates the excavation by two millennia and cannot be equated with Guodian. Not used as evidence anywhere above.
+- **No third collation.** ctext.org still denies automated access; I did not work around it. Everything above rests on the 王弼本 page, 帛書校勘版, and 史記 卷063 — the same three witnesses the research used. A published apparatus (高明, 裘錫圭, 郭店楚簡校讀記) would likely surface variants in the lines I quote, especially 帛書 第三章's loan characters.
+- **One philological judgment I could not close.** I read 明道如**費** (王弼 明道若昧) as not a loan pair — 費 and 昧 are not homophones — so the received image of a Way that looks dim may be an editorial smoothing, whereas 大器**免**成／晚成 and 道**殷**无名 are the silk's familiar loan substitutions and are secure. I did not find a source that adjudicates 費, so #6's wording is weaker than the rest of the item.
+- **The date of the text stays open.** Guodian sets c. 300 BCE for parts, Mawangdui c. 168 BCE for the whole; I saw nothing that places the received text's composition more precisely than "compiled over centuries."
+- **Two good items did not fit and are not padding-worthy substitutes:** ch. 11's 有之以為利，無之以為用 and ch. 20's 我獨頑似鄙 (the one other pure mindset). Both are in "What the top 10 missed" with sources; take ch. 20 as #13 if the list ever runs to thirteen.
+
+exec
+/bin/bash -lc 'cat runs/20261013-four-seats/sources/README.md; rg --files runs/20261013-four-seats/sources/lao-tzu' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Source texts
+
+Fetched 2026-10-13 by Claude (main session) for quote checking: Chinese texts are Wikisource raw wikitext
+(`action=raw`; the 帛書 text via the API, pageid 39831), kernel docs are docs.kernel.org HTML (7.3.0-rc7 render).
+In the wikitext, `{{*|…}}` is inline commentary (e.g. 韋昭 in 國語, 王弼 / 陸德明 in 道德經), not the main text.
+runs/20261013-four-seats/sources/lao-tzu/史記_卷063.txt
+runs/20261013-four-seats/sources/lao-tzu/silk.txt
+runs/20261013-four-seats/sources/lao-tzu/道德經__王弼本_.txt
+
+exec
+/bin/bash -lc 'nl -ba runs/20261013-four-seats/sources/lao-tzu/silk.txt' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+     1	{{Further|道德經}}
+     2	{{Header
+     3	| title    = 老子
+     4	| section  = 
+     5	| author   = 老子
+     6	| previous = 
+     7	| next     = 
+     8	| notes    = {{Wikipedia|道德經}}{{Textquality|50%}}《老子》（道德經）由老子作於春秋之前（一說春秋末期），是一部道家經典之作。
+     9	| edition= yes
+    10	}}
+    11	{{檢索|老子 (帛書校勘版)}}
+    12	<onlyinclude>
+    13	
+    14	==德篇==
+    15	
+    16	===第一章 論德===
+    17	（38）
+    18	
+    19	上德不德 是以有德 下德不失德 是以无德 
+    20	
+    21	上德无為 而无以為也 上仁為之 而无以為也 上義為之 而有以為也 上禮為之 而莫之應也 則攘臂而扔之 
+    22	
+    23	故失道而后德 失德而后仁 失仁而后義 失義而后禮 夫禮者 忠信之泊也 而亂之首也 
+    24	
+    25	前識者 道之華也 而愚之首也 
+    26	
+    27	是以大丈夫居亓厚而不居亓泊 居亓實而不居亓華 故去彼取此
+    28	
+    29	===第二章 得一===
+    30	（39）
+    31	
+    32	昔之得一者 天得一以清 地得一以寧 神得一以霝 浴得一以盈 侯王得一以為天下正
+    33	
+    34	亓致之也 謂天毋已清將恐裂 謂地毋已寧將恐發 謂神毋已霝將恐歇 謂浴毋已盈將恐竭 謂侯王毋已貴以高將恐蹶
+    35	
+    36	故必貴而以賤為本 必高矣而以下為基
+    37	
+    38	夫是以侯王自謂曰孤 寡 不榖 此亓賤之為本與 非也
+    39	
+    40	故致數與无與 是故不欲祿祿若玉 硌硌若石
+    41	
+    42	===第三章 聞道===
+    43	（41）
+    44	
+    45	上士聞道 堇而行之 中士聞道 若存若亡 下士聞道 大笑之 弗笑 不足以為道 
+    46	
+    47	是以建言有之曰 明道如費 進道如退 夷道如纇 上德如浴 大白如辱 廣德如不足 建德如偷 質真如渝 大方无隅 大器免成 大音希聲 天象无形 道殷无名 
+    48	
+    49	夫唯道 善始且善成
+    50	
+    51	===第四章 反復===
+    52	（40）
+    53	
+    54	反也者 道之動也 弱也者 道之用也 
+    55	
+    56	天下之物生於有 有生於无 
+    57	
+    58	===第五章 中和===
+    59	（42）
+    60	
+    61	道生一 一生二 二生三 三生萬物 
+    62	
+    63	萬物負陰而抱陽 中氣以為和 
+    64	
+    65	天下之所惡 唯孤 寡 不穀 而王公以自名也 
+    66	
+    67	勿或損之而益 益之而損 故人之所教 夕議而教人
+    68	
+    69	故強良者不得死 我將以為學父
+    70	
+    71	===第六章 至柔===
+    72	（43）
+    73	
+    74	天下之至柔 馳騁於天下之致堅 
+    75	
+    76	无有入於无間 吾是以知无為之有益 
+    77	
+    78	不言之教 无為之益 天下希能及之矣
+    79	
+    80	===第七章 立戒===
+    81	（44）
+    82	
+    83	名與身孰親 身與貨孰多 得與亡孰病 
+    84	
+    85	甚愛必大費 多藏必厚亡 
+    86	
+    87	故知足不辱 知止不殆 可以長久  
+    88	
+    89	===第八章 請靚===
+    90	（45）
+    91	
+    92	大成若缺 其用不敝 大盈若盅　其用不窮 大直如屈 大巧如拙 大贏如絀 
+    93	
+    94	躁勝寒　靜勝炅 清靜可以為天下正
+    95	
+    96	===第九章 知足===
+    97	（46）
+    98	
+    99	天下有道 卻走馬以糞 天下无道 戎馬生於郊 
+   100	
+   101	罪莫大於可欲 禍莫大於不知足 咎莫憯於欲得 
+   102	
+   103	故知足之足 恆足矣
+   104	
+   105	===第十章 知天下===
+   106	（47）
+   107	
+   108	不出於戶 以知天下 不窺於牖 以知天道 
+   109	
+   110	其出也彌遠 其知彌少
+   111	
+   112	是以聖人不行而知 不見而名 弗為而成
+   113	
+   114	===第十一章 無為===
+   115	（48）
+   116	
+   117	為學者日益 聞道者日損 損之又損 以至於無為 無為而無不為。 
+   118	
+   119	將欲取天下也 恆無事 及其有事也 不足以取天下
+   120	
+   121	===第十二章 德善===
+   122	（49）
+   123	
+   124	聖人恆无心 以百姓之心為心 
+   125	
+   126	善者善之 不善者亦善之 德善也 
+   127	
+   128	信者信之 不信者亦信之 德信也 
+   129	
+   130	聖人之在天下 歙歙焉 為天下渾心 百姓皆屬耳目焉 聖人皆孩之
+   131	
+   132	===第十三章 生死===
+   133	（50）
+   134	
+   135	出生 入死 
+   136	
+   137	生之徒十有三 死之徒十有三 而民生生 動皆之死地之十有三 
+   138	
+   139	夫何故也 以亓生生也 
+   140	
+   141	蓋聞善攝生者 陵行不辟兕虎 入軍不被甲兵 兕无所椯亓角 虎无所措亓爪 兵无所容亓刃 
+   142	
+   143	夫何故也 以亓无死地焉
+   144	
+   145	===第十四章 尊貴===
+   146	（51）
+   147	
+   148	道生之而德畜之 物形之而器成之 
+   149	
+   150	是以萬物尊道而貴德 
+   151	
+   152	道之尊也 德之貴也 夫莫之爵也 而恆自然也 
+   153	
+   154	道生之 畜之 長之 遂之 亭之 毒之 養之 覆之 
+   155	
+   156	生而弗有也 為而弗恃也 長而弗宰也 此之謂玄德
+   157	
+   158	===第十五章 守母===
+   159	（52）
+   160	
+   161	天下有始 以為天下母 
+   162	
+   163	既得亓母 以知亓子 復守亓母 沒身不殆 
+   164	
+   165	塞亓兌 閉亓門 終身不堇 
+   166	
+   167	啓亓兌 濟亓事 終身不逨 
+   168	
+   169	見小曰明 守柔曰強 
+   170	
+   171	用亓光 復歸亓明
+   172	
+   173	毋遺身殃 是謂襲常
+   174	
+   175	===第十六章 盜竽===
+   176	（53）
+   177	
+   178	使我挈有知也 行於大道 唯施是畏 
+   179	
+   180	大道甚夷 民甚好解 
+   181	
+   182	朝甚除 田甚蕪 倉甚虛 服文采 帶利劍 厭食而齎財有餘 是謂盜竽 非道也
+   183	
+   184	===第十七章 善觀===
+   185	（54）
+   186	
+   187	善建者不拔 善抱者不脫 子孫以祭祀不絕 
+   188	
+   189	修之身 亓德乃真 修之家 亓德有餘 修之鄉 亓德乃長 修之邦 亓德乃豐 修之天下 亓德乃博 
+   190	
+   191	以身觀身 以家觀家 以鄉觀鄉 以邦觀邦 以天下觀天下 
+   192	
+   193	吾何以知天下然茲 以此 
+   194	
+   195	===第十八章 含德===
+   196	（55）
+   197	
+   198	含德之厚者 比於赤子 蜂蠆虺蛇弗螫 攫鳥猛獸弗搏 骨弱筋柔而握固 未知牝牡之合而朘怒 精之至也 終日號而不嚘 和之至也 
+   199	
+   200	和曰常 知和曰明 益生曰祥 心使氣曰強 
+   201	
+   202	物壯即老 謂之不道 不道早已
+   203	
+   204	===第十九章 玄同===
+   205	（56）
+   206	
+   207	知者弗言 言者弗知
+   208	
+   209	塞亓兌 閉亓門 和亓光 同亓塵 挫亓銳 解亓紛 是謂玄同
+   210	
+   211	故不可得而親 亦不可得而疏 不可得而利 亦不可得而害 不可得而貴 亦不可得而賤 故為天下貴
+   212	
+   213	===第二十章 治邦===
+   214	（57）
+   215	
+   216	以正之邦 以畸用兵 以无事取天下 吾何以知亓然也  
+   217	
+   218	夫天下多忌諱 而民彌貧 民多利器 而邦滋昏 人多知 而奇物滋起 法物滋彰 而盜賊多有 
+   219	
+   220	是以聖人之言曰 我无為而民自化 我好靜而民自正 我无事而民自富 我欲不欲而民自樸
+   221	
+   222	===第二十一章 為正===
+   223	（58）
+   224	
+   225	亓正閔閔 亓民屯屯 亓正察察 亓邦夬夬 
+   226	
+   227	禍 福之所倚 福 禍之所伏 孰知亓極 
+   228	
+   229	亓无正也 正復為奇 善復為訞 
+   230	
+   231	人之迷也 亓日固久矣 
+   232	
+   233	是以方而不割 兼而不刺 直而不紲 光而不耀
+   234	
+   235	===第二十二章 長生===
+   236	（59）
+   237	
+   238	治人事天 莫若嗇
+   239	
+   240	夫唯嗇 是以蚤服 蚤服是謂重積德 重積德則无不克 无不克則莫知亓極 莫知亓極 可以有國 有國之母 可以長久
+   241	
+   242	是謂深根固柢 長生久視之道也
+   243	
+   244	===第二十三章 居位===
+   245	（60）
+   246	
+   247	治大國 若烹小鮮 
+   248	
+   249	以道蒞天下 亓鬼不神 非亓鬼不神也 亓神不傷人也 非亓神不傷人也 聖人亦弗傷也 
+   250	
+   251	夫兩不相傷 故德交歸焉
+   252	
+   253	===第二十四章 處下===
+   254	（61）
+   255	
+   256	大邦者 下流也 天下之牝 天下之交也
+   257	
+   258	牝恆以靚勝牡 為亓靚也 故宜為下
+   259	
+   260	大邦以下小邦 則取小邦 小邦以下大邦 則取於大邦 故或下以取 或下而取
+   261	
+   262	故大邦者 不過欲兼畜人 小邦者 不過欲入事人
+   263	
+   264	夫皆得亓欲 則大者宜為下
+   265	
+   266	===第二十五章 道注===
+   267	（62）
+   268	
+   269	道者 萬物之注也 善人之寳也 不善人之所寳也
+   270	
+   271	美言可以市 尊行可以賀人 人之不善 何棄之有 
+   272	
+   273	故立天子 置三卿 雖有拱之璧以先四馬 不善坐 而進此
+   274	
+   275	古之所以貴此者何也 不謂求以得 有罪以免輿 故為天下貴
+   276	
+   277	===第二十六章 无難===
+   278	（63）
+   279	
+   280	為无為 事无事 味无味
+   281	
+   282	大小多少 報怨以德 
+   283	
+   284	圖難乎亓易也 為大乎亓細也 天下之難作於易 天下之大作於細 
+   285	
+   286	是以聖人終不為大 故能成亓大 
+   287	
+   288	夫輕諾必寡信 多易必多難 
+   289	
+   290	是以聖人猶難之 故終於无難
+   291	
+   292	===第二十七章 輔物===
+   293	（64）
+   294	
+   295	亓安也 易持也 亓未兆也 易謀也 亓脆也 易判也 亓微也 易散也 為之於亓未有也 治之於亓未亂也 
+   296	
+   297	合抱之木 生於毫末 九成之臺 作於羸土 百仞之高 始於足下 
+   298	
+   299	為之者敗之 執之者失之 是以聖人无為也 故无敗也 无執也 故无失也 民之從事也 恆於亓成而敗之 故慎終若始 則无敗事矣 
+   300	
+   301	是以聖人欲不欲 而不貴難得之貨 學不學 而復眾人之所過 能輔萬物之自然 而弗敢為
+   302	
+   303	===第二十八章 玄德===
+   304	（65）
+   305	
+   306	故曰 為道者非以明民也 將以愚之也 民之難治也 以亓知也 
+   307	
+   308	故以知知邦 邦之賊也 以不知知邦 邦之德也 
+   309	
+   310	恆知此兩者 亦稽式也 恆知稽式 此謂玄德 
+   311	
+   312	玄德深矣 遠矣 與物反矣 乃至大順 
+   313	
+   314	===第二十九章 江海===
+   315	（66）
+   316	
+   317	江海所以能為百谷王者 以亓善下之 是以能為百谷王 
+   318	
+   319	是以聖人之欲上民也 必以亓言下之 欲先民也 必以亓身後之 故居前而民弗害也 居上而民弗重也 天下樂推而弗猒也 非以亓无諍與 故天下莫能與諍
+   320	
+   321	===第三十章 安居===
+   322	（80）
+   323	
+   324	小邦寡民 
+   325	
+   326	使十百人之器毋用 使民重死而遠徙 有車周无所乘之 有甲兵无所陳之 使民復結繩而用之 
+   327	
+   328	甘亓食 美亓服 樂亓俗 安亓居 
+   329	
+   330	鄰邦相望 雞狗之聲相聞 民至老死 不相往來 
+   331	
+   332	===第三十一章 不積===
+   333	（81）
+   334	
+   335	信言不美 美言不信 知者不博 博者不知 善者不多 多者不善 
+   336	
+   337	聖人无積 既以為人 己愈有 既以予人 己愈多 
+   338	
+   339	故天之道 利而不害 人之道 為而弗爭
+   340	
+   341	===第三十二章 三寶===
+   342	（67）
+   343	
+   344	天下皆謂我大 不肖 夫唯大 故不肖 若肖 細久矣 
+   345	
+   346	我恆有三寶之 一曰茲 二曰檢 三曰不敢為天下先 
+   347	
+   348	夫茲 故能勇 檢 故能廣 不敢為天下先 故能為成事長 
+   349	
+   350	今捨亓茲且勇 捨亓檢且廣 捨亓後且先 則必死矣 
+   351	
+   352	夫茲 以戰則勝 以守則固 天將建之 如以茲垣之
+   353	
+   354	===第三十三章 不爭===
+   355	（68）
+   356	
+   357	善為士者不武 善戰者不怒 善勝敵者弗與 善用人者為之下 
+   358	
+   359	是謂不爭之德 是謂用人 是謂天 古之極也 
+   360	
+   361	===第三十四章 用兵===
+   362	（69）
+   363	
+   364	用兵有言曰 吾不敢為主而為客 不敢進寸而芮尺 
+   365	
+   366	是謂行无行 攘无臂 執无兵 乃无敵矣 
+   367	
+   368	禍莫大於无適 无適近亡吾寶矣 
+   369	
+   370	故稱兵相若 則哀者勝矣
+   371	
+   372	===第三十五章 懷玉===
+   373	（70）
+   374	
+   375	吾言甚易知也 甚易行也 而人莫之能知也 而莫之能行也 
+   376	
+   377	言有君 事有宗 夫唯无知也 是以不我知 
+   378	
+   379	知我者希 則我貴矣 是以聖人被褐而懷玉
+   380	
+   381	===第三十六章 知病===
+   382	（71）
+   383	
+   384	知不知 尚矣 不知不知 病矣 
+   385	
+   386	是以聖人之不病 以亓病病也 是以不病 
+   387	
+   388	===第三十七章 畏畏===
+   389	（72）
+   390	
+   391	民之不畏畏 則大畏將至矣 
+   392	
+   393	毋閘亓所居 毋猒亓所生 夫唯弗猒 是以不猒 
+   394	
+   395	是以聖人 自知而不自見也 自愛而不自貴也 故去彼取此
+   396	
+   397	===第三十八章 天網===
+   398	（73）
+   399	
+   400	勇於敢者則殺 勇於不敢者則栝 此兩者或利或害 
+   401	
+   402	天之所惡 孰知亓故 
+   403	
+   404	天之道 不彈而善勝 不言而善應 不召而自來 彈而善謀 
+   405	
+   406	天網恢恢 疏而不失 
+   407	
+   408	===第三十九章 司殺===
+   409	（74）
+   410	
+   411	若民恆且不畏死 奈何以殺懼之也 
+   412	
+   413	若民恆是畏死 則而為者 吾得而殺之 夫孰敢矣 
+   414	
+   415	若民恆且必畏死 則恆有司殺者 
+   416	
+   417	夫代司殺者殺 是代大匠斲也 夫代大匠斲者 則希不傷亓手矣
+   418	
+   419	===第四十章 貴生===
+   420	（75）
+   421	
+   422	人之饑也 以亓取食稅之多也 是以飢
+   423	
+   424	百姓之不治也 以亓上有以為也 是以不治 
+   425	
+   426	民之輕死 以亓求生之厚也 是以輕死 
+   427	
+   428	夫唯无以生為者 是賢貴生
+   429	
+   430	===第四十一章 柔弱===
+   431	（76）
+   432	
+   433	人之生也柔弱 亓死也恆仞堅強 萬物草木之生也柔脆 亓死也枯槁 
+   434	
+   435	故曰 堅強者 死之徒也 柔弱微細 生之徒也 
+   436	
+   437	兵強則不勝 木強則恆
+   438	
+   439	強大居下 柔弱微細居上
+   440	
+   441	===第四十二章 天道===
+   442	（77）
+   443	
+   444	天下之道 猶張弓者也 高者抑之 下者舉之 有餘者損之 不足者補之 
+   445	
+   446	故天之道 損有餘而益不足 人之道 損不足而奉有餘 
+   447	
+   448	孰能有餘而有以取奉於天者 唯有道者乎 
+   449	
+   450	是以聖人為而弗有 成功而弗居也 若此 亓不欲見賢也
+   451	
+   452	===第四十三章 水德===
+   453	（78）
+   454	
+   455	天下莫柔弱於水 而攻堅強者莫之能胜也 以亓无以易之
+   456	
+   457	水之勝剛 弱之勝強 天下莫弗知 而莫能行也 
+   458	
+   459	故聖人之言云 曰受邦之詬 是謂社稷之主 受邦之不祥 是謂天下之王 
+   460	
+   461	正言若反
+   462	
+   463	===第四十四章 右介===
+   464	（79）
+   465	
+   466	和大怨 必有餘怨 焉可以為善 
+   467	
+   468	是以聖人執右介 而不以責於人 
+   469	
+   470	故有德司介 无德司徹
+   471	
+   472	夫天道无親 恆與善人
+   473	
+   474	==道篇==
+   475	
+   476	===第四十五章 觀道===
+   477	（1）
+   478	
+   479	道可道也 非恆道也 
+   480	
+   481	名可名也 非恆名也 
+   482	
+   483	无名萬物之始也 
+   484	
+   485	有名萬物之母也 
+   486	
+   487	故恆无欲也 以觀亓眇 恆有欲也 以觀亓所徼 
+   488	
+   489	兩者同出 異名同謂 玄之又玄 眾眇之門
+   490	
+   491	===第四十六章 觀徼===
+   492	（2）
+   493	
+   494	天下皆知美 為美惡已 皆知善 訾不善矣 
+   495	
+   496	有无之相生也 難易之相成也 長短之相形也 高下之相盈也 音聲之相和也 先後之相隨 恆也 
+   497	
+   498	是以聖人居无為之事 行不言之教 
+   499	
+   500	萬物作而弗始，為而弗恃也，成功而弗居也。夫唯弗居，是以弗去
+   501	
+   502	===第四十七章 安民===
+   503	（3）
+   504	
+   505	不上賢 使民不爭 不貴難得之貨 使民不為盜 不見可欲 使民不亂 
+   506	
+   507	是以聖人之治也 虛亓心 實亓腹 弱亓志 強亓骨 
+   508	
+   509	恆使民无知无欲也 使夫知不敢 弗為而已 則无不治矣 
+   510	
+   511	===第四十八章 道用===
+   512	（4）
+   513	
+   514	道沖 而用之有弗盈也 潚呵 始萬物之宗 
+   515	
+   516	銼亓兌 解亓紛 和亓光 同亓塵 
+   517	
+   518	湛呵 似或存 吾不知誰子也 象帝之先 
+   519	
+   520	===第四十九章 用中===
+   521	（5）
+   522	
+   523	天地不仁 以萬物為芻狗 聖人不仁 以百姓為芻狗 
+   524	
+   525	天地之間 亓猶橐籥與 虛而不淈 動而俞出 
+   526	
+   527	多聞數窮 不若守於中
+   528	
+   529	===第五十章 谷神===
+   530	（6）
+   531	
+   532	谷神不死 是謂玄牝 
+   533	
+   534	玄牝之門 是謂天地之根 
+   535	
+   536	綿綿呵若存 用之不堇
+   537	
+   538	===第五十一章 无私===
+   539	（7）
+   540	
+   541	天長地久 天地之所以能長且久者 以亓不自生也 故能長生 
+   542	
+   543	是以聖人芮亓身而身先 外亓身而身存 
+   544	
+   545	不以亓无私與 故能成亓私 
+   546	
+   547	===第五十二章 治水===
+   548	（8）
+   549	
+   550	上善治水 水善利萬物而有靜 居眾之所惡 故幾於道矣  
+   551	
+   552	居善地 心善淵 予善天 言善信 正善治 事善能 動善時 
+   553	
+   554	夫唯不爭 故无尤
+   555	
+   556	===第五十三章 持盈===
+   557	（9）
+   558	
+   559	持而盈之 不若亓已 
+   560	
+   561	揣而銳之 不可常葆之 
+   562	
+   563	金玉盈室 莫之守也 
+   564	
+   565	貴富而驕 自遺咎也 
+   566	
+   567	功述身芮 天之道也 
+   568	
+   569	===第五十四章 无不為===
+   570	（10）
+   571	
+   572	戴營魄抱一 能毋離乎 摶氣至柔 能嬰兒乎  
+   573	
+   574	脩除玄鑒 能毋疵乎 愛民栝國 能毋以知乎 
+   575	
+   576	天門啓闔 能為雌乎 明白四達 能毋以知乎 
+   577	
+   578	生之 畜之 生而弗有 長而弗宰也 是謂玄德
+   579	
+   580	===第五十五章 玄中===
+   581	（11）
+   582	
+   583	卅輻同一轂 當亓无 有車之用也 
+   584	
+   585	埏埴為器 當亓无 有埴器之用也 
+   586	
+   587	鑿戶牖 當亓无 有室之用也 
+   588	
+   589	故有之以為利 无之以為用 
+   590	
+   591	===第五十六章 為腹===
+   592	（12）
+   593	
+   594	五色使人目盲 馳騁田臘使人心發狂 難得之貨使人之行妨 五味使人之口爽 五音使人之耳聾 
+   595	
+   596	是以聖人之治也 為腹不為目 故去彼取此
+   597	
+   598	===第五十七章 寵辱===
+   599	（13）
+   600	
+   601	寵辱若驚 貴大患若身 
+   602	
+   603	何謂寵辱若驚 寵之為下 得之若驚 失之若驚 是謂寵辱若驚 
+   604	
+   605	何謂貴大患若身 吾所以有大患者 為吾有身也 及吾无身 有何患 
+   606	
+   607	故貴為身於為天下 若可以托天下矣 愛以身為天下 如可以寄天下矣
+   608	
+   609	===第五十八章 道紀===
+   610	（14）
+   611	
+   612	視之而弗見 名之曰微 聽之而弗聞 名之曰希 捪之而弗得 名之曰夷 三者不可至計 故混而為一 
+   613	
+   614	一者 亓上不攸 亓下不忽 尋尋呵 不可名也 復歸於无物 
+   615	
+   616	是謂无狀之狀 无物之象 是謂惚恍 隨而不見亓後 迎而不見亓首 
+   617	
+   618	執今之道 以御今之有 以知古始 是謂道紀 
+   619	
+   620	===第五十九章 不盈===
+   621	（15）
+   622	
+   623	古之善為道者 微眇玄達 深不可志 夫唯不可志 故強為之容 曰 
+   624	
+   625	與呵亓若冬涉水 猶呵亓若畏四鄰 儼呵亓若客 渙呵亓若淩澤 沌呵亓若樸 湷呵亓若濁 莊呵亓若浴 
+   626	
+   627	濁而情之余清 安以重之余生 
+   628	
+   629	葆此道不欲盈 夫唯不欲盈 是以能敝而不成 
+   630	
+   631	===第六十章 歸根===
+   632	（16）
+   633	
+   634	至虛極也 守情表也 萬物旁作 吾以觀亓復也 
+   635	
+   636	天物雲雲 各復歸於亓根 曰靜 靜是謂復命 復命常也 知常明也
+   637	
+   638	不知常 妄 妄作兇
+   639	
+   640	知常容 容乃公 公乃王 王乃天 天乃道 道乃久 歿身不殆
+   641	
+   642	===第六十一章 知有===
+   643	（17）
+   644	
+   645	太上 下知有之 亓次親譽之 亓次畏之 亓下侮之 
+   646	
+   647	信不足 案有不信 猶呵 亓貴言也 
+   648	
+   649	成功遂事 而百姓謂我自然
+   650	
+   651	===第六十二章 四有===
+   652	（18）
+   653	
+   654	故大道廢 安有仁義 
+   655	
+   656	知慧出 安有大僞 
+   657	
+   658	六親不和 安有孝茲 
+   659	
+   660	邦家昏亂 安有正臣 
+   661	
+   662	===第六十三章 樸素===
+   663	（19）
+   664	
+   665	絕知棄辯 民利百倍 
+   666	
+   667	絕僞棄慮 民復孝茲 
+   668	
+   669	絕巧棄利 盜賊无有 
+   670	
+   671	此三言也 以為文未足 故令之有所屬 
+   672	
+   673	見素抱樸 少私寡欲 絕學无憂 
+   674	
+   675	===第六十四章 食母===
+   676	（20）
+   677	
+   678	唯與訶 亓相去幾何 美與惡 亓相去何若 
+   679	
+   680	人之所畏 亦不可以不畏人 
+   681	
+   682	朢呵 亓未央哉 
+   683	
+   684	眾人巸巸 若鄉於大牢 而春登臺 
+   685	
+   686	我泊焉未兆 若嬰兒未咳 纍呵 似无所歸 
+   687	
+   688	眾人皆有餘 我獨遺 我愚人之心也 湷湷呵 鬻人昭昭 我獨呵 鬻人蔡蔡 我獨悶悶呵 
+   689	
+   690	忽呵 亓若海 朢呵 亓若无所止 
+   691	
+   692	眾人皆有以 我獨頑以悝 吾欲獨異於人 而貴食母 
+   693	
+   694	===第六十五章 從道===
+   695	（21）
+   696	
+   697	孔德之容 唯道是從 道之物 唯朢唯忽 
+   698	
+   699	忽呵望呵 中有象呵 朢呵忽呵 中有物呵 幽呵鳴呵 中有請呵 亓請甚真 亓中有信 
+   700	
+   701	自今及古 亓名不去 以順眾父
+   702	
+   703	吾何以知眾父之然 以此
+   704	
+   705	===第六十六章 弗居===
+   706	（24）
+   707	
+   708	炊者不立 自視者不彰 自見者不明 自伐者无功 自矜者不長 
+   709	
+   710	亓在道也 曰餘食贅行 物或惡之 故有欲者弗居 
+   711	
+   712	===第六十七章 執一===
+   713	（22）
+   714	
+   715	曲則全 枉則正 洼則盈 敝則新 少則得 多則惑 
+   716	
+   717	是以聖人執一以為天下牧 
+   718	
+   719	不自視故彰 不自見故明 不自伐故有功 弗矜故能長 
+   720	
+   721	夫唯不爭 故莫能與之爭 
+   722	
+   723	古之所謂曲全者 幾語才 誠全歸之
+   724	
+   725	===第六十八章 同道===
+   726	（23）
+   727	
+   728	希言自然 
+   729	
+   730	飄風不終朝 暴雨不終日 
+   731	
+   732	孰為此 天地而弗能久 又況於人乎 
+   733	
+   734	故從事而道者同於道 德者同於德 失者同於失 
+   735	
+   736	同於德者 道亦德之 同於失者 道亦失之 
+   737	
+   738	===第六十九章 昆成===
+   739	（25）
+   740	
+   741	有物昆成 先天地生 
+   742	
+   743	繡呵繆呵 獨立而不改 可以為天地母 
+   744	
+   745	吾未知亓名 字之曰道 吾強為之名曰大 
+   746	
+   747	大曰筮 筮曰遠 遠曰反 
+   748	
+   749	道大 天大 地大 王亦大 
+   750	
+   751	國中有四大 而王居一焉 
+   752	
+   753	人法地 地法天 天法道 道法自然
+   754	
+   755	===第七十章 輜重===
+   756	（26）
+   757	
+   758	重為巠根 靜爲躁君 
+   759	
+   760	是以君子眾日行 不離亓甾重 
+   761	
+   762	唯有環官 燕處則昭若 
+   763	
+   764	若何萬乘之王 而以身巠於天下 
+   765	
+   766	巠則失本 躁則失君
+   767	
+   768	===第七十一章 曳明===
+   769	（27）
+   770	
+   771	善行者无轍迹 善言者无瑕適 善數者不用檮策 善閉者无關籥而不可啟也 善結者无纆約而不可解也 
+   772	
+   773	是以聖人恆善救人 而无棄人 物无棄財 是謂曳明 
+   774	
+   775	故善人 善人之師 不善人 善人之齎也 
+   776	
+   777	不貴亓師 不愛亓齎 唯知乎大眯 是謂眇要
+   778	
+   779	===第七十二章 恆德===
+   780	（28）
+   781	
+   782	知亓雄 守亓雌 為天下溪 為天下溪 恆德不離 恆德不離 復歸嬰兒 
+   783	
+   784	知亓白 守亓辱 為天下浴 為天下浴 恆德乃足 德乃足 復歸於樸 
+   785	
+   786	知亓白 守亓黑 為天下式 為天下式 恆德不忒 恆德不忒 復歸於无極 
+   787	
+   788	樸散則為器 聖人用則為官長 夫大制无割
+   789	
+   790	===第七十三章 自然===
+   791	（29）
+   792	
+   793	將欲取天下而為之 吾見亓弗得已 
+   794	
+   795	夫天下 神器也 非可為者也 
+   796	
+   797	為者敗之 執者失之 
+   798	
+   799	物或行或隨 或炅或吹 或強或䂳 或培或橢 
+   800	
+   801	是以聖人去甚 去大 去楮 
+   802	
+   803	===第七十四章 不強===
+   804	（30）
+   805	
+   806	以道佐人主 不以兵強於天下 亓事好還 
+   807	
+   808	師之所居 楚棘生之 
+   809	
+   810	善者果而已矣 毋以取強焉 
+   811	
+   812	果而毋驕 果而勿矜 果而勿伐 果而毋得已居 是謂果而不強 
+   813	
+   814	物壯而老 是謂之不道 不道蚤已 
+   815	
+   816	===第七十五章 貴左===
+   817	（31）
+   818	
+   819	夫兵者 不祥之器也 物或惡之 故有欲者弗居 
+   820	
+   821	君子居則貴左 用兵則貴右 
+   822	
+   823	故兵者 非君子之器也 兵者 不祥之器也 不得已而用之 銛龐為上 
+   824	
+   825	勿美也 若美之 是樂殺人也 
+   826	
+   827	夫樂殺人 不可以得志於天下矣 
+   828	
+   829	是以吉事上左 喪事上右 
+   830	
+   831	是以偏將軍居左 上將軍居右 言以喪禮居之也 
+   832	
+   833	殺人眾 以悲依立之 戰勝 以喪禮處之 
+   834	
+   835	===第七十六章 知止===
+   836	（32）
+   837	
+   838	道恆无名 
+   839	
+   840	楃唯小 而天下弗敢臣 
+   841	
+   842	侯王若能守之 萬物將自賓 天地相合 以俞甘洛 民莫之令而自均焉 
+   843	
+   844	始制有名 名亦既有 夫亦將知止 知止所以不殆 
+   845	
+   846	俾道之在天下也 猶小浴之與江海也 
+   847	
+   848	===第七十七章 盡己===
+   849	（33）
+   850	
+   851	知人者 知也 自知者 明也 
+   852	
+   853	勝人者 有力也 自勝者 強也 
+   854	
+   855	知足者 富也 強行者 有志也 
+   856	
+   857	不失亓所者 久也 死不忘者 壽也 
+   858	
+   859	===第七十八章 成大===
+   860	（34）
+   861	
+   862	道渢呵 亓可左右也 
+   863	
+   864	成功遂事 而弗名有也 萬物歸焉而弗為主 
+   865	
+   866	則恆无欲也 可名於小 萬物歸焉而弗為主 可名於大 
+   867	
+   868	是以聖人之能成大也 以亓不為大也 故能成大 
+   869	
+   870	===第七十九章 大象===
+   871	（35）
+   872	
+   873	執大象 天下往 往而不害 安平大 
+   874	
+   875	樂與餌 過格止 
+   876	
+   877	故道之出言也 曰淡呵亓無味也 視之不足見也 聽之不足聞也 用之不可既也
+   878	
+   879	===第八十章 微明===
+   880	（36）
+   881	
+   882	將欲翕之 必固張之 將欲弱之 必固強之 將欲去之 必固與之 將欲奪之 必固予之 是謂微明 
+   883	
+   884	柔弱勝強 
+   885	
+   886	魚不可脫於淵 邦利器不可以示人 
+   887	
+   888	===第八十一章 无名===
+   889	（37）
+   890	
+   891	道恆无名 
+   892	
+   893	侯王若守之 萬物將自化 
+   894	
+   895	化而欲作 吾將貞之以无名之樸 
+   896	
+   897	貞之以无名之樸 夫將不辱 
+   898	
+   899	不辱以靜 天地將自正
+   900	</onlyinclude>
+   901	{{PD-old}}
+
+exec
+/bin/bash -lc "nl -ba 'runs/20261013-four-seats/sources/lao-tzu/道德經__王弼本_.txt'; nl -ba runs/20261013-four-seats/sources/lao-tzu/史記_卷063.txt" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+     1	{{further|道德經}}
+     2	{{header
+     3	| title    = 老子道德經注
+     4	| section  =
+     5	| author   = 老子
+     6	| noauthor = 注：[[作者:王弼|王弼]]
+     7	| next     =
+     8	| notes    = {{wikipedia|道德經}}{{Textquality|75%}}王弼《老子道德經注》是《老子》一書最重要的注釋之一，也是研究王弼思想最主要的著作
+     9	| edition= yes
+    10	}}
+    11	{{道德真经注}}
+    12	=老子《道德經》上篇=
+    13	:華亭張氏原本
+    14	:晉　王弼注
+    15	==一章==
+    16	道可道，非常道，名可名，非常名；
+    17	:{{*| 可道之道，可名之名，指事造形，非其常也。故不可道，不可名也。}}
+    18	無名，天地之始，有名，萬物之母。
+    19	:{{*|凡有皆始於無，故「未形」「無名」之時，則為萬物之始。及其「有形」「有名」之時，則長之、育之、亭之、毒之，為其母也。道以無形無名始成萬物。以始以成而不知其所以然，玄之又玄也。}}
+    20	故常無欲，以觀其妙，
+    21	:{{*|妙者，微之極也。萬物始於微而後成，始於無而後生。故常無欲空虛，可以觀其始物之妙。}}
+    22	常有欲，以觀其徼；
+    23	:{{*|徼，歸終也。凡有之為利，必以無為用。欲之所本，適道而後濟。故常有欲，可以觀其終物之徼也。}}
+    24	此兩者，同出而異名，同謂之玄。玄之又玄，眾妙之門。
+    25	:{{*|兩者，始與母也。同出者，同出於玄也。異名，所施不可同也。在首則謂之始，在終則謂之母。玄者，冥默無有也，始、母之所出也。不可得而名，故不可言同名曰玄。而言謂之玄者，取於不可得而謂之然也。謂之然則不可以定乎一玄而已。若定乎一玄，則是名則失之遠矣。故曰玄之又玄也。眾妙皆從而出，故曰眾妙之門也。}}
+    26	
+    27	==二章==
+    28	天下皆知美之為美，斯惡已。皆知善之為善，斯不善已。故有無相生，難易相成，長短相較，高下相傾，音聲相和，前後相隨。
+    29	:{{*| 美者，人心之所進樂也；惡者，人心之所惡疾也。美惡，猶喜怒也；善不善，猶是非也。喜怒同根，是非同門，故不可得偏舉也。此六者皆陳自然不可偏舉之明數也。 }}
+    30	是以聖人處無為之事，
+    31	:{{*| 自然已足，為則敗也。}}
+    32	行不言之教；萬物作焉而不辭，生而不有，為而不恃，
+    33	:{{*| 智慧自備，為則偽也。 }}
+    34	功成而弗居。
+    35	:{{*| 因物而用，功自彼成，故不居也。}}
+    36	夫唯弗居，是以不去。
+    37	:{{*| 使功在己，則功不可久也。}}
+    38	==三章==
+    39	不尚賢，使民不爭；不貴難得之貨，使民不為盜；不見可欲，使民心不亂。
+    40	:{{*| 賢，猶能也。尚者，嘉之名也。貴者，隆之稱也。唯能是任，尚也曷為；唯用是施，貴之何為。尚賢顯名，榮過其任，為而常校，能相射貴貨，過用貪者，競趣穿窬探篋，沒命而盜，故可欲不見，則心無所亂也。 }}
+    41	是以聖人之治，虛其心，實其腹，
+    42	:{{*| 心懷智而腹懷食，虛有智而實無知也。 }}
+    43	弱其志，強其骨。
+    44	:{{*| 骨無知以幹，志生事以亂，心虛則志弱也。 }}
+    45	常使民無知無欲。
+    46	:{{*| 守其真也。 }}
+    47	使夫智者不敢為也。
+    48	:{{*| 知者謂知為也。}}
+    49	為無為，則無不治。
+    50	==四章==
+    51	道沖而用之或不盈，淵兮似萬物之宗；挫其銳，解其紛，和其光，同其塵，湛兮似或存。吾不知誰之子，象帝之先。
+    52	:{{*| 夫執一家之量者，不能全家。執一國之量者，不能成國。窮力舉重，不能為用，故人雖知，萬物治也，治而不以二儀之道，則不能贍也。地雖形魄，不法於天則不能全其寧。天雖精象，不法於道則不能保其精。沖而用之，用乃不能窮，滿以造實，實來則溢，故沖而用之，又復不盈，其為無窮亦已極矣。形雖大，不能累其體，事雖殷，不能充其量，萬物舍此而求主，主其安在乎。不亦淵兮似萬物之宗乎。銳挫而無損，紛解而不勞，和光而不汙，其體同塵而不渝其真，不亦湛兮似或存乎。地守其形，德不能過其載，天慊其象，德不能過其覆，天地莫能及之，不亦似帝之先乎。帝，天帝也。}}
+    53	==五章==
+    54	天地不仁，以萬物為芻狗；
+    55	:{{*|天地任自然，無為無造，萬物自相治理，故不仁也。仁者必造立施化，有恩有為；造立施化，則物失其真，有恩有為，則物不具存，物不具存，則不足以備載矣。地不為獸生芻，而獸食芻；不為人生狗，而人食狗。無為於萬物而萬物各適其所用，則莫不贍矣。若慧由己樹，未足任也。}}
+    56	聖人不仁，以百姓為芻狗。
+    57	:{{*|聖人與天地合其德，以百姓比芻狗也。}}
+    58	天地之間，其猶橐籥乎？虛而不屈，動而愈出。
+    59	:{{*|橐，排橐也。籥，樂籥也。橐籥之中空洞，無情無為，故虛而不得窮屈，動而不可竭盡也。天地之中，蕩然任自然，故不可得而窮，猶若橐籥也。}}
+    60	多言數窮，不如守中。
+    61	:{{*|愈為之則愈失之矣。物樹其惡，事錯其言，不慧不濟，不言不理，必窮之數也。橐籥而守數中，則無窮盡，棄己任物，則莫不理。若橐籥有意於為聲也，則不足以共吹者之求也。}}
+    62	==六章==
+    63	-{谷}-神不死，是謂玄牝。玄牝之門，是謂天地根。緜緜若存，用之不勤。
+    64	:{{*|-{谷}-神，谷中央無谷也。無形無影，無逆無違，處卑不動，守靜不衰，谷以之成而不見其形，此至物也。處卑而不可得名，故謂天地之根，緜緜若存，用之不 勤。門，玄牝之所由也，本其所由，與極同體，故謂之天地之根也。欲言存邪，則不見其形，欲言亡邪，萬物以之生。故緜緜若存也，無物不成，用而不勞也。故曰，用而不勤也。}}
+    65	
+    66	==七章==
+    67	天長地久。天地所以能長且久者，以其不自生，
+    68	:{{*|自生則與物爭，不自生則物歸也。}}
+    69	故能長生。是以聖人後其身而身先；外其身而身存。非以其無私邪，故能成其私。
+    70	:{{*|無私者，無為於身也。身先身存，故曰，能成其私也。}}
+    71	==八章==
+    72	上善若水。水善利萬物而不爭，處眾人之所惡，
+    73	:{{*|人惡卑也。}}
+    74	故幾於道。
+    75	:{{*|道無水有，故曰，幾也。}}
+    76	居善地，心善淵，與善仁，言善信，正善治，事善能，動善時。夫唯不爭，故無尤。
+    77	:{{*|言人皆應於治道也。}}
+    78	==九章==
+    79	持而盈之，不如其已；
+    80	:{{*|持，謂不失德也。既不失其德又盈之，勢必傾危。故不如其已者，謂乃更不如無德無功者也。}}
+    81	揣而梲之，不可長保。
+    82	:{{*|既揣末令尖，又銳之令利，勢必摧衂，故不可長保也。}}
+    83	金玉滿堂，莫之能守；
+    84	:{{*|不若其已。}}
+    85	富貴而驕，自遺其咎。
+    86	:{{*|不可長保也。}}
+    87	功遂身退，天之道。
+    88	:{{*|四時更運，功成則移。}}
+    89	==十章==
+    90	載營魄抱一，能無離乎？
+    91	:{{*|載，猶處也。營魄，人之常居處也，一人之真也。言人能處常居之宅，抱一清神，能常無離乎，則萬物自賓也。}}
+    92	專氣致柔，能嬰兒乎？
+    93	:{{*|專，任也，致，極也，言任自然之氣，致至柔之和，能若嬰兒之無所欲乎，則物全而性得矣。}}
+    94	滌除玄覽，能無疵乎？
+    95	:{{*|玄，物之極也，言能滌除邪飾，至於極覽。能不以物介其明，疵之其神乎，則終與玄同也。}}
+    96	愛國治民，能無知乎？
+    97	:{{*|任術以求成，運數以求匿者，智也。玄覽無疵，猶絕聖也。治國無以智，猶棄智也。能無以智乎，則民不辟而國治之也。}}
+    98	天門開闔，能為雌乎？
+    99	:{{*|天門，天下之所由從也。開闔，治亂之際也，或開或闔，經通於天下，故曰，天門開闔也。雌應而不倡，因而不為，言天門開閡能為雌乎，則物自賓而處自安矣。}}
+   100	明白四達，能無為乎？
+   101	:{{*|言至明四達，無迷無惑，能無以為乎，則物化矣。所謂道常無為，侯王若能守，則萬物自化。}}
+   102	生之，
+   103	:{{*|不塞其原也。}}
+   104	畜之。
+   105	:{{*|不禁其性也。}}
+   106	生而不有，為而不恃，長而不宰，是謂玄德。
+   107	:{{*|不塞其原，則物自生，何功之有。不禁其性，則物自濟，何為之恃。物自長足，不吾宰成，有德無主，非玄而何。凡言玄德，皆有德而不知其主，出乎幽冥。}}
+   108	==十一章==
+   109	三十輻共一轂，當其無，有車之用。
+   110	:{{*|轂所以能統三十輻者，無也，以其無能受物之故，故能以實統眾也。}}
+   111	埏埴以為器，當其無，有器之用。鑿戶牖以為室，當其無，有室之用。故有之以為利，無之以為用。
+   112	:{{*|木埴壁之所以成三者，而皆以無為用也。言無者，有之所以為利，皆賴無以為用也。}}
+   113	==十二章==
+   114	五色令人目盲，五音令人耳聾，五味令人口爽，馳騁畋獵令人心發狂，
+   115	:{{*|爽，差失也，失口之用，故謂之爽。夫耳目口心，皆順其性也，不以順性命，反以傷自然，故曰盲、聾、爽、狂也。}}
+   116	難得之貨令人行妨。
+   117	:{{*|難得之貨，塞人正路，故令人行妨也。}}
+   118	是以聖人為腹不為目，故去彼取此。
+   119	:{{*|為腹者以物養己，為目者以物役己，故聖人不為目也。}}
+   120	==十三章==
+   121	寵辱若驚，貴大患若身。何謂寵辱若驚？寵為下，得之若驚，失之若驚，是謂寵辱若驚。
+   122	:{{*|寵必有辱，榮必有患，驚辱等、榮患同也。為下得寵辱榮患若驚，則不足以亂天下也。}}
+   123	何謂貴大患若身？
+   124	:{{*|大患，榮寵之屬也。生之厚，必入死之地，故謂之大患也。人迷之於榮寵，返之於身，故曰大患若身也。}}
+   125	吾所以有大患者，為吾有身，
+   126	:{{*|由有其身也。}}
+   127	及吾無身，
+   128	:{{*|歸之自然也。}}
+   129	吾有何患？故貴以身為天下，若可寄天下；
+   130	:{{*|無以易其身，故曰貴也。如此乃可以託天下也。}}
+   131	愛以身為天下，若可託天下。
+   132	:{{*|無物可以損其身，故曰愛也。如此乃可以寄天下也。不以寵辱榮患損易其身，然後乃可以天下付之也。}}
+   133	==十四章==
+   134	視之不見名曰夷，聽之不聞名曰希，搏之不得名曰微。此三者，不可致詰，故混而為一。
+   135	:{{*|無狀無象，無聲無響，故能無所不通，無所不往，不得而知，更以我耳目體不知為名，故不可致詰，混而為一也。}}
+   136	其上不皦，其下不昧。繩繩不可名，復歸於無物。是謂無狀之狀，無物之象，
+   137	:{{*|欲言無邪，而物由以成。欲言有邪，而不見其形，故曰，無狀之狀，無物之象也。}}
+   138	是謂惚恍。
+   139	:{{*|不可得而定也。}}
+   140	迎之不見其首，隨之不見其後。執古之道，以御今之有。
+   141	:{{*|有，有其事。}}
+   142	能知古始，是謂道紀。
+   143	:{{*|無形無名者，萬物之宗也。雖今古不同，時移俗易，故莫不由乎此以成其治者也。故可執古之道，以御今之有。上古雖遠，其道存焉，故雖在今，可以知古始也。}}
+   144	==十五章==
+   145	古之善為士者，微妙玄通，深不可識。夫唯不可識，故強為之容。豫焉若冬涉川，
+   146	:{{*|冬之涉川，豫然若欲度、若不欲度，其情不可得見之貌也。}}
+   147	猶兮若畏四鄰，
+   148	:{{*|四鄰合攻中央之主，猶然不知所趣向者也。上德之人，其端兆不可覩，德趣不可見，亦猶此也。}}
+   149	儼兮其若容，渙兮若冰之將釋，敦兮其若樸，曠兮其若谷，混兮其若濁。
+   150	:{{*|凡此諸若，皆言其容象不可得而形名也。}}
+   151	孰能濁以靜之徐清？孰能安以久動之徐生？
+   152	:{{*|夫晦以理物則得明，濁以靜物則得清，安以動物則得生，此自然之道也。孰能者，言其難也。徐者，詳慎也。}}
+   153	保此道者不欲盈，
+   154	:{{*|盈必溢也。}}
+   155	夫唯不盈，故能蔽不新成。
+   156	:{{*|蔽，覆蓋也。}}
+   157	==十六章==
+   158	致虛極，守靜篤。
+   159	:{{*|言致虛物之極，篤守靜物之真正也。}}
+   160	萬物並作，吾以觀復。
+   161	:{{*|以虛靜觀其反復。凡有起於虛，動起於靜，故萬物雖並動作，卒復歸於虛靜，是物之極篤也。}}
+   162	夫物芸芸，各復歸其根。歸根曰靜，是謂復命。復命曰常，
+   163	:{{*|歸根則靜，故曰靜。靜則復命，故曰復命也。復命則得性命之常，故曰常也。}}
+   164	知常曰明。不知常，妄作凶。
+   165	:{{*|常之為物，不偏不彰，無皦昧之狀，溫涼之象，故曰知常曰明也。唯此復，乃能包通萬物，無所不容，失此以往，則邪入乎分，則物離其分，故曰不知常，則妄作凶也。}}
+   166	知常容，
+   167	:{{*|無所不包通也。}}
+   168	容乃公，
+   169	:{{*|無所不包通，則乃至於蕩然公平也。}}
+   170	公乃全，
+   171	:{{*|蕩然公平，則乃至於無所不周普也。}}
+   172	全乃天，
+   173	:{{*|無所不周普，則乃至於同乎天也。}}
+   174	天乃道，
+   175	:{{*|與天合德，體道大通，則乃至於極虛無也。}}
+   176	道乃久，
+   177	:{{*|窮極虛無，得道之常，則乃至於不窮極也。}}
+   178	沒身不殆。
+   179	:{{*|無之為物，水火不能害，金石不能殘。用之於心則虎兕無所投其齒角，兵戈無所容其鋒刃，何危殆之有乎。}}
+   180	
+   181	==十七章==
+   182	太上，下知有之，
+   183	:{{*|太上，謂大人也。大人在上，故曰太上。大人在上，居無為之事，行不言之教，萬物作焉而不為始，故下知有之而已，言從上也。}}
+   184	其次，親而譽之，
+   185	:{{*|不能以無為居事，不言為教，立善行施，使下得親而譽之也。}}
+   186	其次，畏之，
+   187	:{{*|不復能以恩仁令物，而賴威權也。}}
+   188	其次，侮之。
+   189	:{{*|不能法以正齊民，而以智治國，下知避之，其令不從，故曰，侮之也。}}
+   190	信不足焉，有不信焉。
+   191	:{{*|夫御體失性，則疾病生；輔物失真，則疵釁作。信不足焉，則有不信，此自然之道也。已處不足，非智之所齊也。}}
+   192	悠兮其貴言，功成事遂，百姓皆謂：我自然。
+   193	:{{*|自然，其端兆不可得而見也，其意趣不可得而覩也，無物可以易其言，言必有應，故曰悠兮其貴言也。居無為之事，行不言之教，不以形立物，故功成事遂，而百姓不知其所以然也。}}
+   194	
+   195	==十八章==
+   196	大道廢，有仁義；
+   197	:{{*|失無為之事，更以施慧立善道，進物也。}}
+   198	智慧出，有大偽；
+   199	:{{*|行術用明，以察姦偽；趣覩形見，物知避之。故智慧出則大偽生也。}}
+   200	六親不和，有孝慈；國家昏亂，有忠臣。
+   201	:{{*|甚美之名生於大惡，所謂美惡同門。六親，父子兄弟夫婦也。若六親自和，國家自治，則孝慈忠臣不知其所在矣。魚相忘於江湖之道，則相濡之德生也。}}
+   202	==十九章==
+   203	絕聖棄智，民利百倍；絕仁棄義，民復孝慈；絕巧棄利，盜賊無有。此三者以為文不足，故令有所屬﹕見素抱樸，少私寡欲。
+   204	:{{*|聖智，才之善也。仁義，人之善也。巧利，用之善也。而直云絕，文甚不足，不令之有所屬，無以見其指，故曰，此三者以為文而未足，故令人有所屬，屬之於素樸寡欲。}}
+   205	==二十章==
+   206	絕學無憂，唯之與阿，相去幾何？善之與惡，相去若何？人之所畏，不可不畏。
+   207	:{{*|下篇，為學者日益，為道者日損。然則學求益所能，而進其智者也，若將無欲而足，何求於益。不知而中，何求於進。夫燕雀有匹，鳩鴿有仇，寒鄉之民，必知旃裘，自然已足，益之則憂。故續鳧之足，何異截鶴之脛，畏譽而進，何異畏刑。唯阿美惡，相去何若？故人之所畏，吾亦畏焉，未敢恃之以為用也。}}
+   208	荒兮其未央哉﹗
+   209	:{{*|歎與俗相返之遠也。}}
+   210	眾人熙熙，如享太牢，如春登臺。
+   211	:{{*|眾人迷於美進，惑於榮利，欲進心競，故熙熙如享太牢，如春登臺也。}}
+   212	我獨泊兮其未兆，如嬰兒之未孩；
+   213	:{{*|言我廓然無形之可名、無兆之可舉，如嬰兒之未能孩也。}}
+   214	儽儽兮若無所歸。
+   215	:{{*|若無所宅。}}
+   216	眾人皆有餘，而我獨若遺。
+   217	:{{*|眾人無不有懷有志，盈溢胸心，故曰，皆有餘也。我獨廓然無為無欲，若遺失之也。}}
+   218	我愚人之心也哉﹗
+   219	:{{*|絕愚之人，心無所別析，意無所好欲，猶然其情不可覩我頹然若此也。}}
+   220	沌沌兮，
+   221	:{{*|無所別析，不可為明。}}
+   222	俗人昭昭，
+   223	:{{*|耀其光也。}}
+   224	我獨昏昏。俗人察察，
+   225	:{{*|分別別析也。}}
+   226	我獨悶悶。澹兮其若海，
+   227	:{{*|情不可覩。}}
+   228	飂兮若無止。
+   229	:{{*|無所繫縶。}}
+   230	眾人皆有以，
+   231	:{{*|以，用也。皆欲有所施用也。}}
+   232	而我獨頑似鄙。
+   233	:{{*|無所欲為，悶悶昏昏，若無所識，故曰頑且鄙也。}}
+   234	我獨異於人，而貴食母。
+   235	:{{*|食母，生之本也。人者皆棄生民之本，貴末飾之華，故曰我獨欲異於人。}}
+   236	==二十一章==
+   237	孔德之容，惟道是從。
+   238	:{{*|孔，空也，惟以空為德，然後乃能動作從道。}}
+   239	道之為物，惟恍惟惚。
+   240	:{{*|恍惚，無形不繫之歎。}}
+   241	惚兮恍兮，其中有象；恍兮惚兮，其中有物。
+   242	:{{*|以無形始物，不繫成物，萬物以始以成，而不知其所以然，故曰，恍兮惚兮、惚兮恍兮，其中有象也。}}
+   243	窈兮冥兮，其中有精；
+   244	:{{*|窈、冥，深遠之歎，深遠不可得而見。然而萬物由之，其可得見，以定其真。故曰，窈兮冥兮，其中有精也。}}
+   245	其精甚真，其中有信。
+   246	:{{*|信，信驗也。物反窈冥，則真精之極得，萬物之性定。故曰，其精甚真，其中有信也。}}
+   247	自今及古，其名不去，
+   248	:{{*|至真之極，不可得名，無名則是其名也。自古及今，無不由此而成，故曰，自古及今，其名不去也。}}
+   249	以閱眾甫。
+   250	:{{*|眾甫，物之始也。以無名說萬物始也。}}
+   251	吾何以知眾甫之狀哉？以此。
+   252	:{{*|此上之所云也。言吾何以知萬物之始於無哉，以此知之也。}}
+   253	==二十二章==
+   254	曲則全，
+   255	:{{*|不自見其明則全也。}}
+   256	枉則直，
+   257	:{{*|不自是則其是彰也。}}
+   258	窪則盈，
+   259	:{{*|不自伐則其功有也。}}
+   260	敝則新，
+   261	:{{*|不自矜則其德長也。}}
+   262	少則得，多則惑。
+   263	:{{*|自然之道亦猶樹也，轉多轉遠其根，轉少轉得其本。多則遠其真，故曰惑也；少則得其本，故曰得也。}}
+   264	是以聖人抱一為天下式。
+   265	:{{*|一，少之極也。式，猶則之也。}}
+   266	不自見故明，不自是故彰，不自伐故有功，不自矜故長。夫唯不爭，故天下莫能與之爭。古之所謂曲則全者，豈虛言哉！誠全而歸之。
+   267	==二十三章==
+   268	希言自然。
+   269	:{{*|聽之不聞名曰希，下章言，道之出言淡兮其無味也，視之不足見，聽之不足聞，然則無味不足聽之言，乃是自然之至言也。}}
+   270	故飄風不終朝，驟雨不終日。孰為此者？天地。天地尚不能久，而況於人乎？
+   271	:{{*|言暴疾美興不長也。}}
+   272	故從事於道者，道者同於道，
+   273	:{{*|從事，謂舉動，從事於道者也。道以無形無為成濟萬物，故從事於道者，以無為為君，不言為教，緜緜若存而物得其真，與道同體，故曰同於道。}}
+   274	德者同於德，
+   275	:{{*|得，少也，少則得，故曰得也。行得則與得同體，故曰，同於得也。}}
+   276	失者同於失。
+   277	:{{*|失，累多也，累多則失，故曰失也。行失則與失同體，故曰，同於失也。}}
+   278	同於道者，道亦樂得之；同於德者，德亦樂得之；同於失者，失亦樂得之。
+   279	:{{*|言隨行其所，故同而應之。}}
+   280	信不足焉，有不信焉。
+   281	:{{*|忠信不足於下，焉有不信焉。}}
+   282	==二十四章==
+   283	企者不立，
+   284	:{{*|物尚進則失安，故曰，企者不立。}}
+   285	跨者不行，自見者不明，自是者不彰，自伐者無功，自矜者不長。其在道也，曰餘食贅行。
+   286	:{{*|其唯於道而論之，若郤至之行，盛饌之餘也。本雖美，更可薉也。本雖有功而自伐之，故更為肬贅者也。}}
+   287	物或惡之，故有道者不處。
+   288	==二十五章==
+   289	有物混成，先天地生。
+   290	:{{*|混然不可得而知，而萬物由之以成，故曰混成也。不知其誰之子，故先天地生。}}
+   291	寂兮寥兮，獨立而不改，
+   292	:{{*|寂寥，無形體也。無物之匹，故曰獨立也。返化終始，不失其常，故曰不改也。}}
+   293	周行而不殆，可以為天下母。
+   294	:{{*|周行無所不至而免殆，能生全大形也，故可以為天下母也。}}
+   295	吾不知其名，
+   296	:{{*|名以定形，混成無形，不可得而定，故曰，不知其名也。}}
+   297	字之曰道，
+   298	:{{*|夫名以定形，字以稱可言，道取於無物而不由也。是混成之中，可言之稱最大也。}}
+   299	強為之名曰大。
+   300	:{{*|吾所以字之曰道者，取其可言之稱最大也。責其字定之所由，則繫於大，大有繫，則必有分，有分則失其極矣。故曰，强為之名曰大。}}
+   301	大曰逝，
+   302	:{{*|逝，行也。不守一大體而已。周行無所不至，故曰逝也。}}
+   303	逝曰遠，遠曰反。
+   304	:{{*|遠，極也。周無所不窮極，不偏於一逝，故曰遠也。不隨於所適，其體獨立，故曰反也。}}
+   305	故道大，天大，地大，王亦大。
+   306	:{{*|天地之性，人為貴，而王是人之主也。雖不職大亦復為大與三匹，故曰，王亦大也。}}
+   307	域中有四大，
+   308	:{{*|四大，道、天、地、王也。凡物有稱有名，則非其極也，言道則有所由，有所由然後謂之為道，然則是道，稱中之大也，不若無稱之大也。無稱不可得而名曰域也，道天地王皆在乎無稱之內，故曰，域中有四大者也。}}
+   309	而王居其一焉。
+   310	:{{*|處人主之大也。}}
+   311	人法地，地法天，天法道，道法自然。
+   312	:{{*|法，謂法則也。人不違地，乃得全安，法地也。地不違天，乃得全載，法天也。天不違道，乃得全覆，法道也。道不違自然，乃得其性，法自然者。在方而法 方，在圓而法圓，於自然無所違也。自然者，無稱之言，窮極之辭也。用智不及無知，而形魄不及精象，精象不及無形，有儀不及無儀，故轉相法也。道順自然，天故資焉。天法於道，地故則焉。地法於天，人故象焉。所以為主其一之者，主也。}}
+   313	==二十六章==
+   314	重為輕根，靜為躁君。
+   315	:{{*|凡物輕不能載重，小不能鎮大。不行者使行，不動者制動，是以重必為輕根，靜必為躁君也。}}
+   316	是以聖人終日行不離輜重。
+   317	:{{*|以重為本，故不離。}}
+   318	雖有榮觀，燕處超然。
+   319	:{{*|不以經心也。}}
+   320	奈何萬乘之主，而以身輕天下？輕則失本，躁則失君。
+   321	:{{*|輕，不鎮重也，失本，為喪身也，失君，為失君位也。}}
+   322	==二十七章==
+   323	善行無轍迹，
+   324	:{{*|順自然而行，不造不始，故物得至而無轍迹也。}}
+   325	善言無瑕讁；
+   326	:{{*|順物之性，不別不析，故無瑕讁可得其門也。}}
+   327	善數不用籌策；
+   328	:{{*|因物之數，不假形也。}}
+   329	善閉無關楗而不可開，善結無繩約而不可解。
+   330	:{{*|因物自然，不設不施，故不用關楗繩約而不可開解也。此五者皆言不造不施，因物之性，不以形制物也。}}
+   331	是以聖人常善救人，故無棄人；
+   332	:{{*|聖人不立形名以檢於物，不造進向以殊棄不肖，輔萬物之自然而不為始，故曰無棄人也。不尚賢能，則民不爭，不貴難得之貨，則民不為盜，不見可欲，則民心不亂。常使民心無欲無惑，則無棄人矣。}}
+   333	常善救物，故無棄物，是謂襲明。故善人者，不善人之師；
+   334	:{{*|舉善以師不善，故謂之師矣。}}
+   335	不善人者，善人之資。
+   336	:{{*|資，取也。善人以善齊不善，以善棄不善也。故不善人，善人之所取也。}}
+   337	不貴其師，不愛其資，雖智大迷，
+   338	:{{*|雖有其智，自任其智，不因物，於其道必失。故曰，雖智大迷。}}
+   339	是謂要妙。
+   340	==二十八章==
+   341	知其雄，守其雌，為天下谿。為天下谿，常德不離，復歸於嬰兒。
+   342	:{{*|雄，先之屬；雌，後之屬也。知為天下之先也，必後也，是以聖人後其身而身先也。谿不求物而物自歸之，嬰兒不用智而合自然之智。}}
+   343	知其白，守其黑，為天下式。
+   344	:{{*|式，模則也。}}
+   345	為天下式，常德不忒，
+   346	:{{*|忒，差也。}}
+   347	復歸於無極。
+   348	:{{*|不可窮也。}}
+   349	知其榮，守其辱，為天下谷，常德乃足，復歸於樸。
+   350	:{{*|此三者，言常反終，後乃德全其所處也。下章云，反者道之動也。功不可取，常處其母也。}}
+   351	樸散則為器，聖人用之，則為官長，
+   352	:{{*|樸，真也。真散則百行出，殊類生，若器也。聖人因其分散，故為之立官長。以善為師，不善為資，移風易俗，復使歸於一也。}}
+   353	故大制不割。
+   354	:{{*|大制者，以天下之心為心，故無割也。}}
+   355	==二十九章==
+   356	將欲取天下而為之，吾見其不得已。天下神器，
+   357	:{{*|神，無形無方也。器，合成也。無形以合，故謂之神器也。}}
+   358	不可為也，為者敗之，執者失之。
+   359	:{{*|萬物以自然為性，故可因而不可為也。可通而不可執也。物有常性，而造為之，故必敗也。物有往來而執之，故必失矣。}}
+   360	故物或行或隨，或歔或吹。或強或羸，或挫或隳。是以聖人去甚，去奢，去泰。
+   361	:{{*|凡此諸或，言物事逆順反覆，不施為執割也。聖人達自然之至，暢萬物之情，故因而不為，順而不施。除其所以迷，去其所以惑，故心不亂而物性自得之也。}}
+   362	==三十章==
+   363	以道佐人主者，不以兵強天下。
+   364	:{{*|以道佐人主，尚不可以兵强於天下，況人主躬於道者乎。}}
+   365	其事好還。
+   366	:{{*|為始者務欲立功生事，而有道者務欲還反無為，故云，其事好還也。}}
+   367	師之所處，荊棘生焉。大軍之後，必有凶年。
+   368	:{{*|言師凶害之物也。無有所濟，必有所傷，賊害人民，殘荒田畝，故曰荊棘生焉。}}
+   369	善有果而已，不敢以取強。
+   370	:{{*|果猶濟也。言善用師者，趣以濟難而已矣，不以兵力取强於天下也。}}
+   371	果而勿矜，果而勿伐，果而勿驕。
+   372	:{{*|吾不以師道為尚，不得已而用，何矜驕之有也。}}
+   373	果而不得已，果而勿強。
+   374	:{{*|言用兵雖趣功果濟難，然時故不得已，當復用者，但當以除暴亂，不遂用果以為强也。}}
+   375	物壯則老，是謂不道，不道早已。
+   376	:{{*|壯，武力暴興，喻以兵强於天下者也。飄風不終朝，驟雨不終日，故暴興必不道早已也。}}
+   377	==三十一章==
+   378	夫佳兵者，不祥之器，物或惡之，故有道者不處。君子居則貴左，用兵則貴右。兵者不祥之器，非君子之器，不得已而用之，恬淡為上。勝而不美，而美之者，是樂殺人。夫樂殺人者，則不可以得志於天下矣。吉事尚左，凶事尚右。偏將軍居左，上將軍居右，言以喪禮處之。殺人之眾，以哀悲泣之，戰勝，以喪禮處之。
+   379	==三十二章==
+   380	道常無名，樸雖小，天下莫能臣也。侯王若能守之，萬物將自賓。
+   381	:{{*|道，無形不繫，常不可名，以無名為常。故曰「道常無名」也。樸之為物，以無為心也，亦無名，故將得道，莫若守樸，夫智者可以能臣也，勇者可以武使也，巧者可以事役也，力者可以重任也，樸之為物，憒然不偏，近於無有，故曰「莫能臣也」。抱樸無為，不以物累其真，不以欲害其神，則物自賓而道自得也。}}
+   382	天地相合，以降甘露，民莫之令而自均。
+   383	:{{*|言天地相合，則甘露不求而自降；我守其真性無為，則民不令而自均也。}}
+   384	始制有名，名亦既有，夫亦將知止，知止所以不殆。
+   385	:{{*|始制，謂樸散始為官長之時也。始制官長，不可不立名分，以定尊卑，故始制有名也，過此以往，將爭錐刀之末，故曰「名亦既有」，夫亦將知止也，遂任名以號物，則失治之母也，故知止所以不殆也。}}
+   386	譬道之在天下，猶川谷之於江海。
+   387	:{{*|川谷之求江與海，非江海召之，不召不求而自歸者，世行道於天下者，不令而自均，不求而自得，故曰「猶川谷之與江海」也。}}
+   388	==三十三章==
+   389	知人者智，自知者明。
+   390	:{{*|知人者，智而已矣，未若自知者超智之上也。}}
+   391	勝人者有力，自勝者強。
+   392	:{{*|勝人者，有力而已矣，未若自勝者無物以損其力，用其智於人，未若用其智於己也。用其力於人，未若用其力於己也。明用於己，則物無避焉，力用於己，則物無改焉。}}
+   393	知足者富。
+   394	:{{*|知足自不失，故富也。}}
+   395	強行者有志。
+   396	:{{*|勤能行之，其志必獲，故曰强行者有志矣。}}
+   397	不失其所者久。
+   398	:{{*|以明自察，量力而行，不失其所，必獲久長矣。}}
+   399	死而不亡者壽。
+   400	:{{*|雖死而以為生之道不亡，乃得全其壽，身沒而道猶存，況身存而道不卒乎。}}
+   401	==三十四章==
+   402	大道氾兮，其可左右。
+   403	:{{*|言道氾濫，無所不適，可左右上下周旋而用，則無所不至也。}}
+   404	萬物恃之而生而不辭，功成不名有。衣養萬物而不為主，常無欲，可名於小；
+   405	:{{*|萬物皆由道而生，既生而不知所由，故天下常無欲之時，萬物各得其所，若道無施於物，故名於小矣。}}
+   406	萬物歸焉而不為主，可名為大。
+   407	:{{*|萬物皆歸之以生，而力使不知其所由，此不為小，故復可名於大矣。}}
+   408	以其終不自為大，故能成其大。
+   409	:{{*|為大於其細，圖難於其易。}}
+   410	==三十五章==
+   411	執大象，天下往。
+   412	:{{*|大象，天象之母也，不寒不溫不涼，故能包統萬物，無所犯傷，主若執之，則天下往也。}}
+   413	往而不害，安平太。
+   414	:{{*|無形無識，不偏不彰，故萬物得往而不害妨也。}}
+   415	樂與餌，過客止。道之出口，淡乎其無味，視之不足見，聽之不足聞，用之不足既。
+   416	:{{*|言道之深大，人聞道之言，乃更不如樂與餌，應時感悅人心也。樂與餌則能令過客止，而道之出言淡然無味，視之不足見則不足以悅其目，聽之不足聞則不足以娛其耳，若無所中然，乃用之不可窮極也。}}
+   417	==三十六章==
+   418	將欲歙之，必固張之；將欲弱之，必固強之；將欲廢之，必固興之；將欲奪之，必固與之。是謂微明。
+   419	:{{*|將欲除强梁，去暴亂，當以此四者。因物之性，令其自戮，不假刑為大，以除將物也，故曰微明也。足其張，令之足，而又求其張，則眾所歙也，與其張之不足，而改其求張者，愈益而已反危。}}
+   420	柔弱勝剛強。魚不可脫於淵，國之利器不可以示人。
+   421	:{{*|利器，利國之器也。唯因物之性，不假刑以理物，器不可覩，而物各得其所，則國之利器也。示人者，任刑也。刑以利國則失矣。魚脫於淵，則必見失矣。利國器而立刑以示人，亦必失也。}}
+   422	==三十七章==
+   423	道常無為
+   424	:{{*|順自然也。}}
+   425	而無不為。
+   426	:{{*|萬物無不由為以治以成之也。}}
+   427	侯王若能守之，萬物將自化。化而欲作，吾將鎮之以無名之樸。
+   428	:{{*|化而欲作，作欲成也。吾將鎮之無名之樸，不為主也。}}
+   429	無名之樸，夫亦將無欲。
+   430	:{{*|無欲競也。}}
+   431	不欲以靜，天下將自定。
+   432	
+   433	=老子《道德經》下篇=
+   434	:華亭張氏原本
+   435	:晉　王弼注
+   436	==三十八章==
+   437	上德不德，是以有德；下德不失德，是以無德。上德無為而無以為，下德為之而有以為。上仁為之而無以為，上義為之而有以為。上禮為之而莫之應， 則攘臂而扔之。故失道而後德，失德而後仁，失仁而後義，失義而後禮。夫禮者，忠信之薄，而亂之首。前識者，道之華，而愚之始。是以大丈夫處其厚，不居其薄；處其實，不居其華。故去彼取此。
+   438	:{{*|德者，得也。常得而無喪，利而無害，故以德為名焉。何以得德？由乎道也。何以盡德？以無為用。以無為用則莫不載也，故物無焉，則無物不經，有焉，則 不足以免其生。是以天地雖廣，以無為心。聖王雖大，以虛為主。故曰，以復而視，則天地之心見。至日而思之，則先王之至覩也。故滅其私而無其身，則四海莫不瞻，遠近莫不至。殊其己而有其心，則一體不能自全，肌骨不能相容，是以上德之人，唯道是用。不德其德，無執無用，故能有德而無不為，不求而得，不為而成， 故雖有德而無德名也。下德求而得之，為而成之，則立善以治物，故德名有焉。求而得之必有失焉，為而成之必有敗焉，善名生則有不善應焉，故下德為之而有以為也。無以為者，無所徧為也。凡不能無為而為之者，皆下德也。仁義禮節是也，將明德之上下，輒舉下德以對上德，至於無以為，極下德下之量，上仁是也，足及於無以為而猶為之焉。為之而無以為，故有為，為之患矣。本在無為，母在無名，棄本捨母而適其子，功雖大焉，必有不濟。名雖美焉，偽亦必生。不能不為而成，不興而治，則乃為之，故有宏普博施仁愛之者，而愛之無所偏私，故上仁為之而無以為也。愛不能兼，則有抑抗正真而義理之者，忿枉祐直，助彼攻此物事而有以心為矣，故上義為之而有以為也。直不能篤，則有游飾修文，禮敬之者，尚好修敬，校責往來，則不對之閒，忿怒生焉。故上禮為之而莫之應，則攘臂而扔之。夫大之極也，其唯道乎，自此已往，豈足尊哉。故雖盛業大富而有萬物，猶各得其德，雖貴以無為用，不能捨無以為體也。不能捨無以為體，則失其為大矣。所謂失道而後德也。以無為用，德其母，故能己不勞焉而物無不理。下此已往，則失用之母，不能無為而貴博施，不能博施而貴正直，不能正直而貴飾敬，所謂失德而後仁，失仁而後義，失義而後禮也。夫禮也，所始首於忠信不篤，通簡不陽，責備於表，機微爭制，夫仁義發於內，為之猶偽，況務外飾而可久乎。故夫禮者，忠信之薄而亂之首也。前識者，前人而識也，即下德之倫也。竭其聰明以為前識，役其智力以營庶事，雖德其情，姦巧彌密，雖豐其譽，愈喪篤實。勞而事昬，務而治薉，雖竭聖智，而民愈害。舍己任物，則無為而泰。守夫素樸，則不順典制，聽彼所獲，棄此所守，識道之華，而愚之首，故茍得其為功之母，則萬物作焉而不辭也。萬事存焉而不勞也，用不以形，御不以名，故仁義可顯，禮敬可彰也。夫載之以大道，鎮之以無名，則物無所尚，志無所營，各任其貞，事用其誠，則仁德厚焉，行義正焉，禮敬清焉，棄其所載，舍其所生，用其成形，役其聰明，仁則誠焉，義其競焉，禮其爭焉，故仁德之厚，非用仁之所能也，行義之正，非用義之所成也。禮敬之清，非用禮之所濟也。載之以道，統之以母，故顯之而無所尚，彰之而無所競。用夫無名，故名以篤焉。用夫無形，故形以成焉。守母以存其子，崇本以舉其末，則形名俱有，而邪不生。大美配天而華不作，故母不可遠，本不可失。仁義，母之所生，非可以為母。形器，匠之所成，非可以為匠也。捨其母而用其子，棄其本而適其末，名則有 所分，形則有所止，雖極其大，必有不周，雖盛其美，必有憂患，功在為之，豈足處也。}}
+   439	==三十九章==
+   440	昔之得一者，
+   441	:{{*|昔，始也。一，數之始而物之極也。各是一物之生，所以為主也。物皆各得此一以成，既成而舍以居成，居成則失其母，故皆裂發歇竭滅蹶也。}}
+   442	天得一以清，地得一以寧，神得一以靈，谷得一以盈，萬物得一以生，侯王得一以為天下貞。其致之，
+   443	:{{*|各以其一致此清、寧、靈、盈、生、貞。}}
+   444	天無以清將恐裂，
+   445	:{{*|用一以致清耳，非用清以清也。守一則清不失，用清則恐裂也。故為功之母，不可舍也。是以皆無用其功，恐喪其本也。}}
+   446	地無以寧將恐發，神無以靈將恐歇，谷無以盈將恐竭，萬物無以生將恐滅，侯王無以貴高將恐蹶。故貴以賤為本，高以下為基。是以侯王自稱孤﹑寡﹑不穀。此非以賤為本邪？非乎？故致數輿無輿，不欲琭琭如玉，珞珞如石。
+   447	:{{*|清不能為清，盈不能為盈，皆有其母以存其形，故清不足貴，盈不足多，貴在其母，而母無貴形。貴乃以賤為本，高乃以下為基，故致數輿乃無輿也，玉石琭琭珞珞，體盡於形，故不欲也。}}
+   448	==四十章==
+   449	反者道之動，
+   450	:{{*|高以下為基，貴以賤為本，有以無為用，此其反也。動皆知其所無，則物通矣。故曰「反者道之動」也。}}
+   451	弱者道之用。
+   452	:{{*|柔弱同通，不可窮極。}}
+   453	天下萬物生於有，有生於無。
+   454	:{{*|天下之物皆以有為生，有之所始，以無為本，將欲全有，必反於無也。}}
+   455	==四十一章==
+   456	上士聞道，勤而行之；
+   457	:{{*|有志也。}}
+   458	中士聞道，若存若亡；下士聞道，大笑之。不笑不足以為道。故建言有之﹕
+   459	:{{*|建，猶立也。}}
+   460	明道若昧，
+   461	:{{*|光而不耀。}}
+   462	進道若退，
+   463	:{{*|後其身而身先，外其身而身存。}}
+   464	夷道若纇，
+   465	:{{*|纇，㘨也。大夷之道，因物之性，不執平以割物，其平不見，乃更反若纇㘨也。}}
+   466	上德若谷，
+   467	:{{*|不德其德，無所懷也。}}
+   468	大白若辱，
+   469	:{{*|知其白，守其黑，大白然後乃得。}}
+   470	廣德若不足，
+   471	:{{*|廣德不盈，廓然無形，不可滿也。}}
+   472	建德若偷，
+   473	:{{*|偷，匹也。建德者，因物自然，不立不施，故若偷匹。}}
+   474	質真若渝，
+   475	:{{*|質真者，不矜其真，故渝。}}
+   476	大方無隅，
+   477	:{{*|方而不割，故無隅也。}}
+   478	大器晚成，
+   479	:{{*|大器成天下不持全別，故必晚成也。}}
+   480	大音希聲，
+   481	:{{*|聽之不聞名曰希，不可得聞之音也。有聲則有分，有分則不宮而商矣，分則不能統眾，故有聲者非大音也。}}
+   482	大象無形，
+   483	:{{*|有形則有分，有分者不溫則炎，不炎則寒。故象而形者，非大象。}}
+   484	道隱無名。夫唯道，善貸且成。
+   485	:{{*|凡此諸善，皆是道之所成也。在象則為大象，而大象無形。在音則為大音，而大音希聲。物以之成而不見其成形，故隱而無名也。貸之非唯供其乏而已，一貸之則足以永終其德，故曰善貸也。成之不如機匠之裁，無物而不濟其形，故曰善成。}}
+   486	==四十二章==
+   487	道生一，一生二，二生三，三生萬物。萬物負陰而抱陽，沖氣以為和。人之所惡，唯孤﹑寡﹑不穀，而王公以為稱。故物或損之而益，或益之而損。
+   488	:{{*|萬物萬形，其歸一也，何由致一，由於無也。由無乃一，一可謂無，已謂之一，豈得無言乎。有言有一，非二如何？有一有二，遂生乎三，從無之有，數盡乎斯，過此以往，非道之流，故萬物之生，吾知其主，雖有萬形，沖氣一焉。百姓有心，異國殊風，而得一者，王侯主焉。以一為主，一何可舍，愈多愈遠，損則近之，損之至盡，乃得其極。既謂之一，猶乃至三，況本不一而道可近乎，損之而益，豈虛言也。}}
+   489	人之所教，我亦教之。
+   490	:{{*|我之非強使人從之也，而用夫自然，舉其至理，順之必吉，違之必凶。故人相教，違之自取其凶也，亦如我之教人，勿違之也。}}
+   491	強梁者不得其死，吾將以為教父。
+   492	:{{*|强梁則必不得其死。人相教為强梁，則必如我之教人不當為强梁也。舉其強梁不得其死以教邪。若云順吾教之必吉也，故得其違教之徒，適可以為教父也。}}
+   493	==四十三章==
+   494	天下之至柔，馳騁天下之至堅。
+   495	:{{*|氣無所不入，水無所不出於經。}}
+   496	無有入無間，吾是以知無為之有益。
+   497	:{{*|虛無柔弱，無所不通，無有不可窮，至柔不可折，以此推之，故知無為之有益也。}}
+   498	不言之教，無為之益，天下希及之。
+   499	==四十四章==
+   500	名與身孰親？
+   501	:{{*|尚名好高，其身必疏。}}
+   502	身與貨孰多？
+   503	:{{*|貪貨無厭，其身必少。}}
+   504	得與亡孰病？
+   505	:{{*|得多利而亡其身，何者為病也。}}
+   506	是故甚愛必大費，多藏必厚亡，
+   507	:{{*|甚愛不與物通，多藏不與物散，求之者多，攻之者眾，為物所病，故大費厚亡也。}}
+   508	知足不辱，知止不殆，可以長久。
+   509	==四十五章==
+   510	大成若缺，其用不弊。
+   511	:{{*|隨物而成，不為一象，故若缺也。}}
+   512	大盈若沖，其用不窮。
+   513	:{{*|大盈充足，隨物而與，無所愛矜，故若沖也。}}
+   514	大直若屈，其用不居。
+   515	:{{*|隨物而直，直不在一，故若屈也。}}
+   516	大巧若拙，其用不輟。
+   517	:{{*|大巧，因自然以成器，不造為異端，故若拙也。}}
+   518	大辯若訥，其用不差。
+   519	:{{*|大辯因物而言，己無所造，故若訥也。}}
+   520	躁勝寒，靜勝熱。清靜為天下正。
+   521	:{{*|躁罷然後勝寒，靜無為以勝熱，以此推之，則清靜為天下正也。靜則全物之真，躁則犯物之性，故惟清靜，乃得如上諸大也。}}
+   522	
+   523	==四十六章==
+   524	天下有道，卻走馬以糞。
+   525	:{{*|天下有道，知足知止，無求於外，各修其內而已，故卻走馬以治田糞也。}}
+   526	天下無道，戎馬生於郊。
+   527	:{{*|貪欲無厭，不修其內，各求於外，故戎馬生於郊也。}}
+   528	禍莫大於不知足；咎莫大於欲得。故知足之足，常足矣。
+   529	
+   530	==四十七章==
+   531	不出戶，知天下；不闚牖，見天道。
+   532	:{{*|事有宗，而物有主，途雖殊而同歸也，慮雖百而其致一也。道有大常，理有大致，執古之道，可以御今，雖處於今，可以知古始，故不出戶闚牖而可知也。}}
+   533	其出彌遠，其知彌少。
+   534	:{{*|無在於一，而求之於眾也，道視之不可見，聽之不可聞，搏之不可得，如其知之，不須出戶，若其不知，出愈遠愈迷也。}}
+   535	是以聖人不行而知，不見而名，
+   536	:{{*|得物之致，故雖不行而慮可知也。識物之宗，故雖不見，而是非之理可得而名也。}}
+   537	不為而成。
+   538	:{{*|明物之性，因之而已。故雖不為而使之成矣。}}
+   539	==四十八章==
+   540	為學日益，
+   541	:{{*|務欲進其所能，益其所習。}}
+   542	為道日損。
+   543	:{{*|務欲反虛無也。}}
+   544	損之又損，以至於無為。無為而無不為。
+   545	:{{*|有為則有所失，故無為乃無所不為也。}}
+   546	取天下常以無事，
+   547	:{{*|動常因也。}}
+   548	及其有事，
+   549	:{{*|自己造也。}}
+   550	不足以取天下。
+   551	:{{*|失統本也。}}
+   552	==四十九章==
+   553	聖人無常心，以百姓心為心。
+   554	:{{*|動常因也。}}
+   555	善者，吾善之；不善者，吾亦善之，
+   556	:{{*|各因其用則善不失也。}}
+   557	德善。
+   558	:{{*|無棄人也。}}
+   559	信者，吾信之；不信者，吾亦信之，德信。聖人在天下歙歙，為天下渾其心，
+   560	:{{*|各用聰明。}}
+   561	百姓皆注其耳目,
+   562	聖人皆孩之。
+   563	:{{*|皆使和而無欲，如嬰兒也。夫天地設位，聖人成能，人謀鬼謀，百姓與能者，能者與之，資者取之，能大則大，資貴則貴，物有其宗，事有其主，如此則可冕旒充目而不懼於欺，黈纊塞耳而無戚於慢，又何為勞一身之聰明，以察百姓之情哉。夫以明察物，物亦競以其明應之，以不信察物，物亦競以其不信應之。夫天下之 心，不必同其所應，不敢異則莫肯用其情矣，甚矣害之大也，莫大於用其明矣。夫在智則人與之訟，在力則人與之爭。智不出於人而立乎訟地則窮矣；力不出於人而立乎爭地則危矣。未有能使人無用其智力乎己者也，如此則己以一敵人，而人以千萬敵己也。若乃多其法網，煩其刑罰，塞其徑路，攻其幽宅，則萬物失其自然，百姓喪其手足，鳥亂於上，魚亂於下。是以聖人之於天下歙歙焉，心無所主也，為天下渾心焉，意無所適莫也。無所察焉，百姓何避，無所求焉，百姓何應， 無避無應，則莫不用其情矣。人無為舍其所能，而為其所不能，舍其所長，而為其所短，如此，則言者言其所知，行者行其所能，百姓各皆注其耳目焉，吾皆孩之而已。}}
+   564	==五十章==
+   565	出生入死。
+   566	:{{*|出生地，入死地。}}
+   567	生之徒，十有三；死之徒，十有三；人之生，動之死地，亦十有三。夫何故？以其生生之厚。蓋聞善攝生者，陸行不遇兕虎，入軍不被甲兵；兕無所投其角，虎無所措其爪，兵無所容其刃。夫何故？以其無死地。
+   568	:{{*|十有三，猶云十分有三分，取其生道，全生之極，十分有三耳。取死之道，全死之極，亦十分有三耳。而民生生之厚，更之無生之地焉，善攝生者無以生為 生，故無死地也。器之害者，莫甚乎兵戈，獸之害者，莫甚乎兕虎，而令兵戈無所容其鋒刃，虎兕無所措其爪角，斯誠不以欲累其身者也，何死地之有乎。夫蚖蟺以 淵為淺，而鑿穴其中，鷹鸇以山為卑，而增巢其上，矰繳不能及，網罟不能到，可謂處於無死地矣，然而卒以甘餌，乃入於無生之地，豈非生生之厚乎，故物茍不以 求離其本，不以欲渝其真，雖入軍而不害，陸行而不可犯也，赤子之可則而貴信矣。}}
+   569	==五十一章==
+   570	道生之，德畜之，物形之，勢成之。
+   571	:{{*|物生而後畜，畜而後形，形而後成，何由而生？道也；何得而畜？德也；何由而形？物也；何使而成，勢也。唯因也，故能無物而不形；唯勢也，故能無物而不成。凡物之所以生，功之所以成，皆有所由，有所由焉，則莫不由乎道也。故推而極之，亦至道也。隨其所因，故各有稱焉。}}
+   572	是以萬物莫不尊道而貴德。
+   573	:{{*|道者，物之所由也。德者，物之所得也。由之乃得，故曰不得不失，尊之則害，不得不貴也。}}
+   574	道之尊，德之貴，夫莫之命而常自然。
+   575	:{{*|命並作爵。}}
+   576	故道生之，德畜之。長之育之，亭之毒之，蓋之覆之。
+   577	:{{*|謂成其實，各得其庇蔭，不傷其體矣。}}
+   578	生而不有，為而不恃，
+   579	:{{*|為而不有。}}
+   580	長而不宰。是謂玄德。
+   581	:{{*|有德而不知其主也，出乎幽冥，是以謂之玄德也。}}
+   582	==五十二章==
+   583	天下有始，以為天下母。
+   584	:{{*|善始之則善養畜之矣，故天下有始則可以為天下母矣。(按此段注文原脫，據樓宇烈補。)}}
+   585	既得其母，以知其子，既知其子，復守其母，沒身不殆。
+   586	:{{*|母，本也，子，末也。得本以知末，不舍本以逐末也。}}
+   587	塞其兌，閉其門，
+   588	:{{*|兌，事欲之所由生；門，事欲之所由從也。}}
+   589	終身不勤。
+   590	:{{*|無事永逸，故終身不勤也。}}
+   591	開其兌，濟其事，終身不救。
+   592	:{{*|不閉其原而濟其事，故雖終身不救。}}
+   593	見小曰明，守柔曰強。
+   594	:{{*|為治之功不在大，見大不明，見小乃明。守强不强，守柔乃强也。}}
+   595	用其光，
+   596	:{{*|顯道以去民迷。}}
+   597	復歸其明，
+   598	:{{*|不明察也。}}
+   599	無遺身殃，是為習常。
+   600	:{{*|道之常也。}}
+   601	
+   602	==五十三章==
+   603	使我介然有知，行於大道，唯施是畏。
+   604	:{{*|言若使我可介然有知，行大道於天下，唯施為之是畏也。}}
+   605	大道甚夷，而民好徑。
+   606	:{{*|言大道蕩然正平，而民猶尚舍之而不由，好從邪徑，況復施為以塞大道之中乎。故曰，大道甚夷，而民好徑。}}
+   607	朝甚除，
+   608	:{{*|朝，宮室也。除，潔好也。}}
+   609	田甚蕪，倉甚虛；
+   610	:{{*|朝甚除，則田甚蕪，倉甚虛，設一而眾害生也。}}
+   611	服文綵，帶利劍，厭飲食，財貨有餘；是為盜夸。非道也哉！
+   612	:{{*|凡物不以其道得之，則皆邪也，邪則盜也。夸而不以其道得之，竊位也，故舉非道以明非道，則皆盜夸也。}}
+   613	==五十四章==
+   614	善建者不拔，
+   615	:{{*|固其根而後營其末，故不拔也。}}
+   616	善抱者不脫，
+   617	:{{*|不貪於多，齊其所能，故不脫也。}}
+   618	子孫以祭祀不輟。
+   619	:{{*|子孫傳此道以祭祀則不輟也。}}
+   620	修之於身，其德乃真；修之於家，其德乃餘；
+   621	:{{*|以身及人也，修之身則真，修之家則有餘，修之不廢，所施轉大。}}
+   622	修之於鄉，其德乃長；修之於國，其德乃豐；修之於天下，其德乃普。故以身觀身，以家觀家，以鄉觀鄉，以國觀國，
+   623	:{{*|彼皆然也。}}
+   624	以天下觀天下。
+   625	:{{*|以天下百姓心觀天下之道也，天下之道，逆順吉凶，亦皆如人之道也。}}
+   626	吾何以知天下然哉？以此。
+   627	:{{*|此上之所云也。言吾何以得知天下乎，察己以知之，不求於外也，所謂不出戶以知天下者也。}}
+   628	==五十五章==
+   629	含德之厚，比於赤子。蜂蠆虺蛇不螫，猛獸不據，攫鳥不搏。
+   630	:{{*|赤子無求無欲，不犯眾物，故毒蟲之物無犯之人也。含德之厚者，不犯於物，故無物以損其全也。}}
+   631	骨弱筋柔而握固。
+   632	:{{*|以柔弱之故，故握能周固。}}
+   633	未知牝牡之合而全作，
+   634	:{{*|作，長也。無物以損其身，故能全長也。言含德之厚者，無物可以損其德、渝其真，柔弱不爭而不摧折，皆若此也。}}
+   635	精之至也。終日號而不嗄，
+   636	:{{*|無爭欲之心，故終日出聲而不嗄也。}}
+   637	和之至也。知和曰常，
+   638	:{{*|物以和為常，故知和則得常也。}}
+   639	知常曰明。
+   640	:{{*|不皦不昧，不溫不涼，此常也。無形不可得而見，曰明也。}}
+   641	益生曰祥。
+   642	:{{*|生不可益，益之則夭也。}}
+   643	心使氣曰強。
+   644	:{{*|心宜無有，使氣則強。}}
+   645	物壯則老，謂之不道，不道早已。
+   646	==五十六章==
+   647	知者不言，
+   648	:{{*|因自然也。}}
+   649	言者不知。
+   650	:{{*|造事端也。}}
+   651	塞其兌，閉其門，挫其銳，
+   652	:{{*|含守質也。}}
+   653	解其分，
+   654	:{{*|除爭原也。}}
+   655	和其光，
+   656	:{{*|無所特顯，則物無所偏爭也。}}
+   657	同其塵，
+   658	:{{*|無所特賤，則物無所偏恥也。}}
+   659	是謂玄同。故不可得而親，不可得而疏；
+   660	:{{*|可得而親，則可得而疏也。}}
+   661	不可得而利，不可得而害；
+   662	:{{*|可得而利，則可德而害也。}}
+   663	不可得而貴，不可得而賤。
+   664	:{{*|可得而貴，則可得而賤也。}}
+   665	故為天下貴。
+   666	:{{*|無物可以加之也。}}
+   667	==五十七章==
+   668	以正治國，以奇用兵，以無事取天下。
+   669	:{{*|以道治國則國平，以正治國則奇正起也，以無事則能取天下也。上章云：其取天下者，常以無事，及其有事，又不足以取天下也。故以正治國則不足以取天下，而以奇用兵也。夫以道治國，崇本以息末，以正治國，立辟以攻末，本不立而末淺，民無所及，故必至於奇用兵也。}}
+   670	吾何以知其然哉？以此。天下多忌諱，而民彌貧；民多利器，國家滋昬；
+   671	:{{*|利器，凡所以利己之器也。民强則國家弱。}}
+   672	人多伎巧，奇物滋起；
+   673	:{{*|民多智慧則巧偽生，巧偽生則邪事起。}}
+   674	法令滋彰，盜賊多有。
+   675	:{{*|立正欲以息邪，而奇兵用；多忌諱欲以恥貧，而民彌貧；利器欲以强國者也，而國愈昬多。皆舍本以治末，故以致此也。}}
+   676	故聖人云﹕「我無為而民自化，我好靜而民自正，我無事而民自富，我無欲而民自樸。」
+   677	:{{*|上之所欲，民從之速也。我之所欲，唯無欲而民亦無欲而自樸也。此四者，崇本以息末也。}}
+   678	==五十八章==
+   679	其政悶悶，其民淳淳；
+   680	:{{*|言善治政者，無形無名，無事無政可舉，悶悶然，卒至於大治，故曰，其政悶悶也。其民無所爭競，寬大淳淳，故曰，其民淳淳也。}}
+   681	其政察察，其民缺缺。
+   682	:{{*|立刑名，明賞罰，以檢姦偽，故曰察察也。殊類分析，民懷爭競，故曰，其民缺缺也。}}
+   683	禍兮福之所倚，福兮禍之所伏。孰知其極？其無正。
+   684	:{{*|言誰知善治之極乎！唯無可正舉，無可形名，悶悶然而天下大化，是其極也。}}
+   685	正復為奇，
+   686	:{{*|以正治國，則便復以奇用兵矣。故曰，正復為奇。}}
+   687	善復為妖。
+   688	:{{*|立善以和萬物，則便復有妖之患也。}}
+   689	人之迷，其日固久。
+   690	:{{*|言人之迷惑失道，固久矣。不可便正善治以責。}}
+   691	是以聖人方而不割，
+   692	:{{*|以方導物，舍去其邪，不以方割物，所謂大方無隅。}}
+   693	廉而不劌，
+   694	:{{*|廉，清廉也；劌，傷也。以清廉清民，令去其邪，令去其汙，不以清廉劌傷於物也。}}
+   695	直而不肆，
+   696	:{{*|以直導物，令去其僻，而不以直激沸於物也。所謂大直若屈也。}}
+   697	光而不燿。
+   698	:{{*|以光鑑其所以迷，不以光照求其隱慝也，所謂明道若昧也，此皆崇本以息末，不攻而使復之也。}}
+   699	==五十九章==
+   700	治人事天，莫若嗇。
+   701	:{{*|莫若，猶莫過也。嗇，農夫，農人之治田務，去其殊類，歸於齊一也。全其自然，不急其荒病，除其所以荒病，上承天命，下綏百姓，莫過於此。}}
+   702	夫唯嗇，是謂早服；
+   703	:{{*|早服，常也。}}
+   704	早服謂之重積德；
+   705	:{{*|唯重積德，不欲銳速，然後乃能使早服其常，故曰早服謂之重積德者也。}}
+   706	重積德則無不克，無不克則莫知其極；
+   707	:{{*|道無窮也。}}
+   708	莫知其極，可以有國；
+   709	:{{*|以有窮而莅國，非能有國也。}}
+   710	有國之母，可以長久；
+   711	:{{*|國之所以安謂之母，重積德是唯圖其根，然後營末，乃得其終也。}}
+   712	是謂深根固柢，長生久視之道。
+   713	==六十章==
+   714	治大國，若烹小鮮。
+   715	:{{*|不擾也，躁則多害，靜則全真，故其國彌大，而其主彌靜，然後乃能廣得眾心矣。}}
+   716	以道莅天下，其鬼不神；
+   717	:{{*|治大國則若烹小鮮，以道蒞天下則其鬼不神也。}}
+   718	非其鬼不神，其神不傷人；
+   719	:{{*|神不害自然也，物守自然則神無所加，神無所加則不知神之為神也。}}
+   720	非其神不傷人，聖人亦不傷人。
+   721	:{{*|道洽則神不傷人，神不傷人則不知神之為神。道洽則聖人亦不傷人，聖人不傷人則不知聖人之為聖也。猶云，不知神之為神，亦不知聖人之為聖也。夫恃威網以使物者，治之衰也。使不知神聖之為神聖，道之極也。}}
+   722	夫兩不相傷，故德交歸焉。
+   723	:{{*|神不傷人，聖人亦不傷人，聖人不傷人，神亦不傷人。故曰，兩不相傷也。神聖合道，交歸之也。}}
+   724	==六十一章==
+   725	大國者下流，
+   726	:{{*|江海居大而處下，則百川流之，大國居大而處下，則天下流之，故曰，大國下流也。}}
+   727	天下之交。
+   728	:{{*|天下所歸會也。}}
+   729	天下之牝，
+   730	:{{*|靜而不求，物自歸之也。}}
+   731	牝常以靜勝牡，以靜為下。
+   732	:{{*|以其靜故能為下也。牝，雌也。雄躁動貪欲，雌常以靜，故能勝雄也。以其靜復能為下，故物歸之也。}}
+   733	故大國以下小國，
+   734	:{{*|大國以下，猶云以大國下小國。}}
+   735	則取小國；
+   736	:{{*|小國則附之。}}
+   737	小國以下大國，則取大國。
+   738	:{{*|大國納之也。}}
+   739	故或下以取，或下而取。
+   740	:{{*|言唯修卑下，然後乃各得其所。}}
+   741	大國不過欲兼畜人，小國不過欲入事人。夫兩者各得其所欲，大者宜為下。
+   742	:{{*|小國修下自全而已，不能令天下歸之，大國修下則天下歸之。故曰，各得其所欲，則大者宜為下也。}}
+   743	
+   744	==六十二章==
+   745	道者萬物之奧。
+   746	:{{*|奧，猶曖也。可得庇蔭之辭。 }}
+   747	善人之寶，
+   748	:{{*|寶以為用也。}}
+   749	不善人之所保。
+   750	:{{*|保以全也。}}
+   751	美言可以市，尊行可以加人。
+   752	:{{*|言道無所不先，物無有貴於此也。雖有珍寶璧馬，無以匹之，美言之則可以奪眾貨之賈，故曰，美言可以市也，尊行之則千里之外應之，故曰，可以加於人也。}}
+   753	人之不善，何棄之有？
+   754	:{{*|不善當保道以免放。}}
+   755	故立天子，置三公，
+   756	:{{*|言以尊行道也。}}
+   757	雖有拱璧以先駟馬，不如坐進此道。
+   758	:{{*|此道，上之所云也。言故立天子、置三公，尊其位、重其人，所以為道也。物無有貴於此者。故雖有拱抱寶璧以先，駟馬而進之，不如坐而進此道也。}}
+   759	古之所以貴此道者何？不曰以求得，有罪以免邪？故為天下貴。
+   760	:{{*|以求則得求，以免則得免，無所而不施，故為天下貴也。}}
+   761	==六十三章==
+   762	為無為，事無事，味無味。
+   763	:{{*|以無為為居，以不言為教，以恬淡為味，治之極也。}}
+   764	大小多少，報怨以德。
+   765	:{{*|小怨則不足以報，大怨則天下之所欲誅，順天下之所同者，德也。}}
+   766	圖難於其易，為大於其細；天下難事必作於易，天下大事必作於細。是以聖人終不為大，故能成其大。夫輕諾必寡信，多易必多難。是以聖人猶難之，
+   767	:{{*|以聖人之才猶尚難於細易，況非聖人之才而欲忽於此乎，故曰，猶難之也。}}
+   768	故終無難矣
+   769	==六十四章==
+   770	其安易持，其未兆易謀。
+   771	:{{*|以其安不忘危，持之不忘亡，謀之無功之勢，故曰易也。}}
+   772	其脆易泮，其微易散。
+   773	:{{*|雖失無入有，以其微脆之故，未足以興大功，故易也。此四者，皆說慎終也。不可以無之故而不持，不可以微之故而弗散也。無而弗持則生有焉，微而不散則生大焉。故慮終之患，如始之禍，則無敗事。}}
+   774	為之於未有，
+   775	:{{*|謂其安未兆也。}}
+   776	治之於未亂。
+   777	:{{*|謂微脆也。}}
+   778	合抱之木，生於毫末；九層之臺，起於累土；千里之行，始於足下。為者敗之，執者失之。
+   779	:{{*|當以慎終除微，慎微除亂，而以施為治之，形名執之，反生事原，巧辟滋作，故敗失也。}}
+   780	是以聖人無為故無敗，無執故無失。民之從事，常於幾成而敗之。
+   781	:{{*|不慎終也。}}
+   782	慎終如始，則無敗事。是以聖人欲不欲，不貴難得之貨；
+   783	:{{*|好欲雖微，爭尚為之，興難得之貨雖細，貪盜為之起也。}}
+   784	學不學，復眾人之所過。
+   785	:{{*|不學而能者，自然也，喻於不學者，過也。故學不學，以復眾人之過。}}
+   786	以輔萬物之自然，而不敢為。
+   787	==六十五章==
+   788	古之善為道者，非以明民，將以愚之。
+   789	:{{*|明謂多見巧詐，蔽其樸也。愚謂無知守真，順自然也。}}
+   790	民之難治，以其智多。
+   791	:{{*|多智巧詐，故難治也。}}
+   792	故以智治國，國之賊，
+   793	:{{*|智，猶治也，以智而治國，所以謂之賊者，故謂之智也。民之難治，以其多智也，當務塞兌閉門，令無知無欲，而以智術動民。邪心既動，復以巧術防民之偽，民知其術，防隨而避之，思惟密巧，奸偽益滋，故曰，以智治國，國之賊也。}}
+   794	不以智治國，國之福。知此兩者亦稽式。常知稽式，是謂玄德。玄德深矣，遠矣，
+   795	:{{*|稽，同也。今古之所同，則而不可廢，能知稽式，是謂玄德，玄德深矣，遠矣。}}
+   796	與物反矣，
+   797	:{{*|反其真也。}}
+   798	然後乃至大順。
+   799	==六十六章==
+   800	江海所以能為百-{谷}-王者，以其善下之，故能為百-{谷}-王。是以欲上民，必以言下之。欲先民，必以身後之。是以聖人處上而民不重，處前而民不害。是以天下樂推而不厭，以其不爭，故天下莫能與之爭。
+   801	
+   802	==六十七章==
+   803	天下皆謂我道大，似不肖。夫唯大，故似不肖。若肖，久矣其細也夫！
+   804	:{{*|久矣其細，猶曰其細久矣。肖，則失其所以為大矣。故曰，若肖久矣，其細也夫。}}
+   805	我有三寶，持而保之。一曰慈，二曰儉，三曰不敢為天下先。
+   806	慈故能勇，
+   807	:{{*|夫慈，以陳則勝，以守則固，故能勇也。}}
+   808	儉故能廣，
+   809	:{{*|節儉愛費，天下不匱，故能廣也。}}
+   810	不敢為天下先，故能成器長。
+   811	:{{*|唯後外其身，為物所歸，然後乃能立成器為天下利，為物之長也。}}
+   812	今舍慈且勇，
+   813	:{{*|且，猶取也。}}
+   814	舍儉且廣，舍後且先，死矣！
+   815	夫慈以戰則勝，
+   816	:{{*|相慜而不避於難，故勝也。}}
+   817	以守則固。天將救之，以慈衛之。
+   818	==六十八章==
+   819	善為士者不武，
+   820	:{{*|士，卒之帥也。武，尚先陵人也。}}
+   821	善戰者不怒，
+   822	:{{*|後而不先，應而不唱，故不在怒。}}
+   823	善勝敵者不與，
+   824	:{{*|不與爭也。}}
+   825	善用人者為之下，是謂不爭之德，是謂用人之力，
+   826	:{{*|用人而不為之下，則力不為用也。}}
+   827	是謂配天古之極。
+   828	==六十九章==
+   829	用兵有言﹕「吾不敢為主而為客，不敢進寸而退尺。」是謂行無行，
+   830	:{{*|彼遂不止。}}
+   831	攘無臂，扔無敵，
+   832	:{{*|行，謂行陳也，言以謙退哀慈，不敢為物先，用戰猶行無行，攘無臂，執無兵，扔無敵也，言無有與之抗也。}}
+   833	執無兵。
+   834	禍莫大於輕敵，輕敵幾喪吾寶。
+   835	:{{*|言吾哀慈謙退，非欲以取强，無敵於天下也。不得已而卒至於無敵，斯乃吾之所以為大禍也。寶，三寶也，故曰，幾亡吾寶。}}
+   836	故抗兵相加，哀者勝矣。
+   837	:{{*|抗，舉也；加，當也。哀者，必相惜而不趣利避害，故必勝。}}
+   838	
+   839	==七十章==
+   840	吾言甚易知，甚易行。天下莫能知，莫能行。
+   841	:{{*|可不出戶窺牖而知，故曰甚易知也。無為而成，故曰甚易行也。惑於躁欲，故曰，莫之能知也。迷於榮利，故曰，莫之能行也。}}
+   842	言有宗，事有君。
+   843	:{{*|宗，萬物之宗也。君，萬物之主也。}}
+   844	夫唯無知，是以不我知。
+   845	:{{*|以其言有宗、事有君之故，故有知之人不得不知之也。}}
+   846	知我者希，則我者貴。
+   847	:{{*|唯深，故知者希也；知我益希，我亦無匹。故曰，知我者希則我者貴也。}}
+   848	是以聖人被褐懷玉。
+   849	:{{*|被褐者，同其塵，懷玉者，寶其真也。聖人之所以難知，以其同塵而不殊，懷玉而不渝，故難知而為貴也。}}
+   850	==七十一章==
+   851	知不知上，不知知病。
+   852	:{{*|不知知之不足任則病也。}}
+   853	夫唯病病，是以不病。聖人不病，以其病病，是以不病。
+   854	==七十二章==
+   855	民不畏威，則大威至。無狎其所居，無厭其所生。
+   856	:{{*|清靜無為謂之居，謙後不盈謂之生，離其清淨，行其躁欲，棄其謙後，任其威權，則物擾而民僻，威不能復制民，民不能堪其威，則上下大潰矣，天誅將至。故曰，民不畏威，則大威至。無狎其所居，無厭其所生，言威力不可任也。}}
+   857	夫唯不厭，
+   858	:{{*|不自厭也。}}
+   859	是以不厭。
+   860	:{{*|不自厭，是以天下莫之厭。}}
+   861	是以聖人自知不自見，
+   862	:{{*|不自見其所知，以光耀行威也。}}
+   863	自愛不自貴；
+   864	:{{*|自貴則物狎厭居生。}}
+   865	故去彼取此。
+   866	==七十三章==
+   867	勇於敢則殺，
+   868	:{{*|必不得其死也。}}
+   869	勇於不敢則活。
+   870	:{{*|必齊命也。}}
+   871	此兩者，或利或害。
+   872	:{{*|俱勇而所施者異，利害不同，故曰，或利或害也。}}
+   873	天之所惡，孰知其故？是以聖人猶難之。
+   874	:{{*|孰，誰也。言誰能知天下之所惡意故邪？其唯聖人。夫聖人之明，猶難於勇敢，況無聖人之明而欲行之也。故曰，猶難之也。}}
+   875	天之道，不爭而善勝，
+   876	:{{*|天唯不爭，故天下莫能與之爭。}}
+   877	不言而善應，
+   878	:{{*|順則吉，逆則凶，不言而善應也。}}
+   879	不召而自來，
+   880	:{{*|處下則物自歸。}}
+   881	繟然而善謀。
+   882	:{{*|垂象而見吉凶，先事而設誠，安而不忘危，未召而謀之，故曰，繟然而善謀也。}}
+   883	天網恢恢，疏而不失。
+   884	==七十四章==
+   885	民不畏死，奈何以死懼之？若使民常畏死，而為奇者，吾得執而殺之，孰敢？
+   886	:{{*|詭異亂群謂之奇也。}}
+   887	常有司殺者殺，夫代司殺者殺，是謂代大匠斲。
+   888	夫代大匠斲者，希有不傷其手矣。
+   889	:{{*|為逆順者之所惡忿也，不仁者人之所疾也。故曰，常有司殺也。}}
+   890	==七十五章==
+   891	民之饑，以其上食稅之多，是以饑。民之難治，以其上之有為，是以難治。民之輕死，以其上求生之厚，是以輕死。夫唯無以生為者，是賢於貴生。
+   892	:{{*|言民之所以僻，治之所以亂，皆由上不由其下也，民從上也。}}
+   893	==七十六章==
+   894	人之生也柔弱，其死也堅強。
+   895	萬物草木之生也柔脆，其死也枯槁。
+   896	故堅強者死之徒，柔弱者生之徒。
+   897	是以兵強則不勝，
+   898	:{{*|强兵以暴於天下者，物之所惡也，故必不得勝。}}
+   899	木強則兵。
+   900	:{{*|物所加也。}}
+   901	強大處下，
+   902	:{{*|木之本也。}}
+   903	柔弱處上。
+   904	:{{*|枝條是也。}}
+   905	==七十七章==
+   906	天之道，其猶張弓與？高者抑之，下者舉之；有餘者損之，不足者補之。天之道，損有餘而補不足。
+   907	人之道則不然，
+   908	:{{*|與天地合德，乃能包之，如天之道。如人之量，則各有其身，不得相均，如惟無身無私乎，自然然後乃能與天地合德。}}
+   909	損不足以奉有餘。
+   910	孰能有餘以奉天下？唯有道者。
+   911	是以聖人為而不恃，功成而不處，其不欲見賢。
+   912	:{{*|言唯能處盈而全虛，損有以補無，和光同塵，蕩而均者，唯其道也。是以聖人不欲示其賢以均天下。}}
+   913	==七十八章==
+   914	天下莫柔弱於水，而攻堅強者，莫之能勝，其無以易之。
+   915	:{{*|以，用也。其，謂水也。言用水之柔弱，無物可以易之也。}}
+   916	弱之勝強，柔之勝剛，天下莫不知莫能行。是以聖人云﹕「受國之垢，是謂社稷主；受國不祥，是為天下王。」正言若反。
+   917	==七十九章==
+   918	和大怨，必有餘怨，
+   919	:{{*|不明理其契，以致大怨已至。而德和之，其傷不復，故有餘怨也。}}
+   920	安可以為善？是以聖人執左契，
+   921	:{{*|左契，防怨之所由生也。}}
+   922	而不責於人。有德司契，
+   923	:{{*|有德之人念思其契，不念怨生而後責於人也。}}
+   924	無德司徹。
+   925	:{{*|徹，司人之過也。}}
+   926	天道無親，常與善人。
+   927	==八十章==
+   928	小國寡民，
+   929	:{{*|國既小，民又寡，尚可使反古，況國大民眾乎？故舉小國而言也。}}
+   930	使有什伯之器而不用，
+   931	:{{*|言使民雖有什伯之器而無所用，何患不足也。}}
+   932	使民重死而不遠徙。
+   933	:{{*|使民不用，惟身是寶，不貪貨賂，故各安其居，重死而不遠徙也。}}
+   934	雖有舟輿，無所乘之；雖有甲兵，無所陳之。
+   935	使人復結繩而用之，甘其食，美其服，安其居，樂其俗。鄰國相望，雞犬之聲相聞，民至老死，不相往來。
+   936	:{{*|無所欲求。}}
+   937	==八十一章==
+   938	信言不美，
+   939	:{{*|實在質也。}}
+   940	美言不信。
+   941	:{{*|本在樸也。}}
+   942	善者不辯，辯者不善。
+   943	知者不博，
+   944	:{{*|極在一也。}}
+   945	博者不知。
+   946	聖人不積，
+   947	:{{*|無私自有，唯善是與，任物而已。}}
+   948	既以為人己愈有，
+   949	:{{*|物所尊也。}}
+   950	既以與人己愈多。
+   951	:{{*|物所歸也。}}
+   952	天之道，利而不害；
+   953	:{{*|動常生成之也。}}
+   954	聖人之道，為而不爭。
+   955	:{{*|順天之利不相傷也。}}
+   956	=跋<ref name="按跋"> 編者按：原跋文二篇，無題目，文緊附於經文之末，較每行較經文減二字行之。</ref>=
+   957	=晁說之跋<ref name="按跋" />=
+   958	　　王弼老子道德經二卷，真得老子之學歟，蓋嚴君平指歸之流也。其言仁義與禮，不能自用，必待道以用之，天地萬物各得於一，豈特有功於老子哉。凡百學者，蓋不可不知乎此也。予於是知弼本深於老子，而易則末矣。其於易，多假諸老子之旨，而老子無資於易者，其有餘不足之迹，斷可見也。嗚呼，學其難哉！弼知佳兵者不祥之器，至於戰勝，以喪禮處之，非老子之言，乃不知常善救人，故無棄人；常善救物，故無棄物。獨得諸河上公，而古本無有也。賴傅弈能辯之爾。然弼題是書曰道德經，不析乎道德，而上下之，猶近於古歟！其文字則多謬誤，殆有不可讀者，令人惜之。嘗謂，弼之於老子，張湛之於列子，郭象之於莊子，杜預之於左氏，范甯之於穀梁，毛萇之於詩，郭璞之於爾雅，完然成一家之學，後世雖有作者，未易加也。予既繕寫弼書，并以記之。
+   959	
+   960	　　政和乙未十月丁丑　嵩山晁說之鄜畤記。
+   961	
+   962	=熊克跋<ref name="按跋" />=
+   963	　　克伏誦咸平聖語，有曰：「老子道德經治世之要，明皇解雖燦然可觀，王弼所注，言簡意深，真得老氏清淨之旨。」
+   964	
+   965	　　克自此求弼所注甚力，而近世希有，蓋久而後得之，往歲攝建寧學官，嘗以刊行，既又得晁以道先生所題本，不分道德而上下之，亦無篇目，喜其近古，繕寫藏之，乾道庚寅，分教京口，復鏤板以傳，若其字之謬訛，前人已不能證，克焉敢輒易，姑俟夫知者。
+   966	
+   967	　　三月二十四日　左從事郎充鎮江府府學教授熊克謹記
+   968	
+   969	=經典釋文<ref name="音義"> 按：此部陸德明撰的《老子道經音義》、《老子德經音義》附於《四部備要》本中，一併收錄。</ref>=
+   970	==老子道經音義==
+   971	:唐國子博士兼太子中允贈齊州刺史吳縣開國男陸德明撰
+   972	老子，
+   973	:{{*|姓李，名耳。河上公云：名重耳，字伯陽。陳國苦縣厲鄉人。《史記》云：字聃。又云：仁里人。又云：陳國相人也。}}
+   974	生而皓首，
+   975	:{{*|劉向《列仙傳》云受學於容成，生殷時。}}
+   976	為周柱下史，覩周之衰，乃西出關，
+   977	:{{*|是周敬王時也。}}
+   978	為關尹喜說道德二篇，尚虛無無為，
+   979	:{{*|劉向云：西過流沙，莫知所終。}}
+   980	凡五千餘言。河上公為章句四卷。
+   981	:{{*|不詳名氏。}}
+   982	文帝徵之不至，自至河上責之，河上公乃踊身空中，文帝改容謝之，於是授漢文以《老子章句》四篇，言治身治國之要，其後談論者莫不宗尚玄言。唯王輔嗣妙得虛無之旨。
+   983	:{{*|今依王本博采眾家以明同異。}}
+   984	道
+   985	:{{*|生天地之先。}}
+   986	德
+   987	:{{*|道之用也。}}
+   988	徼
+   989	:{{*|小道也，邊也，微妙也，古弔反。}}
+   990	較
+   991	:{{*|音角，又校。量深淺也。}}
+   992	傾
+   993	:{{*|高下不正貌。去營反。}}
+   994	隆之稱
+   995	:{{*|尺證反。一本作號，一本作名。}}
+   996	也曷
+   997	:{{*|何葛反。何也。}}
+   998	為而常校
+   999	:{{*|音教。}}
+  1000	能相射
+  1001	:{{*|食亦反。}}
+  1002	穿
+  1003	:{{*|音川。}}
+  1004	窬
+  1005	:{{*|音俞，又音豆。}}
+  1006	探
+  1007	:{{*|吐南反。}}
+  1008	聖人之治
+  1009	:{{*|直吏反。}}
+  1010	弱其志
+  1011	:{{*|心虛則志弱也。本無為字。}}
+  1012	強
+  1013	:{{*|其良反，又作彊。}}
+  1014	使夫
+  1015	:{{*|音符。}}
+  1016	知者
+  1017	:{{*|音智。}}
+  1018	道沖
+  1019	:{{*|直隆反。}}
+  1020	不盈
+  1021	:{{*|本亦作滿。}}
+  1022	淵兮
+  1023	:{{*|河上作乎。}}
+  1024	挫
+  1025	:{{*|子臥反。}}
+  1026	銳
+  1027	:{{*|悅歲反。}}
+  1028	解其紛
+  1029	:{{*|拂云反。河上云芬。}}
+  1030	湛
+  1031	:{{*|直減反。}}
+  1032	夫執一家之量
+  1033	:{{*|音亮。}}
+  1034	贍
+  1035	:{{*|涉豔反。}}
+  1036	滿以造實
+  1037	:{{*|十報反。}}
+  1038	又復
+  1039	:{{*|扶又反。}}
+  1040	不盈
+  1041	:{{*|或作滿。}}
+  1042	不能累
+  1043	:{{*|力偽反}}
+  1044	萬物舍
+  1045	:{{*|音捨。又作捨。}}
+  1046	汙
+  1047	:{{*|音烏。}}
+  1048	而不渝
+  1049	:{{*|羊朱反。}}
+  1050	以萬物為芻
+  1051	:{{*|楚俱反。}}
+  1052	狗
+  1053	:{{*|古口反。}}
+  1054	治
+  1055	:{{*|直吏反。}}
+  1056	有為
+  1057	:{{*|于偽反。下有為不為皆同。}}
+  1058	其猶橐
+  1059	:{{*|他各反。}}
+  1060	籥
+  1061	:{{*|音藥。}}
+  1062	掘
+  1063	:{{*|求物反，又求月反。河上本作屈，屈竭也。顧作掘，云：猶竭也。}}
+  1064	動而愈出
+  1065	:{{*|羊主反，又羊朱反。}}
+  1066	排
+  1067	:{{*|扶拜反。}}
+  1068	橐
+  1069	:{{*|無底囊。乃各反。}}
+  1070	空洞
+  1071	:{{*|同貢反。}}
+  1072	多言數窮
+  1073	:{{*|王云：理數也。顧云：勢數也。}}
+  1074	□□□
+  1075	足以共
+  1076	:{{*|音恭。亦音拱。}}
+  1077	谷
+  1078	:{{*|古木反。中央無者也。河上本作浴。浴者，養也。}}
+  1079	玄牝
+  1080	:{{*|頻忍反。舊音扶恐反。簡文扶緊反。}}
+  1081	中央無
+  1082	:{{*|一本作空。}}
+  1083	私邪
+  1084	:{{*|河上直云：以其無私。}}
+  1085	處
+  1086	:{{*|一本作居。}}
+  1087	惡
+  1088	:{{*|烏路反。注及下同。}}
+  1089	幾
+  1090	:{{*|音機。近也。又一音祈。}}
+  1091	善治
+  1092	:{{*|直吏反。}}
+  1093	揣
+  1094	:{{*|初委反。又丁果反、志瑞反。顧云：治也。簡文章樏反。}}
+  1095	而梲
+  1096	:{{*|音銳。梲字音菟奪反。又徒活反。河上作銳。}}
+  1097	末令
+  1098	:{{*|力征反。}}
+  1099	尖
+  1100	:{{*|子廉反。}}
+  1101	勢必摧
+  1102	:{{*|粗雷反。}}
+  1103	衄
+  1104	:{{*|女六反。}}
+  1105	滿堂
+  1106	:{{*|本或作室。}}
+  1107	自遺
+  1108	:{{*|唯季反；以之反。}}
+  1109	咎
+  1110	:{{*|求九反。}}
+  1111	功遂
+  1112	:{{*|本又作成。}}
+  1113	四時更
+  1114	:{{*|音庚。}}
+  1115	能無離
+  1116	:{{*|力智反。}}
+  1117	滌
+  1118	:{{*|徒歷反。}}
+  1119	疵
+  1120	:{{*|在斯反。}}
+  1121	邪
+  1122	:{{*|似嗟反。}}
+  1123	物介
+  1124	:{{*|音界。}}
+  1125	民治
+  1126	:{{*|河上本又作活。}}
+  1127	以求匿
+  1128	:{{*|他得反。}}
+  1129	辟
+  1130	:{{*|匹亦反。}}
+  1131	開闔
+  1132	:{{*|戶獵反。}}
+  1133	不昌
+  1134	:{{*|尺亮反。}}
+  1135	而處
+  1136	:{{*|昌慮反。}}
+  1137	以知乎
+  1138	:{{*|音智。河上又直作智。}}
+  1139	恃
+  1140	:{{*|河上本作侍。}}
+  1141	長
+  1142	:{{*|丁丈反。}}
+  1143	三十輻
+  1144	:{{*|音福，車輻。}}
+  1145	共一轂
+  1146	:{{*|古木反，車轂。}}
+  1147	當
+  1148	:{{*|丁浪反。}}
+  1149	無有車
+  1150	:{{*|音居，又去於反。}}
+  1151	挻
+  1152	:{{*|始然反。河上云：和也。宋衷注本云：經同。聲類云：柔也。字林云：長也。君連反。又一曰柔挻。方言云：取也。如淳作繫。}}
+  1153	埴
+  1154	:{{*|市力反。河上曰：土也。司馬云：埴，土，可以為器。釋名云：埴，膱。杜弼云：埴，黏土也。}}
+  1155	鑿戶
+  1156	:{{*|在各反。}}
+  1157	五色
+  1158	:{{*|青赤白黑黃也。}}
+  1159	令
+  1160	:{{*|力征反。}}
+  1161	盲
+  1162	:{{*|陌庚反。}}
+  1163	五音
+  1164	:{{*|宮商角徵羽也。}}
+  1165	聾
+  1166	:{{*|力東反。}}
+  1167	五味
+  1168	:{{*|酸鹹甜辛苦也。}}
+  1169	口爽
+  1170	:{{*|爽，差也。河上云：亡也。}}
+  1171	騁
+  1172	:{{*|勑領反。}}
+  1173	狂
+  1174	:{{*|求匡反。}}
+  1175	令人行
+  1176	:{{*|下孟反。}}
+  1177	妨
+  1178	:{{*|音芳。}}
+  1179	去
+  1180	:{{*|羌呂反。}}
+  1181	寵辱
+  1182	:{{*|簡文云：寵，得也；辱，失也。}}
+  1183	若驚
+  1184	:{{*|顧云：若，而也。}}
+  1185	貴
+  1186	:{{*|重也。河上云：畏也。}}
+  1187	大患若身
+  1188	:{{*|河上云：空也。}}
+  1189	何謂寵辱若驚
+  1190	:{{*|河上本無若驚二字。}}
+  1191	身為
+  1192	:{{*|于偽反。}}
+  1193	易
+  1194	:{{*|以豉反。}}
+  1195	名
+  1196	:{{*|武征反。}}
+  1197	曰夷
+  1198	:{{*|顧云：平也。鍾會云：滅也，平也。}}
+  1199	曰希
+  1200	:{{*|希，疏也，靜也。}}
+  1201	搏
+  1202	:{{*|音博。簡文：補各反。}}
+  1203	曰微
+  1204	:{{*|細也。}}
+  1205	致詰
+  1206	:{{*|起吉反。}}
+  1207	故混
+  1208	:{{*|戶本反。}}
+  1209	不皦
+  1210	:{{*|古曉反。明式云：胡老反。}}
+  1211	不昧
+  1212	:{{*|悔對反}}
+  1213	繩
+  1214	:{{*|食陵反，又民忍反。梁帝云：無涯際之貌。顧云：無窮不可序；或曰：寬急。河上本作繩。}}
+  1215	復
+  1216	:{{*|音服。}}
+  1217	怳
+  1218	:{{*|虛往反。}}
+  1219	治
+  1220	:{{*|直吏反。}}
+  1221	強
+  1222	:{{*|其丈反。}}
+  1223	豫
+  1224	:{{*|如字，本或作懊，簡文與此同也。}}
+  1225	儼
+  1226	:{{*|魚檢反。}}
+  1227	樸
+  1228	:{{*|普角反。又作朴。}}
+  1229	混
+  1230	:{{*|胡本反。}}
+  1231	蔽
+  1232	:{{*|必世反。王云覆蓋也。鍾：婢世反，梁武同也。}}
+  1233	蔽覆
+  1234	:{{*|芳富反。}}
+  1235	生長
+  1236	:{{*|丁丈反。}}
+  1237	卒
+  1238	:{{*|子恤反，又尊恤反。}}
+  1239	凡物
+  1240	:{{*|本作夫。}}
+  1241	則物離
+  1242	:{{*|力智反。}}
+  1243	其分
+  1244	:{{*|扶問反。}}
+  1245	虎兕
+  1246	:{{*|徐子反。}}
+  1247	無所容鋒刃
+  1248	:{{*|芳逢反。}}
+  1249	太上
+  1250	:{{*|音太。王云：太上謂大人也。顧云：太古上德之人也。}}
+  1251	行施
+  1252	:{{*|始豉反。}}
+  1253	次侮
+  1254	:{{*|亡甫反。}}
+  1255	疵
+  1256	:{{*|字斯反。}}
+  1257	釁
+  1258	:{{*|許靳反。}}
+  1259	悠
+  1260	:{{*|孫登、張憑、杜弼，俱作由，一本猶，用也。}}
+  1261	有應
+  1262	:{{*|應對之應。}}
+  1263	知慧
+  1264	:{{*|音智。}}
+  1265	趣
+  1266	:{{*|七喻反，或音促。}}
+  1267	覩形見
+  1268	:{{*|賢遍反。}}
+  1269	大惡
+  1270	:{{*|烏路反。}}
+  1271	治
+  1272	:{{*|直吏反。}}
+  1273	則濡
+  1274	:{{*|而朱反，又而注反。}}
+  1275	百倍
+  1276	:{{*|蒲罪反。}}
+  1277	令
+  1278	:{{*|力征反。}}
+  1279	所屬
+  1280	:{{*|之欲反，注同。}}
+  1281	見
+  1282	:{{*|賢遍反。}}
+  1283	抱樸
+  1284	:{{*|普角反。}}
+  1285	之善
+  1286	:{{*|一本作傑。}}
+  1287	行
+  1288	:{{*|下孟反。}}
+  1289	唯
+  1290	:{{*|遺癸反。舊云維水反。}}
+  1291	相去
+  1292	:{{*|欺慮反。}}
+  1293	幾
+  1294	:{{*|居豈反。}}
+  1295	燕
+  1296	:{{*|於見反。}}
+  1297	雀
+  1298	:{{*|將籥反。}}
+  1299	鳩
+  1300	:{{*|九求反。}}
+  1301	鴿
+  1302	:{{*|古合反。}}
+  1303	有仇
+  1304	:{{*|音求。}}
+  1305	氈
+  1306	:{{*|之然反。本作旃。}}
+  1307	裘
+  1308	:{{*|音求。}}
+  1309	續鳧
+  1310	:{{*|音符。}}
+  1311	截
+  1312	:{{*|昨結反。}}
+  1313	鵠
+  1314	:{{*|戶各反}}
+  1315	眾人熙熙
+  1316	:{{*|許其反。}}
+  1317	若亭
+  1318	:{{*|普庚反，殺煑也。簡文：許庚反。河上公作饗，用也。}}
+  1319	牢
+  1320	:{{*|力刀反。}}
+  1321	廓
+  1322	:{{*|苦郭反。河上本作泊，普白反。}}
+  1323	咳
+  1324	:{{*|胡來反。說文字本或作孩。}}
+  1325	儽儽兮
+  1326	:{{*|力追反。一本曰損益也，敗也，欺也。說文音雷。古本河上作乘乘兮。}}
+  1327	所別
+  1328	:{{*|彼列反。}}
+  1329	析
+  1330	:{{*|星歷反。}}
+  1331	所好
+  1332	:{{*|呼報反。}}
+  1333	沌
+  1334	:{{*|本又作忳，徒損反，又徒門反。簡文音頓。}}
+  1335	俗人昭昭
+  1336	:{{*|章遙反。一本作照。}}
+  1337	悶悶
+  1338	:{{*|如字。}}
+  1339	澹兮其若海
+  1340	:{{*|徒紺反。古本河上作忽兮若海。嚴遵作忽兮若晦。}}
+  1341	飂
+  1342	:{{*|力幽反。梁簡文作飄，云敷遙反。河上作淵兮。}}
+  1343	繫縶
+  1344	:{{*|張立反。一作執。}}
+  1345	母
+  1346	:{{*|如字。}}
+  1347	德之容
+  1348	:{{*|鍾云：法也。簡文云：狀也。}}
+  1349	怳
+  1350	:{{*|況往反，又呼廣反。}}
+  1351	窈
+  1352	:{{*|烏了反。}}
+  1353	冥
+  1354	:{{*|莫輕反。}}
+  1355	說
+  1356	:{{*|一云悅。}}
+  1357	狀哉
+  1358	:{{*|河上一本直云吾何狀也。}}
+  1359	見
+  1360	:{{*|賢遍反。}}
+  1361	枉
+  1362	:{{*|音往。}}
+  1363	窪
+  1364	:{{*|烏瓜反。簡文烏麻反。顧云：洿也。}}
+  1365	蔽
+  1366	:{{*|必世反。}}
+  1367	轉遠
+  1368	:{{*|于萬反。}}
+  1369	自見
+  1370	:{{*|賢遍反。}}
+  1371	彰
+  1372	:{{*|音章。}}
+  1373	淡
+  1374	:{{*|徒暫反。一作澹。}}
+  1375	故飄
+  1376	:{{*|毗遙反，又扶遙反。}}
+  1377	驟
+  1378	:{{*|狀救反。}}
+  1379	道者於道
+  1380	:{{*|河上於道者絕句。}}
+  1381	企者
+  1382	:{{*|苦賜反。河上作豉。}}
+  1383	跨
+  1384	:{{*|苦化反。}}
+  1385	餘食贅
+  1386	:{{*|專稅反。疣贅也。簡文云：之睿反。河上云：贅，貪也。}}
+  1387	行
+  1388	:{{*|下孟反。注同。}}
+  1389	郤至之行
+  1390	:{{*|去逆反。郤至，晉大夫，自伐之事見左傳成公十六年。}}
+  1391	更為肬
+  1392	:{{*|音尤。}}
+  1393	惡
+  1394	:{{*|烏路反。}}
+  1395	混成
+  1396	:{{*|胡本反。}}
+  1397	先天
+  1398	:{{*|悉薦反。}}
+  1399	{宀尗}
+  1400	:{{*|本亦作寂。}}
+  1401	寞
+  1402	:{{*|音莫。河上云：寥空無形也。鍾會作飂，云空疏無質也。}}
+  1403	而不殆
+  1404	:{{*|田賴反。危也。}}
+  1405	稱
+  1406	:{{*|尺證反。}}
+  1407	强
+  1408	:{{*|其丈反。}}
+  1409	亦復
+  1410	:{{*|扶又反。}}
+  1411	重為輕
+  1412	:{{*|起政反。}}
+  1413	躁
+  1414	:{{*|早報反。}}
+  1415	離
+  1416	:{{*|利。}}
+  1417	輜
+  1418	:{{*|側其反。}}
+  1419	重
+  1420	:{{*|直用反。}}
+  1421	榮觀
+  1422	:{{*|古亂反。}}
+  1423	宴處
+  1424	:{{*|於見反。簡文云：謂靜思之所宴居也。}}
+  1425	萬乘之主
+  1426	:{{*|繩證反。謂天子也。}}
+  1427	輕則失本
+  1428	:{{*|河上作臣。}}
+  1429	躁則失君
+  1430	:{{*|謂失君位。}}
+  1431	喪
+  1432	:{{*|息浪反。}}
+  1433	善行
+  1434	:{{*|下孟反。}}
+  1435	無徹
+  1436	:{{*|梁云：應車邊今作邊者古字少也。}}
+  1437	跡
+  1438	:{{*|河上作迹。}}
+  1439	無瑕
+  1440	:{{*|下家反。疵過也。}}
+  1441	謫
+  1442	:{{*|直革反，譴責也。}}
+  1443	不別
+  1444	:{{*|彼列反。}}
+  1445	善數
+  1446	:{{*|色主反。簡文：色具反。河上作計。}}
+  1447	籌
+  1448	:{{*|直由反。}}
+  1449	策
+  1450	:{{*|初厄反。}}
+  1451	楗
+  1452	:{{*|其偃反。距門也。}}
+  1453	所好
+  1454	:{{*|呼報反。}}
+  1455	裕
+  1456	:{{*|羊注反。}}
+  1457	長
+  1458	:{{*|丁丈反。}}
+  1459	谿
+  1460	:{{*|苦奚反。或作溪。}}
+  1461	不離
+  1462	:{{*|力智反。}}
+  1463	模
+  1464	:{{*|莫胡反。}}
+  1465	不忒
+  1466	:{{*|吐得反。顧云：差也，爽也。}}
+  1467	樸
+  1468	:{{*|普角反。}}
+  1469	官長
+  1470	:{{*|丁丈反。}}
+  1471	百行
+  1472	:{{*|下孟反。}}
+  1473	故為
+  1474	:{{*|于偽反。}}
+  1475	無割
+  1476	:{{*|乾遏反。}}
+  1477	物或歔
+  1478	:{{*|音虛。河上本作呴，許具反。}}
+  1479	羸
+  1480	:{{*|力為反。}}
+  1481	或挫
+  1482	:{{*|作臥反，搦也。簡文：在臥反。河上作載。}}
+  1483	隳
+  1484	:{{*|許規反。毁也。}}
+  1485	去
+  1486	:{{*|羌呂反。}}
+  1487	其事好
+  1488	:{{*|呼報反。}}
+  1489	還
+  1490	:{{*|音旋。}}
+  1491	治
+  1492	:{{*|直吏反。}}
+  1493	凶年
+  1494	:{{*|天應惡氣，災害五穀，盡傷人也。}}
+  1495	難
+  1496	:{{*|乃旦反。}}
+  1497	當復
+  1498	:{{*|扶又反。}}
+  1499	佳
+  1500	:{{*|格牙反。善也。河上：飾也。}}
+  1501	惡
+  1502	:{{*|烏路反。}}
+  1503	恬
+  1504	:{{*|
+  1505	:{{?}}嫌反。本或作栝。梁武音膾。}}
+  1506	澹
+  1507	:{{*|徒暫反。本亦作惔，音同。又音談，字同。河上本作恢。梁武云苦回反。簡文恬惔。}}
+  1508	樂
+  1509	:{{*|五教反，又音洛。}}
+  1510	戰勝
+  1511	:{{*|式證反。}}
+  1512	天下莫能臣也
+  1513	:{{*|河上本作天下不敢。}}
+  1514	侯王
+  1515	:{{*|梁武作王侯。}}
+  1516	隤
+  1517	:{{*|徒回反。}}
+  1518	長
+  1519	:{{*|丁丈反。}}
+  1520	立名分
+  1521	:{{*|符問反。}}
+  1522	錐
+  1523	:{{*|音隹}}
+  1524	治
+  1525	:{{*|直吏反。}}
+  1526	行
+  1527	:{{*|下孟反。}}
+  1528	道氾
+  1529	:{{*|本又作汎，周張並同。}}
+  1530	衣
+  1531	:{{*|於既反。河上作愛也。}}
+  1532	施
+  1533	:{{*|始豉反。}}
+  1534	故復
+  1535	:{{*|扶又反。}}
+  1536	以其終不自為大
+  1537	:{{*|河上本云：是以聖人終不為大也。}}
+  1538	於易
+  1539	:{{*|以豉反。}}
+  1540	樂
+  1541	:{{*|音岳。}}
+  1542	餌
+  1543	:{{*|而志反。}}
+  1544	過
+  1545	:{{*|古臥反。}}
+  1546	道之出
+  1547	:{{*|尺類反。}}
+  1548	淡
+  1549	:{{*|徒暫反，又徒覽反。}}
+  1550	說
+  1551	:{{*|音悅。}}
+  1552	令
+  1553	:{{*|力征反。}}
+  1554	中
+  1555	:{{*|丁仲反。}}
+  1556	將欲㒆
+  1557	:{{*|簡文作歙，又作洽。河上本作㬛也，許及反。顧云：閉塞也。}}
+  1558	去
+  1559	:{{*|羌呂反。}}
+  1560	脫
+  1561	:{{*|代活反。}}
+  1562	吾將鎮之以無名之樸夫亦將無
+  1563	:{{*|簡文作不。}}
+  1564	欲
+  1565	:{{*|河上本作吾將鎮之。河上者，非老子所作也。}}
+  1566	==老子德經音義==
+  1567	
+  1568	:{{*|德者，得也。道生萬物有得獲有故名德經四十四章一本四十三章。}}
+  1569	應
+  1570	:{{*|應對如字。}}
+  1571	則攘
+  1572	:{{*|若羊反。}}
+  1573	臂
+  1574	:{{*|必寐反。}}
+  1575	而扔
+  1576	:{{*|人證反。又音仍，引也，因也。字林云：就也，數也，原也。}}
+  1577	故去
+  1578	:{{*|羌呂反。}}
+  1579	無喪
+  1580	:{{*|息浪反。}}
+  1581	心見
+  1582	:{{*|賢遍反。}}
+  1583	肌
+  1584	:{{*|己其反。又音既。}}
+  1585	無所徧
+  1586	:{{*|音遍。}}
+  1587	之量
+  1588	:{{*|音亮。}}
+  1589	母
+  1590	:{{*|莫后反。}}
+  1591	舍本
+  1592	:{{*|音捨。}}
+  1593	博施
+  1594	:{{*|始豉反。}}
+  1595	偏
+  1596	:{{*|音篇。}}
+  1597	抑
+  1598	:{{*|於力反。}}
+  1599	亢
+  1600	:{{*|苦浪反。}}
+  1601	忿枉
+  1602	:{{*|紆放反。}}
+  1603	尚好
+  1604	:{{*|呼報反。}}
+  1605	敬校
+  1606	:{{*|音教。}}
+  1607	為贍
+  1608	:{{*|涉豔反。}}
+  1609	治
+  1610	:{{*|直吏反。}}
+  1611	穢
+  1612	:{{*|於廢反。}}
+  1613	耽
+  1614	:{{*|都南反。}}
+  1615	行
+  1616	:{{*|下孟反。}}
+  1617	遠
+  1618	:{{*|于万反。一本作弃。}}
+  1619	裂
+  1620	:{{*|力竭反。}}
+  1621	恐歇
+  1622	:{{*|許謁反。}}
+  1623	將恐蹶
+  1624	:{{*|蹇月反，又其月反，又居衞反。}}
+  1625	數
+  1626	:{{*|色主反。}}
+  1627	譽
+  1628	:{{*|逸注反。毁譽也。}}
+  1629	琭
+  1630	:{{*|音祿。}}
+  1631	珞
+  1632	:{{*|音洛，又音歷。}}
+  1633	昧
+  1634	:{{*|悔對反。}}
+  1635	夷道若纇
+  1636	:{{*|雷對反。簡文云疵也。河上作類。一本作纇。}}
+  1637	內
+  1638	:{{*|如銳反， 又若對反。}}
+  1639	不見
+  1640	:{{*|賢遍反。}}
+  1641	全別
+  1642	:{{*|彼列反。}}
+  1643	有分
+  1644	:{{*|符問反。}}
+  1645	炎
+  1646	:{{*|于沾反。}}
+  1647	貸
+  1648	:{{*|吐代反。}}
+  1649	恭
+  1650	:{{*|一作供。}}
+  1651	裁
+  1652	:{{*|音裁，又才代反。}}
+  1653	所惡
+  1654	:{{*|烏路反。}}
+  1655	稱
+  1656	:{{*|尺證反。}}
+  1657	可舍
+  1658	:{{*|音捨。}}
+  1659	愈遠
+  1660	:{{*|于萬反。}}
+  1661	非强
+  1662	:{{*|其丈反。}}
+  1663	騁
+  1664	:{{*|勑領反。}}
+  1665	折
+  1666	:{{*|章舌反，又常列反。}}
+  1667	名好
+  1668	:{{*|呼報反。}}
+  1669	無厭
+  1670	:{{*|於鹽反，又於豔反。}}
+  1671	費
+  1672	:{{*|芳責反。}}
+  1673	藏
+  1674	:{{*|才良反。}}
+  1675	缺
+  1676	:{{*|窺悅反。}}
+  1677	獘
+  1678	:{{*|婢世反。}}
+  1679	不為
+  1680	:{{*|于偽反。}}
+  1681	屈
+  1682	:{{*|丘物反。偽也。}}
+  1683	訥
+  1684	:{{*|怒忽反。}}
+  1685	躁
+  1686	:{{*|早報反。}}
+  1687	罷
+  1688	:{{*|音皮。}}
+  1689	却
+  1690	:{{*|除也。}}
+  1691	糞
+  1692	:{{*|弗問反。}}
+  1693	禍莫大於不知足
+  1694	:{{*|河上本此句上有罪莫大於可欲一句。}}
+  1695	咎
+  1696	:{{*|其九反。}}
+  1697	不窺
+  1698	:{{*|起規反。}}
+  1699	羑牖
+  1700	:{{*|二同，由九反。}}
+  1701	搏
+  1702	:{{*|波洛反。}}
+  1703	歙歙
+  1704	:{{*|許及反。一本作惵惵。河上本作惔。顧云許葉反，危懼貌。簡文云河上公作怵。}}
+  1705	渾
+  1706	:{{*|胡本反。}}
+  1707	注
+  1708	:{{*|之樹反。}}
+  1709	咳
+  1710	:{{*|胡來反。本或作孩。}}
+  1711	冕
+  1712	:{{*|音勉。}}
+  1713	旒
+  1714	:{{*|音留。說文作{流玉}。}}
+  1715	充
+  1716	:{{*|如字。}}
+  1717	黈
+  1718	:{{*|吐口反。}}
+  1719	纊
+  1720	:{{*|苦放反。}}
+  1721	戚
+  1722	:{{*|七歷反。}}
+  1723	於慢
+  1724	:{{*|武晏反。}}
+  1725	其徑
+  1726	:{{*|經定反。}}
+  1727	喪
+  1728	:{{*|息浪反。}}
+  1729	所適
+  1730	:{{*|丁歷反。}}
+  1731	舍
+  1732	:{{*|音捨。}}
+  1733	兕
+  1734	:{{*|徐履反。}}
+  1735	被
+  1736	:{{*|皮彼反。}}
+  1737	投
+  1738	:{{*|音頭。}}
+  1739	錯
+  1740	:{{*|七路反。}}
+  1741	而令
+  1742	:{{*|力征反。}}
+  1743	鋒
+  1744	:{{*|芳逢反。}}
+  1745	累
+  1746	:{{*|劣偽反。}}
+  1747	黿蚖
+  1748	:{{*|二並音元。}}
+  1749	蟺
+  1750	:{{*|徒多反，又音蟮。又本作蟮。}}
+  1751	襲
+  1752	:{{*|音習。}}
+  1753	鷹
+  1754	:{{*|憶矜反。}}
+  1755	鸇
+  1756	:{{*|之然反。}}
+  1757	埤
+  1758	:{{*|音婢。}}
+  1759	矰
+  1760	:{{*|竹能反。}}
+  1761	繳
+  1762	:{{*|諸若反。}}
+  1763	網
+  1764	:{{*|亡兩反。}}
+  1765	罟
+  1766	:{{*|音古。}}
+  1767	卒
+  1768	:{{*|子戌反。}}
+  1769	餌
+  1770	:{{*|而志反。}}
+  1771	離
+  1772	:{{*|音利。}}
+  1773	稱
+  1774	:{{*|尺證反。}}
+  1775	長
+  1776	:{{*|張丈反。}}
+  1777	亭之
+  1778	:{{*|如字，別也。}}
+  1779	毒之
+  1780	:{{*|徒篤反。今作育，余熟反。}}
+  1781	庇
+  1782	:{{*|必寐反，又音祕，亦作芘。}}
+  1783	廕
+  1784	:{{*|於鴆反。}}
+  1785	復
+  1786	:{{*|扶又反，又音服。}}
+  1787	其兌
+  1788	:{{*|徒外反。簡文云：言也。河上本作銳。銳，自言也。}}
+  1789	見
+  1790	:{{*|賢遍反。}}
+  1791	小曰
+  1792	:{{*|音越。}}
+  1793	遺
+  1794	:{{*|唯季反。}}
+  1795	介
+  1796	:{{*|音界。}}
+  1797	好
+  1798	:{{*|呼報反。}}
+  1799	徑
+  1800	:{{*|經定反。邪徑。}}
+  1801	復
+  1802	:{{*|扶又反。}}
+  1803	朝
+  1804	:{{*|直遙反。}}
+  1805	絜好
+  1806	:{{*|如字。}}
+  1807	蕪
+  1808	:{{*|音無。}}
+  1809	厭
+  1810	:{{*|於豔反。}}
+  1811	夸
+  1812	:{{*|口花反。}}
+  1813	盜夸非盜哉
+  1814	:{{*|河上本同。}}
+  1815	不拔
+  1816	:{{*|皮八反。顧云：私。}}
+  1817	齊
+  1818	:{{*|才細反。}}
+  1819	不輟
+  1820	:{{*|張劣反。}}
+  1821	孫傳
+  1822	:{{*|直專反。}}
+  1823	比
+  1824	:{{*|必履反。}}
+  1825	蜂
+  1826	:{{*|芳逢反。}}
+  1827	蠆
+  1828	:{{*|勑賣反。}}
+  1829	虺
+  1830	:{{*|虛鬼反。}}
+  1831	蛇
+  1832	:{{*|食奢反。}}
+  1833	螯
+  1834	:{{*|失亦反，又呼各反。河上云：毒蟲不螫。}}
+  1835	攫
+  1836	:{{*|俱縛反。}}
+  1837	不搏
+  1838	:{{*|音博。}}
+  1839	筋柔
+  1840	:{{*|居勤反。{艹觔}者俗。}}
+  1841	而握
+  1842	:{{*|於學反。}}
+  1843	知牝
+  1844	:{{*|頻忍反。}}
+  1845	牡
+  1846	:{{*|牟后反。}}
+  1847	之合而全作
+  1848	:{{*|全如字。河上作䘒，于和反。本一作朘。說文子和反，又子壘反，云：赤子陰也，子垂反。}}
+  1849	終日號
+  1850	:{{*|戶毛反。}}
+  1851	不嗄
+  1852	:{{*|一邁反。氣逆也。又於介反，而聲不嗄當作噫。}}
+  1853	則夭
+  1854	:{{*|於驕反，又於表反。}}
+  1855	強
+  1856	:{{*|其良反。}}
+  1857	壯
+  1858	:{{*|側諒反。}}
+  1859	挫
+  1860	:{{*|子臥反。}}
+  1861	銳
+  1862	:{{*|悅歲反。}}
+  1863	令
+  1864	:{{*|力征反。}}
+  1865	去
+  1866	:{{*|羌呂反。}}
+  1867	不劌
+  1868	:{{*|居衞反。河上作害傷也。}}
+  1869	污
+  1870	:{{*|音烏。}}
+  1871	辟
+  1872	:{{*|匹亦反。}}
+  1873	激
+  1874	:{{*|經覓反，又古堯反。}}
+  1875	拂
+  1876	:{{*|芳佛反。}}
+  1877	不嬥
+  1878	:{{*|以照反。}}
+  1879	匿
+  1880	:{{*|女力反。}}
+  1881	莫如嗇
+  1882	:{{*|生力反。河上云：貪也。}}
+  1883	去
+  1884	:{{*|羌呂反。}}
+  1885	早復
+  1886	:{{*|音服。}}
+  1887	謂之重
+  1888	:{{*|直容反。}}
+  1889	柢
+  1890	:{{*|丁計反。亦作蔕。}}
+  1891	烹
+  1892	:{{*|普庚反。不當加火。}}
+  1893	小鮮
+  1894	:{{*|音仙。}}
+  1895	以道莅
+  1896	:{{*|力至反。古無此字，說文作䇐。}}
+  1897	治
+  1898	:{{*|直吏反。}}
+  1899	牝
+  1900	:{{*|頻忍反。}}
+  1901	靜復
+  1902	:{{*|扶又反。}}
+  1903	以下
+  1904	:{{*|遐嫁反。}}
+  1905	則取
+  1906	:{{*|七榆反，又七喻反。}}
+  1907	卑下
+  1908	:{{*|遐嫁反。}}
+  1909	過
+  1910	:{{*|古禾反，又古臥反。}}
+  1911	奧
+  1912	:{{*|於六反。暖也。河上：烏報反。}}
+  1913	曖
+  1914	:{{*|音愛。暄也。說文作懓。}}
+  1915	庇
+  1916	:{{*|必寐反，又本祕反。}}
+  1917	蔭
+  1918	:{{*|於鴆反。}}
+  1919	尊行
+  1920	:{{*|下孟反。}}
+  1921	有拱
+  1922	:{{*|居勇反。}}
+  1923	璧
+  1924	:{{*|并歷反。}}
+  1925	以先
+  1926	:{{*|悉薦反。}}
+  1927	所以為
+  1928	:{{*|于偽反。}}
+  1929	不曰
+  1930	:{{*|于月反。}}
+  1931	淡
+  1932	:{{*|徒暫反。}}
+  1933	於其易
+  1934	:{{*|以豉反。}}
+  1935	必多難
+  1936	:{{*|乃旦反。}}
+  1937	其脆
+  1938	:{{*|七歲反。河上本作膬，昌睿反。}}
+  1939	易泮
+  1940	:{{*|普半反。}}
+  1941	於累
+  1942	:{{*|劣被反。}}
+  1943	者敗
+  1944	:{{*|必賣反。}}
+  1945	施
+  1946	:{{*|始志反。}}
+  1947	辟
+  1948	:{{*|匹亦反。}}
+  1949	好
+  1950	:{{*|呼報反。}}
+  1951	令
+  1952	:{{*|力征反。}}
+  1953	復以
+  1954	:{{*|扶又反。}}
+  1955	稽式
+  1956	:{{*|古兮反，嚴。河上作楷式。}}
+  1957	善下
+  1958	言下
+  1959	:{{*|遐嫁反。}}
+  1960	厭
+  1961	:{{*|於豔反。}}
+  1962	夫
+  1963	:{{*|音扶。}}
+  1964	唯大
+  1965	:{{*|絕句。}}
+  1966	以陳
+  1967	:{{*|直忍反。}}
+  1968	費
+  1969	:{{*|芳味反。}}
+  1970	匱
+  1971	:{{*|其貴反。}}
+  1972	器長
+  1973	:{{*|張丈反。}}
+  1974	舍
+  1975	:{{*|音捨。}}
+  1976	而不辟
+  1977	:{{*|音避。}}
+  1978	於難
+  1979	:{{*|乃旦反。}}
+  1980	卒
+  1981	:{{*|尊忽反。}}
+  1982	帥
+  1983	:{{*|所類反。}}
+  1984	為
+  1985	:{{*|于偽反。}}
+  1986	無行
+  1987	:{{*|戶剛反。}}
+  1988	攘
+  1989	:{{*|若羊反。}}
+  1990	扔
+  1991	:{{*|音仍。}}
+  1992	幾
+  1993	:{{*|音祈，音機。}}
+  1994	易
+  1995	:{{*|以豉反。}}
+  1996	被
+  1997	:{{*|音備。}}
+  1998	褐
+  1999	:{{*|戶葛反。}}
+  2000	無狎
+  2001	:{{*|戶甲反。}}
+  2002	無厭
+  2003	:{{*|於豔反。}}
+  2004	離
+  2005	:{{*|力智反。}}
+  2006	物擾
+  2007	:{{*|而小反。}}
+  2008	辟
+  2009	:{{*|匹亦反。}}
+  2010	不能復
+  2011	:{{*|扶又反。}}
+  2012	潰
+  2013	:{{*|戶對反。}}
+  2014	見
+  2015	:{{*|賢遍反。}}
+  2016	故去
+  2017	:{{*|羌呂反。}}
+  2018	之所惡
+  2019	:{{*|烏路反。}}
+  2020	猶難
+  2021	:{{*|乃旦反。}}
+  2022	繟
+  2023	:{{*|音闡。}}
+  2024	坦
+  2025	:{{*|吐但反。梁王尚鍾會孫登張嗣本有此。坦，平大貌。河上作墠。墠，寬也。坦，尺善反，又上單反也。}}
+  2026	而見
+  2027	:{{*|賢遍反。}}
+  2028	凶先
+  2029	:{{*|悉薦反。}}
+  2030	恢
+  2031	:{{*|苦回反。}}
+  2032	是大匠斲
+  2033	:{{*|陟角反。}}
+  2034	僻
+  2035	:{{*|匹亦反。}}
+  2036	治
+  2037	:{{*|直吏反。}}
+  2038	強
+  2039	:{{*|其兩反，舊其良反。}}
+  2040	柔脆
+  2041	:{{*|七歲反。}}
+  2042	枯槁
+  2043	:{{*|苦老反。}}
+  2044	與
+  2045	:{{*|音餘。}}
+  2046	抑
+  2047	:{{*|於力反。}}
+  2048	之量
+  2049	:{{*|音亮。}}
+  2050	身去
+  2051	:{{*|羌呂反。}}
+  2052	天下莫柔弱於水
+  2053	:{{*|河上本作天下柔弱莫過於水。}}
+  2054	垢
+  2055	:{{*|古口反。}}
+  2056	和大怨
+  2057	:{{*|紆万反。}}
+  2058	契
+  2059	:{{*|苦計反。}}
+  2060	不令
+  2061	:{{*|力征反。}}
+  2062	伯
+  2063	:{{*|絕句。河上本。}}
+  2064	不貪貨賂
+  2065	:{{*|音路。}}
+  2066	輿
+  2067	:{{*|音餘。河上曰：車。}}
+  2068	使人復
+  2069	:{{*|音服，又扶又反。}}
+  2070	樂
+  2071	:{{*|音洛。}}
+  2072	人己
+  2073	:{{*|基倚反。}}
+  2074	愈
+  2075	:{{*|音與。}}
+  2076	而不爭
+  2077	:{{*|爭鬭之爭，注同。}}
+  2078	=注釋=
+  2079	<references />
+  2080	
+  2081	{{曹魏作品}}
+     1	{{header2
+     2	| title    = [[../]]
+     3	| section  = 卷六十三 老子韓非列傳 第三
+     4	| author   = 司馬遷
+     5	| previous = [[../卷062|管晏列傳 第二]]
+     6	| next     = [[../卷064|司馬穰苴列傳 第四]]
+     7	| notes    = [[史記三家註/卷063|註釋版]]；一題爲《老莊申韓列傳》。
+     8	}}
+     9	==老子==
+    10	{{wikipedia|老子}}
+    11	老子者，楚苦縣厲鄉曲仁里人也，姓李氏，名耳，字耼，周守藏室之史也。
+    12	
+    13	孔子適周，將問禮於老子。老子曰：「子所言者，其人與骨皆已朽矣，獨其言在耳。且君子得其時則駕，不得其時則蓬累而行。吾聞之，良賈深藏若虛，君子盛德容貌若愚。去子之驕氣與多欲，態色與淫志，是皆無益於子之身。吾所以告子，若是而已。」孔子去，謂弟子曰：「鳥，吾知其能飛；魚，吾知其能游；獸，吾知其能走。走者可以為罔，游者可以為綸，飛者可以為矰。至於龍，吾不能知其乘風雲而上天。吾今日見老子，其猶龍邪！」
+    14	
+    15	老子修道德，其學以自隱無名為務。居周久之，見周之衰，乃遂去。至關，關令尹喜曰：「子將隱矣，彊為我著書。」於是老子乃著書上下篇，言道德之意五千餘言而去，莫知其所終。
+    16	
+    17	或曰：老萊子亦楚人也，著書十五篇，言道家之用，與孔子同時云。
+    18	
+    19	蓋老子百有六十餘歲，或言二百餘歲，以其修道而養壽也。
+    20	
+    21	自孔子死之後百二十九年，而史記周太史儋見秦獻公曰：「始秦與周合，合五百歲而離，離七十歲而霸王者出焉。」或曰儋即老子，或曰非也，世莫知其然否。老子，隱君子也。
+    22	
+    23	老子之子名宗，宗為魏將，封於段干。宗子注，注子宮，宮玄孫假，假仕於漢孝文帝。而假之子解為膠西王卬太傅，因家于齊焉。
+    24	
+    25	世之學老子者則絀儒學，儒學亦絀老子。「道不同不相為謀」，豈謂是邪？李耳無為自化，清靜自正。
+    26	
+    27	==莊子==
+    28	{{wikipedia|莊子}}
+    29	莊子者，蒙人也，名周。周嘗為蒙漆園吏，與梁惠王、齊宣王同時。其學無所不闚，然其要本歸於老子之言。故其著書十餘萬言，大抵率寓言也。作漁父、盜跖、胠篋，以詆訿孔子之徒，以明老子之術。畏累虛、亢桑子之屬，皆空語無事實。然善屬書離辭，指事類情，用剽剝儒、墨，雖當世宿學不能自解免也。其言洸洋自恣以適己，故自王公大人不能器之。
+    30	
+    31	楚威王聞莊周賢，使使厚幣迎之，許以為相。莊周笑謂楚使者曰：「千金，重利；卿相，尊位也。子獨不見郊祭之犧牛乎？養食之數歲，衣以文繡，以入大廟。當是之時，雖欲為孤豚，豈可得乎？子亟去，無污我。我寧游戲污瀆之中自快，無為有國者所羈，終身不仕，以快吾志焉。」
+    32	
+    33	==申不害==
+    34	{{wikipedia|申不害}}
+    35	申不害者，京人也，故鄭之賤臣。學術以干韓昭侯，昭侯用為相。內修政教，外應諸侯，十五年。終申子之身，國治兵彊，無侵韓者。申子之學本於黃老而主刑名。著書二篇，號曰申子。
+    36	
+    37	==韓非==
+    38	{{wikipedia|韓非}}
+    39	韓非者，韓之諸公子也。喜刑名法術之學，而其歸本於黃老。非為人口吃，不能道說，而善著書。與李斯俱事荀卿，斯自以為不如非。
+    40	
+    41	非見韓之削弱，數以書諫韓王，韓王不能用。於是韓非疾治國不務修明其法制，執勢以御其臣下，富國彊兵而以求人任賢，反舉浮淫之蠹而加之於功實之上。以為儒者用文亂法，而俠者以武犯禁。寬則寵名譽之人，急則用介胄之士。今者所養非所用，所用非所養。悲廉直不容於邪枉之臣，觀往者得失之變，故作《[[韓非子/孤憤|孤憤]]》、《[[韓非子/五蠹|五蠹]]》、《[[韓非子/內儲說上七術|內外儲]]》、《[[韓非子/說林上|說林]]》、《[[韓非子/說難|說難]]》十餘萬言。
+    42	
+    43	然韓非知說之難，為《說難》書甚具，終死於秦，不能自脫。
+    44	
+    45	《[[韓非子/說難|說難]]》曰：
+    46	
+    47	{{Quote|凡說之難，非吾知之有以說之難也；又非吾辯之難能明吾意之難也；又非吾敢橫失能盡之難也。凡說之難，在知所說之心，可以吾說當之。
+    48	
+    49	所說出於為名高者也，而說之以厚利，則見下節而遇卑賤，必棄遠矣。所說出於厚利者也。而說之以名高，則見無心而遠事情，必不收矣。所說實為厚利而顯為名高者也，而說之以名高，則陽收其身而實疏之；若說之以厚利，則陰用其言而顯棄其身。此之不可不知也。
+    50	
+    51	夫事以密成，語以泄敗。未必其身泄之也，而語及其所匿之事，如是者身危。貴人有過端，而說者明言善議以推其惡者，則身危。周澤未渥也而語極知，說行而有功則德亡，說不行而有敗則見疑，如是者身危。夫貴人得計而欲自以為功，說者與知焉，則身危。彼顯有所出事，迺自以為也故，說者與知焉，則身危。彊之以其所必不為，止之以其所不能已者，身危。故曰：與之論大人，則以為閒己；與之論細人，則以為粥權。論其所愛，則以為借資；論其所憎，則以為嘗己。徑省其辭，則不知而屈之；汎濫博文，則多而久之。順事陳意，則曰怯懦而不盡；慮事廣肆，則曰草野而倨侮。此說之難，不可不知也。
+    52	
+    53	凡說之務，在知飾所說之所敬，而滅其所醜。彼自知其計，則毋以其失窮之；自勇其斷，則毋以其敵怒之；自多其力，則毋以其難概之。規異事與同計，譽異人與同行者，則以飾之無傷也。有與同失者，則明飾其無失也。大忠無所拂悟，辭言無所擊排，迺後申其辯知焉。此所以親近不疑，知盡之難也。得曠日彌久，而周澤既渥，深計而不疑，交爭而不罪，迺明計利害以致其功，直指是非以飾其身，以此相持，此說之成也。
+    54	
+    55	伊尹為庖，百里奚為虜，皆所由干其上也。故此二子者，皆聖人也，猶不能無役身而涉世如此其汙也，則非能仕之所設也。
+    56	
+    57	宋有富人，天雨牆壞。其子曰「不築且有盜」，其鄰人之父亦云，暮而果大亡其財，其家甚知其子而疑鄰人之父。昔者鄭武公欲伐胡，迺以其子妻之。因問群臣曰： 「吾欲用兵，誰可伐者？」關其思曰：「胡可伐。」迺戮關其思，曰：「胡，兄弟之國也，子言伐之，何也？」胡君聞之，以鄭為親己而不備鄭。鄭人襲胡，取之。此二說者，其知皆當矣，然而甚者為戮，薄者見疑。非知之難也，處知則難矣。
+    58	
+    59	昔者彌子瑕見愛於衛君。衛國之法，竊駕君車者罪至刖。既而彌子之母病，人聞，往夜告之，彌子矯駕君車而出。君聞之而賢之曰：「孝哉，為母之故而犯刖罪！」與君游果園，彌子食桃而甘，不盡而奉君。君曰：「愛我哉，忘其口而念我！」及彌子色衰而愛弛，得罪於君。君曰：「是嘗矯駕吾車，又嘗食我以其餘桃。」故彌子之行未變於初也，前見賢而後獲罪者，愛憎之至變也。故有愛於主，則知當而加親；見憎於主，則罪當而加疏。故諫說之士不可不察愛憎之主而後說之矣。
+    60	
+    61	夫龍之為蟲也，可擾狎而騎也。然其喉下有逆鱗徑尺，人有嬰之，則必殺人。人主亦有逆鱗，說之者能無嬰人主之逆鱗，則幾矣。}}
+    62	
+    63	人或傳其書至秦。秦王見《孤憤》、《五蠹》之書，曰：「嗟乎，寡人得見此人與之游，死不恨矣！」李斯曰：「此韓非之所著書也。」秦因急攻韓。韓王始不用非，及急，乃遣非使秦。秦王悅之，未信用。李斯、姚賈害之，毀之曰：「韓非，韓之諸公子也。今王欲并諸侯，非終為韓不為秦，此人之情也。今王不用，久留而歸之，此自遺患也，不如以過法誅之。」秦王以為然，下吏治非。李斯使人遺非藥，使自殺。韓非欲自陳，不得見。秦王後悔之，使人赦之，非已死矣。
+    64	
+    65	申子、韓子皆著書，傳於後世，學者多有。余獨悲韓子為說難而不能自脫耳。
+    66	
+    67	==評論==
+    68	太史公曰：老子所貴道，虛無，因應變化於無為，故著書辭稱微妙難識。莊子散道德，放論，要亦歸之自然。申子卑卑，施之於名實。韓子引繩墨，切事情，明是非，其極慘礉少恩。皆原於道德之意，而老子深遠矣。
+
+exec
+/bin/bash -lc "cat /home/smoke01/.agents/skills/requirement-check/SKILL.md; sed -n '600,890p' runs/20261013-four-seats/sources/lao-tzu/silk.txt; rg -n '"'^(=|曲則|.*知不知|.*將欲翕|.*為學|.*居善地|.*自知者|.*功遂|.*明道|.*天下神器|.*為之於未有|.*慎終|.*圖難|.*吾所以有|.*不自|.*善為士)'"' 'runs/20261013-four-seats/sources/lao-tzu/道德經__王弼本_.txt'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+---
+name: requirement-check
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, unattributed or impossible to check.
+---
+
+# Requirement check
+
+A general standard (RFC 2119 / 8174), installed globally — not part of the Ancient Games framework. The
+worked failure in `meaningful-names` cites the Ancient Games as one example.
+
+A short gate between **hearing a rule** and **acting on it**. It exists because rules get written down that nobody
+can trace, that count two different things at once, or that nothing can ever fail — and the cost lands months later,
+when nobody can say whether the rule still means anything.
+
+Run it when someone states a rule, and run it on yourself before writing a normative line into any document.
+
+## The eight questions
+
+Ask them of **one statement**. Say which it passes and which it fails, then **ask the person about the failures** —
+do not fill the gaps yourself.
+
+1. **Source.** Who said this, and where? Can you point to the exact line? *"Mine"* is a valid answer. Unlabelled is
+   not.
+2. **One thing.** An "and", an "or", a "/", or a second number means it is **two** statements. Split them, and give
+   each its own source.
+3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
+   files?
+4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
+   failing inputs. If you cannot name one, it is not checkable — it is a wish.
+5. **Weak words.** *like, about, appropriate, as needed, logical, fast, enough, reasonable, only has to, TBD.* Replace
+   each with a value, **or mark the value open**. Never invent the number.
+6. **Level.** Is it **MUST** (a gate that stops work), **SHOULD** (a default that may be overridden with a stated
+   reason), or **guidance**? A safety bound earns MUST. **A method does not** — see the RFC note below.
+7. **Basis.** Measured, quoted from a source, or a guess? A guess is fine **if it is labelled** — `n=0`, with when it
+   will be looked at again.
+8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
+   part"*? The person probably did not say that. **A link is its own claim and needs its own source.**
+
+## Two rules for the agent
+
+- **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
+  is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
+  the time anyone notices.
+- **Never add structure that was not given.** No halves, no numbered reasons, no ordered pairs, no named phases,
+  unless the person said so. Quote them, state the operative sentence, stop. If a relationship between two rules is
+  wanted, that is a separate claim with its own evidence.
+
+## Two verified facts, worth quoting
+
+- **RFC 2119 §6, "Guidance in the use of these Imperatives":** imperatives *"must be used with care and sparingly…
+  they MUST only be used where it is actually required… they must not be used to try to impose a particular method."*
+  Most design rules are method. Method does not earn MUST.
+- **RFC 8174 (updates 2119):** the key words *"have the meanings specified herein only when they are in all
+  capitals."* Lowercase *must* and *should* carry no defined requirement meaning. If nothing marks which lines are
+  requirements, a reader cannot tell rules from explanation.
+
+## How to answer
+
+Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
+one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+
+Do not report a rule as complete when you chose its missing value. Say which values you left open.
+
+## A worked failure
+
+> *"At most 5 subagent roles per run and at most 3 running at once."*
+
+Four of the eight fail: **Source** — nobody could name one; **One thing** — a count of roles *and* a count of
+concurrent processes; **Unit** — two different units, one word ("subagent") used for both; **Level** — a method
+preference written as a cap. The sentence would not parse, and it took four days to find out why. The checklist
+catches it in thirty seconds.
+
+The same checklist, run on *"No single call runs longer than the ceiling: 8 hours"*, passes all eight — because it
+names who set it, counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail.
+
+## Limits
+
+The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
+feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
+and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
+paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
+quotes are checked. Treat the rest as a good working list, not as a citation.
+
+Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.
+
+寵辱若驚 貴大患若身 
+
+何謂寵辱若驚 寵之為下 得之若驚 失之若驚 是謂寵辱若驚 
+
+何謂貴大患若身 吾所以有大患者 為吾有身也 及吾无身 有何患 
+
+故貴為身於為天下 若可以托天下矣 愛以身為天下 如可以寄天下矣
+
+===第五十八章 道紀===
+（14）
+
+視之而弗見 名之曰微 聽之而弗聞 名之曰希 捪之而弗得 名之曰夷 三者不可至計 故混而為一 
+
+一者 亓上不攸 亓下不忽 尋尋呵 不可名也 復歸於无物 
+
+是謂无狀之狀 无物之象 是謂惚恍 隨而不見亓後 迎而不見亓首 
+
+執今之道 以御今之有 以知古始 是謂道紀 
+
+===第五十九章 不盈===
+（15）
+
+古之善為道者 微眇玄達 深不可志 夫唯不可志 故強為之容 曰 
+
+與呵亓若冬涉水 猶呵亓若畏四鄰 儼呵亓若客 渙呵亓若淩澤 沌呵亓若樸 湷呵亓若濁 莊呵亓若浴 
+
+濁而情之余清 安以重之余生 
+
+葆此道不欲盈 夫唯不欲盈 是以能敝而不成 
+
+===第六十章 歸根===
+（16）
+
+至虛極也 守情表也 萬物旁作 吾以觀亓復也 
+
+天物雲雲 各復歸於亓根 曰靜 靜是謂復命 復命常也 知常明也
+
+不知常 妄 妄作兇
+
+知常容 容乃公 公乃王 王乃天 天乃道 道乃久 歿身不殆
+
+===第六十一章 知有===
+（17）
+
+太上 下知有之 亓次親譽之 亓次畏之 亓下侮之 
+
+信不足 案有不信 猶呵 亓貴言也 
+
+成功遂事 而百姓謂我自然
+
+===第六十二章 四有===
+（18）
+
+故大道廢 安有仁義 
+
+知慧出 安有大僞 
+
+六親不和 安有孝茲 
+
+邦家昏亂 安有正臣 
+
+===第六十三章 樸素===
+（19）
+
+絕知棄辯 民利百倍 
+
+絕僞棄慮 民復孝茲 
+
+絕巧棄利 盜賊无有 
+
+此三言也 以為文未足 故令之有所屬 
+
+見素抱樸 少私寡欲 絕學无憂 
+
+===第六十四章 食母===
+（20）
+
+唯與訶 亓相去幾何 美與惡 亓相去何若 
+
+人之所畏 亦不可以不畏人 
+
+朢呵 亓未央哉 
+
+眾人巸巸 若鄉於大牢 而春登臺 
+
+我泊焉未兆 若嬰兒未咳 纍呵 似无所歸 
+
+眾人皆有餘 我獨遺 我愚人之心也 湷湷呵 鬻人昭昭 我獨呵 鬻人蔡蔡 我獨悶悶呵 
+
+忽呵 亓若海 朢呵 亓若无所止 
+
+眾人皆有以 我獨頑以悝 吾欲獨異於人 而貴食母 
+
+===第六十五章 從道===
+（21）
+
+孔德之容 唯道是從 道之物 唯朢唯忽 
+
+忽呵望呵 中有象呵 朢呵忽呵 中有物呵 幽呵鳴呵 中有請呵 亓請甚真 亓中有信 
+
+自今及古 亓名不去 以順眾父
+
+吾何以知眾父之然 以此
+
+===第六十六章 弗居===
+（24）
+
+炊者不立 自視者不彰 自見者不明 自伐者无功 自矜者不長 
+
+亓在道也 曰餘食贅行 物或惡之 故有欲者弗居 
+
+===第六十七章 執一===
+（22）
+
+曲則全 枉則正 洼則盈 敝則新 少則得 多則惑 
+
+是以聖人執一以為天下牧 
+
+不自視故彰 不自見故明 不自伐故有功 弗矜故能長 
+
+夫唯不爭 故莫能與之爭 
+
+古之所謂曲全者 幾語才 誠全歸之
+
+===第六十八章 同道===
+（23）
+
+希言自然 
+
+飄風不終朝 暴雨不終日 
+
+孰為此 天地而弗能久 又況於人乎 
+
+故從事而道者同於道 德者同於德 失者同於失 
+
+同於德者 道亦德之 同於失者 道亦失之 
+
+===第六十九章 昆成===
+（25）
+
+有物昆成 先天地生 
+
+繡呵繆呵 獨立而不改 可以為天地母 
+
+吾未知亓名 字之曰道 吾強為之名曰大 
+
+大曰筮 筮曰遠 遠曰反 
+
+道大 天大 地大 王亦大 
+
+國中有四大 而王居一焉 
+
+人法地 地法天 天法道 道法自然
+
+===第七十章 輜重===
+（26）
+
+重為巠根 靜爲躁君 
+
+是以君子眾日行 不離亓甾重 
+
+唯有環官 燕處則昭若 
+
+若何萬乘之王 而以身巠於天下 
+
+巠則失本 躁則失君
+
+===第七十一章 曳明===
+（27）
+
+善行者无轍迹 善言者无瑕適 善數者不用檮策 善閉者无關籥而不可啟也 善結者无纆約而不可解也 
+
+是以聖人恆善救人 而无棄人 物无棄財 是謂曳明 
+
+故善人 善人之師 不善人 善人之齎也 
+
+不貴亓師 不愛亓齎 唯知乎大眯 是謂眇要
+
+===第七十二章 恆德===
+（28）
+
+知亓雄 守亓雌 為天下溪 為天下溪 恆德不離 恆德不離 復歸嬰兒 
+
+知亓白 守亓辱 為天下浴 為天下浴 恆德乃足 德乃足 復歸於樸 
+
+知亓白 守亓黑 為天下式 為天下式 恆德不忒 恆德不忒 復歸於无極 
+
+樸散則為器 聖人用則為官長 夫大制无割
+
+===第七十三章 自然===
+（29）
+
+將欲取天下而為之 吾見亓弗得已 
+
+夫天下 神器也 非可為者也 
+
+為者敗之 執者失之 
+
+物或行或隨 或炅或吹 或強或䂳 或培或橢 
+
+是以聖人去甚 去大 去楮 
+
+===第七十四章 不強===
+（30）
+
+以道佐人主 不以兵強於天下 亓事好還 
+
+師之所居 楚棘生之 
+
+善者果而已矣 毋以取強焉 
+
+果而毋驕 果而勿矜 果而勿伐 果而毋得已居 是謂果而不強 
+
+物壯而老 是謂之不道 不道蚤已 
+
+===第七十五章 貴左===
+（31）
+
+夫兵者 不祥之器也 物或惡之 故有欲者弗居 
+
+君子居則貴左 用兵則貴右 
+
+故兵者 非君子之器也 兵者 不祥之器也 不得已而用之 銛龐為上 
+
+勿美也 若美之 是樂殺人也 
+
+夫樂殺人 不可以得志於天下矣 
+
+是以吉事上左 喪事上右 
+
+是以偏將軍居左 上將軍居右 言以喪禮居之也 
+
+殺人眾 以悲依立之 戰勝 以喪禮處之 
+
+===第七十六章 知止===
+（32）
+
+道恆无名 
+
+楃唯小 而天下弗敢臣 
+
+侯王若能守之 萬物將自賓 天地相合 以俞甘洛 民莫之令而自均焉 
+
+始制有名 名亦既有 夫亦將知止 知止所以不殆 
+
+俾道之在天下也 猶小浴之與江海也 
+
+===第七十七章 盡己===
+（33）
+
+知人者 知也 自知者 明也 
+
+勝人者 有力也 自勝者 強也 
+
+知足者 富也 強行者 有志也 
+
+不失亓所者 久也 死不忘者 壽也 
+
+===第七十八章 成大===
+（34）
+
+道渢呵 亓可左右也 
+
+成功遂事 而弗名有也 萬物歸焉而弗為主 
+
+則恆无欲也 可名於小 萬物歸焉而弗為主 可名於大 
+
+是以聖人之能成大也 以亓不為大也 故能成大 
+
+===第七十九章 大象===
+（35）
+
+執大象 天下往 往而不害 安平大 
+
+樂與餌 過格止 
+
+故道之出言也 曰淡呵亓無味也 視之不足見也 聽之不足聞也 用之不可既也
+
+===第八十章 微明===
+（36）
+
+將欲翕之 必固張之 將欲弱之 必固強之 將欲去之 必固與之 將欲奪之 必固予之 是謂微明 
+
+柔弱勝強 
+
+魚不可脫於淵 邦利器不可以示人 
+
+===第八十一章 无名===
+（37）
+
+12:=老子《道德經》上篇=
+15:==一章==
+27:==二章==
+38:==三章==
+50:==四章==
+53:==五章==
+62:==六章==
+66:==七章==
+67:天長地久。天地所以能長且久者，以其不自生，
+68::{{*|自生則與物爭，不自生則物歸也。}}
+71:==八章==
+76:居善地，心善淵，與善仁，言善信，正善治，事善能，動善時。夫唯不爭，故無尤。
+78:==九章==
+87:功遂身退，天之道。
+89:==十章==
+108:==十一章==
+113:==十二章==
+120:==十三章==
+125:吾所以有大患者，為吾有身，
+133:==十四章==
+144:==十五章==
+145:古之善為士者，微妙玄通，深不可識。夫唯不可識，故強為之容。豫焉若冬涉川，
+157:==十六章==
+181:==十七章==
+195:==十八章==
+202:==十九章==
+205:==二十章==
+207::{{*|下篇，為學者日益，為道者日損。然則學求益所能，而進其智者也，若將無欲而足，何求於益。不知而中，何求於進。夫燕雀有匹，鳩鴿有仇，寒鄉之民，必知旃裘，自然已足，益之則憂。故續鳧之足，何異截鶴之脛，畏譽而進，何異畏刑。唯阿美惡，相去何若？故人之所畏，吾亦畏焉，未敢恃之以為用也。}}
+236:==二十一章==
+253:==二十二章==
+254:曲則全，
+255::{{*|不自見其明則全也。}}
+257::{{*|不自是則其是彰也。}}
+259::{{*|不自伐則其功有也。}}
+261::{{*|不自矜則其德長也。}}
+266:不自見故明，不自是故彰，不自伐故有功，不自矜故長。夫唯不爭，故天下莫能與之爭。古之所謂曲則全者，豈虛言哉！誠全而歸之。
+267:==二十三章==
+282:==二十四章==
+288:==二十五章==
+313:==二十六章==
+322:==二十七章==
+340:==二十八章==
+355:==二十九章==
+356:將欲取天下而為之，吾見其不得已。天下神器，
+362:==三十章==
+377:==三十一章==
+379:==三十二章==
+388:==三十三章==
+389:知人者智，自知者明。
+390::{{*|知人者，智而已矣，未若自知者超智之上也。}}
+401:==三十四章==
+408:以其終不自為大，故能成其大。
+409::{{*|為大於其細，圖難於其易。}}
+410:==三十五章==
+417:==三十六章==
+422:==三十七章==
+433:=老子《道德經》下篇=
+436:==三十八章==
+439:==三十九章==
+448:==四十章==
+455:==四十一章==
+460:明道若昧，
+486:==四十二章==
+493:==四十三章==
+499:==四十四章==
+509:==四十五章==
+523:==四十六章==
+530:==四十七章==
+539:==四十八章==
+540:為學日益，
+552:==四十九章==
+564:==五十章==
+569:==五十一章==
+582:==五十二章==
+602:==五十三章==
+613:==五十四章==
+628:==五十五章==
+646:==五十六章==
+667:==五十七章==
+678:==五十八章==
+698::{{*|以光鑑其所以迷，不以光照求其隱慝也，所謂明道若昧也，此皆崇本以息末，不攻而使復之也。}}
+699:==五十九章==
+713:==六十章==
+724:==六十一章==
+744:==六十二章==
+761:==六十三章==
+766:圖難於其易，為大於其細；天下難事必作於易，天下大事必作於細。是以聖人終不為大，故能成其大。夫輕諾必寡信，多易必多難。是以聖人猶難之，
+769:==六十四章==
+773::{{*|雖失無入有，以其微脆之故，未足以興大功，故易也。此四者，皆說慎終也。不可以無之故而不持，不可以微之故而弗散也。無而弗持則生有焉，微而不散則生大焉。故慮終之患，如始之禍，則無敗事。}}
+774:為之於未有，
+779::{{*|當以慎終除微，慎微除亂，而以施為治之，形名執之，反生事原，巧辟滋作，故敗失也。}}
+781::{{*|不慎終也。}}
+782:慎終如始，則無敗事。是以聖人欲不欲，不貴難得之貨；
+787:==六十五章==
+799:==六十六章==
+802:==六十七章==
+818:==六十八章==
+819:善為士者不武，
+828:==六十九章==
+839:==七十章==
+850:==七十一章==
+851:知不知上，不知知病。
+854:==七十二章==
+858::{{*|不自厭也。}}
+860::{{*|不自厭，是以天下莫之厭。}}
+861:是以聖人自知不自見，
+862::{{*|不自見其所知，以光耀行威也。}}
+863:自愛不自貴；
+866:==七十三章==
+884:==七十四章==
+890:==七十五章==
+893:==七十六章==
+905:==七十七章==
+913:==七十八章==
+917:==七十九章==
+927:==八十章==
+937:==八十一章==
+956:=跋<ref name="按跋"> 編者按：原跋文二篇，無題目，文緊附於經文之末，較每行較經文減二字行之。</ref>=
+957:=晁說之跋<ref name="按跋" />=
+962:=熊克跋<ref name="按跋" />=
+969:=經典釋文<ref name="音義"> 按：此部陸德明撰的《老子道經音義》、《老子德經音義》附於《四部備要》本中，一併收錄。</ref>=
+970:==老子道經音義==
+1111:功遂
+1536:以其終不自為大
+1566:==老子德經音義==
+2078:=注釋=
+
+codex
+Several rules add steps the passages do not state, including an ordered checklist, a “cheap beginning and end” model, and a final “stop” step in the reversal rule. I’m using the requirement-check skill to check those added structures against the sources; Guodian claims are not checkable here because no Guodian text or chapter table is in the supplied folder.
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('runs/20261013-four-seats/sources/lao-tzu/道德經__王弼本_.txt')
+lines=p.read_text().splitlines()
+ranges=[(27,38),(71,89),(108,133),(253,288),(355,362),(388,401),(417,433),(455,486),(539,552),(761,787),(802,839),(850,854),(937,956),(1540,1566)]
+for a,b in ranges:
+ for i in range(a-1,b-1):
+  if '{{*|' not in lines[i]: print(f'{i+1}: {lines[i]}')
+PY
+rg -n '簡文作歙|簡文作不|明道若昧|大器晚成|殷|免' 'runs/20261013-four-seats/sources/lao-tzu/道德經__王弼本_.txt'; nl -ba runs/20261013-four-seats/sources/lao-tzu/silk.txt | sed -n '875,910p'" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+27: ==二章==
+28: 天下皆知美之為美，斯惡已。皆知善之為善，斯不善已。故有無相生，難易相成，長短相較，高下相傾，音聲相和，前後相隨。
+30: 是以聖人處無為之事，
+32: 行不言之教；萬物作焉而不辭，生而不有，為而不恃，
+34: 功成而弗居。
+36: 夫唯弗居，是以不去。
+71: ==八章==
+72: 上善若水。水善利萬物而不爭，處眾人之所惡，
+74: 故幾於道。
+76: 居善地，心善淵，與善仁，言善信，正善治，事善能，動善時。夫唯不爭，故無尤。
+78: ==九章==
+79: 持而盈之，不如其已；
+81: 揣而梲之，不可長保。
+83: 金玉滿堂，莫之能守；
+85: 富貴而驕，自遺其咎。
+87: 功遂身退，天之道。
+108: ==十一章==
+109: 三十輻共一轂，當其無，有車之用。
+111: 埏埴以為器，當其無，有器之用。鑿戶牖以為室，當其無，有室之用。故有之以為利，無之以為用。
+113: ==十二章==
+114: 五色令人目盲，五音令人耳聾，五味令人口爽，馳騁畋獵令人心發狂，
+116: 難得之貨令人行妨。
+118: 是以聖人為腹不為目，故去彼取此。
+120: ==十三章==
+121: 寵辱若驚，貴大患若身。何謂寵辱若驚？寵為下，得之若驚，失之若驚，是謂寵辱若驚。
+123: 何謂貴大患若身？
+125: 吾所以有大患者，為吾有身，
+127: 及吾無身，
+129: 吾有何患？故貴以身為天下，若可寄天下；
+131: 愛以身為天下，若可託天下。
+253: ==二十二章==
+254: 曲則全，
+256: 枉則直，
+258: 窪則盈，
+260: 敝則新，
+262: 少則得，多則惑。
+264: 是以聖人抱一為天下式。
+266: 不自見故明，不自是故彰，不自伐故有功，不自矜故長。夫唯不爭，故天下莫能與之爭。古之所謂曲則全者，豈虛言哉！誠全而歸之。
+267: ==二十三章==
+268: 希言自然。
+270: 故飄風不終朝，驟雨不終日。孰為此者？天地。天地尚不能久，而況於人乎？
+272: 故從事於道者，道者同於道，
+274: 德者同於德，
+276: 失者同於失。
+278: 同於道者，道亦樂得之；同於德者，德亦樂得之；同於失者，失亦樂得之。
+280: 信不足焉，有不信焉。
+282: ==二十四章==
+283: 企者不立，
+285: 跨者不行，自見者不明，自是者不彰，自伐者無功，自矜者不長。其在道也，曰餘食贅行。
+287: 物或惡之，故有道者不處。
+355: ==二十九章==
+356: 將欲取天下而為之，吾見其不得已。天下神器，
+358: 不可為也，為者敗之，執者失之。
+360: 故物或行或隨，或歔或吹。或強或羸，或挫或隳。是以聖人去甚，去奢，去泰。
+388: ==三十三章==
+389: 知人者智，自知者明。
+391: 勝人者有力，自勝者強。
+393: 知足者富。
+395: 強行者有志。
+397: 不失其所者久。
+399: 死而不亡者壽。
+417: ==三十六章==
+418: 將欲歙之，必固張之；將欲弱之，必固強之；將欲廢之，必固興之；將欲奪之，必固與之。是謂微明。
+420: 柔弱勝剛強。魚不可脫於淵，國之利器不可以示人。
+422: ==三十七章==
+423: 道常無為
+425: 而無不為。
+427: 侯王若能守之，萬物將自化。化而欲作，吾將鎮之以無名之樸。
+429: 無名之樸，夫亦將無欲。
+431: 不欲以靜，天下將自定。
+432: 
+455: ==四十一章==
+456: 上士聞道，勤而行之；
+458: 中士聞道，若存若亡；下士聞道，大笑之。不笑不足以為道。故建言有之﹕
+460: 明道若昧，
+462: 進道若退，
+464: 夷道若纇，
+466: 上德若谷，
+468: 大白若辱，
+470: 廣德若不足，
+472: 建德若偷，
+474: 質真若渝，
+476: 大方無隅，
+478: 大器晚成，
+480: 大音希聲，
+482: 大象無形，
+484: 道隱無名。夫唯道，善貸且成。
+539: ==四十八章==
+540: 為學日益，
+542: 為道日損。
+544: 損之又損，以至於無為。無為而無不為。
+546: 取天下常以無事，
+548: 及其有事，
+550: 不足以取天下。
+761: ==六十三章==
+762: 為無為，事無事，味無味。
+764: 大小多少，報怨以德。
+766: 圖難於其易，為大於其細；天下難事必作於易，天下大事必作於細。是以聖人終不為大，故能成其大。夫輕諾必寡信，多易必多難。是以聖人猶難之，
+768: 故終無難矣
+769: ==六十四章==
+770: 其安易持，其未兆易謀。
+772: 其脆易泮，其微易散。
+774: 為之於未有，
+776: 治之於未亂。
+778: 合抱之木，生於毫末；九層之臺，起於累土；千里之行，始於足下。為者敗之，執者失之。
+780: 是以聖人無為故無敗，無執故無失。民之從事，常於幾成而敗之。
+782: 慎終如始，則無敗事。是以聖人欲不欲，不貴難得之貨；
+784: 學不學，復眾人之所過。
+786: 以輔萬物之自然，而不敢為。
+802: ==六十七章==
+803: 天下皆謂我道大，似不肖。夫唯大，故似不肖。若肖，久矣其細也夫！
+805: 我有三寶，持而保之。一曰慈，二曰儉，三曰不敢為天下先。
+806: 慈故能勇，
+808: 儉故能廣，
+810: 不敢為天下先，故能成器長。
+812: 今舍慈且勇，
+814: 舍儉且廣，舍後且先，死矣！
+815: 夫慈以戰則勝，
+817: 以守則固。天將救之，以慈衛之。
+818: ==六十八章==
+819: 善為士者不武，
+821: 善戰者不怒，
+823: 善勝敵者不與，
+825: 善用人者為之下，是謂不爭之德，是謂用人之力，
+827: 是謂配天古之極。
+828: ==六十九章==
+829: 用兵有言﹕「吾不敢為主而為客，不敢進寸而退尺。」是謂行無行，
+831: 攘無臂，扔無敵，
+833: 執無兵。
+834: 禍莫大於輕敵，輕敵幾喪吾寶。
+836: 故抗兵相加，哀者勝矣。
+838: 
+850: ==七十一章==
+851: 知不知上，不知知病。
+853: 夫唯病病，是以不病。聖人不病，以其病病，是以不病。
+937: ==八十一章==
+938: 信言不美，
+940: 美言不信。
+942: 善者不辯，辯者不善。
+943: 知者不博，
+945: 博者不知。
+946: 聖人不積，
+948: 既以為人己愈有，
+950: 既以與人己愈多。
+952: 天之道，利而不害；
+954: 聖人之道，為而不爭。
+1540: 樂
+1542: 餌
+1544: 過
+1546: 道之出
+1548: 淡
+1550: 說
+1552: 令
+1554: 中
+1556: 將欲㒆
+1558: 去
+1560: 脫
+1562: 吾將鎮之以無名之樸夫亦將無
+1564: 欲
+52::{{*| 夫執一家之量者，不能全家。執一國之量者，不能成國。窮力舉重，不能為用，故人雖知，萬物治也，治而不以二儀之道，則不能贍也。地雖形魄，不法於天則不能全其寧。天雖精象，不法於道則不能保其精。沖而用之，用乃不能窮，滿以造實，實來則溢，故沖而用之，又復不盈，其為無窮亦已極矣。形雖大，不能累其體，事雖殷，不能充其量，萬物舍此而求主，主其安在乎。不亦淵兮似萬物之宗乎。銳挫而無損，紛解而不勞，和光而不汙，其體同塵而不渝其真，不亦湛兮似或存乎。地守其形，德不能過其載，天慊其象，德不能過其覆，天地莫能及之，不亦似帝之先乎。帝，天帝也。}}
+294::{{*|周行無所不至而免殆，能生全大形也，故可以為天下母也。}}
+438::{{*|德者，得也。常得而無喪，利而無害，故以德為名焉。何以得德？由乎道也。何以盡德？以無為用。以無為用則莫不載也，故物無焉，則無物不經，有焉，則 不足以免其生。是以天地雖廣，以無為心。聖王雖大，以虛為主。故曰，以復而視，則天地之心見。至日而思之，則先王之至覩也。故滅其私而無其身，則四海莫不瞻，遠近莫不至。殊其己而有其心，則一體不能自全，肌骨不能相容，是以上德之人，唯道是用。不德其德，無執無用，故能有德而無不為，不求而得，不為而成， 故雖有德而無德名也。下德求而得之，為而成之，則立善以治物，故德名有焉。求而得之必有失焉，為而成之必有敗焉，善名生則有不善應焉，故下德為之而有以為也。無以為者，無所徧為也。凡不能無為而為之者，皆下德也。仁義禮節是也，將明德之上下，輒舉下德以對上德，至於無以為，極下德下之量，上仁是也，足及於無以為而猶為之焉。為之而無以為，故有為，為之患矣。本在無為，母在無名，棄本捨母而適其子，功雖大焉，必有不濟。名雖美焉，偽亦必生。不能不為而成，不興而治，則乃為之，故有宏普博施仁愛之者，而愛之無所偏私，故上仁為之而無以為也。愛不能兼，則有抑抗正真而義理之者，忿枉祐直，助彼攻此物事而有以心為矣，故上義為之而有以為也。直不能篤，則有游飾修文，禮敬之者，尚好修敬，校責往來，則不對之閒，忿怒生焉。故上禮為之而莫之應，則攘臂而扔之。夫大之極也，其唯道乎，自此已往，豈足尊哉。故雖盛業大富而有萬物，猶各得其德，雖貴以無為用，不能捨無以為體也。不能捨無以為體，則失其為大矣。所謂失道而後德也。以無為用，德其母，故能己不勞焉而物無不理。下此已往，則失用之母，不能無為而貴博施，不能博施而貴正直，不能正直而貴飾敬，所謂失德而後仁，失仁而後義，失義而後禮也。夫禮也，所始首於忠信不篤，通簡不陽，責備於表，機微爭制，夫仁義發於內，為之猶偽，況務外飾而可久乎。故夫禮者，忠信之薄而亂之首也。前識者，前人而識也，即下德之倫也。竭其聰明以為前識，役其智力以營庶事，雖德其情，姦巧彌密，雖豐其譽，愈喪篤實。勞而事昬，務而治薉，雖竭聖智，而民愈害。舍己任物，則無為而泰。守夫素樸，則不順典制，聽彼所獲，棄此所守，識道之華，而愚之首，故茍得其為功之母，則萬物作焉而不辭也。萬事存焉而不勞也，用不以形，御不以名，故仁義可顯，禮敬可彰也。夫載之以大道，鎮之以無名，則物無所尚，志無所營，各任其貞，事用其誠，則仁德厚焉，行義正焉，禮敬清焉，棄其所載，舍其所生，用其成形，役其聰明，仁則誠焉，義其競焉，禮其爭焉，故仁德之厚，非用仁之所能也，行義之正，非用義之所成也。禮敬之清，非用禮之所濟也。載之以道，統之以母，故顯之而無所尚，彰之而無所競。用夫無名，故名以篤焉。用夫無形，故形以成焉。守母以存其子，崇本以舉其末，則形名俱有，而邪不生。大美配天而華不作，故母不可遠，本不可失。仁義，母之所生，非可以為母。形器，匠之所成，非可以為匠也。捨其母而用其子，棄其本而適其末，名則有 所分，形則有所止，雖極其大，必有不周，雖盛其美，必有憂患，功在為之，豈足處也。}}
+460:明道若昧，
+478:大器晚成，
+698::{{*|以光鑑其所以迷，不以光照求其隱慝也，所謂明道若昧也，此皆崇本以息末，不攻而使復之也。}}
+754::{{*|不善當保道以免放。}}
+759:古之所以貴此道者何？不曰以求得，有罪以免邪？故為天下貴。
+760::{{*|以求則得求，以免則得免，無所而不施，故為天下貴也。}}
+975::{{*|劉向《列仙傳》云受學於容成，生殷時。}}
+1557::{{*|簡文作歙，又作洽。河上本作㬛也，許及反。顧云：閉塞也。}}
+1563::{{*|簡文作不。}}
+   875	樂與餌 過格止 
+   876	
+   877	故道之出言也 曰淡呵亓無味也 視之不足見也 聽之不足聞也 用之不可既也
+   878	
+   879	===第八十章 微明===
+   880	（36）
+   881	
+   882	將欲翕之 必固張之 將欲弱之 必固強之 將欲去之 必固與之 將欲奪之 必固予之 是謂微明 
+   883	
+   884	柔弱勝強 
+   885	
+   886	魚不可脫於淵 邦利器不可以示人 
+   887	
+   888	===第八十一章 无名===
+   889	（37）
+   890	
+   891	道恆无名 
+   892	
+   893	侯王若守之 萬物將自化 
+   894	
+   895	化而欲作 吾將貞之以无名之樸 
+   896	
+   897	貞之以无名之樸 夫將不辱 
+   898	
+   899	不辱以靜 天地將自正
+   900	</onlyinclude>
+   901	{{PD-old}}
+
+codex
+# lao-tzu — codex review of the top 12
+
+## Per item
+
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+| 1 | ok | issue | ok | not checkable | change | 王弼 ch. 48 and `silk.txt:117–119` contain the quoted contrast and repeated subtraction. They do not instruct the reader to **first add knowledge, then subtract doing**, or say every act is a loss. Keep the repeated subtraction; remove the invented combined sequence. The silk passage is **chapter 11**, corresponding to received ch. 48, not silk chapter 48. |
+| 2 | ok | issue | issue | issue | change | 王弼 ch. 13 and `silk.txt:604` contain 為吾有身. Neither says to inspect personal stakes before trusting advice, or excludes the situation and other people as causes of error. That is a modern application, not the quoted rule. As sourced, this is closer to a mindset; its placement above more explicit prescriptions is unsupported. |
+| 3 | ok | issue | ok | not checkable | change | 王弼 ch. 29 and `silk.txt:797–805` support avoiding coercive possession and dropping excess. **“Aim at a part”** is absent: a warning against working on 天下 does not establish permission or a method for working on its parts. Remove that instruction. |
+| 4 | ok | issue | issue | issue | change | The quotation follows silk ch. 67, including 不自視故彰，不自見故明. It does not prescribe these practices **“in this order,”** and “don't look at yourself” turns a warning about self-display into a ban on self-examination. These are parallel restraints, better classified as a mindset or decision rules. It overlaps #7 on credit and #11 on non-contention. |
+| 5 | ok | issue | issue | not checkable | change | 王弼 chs. 63–64 support addressing difficulty while small and 慎終如始. They never call the end **cheap**, the middle **expensive**, or identify a final single step. Preserve early preparation and sustained care through completion as distinct rules; the combined passage does not establish an ordered algorithm. |
+| 6 | ok | issue | ok | not checkable | change | 王弼 ch. 41 contains the quoted images, with 建德若偷 omitted from the selection; `silk.txt:47` carries variants. Neither supplies an outcome-based test or the absolute instruction **“never” judge appearances**. Keep the mindset that apparent retreat or inadequacy can accompany the Way; label the proposed evaluation method as an application. The loan-character conclusions are not checkable here. |
+| 7 | ok | issue | ok | issue | change | 王弼 chs. 9 and 2 support 功遂身退 and 功成而弗居. **“Running without you”** adds a condition, and “stop attending to it” extends withdrawal beyond what the passage states. Keep accomplishment followed by withdrawal and non-appropriation. It overlaps #4; distinguish withdrawal from avoiding self-display. |
+| 8 | ok | issue | ok | not checkable | change | The quotation matches `silk.txt:882`. 王弼 ch. 36 instead has 廢／興. **“Retire it, promote it first”** follows that received pair, not the quoted silk 去／與 pair. **“Then stop and let the thing move against you”** occurs in neither witness. Keep the conditional reversal pairs without this added ending. |
+| 9 | ok | issue | ok | not checkable | change | 王弼 ch. 71 contains the quotation; `silk.txt:384–386` has 不知不知. “Performing knowledge you don't have” is an interpretation, while the supplied English translation says “not knowing that one knows,” which does not express that interpretation. Recognizing illness is also not **“the same move as the disease.”** Separate the witness readings and qualify the translation. |
+| 10 | ok | issue | issue | issue | change | 王弼 ch. 33 contains the seven quoted clauses. They are parallel distinctions, not a **ladder** progressing through stages. The quote does not say self-measurement is “harder,” or attach longevity to every preceding distinction: 久 belongs to 不失其所. Classify as a mindset or separate rules. Its self-knowledge theme overlaps #2 and #9. |
+| 11 | ok | issue | issue | issue | change | 王弼 ch. 8 and `silk.txt:552` list **seven** domain-specific 善 clauses: 居、心、與／予、言、正、事、動. Neither orders them as execution steps. The broader 善 wording elsewhere in the chapter does not create an eight-step checklist. Keep the water comparison and seven parallel practices; classify as a mindset or checklist. Non-contention overlaps #4. |
+| 12 | ok | issue | ok | issue | change | `史記_卷063.txt:13` explicitly attributes the speech to Laozi. It supports responding to timely opportunity, concealed display, and relinquishing arrogance and desires. It does not say **“before anything else,” “give one short answer,”** or **“show less appetite than you feel”**: 去子之…多欲 asks the addressee to remove desires, not hide them. The item still combines the counsel that its review promised to separate. |
+
+## Claims elsewhere in the file that the sources contradict
+
+- **“All ten” manuscript notes are correct.** The supplied silk edition places 無為／received ch. 48 at **silk chapter 11**, not 48. Silk chapter 48 is 道用／received ch. 4. Likewise, received ch. 44 is **silk chapter 7**, not the “帛書 44 立戒” cited under omissions; silk chapter 44 is 右介／received ch. 79.
+
+- **Silk chapter 67 equals received “22 + 24,” and “the joining of the two is the manuscript's.”** The supplied text labels silk chapter 67 **(22)** and chapter 66 **(24)**. Received ch. 22 already contains the affirmative self-restraint clauses. Their presence in silk ch. 67 does not establish that it incorporates ch. 24.
+
+- **The silk reversal chapter “adds a fourth pair.”** Both witnesses have four pairs: 王弼 ch. 36 has 歙／張、弱／強、廢／興、奪／與; silk ch. 80 has 翕／張、弱／強、去／與、奪／予. The pairs differ; their count does not.
+
+- **The earlier weak-over-strong rule must be joined to the reversal chapter.** Silk ch. 80 does contain 柔弱勝強, but silk ch. 43 independently contains 水之勝剛，弱之勝強 and 天下莫弗知，而莫能行也 (`silk.txt:455–457`). The review mixes these separate passages when describing a single chapter's “own sting.”
+
+- **Chapter 8 supplies “eight 善” checks.** The quoted 居善地…動善時 list has seven clauses in both supplied witnesses.
+
+- **The three treasures are merely a contents list rather than a rule.** 王弼 ch. 67 explicitly says 持而保之 and warns 今舍慈且勇，舍儉且廣，舍後且先，死矣. Silk ch. 32 likewise supplies the warning (`silk.txt:350`). An invented “when you cannot keep all three” trigger should be removed, but the source itself contains prescriptions.
+
+- **The Shiji counsel is the “only recorded decision.”** The same biography records another decision: 見周之衰，乃遂去—seeing Zhou's decline, Laozi departed (`史記_卷063.txt:15`). This is the historian's narration, not Laozi's direct speech.
+
+- **Silk reads 成功成而弗居.** Its actual ch. 46 wording is 成功而弗居也 (`silk.txt:500`). Item #7 gives this correctly; the earlier review adds an extra 成.
+
+- Guodian coverage, manuscript dates, exhaustive verification of earlier research, and the proposed loan-character identifications are **not checkable here**. The supplied folder contains neither Guodian text nor its chapter table, dating evidence, or a philological apparatus establishing those identifications.
+
+## Missing
+
+- **Knowing when to stop.** 王弼 ch. 44: 知足不辱，知止不殆，可以長久; silk ch. 7 repeats it (`silk.txt:87`). #10 mentions sufficiency but does not retain the explicit stopping rule.
+
+- **Usefulness through absence.** 王弼 ch. 11: 故有之以為利，無之以為用. The wheel, vessel, and room examples explain this principle; it appears in the file's omissions but remains outside the twelve.
+
+- **Restraint in using force.** 王弼 ch. 31: 不得已而用之…勿美也; 戰勝以喪禮處之. Silk ch. 75 also contains these prescriptions. The twelve omit this explicit limit on military action and its treatment of victory.
+
+- **Compassion, frugality, and refusing precedence.** 王弼 ch. 67 and silk ch. 32 explicitly prescribe preserving these and warn against their abandonment. Removing the invented trigger does not justify excluding the underlying rule.
+
+- **Leadership through taking the lower position.** 王弼 ch. 66: 欲上民，必以言下之；欲先民，必以身後之. Silk ch. 29 preserves the same conditional structure (`silk.txt:319`). This is a more explicit leadership decision rule than several constructed procedures in the twelve.
+
+## Overall
+
+**My reading:** The principal failure is unsupported conversion of passages into procedures: ordered stages, added conditions, and modern evaluation methods repeatedly appear under a `quoted` label. **My reading:** The review also introduces source-location errors and mistaken claims about chapter mergers and checklist counts. **Not measured:** This is my comparison against the three supplied texts, not an independent manuscript collation, verification of historical authorship, or evidence for the exact ranking.
+tokens used
+47,102
+# lao-tzu — codex review of the top 12
+
+## Per item
+
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+| 1 | ok | issue | ok | not checkable | change | 王弼 ch. 48 and `silk.txt:117–119` contain the quoted contrast and repeated subtraction. They do not instruct the reader to **first add knowledge, then subtract doing**, or say every act is a loss. Keep the repeated subtraction; remove the invented combined sequence. The silk passage is **chapter 11**, corresponding to received ch. 48, not silk chapter 48. |
+| 2 | ok | issue | issue | issue | change | 王弼 ch. 13 and `silk.txt:604` contain 為吾有身. Neither says to inspect personal stakes before trusting advice, or excludes the situation and other people as causes of error. That is a modern application, not the quoted rule. As sourced, this is closer to a mindset; its placement above more explicit prescriptions is unsupported. |
+| 3 | ok | issue | ok | not checkable | change | 王弼 ch. 29 and `silk.txt:797–805` support avoiding coercive possession and dropping excess. **“Aim at a part”** is absent: a warning against working on 天下 does not establish permission or a method for working on its parts. Remove that instruction. |
+| 4 | ok | issue | issue | issue | change | The quotation follows silk ch. 67, including 不自視故彰，不自見故明. It does not prescribe these practices **“in this order,”** and “don't look at yourself” turns a warning about self-display into a ban on self-examination. These are parallel restraints, better classified as a mindset or decision rules. It overlaps #7 on credit and #11 on non-contention. |
+| 5 | ok | issue | issue | not checkable | change | 王弼 chs. 63–64 support addressing difficulty while small and 慎終如始. They never call the end **cheap**, the middle **expensive**, or identify a final single step. Preserve early preparation and sustained care through completion as distinct rules; the combined passage does not establish an ordered algorithm. |
+| 6 | ok | issue | ok | not checkable | change | 王弼 ch. 41 contains the quoted images, with 建德若偷 omitted from the selection; `silk.txt:47` carries variants. Neither supplies an outcome-based test or the absolute instruction **“never” judge appearances**. Keep the mindset that apparent retreat or inadequacy can accompany the Way; label the proposed evaluation method as an application. The loan-character conclusions are not checkable here. |
+| 7 | ok | issue | ok | issue | change | 王弼 chs. 9 and 2 support 功遂身退 and 功成而弗居. **“Running without you”** adds a condition, and “stop attending to it” extends withdrawal beyond what the passage states. Keep accomplishment followed by withdrawal and non-appropriation. It overlaps #4; distinguish withdrawal from avoiding self-display. |
+| 8 | ok | issue | ok | not checkable | change | The quotation matches `silk.txt:882`. 王弼 ch. 36 instead has 廢／興. **“Retire it, promote it first”** follows that received pair, not the quoted silk 去／與 pair. **“Then stop and let the thing move against you”** occurs in neither witness. Keep the conditional reversal pairs without this added ending. |
+| 9 | ok | issue | ok | not checkable | change | 王弼 ch. 71 contains the quotation; `silk.txt:384–386` has 不知不知. “Performing knowledge you don't have” is an interpretation, while the supplied English translation says “not knowing that one knows,” which does not express that interpretation. Recognizing illness is also not **“the same move as the disease.”** Separate the witness readings and qualify the translation. |
+| 10 | ok | issue | issue | issue | change | 王弼 ch. 33 contains the seven quoted clauses. They are parallel distinctions, not a **ladder** progressing through stages. The quote does not say self-measurement is “harder,” or attach longevity to every preceding distinction: 久 belongs to 不失其所. Classify as a mindset or separate rules. Its self-knowledge theme overlaps #2 and #9. |
+| 11 | ok | issue | issue | issue | change | 王弼 ch. 8 and `silk.txt:552` list **seven** domain-specific 善 clauses: 居、心、與／予、言、正、事、動. Neither orders them as execution steps. The broader 善 wording elsewhere in the chapter does not create an eight-step checklist. Keep the water comparison and seven parallel practices; classify as a mindset or checklist. Non-contention overlaps #4. |
+| 12 | ok | issue | ok | issue | change | `史記_卷063.txt:13` explicitly attributes the speech to Laozi. It supports responding to timely opportunity, concealed display, and relinquishing arrogance and desires. It does not say **“before anything else,” “give one short answer,”** or **“show less appetite than you feel”**: 去子之…多欲 asks the addressee to remove desires, not hide them. The item still combines the counsel that its review promised to separate. |
+
+## Claims elsewhere in the file that the sources contradict
+
+- **“All ten” manuscript notes are correct.** The supplied silk edition places 無為／received ch. 48 at **silk chapter 11**, not 48. Silk chapter 48 is 道用／received ch. 4. Likewise, received ch. 44 is **silk chapter 7**, not the “帛書 44 立戒” cited under omissions; silk chapter 44 is 右介／received ch. 79.
+
+- **Silk chapter 67 equals received “22 + 24,” and “the joining of the two is the manuscript's.”** The supplied text labels silk chapter 67 **(22)** and chapter 66 **(24)**. Received ch. 22 already contains the affirmative self-restraint clauses. Their presence in silk ch. 67 does not establish that it incorporates ch. 24.
+
+- **The silk reversal chapter “adds a fourth pair.”** Both witnesses have four pairs: 王弼 ch. 36 has 歙／張、弱／強、廢／興、奪／與; silk ch. 80 has 翕／張、弱／強、去／與、奪／予. The pairs differ; their count does not.
+
+- **The earlier weak-over-strong rule must be joined to the reversal chapter.** Silk ch. 80 does contain 柔弱勝強, but silk ch. 43 independently contains 水之勝剛，弱之勝強 and 天下莫弗知，而莫能行也 (`silk.txt:455–457`). The review mixes these separate passages when describing a single chapter's “own sting.”
+
+- **Chapter 8 supplies “eight 善” checks.** The quoted 居善地…動善時 list has seven clauses in both supplied witnesses.
+
+- **The three treasures are merely a contents list rather than a rule.** 王弼 ch. 67 explicitly says 持而保之 and warns 今舍慈且勇，舍儉且廣，舍後且先，死矣. Silk ch. 32 likewise supplies the warning (`silk.txt:350`). An invented “when you cannot keep all three” trigger should be removed, but the source itself contains prescriptions.
+
+- **The Shiji counsel is the “only recorded decision.”** The same biography records another decision: 見周之衰，乃遂去—seeing Zhou's decline, Laozi departed (`史記_卷063.txt:15`). This is the historian's narration, not Laozi's direct speech.
+
+- **Silk reads 成功成而弗居.** Its actual ch. 46 wording is 成功而弗居也 (`silk.txt:500`). Item #7 gives this correctly; the earlier review adds an extra 成.
+
+- Guodian coverage, manuscript dates, exhaustive verification of earlier research, and the proposed loan-character identifications are **not checkable here**. The supplied folder contains neither Guodian text nor its chapter table, dating evidence, or a philological apparatus establishing those identifications.
+
+## Missing
+
+- **Knowing when to stop.** 王弼 ch. 44: 知足不辱，知止不殆，可以長久; silk ch. 7 repeats it (`silk.txt:87`). #10 mentions sufficiency but does not retain the explicit stopping rule.
+
+- **Usefulness through absence.** 王弼 ch. 11: 故有之以為利，無之以為用. The wheel, vessel, and room examples explain this principle; it appears in the file's omissions but remains outside the twelve.
+
+- **Restraint in using force.** 王弼 ch. 31: 不得已而用之…勿美也; 戰勝以喪禮處之. Silk ch. 75 also contains these prescriptions. The twelve omit this explicit limit on military action and its treatment of victory.
+
+- **Compassion, frugality, and refusing precedence.** 王弼 ch. 67 and silk ch. 32 explicitly prescribe preserving these and warn against their abandonment. Removing the invented trigger does not justify excluding the underlying rule.
+
+- **Leadership through taking the lower position.** 王弼 ch. 66: 欲上民，必以言下之；欲先民，必以身後之. Silk ch. 29 preserves the same conditional structure (`silk.txt:319`). This is a more explicit leadership decision rule than several constructed procedures in the twelve.
+
+## Overall
+
+**My reading:** The principal failure is unsupported conversion of passages into procedures: ordered stages, added conditions, and modern evaluation methods repeatedly appear under a `quoted` label. **My reading:** The review also introduces source-location errors and mistaken claims about chapter mergers and checklist counts. **Not measured:** This is my comparison against the three supplied texts, not an independent manuscript collation, verification of historical authorship, or evidence for the exact ranking.

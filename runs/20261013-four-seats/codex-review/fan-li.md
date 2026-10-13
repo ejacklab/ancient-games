@@ -1,0 +1,39 @@
+# fan-li — codex review of the top 12
+
+## Per item
+
+| # | Quote | Step | Kind | Rank | Verdict | Why (cite source line or text) |
+|---|---|---|---|---|---|---|
+| 1 | ok | issue | ok | ok | change | The quotations are Fan Li’s speech (國語21:3). But “if both are ripe, you are the attacker and you go” turns prohibitions into sufficient permission. 國語21:19 additionally requires conditions to coincide and considers whether disaster has united the enemy. The three categories are not stated as mutually exclusive forms. |
+| 2 | ok | issue | ok | ok | change | All quoted clauses occur in his main-text speech (國語21:9), including 「時不至，不可彊生」. Productive waiting is supported. The numbered sequence and “nothing else” are additions; the summary also omits 「必有以知天地之恆制」, the requirement to understand the governing regularities before obtaining lasting benefit. |
+| 3 | issue | issue | ok | ok | change | The Chinese is his speech (國語21:17), but 征 is mistranslated as “symptom.” 韋昭 explicitly glosses it 「征，征伐也」—military campaigning. The supported rule is to wait rather than campaign before the conditions manifest; the distinction between a “sign” and “actual decay” is the reviewer’s construction. |
+| 4 | ok | issue | ok | ok | change | The quotations are his (國語21:21,23,28). Urgency is supported; “everything at once,” “the whole army,” and a favorable window returning “within five years” are not. The final passage warns of reversal and misfortune. 韋昭’s note gives five years for the nearer case and ten or twenty for the farther, contradicting the proposed five-year ceiling. |
+| 5 | issue | issue | ok | ok | change | The letter and Qi resignation are direct speech (史記41:36,58); 「范蠡以為大名之下，難以久居」 is narration (41:56), not his spoken words. 「蠡請從會稽之罰」 requests the punishment previously deferred; it does not state a general doctrine that obligation is discharged by success. The warning about sharing happiness concerns Goujian specifically, not every ruler. |
+| 6 | issue | issue | ok | ok | change | The Chinese is his speech (國語21:23), but both translations distort it. 「謀之廊廟，失之中原」 means planning at court and losing the plan on the battlefield—not losing it twice. “Heaven’s season is solid” conflicts with preceding 「贏縮轉化」 and 韋昭’s 「固然，有轉化也」. Preserve the supported rule: do not abandon the settled plan under provocation. |
+| 7 | ok | ok | ok | ok | keep | 國語21:5 directly records his warning against aggressive courage, destructive weapons, initiating hostilities, and debauchery. “Force is the last thing” fairly compresses 「爭者，事之末也」 in this context. The repaired quotation marks the separate clause correctly. |
+| 8 | ok | issue | ok | ok | change | The main-text quotations are his; 韋昭’s gloss is correctly attributed separately (國語21:25). However, “three things together” imposes a checklist on an instruction to assess 天地之災 and 饑飽勞逸. “Formation follows theirs” is absent from the formation passage. The same supplied note also preserves 述聞’s explicit disagreement with 韋昭’s parsing, so the “do not pre-set” interpretation needs that qualification. |
+| 9 | ok | issue | ok | ok | change | His escalation from respectful concessions to 「身與之市」 is present (國語21:7). “Not the country” and “Not the territory” are unsupported: the ensuing offer explicitly says 「委管籥屬國家，以身隨之，君王制之」, placing the state as well as the person under Wu’s control. Retain negotiated submission; remove the exclusion of the country. |
+| 10 | ok | issue | ok | issue | change | Comparative competence is supported (國語21:7,11; 史記41:24). The son-selection rule is reversed: Fan Li preferred the younger son precisely because comfortable upbringing made him able to relinquish money; hardship made the elder reluctant to spend it (史記41:70). Separate competence-based assignment from selection for willingness to spend. “Every job” also exceeds the stated examples. |
+| 11 | ok | issue | issue | issue | change | These are his words (國語21:11), describing his competence and desirable military results. Turning them into an explicit victory-assessment rule is an inference. “As little as possible” strengthens 「甚少」 into an optimization instruction. This is also part of the same competence comparison used by #10; merge it there or label the extracted criterion as interpretation. |
+| 12 | issue | issue | issue | ok | change | The first two Chinese quotations are his; the final action is narration (國語21:30,32). The English reverses 「無使執事之人得罪於子」: Fan Li warns against being made to offend the envoy, not against the envoy being punished for reporting refusal. Yue is victorious here, not the weaker party. “Nothing to report back” is unsupported. A multi-step communication procedure would better fit the proposed kind, but its trigger and purpose need rewriting. |
+
+## Claims elsewhere in the file that the sources contradict
+
+- **Gaps: “范蠡 does not speak” 「時不至，不可強生；事不究，不可強成」.** The phrase occurs in 韋昭’s note at 國語21:3 **and** in Fan Li’s main-text speech at 21:9. The latter directly supports its attribution to him.
+- **Review #3: “Heaven’s season is solid.”** 國語21:23 describes 「贏縮轉化」; 韋昭 explains 固然 as 「有轉化也」. The contrast is changing conditions versus the settled plan.
+- **Review #2: the window returns “within five years.”** 國語21:28 does not promise another favorable opportunity within that ceiling; its commentary explicitly distinguishes five years from ten or twenty.
+- **Review #6: “Clean, single-trigger” endorses the submission rule without correcting its exclusion of the country.** 國語21:7 includes 「屬國家」 in the offer.
+- **What the top 10 missed: “Send the hard job to whoever has known hardship.”** 史記41:70 supports the opposite selection in this case: send the person able to part with money, which Fan Li attributes to the younger son’s comfortable upbringing.
+- **#11’s explanatory note: “He hands this part to 文種.”** 國語21:11 says 文種 is inferior at the external work; 「令大夫種為之」 concerns governing the country, as 韋昭 explicitly glosses 「為，治國也」.
+- **Review #10: “Nothing here is a decision he is recorded making.”** Although the commercial maxims cited are narration or 計然’s doctrine, 史記129:24 records Fan Li’s explicit decision: 「既已施於國，吾欲用之家」.
+- **Verification claim: “Every clause … matched its named source” after commentary removal.** The supplied Chinese quotations are present, but that check does not establish speaker attribution, accurate translation, or faithful rules. The file’s own Gaps attribution claim and several English rules fail those further checks.
+- Claims about 越絕書, 吳越春秋, 史記三家註, 無能子, and 春秋戰國異辭 are **not checkable here**: those texts are absent from the supplied Fan Li source folder.
+
+## Missing
+
+- **A fresh enemy disaster can strengthen resistance.** 國語21:19 explains that newly frightened rulers and people may unite their effort and fight desperately: 「彼將同其力，致其死，猶尚殆」. This supplies an important counterexample to treating disaster as permission to attack. The same speech recommends restrained outward recreation while preserving normal government, allowing Wu’s ruler to underestimate Yue and exhaust his people.
+- **Transfer a successful method to another domain, with its origin acknowledged.** 史記129:24 gives his own decision: 「計然之策七，越用其五而得意。既已施於國，吾欲用之家。」 This supports reuse of 計然’s tested statecraft in household commerce without presenting 計然’s doctrine as Fan Li’s invention.
+
+## Overall
+
+**My reading:** The list captures patient preparation and disciplined timing, but several English rules add unsupported conditions, and #10 and #12 reverse consequential meanings. **My reading:** My independent textual review finds that the earlier reviewer’s reported string check cannot support the file’s stronger claims about attribution and interpretation. **Not measured:** Historical authenticity and an objective importance ranking are not established by these supplied texts.

@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four Seats — Final Lists (agy)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Noto+Serif+TC:wght@400;600&family=Noto+Sans+TC:wght@400;600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+/* Themes: approximations of the Kindle app's page colours, not Amazon's published values. */
+:root, [data-theme="white"] { --bg:#ffffff; --fg:#1a1a1a; --muted:#6b6b6b; --rule:#d8d8d8; --link:#1f5f99; --panel:#f4f4f4; }
+[data-theme="sepia"] { --bg:#f4ecd8; --fg:#5b4636; --muted:#8a7560; --rule:#d9caa9; --link:#7a4b1e; --panel:#ebe0c6; }
+[data-theme="green"] { --bg:#cce8cf; --fg:#22352a; --muted:#4f6b57; --rule:#a9cdb0; --link:#1d5a3a; --panel:#bddfc1; }
+[data-theme="black"] { --bg:#000000; --fg:#d2d2d2; --muted:#8a8a8a; --rule:#333333; --link:#8fb8e8; --panel:#161616; }
+
+html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); }
+body { -webkit-text-size-adjust:100%; transition:background .2s, color .2s; overflow:hidden; }
+body.scroll { overflow:auto; }
+
+/* Reading area. --size, --leading, --margin, --font, --align are set from the reader's settings. */
+#viewport { position:fixed; top:2.4rem; bottom:2.4rem; left:0; right:0; }
+body.scroll #viewport { position:static; padding:2.4rem 0; }
+#book {
+  height:100%; max-width:var(--measure); margin:0 auto; padding:0 var(--margin); box-sizing:border-box;
+  font-family:var(--font); font-size:var(--size); line-height:var(--leading); text-align:var(--align);
+  hyphens:auto; -webkit-hyphens:auto; overflow:hidden; font-kerning:normal; font-variant-ligatures:common-ligatures;
+  column-fill:auto; column-gap:calc(2 * var(--margin));
+}
+body.scroll #book { height:auto; overflow:visible; columns:auto !important; }
+
+#book p { margin:0 0 .75em; }
+#book h1, #book h2, #book h3, #book h4 { line-height:1.25; text-align:left; font-weight:600; break-after:avoid; hyphens:manual; }
+#book h1 { font-size:1.6em; text-align:center; margin:1.2em 0 1em; break-before:column; }
+#book .chapter:first-child h1 { break-before:auto; }
+#book h2 { font-size:1.25em; margin:1.4em 0 .5em; }
+#book h3 { font-size:1.08em; margin:1.2em 0 .4em; }
+#book h4 { font-size:1em; margin:1em 0 .3em; font-style:italic; }
+#book blockquote { margin:.8em 0 .8em 1.2em; padding-left:.8em; border-left:2px solid var(--rule); color:var(--fg); }
+#book ul, #book ol { padding-left:1.4em; margin:0 0 .75em; }
+#book li { margin:.2em 0; }
+#book a { color:var(--link); text-decoration:none; border-bottom:1px solid var(--rule); }
+#book code { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.86em; background:var(--panel); padding:.05em .3em; border-radius:3px; }
+#book pre { font-size:.82em; background:var(--panel); padding:.7em .9em; border-radius:4px; overflow-x:auto; white-space:pre-wrap; text-align:left; break-inside:avoid; }
+#book pre code { background:none; padding:0; }
+#book hr { border:0; text-align:center; margin:1.5em 0; }
+#book hr::after { content:"\2022\00a0\00a0\2022\00a0\00a0\2022"; color:var(--muted); }
+#book table { display:block; overflow-x:auto; border-collapse:collapse; font-size:.82em; line-height:1.4; margin:.6em 0 1em; text-align:left; break-inside:avoid; max-width:100%; }
+#book th, #book td { border-bottom:1px solid var(--rule); padding:.35em .6em; vertical-align:top; }
+#book th { font-weight:600; }
+#book img { max-width:100%; max-height:80vh; display:block; margin:.6em auto; }
+#book strong { font-weight:600; }
+
+/* Kindle-style header and footer: quiet, small, muted. */
+.bar { position:fixed; left:0; right:0; height:2.4rem; display:flex; align-items:center; justify-content:space-between;
+  padding:0 1rem; box-sizing:border-box; font:12px/1 system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--muted); z-index:2; }
+#top { top:0; justify-content:center; }
+#bottom { bottom:0; cursor:pointer; user-select:none; }
+#top span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70vw; }
+
+/* Tap zones: left third = back, right two thirds = forward, top strip = menu (like Kindle). */
+#tapzones { position:fixed; top:2.4rem; bottom:2.4rem; left:0; right:0; display:flex; z-index:1; }
+#tapzones div:first-child { width:33%; } #tapzones div:last-child { flex:1; }
+body.scroll #tapzones { display:none; }
+
+/* Menu: the "Aa" panel and contents. */
+#menu { position:fixed; top:0; left:0; right:0; z-index:5; background:var(--panel); color:var(--fg);
+  border-bottom:1px solid var(--rule); transform:translateY(-105%); transition:transform .2s;
+  font:14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; max-height:85vh; overflow:auto; }
+#menu.open { transform:none; }
+#menu .inner { max-width:34rem; margin:0 auto; padding:.8rem 1rem 1rem; }
+#menu .row { display:flex; align-items:center; gap:.5rem; margin:.55rem 0; flex-wrap:wrap; }
+#menu .row > label { width:6.5rem; color:var(--muted); font-size:13px; }
+#menu button { font:inherit; color:var(--fg); background:var(--bg); border:1px solid var(--rule); border-radius:6px; padding:.35rem .7rem; cursor:pointer; min-width:2.4rem; }
+#menu button.on { outline:2px solid var(--fg); outline-offset:-1px; }
+#menu .swatch { width:2.2rem; height:2.2rem; border-radius:50%; padding:0; }
+#menu h3 { font-size:13px; color:var(--muted); margin:1rem 0 .3rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+#toc a { display:block; color:var(--fg); text-decoration:none; padding:.3rem 0; border-bottom:1px solid var(--rule); }
+#toc a.sub { padding-left:1rem; font-size:13px; color:var(--muted); }
+#close { float:right; }
+</style>
+</head>
+<body>
+<div id="top" class="bar"><span>Four Seats — Final Lists (agy)</span></div>
+<div id="viewport"><div id="book">
+<section class="chapter" id="ch-0" data-units="3230">
+<h1>范蠡 (Fan Li) — final list</h1>
+<h2>Changes from the top 12</h2>
+<ul>
+<li><strong>#1:</strong> <strong>corrected</strong> — removed the inferred permission clause (&quot;if both are ripe, you are the attacker and you go&quot;) which turned negative prohibitions into sufficient condition (citing codex row 1); reclassified from algorithm to decision rule.</li>
+<li><strong>#2:</strong> <strong>corrected</strong> — removed the artificial numbered sequence (1)–(6) and &quot;nothing else&quot;, which imposed modern checklist structure on a continuous speech (citing codex row 2); reclassified from algorithm to decision rule.</li>
+<li><strong>#3:</strong> <strong>corrected</strong> — corrected the mistranslation of 征 from &quot;symptom/sign&quot; to military campaign (征伐) per 韋昭's note (citing codex row 3); the rule forbids launching a military campaign before celestial and earthly conditions take form.</li>
+<li><strong>#4:</strong> <strong>corrected</strong> — removed &quot;everything at once&quot; and the claim that a favorable window returns &quot;within five years&quot; (citing codex row 4); the text warns that failure to complete the task when given the moment brings celestial reversal and disaster.</li>
+<li><strong>#5:</strong> <strong>corrected</strong> — removed the narrator's sentence 「范蠡以為大名之下，難以久居」 from direct speech and restricted the warning about sharing happiness to Goujian specifically (citing codex row 5).</li>
+<li><strong>#6:</strong> <strong>corrected</strong> — corrected the mistranslation of 「謀之廊廟，失之中原」 from losing the plan twice to losing on the battlefield what was decided at court, and aligned &quot;season is solid&quot; with natural seasonal transformation (citing codex row 6).</li>
+<li><strong>#7:</strong> <strong>kept</strong> — faithfully quotes the warning against aggressive force, weapons as lethal tools, and debauchery as forbidden by Heaven (citing codex row 7).</li>
+<li><strong>#8:</strong> <strong>corrected</strong> — removed the artificial 5-step sequence, &quot;three things together&quot;, and &quot;formation follows theirs&quot; (citing codex row 8); reclassified from algorithm to decision rule.</li>
+<li><strong>#9:</strong> <strong>corrected</strong> — removed the unsupported restriction &quot;not the territory / not the country&quot; (citing codex row 9); the primary text explicitly offers both the ruler's person and the keys/state (<code>委管籥屬國家，以身隨之</code>).</li>
+<li><strong>#10:</strong> <strong>corrected and split</strong> — retained comparative competence between Fan Li and Wen Zhong; separated out the son-selection anecdote and reversed its incorrect top-12 summary to match the text (Fan Li sent the younger son because comfortable upbringing enabled him to part with wealth, citing codex row 10).</li>
+<li><strong>#11:</strong> <strong>corrected</strong> — removed modern optimization wording (&quot;spend as little as possible&quot;) and retained Fan Li's stated hallmarks of external military success (citing codex row 11).</li>
+<li><strong>#12:</strong> <strong>corrected</strong> — corrected the historical posture (Yue is the besieging victor, not the weaker party) and the translation of 「無使執事之人得罪於子」 (warning against making the officer in charge commit an offense against the envoy, citing codex row 12).</li>
+</ul>
+<h2>Final list</h2>
+<ol>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> Matters of state consist of holding the full, steadying the leaning, and ordering affairs; each corresponds to Heaven, people, and Earth. When Heaven's timing does not arise, do not act as the attacker; when human conditions do not arise, do not initiate action.
+<strong>Their words:</strong> 「夫國家之事，有持盈，有定傾，有節事。」/「持盈者與天，定傾者與人，節事者與地。」/「天時不作，弗為人客；人事不起，弗為之始。」 — &quot;Matters of state have holding the full, steadying the leaning, ordering affairs.&quot; / &quot;Holding the full accords with Heaven; steadying the leaning accords with people; ordering affairs accords with Earth.&quot; / &quot;When Heaven's timing does not arise, do not be the guest [attacker]; when human affairs do not arise, do not initiate.&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §1 (Wikisource 國語/卷21; parallel in 史記·卷041).
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #1</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> When the season has not arrived, do not force growth; when affairs have not run their course, do not force completion. Remain composed, gauge all under heaven, keep the people productively employed without idleness, and if no opening or seasonal reversal occurs, protect and instruct the people while awaiting it.
+<strong>Their words:</strong> 「時不至，不可彊生；事不究，不可彊成。自若以處，以度天下，待其來者而正之，因時之所宜而定之。同男女之功，除民之害，以避天殃。田野開闢，府倉實，民眾殷。無曠其眾，以為亂梯。…事無閒，時無反，則撫民保教以須之。」 — &quot;When the season has not arrived, growth cannot be forced; when affairs have not run their course, completion cannot be forced. Remain composed in place to gauge the world; wait for what comes and align with it; establish matters according to what suits the season. ...Leave not the multitude idle, lest it become the ladder of disorder. ...If affairs present no fissure and the season offers no reversal, then nurture the people and safeguard instruction to await it.&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §1.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #2</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> Aggressive courage violates virtue, weapons are lethal instruments, and contention is the lowest form of action; whoever initiates against others will ultimately be destroyed by them, and debauchery is forbidden by Heaven.
+<strong>Their words:</strong> 「夫勇者，逆德也；兵者，凶器也；爭者，事之末也。陰謀逆德，好用凶器，始於人者，人之所卒也；淫佚之事，上帝之禁也，先行此者，不利。」 — &quot;Courage [in attack] is contrary to virtue; weapons are lethal instruments; contention is the lowest of affairs. Plotting secretly is contrary to virtue; fondness for lethal instruments and initiating against others ends in being destroyed by others; debauchery is what the Lord on High forbids; to practice these first brings no advantage.&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §1 (parallel in 史記·卷041).
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #7</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> Seizing the moment is like fighting a fire or chasing a fugitive: advance swiftly, fearing only that you arrive too late. When the moment is obtained, do not slacken, for what Heaven gives and you do not take turns into a calamity; if you obtain the moment and fail to complete the task, Heaven reverses against you.
+<strong>Their words:</strong> 「臣聞從時者，猶救火、追亡人也，蹶而趨之，唯恐弗及。」/「得時無怠，時不再來，天予不取，反為之災。」/「聖人之功，時為之庸。得時不成，天有還形。天節不遠，五年復反，小凶則近，大凶則遠。」 — &quot;I have heard that following the season is like fighting a fire or pursuing a fugitive: stumble and hasten, fearing only not arriving in time.&quot; / &quot;Having obtained the season, do not slacken; the season does not come twice; what Heaven gives and is not taken turns into disaster.&quot; / &quot;The sage's achievement uses the season for its utility. If the season is obtained and not brought to completion, Heaven has a form of reversal; Heaven's term is not distant, returning within five years; a small misfortune is near, a great misfortune is far.&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §6, §7.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #4</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> When in mortal peril, seek peace through humble words, respectful rituals, treasures, and dancing women; if that does not satisfy the adversary, offer the ruler's own person along with the seals and keys of the state to their disposal.
+<strong>Their words:</strong> 「卑辭尊禮，玩好女樂，尊之以名。如此不已，又身與之市。」 — &quot;Humble your words and honor ritual; offer treasures and women-musicians; honor them with exalted titles. If this does not suffice, put your own person on the market with them.&quot; (韋昭注: 「市，利也，謂委管籥屬國家，以身隨之」).
+<strong>Source:</strong> 國語·卷21 越語下 §1 (parallel in 史記·卷041).
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #9</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> Assign governance to the person whose competence fits the sphere: manage domestic affairs and people with the minister suited for internal administration, and take external enemy confrontation and prompt military command yourself.
+<strong>Their words:</strong> 「四封之內，百姓之事，時節三樂，不亂民功，不逆天時，五穀睦熟，民乃蕃滋，君臣上下交得其志，蠡不如種也。四封之外，敵國之制，立斷之事，因陰陽之恆，順天地之常，…種亦不如蠡也。」 — &quot;Within the four borders, the affairs of the people, ...bringing harmony to the five grains and flourishing to the population, ...Li is not equal to Zhong. Outside the four borders, controlling enemy states and making prompt decisions, following the regularities of yin and yang and conforming to the constants of Heaven and Earth, ...Zhong is not equal to Li.&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §1 (parallel in 史記·卷041: 「兵甲之事，種不如蠡；填撫國家，親附百姓，蠡不如種」).
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #10</p>
+</li>
+<li>
+<p><strong>Kind:</strong> mindset
+<strong>Rule:</strong> A subject's duty requires sharing the ruler's toil and humiliation, but once the humiliation is avenged, one should withdraw rather than hold high rank under a ruler who can share hardship but cannot share happiness.
+<strong>Their words:</strong> 「臣聞之，為人臣者，君憂臣勞，君辱臣死。昔者君王辱於會稽，臣所以不死者，為此事也。今事已濟矣，蠡請從會稽之罰。」/「君行制，臣行意。」/「蜚鳥盡，良弓藏；狡兔死，走狗烹。越王為人長頸鳥喙，可與共患難，不可與共樂。子何不去？」 — &quot;I have heard: as a minister, when the lord worries the minister toils; when the lord is humiliated the minister dies. Formerly when the lord was humiliated at Kuaiji, the reason I did not die was for this matter. Now that the affair is accomplished, I request to follow the penalty of Kuaiji.&quot; / &quot;Let the lord execute regulations; the minister executes his intent.&quot; / &quot;When the flying birds are exhausted, the good bow is stowed; when the cunning hare dies, the hound is boiled. The King of Yue has a long neck and a bird's beak; one can share adversity with him, but not happiness. Why do you not leave?&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §8; 史記·卷041 越王勾踐世家.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #5</p>
+</li>
+<li>
+<p><strong>Kind:</strong> mindset
+<strong>Rule:</strong> Reaching great wealth at home and the rank of minister in office is the extreme limit for a commoner; retaining an honored name for long brings misfortune.
+<strong>Their words:</strong> 「居家則致千金，居官則至卿相，此布衣之極也。久受尊名，不祥。」 — &quot;Living at home amassing a thousand gold, serving in office reaching minister of state—this is the peak for a commoner. Long holding an honored name brings misfortune.&quot;
+<strong>Source:</strong> 史記·卷041 越王勾踐世家.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #5</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> Do not abandon on the field of conflict what was deliberated and resolved in the council chamber; Heaven's seasons undergo natural changes, but the core strategy must not be shifted under provocation.
+<strong>Their words:</strong> 「夫謀之廊廟，失之中原，其可乎？王姑勿許也。…天節固然，唯謀不遷。」 — &quot;To deliberate in the ancestral temple and lose it on the central plain, is that permissible? For now, do not grant it. ...Heaven's terms undergo change by nature; only the plan must not shift.&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §6.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #6</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> Do not launch a military campaign merely because inverted conduct or rebellion begins to sprout in the enemy; if the signs of Heaven and Earth have not yet taken form, campaigning beforehand causes the enterprise to fail and brings punishment upon yourself.
+<strong>Their words:</strong> 「逆節萌生。天地未形，而先為之征，其事是以不成，雜受其刑。王姑待之。」 — &quot;Inverted discipline is sprouting. When Heaven and Earth have not yet taken form, to campaign beforehand causes the affair to fail, and one suffers punishment along with them. For now, wait.&quot; (韋昭注: 「征，征伐也」).
+<strong>Source:</strong> 國語·卷21 越語下 §4.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #3</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> In employing troops, adapt to the adversary rather than fixing a rigid method; hold fast when they come to you, assess both natural disasters and the enemy population's hunger and fatigue before engaging, and strike when their energy is spent and yours is full.
+<strong>Their words:</strong> 「古之善用兵者，因天地之常，與之俱行。後則用陰，先則用陽；近則用柔，遠則用剛。…用人無藝，往從其所。剛彊以禦，陽節不盡，不死其野。彼來從我，固守勿與。若將與之，必因天地之災，又觀其民之饑飽勞逸以參之。盡其陽節、盈吾陰節而奪之。」 — &quot;The ancient adept commanders accorded with the constants of Heaven and Earth and moved with them. Acting behind, use yin; acting ahead, use yang; close, use softness; far, use hardness. ...In employing men there is no fixed rule; go according to their position. When they defend with strength and their yang season is not spent, they will not die in the field. When they come against me, hold fast and do not join battle. If you are to join battle, you must base it on natural disasters and evaluate their people's hunger, satiety, toil, and ease to corroborate it. Exhaust their yang season, fill our yin season, and take them.&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §6.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #8</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> When an enemy's disaster is fresh and their populace is terrified, their leadership and people will unite their strength and fight to the death, making an attack hazardous; wait until their food supplies are spent and their internal cohesion breaks.
+<strong>Their words:</strong> 「夫人事必將與天地相參，然後乃可以成功。今其禍新民恐，其君臣上下，皆知其資財之不足以支長久也，彼將同其力，致其死，猶尚殆。…乃可以致天地之殛。王姑待之。」 — &quot;Human affairs must be matched with Heaven and Earth, and only then can success be achieved. Now their calamity is fresh and the people are afraid; their ruler and subjects above and below all know their resources cannot sustain them long; they will unite their strength and fight to the death, which remains dangerous. ...Only then can Heaven's destruction be brought upon them. For now, wait.&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §5.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> new (your research; citing codex review &quot;Missing&quot;)</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> Conceal military preparations by engaging in hunting and feasting without indulging in excess, preserving regular state governance so the adversary underestimates you, neglects moral conduct, and exhausts their people's labor.
+<strong>Their words:</strong> 「王其且馳騁弋獵，無至禽荒；宮中之樂，無至酒荒；肆與大夫觴飲，無忘國常。彼其上將薄其德，民將盡其力，又使之望而不得食，乃可以致天地之殛。王姑待之。」 — &quot;Let the king ride and hunt, without becoming lost in games; enjoy music in the palace, without becoming lost in wine; drink with the grandees, without forgetting the regular statutes of the state. Their superior will diminish his virtue, and their people will exhaust their strength, while looking for food and finding none; only then can Heaven's destruction be realized. For now, wait.&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §5.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> new (your research)</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> When an operation requires expending and giving up large amounts of wealth without hesitation, assign the person whose upbringing allows them to let go of wealth easily, rather than someone who grew up in hardship and values money too heavily to part with it.
+<strong>Their words:</strong> 「彼非不愛其弟，顧有所不能忍者也。是少與我俱，見苦，為生難，故重棄財。至如少弟者，生而見我富，乘堅驅良逐狡兔，豈知財所從來，故輕棄之，非所惜吝。前日吾所為欲遣少子，固為其能棄財故也。而長者不能，故卒以殺其弟，事之理也…」 — &quot;It is not that he did not love his brother, but that there was something he could not bear. He was with me when young, saw hardship, and knows making a living is difficult, therefore he finds it hard to abandon wealth. As for the youngest son, born seeing me wealthy, riding sturdy carriages and chasing cunning hares, how would he know where wealth came from? Thus he abandons it lightly without regret. The reason I previously wanted to send the youngest son was precisely because he could part with wealth. The eldest could not, and thus in the end killed his brother; it is in the nature of things...&quot;
+<strong>Source:</strong> 史記·卷041 越王勾踐世家.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> new (your research; corrected from top-12 #10 reversal)</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> When a besieging victory is at hand and the adversary attempts to stall through glib rhetoric and moral pleading, disclaim comprehension of their refined speeches, dismiss the envoy without permitting them to sway the commander, and advance immediately without referring back to court.
+<strong>Their words:</strong> 「余雖靦然而人面哉，吾猶禽獸也，又安知是諓諓者乎？…君王已委制於執事之人矣。子往矣，無使執事之人得罪於子。」/「范蠡不報於王，擊鼓興師以隨使者…遂滅吳。」 — &quot;Though I bear a human face, I am still like a beast; how should I understand this glib talk? ...The king has already committed authority to the officer in charge. Go; do not cause the officer in charge to commit an offense against you.&quot; / &quot;Fan Li did not report back to the king; beating the drum and raising the army, he followed the envoy ...and thereupon destroyed Wu.&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §7.
+<strong>Words are:</strong> <code>quoted</code> (closing actions <code>attributed</code> to 國語 narrator).
+<strong>From:</strong> top-12 #12</p>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule
+<strong>Rule:</strong> Take tested strategic doctrine that proved effective in governing the state and apply it directly to private household enterprise, attributing the methods to their originator.
+<strong>Their words:</strong> 「計然之策七，越用其五而得意。既已施於國，吾欲用之家。」 — &quot;Ji Ran's strategies were seven; Yue used five of them and attained its goal. Having already applied them to the state, I wish to apply them to my household.&quot;
+<strong>Source:</strong> 史記·卷129 貨殖列傳.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> new (your research; citing codex review &quot;Missing&quot;)</p>
+</li>
+<li>
+<p><strong>Kind:</strong> mindset
+<strong>Rule:</strong> The hallmark of superior military command outside the borders is winning battles without leaving room for retribution, acquiring territory without having to return it, securing fortune internally through external victories, and accomplishing this with minimal expenditure of strength.
+<strong>Their words:</strong> 「是故戰勝而不報，取地而不反，兵勝於外，福生於內，用力甚少而名聲章明，種亦不如蠡也。」 — &quot;Therefore winning in battle without retribution, taking land without returning it, arms prevailing outside while blessings arise within, using very little force while fame becomes illustrious—in this Zhong is not equal to Li.&quot;
+<strong>Source:</strong> 國語·卷21 越語下 §1.
+<strong>Words are:</strong> <code>quoted</code>
+<strong>From:</strong> top-12 #11</p>
+</li>
+</ol>
+<h2>Gaps</h2>
+<ul>
+<li><strong>Attribution boundary of economic doctrine:</strong> The famous commercial rules in 史記·卷129 (「旱則資舟，水則資車」, 「貴上極則反賤，賤下極則反貴」, 「財幣欲其行如流水」) are spoken by Fan Li's teacher Ji Ran (計然), not by Fan Li. The biographical narrative descriptions of Fan Li's trading at Tao (「與時逐而不責於人。故善治生者，能擇人而任時」, 「十九年之中三致千金，再分散與貧交疏昆弟」) represent Sima Qian's narrative voice, not Fan Li's spoken decision rules. Fan Li's authentic spoken rule regarding commercial practice is strictly his decision to transfer Ji Ran's five proven state policies to his private household (#16).</li>
+<li><strong>Proverbs excluded:</strong> The proverb 「千金之子，不死於市」 cited in 史記·卷041 and 史記·卷129 is explicitly introduced as a popular saying (「吾聞千金之子不死於市」 / 「諺曰」), not Fan Li's own coined rule.</li>
+<li><strong>External and late texts uncheckable:</strong> Texts such as 越絕書, 吳越春秋, 會稽典錄 (cited in 史記正義), 無能子, and 春秋戰國異辭 were referenced in secondary commentaries but are absent from the local repository (<code>runs/20261013-four-seats/sources/fan-li/</code>). In accordance with the brief's instruction, no quotes from these unverified witnesses were promoted to the final list.</li>
+<li><strong>Wikitext commentary reconciliation:</strong> In 國語·卷21 §1, the phrase 「時不至，不可彊生；事不究，不可彊成」 appears in 韋昭's inline commentary on line 3, but also appears verbatim in Fan Li's main spoken speech on line 9; it is retained as authentic spoken text based on line 9.</li>
+</ul>
+</section>
+<section class="chapter" id="ch-1" data-units="4720">
+<h1>孫子 (Sun Tzu) — final list</h1>
+<h2>Changes from the top 12</h2>
+<ul>
+<li><strong>Top-12 #1: corrected.</strong> Codex row 1 cited. Removed added &quot;three arms, then a personnel decision&quot;, duration cap, and &quot;if count fails, go&quot; (retention depends on whether the commander listens to the plan, not calculation outcome); corrected daily campaign expenditure to &quot;a thousand gold&quot; (千金), not ten thousand.</li>
+<li><strong>Top-12 #2: corrected.</strong> Codex row 2 cited. Corrected translation of 「吾卒之可以擊」 to &quot;our troops can attack&quot; (not &quot;can be struck&quot;); corrected 「每戰必殆」 to danger (not inevitable death); removed invented ordered grading algorithm and coin-flip probabilities; retained five ways to know victory and commander's authority.</li>
+<li><strong>Top-12 #3: corrected.</strong> Codex row 3 cited. Removed invented corollary &quot;leave nothing for the enemy to study&quot; (overlaps #5); clarified that &quot;cannot make the enemy necessarily beatable&quot; does not prohibit influencing their posture; retained self-invincibility and winning without fame for cunning or courage.</li>
+<li><strong>Top-12 #4: corrected.</strong> Codex row 4 cited. Removed invented step-by-step sequential testing and ranking damage &quot;before difficulty&quot;; corrected 「距闉，又三月」 to building earthen siege mounds (not closing a breach); corrected 「毀人之國而非久也」 to destroying the enemy state without protracted campaigning.</li>
+<li><strong>Top-12 #5: corrected.</strong> Codex row 5 cited. Removed added guarantee that legible capability is lost; reversed Opencode's mistranslation to match 「形人而我無形」 (induce the enemy to reveal their disposition while keeping one's own formless); corrected 「人皆知我所以勝之形，而莫知吾所以制勝之形」 (all know the visible winning disposition, none knows the form that controlled victory).</li>
+<li><strong>Top-12 #6: corrected.</strong> Codex row 6 cited. Corrected 「勞」 to fatigued (not &quot;laboured for nothing&quot;); removed invented enemy orders in 「乖其所之」 (frustrate or divert their destination); retained initiative to draw the enemy in rather than being drawn.</li>
+<li><strong>Top-12 #7: corrected.</strong> Codex row 7 cited. Removed invented causal links (&quot;disorder produces panic&quot;, &quot;calm produces courage&quot;) and universal claims that character is purely an output; retained personnel selection alongside momentum (「擇人而任勢」) and structural organization (「分數」, 「形名」).</li>
+<li><strong>Top-12 #8: corrected.</strong> Codex row 8 cited. Removed claims that uncompleted victory is worse than defeat and that a formal burden of proof exists; retained the advantage gate (「合於利而動，不合於利而止」), prohibition of anger and resentment due to irreversibility of state ruin and death, and warning on <em>feiliu</em> (費留).</li>
+<li><strong>Top-12 #9: corrected.</strong> Codex row 9 cited. Reclassified from algorithm to decision rules because no mandatory order of checks is stated; corrected closing list count to eight prescriptions (seven prohibitions plus positive 「圍師必闕」), not nine refusals.</li>
+<li><strong>Top-12 #10: corrected.</strong> Codex row 10 cited. Removed &quot;and nothing else&quot; and &quot;exactly when to advance&quot;; clarified that later text provides complementary instructions and dispositions for invading forces rather than a simple second set of nine from the opposite side.</li>
+<li><strong>Top-12 #11: corrected.</strong> Codex row 11 cited. Removed invented mandatory sequence (&quot;probe, then read signs, before you judge anything&quot;); removed dramatized additions (&quot;tempo&quot;, &quot;killing them&quot;); retained the diagnostic probes and observational signs table.</li>
+<li><strong>Top-12 #12: corrected.</strong> Codex row 12 cited. Purged corrupted inserted text strings (<code>DISTRACTION erectile... SPDHH</code>); removed invented &quot;two passes&quot; and benefit/harm columns; retained balanced deliberation of benefit and harm and the five dangerous faults of a commander (「五危」).</li>
+</ul>
+<h2>Final list</h2>
+<ol>
+<li><strong>Kind:</strong> algorithm</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Assess warfare through five fundamental factors and compare them across seven calculations to foresee victory or defeat. Retain the commander who heeds the calculations and dismiss the one who does not.</li>
+<li><strong>Their words:</strong> 「故經之以五事，校之以七計，而索其情：一曰道，二曰天，三曰地，四曰將，五曰法。…故校之以七計而索其情，曰：主孰有道？將孰有能？天地孰得？法令孰行？兵眾孰強？士卒孰練？賞罰孰明？吾以此知勝負矣。將聽吾計，用之必勝，留之；將不聽吾計，用之必敗，去之。…多算勝，少算不勝，而況於無算乎？」 (&quot;Regulate it by five factors, compare by seven calculations, and seek their reality: first, the Way; second, Heaven; third, Earth; fourth, the General; fifth, Law... Compare them by seven calculations to seek their reality: Which ruler has the Way? Which general has ability? Who gains Heaven and Earth? Whose laws and orders are executed? Whose forces are stronger? Whose soldiers are trained? Whose rewards and punishments are clear? By these I know victory and defeat. If a general heeds my calculations, employ him and he will surely win—retain him; if he does not heed my calculations, employ him and he will surely lose—dismiss him... Many calculations win, few calculations lose, how much more so none!&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·始計第一》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #1</code></li>
+</ul>
+<ol start="2">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Preserving an enemy's state, army, or unit intact is superior to destroying it. The highest form of military action strikes the enemy's plans, the next strikes alliances, the next strikes troops, and assaulting fortified cities is the lowest resort.</li>
+<li><strong>Their words:</strong> 「凡用兵之法，全國為上，破國次之；全軍為上，破軍次之；全旅為上，破旅次之；全卒為上，破卒次之；全伍為上，破伍次之。是故百戰百勝，非善之善者也；不戰而屈人之兵，善之善者也。故上兵伐謀，其次伐交，其次伐兵，其下攻城。攻城之法，為不得已。…故善用兵者，屈人之兵而非戰也，拔人之城而非攻也，毀人之國而非久也，必以全爭於天下，故兵不頓而利可全，此謀攻之法也。」 (&quot;In the method of using troops, keeping the state intact is best, breaking the state is next; keeping the army intact is best, breaking the army is next; keeping the brigade intact is best, breaking the brigade is next; keeping the company intact is best, breaking the company is next; keeping the squad intact is best, breaking the squad is next. Hence winning a hundred victories in a hundred battles is not the best of the best; subduing the enemy's troops without battle is the best of the best. Therefore the highest army attacks plans; next attacks alliances; next attacks troops; lowest assaults cities. Besieging cities is done only when unavoidable... The skilled user of troops subdues the enemy's troops without battle, takes cities without assaulting them, and overthrows states without prolonged operations, contending for all under Heaven with wholeness intact.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·謀攻第三》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #4</code></li>
+</ul>
+<ol start="3">
+<li><strong>Kind:</strong> mindset</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Make yourself invincible first, then wait for the enemy to become vulnerable. Invincibility resides within oneself, whereas vulnerability resides with the enemy; victory can be recognized, but cannot be forced into existence.</li>
+<li><strong>Their words:</strong> 「昔之善戰者，先為不可勝，以待敵之可勝。不可勝在己，可勝在敵。故善戰者，能為不可勝，不能使敵之必可勝。故曰：勝可知，而不可為。…古之所謂善戰者，勝於易勝者也。故善戰者之勝也，無智名，無勇功。故其戰勝不忒。不忒者，其所措必勝，勝已敗者也。故善戰者，立於不敗之地，而不失敵之敗也。是故勝兵先勝而後求戰，敗兵先戰而後求勝。」 (&quot;Ancient skilled warriors first made themselves invincible, and waited for the enemy to become vulnerable. Invincibility lies with oneself; vulnerability lies with the enemy. Therefore the skilled warrior can make himself invincible, but cannot ensure that the enemy will necessarily be vulnerable. Hence it is said: victory can be known, but cannot be manufactured... Those ancient skilled warriors conquered those who were easy to conquer. Thus their victories brought neither reputation for wisdom nor merit for courage. Their victories were without deviation because their measures were destined to succeed, conquering an enemy already defeated. Thus the victorious army wins first and then seeks battle; the defeated army battles first and then seeks victory.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·軍形第四》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #3</code></li>
+</ul>
+<ol start="4">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Victory can be known by five criteria: knowing when to fight and when not to fight, understanding how to use large and small forces, unity of purpose across ranks, meeting the unprepared with preparation, and having a capable general unhindered by the ruler. When the principles of war dictate certain victory, engage even if the ruler commands otherwise; when they dictate defeat, refrain from battle even if the ruler commands to fight.</li>
+<li><strong>Their words:</strong> 「故知勝有五：知可以戰與不可以戰者勝，識衆寡之用者勝，上下同欲者勝，以虞待不虞者勝，將能而君不御者勝。此五者，知勝之道也。故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」…「故戰道必勝，主曰無戰，必戰可也；戰道不勝，主曰必戰，無戰可也。是故進不求名，退不避罪，唯民是保，而利合於主，國之寶也。」 (&quot;There are five ways to know victory: one who knows when he can fight and when he cannot wins; one who understands how to use large and small forces wins; one whose superiors and inferiors share the same desire wins; one who awaits the unprepared with preparation wins; one whose general is capable and not interfered with by the ruler wins. These five are the way to know victory. Hence it is said: know the other and know yourself, and in a hundred battles you will not be endangered; not knowing the other but knowing yourself, one victory and one defeat; knowing neither the other nor yourself, in every battle you will be imperiled... When the way of warfare dictates certain victory, though the ruler says do not fight, you may fight; when the way of warfare dictates defeat, though the ruler says fight, you may refrain from fighting. Thus advancing without seeking fame and retreating without avoiding blame, solely protecting the people and matching the ruler's advantage, is the treasure of the state.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·謀攻第三》 (five ways to know victory) &amp; 《孫子兵法·地形第十》 (authority rule)</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #2</code></li>
+</ul>
+<ol start="5">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Act only when it accords with advantage, and cease when it does not. Rulers must not launch armies out of anger, nor commanders fight out of resentment, for human emotions can turn to joy again, but a ruined state cannot be revived and the dead cannot be brought back to life.</li>
+<li><strong>Their words:</strong> 「夫戰勝攻取，而不修其功者凶，命曰『費留』。故曰：明主慮之，良將修之，非利不動，非得不用，非危不戰。主不可以怒而興師，將不可以慍而致戰。合於利而動，不合於利而止。怒可以復喜，慍可以復悅，亡國不可以復存，死者不可以復生。故明主慎之，良將警之，此安國全軍之道也。」 (&quot;To win in battle and take objectives but fail to consolidate the achievements is inauspicious, termed 'wasteful lingering' [<em>feiliu</em>]. Therefore the enlightened ruler deliberates it and the good general cultivates it: move not unless there is advantage, act not unless there is gain, fight not unless there is danger. A ruler may not raise an army in anger; a general may not join battle in resentment. Move when it accords with advantage; halt when it does not. Anger can return to happiness, resentment can turn back to joy; but a destroyed state cannot be preserved again, and the dead cannot be brought back to life.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·火攻第十二》 (reiterated in 《孫子兵法·九地第十一》)</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #8</code></li>
+</ul>
+<ol start="6">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Foreknowledge cannot be obtained from ghosts and spirits, nor deduced from analogy with past events, nor verified by astronomical calculations; it must be obtained from people who know the enemy's situation. Employ the five kinds of spies—local, internal, converted, doomed, and surviving—with converted enemy spies serving as the foundation.</li>
+<li><strong>Their words:</strong> 「故明君賢將，所以動而勝人，成功出於眾者，先知也。先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也。故用間有五：有鄉間，有內間，有反間，有死間，有生間。五間俱起，莫知其道，是謂『神紀』，人君之寶也。…五間之事，主必知之，知之必在於反間，故反間不可不厚也。」 (&quot;That which enables an enlightened ruler and worthy general to move, conquer others, and achieve accomplishments beyond the multitude is foreknowledge. Foreknowledge cannot be obtained from ghosts and spirits, cannot be deduced from analogy with past affairs, cannot be verified by astronomical measures; it must be taken from people who know the enemy's true situation. Hence there are five kinds of spies: local spies, internal spies, converted spies, doomed spies, and surviving spies. When all five operate together and none knows their methods, this is called the 'divine web', the treasure of a ruler... The ruler must know the affairs of the five spies, and this knowledge must reside in the converted spy; therefore converted spies cannot but be treated generously.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·用間第十三》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>new (your research)</code></li>
+</ul>
+<ol start="7">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Warfare is based on deception: when capable, appear incapable; when using forces, appear not to use them; when near, make it appear far; when far, appear near. Induce the enemy to show their disposition while keeping one's own formless, so one's forces remain concentrated while the enemy is divided.</li>
+<li><strong>Their words:</strong> 「兵者，詭道也。故能而示之不能，用而示之不用，近而示之遠，遠而示之近。利而誘之，亂而取之，實而備之，強而避之，怒而撓之，卑而驕之，佚而勞之，親而離之。攻其無備，出其不意。此兵家之勝，不可先傳也。」…「故形人而我無形，則我專而敵分。我專為一，敵分為十，是以十攻其一也，則我衆而敵寡。…人皆知我所以勝之形，而莫知吾所以制勝之形。」 (&quot;Warfare is the way of deception. Therefore, when capable, appear incapable; when employing forces, appear not to employ them; when near, appear far; when far, appear near. Entice them with advantage; seize them in disorder; prepare against them when substantial; avoid them when strong; provoke them when angry; make them arrogant when humble; fatigue them when rested; divide them when close. Attack where they are unprepared, emerge where they do not expect. This is the victory of the strategist, which cannot be transmitted beforehand... Induce the enemy to take form while keeping oneself formless, then we are concentrated while the enemy is divided. We are unified into one while the enemy divides into ten, thus attacking one with ten... All people know the form by which I won, but none knows the form by which I governed victory.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·始計第一》 &amp; 《孫子兵法·虛實第六》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #5</code></li>
+</ul>
+<ol start="8">
+<li><strong>Kind:</strong> mindset</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Military disposition is like water, which avoids height and rushes downward: military victory avoids solidity and strikes emptiness. Forces possess no constant strategic momentum and no unchanging form; the ability to secure victory by adapting to the enemy's changes is called divine.</li>
+<li><strong>Their words:</strong> 「夫兵形象水，水之行，避高而趨下；兵之勝，避實而擊虛。水因地而制行，兵因敵而制勝。故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。故五行無常勝，四時無常位，日有短長，月有死生。」 (&quot;The form of an army resembles water: water's movement avoids heights and runs downward; an army's victory avoids solidity and strikes emptiness. Water shapes its course according to the ground; an army shapes its victory according to the enemy. Therefore an army possesses no constant momentum, no unchanging form; one who can achieve victory by transforming according to the enemy is called divine. Thus the five phases have no constant victory, the four seasons have no constant position, days have lengths and breadths, and the moon waxes and wanes.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·虛實第六》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>new (your research)</code></li>
+</ul>
+<ol start="9">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> The skilled commander brings the enemy to the field and is not brought by them. To force an unwilling enemy to fight, strike what they must rescue; to avoid battle when unwilling, divert or frustrate where they are heading.</li>
+<li><strong>Their words:</strong> 「凡先處戰地而待敵者佚，後處戰地而趨戰者勞。故善戰者，致人而不致於人。能使敵自至者，利之也；能使敵不得至者，害之也。…故我欲戰，敵雖高壘深溝，不得不與我戰者，攻其所必救也；我不欲戰，雖畫地而守之，敵不得與我戰者，乖其所之也。」 (&quot;Whoever occupies the battlefield first and awaits the enemy is at ease; whoever arrives later and rushes into battle is fatigued. Therefore the skilled warrior brings others and is not brought by others. To make the enemy arrive of their own accord, entice them with advantage; to prevent the enemy from arriving, hinder them with harm... When I wish to fight, even if the enemy has high ramparts and deep trenches, he must fight me because I attack what he must rescue. When I do not wish to fight, even if I merely draw a line on the ground to defend, the enemy cannot fight me because I divert where he is going.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·虛實第六》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #6</code></li>
+</ul>
+<ol start="10">
+<li><strong>Kind:</strong> mindset</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Seek victory from the strategic momentum rather than demanding it of individuals, selecting men to fit the momentum. Regulating large numbers is identical to regulating few through organizational divisions; fighting large numbers is identical to fighting few through signals and banners.</li>
+<li><strong>Their words:</strong> 「凡治衆如治寡，分數是也；鬥衆如鬥寡，形名是也。…故善戰者，求之於勢，不責於人，故能擇人而任勢。任勢者，其戰人也，如轉木石。木石之性，安則靜，危則動，方則止，圓則行。故善戰人之勢，如轉圓石於千仞之山者，勢也。」 (&quot;Governing a multitude is like governing a few: it is a matter of divisions and numbers. Fighting a multitude is like fighting a few: it is a matter of formations and signals... Therefore the skilled warrior seeks it from strategic momentum [<em>shi</em>] and does not demand it of individuals, thus being able to select men and employ momentum. One who employs momentum fights his men like rolling logs and stones: logs and stones are stationary on level ground and roll on a slope; square they halt, round they move. The momentum of skilled combatants is like rolling round stones down a mountain of a thousand fathoms.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·兵勢第五》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #7</code></li>
+</ul>
+<ol start="11">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> In battle, engage with the orthodox and win with the unorthodox. The changes of orthodox and unorthodox are inexhaustible, endlessly producing one another like a ring without beginning or end.</li>
+<li><strong>Their words:</strong> 「凡戰者，以正合，以奇勝。故善出奇者，無窮如天地，不竭如江海。終而復始，日月是也。死而復生，四時是也。…戰勢不過奇正，奇正之變，不可勝窮也。奇正相生，如循環之無端，孰能窮之哉？」 (&quot;In battle, engage with the orthodox [<em>zheng</em>], and win with the unorthodox [<em>qi</em>]. Therefore those skilled at producing the unorthodox are as boundless as Heaven and Earth, as inexhaustible as rivers and seas. Ending and beginning again, like the sun and moon; dying and returning to life, like the four seasons... In military potential there are only the orthodox and unorthodox, yet their variations can never be exhausted. Orthodox and unorthodox generate each other like a circle without beginning or end—who can exhaust them?&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·兵勢第五》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>new (your research)</code></li>
+</ul>
+<ol start="12">
+<li><strong>Kind:</strong> mindset</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Military operations value swift victory rather than protracted duration; prolonged campaigns blunt weapons, exhaust strength, and impoverish the state. One who does not fully recognize the hazards of using troops cannot fully recognize their benefits.</li>
+<li><strong>Their words:</strong> 「其用戰也，貴勝，久則鈍兵挫銳，攻城則力屈，久暴師則國用不足。夫鈍兵挫銳，屈力殫貨，則諸侯乘其弊而起，雖有智者，不能善其後矣。故兵聞拙速，未睹巧之久也。夫兵久而國利者，未之有也。故不盡知用兵之害者，則不能盡知用兵之利也。…故兵貴勝，不貴久。」 (&quot;In military operations, value victory; prolonged duration blunts weapons, dampens ardor, exhausts strength in sieges, and leaves state resources deficient through long army deployments. When troops are blunted, strength exhausted, and wealth depleted, other lords will take advantage of your distress to arise; even the wise cannot remedy the consequences. Hence in warfare we hear of clumsy swiftness, but have never seen cleverness in prolonged duration. A protracted war benefiting a state has never existed. He who does not fully know the harms of deploying troops cannot fully know their advantages... Thus military affairs value victory, not prolonged duration.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·作戰第二》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #1</code> &amp; <code>top-12 #4</code> (extracted from the merged cost ledger)</li>
+</ul>
+<ol start="13">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Command troops through civil benevolence and unify them through martial discipline. Treat soldiers as infants and beloved children to have them follow into deep gorges and face death, but do not spoil them: care without authority or command produces useless arrogance.</li>
+<li><strong>Their words:</strong> 「故令之以文，齊之以武，是謂必取。令素行以教其民，則民服；令素不行以教其民，則民不服。」…「視卒如嬰兒，故可以與之赴深溪；視卒如愛子，故可與之俱死。厚而不能使，愛而不能令，亂而不能治，譬若驕子，不可用也。」 (&quot;Therefore command them with the civil and unify them with the martial; this is called certain capture. If orders are habitually enforced when training the people, they comply; if not habitually enforced, they do not comply... Look upon soldiers as infants, and they can be led into deep ravines; look upon soldiers as beloved children, and they can die alongside you. Yet if you are generous but cannot employ them, affectionate but cannot command them, and cannot restore order when they are unruly, they are like spoiled children and cannot be used.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·行軍第九》 &amp; 《孫子兵法·地形第十》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>new (your research)</code></li>
+</ul>
+<ol start="14">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Manage morale by striking when enemy spirits are slack and spent rather than fresh; manage mind by awaiting disorder with order and clamor with stillness; manage strength by awaiting the distant with the near and the fatigued with ease. Abide by tactical rules: do not confront high ridges, do not chase feigned retreats, leave an outlet for a surrounded enemy, and do not press a desperate foe.</li>
+<li><strong>Their words:</strong> 「朝氣銳，晝氣惰，暮氣歸。故善用兵者，避其銳氣，擊其惰歸，此治氣者也；以治待亂，以靜待嘩，此治心者也；以近待遠，以佚待勞，以飽待饑，此治力者也；無邀正正之旗，無擊堂堂之陣，此治變者也。故用兵之法，高陵勿向，背丘勿逆，佯北勿從，銳卒勿攻，餌兵勿食，歸師勿遏，圍師必闕，窮寇勿迫，此用兵之法也。」 (&quot;Morning spirits are sharp, midday spirits are slack, evening spirits are spent. Therefore the skilled warrior avoids sharp spirits and strikes slack return—this is managing morale; awaits disorder with order, stillness with clamor—this is managing the mind; awaits the distant with the near, the fatigued with ease, the hungry with the sated—this is managing strength; does not intercept upright banners or strike grand arrays—this is managing change. In the method of using troops: do not charge uphill, do not oppose an enemy backed against hills, do not pursue feigned retreats, do not attack elite troops, do not swallow bait forces, do not block an army returning home, leave an opening for a surrounded army, do not press cornered bandits.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·軍爭第七》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #9</code></li>
+</ul>
+<ol start="15">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Deliberations of the wise must weigh both benefit and harm: mixing in benefit makes the enterprise trustworthy; mixing in harm allows potential affliction to be resolved. A commander must guard against five dangerous faults: reckless determination to die invites killing; desperate clinging to life invites capture; quick temper invites insult; excessive purism invites humiliation; compassionate coddling of troops invites harassment.</li>
+<li><strong>Their words:</strong> 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」…「故將有五危︰必死，可殺也﹔必生，可虜也﹔忿速，可侮也﹔廉潔，可辱也﹔愛民，可煩也。凡此五者，將之過也，用兵之災也。覆軍殺將，必以五危，不可不察也。」 (&quot;Therefore the deliberations of the wise must interleave benefit and harm: mixed with benefit, the affair can be trusted; mixed with harm, afflictions can be resolved... A general has five dangerous faults: determination to die can lead to being killed; craving for life can lead to being captured; hasty temper can be insulted; puritanical integrity can be disgraced; excessive love for the people can bring harassment. These five are the faults of a general, the disasters of warfare.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·九變第八》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #12</code></li>
+</ul>
+<ol start="16">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Gauge the enemy using four diagnostic probes: calculate to learn their plans of gain and loss, provoke them to learn their rhythms of action and stillness, shape them to discover their positions of life and death, and skirmish with them to measure where their strength is surplus or deficient. Verify enemy intent through observable signs rather than words, such as humble words accompanied by increased defense signaling an advance, or aggressive words accompanied by forward advances signaling a retreat.</li>
+<li><strong>Their words:</strong> 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」…「辭卑而益備者，進也；辭強而進驅者，退也；輕車先出，居其側者，陣也；無約而請和者，謀也；奔走而陳兵者，期也；半進半退者，誘也；杖而立者，饑也；汲而先飲者，渴也；見利而不進者，勞也；鳥集者，虛也；夜呼者，恐也；軍擾者，將不重也；旌旗動者，亂也。」 (&quot;Probe them to know their plans of gain and loss; stir them to know the patterns of their movement and rest; reveal their disposition to know their grounds of life and death; test them to know where they have surplus and deficiency... Humble words accompanied by increased preparations mean they are advancing; forceful words and pressing forward in columns mean they are retreating; light chariots deploying first on the flanks indicate a battle array; suing for peace without a treaty indicates a plot; troops scurrying about deploying arms indicate a coordinated hour; half-advancing and half-withdrawing is a lure; leaning on staffs indicates hunger; water-drawers drinking first indicates thirst; seeing advantage but not advancing indicates exhaustion; birds flocking indicates an empty camp; night shouting indicates fear; disorder in camp indicates an unrespected commander; fluttering banners indicate confusion.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·虛實第六》 (probes) &amp; 《孫子兵法·行軍第九》 (signs)</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #11</code></li>
+</ul>
+<ol start="17">
+<li><strong>Kind:</strong> decision rule</li>
+</ol>
+<ul>
+<li><strong>Rule:</strong> Discern the terrain and apply the matching response: in scattered ground do not fight; in light ground do not halt; in contentious ground do not attack; in open ground do not cut off routes; in intersecting ground join with allies; in heavy ground forage; in difficult ground advance; in encircled ground plan; in deadly ground fight. When troops are cast into deadly ground where there is no escape, they will fight desperately and survive.</li>
+<li><strong>Their words:</strong> 「是故散地則無戰，輕地則無止，爭地則無攻，交地則無絕，衢地則合交，重地則掠，圮地則行，圍地則謀，死地則戰。…投之亡地然後存，陷之死地然後生。夫衆陷於害，然後能為勝敗。」 (&quot;Therefore, in dispersive ground do not fight; in shallow ground do not halt; in contentious ground do not attack; in communicative ground do not sever connections; in intersecting highways join alliances; in deep ground plunder resources; in treacherous ground march on; in encircled ground devise schemes; in deadly ground fight... Cast them into fatal ground and they will survive; plunge them into deadly ground and they will live. Only when the multitude is trapped in peril can they bring about victory.&quot;)</li>
+<li><strong>Source:</strong> 《孫子兵法·九地第十一》</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> <code>top-12 #10</code></li>
+</ul>
+<h2>Gaps</h2>
+<ul>
+<li><strong>〈吳問〉 and bamboo slip variants:</strong> The excavated Yinqueshan (銀雀山) bamboo slips include lost chapters such as 〈吳問〉 where Sun Tzu converses with King Helü. However, authoritative line-by-line collated readings could not be directly verified against primary tomb slips in this environment without risking unverified conjecture. Consequently, no items were manufactured from bamboo-only fragments.</li>
+<li><strong>The 《答話》 (Questions and Answers) appendix:</strong> Found in the Song edition received text of 《孫子兵法》 following Chapter 13. As noted by Song editors, these dialogues contain external attributions and potential interpolations (e.g. from 《孫子兵法論》 or later commentators). To preserve strict quote fidelity, they have been excluded from the core list of Sun Tzu's own mindsets and rules.</li>
+<li><strong>Biographical anecdotes in 《史記》:</strong> Sima Qian's famous biography (drilling the palace concubines) reflects narrative historiography written several centuries later rather than Sun Tzu's direct strategic and tactical rules, and was therefore omitted from the decision rules.</li>
+<li><strong>Excluded overly modern interpretations:</strong> Paraphrases claiming that &quot;character is purely an output&quot;, &quot;deception creates an uncopyable signature&quot;, or &quot;siege ladder steps must be sequentially attempted&quot; were excluded because the primary text does not state those modern systematic guarantees.</li>
+</ul>
+</section>
+<section class="chapter" id="ch-2" data-units="3632">
+<h1>老子 — final list</h1>
+<h2>Changes from the top 12</h2>
+<ul>
+<li><strong>#1 (ch. 48): corrected.</strong> Cite codex row 1. Removed the invented sequence (&quot;first add knowledge, then subtract doing&quot;) and the unstated claim that every act is a loss; kept repeated subtraction until reaching non-action.</li>
+<li><strong>#2 (ch. 13): corrected.</strong> Cite codex row 2. Removed the modern application (&quot;inspect personal stakes before trusting advice&quot;); kept the realization that having a self is the source of great trouble. Classified as a mindset.</li>
+<li><strong>#3 (ch. 29): corrected.</strong> Cite codex row 3. Removed the ungrounded instruction to &quot;aim at a part&quot;; kept the rule that the world cannot be manipulated or grasped, and the elimination of extremes, extravagance, and excess.</li>
+<li><strong>#4 (ch. 22): corrected.</strong> Cite codex row 4. Removed the invented procedural sequence (&quot;in this order&quot;) and &quot;don't look at yourself&quot;; kept the parallel restraints against self-display and self-praise, along with non-contention.</li>
+<li><strong>#5 (chs. 63 &amp; 64): corrected.</strong> Cite codex row 5. Split chs. 63 and 64 rather than merging them into an artificial three-stage algorithm with &quot;cheap&quot; ends and &quot;expensive&quot; middles; preserved early intervention at the small/easy stage and sustained care through completion as distinct rules.</li>
+<li><strong>#6 (ch. 41): corrected.</strong> Cite codex row 6. Removed the modern evaluation formula and the absolute instruction &quot;never judge by appearances&quot;; kept the mindset that genuine manifestations of the Way appear paradoxical, deficient, or unformed.</li>
+<li><strong>#7 (chs. 9 &amp; 2): corrected.</strong> Cite codex row 7. Removed the added conditions &quot;running without you&quot; and &quot;stop attending to it&quot;; kept accomplishment followed by withdrawal and refusal to dwell on credit.</li>
+<li><strong>#8 (ch. 36): corrected.</strong> Cite codex row 8. Removed the invented ending (&quot;then stop and let the thing move against you&quot;); kept the four conditional reversal pairs.</li>
+<li><strong>#9 (ch. 71): corrected.</strong> Cite codex row 9. Removed interpretive additions (&quot;performing knowledge you don't have&quot; and &quot;the cure is the same move as the disease&quot;); kept knowing one's lack of knowledge as superior, and recognizing illness to remain free of illness.</li>
+<li><strong>#10 (ch. 33): corrected.</strong> Cite codex row 10. Removed the invented developmental &quot;ladder&quot; and the claim that self-measurement is &quot;harder&quot;; kept the parallel contrasts between external competence and internal illumination and strength.</li>
+<li><strong>#11 (ch. 8): corrected.</strong> Cite codex row 11. Corrected the count from eight to seven domain virtues (居, 心, 與/予, 言, 正, 事, 動) and removed the claim of an ordered execution checklist; kept the water comparison and parallel domains of non-contending action.</li>
+<li><strong>#12 (Shiji 63): corrected.</strong> Cite codex row 12. Removed ungrounded additions (&quot;before anything else&quot;, &quot;give one short answer&quot;, &quot;show less appetite than you feel&quot;); kept acting when the time is right, wandering when it is not, concealing deep reserves, and shedding pride and desires.</li>
+</ul>
+<h2>Final list</h2>
+<ol>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> Pursue the Way by decreasing daily, subtracting repeatedly until reaching non-action; through non-action, nothing is left undone. Take the world by having no deliberate business; having deliberate business is insufficient to take the world.</li>
+<li><strong>Their words:</strong> 為學日益，為道日損。損之又損，以至於無為。無為而無不為。取天下常以無事，及其有事，不足以取天下。 (帛書 第十一章: 為學者日益，聞道者日損。損之又損，以至於無為，無為而無不為。將欲取天下也，恆無事，及其有事也，不足以取天下。) — &quot;In pursuing learning one increases daily; in pursuing the Way one decreases daily. Decrease and decrease again, until reaching non-action. Through non-action nothing is left undone. Taking the world is always done by having no deliberate business; when one has deliberate business, it is not enough to take the world.&quot;</li>
+<li><strong>Source:</strong> 道德經 四十八章 (王弼本); 帛書校勘版 第十一章 无为 (<code>silk.txt:117–119</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> top-12 #1 (corrected)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> Do not attempt to take hold of or manipulate the world, for it is a sacred vessel that cannot be forced; whoever acts upon it ruins it, and whoever grasps it loses it. Discard extremes, excess, and extravagance.</li>
+<li><strong>Their words:</strong> 將欲取天下而為之，吾見其不得已。天下神器，不可為也，為者敗之，執者失之。…是以聖人去甚，去奢，去泰。 (帛書 第七十三章: 將欲取天下而為之，吾見亓弗得已。夫天下，神器也，非可為者也。為者敗之，執者失之。…是以聖人去甚，去大，去楮。) — &quot;Whoever wishes to take the world and act upon it, I see that they will not succeed. The world is a sacred vessel; it cannot be acted upon. Those who act on it ruin it; those who grasp it lose it... Therefore the sage discards the extreme, the extravagant, and the excessive [silk: the extreme, the grand, and the excessive].&quot;</li>
+<li><strong>Source:</strong> 道德經 二十九章 (王弼本); 帛書校勘版 第七十三章 自然 (<code>silk.txt:793–801</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> top-12 #3 (corrected)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> mindset</p>
+<ul>
+<li><strong>Rule:</strong> Yielding preserves wholeness, bending brings uprightness, emptiness brings fullness, and having less brings gain while having much brings confusion. The sage embraces the One without displaying oneself, self-justifying, boasting, or praising oneself, and because there is no contention, none can contend with them.</li>
+<li><strong>Their words:</strong> 曲則全，枉則直，窪則盈，敝則新，少則得，多則惑。是以聖人抱一為天下式。不自見故明，不自是故彰，不自伐故有功，不自矜故長。夫唯不爭，故天下莫能與之爭。 (帛書 第六十七章: 曲則全，枉則正，洼則盈，敝則新，少則得，多則惑。是以聖人執一以為天下牧。不自視故彰，不自見故明，不自伐故有功，弗矜故能長。夫唯不爭，故莫能與之爭。) — &quot;Yield and remain whole; bend and become straight; hollow out and become full; wear out and become renewed; have little and gain; have much and be confused. Therefore the sage embraces the One as the model for the world: not displaying oneself, one is illuminated; not asserting oneself, one is distinguished; not boasting of oneself, one has merit; not praising oneself, one endures. Precisely because one does not contend, no one in the world can contend with one.&quot;</li>
+<li><strong>Source:</strong> 道德經 二十二章 (王弼本); 帛書校勘版 第六十七章 執一 (<code>silk.txt:715–721</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> top-12 #4 (corrected)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> Act like water by benefiting all things without contention and dwelling in low places others dislike. Cultivate seven parallel excellences: choose suitable ground, keep the mind deep, give with benevolence [silk: matching Heaven], speak with good faith, govern with order, act with competence, and move at the opportune time.</li>
+<li><strong>Their words:</strong> 上善若水。水善利萬物而不爭，處眾人之所惡，故幾於道。居善地，心善淵，與善仁，言善信，正善治，事善能，動善時。夫唯不爭，故無尤。 (帛書 第五十二章: 上善治水。水善利萬物而有靜，居眾之所惡，故幾於道矣。居善地，心善淵，予善天，言善信，正善治，事善能，動善時。夫唯不爭，故无尤。) — &quot;The highest good is like water [silk: in governing water]. Water benefits all things and does not contend [silk: has stillness], dwelling in places that the crowd dislikes; thus it is near to the Way. In dwelling, be good at choosing ground; in mind, be good at depth; in giving, be good at benevolence [silk: matching Heaven]; in words, be good at good faith; in governing, be good at order; in affairs, be good at competence; in action, be good at timing. Because it does not contend, there is no fault.&quot;</li>
+<li><strong>Source:</strong> 道德經 八章 (王弼本); 帛書校勘版 第五十二章 治水 (<code>silk.txt:550–554</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> top-12 #11 (corrected)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> Anticipate difficult tasks while they are still easy, and accomplish great undertakings while they are still small. Deal with situations before they emerge, and establish order before disorder breaks out.</li>
+<li><strong>Their words:</strong> 圖難於其易，為大於其細。天下之難作於易，天下之大作於細。…為之於未有，治之於未亂。合抱之木，生於毫末；九層之臺，起於累土；千里之行，始於足下。 (帛書 第二十六章 &amp; 第二十七章: 圖難乎亓易也，為大乎亓細也。天下之難作於易，天下之大作於細。…為之於亓未有也，治之於亓未亂也。合抱之木，生於毫末；九成之臺，作於羸土；百仞之高，始於足下。) — &quot;Plan difficulty at its easy stage; execute greatness at its small stage. The difficult things under heaven arise from what is easy; the great things under heaven arise from what is small... Act on things before they exist; govern them before disorder arises. A tree of embrace begins from a tiny sprout; a nine-storey tower rises from a basket of soil [silk: bare earth]; a journey of a thousand li [silk: a height of a hundred ren] begins beneath the feet.&quot;</li>
+<li><strong>Source:</strong> 道德經 六十三章 &amp; 六十四章 (王弼本); 帛書校勘版 第二十六章 无難 (<code>silk.txt:284</code>) &amp; 第二十七章 輔物 (<code>silk.txt:295–298</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> top-12 #5 (split &amp; corrected)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> Maintain the same care and vigilance at the conclusion of an undertaking as at the beginning, preventing failure that commonly occurs when work is nearly complete.</li>
+<li><strong>Their words:</strong> 民之從事，常於幾成而敗之。慎終如始，則無敗事。 (帛書 第二十七章: 民之從事也，恆於亓成而敗之。故慎終若始，則无敗事矣。) — &quot;People in handling affairs often ruin them when they are near completion. Be as careful at the end as at the beginning, and there will be no ruined affairs.&quot;</li>
+<li><strong>Source:</strong> 道德經 六十四章 (王弼本); 帛書校勘版 第二十七章 輔物 (<code>silk.txt:299–300</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> top-12 #5 (split &amp; corrected)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> When the work is accomplished and merit achieved, withdraw oneself; accomplish results without dwelling upon or claiming possession of them, for precisely by not dwelling on them, the results do not depart.</li>
+<li><strong>Their words:</strong> 功遂身退，天之道。 (九章) 萬物作焉而不辭，生而不有，為而不恃，功成而弗居。夫唯弗居，是以不去。 (二章) (帛書 第五十三章: 功述身芮，天之道也。 帛書 第四十六章: 萬物作而弗始，為而弗恃也，成功而弗居也。夫唯弗居，是以弗去。) — &quot;When work is accomplished, withdraw: that is the Way of Heaven. (ch. 9) All things arise and it does not turn away from them; it begets them without possessing them, acts without relying on them, accomplishes without dwelling on it. Precisely because it does not dwell on it, it does not depart. (ch. 2)&quot;</li>
+<li><strong>Source:</strong> 道德經 九章 &amp; 二章 (王弼本); 帛書校勘版 第五十三章 持盈 (<code>silk.txt:567</code>) &amp; 第四十六章 觀徼 (<code>silk.txt:500–501</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> top-12 #7 (corrected)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> To contract something, first expand it; to weaken something, first strengthen it; to cast off [or overthrow] something, first elevate it [or give to it]; to seize something, first bestow it.</li>
+<li><strong>Their words:</strong> 將欲歙之，必固張之；將欲弱之，必固強之；將欲廢之，必固興之；將欲奪之，必固與之。是謂微明。 (帛書 第八十章: 將欲翕之，必固張之；將欲弱之，必固強之；將欲去之，必固與之；將欲奪之，必固予之。是謂微明。) — &quot;To close something up, one must first expand it; to weaken something, one must first strengthen it; to overthrow [silk: discard] something, one must first raise it up [silk: grant it]; to take something away, one must first bestow it. This is called subtle clarity.&quot;</li>
+<li><strong>Source:</strong> 道德經 三十六章 (王弼本); 帛書校勘版 第八十章 微明 (<code>silk.txt:882–883</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> top-12 #8 (corrected)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> Know what is sufficient to avoid disgrace, and know when to stop to avoid peril; this enables enduring longevity.</li>
+<li><strong>Their words:</strong> 名與身孰親？身與貨孰多？得與亡孰病？是故甚愛必大費，多藏必厚亡。知足不辱，知止不殆，可以長久。 (帛書 第七章: 名與身孰親？身與貨孰多？得與亡孰病？甚愛必大費，多藏必厚亡。故知足不辱，知止不殆，可以長久。) — &quot;Which is dearer, fame or self? Which is worth more, self or wealth? Which is more harmful, gain or loss? Excessive love brings great expense; hoarding much brings heavy loss. Knowing contentment avoids disgrace; knowing when to stop avoids danger; thus one can endure long.&quot;</li>
+<li><strong>Source:</strong> 道德經 四十四章 (王弼本); 帛書校勘版 第七章 立戒 (<code>silk.txt:83–88</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> new (identified in codex review missing items)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> Preserve and guard three treasures: compassion, frugality, and not daring to be first in the world; compassion enables courage, frugality enables broad generosity, and refusing precedence enables enduring leadership. Abandoning these qualities while attempting to maintain their outcomes brings death.</li>
+<li><strong>Their words:</strong> 我有三寶，持而保之。一曰慈，二曰儉，三曰不敢為天下先。慈故能勇；儉故能廣；不敢為天下先，故能成器長。今舍慈且勇；舍儉且廣；舍後且先；死矣！夫慈以戰則勝，以守則固。 (帛書 第三十二章: 我恆有三寶之：一曰茲，二曰檢，三曰不敢為天下先。夫茲，故能勇；檢，故能廣；不敢為天下先，故能為成事長。今捨亓茲且勇，捨亓檢且廣，捨亓後且先，則必死矣。夫茲，以戰則勝，以守則固。) — &quot;I have three treasures that I hold and preserve: the first is compassion; the second is frugality; the third is not daring to be first in the world. Being compassionate, one can be courageous; being frugal, one can be broad; not daring to be first in the world, one can become chief among vessels. If one abandons compassion yet seeks courage, abandons frugality yet seeks breadth, or abandons being behind yet seeks to be first, one dies! Compassion in battle brings victory, in defense brings firmness.&quot;</li>
+<li><strong>Source:</strong> 道德經 六十七章 (王弼本); 帛書校勘版 第三十二章 三寶 (<code>silk.txt:346–352</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> new (restored from top-10 #10 per codex review missing items)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> Recognizing that one does not know is superior; mistaking lack of knowledge for knowledge [silk: not knowing that one does not know] is an affliction. Recognizing this condition as an affliction keeps one free from affliction.</li>
+<li><strong>Their words:</strong> 知不知，上；不知知，病。夫唯病病，是以不病。聖人不病，以其病病，是以不病。 (帛書 第三十六章: 知不知，尚矣；不知不知，病矣。是以聖人之不病，以亓病病也，是以不病。) — &quot;To know that one does not know is superior; to not know yet think one knows [silk: not to know that one does not know] is an illness. Only by recognizing the illness as illness is one not ill. The sage is not ill because he recognizes the illness as illness; therefore he is not ill.&quot;</li>
+<li><strong>Source:</strong> 道德經 七十一章 (王弼本); 帛書校勘版 第三十六章 知病 (<code>silk.txt:384–386</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> top-12 #9 (corrected)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> mindset</p>
+<ul>
+<li><strong>Rule:</strong> Knowing others is intelligence, but knowing oneself is true illumination; overcoming others requires strength, but overcoming oneself is genuine power. Knowing contentment is wealth, persevering with effort is having will, and not losing one's proper ground endures.</li>
+<li><strong>Their words:</strong> 知人者智，自知者明。勝人者有力，自勝者強。知足者富。強行者有志。不失其所者久。死而不亡者壽。 (帛書 第七十七章: 知人者，知也；自知者，明也。勝人者，有力也；自勝者，強也。知足者，富也；強行者，有志也。不失亓所者，久也；死不忘者，壽也。) — &quot;Knowing others is intelligence; knowing oneself is clarity. Overcoming others requires force; overcoming oneself is true strength. Knowing contentment is wealth. Persisting with diligence is having purpose. Not losing one's proper place is enduring. Dying without perishing [silk: dying without being forgotten] is longevity.&quot;</li>
+<li><strong>Source:</strong> 道德經 三十三章 (王弼本); 帛書校勘版 第七十七章 盡己 (<code>silk.txt:851–857</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> top-12 #10 (corrected)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> Act when the timing is right, and drift along unforced when it is not. Conceal deep abundance as if empty, present great virtue with the simple bearing of a fool, and cast off pride, many desires, haughty airs, and extravagant ambitions.</li>
+<li><strong>Their words:</strong> 君子得其時則駕，不得其時則蓬累而行。吾聞之，良賈深藏若虛，君子盛德容貌若愚。去子之驕氣與多欲，態色與淫志，是皆無益於子之身。吾所以告子，若是而已。 — &quot;When a gentleman meets his time, he rides out; when he does not meet his time, he wanders along like drifting tumbleweed. I have heard that a skilled merchant stores his treasures deep as if he had nothing, and a gentleman of abundant virtue wears the countenance of a fool. Cast off your arrogant demeanor and many desires, your haughty bearing and extravagant aims; none of these benefit your person. What I have to tell you is merely this.&quot;</li>
+<li><strong>Source:</strong> 史記 卷六十三 老子韓非列傳 (<code>史記_卷063.txt:13</code>).</li>
+<li><strong>Words are:</strong> <code>attributed</code></li>
+<li><strong>From:</strong> top-12 #12 (corrected)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> To stand above the people, place yourself below them in speech; to lead ahead of the people, place yourself behind them in person. Because one does not contend, no one contends with one.</li>
+<li><strong>Their words:</strong> 江海所以能為百谷王者，以其善下之，是以能為百谷王。是以聖人欲上民，必以言下之；欲先民，必以身後之。…非以其無爭與？故天下莫能與之爭。 (帛書 第二十九章: 江海所以能為百谷王者，以亓善下之，是以能為百谷王。是以聖人之欲上民也，必以亓言下之；欲先民也，必以亓身後之。…非以亓无諍與？故天下莫能與諍。) — &quot;The reason rivers and seas can be king of the hundred valleys is that they excel at staying below them; therefore they can be king of the hundred valleys. Thus, when the sage wishes to be above the people, he must in his words stay below them; when he wishes to be before the people, he must in his person stay behind them... Is it not because he does not contend? Therefore none under heaven can contend with him.&quot;</li>
+<li><strong>Source:</strong> 道德經 六十六章 (王弼本); 帛書校勘版 第二十九章 江海 (<code>silk.txt:317–320</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> new (identified in codex review missing items)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> mindset</p>
+<ul>
+<li><strong>Rule:</strong> Thirty spokes share a hub, clay is molded into a vessel, and doors and windows are cut into a room; in each case, tangible matter provides the advantage, while empty non-being provides the actual utility.</li>
+<li><strong>Their words:</strong> 三十輻共一轂，當其無，有車之用。埏埴以為器，當其無，有器之用。鑿戶牖以為室，當其無，有室之用。故有之以為利，無之以為用。 (帛書 第五十五章: 卅輻同一轂，當亓无，有車之用也。埏埴為器，當亓无，有埴器之用也。鑿戶牖，當亓无，有室之用也。故有之以為利，无之以為用。) — &quot;Thirty spokes join at one hub; where there is nothing [the empty hole], lies the cart's utility. Clay is molded to make vessels; where there is nothing, lies the vessel's utility. Doors and windows are chiseled out to make a room; where there is nothing, lies the room's utility. Therefore having creates benefit, while having nothing provides utility.&quot;</li>
+<li><strong>Source:</strong> 道德經 十一章 (王弼本); 帛書校勘版 第五十五章 玄中 (<code>silk.txt:583–589</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> new (identified in codex review missing items)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> decision rule</p>
+<ul>
+<li><strong>Rule:</strong> Weapons are instruments of ill omen and are used only when unavoidable, with calm restraint foremost; achieve results without arrogance, boasting, or reliance on force, and observe victory with the solemnity of mourning rites.</li>
+<li><strong>Their words:</strong> 夫佳兵者，不祥之器，物或惡之，故有道者不處。…兵者不祥之器，非君子之器，不得已而用之，恬淡為上。勝而不美，而美之者，是樂殺人。…戰勝，以喪禮處之。…善有果而已，不敢以取強。果而勿矜，果而勿伐，果而勿驕，果而不得已，果而勿強。 (帛書 第七十五章 &amp; 第七十四章: 夫兵者，不祥之器也，物或惡之，故有欲者弗居。…兵者，非君子之器也，兵者，不祥之器也，不得已而用之，銛龐為上。勿美也，若美之，是樂殺人也。…戰勝，以喪禮處之。…善者果而已矣，毋以取強焉。果而毋驕，果而勿矜，果而勿伐，果而毋得已居，是謂果而不強。) — &quot;Fine weapons are instruments of ill omen; creatures detest them, so one of the Way does not dwell with them... Weapons are not instruments of the gentleman; only when unavoidable does one use them, with calm restraint foremost. If victorious, do not celebrate; celebrating is delighting in slaughter... When victorious in war, observe it with mourning rites. (ch. 31) The adept achieves results and stops, daring not to seize strength. Achieve results without boasting, achieve results without bragging, achieve results without arrogance, achieve results only out of necessity, achieve results without forcing. (ch. 30)&quot;</li>
+<li><strong>Source:</strong> 道德經 三十一章 &amp; 三十章 (王弼本); 帛書校勘版 第七十五章 貴左 (<code>silk.txt:819–834</code>) &amp; 第七十四章 不強 (<code>silk.txt:806–813</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> new (identified in codex review missing items)</li>
+</ul>
+</li>
+<li>
+<p><strong>Kind:</strong> mindset</p>
+<ul>
+<li><strong>Rule:</strong> The reason one experiences great misfortune or distress is having a bodily self; if one had no bodily self, what misfortune could exist?</li>
+<li><strong>Their words:</strong> 吾所以有大患者，為吾有身，及吾無身，吾有何患？ (帛書 第五十七章: 吾所以有大患者，為吾有身也，及吾无身，有何患？) — &quot;The reason I have great misfortune is that I have a body/self; if I had no body/self, what misfortune would I have?&quot;</li>
+<li><strong>Source:</strong> 道德經 十三章 (王弼本); 帛書校勘版 第五十七章 寵辱 (<code>silk.txt:605</code>).</li>
+<li><strong>Words are:</strong> <code>quoted</code></li>
+<li><strong>From:</strong> top-12 #2 (corrected)</li>
+</ul>
+</li>
+</ol>
+<h2>Gaps</h2>
+<ul>
+<li><strong>Guodian Bamboo Slips textual readings:</strong> The local source repository contains no Guodian transcription file (only Wang Bi, Mawangdui silk text, and Shiji 63). Guodian claims regarding chapter presence (e.g. Murphy 2006 table) could not be cross-checked against Guodian primary readings directly.</li>
+<li><strong>Excluded ungrounded extrapolations:</strong> Passages like ch. 60 (治大國若烹小鮮) and ch. 5 (多言數窮，不如守中 / 多聞數窮) express concise proverbs, but framing them as operational decision procedures without adding modern instructional scaffolding proved impossible; they are left out rather than supplemented.</li>
+<li><strong>Unverifiable historical individual:</strong> As recorded in Shiji 63, the historical author cannot be independently isolated from the compiled textual corpus of the Daodejing; hence items 1–11 and 14–17 reflect the received and excavated texts (<code>quoted</code>), while item 13 reflects Sima Qian's narrative record of speech (<code>attributed</code>). No birth dates, biographical assertions, or unverified traditions were introduced.</li>
+</ul>
+</section>
+<section class="chapter" id="ch-3" data-units="4606">
+<h1>Linus Torvalds — final list</h1>
+<h2>Changes from the top 12</h2>
+<ul>
+<li>Item 1: <strong>corrected</strong> — removed &quot;Never&quot;, &quot;whoever wrote the code&quot;, and &quot;your own judgement is not the input that matters&quot; (codex row 1); the source allows small decisions and frames the problem as avoiding big technical decisions where subordinates must know the details better.</li>
+<li>Item 2: <strong>corrected</strong> — removed &quot;Only&quot; and the interpretation that decisions must be split into two in advance (codex row 2); the text defines small decisions by reversibility via backtracking, where the two decisions are the wrong choice and its subsequent correction.</li>
+<li>Item 3: <strong>corrected</strong> — fixed the reversed quotation order identified by codex (lines 289 before lines 292–294) and removed the added slogan &quot;Nobody is above suspicion&quot; (codex row 3).</li>
+<li>Item 4: <strong>corrected</strong> — removed the added instruction to &quot;actively recruit&quot; (codex row 4); the text instructs taking advantage of smarter people when found, coasting, and prodding lightly without pushing too hard across domains.</li>
+<li>Item 5: <strong>kept</strong> — source supports taking public blame for others and notifying the developer in private, preserving &quot;(if you can find them)&quot; (codex row 5).</li>
+<li>Item 6: <strong>corrected</strong> — removed &quot;without softening&quot; because the source explicitly recommends using humor to pad bluntness and moralizing (codex row 6).</li>
+<li>Item 7: <strong>corrected</strong> — removed the unsupported framing of &quot;one big irreversible decision&quot; and absolute prohibition on post-window changes (codex row 7); relabeled as documented practice (<code>attributed</code>) describing the merge window, release candidates, and rare exceptions for late fixes and new drivers.</li>
+<li>Item 8: <strong>corrected</strong> — relabeled as documented practice (<code>attributed</code>) since the text describes Torvalds in the third person, and cited the maintainer-routing requirement alongside arbiter avoidance (codex row 8).</li>
+<li>Item 9: <strong>corrected</strong> — relabeled as documentation guidance (<code>attributed</code>) rather than direct speech (codex row 9), preserving the canonical formatting rules (summary under 70–75 characters in imperative mood, 75-column explanation body, and <code>---</code> separator).</li>
+<li>Item 10: <strong>corrected</strong> — removed the headline's absolute &quot;never&quot; and preserved the source's conditional, approximate batch limit of &quot;say 15 or so at a time&quot; if the patch set cannot be condensed (codex row 10); relabeled as <code>attributed</code>.</li>
+<li>Item 11: <strong>corrected</strong> — relabeled as documentation guidance (<code>attributed</code>) rather than direct speech (codex row 11); preserved the requirement to provide self-contained justifications with quantified metrics and expected downsides.</li>
+<li>Item 12: <strong>corrected</strong> — dismantled the artificial &quot;one filter&quot; umbrella and removed &quot;no external standard has authority&quot; (which conflicts with <code>coding-style.html:777</code> recognizing K&amp;R) (codex row 12); unbundled into distinct, faithful rules for function scope, commenting, naming, code movement, and checker judgment.</li>
+</ul>
+<h2>Final list</h2>
+<ol>
+<li>
+<p><strong>Avoid big technical decisions where subordinates know the details better</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> A manager must avoid having to make big technical decisions between competing choices. If the people you manage come to you to make a technical decision, you are not competent to make it for them because they had better know the details better than you do.</li>
+<li><strong>Their words:</strong> &quot;The name of the game is to <strong>avoid</strong> having to make a decision. In particular, if somebody tells you 'choose (a) or (b), we really need you to decide on this', you're in trouble as a manager. The people you manage had better know the details better than you, so if they come to you for a technical decision, you're screwed. You're clearly not competent to make that decision for them.&quot; — <em>Gloss:</em> If subordinates ask you to arbitrate technical alternatives, you are in the wrong position because they must possess the detailed domain knowledge required to decide.</li>
+<li><strong>Source:</strong> <code>Documentation/process/management-style.rst</code> §1 &quot;Decisions&quot;</li>
+<li><strong>Words are:</strong> <code>quoted</code> (first-person text in kernel documentation traditionally attributed to Linus Torvalds)</li>
+<li><strong>From:</strong> top-12 #1</li>
+</ul>
+</li>
+<li>
+<p><strong>Keep decisions small by ensuring they can be undone by backtracking</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> The key difference between a big decision and a small one is whether it can be fixed afterwards. Make decisions small by ensuring that if you were wrong, you can undo the damage later by backtracking, avoiding situations from which you cannot escape.</li>
+<li><strong>Their words:</strong> &quot;It helps to realize that the key difference between a big decision and a small one is whether you can fix your decision afterwards. Any decision can be made small by just always making sure that if you were wrong (and you <strong>will</strong> be wrong), you can always undo the damage later by backtracking. Suddenly, you get to be doubly managerial for making <strong>two</strong> inconsequential decisions - the wrong one <strong>and</strong> the right one. ... Thus the key to avoiding big decisions becomes to just avoiding to do things that can't be undone. Don't get ushered into a corner from which you cannot escape.&quot; — <em>Gloss:</em> Consequential decisions are those that cannot be reversed; keeping actions backtrackable renders errors cheap and decisions inconsequential.</li>
+<li><strong>Source:</strong> <code>Documentation/process/management-style.rst</code> §1 &quot;Decisions&quot;</li>
+<li><strong>Words are:</strong> <code>quoted</code> (first-person text in kernel documentation traditionally attributed to Linus Torvalds)</li>
+<li><strong>From:</strong> top-12 #2</li>
+</ul>
+</li>
+<li>
+<p><strong>Allow competing approaches to proceed when superiority is unclear</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> When it is not clear which of two technical approaches is better, allow both to proceed. They will eventually figure it out, or both teams will become frustrated and give up, which usually indicates that both approaches were flawed.</li>
+<li><strong>Their words:</strong> &quot;Btw, another way to avoid a decision is to plaintively just whine 'can't we just do both?' and look pitiful. Trust me, it works. If it's not clear which approach is better, they'll eventually figure it out. The answer may end up being that both teams get so frustrated by the situation that they just give up. That may sound like a failure, but it's usually a sign that there was something wrong with both projects, and the reason the people involved couldn't decide was that they were both wrong.&quot; — <em>Gloss:</em> When neither design shows clear dominance, let both advance in parallel until natural merit or mutual failure resolves the choice.</li>
+<li><strong>Source:</strong> <code>Documentation/process/management-style.rst</code> §1 &quot;Decisions&quot;</li>
+<li><strong>Words are:</strong> <code>quoted</code> (first-person text in kernel documentation traditionally attributed to Linus Torvalds)</li>
+<li><strong>From:</strong> new (codex review &quot;Missing&quot;)</li>
+</ul>
+</li>
+<li>
+<p><strong>Preemptively admit fallibility and instill critical thinking rather than confidence</strong></p>
+<ul>
+<li><strong>Kind:</strong> mindset</li>
+<li><strong>Rule:</strong> Mitigate the cost of mistakes by admitting up-front that you do not have a clue, telling people decisions are preliminary, and reserving the right to change your mind. Rather than instilling confidence in subordinates, instill critical thinking to make them think twice before embarking on big endeavors.</li>
+<li><strong>Their words:</strong> &quot;Happily, both of these reasons can be mitigated effectively by just admitting up-front that you don't have a friggin' clue, and telling people ahead of the fact that your decision is purely preliminary, and might be the wrong thing. You should always reserve the right to change your mind, and make people very <strong>aware</strong> of that.&quot; ... &quot;Make them at least think twice before they embark on a big endeavor. Remember: they'd better know more about the details than you do, and they usually already think they have the answer to everything. The best thing you can do as a manager is not to instill confidence, but rather a healthy dose of critical thinking on what they do.&quot; ... &quot;we should also admit that we're not the sharpest knife around, and that there will be other people that are less of an idiot than you are.&quot; — <em>Gloss:</em> Disclose uncertainty in advance, retain flexibility to reverse course openly, and puncture overconfidence so that developers critically evaluate their own plans.</li>
+<li><strong>Source:</strong> <code>Documentation/process/management-style.rst</code> §1 &quot;Decisions&quot; &amp; §3 &quot;People II - the Good Kind&quot;</li>
+<li><strong>Words are:</strong> <code>quoted</code> (first-person text in kernel documentation traditionally attributed to Linus Torvalds)</li>
+<li><strong>From:</strong> top-12 #3</li>
+</ul>
+</li>
+<li>
+<p><strong>Take advantage of smarter people and prod lightly within their local domain</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> When you find people smarter than you in an area, take advantage of them and let them make your decisions for you. Realize that greatness in one area does not translate to other areas, so do not push too hard when prodding them in new directions.</li>
+<li><strong>Their words:</strong> &quot;Some people react badly to smart people. Others take advantage of them. Make sure that you, as a kernel maintainer, are in the second group. Suck up to them, because they are the people who will make your job easier. In particular, they'll be able to make your decisions for you, which is what the game is all about. So when you find somebody smarter than you are, just coast along. Your management responsibilities largely become ones of saying 'Sounds like a good idea - go wild', or 'That sounds good, but what about xxx?'.&quot; ... &quot;One thing to look out for is to realize that greatness in one area does not necessarily translate to other areas. ... just don't push too hard.&quot; — <em>Gloss:</em> Delegate decision-making to domain experts, support their autonomy with light inquiry, and respect the boundaries of their specific competence.</li>
+<li><strong>Source:</strong> <code>Documentation/process/management-style.rst</code> §3 &quot;People II - the Good Kind&quot;</li>
+<li><strong>Words are:</strong> <code>quoted</code> (first-person text in kernel documentation traditionally attributed to Linus Torvalds)</li>
+<li><strong>From:</strong> top-12 #4</li>
+</ul>
+</li>
+<li>
+<p><strong>Take blame publicly for others and inform the responsible developer in private</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> When things go wrong, accept the blame publicly on behalf of someone else. Then inform the developer who actually made the mistake in private (if you can find them), as they are the person who can fix it.</li>
+<li><strong>Their words:</strong> &quot;Which brings us to the best way of taking the blame: do it for someone else. You'll feel good for taking the fall, they'll feel good about not getting blamed, and the person who lost their whole 36GB porn-collection because of your incompetence will grudgingly admit that you at least didn't try to weasel out of it. Then make the developer who really screwed up (if you can find them) know <strong>in private</strong> that they screwed up. Not just so they can avoid it in the future, but so that they know they owe you one. And, perhaps even more importantly, they're also likely the person who can fix it.&quot; — <em>Gloss:</em> Absorb public accountability to preserve community standing and shield contributors, while addressing the root cause directly and privately with the person capable of repairing it.</li>
+<li><strong>Source:</strong> <code>Documentation/process/management-style.rst</code> §4 &quot;Placing blame&quot;</li>
+<li><strong>Words are:</strong> <code>quoted</code> (first-person text in kernel documentation traditionally attributed to Linus Torvalds)</li>
+<li><strong>From:</strong> top-12 #5</li>
+</ul>
+</li>
+<li>
+<p><strong>Deliver feedback bluntly without sanctimony, avoid public name-calling, and use humor to pad criticism</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> Do not be too polite or subtle about problems, but avoid public name-calling and never speak in a sanctimonious voice. Use humor to pad bluntness and moralizing so criticism does not alienate developers irreversibly, and apologize when you fail to follow restraint.</li>
+<li><strong>Their words:</strong> &quot;There's just a few simple rules here: (1) don't call people d<em>ckheads (at least not in public) (2) learn how to apologize when you forgot rule (1).&quot; ... &quot;There's one thing people hate even more than being called 'd</em>ckhead', and that is being called a 'd*ckhead' in a sanctimonious voice.&quot; ... &quot;Similarly, don't be too polite or subtle about things. Politeness easily ends up going overboard and hiding the problem, and as they say, 'On the internet, nobody can hear you being subtle'. Use a big blunt object to hammer the point in, because you can't really depend on people getting your point otherwise.&quot; ... &quot;Some humor can help pad both the bluntness and the moralizing. Going overboard to the point of being ridiculous can drive a point home without making it painful to the recipient, who just thinks you're being silly.&quot; ... &quot;alienating people is fairly easy, and un-alienating them is hard. Thus 'alienating' immediately falls under the heading of 'not reversible'&quot;. — <em>Gloss:</em> Be direct enough that technical critiques cannot be misunderstood, but avoid moral superiority or public abuse, softening the blow with humor to keep professional relationships intact.</li>
+<li><strong>Source:</strong> <code>Documentation/process/management-style.rst</code> §2 &quot;People&quot; &amp; §5 &quot;Things to avoid&quot;</li>
+<li><strong>Words are:</strong> <code>quoted</code> (first-person text in kernel documentation traditionally attributed to Linus Torvalds)</li>
+<li><strong>From:</strong> top-12 #6</li>
+</ul>
+</li>
+<li>
+<p><strong>Filter code through a lieutenant chain of trust while reserving selective scrutiny</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> Structure large-scale code integration around subsystem maintainers who act as gatekeepers in a chain of trust. Trust maintainers not to send bad patches upstream, while varying personal attention and looking closely at pull requests when warranted.</li>
+<li><strong>Their words:</strong> &quot;The way the kernel developers have addressed this growth is through the use of a lieutenant system built around a chain of trust... Subsystem maintainers are the gatekeepers (in a loose way) for the portion of the kernel they manage; they are the ones who will (usually) accept a patch for inclusion into the mainline kernel... When the merge window opens, top-level maintainers will ask Linus to 'pull' the patches... The amount of attention that Linus pays to specific patches received in a pull operation varies. It is clear that, sometimes, he looks quite closely. But, as a general rule, Linus trusts the subsystem maintainers to not send bad patches upstream.&quot; — <em>Gloss:</em> Scale governance by delegating frontline review to trusted subsystem lieutenants, backing broad trust with occasional direct spot-checks.</li>
+<li><strong>Source:</strong> <code>Documentation/process/2.Process.rst</code> §2.3 &quot;How patches get into the Kernel&quot;</li>
+<li><strong>Words are:</strong> <code>attributed</code> (third-person kernel documentation describing Torvalds's development process)</li>
+<li><strong>From:</strong> new (codex review &quot;Missing&quot;)</li>
+</ul>
+</li>
+<li>
+<p><strong>Open a two-week merge window for major changes, followed by stabilization release candidates</strong></p>
+<ul>
+<li><strong>Kind:</strong> algorithm</li>
+<li><strong>Rule:</strong> Merge pre-staged new features during an approximate two-week merge window, declare the window closed with the -rc1 release, and restrict submissions over the next six to ten weeks to bug fixes (with rare exceptions for non-regressing new drivers), releasing -rc kernels weekly until stable.</li>
+<li><strong>Their words:</strong> &quot;The merge window lasts for approximately two weeks. At the end of this time, Linus Torvalds will declare that the window is closed and release the first of the 'rc' kernels... The -rc1 release is the signal that the time to merge new features has passed, and that the time to stabilize the next kernel has begun. Over the next six to ten weeks, only patches which fix problems should be submitted to the mainline. On occasion a more significant change will be allowed, but such occasions are rare... (An occasional exception is made for drivers for previously-unsupported hardware; if they touch no in-tree code, they cannot cause regressions and should be safe to add at any time)... Linus releases new -rc kernels about once a week; a normal series will get up to somewhere between -rc6 and -rc9 before the kernel is considered to be sufficiently stable and the final release is made.&quot; — <em>Gloss:</em> Regulate cycle workflow in distinct phases: a brief front-loaded intake window for bulk changes, followed by a strict stabilization period dedicated to regression fixes.</li>
+<li><strong>Source:</strong> <code>Documentation/process/2.Process.rst</code> §2.1 &quot;The development process&quot;</li>
+<li><strong>Words are:</strong> <code>attributed</code> (third-person kernel documentation describing Torvalds's release management)</li>
+<li><strong>From:</strong> top-12 #7</li>
+</ul>
+</li>
+<li>
+<p><strong>Route patches to subsystem maintainers and avoid sending mail to the top arbiter</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> Direct patches to the subsystem maintainers listed in MAINTAINERS rather than to Linus Torvalds. Although Torvalds is the final arbiter of all accepted changes, contributors should do their best to avoid emailing him directly because very few patches pass through him without subsystem routing.</li>
+<li><strong>Their words:</strong> &quot;You should always copy the appropriate subsystem maintainer(s) and list(s) on any patch to code that they maintain; look through the MAINTAINERS file and the source code revision history to see who those maintainers are... Linus Torvalds is the final arbiter of all changes accepted into the Linux kernel... He gets a lot of e-mail, and, at this point, very few patches go through Linus directly, so typically you should do your best to -avoid- sending him e-mail.&quot; — <em>Gloss:</em> Route patches through designated subsystem maintainers; keep the root arbiter's personal queue unencumbered by treating direct submission as an exception.</li>
+<li><strong>Source:</strong> <code>Documentation/process/submitting-patches.rst</code> §&quot;Select the recipients for your patch&quot;</li>
+<li><strong>Words are:</strong> <code>attributed</code> (kernel submission documentation describing Torvalds's role)</li>
+<li><strong>From:</strong> top-12 #8</li>
+</ul>
+</li>
+<li>
+<p><strong>Enforce one logical change per patch, guarantee bisectability across series, and throttle large sets</strong></p>
+<ul>
+<li><strong>Kind:</strong> algorithm</li>
+<li><strong>Rule:</strong> Separate each logical change into its own patch so that every change can be verified and justified independently. Ensure the kernel builds and runs properly after each patch in the series so that <code>git bisect</code> is never broken; if the series cannot be condensed into a smaller set, post say 15 or so at a time and wait for review.</li>
+<li><strong>Their words:</strong> &quot;Separate each <strong>logical change</strong> into a separate patch... The point to remember is that each patch should make an easily understood change that can be verified by reviewers. Each patch should be justifiable on its own merits... When dividing your change into a series of patches, take special care to ensure that the kernel builds and runs properly after each patch in the series. Developers using <code>git bisect</code> to track down a problem can end up splitting your patch series at any point; they will not thank you if you introduce bugs in the middle. If you cannot condense your patch set into a smaller set of patches, then only post say 15 or so at a time and wait for review and integration.&quot; — <em>Gloss:</em> Decompose work into self-contained logical units, preserve functional compilation at every intermediate commit to protect bisection, and pace large submissions in batches of roughly 15.</li>
+<li><strong>Source:</strong> <code>Documentation/process/submitting-patches.rst</code> §&quot;Separate your changes&quot;</li>
+<li><strong>Words are:</strong> <code>attributed</code> (kernel submission documentation)</li>
+<li><strong>From:</strong> top-12 #10</li>
+</ul>
+</li>
+<li>
+<p><strong>Format commit messages for permanent changelogs and separate transient comments</strong></p>
+<ul>
+<li><strong>Kind:</strong> algorithm</li>
+<li><strong>Rule:</strong> Format patch summaries to be no more than 70–75 characters in the imperative mood, describing both the change and why it is necessary. Write the explanation body wrapped at 75 columns with sufficient detail for a competent stranger to understand years later, and place non-permanent commentary (such as version changelogs and diffstats) below a <code>---</code> marker so it is stripped before committing.</li>
+<li><strong>Their words:</strong> &quot;Describe your changes in imperative mood, e.g. 'make xyzzy do frotz' instead of '[This patch] makes xyzzy do frotz' or '[I] changed xyzzy to do frotz'...&quot; ... &quot;the <code>summary</code> must be no more than 70-75 characters, and it must describe both what the patch changes, as well as why the patch might be necessary.&quot; ... &quot;The explanation body will be committed to the permanent source changelog, so should make sense to a competent reader who has long since forgotten the immediate details of the discussion that might have led to this patch... The text should be written in such detail so that when read weeks, months or even years later, it can give the reader the needed details to grasp the reasoning for <strong>why</strong> the patch was created.&quot; ... &quot;A marker line containing simply <code>---</code>. Any additional comments not suitable for the changelog... Please put this information <strong>after</strong> the <code>---</code> line which separates the changelog from the rest of the patch.&quot; — <em>Gloss:</em> Structure patch descriptions as enduring historical documentation for future maintainers, isolating ephemeral review notes behind the commit separator.</li>
+<li><strong>Source:</strong> <code>Documentation/process/submitting-patches.rst</code> §&quot;Describe your changes&quot; &amp; §&quot;The canonical patch format&quot;</li>
+<li><strong>Words are:</strong> <code>attributed</code> (kernel submission documentation)</li>
+<li><strong>From:</strong> top-12 #9</li>
+</ul>
+</li>
+<li>
+<p><strong>Provide self-contained patch justifications with quantified data and explicit downsides</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> Make patch descriptions fully self-contained rather than referencing prior versions or external discussions. Quantify claimed optimizations with numbers and describe non-obvious costs and expected downsides so reviewers can weigh trade-offs.</li>
+<li><strong>Their words:</strong> &quot;When you submit or resubmit a patch or patch series, include the complete patch description and justification for it. Don't just say that this is version N of the patch (series)... I.e., the patch (series) and its description should be self-contained.&quot; ... &quot;Quantify optimizations and trade-offs. If you claim improvements in performance, memory consumption, stack footprint, or binary size, include numbers that back them up. But also describe non-obvious costs... Describe the expected downsides of your optimization so that the reviewer can weigh costs against benefits.&quot; — <em>Gloss:</em> Require every patch submission to justify itself independently with concrete metrics and frank acknowledgment of associated costs.</li>
+<li><strong>Source:</strong> <code>Documentation/process/submitting-patches.rst</code> §&quot;Describe your changes&quot;</li>
+<li><strong>Words are:</strong> <code>attributed</code> (kernel submission documentation)</li>
+<li><strong>From:</strong> top-12 #11</li>
+</ul>
+</li>
+<li>
+<p><strong>Do not modify moved code in the patch that moves it</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> When moving code from one file to another, do not modify the moved code in the same patch that moves it. Delineate the move from functional modifications to assist human review and history tracking tools.</li>
+<li><strong>Their words:</strong> &quot;One significant exception is when moving code from one file to another -- in this case you should not modify the moved code at all in the same patch which moves it. This clearly delineates the act of moving the code and your changes. This greatly aids review of the actual differences and allows tools to better track the history of the code itself.&quot; — <em>Gloss:</em> Isolate structural relocation of code from substantive modifications across distinct patches to keep diffs reviewable and preserve tracking.</li>
+<li><strong>Source:</strong> <code>Documentation/process/submitting-patches.rst</code> §&quot;Style-check your changes&quot;</li>
+<li><strong>Words are:</strong> <code>attributed</code> (kernel submission documentation)</li>
+<li><strong>From:</strong> new (noted in top-12 review #6 as an explicit exception)</li>
+</ul>
+</li>
+<li>
+<p><strong>Treat automated style checkers as guides subordinate to human judgment</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> View patch style checkers as guides rather than replacements for human judgment. If code looks better with a style violation, leave it alone, but remain prepared to justify any violation left in the patch.</li>
+<li><strong>Their words:</strong> &quot;Check your patches with the patch style checker prior to submission (scripts/checkpatch.pl). Note, though, that the style checker should be viewed as a guide, not as a replacement for human judgment. If your code looks better with a violation then its probably best left alone... You should be able to justify all violations that remain in your patch.&quot; — <em>Gloss:</em> Automated linter output is advisory; human readability governs, provided deviations can be defended.</li>
+<li><strong>Source:</strong> <code>Documentation/process/submitting-patches.rst</code> §&quot;Style-check your changes&quot;</li>
+<li><strong>Words are:</strong> <code>attributed</code> (kernel submission documentation)</li>
+<li><strong>From:</strong> top-12 #12</li>
+</ul>
+</li>
+<li>
+<p><strong>Keep functions short and single-purpose, with limited local variables</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> Functions should be short, do just one thing well, and fit on one or two screenfuls of text. Limit local variables to 5–10; exceeding this indicates the function should be rethought and split into smaller helper pieces because the human brain struggles to track more than about seven things.</li>
+<li><strong>Their words:</strong> &quot;Functions should be short and sweet, and do just one thing. They should fit on one or two screenfuls of text (the ISO/ANSI screen size is 80x24, as we all know), and do one thing and do that well.&quot; ... &quot;Another measure of the function is the number of local variables. They shouldn't exceed 5-10, or you're doing something wrong. Re-think the function, and split it into smaller pieces. A human brain can generally easily keep track of about 7 different things, anything more and it gets confused. You know you're brilliant, but maybe you'd like to understand what you did 2 weeks from now.&quot; — <em>Gloss:</em> Restrict function scope to a single task fitting standard terminal screens, capping local state to respect human cognitive working memory.</li>
+<li><strong>Source:</strong> <code>Documentation/process/coding-style.rst</code> §6 &quot;Functions&quot;</li>
+<li><strong>Words are:</strong> <code>quoted</code> (Linus Torvalds's first-person text in <code>coding-style.rst</code>)</li>
+<li><strong>From:</strong> top-12 #12</li>
+</ul>
+</li>
+<li>
+<p><strong>Write comments to explain what and why code works, never how</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> Never attempt to explain how code works in a comment; write the code so that its operation is obvious. Use comments at the head of a function to tell what the code does and why it was written, avoiding redundant comments inside function bodies.</li>
+<li><strong>Their words:</strong> &quot;Comments are good, but there is also a danger of over-commenting. NEVER try to explain HOW your code works in a comment: it's much better to write the code so that the &lt;strong&gt;working&lt;/strong&gt; is obvious, and it's a waste of time to explain badly written code. Generally, you want your comments to tell WHAT your code does, not HOW. Also, try to avoid putting comments inside a function body... Instead, put the comments at the head of the function, telling people what it does, and possibly WHY it does it.&quot; — <em>Gloss:</em> Make implementation logic self-evident in the code itself; reserve comments for intent, rationale, and behavioral purpose.</li>
+<li><strong>Source:</strong> <code>Documentation/process/coding-style.rst</code> §8 &quot;Commenting&quot;</li>
+<li><strong>Words are:</strong> <code>quoted</code> (Linus Torvalds's first-person text in <code>coding-style.rst</code>)</li>
+<li><strong>From:</strong> top-12 #12</li>
+</ul>
+</li>
+<li>
+<p><strong>Scale variable naming descriptiveness to scope: Spartan locals, descriptive globals</strong></p>
+<ul>
+<li><strong>Kind:</strong> decision rule</li>
+<li><strong>Rule:</strong> Keep local variable names short and to the point (such as <code>i</code> or <code>tmp</code>), but mandate descriptive names for global variables and global functions. Encoding type information into names (Hungarian notation) is forbidden as unnecessary compiler clutter.</li>
+<li><strong>Their words:</strong> &quot;C is a Spartan language, and your naming conventions should follow suit... descriptive names for global variables are a must. To call a global function <code>foo</code> is a shooting offense. GLOBAL variables (to be used only if you &lt;strong&gt;really&lt;/strong&gt; need them) need to have descriptive names, as do global functions... LOCAL variable names should be short, and to the point. If you have some random integer loop counter, it should probably be called <code>i</code>... Encoding the type of a function into the name (so-called Hungarian notation) is asinine - the compiler knows the types anyway and can check those, and it only confuses the programmer.&quot; — <em>Gloss:</em> Minimize identifier length for narrow local contexts while enforcing explicit semantic naming for globally exposed identifiers.</li>
+<li><strong>Source:</strong> <code>Documentation/process/coding-style.rst</code> §4 &quot;Naming&quot;</li>
+<li><strong>Words are:</strong> <code>quoted</code> (Linus Torvalds's first-person text in <code>coding-style.rst</code>)</li>
+<li><strong>From:</strong> top-12 #12</li>
+</ul>
+</li>
+</ol>
+<h2>Gaps</h2>
+<ul>
+<li><strong>No web fetching was possible:</strong> In accordance with the headless execution constraints, external network requests and URL fetching tools were disabled. All citations and checks were drawn strictly from the local repository files under <code>runs/20261013-four-seats/sources/linus/</code> (<code>management-style.html</code>, <code>coding-style.html</code>, <code>submitting-patches.html</code>, <code>2.Process.html</code>).</li>
+<li><strong>Famous mailing list statements could not be verified from primary sources:</strong> Iconic Torvalds decisions documented on LKML—such as the &quot;never break userspace&quot; rule, the git pull refusals, the 2007 Google Tech Talk rules on data structures and git, and the August 2007 &quot;I'M A COMPLETE IDIOT&quot; posting—are not preserved in the four local kernel documentation HTML files. They were excluded rather than reconstructed from memory or unverified secondary summaries.</li>
+<li><strong>Authorship attribution across documentation files:</strong> While <code>coding-style.rst</code> begins with Torvalds's verified personal preamble and early chapters (§1–§9), chapters in <code>submitting-patches.rst</code> and <code>2.Process.rst</code> represent collaborative community documentation describing kernel practice or referring to Torvalds in the third person. Similarly, <code>management-style.rst</code> is composed in the first person and universally attributed to Torvalds, but its provenance in this static corpus lacks a signed git commit block. These items are strictly labelled <code>attributed</code> or identified as attributed first-person text to avoid over-claiming personal speech.</li>
+<li><strong>Excluded rules lacking strict textual grounding:</strong> Statements asserting that Torvalds &quot;never decides anything&quot; or takes &quot;only one irreversible decision per cycle&quot; were omitted because the texts describe a multi-week merge window with ongoing pull requests and rare mid-cycle exceptions. Likewise, Greg Kroah-Hartman's <code>stable-api-nonsense.rst</code> was excluded because it represents Kroah-Hartman's authorship rather than Torvalds's own words.</li>
+</ul>
+</section>
+</div></div>
+<div id="tapzones"><div id="prev"></div><div id="next"></div></div>
+<div id="bottom" class="bar" title="Tap to change what is shown"><span id="left"></span><span id="right"></span></div>
+
+<div id="menu" aria-hidden="true"><div class="inner">
+  <button id="close" type="button">Done</button>
+  <h3>Aa — Display</h3>
+  <div class="row"><label>Font</label><span id="fonts"></span></div>
+  <div class="row"><label>Size</label><button type="button" id="smaller">A−</button><span id="sizeval"></span><button type="button" id="bigger">A+</button></div>
+  <div class="row"><label>Spacing</label><span id="leadings"></span></div>
+  <div class="row"><label>Margins</label><span id="margins"></span></div>
+  <div class="row"><label>Alignment</label><span id="aligns"></span></div>
+  <div class="row"><label>Page colour</label><span id="themes"></span></div>
+  <div class="row"><label>Layout</label><span id="modes"></span></div>
+  <h3>Contents</h3>
+  <nav id="toc"></nav>
+</div></div>
+
+<script>
+(function () {
+  "use strict";
+  // Defaults baked in by kindle_page.py from the reader's prefs file; the page's own saved settings win over them.
+  var DEFAULTS = {"theme": "sepia", "font": "literata", "size": 18, "leading": "normal", "margin": "normal", "align": "justify", "mode": "pages", "footer": "page", "measure": "42em", "wpm": 230};
+  var DOC_ID = "cd0a3dee2c40";
+  var FONTS = {
+    literata: { name: "Literata", css: "'Literata', 'Noto Serif TC', 'Songti TC', 'PMingLiU', Georgia, serif" },
+    georgia:  { name: "Georgia",  css: "Georgia, 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif" },
+    sans:     { name: "Sans",     css: "system-ui, -apple-system, 'Segoe UI', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif" },
+    hyper:    { name: "Hyperlegible", css: "'Atkinson Hyperlegible', 'Noto Sans TC', 'PingFang TC', sans-serif" }
+  };
+  var SIZES = [14, 15, 16, 17, 18, 19, 20, 22, 24, 26, 28, 32];
+  var LEADINGS = { compact: 1.35, normal: 1.6, loose: 1.9 };
+  var MARGINS = { narrow: 0.04, normal: 0.08, wide: 0.14 };  // fraction of the page width
+  var ALIGNS = { justify: "justify", left: "left" };
+  var THEMES = ["white", "sepia", "green", "black"];
+  var MODES = { pages: "Pages", scroll: "Scroll" };
+  var FOOTER = ["page", "location", "time", "none"];
+
+  // Storage can be missing or throw (private window, blocked site data); the page must work without it.
+  function load(key) { try { return JSON.parse(localStorage.getItem(key) || "null"); } catch (e) { return null; } }
+  function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+
+  var prefs = Object.assign({}, DEFAULTS, load("kindle-page:prefs") || {});
+  var book = document.getElementById("book"), body = document.body;
+  var page = 0, pages = 1, pageWidth = 1, started = false;
+
+  function apply() {
+    var s = document.documentElement.style;
+    s.setProperty("--font", (FONTS[prefs.font] || FONTS.literata).css);
+    s.setProperty("--size", prefs.size + "px");
+    s.setProperty("--leading", LEADINGS[prefs.leading] || 1.6);
+    s.setProperty("--margin", ((MARGINS[prefs.margin] || 0.08) * 100) + "%");
+    s.setProperty("--align", ALIGNS[prefs.align] || "justify");
+    s.setProperty("--measure", prefs.measure || "42em");
+    document.documentElement.setAttribute("data-theme", prefs.theme);
+    body.classList.toggle("scroll", prefs.mode === "scroll");
+    document.getElementById("sizeval").textContent = " " + prefs.size + " ";
+    renderChoices();
+    save("kindle-page:prefs", prefs);
+    relayout(true);
+  }
+
+  function choiceRow(id, options, key, labelOf) {
+    var el = document.getElementById(id); el.innerHTML = "";
+    Object.keys(options).forEach(function (k) {
+      var b = document.createElement("button"); b.type = "button";
+      b.textContent = labelOf ? labelOf(k) : k.charAt(0).toUpperCase() + k.slice(1);
+      if (prefs[key] === k) b.className = "on";
+      b.onclick = function () { prefs[key] = k; apply(); };
+      el.appendChild(b);
+    });
+  }
+  function renderChoices() {
+    choiceRow("fonts", FONTS, "font", function (k) { return FONTS[k].name; });
+    choiceRow("leadings", LEADINGS, "leading");
+    choiceRow("margins", MARGINS, "margin");
+    choiceRow("aligns", ALIGNS, "align");
+    choiceRow("modes", MODES, "mode", function (k) { return MODES[k]; });
+    var t = document.getElementById("themes"); t.innerHTML = "";
+    THEMES.forEach(function (k) {
+      var b = document.createElement("button"); b.type = "button"; b.title = k;
+      b.className = "swatch" + (prefs.theme === k ? " on" : "");
+      b.setAttribute("data-theme", k); b.style.background = "var(--bg)"; b.style.color = "var(--fg)"; b.textContent = "A";
+      b.onclick = function () { prefs.theme = k; apply(); };
+      t.appendChild(b);
+    });
+  }
+
+  // Pagination with CSS columns: one column per screen, turned by moving scrollLeft.
+  function relayout(keepPlace) {
+    var frac = keepPlace ? progress() : null;
+    if (prefs.mode === "scroll") { book.style.cssText = ""; footer(); return; }
+    // Padding, column width and gap all in px from one width, so one page turn moves exactly one page.
+    book.style.cssText = "";
+    var w = book.clientWidth, pad = Math.round(w * (MARGINS[prefs.margin] || 0.08));
+    book.style.paddingLeft = book.style.paddingRight = pad + "px";
+    book.style.columnWidth = (w - 2 * pad) + "px";
+    book.style.columnGap = (2 * pad) + "px";
+    pageWidth = w;
+    pages = Math.max(1, Math.ceil((book.scrollWidth - 1) / pageWidth));
+    if (frac !== null) page = Math.min(pages - 1, Math.round(frac * (pages - 1)));
+    go(page);
+  }
+  function count() {  // recount every turn: late-loading fonts (e.g. CJK subsets) change the page count
+    if (prefs.mode !== "scroll") pages = Math.max(1, Math.ceil((book.scrollWidth - 1) / pageWidth));
+  }
+  function go(n) {
+    count();
+    page = Math.max(0, Math.min(pages - 1, n));
+    book.scrollLeft = page * pageWidth;
+    footer();
+    save("kindle-page:pos:" + DOC_ID, progress());
+  }
+  function progress() {
+    if (prefs.mode === "scroll") {
+      var max = document.documentElement.scrollHeight - innerHeight;
+      return max > 0 ? scrollY / max : 0;
+    }
+    return pages > 1 ? page / (pages - 1) : 0;
+  }
+
+  // Footer: % on the right; page / location / time left in chapter on the left — tap to cycle, like Kindle.
+  var chapters = Array.prototype.slice.call(book.querySelectorAll(".chapter"));
+  function chapterIndexAt(frac) {
+    if (prefs.mode === "scroll") {
+      var y = scrollY + innerHeight * 0.3, idx = 0;
+      chapters.forEach(function (c, i) { if (c.offsetTop <= y) idx = i; });
+      return idx;
+    }
+    var x = page * pageWidth + 1, idx2 = 0;
+    chapters.forEach(function (c, i) { if (c.offsetLeft - book.offsetLeft <= x + pageWidth / 2) idx2 = i; });
+    return idx2;
+  }
+  function minutesLeftInChapter() {
+    var c = chapters[chapterIndexAt()]; if (!c) return 0;
+    var units = Number(c.getAttribute("data-units")) || 0;  // English words + CJK characters/2, counted at build time
+    var start, end, here;
+    if (prefs.mode === "scroll") { start = c.offsetTop; end = start + c.offsetHeight; here = scrollY; }
+    else { start = c.offsetLeft - book.offsetLeft; end = start + c.scrollWidth; here = page * pageWidth; }
+    var left = end > start ? Math.max(0, Math.min(1, (end - here) / (end - start))) : 0;
+    return Math.max(1, Math.round(units * left / (prefs.wpm || 230)));
+  }
+  function footer() {
+    var pct = Math.round(progress() * 100) + "%";
+    var mode = prefs.footer || "page", left = "";
+    if (mode === "page") left = prefs.mode === "scroll" ? "" : "Page " + (page + 1) + " of " + pages;
+    if (mode === "location") left = "Loc " + Math.max(1, Math.round(progress() * TOTAL_LOC)) + " of " + TOTAL_LOC;
+    if (mode === "time") left = minutesLeftInChapter() + " min left in chapter";
+    document.getElementById("left").textContent = left;
+    document.getElementById("right").textContent = mode === "none" ? "" : pct;
+  }
+  var TOTAL_LOC = 636;
+  document.getElementById("bottom").onclick = function () {
+    prefs.footer = FOOTER[(FOOTER.indexOf(prefs.footer || "page") + 1) % FOOTER.length];
+    save("kindle-page:prefs", prefs); footer();
+  };
+
+  // Contents.
+  var toc = document.getElementById("toc");
+  book.querySelectorAll("h1, h2").forEach(function (h, i) {
+    if (!h.id) h.id = "h-" + i;
+    var a = document.createElement("a"); a.href = "#" + h.id; a.textContent = h.textContent;
+    if (h.tagName === "H2") a.className = "sub";
+    a.onclick = function (e) { e.preventDefault(); closeMenu(); jumpTo(h); };
+    toc.appendChild(a);
+  });
+  function jumpTo(el) {
+    if (prefs.mode === "scroll") { el.scrollIntoView(); return; }
+    go(Math.floor((el.offsetLeft - book.offsetLeft) / pageWidth));
+  }
+
+  // Menu open/close: tap the header strip, press "m", or Escape to close.
+  var menu = document.getElementById("menu");
+  function openMenu() { menu.classList.add("open"); menu.setAttribute("aria-hidden", "false"); }
+  function closeMenu() { menu.classList.remove("open"); menu.setAttribute("aria-hidden", "true"); }
+  document.getElementById("top").onclick = openMenu;
+  document.getElementById("close").onclick = closeMenu;
+  document.getElementById("smaller").onclick = function () { var i = SIZES.indexOf(prefs.size); prefs.size = SIZES[Math.max(0, (i < 0 ? 4 : i) - 1)]; apply(); };
+  document.getElementById("bigger").onclick = function () { var i = SIZES.indexOf(prefs.size); prefs.size = SIZES[Math.min(SIZES.length - 1, (i < 0 ? 4 : i) + 1)]; apply(); };
+
+  // Page turning: tap zones, arrow keys / space / PageUp-Down, and swipe.
+  document.getElementById("prev").onclick = function () { if (menu.classList.contains("open")) return closeMenu(); go(page - 1); };
+  document.getElementById("next").onclick = function () { if (menu.classList.contains("open")) return closeMenu(); go(page + 1); };
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") return closeMenu();
+    if (e.key === "m" || e.key === "M") return menu.classList.contains("open") ? closeMenu() : openMenu();
+    if (prefs.mode === "scroll") return;
+    if (["ArrowRight", "PageDown", " "].indexOf(e.key) >= 0) { e.preventDefault(); go(page + 1); }
+    if (["ArrowLeft", "PageUp"].indexOf(e.key) >= 0) { e.preventDefault(); go(page - 1); }
+    if (e.key === "Home") go(0);
+    if (e.key === "End") go(pages - 1);
+  });
+  var tx = null;
+  document.addEventListener("touchstart", function (e) { tx = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener("touchend", function (e) {
+    if (tx === null || prefs.mode === "scroll") return;
+    var dx = e.changedTouches[0].clientX - tx; tx = null;
+    if (Math.abs(dx) > 40) go(page + (dx < 0 ? 1 : -1));
+  }, { passive: true });
+  window.addEventListener("scroll", function () { if (prefs.mode === "scroll") { footer(); save("kindle-page:pos:" + DOC_ID, progress()); } });
+  var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(function () { relayout(true); }, 150); });
+
+  // Start where the reader left off, after fonts have loaded (they change the page count).
+  function start() {
+    var saved = load("kindle-page:pos:" + DOC_ID);  // read before apply(), which saves the current place
+    started = true;
+    apply();
+    if (typeof saved === "number") {
+      if (prefs.mode === "scroll") scrollTo(0, saved * (document.documentElement.scrollHeight - innerHeight));
+      else go(Math.round(saved * (pages - 1)));
+    }
+  }
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(start);
+    document.fonts.addEventListener("loadingdone", function () { if (started) relayout(true); });
+  } else start();
+})();
+</script>
+</body>
+</html>

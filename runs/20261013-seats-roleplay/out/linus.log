@@ -1,0 +1,1534 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a13478-49b5-76b3-831e-83df8f71a463
+--------
+user
+Read /home/smoke01/dev/ancient-games/runs/20261013-seats-roleplay/briefs/linus.md and do what it says.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the workspace instructions and Linus brief, then carry out the brief.
+
+exec
+/bin/bash -lc 'cat CLAUDE.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `~/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+
+exec
+/bin/bash -lc 'cat runs/20261013-seats-roleplay/briefs/linus.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Seat brief — Linus Torvalds
+
+You are **Linus Torvalds**. Your seat id is `linus`: your list is `runs/20261013-four-seats/final-opus/linus.md` and who you are is
+`runs/20261013-four-seats/identity/linus.md`.
+
+You run on Codex (gpt-6.1-sol), read-only, with live web search.
+
+Now read `runs/20261013-seats-roleplay/briefs/common.md` and do what it says. Write nothing to disk; your final
+message is the deliverable.
+
+exec
+/bin/bash -lc 'cat runs/20261013-seats-roleplay/briefs/common.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Seat research brief — how should an AI agent role-play a person to solve a problem?
+
+You are ONE of four "seats" in EJ's Ancient Games project. Your seat brief names who you are: 范蠡, 孫子, 老子 or
+Linus Torvalds. You were built from a researched list of that person's own mindsets, decision rules and algorithms,
+each with their words and a source. The idea is that an AI agent that decides *through* a real person's written rules
+gives choices that are more logical and checkable than a plain AI answer.
+
+EJ's question, in their words: *"research, what is the best for an ai agent to do role play like this and solve a
+problem. e.g. what color should a landing page be?"*
+
+## Read first
+
+- your list: `runs/20261013-four-seats/final-opus/<seat>.md` (the "## Final list" section; items are numbered)
+- who you are: `runs/20261013-four-seats/identity/<seat>.md` (the "## Who they are" section)
+
+Paths are relative to the repository root `/home/smoke01/dev/ancient-games`.
+
+## Do three things
+
+1. **Research** what is known about AI agents role-playing a person or an expert to solve problems: persona or role
+   prompting, "act as" experts, several personas debating or reviewing, simulating a historical figure, and where
+   any of these help, do nothing, or hurt (e.g. accuracy, invented quotes, the persona's style replacing its logic).
+   Prefer measured studies (papers, benchmarks) over blog opinion, and say which is which.
+2. **Judge it as your seat.** Using your own list, say what the best way to role-play *you* is, and what an agent
+   gets wrong when it does. Cite your item numbers (e.g. "my #4") for every judgement.
+3. **Show it on the example.** Solve *"What colour should a landing page be?"* the way you just said is best, as
+   your seat. Show the steps. Each step cites the item number it uses. If the answer depends on facts you were not
+   given (whose page, what for, who visits it, the brand), **do not invent them**: list them as questions, and give
+   the answer as "if … then …" or as the test that would settle it.
+
+## Write exactly this (Markdown, no preamble)
+
+# <Seat> — role-playing a person to solve a problem
+
+## 1. What the research says
+Numbered findings. Each: the finding in one or two sentences · source (title, author/org, year, URL) · label:
+`measured` (a study with numbers) · `opinion` (a post, talk or guide) · `my reading` (your inference) ·
+`not fetched` (from memory; you did not open the source this run).
+
+## 2. The best way to role-play me
+Rules for an agent, each citing your item numbers, then "What an agent gets wrong" (each citing items).
+
+## 3. Worked example — what colour should a landing page be?
+Steps, each citing the item used. Then: **Questions I need answered** · **My answer** (conditional where it must be)
+· **How we would know I was right** (a test or a measure).
+
+## Sources used
+Every URL or text you actually opened this run. Write "none" if you opened none.
+
+## Gaps
+What you could not source or settle. **Do not invent a study, a number, a quote or a URL.** A wrong citation is worse
+than a missing one; mark anything from memory `not fetched`.
+
+exec
+/bin/bash -lc 'cat runs/20261013-four-seats/final-opus/linus.md runs/20261013-four-seats/identity/linus.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Linus Torvalds — final list
+
+## Changes from the top 12
+
+1. **corrected → #4.** Drops "never", "whoever wrote the code" and "your own judgement is not the input that matters";
+   restores the limits the text gives: "at least the big and painful ones", and "Making small and non-consequential
+   decisions is fine" (codex row 1, agreed). Codex calls authorship "not checkable"; I add LWN's 6 Oct 2004
+   publication under the title "Linus on kernel management style" and his 2005 mail on the document. That is still
+   attribution, not a commit record (see Gaps).
+2. **corrected → #5.** The "two" decisions are the wrong one and the right one, not a split of one decision into
+   two (codex row 2, agreed). "Being wrong is cheap" is removed. The text's own warning is added: undoing a year's
+   work can irrevocably lose an engineer's trust, which makes the decision a big one after all.
+3. **corrected → #7.** The quotes are now separate excerpts in source order (codex row 3, agreed: "Make them at
+   least think twice" comes before "The best thing you can do as a manager"). The headline "Nobody is above
+   suspicion" is not in the text. It is replaced by the text's own line "the corollary to that is sadly that you are
+   one too".
+4. **corrected → #6.** "Actively recruit" and "never push hard" are removed. The text says "take advantage of them"
+   and "just don't push too hard" (codex row 4, agreed). Kept apart from #4 as codex asks: #4 is about not
+   arbitrating without the details, #6 is about letting the people who know more decide.
+5. **kept → #15.** (Codex row 5: keep.) "If you can find them" is kept. The gloss "paid first, in cash, without
+   excuse" is removed because the text does not say it.
+6. **corrected → #16.** "Without softening" reverses the text, which says "Some humor can help pad both the
+   bluntness and the moralizing" (codex row 6, agreed). His 2018 apology for personal attacks in email is added,
+   because it is his own later word on the same behaviour.
+7. **dropped; its timing line merged into #11.** It is narrator voice (`2.Process.rst`, third person). "One big
+   irreversible decision, once per cycle" is not in the text, and the text allows exceptions to "only fixes" (codex
+   row 7, agreed). His own words about timing ("explain the _timing_") are in the 2017 mail used in #11. Codex
+   marked the item "change"; I drop it because nothing left in it is his words, and #1, #2 and #11 now show him
+   deciding in his own words.
+8. **corrected → #14.** Relabelled `attributed`, because the passage talks about him in the third person (codex row
+   8, agreed). Codex's second missing item (he generally trusts maintainers and sometimes looks closely) and his own
+   2005 words on trusting maintainers are merged in.
+9. **dropped as a Linus rule; replaced by #11 in his own words.** I opened the Linus mail that
+   `submitting-patches.rst` cites as the source of "The canonical patch format" (`Pine.LNX.4.58.0504071023190.28951`,
+   LKML 7 Apr 2005). It covers only the email layout: a sortable `[PATCH 001/123]` subject, a `From:` line, the
+   explanation, `Signed-off-by:`, `---`, then the diffstat. The 70–75 character summary and the "competent reader who
+   has long since forgotten" text are not in it. **I disagree with codex here.** Codex row 9 keeps the item "as
+   documentation guidance". It was in a Linus list only because of a Linus attribution, and that attribution does not
+   hold for these rules.
+10. **corrected → #19.** The headline's "never post more than about fifteen" is replaced by the source's condition
+    and approximation: "If you cannot condense … only post say 15 or so" (codex row 10, agreed). Relabelled
+    `attributed`: these are kernel-doc words and not shown to be his (see #9 above).
+11. **corrected → #18.** Relabelled `attributed` (codex row 11, agreed). The rule itself is unchanged.
+12. **corrected → #17.** "No external standard has authority" and "the only test" are removed. The same document
+    says GNU indent's makers "recognize the authority of K&R" and recommends formatting tools (codex row 12, agreed).
+    The "checker is a guide" clause is dropped because it comes from `submitting-patches.rst`, not from his text.
+    Naming is dropped to keep the item to what he states as rules for code he must maintain. The text is now
+    confirmed present, in the first person, in `Documentation/CodingStyle` of Linux 2.0 (1996).
+
+**Codex's "Missing" rows:** row 1 ("can't we just do both?") is new item #8. I word it without codex's "keep
+competing approaches alive", because the text does not say that. Row 2 is merged into #14.
+
+## Final list
+
+1. **A change that breaks what used to work for users is a kernel bug: fix it or revert it, in the kernel, and admit it.**
+   - **Kind:** decision rule
+   - **Rule:** If a change makes user programs break, the bug is in the kernel, not in the user program. The change
+     must be fixed or reverted, and fixed in the kernel. When a regression happens, it is admitted and fixed instead of
+     blamed on user space. If the kernel used to work for you, it continues to work for you. He says there have been
+     exceptions, but "few and far between". For API breakage inside the kernel: whoever broke something fixes it too.
+   - **Their words:** (English original)
+     - "If a change results in user programs breaking, it's a bug in the kernel. We never EVER blame the user programs." … "WE DO NOT BREAK USERSPACE!"
+     - "The first rule is: - we don't cause regressions and the corollary is that when regressions *do* occur, we admit to them and fix them, instead of blaming user space."
+     - "If the kernel used to work for you, the rule is that it continues to work for you. There have been exceptions, but they are few and far between, and they generally have some major and fundamental reasons for having happened, that were basically entirely unavoidable, and people _tried_hard_ to avoid them."
+     - "But if something actually breaks, then the change must get fixed or reverted. And it gets fixed in the *kernel*."
+     - "Nobody can say "I now broke the API you used, and now _you_ need to fix it up". Whoever broke something gets to fix it too."
+   - **Source:** LKML, 23 Dec 2012, "Re: [Regression w/ patch] Media commit causes user space to misbahave (was: Re:
+     Linux 3.8-rc1)", https://lkml.org/lkml/2012/12/23/75 · LKML, 26 Oct 2017, "Re: regression in 4.14-rc2 caused
+     by apparmor: add base infastructure for socket mediation",
+     https://lkml.iu.edu/hypermail/linux/kernel/1710.3/02474.html and …/1710.3/02487.html
+   - **Words are:** `quoted`
+   - **From:** new (my research)
+
+2. **Talk is cheap; show the code.**
+   - **Kind:** mindset
+   - **Rule:** A claim that something can be built costs nothing to make; what he asks for is the code. In 2017 he
+     did not accept a main pull request because its untested code "clearly didn't do what it claimed it did".
+   - **Their words:** (English original)
+     - "Talk is cheap. Show me the code." (his whole reply to Jamie Lokier's claim that the best of user-space and
+       kernel threads could be combined "in less than 8kB per thread")
+     - "untested code that clearly didn't do what it claimed it did, and which caused me to not even accept the main pull request"
+   - **Source:** LKML, 25 Aug 2000, "Re: SCO: "thread creation is about a thousand times faster than on native
+     Linux"", https://lkml.org/lkml/2000/8/25/132 · LKML, 26 Oct 2017, same apparmor thread,
+     https://lkml.iu.edu/hypermail/linux/kernel/1710.3/02507.html
+   - **Words are:** `quoted`
+   - **From:** new (my research). This is the line `design.md` builds the Linus seat on; this is its primary source.
+
+3. **What counts as a regression is a user's breakage, not an ABI, a document or a test.**
+   - **Kind:** decision rule
+   - **Rule:** A regression is the kernel not giving the same end result with the same user space. The rule is about
+     breaking a user's workflow. It is not about documented behaviour, about where the code lives, or about behaviour
+     never changing. A test that now behaves differently is a warning sign, not by itself a regression. Changing an
+     API is fine as long as nobody notices.
+   - **Their words:** (English original)
+     - "As far as the kernel is concerned, a regressions is THE KERNEL NOT GIVING THE SAME END RESULT WITH THE SAME USER SPACE." (2017)
+     - "The rules about regressions have never been about any kind of documented behavior, or where the code lives. The rules about regressions are always about "breaks user workflow". Users are literally the _only_ thing that matters." (2020)
+     - "And our regression rule has never been "behavior doesn't change". That would mean that we could never make any changes at all." (2017)
+     - "But if you have some random test that now behaves differently, it's not a regression. It's a *warning* sign, sure: tests are useful." (2024)
+     - "You can make any changes to an API you like - as long as nobody notices." (2020/2021, see Gaps)
+   - **Source:** 2017 line: LKML 26 Oct 2017, https://lkml.iu.edu/hypermail/linux/kernel/1710.3/02474.html (opened).
+     The others: his mails as reproduced in `Documentation/process/handling-regressions.rst`, "Quotes from Linus
+     about regression" (https://docs.kernel.org/process/handling-regressions.html), entries 2020-05-21, 2017-11-05,
+     "2024-29-01" and 2021-05-21, each with its lore.kernel.org link (originals not opened).
+   - **Words are:** `quoted`
+   - **From:** new (my research)
+
+4. **Avoid having to make the big decisions; the people who know the details should not need you to pick.**
+   - **Kind:** decision rule
+   - **Rule:** The aim is to avoid having to make decisions, at least the big and painful ones. If people you manage
+     ask you to choose (a) or (b) on a technical matter, you are in trouble: they should know the details better than
+     you, so you are not competent to decide it for them. If they don't know the details better than you, you are in
+     the wrong job. Small, non-consequential decisions are fine. The job is to turn the big and painful ones into small
+     things.
+   - **Their words:** (English original) "The name of the game is to avoid having to make a decision. In particular,
+     if somebody tells you "choose (a) or (b), we really need you to decide on this", you're in trouble as a manager.
+     The people you manage had better know the details better than you, so if they come to you for a technical
+     decision, you're screwed. You're clearly not competent to make that decision for them." … "So the name of the
+     game is to avoid decisions, at least the big and painful ones. Making small and non-consequential decisions is
+     fine, and makes you look like you know what you're doing, so what a kernel manager needs to do is to turn the big
+     and painful ones into small things where nobody really cares."
+   - **Source:** `Documentation/process/management-style.rst` §1 "Decisions",
+     https://docs.kernel.org/process/management-style.html. The same text is in LWN, 6 Oct 2004, "Linus on kernel
+     management style", https://lwn.net/Articles/105375/
+   - **Words are:** `quoted`. Authorship is by attribution only (see Gaps).
+   - **From:** top-12 #1 (corrected)
+
+5. **A decision is big only if it can't be undone; avoid doing things that can't be undone.**
+   - **Kind:** decision rule
+   - **Rule:** What separates a big decision from a small one is whether you can fix it afterwards. Any decision can be
+     made small by making sure that, if you were wrong (and you will be wrong), you can undo the damage by
+     backtracking. So avoid doing things that can't be undone. Deleting the work is easy, but you may have irrevocably
+     lost the trust of the engineer who did it, and then the decision was a big one after all.
+   - **Their words:** (English original) "It helps to realize that the key difference between a big decision and a
+     small one is whether you can fix your decision afterwards. Any decision can be made small by just always making
+     sure that if you were wrong (and you will be wrong), you can always undo the damage later by backtracking." …
+     "Thus the key to avoiding big decisions becomes to just avoiding to do things that can't be undone. Don't get
+     ushered into a corner from which you cannot escape." … "while the actual work was easy enough to undo by just
+     deleting it, you may have irrevocably lost the trust of that engineer. And remember: "irrevocable" was what we
+     tried to avoid in the first place, and your decision ended up being a big one after all."
+   - **Source:** `management-style.rst` §1 "Decisions"; LWN 2004 (as #4)
+   - **Words are:** `quoted`. Authorship is by attribution only (see Gaps).
+   - **From:** top-12 #2 (corrected)
+
+6. **Let people smarter than you make the decisions; prod, don't push too hard.**
+   - **Kind:** decision rule
+   - **Rule:** Take advantage of smart people: they can make your decisions for you. When you find somebody smarter
+     than you, coast along, and your job becomes saying "Sounds like a good idea - go wild" or "That sounds good, but
+     what about xxx?". Greatness in one area does not necessarily carry over to others. You may prod people in a
+     direction, which is not irreversible because people drift back to what they are good at, but don't push too hard.
+   - **Their words:** (English original) "Some people react badly to smart people. Others take advantage of them.
+     Make sure that you, as a kernel maintainer, are in the second group. Suck up to them, because they are the people
+     who will make your job easier. In particular, they'll be able to make your decisions for you, which is what the
+     game is all about." … "So when you find somebody smarter than you are, just coast along. Your management
+     responsibilities largely become ones of saying "Sounds like a good idea - go wild", or "That sounds good, but what
+     about xxx?"." … "One thing to look out for is to realize that greatness in one area does not necessarily translate
+     to other areas. So you might prod people in specific directions, but let's face it, they might be good at what
+     they do, and suck at everything else. The good news is that people tend to naturally gravitate back to what they
+     are good at, so it's not like you are doing something irreversible when you do prod them in some direction, just
+     don't push too hard."
+   - **Source:** `management-style.rst` §3 "People II - the Good Kind"; LWN 2004
+   - **Words are:** `quoted`. Authorship is by attribution only (see Gaps).
+   - **From:** top-12 #4 (corrected)
+
+7. **Say up front that you may be wrong; give people critical thinking, not confidence.**
+   - **Kind:** mindset
+   - **Rule:** Admit up front that you don't know. Tell people ahead of time that your decision is preliminary and
+     might be wrong, keep the right to change your mind, and make sure they know it. If the people doing the work
+     aren't sure their work is a good idea, don't encourage them by promising it will be included; make them think
+     twice before a big endeavour. The best thing a manager can do is give them a healthy dose of critical thinking
+     about what they do, not confidence. And you are one of the idiots too.
+   - **Their words:** (English original, in source order) "Happily, both of these reasons can be mitigated
+     effectively by just admitting up-front that you don't have a friggin' clue, and telling people ahead of the fact
+     that your decision is purely preliminary, and might be the wrong thing. You should always reserve the right to
+     change your mind, and make people very aware of that." … "After all, if they aren't certain whether it's a good
+     idea, you sure as hell shouldn't encourage them by promising them that what they work on will be included. Make
+     them at least think twice before they embark on a big endeavor." … "The best thing you can do as a manager is not
+     to instill confidence, but rather a healthy dose of critical thinking on what they do." … (§3) "While it turns out
+     that most people are idiots, the corollary to that is sadly that you are one too"
+   - **Source:** `management-style.rst` §1 "Decisions", §3 "People II - the Good Kind"; LWN 2004
+   - **Words are:** `quoted`. Authorship is by attribution only (see Gaps).
+   - **From:** top-12 #3 (corrected)
+
+8. **When it isn't clear which of two approaches is better, ask "can't we just do both?"**
+   - **Kind:** decision rule
+   - **Rule:** Another way to avoid a decision is to ask "can't we just do both?". If it is not clear which approach is
+     better, the people involved will eventually figure it out. Sometimes both teams give up. He reads that as usually
+     a sign that both projects had something wrong with them, and that they couldn't decide because both were wrong.
+   - **Their words:** (English original) "Btw, another way to avoid a decision is to plaintively just whine "can't we
+     just do both?" and look pitiful. Trust me, it works. If it's not clear which approach is better, they'll
+     eventually figure it out. The answer may end up being that both teams get so frustrated by the situation that they
+     just give up." … "That may sound like a failure, but it's usually a sign that there was something wrong with both
+     projects, and the reason the people involved couldn't decide was that they were both wrong."
+   - **Source:** `management-style.rst` §1 "Decisions"; LWN 2004
+   - **Words are:** `quoted`. Authorship is by attribution only (see Gaps).
+   - **From:** new (codex "Missing" row 1)
+
+9. **Design the code around the data, not the other way round.**
+   - **Kind:** mindset
+   - **Rule:** He favours designing code around the data rather than the reverse, and gives it as one reason git
+     worked. He claims the difference between a bad programmer and a good one is whether they treat their code or
+     their data structures as more important.
+   - **Their words:** (English original) "In fact, I'm a huge proponent of designing your code around the data,
+     rather than the other way around, and I think it's one of the reasons git has been fairly successful (*)." …
+     "(*) I will, in fact, claim that the difference between a bad programmer and a good one is whether he considers
+     his code or his data structures more important. Bad programmers worry about the code. Good programmers worry
+     about data structures and their relationships."
+   - **Source:** git mailing list, 27 Jul 2006, "Re: Licensing and the library version of git", Message-ID
+     `Pine.LNX.4.64.0607270936200.4168@g5.osdl.org`, https://marc.info/?l=git&m=115401850825206&w=2 (also LWN Quote
+     of the week, 29 Jul 2006, https://lwn.net/Articles/193244/)
+   - **Words are:** `quoted`
+   - **From:** new (my research)
+
+10. **Good code: see the problem differently so the special case becomes the normal case.**
+    - **Kind:** mindset
+    - **Rule:** Sometimes you can see a problem in a different way and rewrite it so that a special case goes away and
+      becomes the normal case, and he calls that good code. The sign of people he wants to work with is good taste,
+      which is about seeing the big patterns and knowing by instinct the right way to do things.
+    - **Their words:** (English original, spoken; about two ways to remove an entry from a singly linked list) "I
+      want you to understand that sometimes you can see a problem in a different way and rewrite it so that a special
+      case goes away and becomes the normal case. And that's good code." … "To me, the sign of people I really want to
+      work with is that they have good taste" … "Good taste is about really seeing the big patterns and kind of
+      instinctively knowing what's the right way to do things."
+    - **Source:** TED2016, "The mind behind Linux" (interview with Chris Anderson), transcript at
+      https://www.ted.com/talks/linus_torvalds_the_mind_behind_linux/transcript
+    - **Words are:** `quoted` (spoken, as TED's transcript gives it)
+    - **From:** new (my research)
+
+11. **A pull must tell him what he is pulling and why, as a record that will last; anything odd or late must be explained.**
+    - **Kind:** decision rule
+    - **Rule:** To him, the message is the important part. He wants to understand what he is pulling and why he should pull it. The
+      message becomes the merge message, so it must also make sense as a historical record. Anything odd belongs in the
+      explanation. If you touch files you don't maintain, explain why; he will see it in the diffstat anyway, and if it
+      isn't mentioned he gets extra suspicious. For anything sent after the merge window, or fixes that look scary,
+      explain what it does, why, and the timing.
+    - **Their words:** (English original) "Anyway, at least to me, the important part is the *message*. I want to
+      understand what I'm pulling, and why I should pull it. I also want to use that message as the message for the
+      merge, so it should not just make sense to me, but make sense as a historical record too. Note that if there is
+      something odd about the pull request, that should very much be in the explanation. If you're touching files that
+      you don't maintain, explain _why_. I will see it in the diffstat anyway, and if you didn't mention it, I'll just
+      be extra suspicious. And when you send me new stuff after the merge window (or even bug-fixes, but ones that look
+      scary), explain not just what they do and why they do it, but explain the _timing_. What happened that this
+      didn't go through the merge window.."
+    - **Source:** LKML, 14 Nov 2017, "Re: git pull", https://lkml.iu.edu/hypermail/linux/kernel/1711.1/04939.html
+      (also reproduced in `Documentation/maintainer/pull-requests.rst`, "As said by Linus")
+    - **Words are:** `quoted`
+    - **From:** new (my research). Replaces top-12 #9 and takes the timing point of top-12 #7.
+
+12. **Clean history: rebase your own private work, never other people's history; merge only for a reason.**
+    - **Kind:** decision rule
+    - **Rule:** People can, and probably should, rebase their own private trees, which is cleanup. Never rebase other
+      people's history, which destroys it. The rule is about history, not code: a patch you applied yourself is your
+      history. Once you have published your history, it is no longer private. Don't push out work that is still in the
+      rebase phase. Don't merge upstream code at random points, and have a reason for merging downstream work. He won't
+      pull from a tree whose log is full of random merges of his tree.
+    - **Their words:** (English original) "I want clean history, but that really means (a) clean and (b) history.
+      People can (and probably should) rebase their _private_ trees (their own work). That's a _cleanup_. But never
+      other peoples code. That's a "destroy history"" … "You must never EVER destroy other peoples history. You must
+      not rebase commits other people did." … "Notice that this really is about other peoples _history_, not about
+      other peoples _code_." … "once you've published your history in some public site, other people may be using it,
+      and so now it's clearly not your _private_ history any more." … "Don't expose your crap. This means: if you're
+      still in the "git rebase" phase, you don't push it out." … "Don't merge upstream code at random points." …
+      "Slightly more complex version: "Always have a _reason_ for merging downstream stuff"." … "But if I see a lot of
+      "Merge branch 'linus'" in your logs, I'm not going to pull from you, because your tree has obviously had random
+      crap in it that shouldn't be there."
+    - **Source:** "Re: [git pull] drm-next", to Dave Airlie, 29 Mar 2009, Message-ID
+      `alpine.LFD.2.00.0903291409030.3994@localhost.localdomain`, as published at https://lwn.net/Articles/328438/
+    - **Words are:** `quoted`
+    - **From:** new (my research)
+
+13. **Start small, for an immediate need; don't push your "vision" too hard on the project.**
+    - **Kind:** mindset
+    - **Rule:** Don't set out to build a large project. Start with a small, trivial one and don't expect it to get
+      large; expecting that leads to over-design, or to being scared off. Think about the details, not a big picture:
+      if it doesn't solve a fairly immediate need, it is almost certainly over-designed. Projects have a life of their
+      own, so don't enforce your "vision" too strongly. You are usually wrong anyway, so be willing to take input,
+      change direction and admit mistakes.
+    - **Their words:** (English original) "Nobody should start to undertake a large project. You start with a small
+      _trivial_ project, and you should never expect it to get large. If you do, you'll just overdesign and generally
+      think it is more important than it likely is at that stage. Or worse, you might be scared away by the sheer size
+      of the work you envision. So start small, and think about the details. Don't think about some big picture and
+      fancy design. If it doesn't solve some fairly immediate need, it's almost certainly over-designed." … "projects
+      have a life of their own, and you should _not_ try to enforce your "vision" too strongly on them. Most often
+      you're wrong anyway, and if you're not flexible and willing to take input from others (and willing to change
+      direction when it turned out your vision was flawed), you'll never get anything good done. In other words, be
+      willing to admit your mistakes" · TED2016: "I am not a visionary. I do not have a five-year plan. I'm an
+      engineer." … "But I'm looking at the ground, and I want to fix the pothole that's right in front of me before I
+      fall in."
+    - **Source:** Linux Times email interview by Preston St. Pierre, posted 25 Oct 2004 ("Linus Torvalds: 'Desktop
+      Market has already started'"), Wayback capture
+      https://web.archive.org/web/20041106193140/http://www.linuxtimes.net/modules.php?name=News&file=article&sid=145 ·
+      TED2016 transcript (as #10)
+    - **Words are:** `quoted`
+    - **From:** new (my research)
+
+14. **Patches go to the subsystem maintainer; he trusts the maintainers he pulls from and avoids being the throttle.**
+    - **Kind:** decision rule
+    - **Rule:** Patches go to the subsystem maintainer, and very few go through him directly. People are told to avoid
+      sending him email even though he is the final arbiter. When he pulls from maintainers, the attention he gives
+      varies: sometimes he looks quite closely, but as a general rule he trusts them not to send bad patches. In his
+      own words in 2005, he can process a hundred emailed patches almost as easily as one "as long as I trust the
+      maintainer". If no parallel-merge tool could be found soon, he would distribute the merging over a few people
+      rather than be the throttle himself.
+    - **Their words:** (English original)
+      - Doc: "Linus Torvalds is the final arbiter of all changes accepted into the Linux kernel. … He gets a lot of e-mail, and, at this point, very few patches go through Linus directly, so typically you should do your best to -avoid- sending him e-mail."
+      - Doc: "The amount of attention that Linus pays to specific patches received in a pull operation varies. It is clear that, sometimes, he looks quite closely. But, as a general rule, Linus trusts the subsystem maintainers to not send bad patches upstream."
+      - His 2005 words: "I can process a hundred emails almost as easily as one, as long as I trust the maintainer (which, when it's used as a BK replacement, I obviously do)." … "at least try to distribute the merging out over a few people rather than making _me_ be the throttle."
+    - **Source:** `Documentation/process/submitting-patches.rst` "Select the recipients for your patch" ·
+      `Documentation/process/2.Process.rst` §2.3 "How patches get into the Kernel" · LKML, 7 Apr 2005, "Re: Kernel
+      SCM saga..", https://lkml.iu.edu/hypermail/linux/kernel/0504.0/1826.html
+    - **Words are:** the two doc passages are `attributed` (third person, not his); the 2005 lines are `quoted`.
+    - **From:** top-12 #8 (corrected), plus codex "Missing" row 2
+
+15. **Take the blame, best of all for someone else; tell the one who really screwed up in private.**
+    - **Kind:** decision rule
+    - **Rule:** When things go wrong, take the blame, and the best way is to take it for someone else. Then let the
+      developer who really screwed up (if you can find them) know in private. That way they can avoid it next time,
+      they know they owe you one, and they are likely the person who can fix it. Taking the blame is part of what makes
+      people trust you.
+    - **Their words:** (English original) "Which brings us to the best way of taking the blame: do it for someone
+      else. You'll feel good for taking the fall, they'll feel good about not getting blamed" … "Then make the
+      developer who really screwed up (if you can find them) know in private that they screwed up. Not just so they can
+      avoid it in the future, but so that they know they owe you one. And, perhaps even more importantly, they're also
+      likely the person who can fix it." … "Taking the blame is also why you get to be manager in the first place. It's
+      part of what makes people trust you"
+    - **Source:** `management-style.rst` §4 "Placing blame"; LWN 2004
+    - **Words are:** `quoted`. Authorship is by attribution only (see Gaps).
+    - **From:** top-12 #5 (kept)
+
+16. **Don't hide the problem in politeness; never be sanctimonious; apologise. In 2018 he apologised for his personal attacks.**
+    - **Kind:** decision rule
+    - **Rule:** Don't be too polite or subtle, because politeness can end up hiding the problem; make the point
+      bluntly. Some humour can soften both the bluntness and the moralizing. Don't call people d*ckheads (at least not
+      in public), and learn to apologise when you do. Worse than that is saying it in a sanctimonious voice, which
+      people may not give you the chance to apologise for. Alienating people counts as "not reversible". In 2018 he
+      wrote that his flippant attacks in email, especially the personal ones, were unprofessional and uncalled for,
+      that this was not OK, and that he needed to change his behaviour.
+    - **Their words:** (English original) "Similarly, don't be too polite or subtle about things. Politeness easily
+      ends up going overboard and hiding the problem, and as they say, "On the internet, nobody can hear you being
+      subtle". Use a big blunt object to hammer the point in, because you can't really depend on people getting your
+      point otherwise. Some humor can help pad both the bluntness and the moralizing." … "don't call people d*ckheads
+      (at least not in public)" / "learn how to apologize when you forgot rule (1)" … "There's one thing people hate
+      even more than being called "d*ckhead", and that is being called a "d*ckhead" in a sanctimonious voice. The first
+      you can apologize for, the second one you won't really get the chance." … "It turns out that alienating people is
+      fairly easy, and un-alienating them is hard. Thus "alienating" immediately falls under the heading of "not
+      reversible"" · 2018: "My flippant attacks in emails have been both unprofessional and uncalled for. Especially at
+      times when I made it personal. In my quest for a better patch, this made sense to me. I know now this was not OK
+      and I am truly sorry." … "hey, I need to change some of my behavior"
+    - **Source:** `management-style.rst` §2 "People", §5 "Things to avoid"; LWN 2004 · LKML, 16 Sep 2018, "Linux
+      4.19-rc4 released, an apology, and a maintainership note", https://lkml.org/lkml/2018/9/16/167
+    - **Words are:** `quoted` (management-style authorship by attribution only, see Gaps; the 2018 mail is his)
+    - **From:** top-12 #6 (corrected)
+
+17. **For code he has to maintain: short functions that do one thing, shallow nesting, comments that say what and not how.**
+    - **Kind:** decision rule
+    - **Rule:** These are his rules for code he has to maintain. He won't force them on anybody else, but would prefer
+      them there too. Functions should be short and do one thing. If you need more than 3 levels of indentation, fix
+      your program. Local variables shouldn't exceed 5–10, because "maybe you'd like to understand what you did 2
+      weeks from now". Comments should say what the code does, not how. A formatting tool is not a fix for bad
+      programming.
+    - **Their words:** (English original) "Coding style is very personal, and I won't _force_ my views on anybody, but
+      this is what goes for anything that I have to be able to maintain, and I'd prefer it for most other things too.
+      Please at least consider the points made here." … "if you need more than 3 levels of indentation, you're screwed
+      anyway, and should fix your program." … "Functions should be short and sweet, and do just one thing." … "Another
+      measure of the function is the number of local variables. They shouldn't exceed 5-10, or you're doing something
+      wrong." … "You know you're brilliant, but maybe you'd like to understand what you did 2 weeks from now." …
+      "Generally, you want your comments to tell WHAT your code does, not HOW." … "But remember: "indent" is not a fix
+      for bad programming."
+    - **Source:** `Documentation/CodingStyle` in the Linux 2.0 release (1996), chapters 1, 4, 5 and 6
+      (https://cdn.kernel.org/pub/linux/kernel/v2.0/linux-2.0.tar.gz). The same sentences are in today's
+      `Documentation/process/coding-style.rst`, opening and §1, §6, §8, §9.
+    - **Words are:** `quoted`, first person ("anything that I have to be able to maintain"). Authorship is by
+      attribution, not by signature (see Gaps).
+    - **From:** top-12 #12 (corrected)
+
+18. **Quantify the claimed win and state its costs; the description must stand alone.**
+    - **Kind:** decision rule
+    - **Rule:** Describe the problem that motivated the patch and its impact on users. If you claim improvements in
+      performance, memory, stack footprint or binary size, include numbers that back them up. Also describe the
+      expected downsides, so the reviewer can weigh costs against benefits. Every submission or resubmission carries
+      its complete description, not just "version N", so that it is self-contained.
+    - **Their words:** (English original) "Describe your problem. Whether your patch is a one-line bug fix or 5000
+      lines of a new feature, there must be an underlying problem that motivated you to do this work." … "Quantify
+      optimizations and trade-offs. If you claim improvements in performance, memory consumption, stack footprint, or
+      binary size, include numbers that back them up. But also describe non-obvious costs." … "Describe the expected
+      downsides of your optimization so that the reviewer can weigh costs against benefits." … "Don't just say that
+      this is version N of the patch (series)." … "I.e., the patch (series) and its description should be
+      self-contained."
+    - **Source:** `Documentation/process/submitting-patches.rst` "Describe your changes",
+      https://docs.kernel.org/process/submitting-patches.html
+    - **Words are:** `attributed`: kernel process documentation, not shown to be his words. He is named in the same
+      document as the final arbiter.
+    - **From:** top-12 #11 (corrected: relabelled)
+
+19. **One logical change per patch, each one buildable; send a long series about 15 at a time.**
+    - **Kind:** decision rule
+    - **Rule:** Put each logical change in its own patch, and keep a single change across many files in one patch.
+      Each patch should be easy to understand, verifiable, and justifiable on its own merits. In a series, the kernel
+      should build and run after each patch, because `git bisect` may split the series anywhere. If you cannot condense
+      the set, post say 15 or so at a time and wait for review and integration.
+    - **Their words:** (English original) "Separate each logical change into a separate patch." … "On the other hand,
+      if you make a single change to numerous files, group those changes into a single patch." … "The point to
+      remember is that each patch should make an easily understood change that can be verified by reviewers. Each patch
+      should be justifiable on its own merits." … "take special care to ensure that the kernel builds and runs properly
+      after each patch in the series. Developers using git bisect to track down a problem can end up splitting your
+      patch series at any point; they will not thank you if you introduce bugs in the middle." … "If you cannot
+      condense your patch set into a smaller set of patches, then only post say 15 or so at a time and wait for review
+      and integration."
+    - **Source:** `Documentation/process/submitting-patches.rst` "Separate your changes"
+    - **Words are:** `attributed`: kernel process documentation, not shown to be his words.
+    - **From:** top-12 #10 (corrected)
+
+## Gaps
+
+- **The order of the list is my reading, not measured.** Placing #1–#3 first rests on his calling the regression rule
+  "the first rule of kernel development" (2017) and on how often he restates it. #2 is near the top partly because
+  `design.md` builds the seat on it.
+- **Who wrote `management-style.rst` (#4–#8, #15, #16) is attribution only.** Three pieces of evidence: LWN published
+  it on 6 Oct 2004 under the title "Linus on kernel management style"; it is written in the first person as a kernel
+  maintainer; and his own 2005 mail says "Most of the ManagementStyle document is perfectly valid"
+  (https://lkml.iu.edu/hypermail/linux/kernel/0509.3/0964.html). That mail calls the document painful truths said "as
+  a joke"; it does not say he wrote it. I found no commit record: the git history starts at the 2.6.12-rc2 import
+  (2005), and the BitKeeper-era history on git.kernel.org is behind Anubis. The document calls itself "a lark" that
+  "may or may not have anything to do with reality". The sentences quoted here are the same in the 2004 LWN text.
+- **Who wrote `coding-style` (#17) is also attribution.** I confirmed that the quoted sentences, first person
+  included, are in `Documentation/CodingStyle` in the Linux 2.0 tarball (1996). No signature or commit record says
+  who wrote it.
+- **#18 and #19, and the doc passages in #14, are not his words.** The Linus mail that `submitting-patches.rst` cites
+  (`Pine.LNX.4.58.0504071023190.28951@ppc970.osdl.org`, read at
+  https://lkml.iu.edu/hypermail/linux/kernel/0504.0/1865.html) covers only the email layout. I kept them, labelled
+  `attributed`, because they are the project's rules at his gate. They do not show how he personally decides.
+- **Part of #3 comes through a document others curated.** I read the 2020, 2021 and "2024-29-01" lines in
+  `handling-regressions.rst` (curated by Thorsten Leemhuis), not in the original mails, because lore.kernel.org
+  blocks automated readers (Anubis). That document gives the same lore link under two dates (2020-05-21 and
+  2021-05-21) and prints one date as "2024-29-01". I opened the 2012 and 2017 mails directly (lkml.org,
+  lkml.iu.edu), and the quotes in #1 and the 2017 line in #3 match them.
+- **#13 comes from a 2004 capture.** I read the interview in a Wayback capture of linuxtimes.net dated 2004-11-06. A
+  reprint in an OSNews comment has the same wording. I did not see the original page live.
+- **#10 and part of #13 are speech.** They are TED's transcript of a spoken interview, not text he wrote.
+- **Left out because I could not state them without adding to the words, or could not source them:**
+  - His 2006 remarks in the same thread as #9: with bad data structures, be willing to say "screw the ABI". They were
+    about git and library ABIs. Next to #1 they would read as a contradiction unless I add context the words do not
+    give.
+  - "Security problems are just bugs" (2008): I did not open the mail. The verified 2021 line, "security people need
+    to understand that "not working" is not a success case of security", is in `handling-regressions.rst` but was not
+    needed beyond #1 and #3.
+  - The 2007 Google talk on git: not checked.
+  - "Given enough eyeballs, all bugs are shallow": Eric Raymond's words, not his.
+  - `coding-style.rst` §22 (WARN rather than BUG): added by David Hildenbrand in 2022, as the identity research found.
+  - `stable-api-nonsense.rst`: Greg Kroah-Hartman's.
+- **The 2012 mail in #1 is written in the abusive style he apologised for in 2018 (#16).** Only its rule lines are
+  quoted here.
+- **I did not read `runs/20261013-four-seats/final/`,** as my brief required. Codex's review was read and used row by
+  row above. Codex worked from the four local files without web access. My authorship findings add evidence for
+  management-style and coding-style but no proof.
+I'll read the brief first.
+# Linus Torvalds — who they are and how they decided
+
+## Who they are
+
+Linus Benedict Torvalds (born 28 December 1969 in Helsinki, Finland; Swedish-speaking Finn, naturalised US citizen 2010) has been the creator and lead developer of the Linux kernel since 1991. He announced his "free operating system … just a hobby" for 386/486 AT clones on comp.os.minix on 25 August 1991 (Message-ID `1991Aug25.205708.9541@klaava.Helsinki.FI`), released 1.0 on 14 March 1994, and relicensed the kernel under the GPLv2 after hearing Richard Stallman speak in the autumn of 1991 (Wikipedia, *Linus Torvalds*, citing *Torvalds & Diamond, Just for Fun*, and comp.os.minix; *The early days of Linux*, Lars Wirzenius, LWN). He worked at Transmeta from February 1997 to June 2003, then at OSDL and the Linux Foundation, and moved to Oregon in 2004. In 2005, after the BitKeeper dispute, he wrote Git starting 3 April 2005 and handed it to Junio Hamano by mid-2005; Git exists because "the Linux kernel developers needed a tool they could use to version the kernel". He wrote very little of the kernel himself — about 2% as of 2006 — and said in 2012 that his own contribution is now "mostly merging code written by others". What he kept was the last word: `Documentation/process/submitting-patches.rst` states, in the present tense, "Linus Torvalds is the final arbiter of all changes accepted into the Linux kernel", while noting that "very few patches go through Linus directly". He codified how he would exercise that power in prose rather than edicts — `Documentation/process/management-style.rst` ("This is a short document describing the preferred (or made up, depending on who you ask) management style for the linux kernel") and the much older `coding-style.rst` ("this is what goes for anything that I have to be able to maintain"). In September 2018, after The New Yorker reported on his years of abusive mailing-list mail, he replaced the kernel's Code of Conflict with a Code of Conduct, called his past attacks "unprofessional and uncalled for", took time off to work on how he responds to people, and returned to maintaining 4.19 in October 2018. Awards: 2012 Millennium Technology Prize, 2014 IEEE Computer Pioneer Award, 2018 IEEE Masaru Ibuka Consumer Electronics Award.
+
+## Top 10 decision rules
+
+1. **Never make the big technical decision yourself — hand it to whoever actually knows the details.**
+   - **Their words:** "The name of the game is to avoid having to make a decision. In particular, if somebody tells you 'choose (a) or (b), we really need you to decide on this', you're in trouble as a manager. The people you manage had better know the details better than you, so if they come to you for a technical decision, you're screwed."
+   - **Source:** `Documentation/process/management-style.rst`, §1 "Decisions" — https://docs.kernel.org/process/management-style.html
+   - **How it decides:** Situation: a maintainer asks him to pick between two technical designs. Output: he refuses the binary, and pushes the choice down to the subsystem maintainer who wrote the code. This is the single mechanism behind his famously small personal patch queue.
+   - **Label:** `quoted`
+
+2. **Only take decisions you can undo; refuse anything irreversible.**
+   - **Their words:** "It helps to realize that the key difference between a big decision and a small one is whether you can fix your decision afterwards. […] Thus the key to avoiding big decisions becomes to just avoiding to do things that can't be undone. Don't get ushered into a corner from which you cannot escape. A cornered rat may be dangerous - a cornered manager is just pitiful." And, as a fallback when stuck: "another way to avoid a decision is to plaintively just whine 'can't we just do both?' and look pitiful. Trust me, it works. […] they will eventually figure it out. The answer may end up being that both teams get so frustrated by the situation that they just give up."
+   - **Source:** `Documentation/process/management-style.rst`, §1 "Decisions"
+   - **How it decides:** Situation: he is being pushed toward an architecture or API commitment (e.g. a long-term stable ABI, a subsystem-wide rewrite). Output: he declines to commit, or lets both approaches proceed until one dies on its own merits.
+   - **Label:** `quoted`
+
+3. **Instil critical thinking in people, not confidence in your own decision.**
+   - **Their words:** "The best thing you can do as a manager is not to instill confidence, but rather a healthy dose of critical thinking on what they do. […] Make them at least think twice before they embark on a big endeavor."
+   - **Source:** `Documentation/process/management-style.rst`, §1
+   - **How it decides:** Situation: a large, expensive subsystem proposal arrives with visible senior backing. Output: he signals doubt rather than endorsement, so the proposal is argued for before anyone burns a year on it.
+   - **Label:** `quoted`
+
+4. **One problem per patch; every patch must stand on its own and must not break the tree mid-series.**
+   - **Their words:** "Solve only one problem per patch. If your description starts to get long, that's a sign that you probably need to split up your patch." / "The point to remember is that each patch should make an easily understood change that can be verified by reviewers. Each patch should be justifiable on its own merits." / "When dividing your change into a series of patches, take special care to ensure that the kernel builds and runs properly after each patch in the series. Developers using git bisect to track down a problem can end up splitting your patch series at any point; they will not thank you if you introduce bugs in the middle."
+   - **Source:** `Documentation/process/submitting-patches.rst`, sections "Describe your changes" and "Separate your changes" — https://docs.kernel.org/process/submitting-patches.html
+   - **How it decides:** Situation: a mixed 40-patch series containing a bug fix, an API change and a new driver. Output: reject-and-resubmit as separate series; anything that cannot be reviewed or bisected on its own does not get accepted in that form.
+   - **Label:** `quoted`
+
+5. **Require the justification to be self-contained, quantified, and to state its own costs.**
+   - **Their words:** "When you submit or resubmit a patch or patch series, include the complete patch description and justification for it. Don't just say that it's version N of the patch (series)." / "Quantify optimizations and trade-offs. If you claim improvements in performance, memory consumption, stack footprint, or binary size, include numbers that back them up. But also describe non-obvious costs. […] Describe the expected downsides of your optimization so that the reviewer can weigh costs against benefits."
+   - **Source:** `Documentation/process/submitting-patches.rst`, "Describe your changes"
+   - **How it decides:** Situation: a patch claiming a performance win, or a v2 whose rationale lives only in the v1 thread. Output: send it back — a patch that only makes sense to the people already in the thread is not acceptable.
+   - **Label:** `quoted`
+
+6. **Reject on process before content: bad style or an unreadable format kills a patch unread.**
+   - **Their words:** "Failure to do so simply wastes the reviewers time and will get your patch rejected, probably without even being read." (on style violations) / "A MIME attachment also takes Linus a bit more time to process, decreasing the likelihood of your MIME-attached change being accepted."
+   - **Source:** `Documentation/process/submitting-patches.rst`, sections "Style-check your changes" and "No MIME, no links, no compression, no attachments. Just plain text"
+   - **How it decides:** Situation: a technically excellent patch with trailing whitespace, or sent as a compressed attachment. Output: rejected at the gate, with no technical review performed at all.
+   - **Label:** `quoted`
+
+7. **Route work through the maintainer hierarchy, and keep the last-arbiter role as small as possible.**
+   - **Their words:** "Linus Torvalds is the final arbiter of all changes accepted into the Linux kernel. […] He gets a lot of e-mail, and, at this point, very few patches go through Linus directly, so typically you should do your best to -avoid- sending him e-mail."
+   - **Source:** `Documentation/process/submitting-patches.rst`, "Select the recipients for your patch"
+   - **How it decides:** Situation: a patch touches a subsystem with a named maintainer in MAINTAINERS. Output: it goes to that maintainer and lands without him seeing it — he intervenes only when the hierarchy has stalled or gone wrong.
+   - **Label:** `quoted`
+
+8. **Enforce only what you must maintain; no outside authority, no dogma, burn the manuals.**
+   - **Their words:** "Coding style is very personal, and I won't force my views on anybody, but this is what goes for anything that I have to be able to maintain, and I'd prefer it for most other things too." / "First off, I'd suggest printing out a copy of the GNU coding standards, and NOT read it. Burn them, it's a great symbolic gesture."
+   - **Source:** `Documentation/process/coding-style.rst`, opening — https://docs.kernel.org/process/coding-style.html
+   - **How it decides:** Situation: a contributor argues from an external style standard, a linter's defaults, or a popular tool's defaults. Output: the argument is rejected on the ground that the only test is whether the code is maintainable by him and the maintainers — external consensus carries no weight.
+   - **Label:** `quoted`
+
+9. **Make code mechanically readable: descriptive names, comments that say what not how, functions that do one thing.**
+   - **Their words:** "C is a Spartan language, and your naming conventions should follow suit. […] To call a global function foo is a shooting offense." / "NEVER try to explain HOW your code works in a comment: it's much better to write the code so that the working is obvious, and it's a waste of time to explain badly written code. Generally, you want your comments to tell WHAT your code does, not HOW." / "Functions should be short and sweet, and do just one thing. […] A human brain can generally easily keep track of about 7 different things, anything more and it gets confused."
+   - **Source:** `Documentation/process/coding-style.rst`, §4 "Naming", §8 "Commenting", §6 "Functions"
+   - **How it decides:** Situation: a patch adds `int do_it(void)`, a comment narrating each line, and a 300-line function. Output: "no" — not on correctness but because he must be able to read and grep it in five years, and because the rules are cheap to check.
+   - **Label:** `quoted`
+
+10. **When you must say no to a person, be blunt and take the blame yourself — but never publicly call them a d*ckhead, and apologise afterwards.**
+    - **Their words:** "Use a big blunt object to hammer the point in, because you can't really depend on people getting your point otherwise." / "There is one thing people hate even more than being called a 'd*ckhead', and that is being called a 'd*ckhead' in a sanctimonious voice." / "It turns out that alienating people is fairly easy, and un-alienating them is hard. Thus 'alienating' immediately falls under the heading of 'not reversible' […] There's just a few simple rules here: don't call people d*ckheads (at least not in public); learn how to apologize when you forgot rule (1)." / "The best way of taking the blame: do it for someone else. You'll feel good for taking the fall, they'll feel good about not getting blamed."
+    - **Source:** `Documentation/process/management-style.rst`, §2, §4 "Placing blame", §5 "Things to avoid"
+    - **How it decides:** Situation: a patch or a maintainer has to be rejected, and the recipient is senior. Output: reject it directly and without hedging, absorb the public cost himself, and keep the relationship intact — because the rejection is not reversible if it destroys the person.
+    - **Label:** `quoted`
+
+## Sources used
+
+Opened and read:
+- https://docs.kernel.org/process/submitting-patches.html (version rendered: 7.3.0-rc7)
+- https://docs.kernel.org/process/coding-style.html (7.3.0-rc7)
+- https://docs.kernel.org/process/management-style.html (7.3.0-rc7)
+- https://docs.kernel.org/process/changes.html — turned out to be "Minimal requirements to compile the Kernel"; not used- https://en.wikipedia.org/w/index.php?title=Linus_Torvalds&action=raw (biography + its citations, incl. the comp.os.minix 1991 message-id)
+- https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/log/Documentation/process/coding-style.rst?qt=grep&q=crash — used to check provenance of coding-style §22
+- https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/log/Documentation/process/{management-style,submitting-patches,coding-style}.rst — history check, inconclusive (see Gaps)
+- https://api.github.com/repos/torvalds/linux/contents/Documentation/process — directory listing only
+
+Attempted and unavailable:
+- https://lore.kernel.org/lkml/…/raw — Anubis proof-of-work JS challenge; unreadable
+- https://yhbt.net/lore/… — 502
+- https://lkml.org/lkml/2007/8/6 — index reachable, message bodies not usable at this scale
+- https://marc.info/?l=linux-kernel… — search reachable (bodies/authors), individual message bodies not retrievable
+- https://git-scm.com/about/10-rules, https://git-scm.com/about, https://www.kernel.org/~linus/ — 404
+- https://cdn.kernel.org/pub/linux/kernel/v2.6/announce/2.6.12 and archive.org availability API — not archived
+- https://raw.githubusercontent.com/torvalds/linux/master/Documentation/process/development-model.rst — 404 (file no longer exists) / later requests HTTP 429
+
+## Gaps
+
+- **No rule is sourced from an LKML post or a talk.** `lore.kernel.org` is behind an Anubis JavaScript proof-of-work wall and the mirrors I could reach (yhbt.net 502, marc.info search-only, lkml.org) did not yield message bodies. That means the famous mails — the NFS "I'M A COMPLETE IDIOT" post (Aug 2007), the `[GIT PULL]` rants, the 2.6.12 and 3.0 release announcements — are **not** used here, and my knowledge of their wording was deliberately not paraphrased into quotes. This is the largest gap and it matters: his most quotable decision-making is in those mails, not in the docs.
+- **Per-chapter authorship in `coding-style.rst` and `submitting-patches.rst` is not signed.** Both are Linus-authored documents that many others have since edited. I verified one case and it failed my own test: chapter 22 "Do not crash the kernel" was added by **David Hildenbrand** in commit `coding-style.rst: document BUG() and WARN() rules ("do not crash the kernel")`, 2022-09-29 — so I excluded it despite how "Linus-ish" it sounds. I kept only §1–§9 (naming, functions, comments, braces, indentation) and the opening, which are the original early-1990s text. A few quoted phrases could in principle have been reworded by later editors; I have not diffed them against the 1990s text.
+- **`management-style.rst` authorship is asserted, not verified.** The kernel.org git mirror I could reach exposes only `master` (no tags, no rename history), so the file's original commit is unreachable and no commit in its history is by Torvalds. The document is universally attributed to him and is written in his first person as a kernel maintainer, but I could not produce a commit record. Treat every quote from it as his words on the strength of attribution, not of provenance.
+- **I did not consult "Just for Fun"** — no accessible full text, so no quote from it, and nothing in rule set 1–10 depends on it. (Wikipedia's biography cites it, pp. 29, 38, 53, 60, 94 for the Finnish Navy, UNIX/MINIX, and the 80386 purchase.)
+- **The famous 1991 "just a hobby, won't be big and professional like gnu" line is quoted via Wikipedia's citation**, not by me opening groups.google.com. I have therefore kept it out of the numbered rules and mentioned the post only by date and Message-ID.
+- **Not verified:** the exact dates of the 2.6.12 (Dec 2003) and 3.0 (July 2011) release announcements, and the current percentage of kernel code authored by him (the ~2% figure is from 2006).
+- **A likely candidate I rejected for lack of sourcing:** the git-side rules ("never break backwards compatibility", "every commit is a single logical change", "trust no data from outside your system"). Those are attributed to Linus's 2007 Google Tech Talk, but I could not reach the transcript — `git-scm.com/about/10-rules` is a 404 — so I did not include them.
+
+exec
+/bin/bash -lc "sed -n '155,335p' runs/20261013-four-seats/final-opus/linus.md" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+     about xxx?"." … "One thing to look out for is to realize that greatness in one area does not necessarily translate
+     to other areas. So you might prod people in specific directions, but let's face it, they might be good at what
+     they do, and suck at everything else. The good news is that people tend to naturally gravitate back to what they
+     are good at, so it's not like you are doing something irreversible when you do prod them in some direction, just
+     don't push too hard."
+   - **Source:** `management-style.rst` §3 "People II - the Good Kind"; LWN 2004
+   - **Words are:** `quoted`. Authorship is by attribution only (see Gaps).
+   - **From:** top-12 #4 (corrected)
+
+7. **Say up front that you may be wrong; give people critical thinking, not confidence.**
+   - **Kind:** mindset
+   - **Rule:** Admit up front that you don't know. Tell people ahead of time that your decision is preliminary and
+     might be wrong, keep the right to change your mind, and make sure they know it. If the people doing the work
+     aren't sure their work is a good idea, don't encourage them by promising it will be included; make them think
+     twice before a big endeavour. The best thing a manager can do is give them a healthy dose of critical thinking
+     about what they do, not confidence. And you are one of the idiots too.
+   - **Their words:** (English original, in source order) "Happily, both of these reasons can be mitigated
+     effectively by just admitting up-front that you don't have a friggin' clue, and telling people ahead of the fact
+     that your decision is purely preliminary, and might be the wrong thing. You should always reserve the right to
+     change your mind, and make people very aware of that." … "After all, if they aren't certain whether it's a good
+     idea, you sure as hell shouldn't encourage them by promising them that what they work on will be included. Make
+     them at least think twice before they embark on a big endeavor." … "The best thing you can do as a manager is not
+     to instill confidence, but rather a healthy dose of critical thinking on what they do." … (§3) "While it turns out
+     that most people are idiots, the corollary to that is sadly that you are one too"
+   - **Source:** `management-style.rst` §1 "Decisions", §3 "People II - the Good Kind"; LWN 2004
+   - **Words are:** `quoted`. Authorship is by attribution only (see Gaps).
+   - **From:** top-12 #3 (corrected)
+
+8. **When it isn't clear which of two approaches is better, ask "can't we just do both?"**
+   - **Kind:** decision rule
+   - **Rule:** Another way to avoid a decision is to ask "can't we just do both?". If it is not clear which approach is
+     better, the people involved will eventually figure it out. Sometimes both teams give up. He reads that as usually
+     a sign that both projects had something wrong with them, and that they couldn't decide because both were wrong.
+   - **Their words:** (English original) "Btw, another way to avoid a decision is to plaintively just whine "can't we
+     just do both?" and look pitiful. Trust me, it works. If it's not clear which approach is better, they'll
+     eventually figure it out. The answer may end up being that both teams get so frustrated by the situation that they
+     just give up." … "That may sound like a failure, but it's usually a sign that there was something wrong with both
+     projects, and the reason the people involved couldn't decide was that they were both wrong."
+   - **Source:** `management-style.rst` §1 "Decisions"; LWN 2004
+   - **Words are:** `quoted`. Authorship is by attribution only (see Gaps).
+   - **From:** new (codex "Missing" row 1)
+
+9. **Design the code around the data, not the other way round.**
+   - **Kind:** mindset
+   - **Rule:** He favours designing code around the data rather than the reverse, and gives it as one reason git
+     worked. He claims the difference between a bad programmer and a good one is whether they treat their code or
+     their data structures as more important.
+   - **Their words:** (English original) "In fact, I'm a huge proponent of designing your code around the data,
+     rather than the other way around, and I think it's one of the reasons git has been fairly successful (*)." …
+     "(*) I will, in fact, claim that the difference between a bad programmer and a good one is whether he considers
+     his code or his data structures more important. Bad programmers worry about the code. Good programmers worry
+     about data structures and their relationships."
+   - **Source:** git mailing list, 27 Jul 2006, "Re: Licensing and the library version of git", Message-ID
+     `Pine.LNX.4.64.0607270936200.4168@g5.osdl.org`, https://marc.info/?l=git&m=115401850825206&w=2 (also LWN Quote
+     of the week, 29 Jul 2006, https://lwn.net/Articles/193244/)
+   - **Words are:** `quoted`
+   - **From:** new (my research)
+
+10. **Good code: see the problem differently so the special case becomes the normal case.**
+    - **Kind:** mindset
+    - **Rule:** Sometimes you can see a problem in a different way and rewrite it so that a special case goes away and
+      becomes the normal case, and he calls that good code. The sign of people he wants to work with is good taste,
+      which is about seeing the big patterns and knowing by instinct the right way to do things.
+    - **Their words:** (English original, spoken; about two ways to remove an entry from a singly linked list) "I
+      want you to understand that sometimes you can see a problem in a different way and rewrite it so that a special
+      case goes away and becomes the normal case. And that's good code." … "To me, the sign of people I really want to
+      work with is that they have good taste" … "Good taste is about really seeing the big patterns and kind of
+      instinctively knowing what's the right way to do things."
+    - **Source:** TED2016, "The mind behind Linux" (interview with Chris Anderson), transcript at
+      https://www.ted.com/talks/linus_torvalds_the_mind_behind_linux/transcript
+    - **Words are:** `quoted` (spoken, as TED's transcript gives it)
+    - **From:** new (my research)
+
+11. **A pull must tell him what he is pulling and why, as a record that will last; anything odd or late must be explained.**
+    - **Kind:** decision rule
+    - **Rule:** To him, the message is the important part. He wants to understand what he is pulling and why he should pull it. The
+      message becomes the merge message, so it must also make sense as a historical record. Anything odd belongs in the
+      explanation. If you touch files you don't maintain, explain why; he will see it in the diffstat anyway, and if it
+      isn't mentioned he gets extra suspicious. For anything sent after the merge window, or fixes that look scary,
+      explain what it does, why, and the timing.
+    - **Their words:** (English original) "Anyway, at least to me, the important part is the *message*. I want to
+      understand what I'm pulling, and why I should pull it. I also want to use that message as the message for the
+      merge, so it should not just make sense to me, but make sense as a historical record too. Note that if there is
+      something odd about the pull request, that should very much be in the explanation. If you're touching files that
+      you don't maintain, explain _why_. I will see it in the diffstat anyway, and if you didn't mention it, I'll just
+      be extra suspicious. And when you send me new stuff after the merge window (or even bug-fixes, but ones that look
+      scary), explain not just what they do and why they do it, but explain the _timing_. What happened that this
+      didn't go through the merge window.."
+    - **Source:** LKML, 14 Nov 2017, "Re: git pull", https://lkml.iu.edu/hypermail/linux/kernel/1711.1/04939.html
+      (also reproduced in `Documentation/maintainer/pull-requests.rst`, "As said by Linus")
+    - **Words are:** `quoted`
+    - **From:** new (my research). Replaces top-12 #9 and takes the timing point of top-12 #7.
+
+12. **Clean history: rebase your own private work, never other people's history; merge only for a reason.**
+    - **Kind:** decision rule
+    - **Rule:** People can, and probably should, rebase their own private trees, which is cleanup. Never rebase other
+      people's history, which destroys it. The rule is about history, not code: a patch you applied yourself is your
+      history. Once you have published your history, it is no longer private. Don't push out work that is still in the
+      rebase phase. Don't merge upstream code at random points, and have a reason for merging downstream work. He won't
+      pull from a tree whose log is full of random merges of his tree.
+    - **Their words:** (English original) "I want clean history, but that really means (a) clean and (b) history.
+      People can (and probably should) rebase their _private_ trees (their own work). That's a _cleanup_. But never
+      other peoples code. That's a "destroy history"" … "You must never EVER destroy other peoples history. You must
+      not rebase commits other people did." … "Notice that this really is about other peoples _history_, not about
+      other peoples _code_." … "once you've published your history in some public site, other people may be using it,
+      and so now it's clearly not your _private_ history any more." … "Don't expose your crap. This means: if you're
+      still in the "git rebase" phase, you don't push it out." … "Don't merge upstream code at random points." …
+      "Slightly more complex version: "Always have a _reason_ for merging downstream stuff"." … "But if I see a lot of
+      "Merge branch 'linus'" in your logs, I'm not going to pull from you, because your tree has obviously had random
+      crap in it that shouldn't be there."
+    - **Source:** "Re: [git pull] drm-next", to Dave Airlie, 29 Mar 2009, Message-ID
+      `alpine.LFD.2.00.0903291409030.3994@localhost.localdomain`, as published at https://lwn.net/Articles/328438/
+    - **Words are:** `quoted`
+    - **From:** new (my research)
+
+13. **Start small, for an immediate need; don't push your "vision" too hard on the project.**
+    - **Kind:** mindset
+    - **Rule:** Don't set out to build a large project. Start with a small, trivial one and don't expect it to get
+      large; expecting that leads to over-design, or to being scared off. Think about the details, not a big picture:
+      if it doesn't solve a fairly immediate need, it is almost certainly over-designed. Projects have a life of their
+      own, so don't enforce your "vision" too strongly. You are usually wrong anyway, so be willing to take input,
+      change direction and admit mistakes.
+    - **Their words:** (English original) "Nobody should start to undertake a large project. You start with a small
+      _trivial_ project, and you should never expect it to get large. If you do, you'll just overdesign and generally
+      think it is more important than it likely is at that stage. Or worse, you might be scared away by the sheer size
+      of the work you envision. So start small, and think about the details. Don't think about some big picture and
+      fancy design. If it doesn't solve some fairly immediate need, it's almost certainly over-designed." … "projects
+      have a life of their own, and you should _not_ try to enforce your "vision" too strongly on them. Most often
+      you're wrong anyway, and if you're not flexible and willing to take input from others (and willing to change
+      direction when it turned out your vision was flawed), you'll never get anything good done. In other words, be
+      willing to admit your mistakes" · TED2016: "I am not a visionary. I do not have a five-year plan. I'm an
+      engineer." … "But I'm looking at the ground, and I want to fix the pothole that's right in front of me before I
+      fall in."
+    - **Source:** Linux Times email interview by Preston St. Pierre, posted 25 Oct 2004 ("Linus Torvalds: 'Desktop
+      Market has already started'"), Wayback capture
+      https://web.archive.org/web/20041106193140/http://www.linuxtimes.net/modules.php?name=News&file=article&sid=145 ·
+      TED2016 transcript (as #10)
+    - **Words are:** `quoted`
+    - **From:** new (my research)
+
+14. **Patches go to the subsystem maintainer; he trusts the maintainers he pulls from and avoids being the throttle.**
+    - **Kind:** decision rule
+    - **Rule:** Patches go to the subsystem maintainer, and very few go through him directly. People are told to avoid
+      sending him email even though he is the final arbiter. When he pulls from maintainers, the attention he gives
+      varies: sometimes he looks quite closely, but as a general rule he trusts them not to send bad patches. In his
+      own words in 2005, he can process a hundred emailed patches almost as easily as one "as long as I trust the
+      maintainer". If no parallel-merge tool could be found soon, he would distribute the merging over a few people
+      rather than be the throttle himself.
+    - **Their words:** (English original)
+      - Doc: "Linus Torvalds is the final arbiter of all changes accepted into the Linux kernel. … He gets a lot of e-mail, and, at this point, very few patches go through Linus directly, so typically you should do your best to -avoid- sending him e-mail."
+      - Doc: "The amount of attention that Linus pays to specific patches received in a pull operation varies. It is clear that, sometimes, he looks quite closely. But, as a general rule, Linus trusts the subsystem maintainers to not send bad patches upstream."
+      - His 2005 words: "I can process a hundred emails almost as easily as one, as long as I trust the maintainer (which, when it's used as a BK replacement, I obviously do)." … "at least try to distribute the merging out over a few people rather than making _me_ be the throttle."
+    - **Source:** `Documentation/process/submitting-patches.rst` "Select the recipients for your patch" ·
+      `Documentation/process/2.Process.rst` §2.3 "How patches get into the Kernel" · LKML, 7 Apr 2005, "Re: Kernel
+      SCM saga..", https://lkml.iu.edu/hypermail/linux/kernel/0504.0/1826.html
+    - **Words are:** the two doc passages are `attributed` (third person, not his); the 2005 lines are `quoted`.
+    - **From:** top-12 #8 (corrected), plus codex "Missing" row 2
+
+15. **Take the blame, best of all for someone else; tell the one who really screwed up in private.**
+    - **Kind:** decision rule
+    - **Rule:** When things go wrong, take the blame, and the best way is to take it for someone else. Then let the
+      developer who really screwed up (if you can find them) know in private. That way they can avoid it next time,
+      they know they owe you one, and they are likely the person who can fix it. Taking the blame is part of what makes
+      people trust you.
+    - **Their words:** (English original) "Which brings us to the best way of taking the blame: do it for someone
+      else. You'll feel good for taking the fall, they'll feel good about not getting blamed" … "Then make the
+      developer who really screwed up (if you can find them) know in private that they screwed up. Not just so they can
+      avoid it in the future, but so that they know they owe you one. And, perhaps even more importantly, they're also
+      likely the person who can fix it." … "Taking the blame is also why you get to be manager in the first place. It's
+      part of what makes people trust you"
+    - **Source:** `management-style.rst` §4 "Placing blame"; LWN 2004
+    - **Words are:** `quoted`. Authorship is by attribution only (see Gaps).
+    - **From:** top-12 #5 (kept)
+
+16. **Don't hide the problem in politeness; never be sanctimonious; apologise. In 2018 he apologised for his personal attacks.**
+    - **Kind:** decision rule
+    - **Rule:** Don't be too polite or subtle, because politeness can end up hiding the problem; make the point
+      bluntly. Some humour can soften both the bluntness and the moralizing. Don't call people d*ckheads (at least not
+      in public), and learn to apologise when you do. Worse than that is saying it in a sanctimonious voice, which
+      people may not give you the chance to apologise for. Alienating people counts as "not reversible". In 2018 he
+      wrote that his flippant attacks in email, especially the personal ones, were unprofessional and uncalled for,
+
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/requirement-check/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+---
+name: requirement-check
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, unattributed or impossible to check.
+---
+
+# Requirement check
+
+A general standard (RFC 2119 / 8174), installed globally — not part of the Ancient Games framework. The
+worked failure in `meaningful-names` cites the Ancient Games as one example.
+
+A short gate between **hearing a rule** and **acting on it**. It exists because rules get written down that nobody
+can trace, that count two different things at once, or that nothing can ever fail — and the cost lands months later,
+when nobody can say whether the rule still means anything.
+
+Run it when someone states a rule, and run it on yourself before writing a normative line into any document.
+
+## The eight questions
+
+Ask them of **one statement**. Say which it passes and which it fails, then **ask the person about the failures** —
+do not fill the gaps yourself.
+
+1. **Source.** Who said this, and where? Can you point to the exact line? *"Mine"* is a valid answer. Unlabelled is
+   not.
+2. **One thing.** An "and", an "or", a "/", or a second number means it is **two** statements. Split them, and give
+   each its own source.
+3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
+   files?
+4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
+   failing inputs. If you cannot name one, it is not checkable — it is a wish.
+5. **Weak words.** *like, about, appropriate, as needed, logical, fast, enough, reasonable, only has to, TBD.* Replace
+   each with a value, **or mark the value open**. Never invent the number.
+6. **Level.** Is it **MUST** (a gate that stops work), **SHOULD** (a default that may be overridden with a stated
+   reason), or **guidance**? A safety bound earns MUST. **A method does not** — see the RFC note below.
+7. **Basis.** Measured, quoted from a source, or a guess? A guess is fine **if it is labelled** — `n=0`, with when it
+   will be looked at again.
+8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
+   part"*? The person probably did not say that. **A link is its own claim and needs its own source.**
+
+## Two rules for the agent
+
+- **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
+  is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
+  the time anyone notices.
+- **Never add structure that was not given.** No halves, no numbered reasons, no ordered pairs, no named phases,
+  unless the person said so. Quote them, state the operative sentence, stop. If a relationship between two rules is
+  wanted, that is a separate claim with its own evidence.
+
+## Two verified facts, worth quoting
+
+- **RFC 2119 §6, "Guidance in the use of these Imperatives":** imperatives *"must be used with care and sparingly…
+  they MUST only be used where it is actually required… they must not be used to try to impose a particular method."*
+  Most design rules are method. Method does not earn MUST.
+- **RFC 8174 (updates 2119):** the key words *"have the meanings specified herein only when they are in all
+  capitals."* Lowercase *must* and *should* carry no defined requirement meaning. If nothing marks which lines are
+  requirements, a reader cannot tell rules from explanation.
+
+## How to answer
+
+Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
+one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+
+Do not report a rule as complete when you chose its missing value. Say which values you left open.
+
+## A worked failure
+
+> *"At most 5 subagent roles per run and at most 3 running at once."*
+
+Four of the eight fail: **Source** — nobody could name one; **One thing** — a count of roles *and* a count of
+concurrent processes; **Unit** — two different units, one word ("subagent") used for both; **Level** — a method
+preference written as a cap. The sentence would not parse, and it took four days to find out why. The checklist
+catches it in thirty seconds.
+
+The same checklist, run on *"No single call runs longer than the ceiling: 8 hours"*, passes all eight — because it
+names who set it, counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail.
+
+## Limits
+
+The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
+feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
+and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
+paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
+quotes are checked. Treat the rest as a good working list, not as a citation.
+
+Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.
+
+web search: 
+web search: LLM persona prompting experts factual accuracy 162 personas 2024 When helpful assistant not really helpful ...
+codex
+I’m using the requirement-check skill to keep the proposed rules traceable and leave missing thresholds open. The research distinguishes sounding like a person from improving problem-solving accuracy; I’ll compare both against Linus’s sourced decision rules.
+
+web search: 
+web search: site.aclanthology.org "When "A Helpful Assistant"" persona ...
+exec
+/bin/bash -lc "sed -n '330,397p' runs/20261013-four-seats/final-opus/linus.md" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+    - **Kind:** decision rule
+    - **Rule:** Don't be too polite or subtle, because politeness can end up hiding the problem; make the point
+      bluntly. Some humour can soften both the bluntness and the moralizing. Don't call people d*ckheads (at least not
+      in public), and learn to apologise when you do. Worse than that is saying it in a sanctimonious voice, which
+      people may not give you the chance to apologise for. Alienating people counts as "not reversible". In 2018 he
+      wrote that his flippant attacks in email, especially the personal ones, were unprofessional and uncalled for,
+      that this was not OK, and that he needed to change his behaviour.
+    - **Their words:** (English original) "Similarly, don't be too polite or subtle about things. Politeness easily
+      ends up going overboard and hiding the problem, and as they say, "On the internet, nobody can hear you being
+      subtle". Use a big blunt object to hammer the point in, because you can't really depend on people getting your
+      point otherwise. Some humor can help pad both the bluntness and the moralizing." … "don't call people d*ckheads
+      (at least not in public)" / "learn how to apologize when you forgot rule (1)" … "There's one thing people hate
+      even more than being called "d*ckhead", and that is being called a "d*ckhead" in a sanctimonious voice. The first
+      you can apologize for, the second one you won't really get the chance." … "It turns out that alienating people is
+      fairly easy, and un-alienating them is hard. Thus "alienating" immediately falls under the heading of "not
+      reversible"" · 2018: "My flippant attacks in emails have been both unprofessional and uncalled for. Especially at
+      times when I made it personal. In my quest for a better patch, this made sense to me. I know now this was not OK
+      and I am truly sorry." … "hey, I need to change some of my behavior"
+    - **Source:** `management-style.rst` §2 "People", §5 "Things to avoid"; LWN 2004 · LKML, 16 Sep 2018, "Linux
+      4.19-rc4 released, an apology, and a maintainership note", https://lkml.org/lkml/2018/9/16/167
+    - **Words are:** `quoted` (management-style authorship by attribution only, see Gaps; the 2018 mail is his)
+    - **From:** top-12 #6 (corrected)
+
+17. **For code he has to maintain: short functions that do one thing, shallow nesting, comments that say what and not how.**
+    - **Kind:** decision rule
+    - **Rule:** These are his rules for code he has to maintain. He won't force them on anybody else, but would prefer
+      them there too. Functions should be short and do one thing. If you need more than 3 levels of indentation, fix
+      your program. Local variables shouldn't exceed 5–10, because "maybe you'd like to understand what you did 2
+      weeks from now". Comments should say what the code does, not how. A formatting tool is not a fix for bad
+      programming.
+    - **Their words:** (English original) "Coding style is very personal, and I won't _force_ my views on anybody, but
+      this is what goes for anything that I have to be able to maintain, and I'd prefer it for most other things too.
+      Please at least consider the points made here." … "if you need more than 3 levels of indentation, you're screwed
+      anyway, and should fix your program." … "Functions should be short and sweet, and do just one thing." … "Another
+      measure of the function is the number of local variables. They shouldn't exceed 5-10, or you're doing something
+      wrong." … "You know you're brilliant, but maybe you'd like to understand what you did 2 weeks from now." …
+      "Generally, you want your comments to tell WHAT your code does, not HOW." … "But remember: "indent" is not a fix
+      for bad programming."
+    - **Source:** `Documentation/CodingStyle` in the Linux 2.0 release (1996), chapters 1, 4, 5 and 6
+      (https://cdn.kernel.org/pub/linux/kernel/v2.0/linux-2.0.tar.gz). The same sentences are in today's
+      `Documentation/process/coding-style.rst`, opening and §1, §6, §8, §9.
+    - **Words are:** `quoted`, first person ("anything that I have to be able to maintain"). Authorship is by
+      attribution, not by signature (see Gaps).
+    - **From:** top-12 #12 (corrected)
+
+18. **Quantify the claimed win and state its costs; the description must stand alone.**
+    - **Kind:** decision rule
+    - **Rule:** Describe the problem that motivated the patch and its impact on users. If you claim improvements in
+      performance, memory, stack footprint or binary size, include numbers that back them up. Also describe the
+      expected downsides, so the reviewer can weigh costs against benefits. Every submission or resubmission carries
+      its complete description, not just "version N", so that it is self-contained.
+    - **Their words:** (English original) "Describe your problem. Whether your patch is a one-line bug fix or 5000
+      lines of a new feature, there must be an underlying problem that motivated you to do this work." … "Quantify
+      optimizations and trade-offs. If you claim improvements in performance, memory consumption, stack footprint, or
+      binary size, include numbers that back them up. But also describe non-obvious costs." … "Describe the expected
+      downsides of your optimization so that the reviewer can weigh costs against benefits." … "Don't just say that
+      this is version N of the patch (series)." … "I.e., the patch (series) and its description should be
+      self-contained."
+    - **Source:** `Documentation/process/submitting-patches.rst` "Describe your changes",
+      https://docs.kernel.org/process/submitting-patches.html
+    - **Words are:** `attributed`: kernel process documentation, not shown to be his words. He is named in the same
+      document as the final arbiter.
+    - **From:** top-12 #11 (corrected: relabelled)
+
+19. **One logical change per patch, each one buildable; send a long series about 15 at a time.**
+    - **Kind:** decision rule
+    - **Rule:** Put each logical change in its own patch, and keep a single change across many files in one patch.
+      Each patch should be easy to understand, verifiable, and justifiable on its own merits. In a series, the kernel
+
+web search: 
+web search: site.aclanthology.org Zheng "Helpful Assistant" personas 2024 ...
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/requirement-check/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+---
+name: requirement-check
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, unattributed or impossible to check.
+---
+
+# Requirement check
+
+A general standard (RFC 2119 / 8174), installed globally — not part of the Ancient Games framework. The
+worked failure in `meaningful-names` cites the Ancient Games as one example.
+
+A short gate between **hearing a rule** and **acting on it**. It exists because rules get written down that nobody
+can trace, that count two different things at once, or that nothing can ever fail — and the cost lands months later,
+when nobody can say whether the rule still means anything.
+
+Run it when someone states a rule, and run it on yourself before writing a normative line into any document.
+
+## The eight questions
+
+Ask them of **one statement**. Say which it passes and which it fails, then **ask the person about the failures** —
+do not fill the gaps yourself.
+
+1. **Source.** Who said this, and where? Can you point to the exact line? *"Mine"* is a valid answer. Unlabelled is
+   not.
+2. **One thing.** An "and", an "or", a "/", or a second number means it is **two** statements. Split them, and give
+   each its own source.
+3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
+   files?
+4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
+   failing inputs. If you cannot name one, it is not checkable — it is a wish.
+5. **Weak words.** *like, about, appropriate, as needed, logical, fast, enough, reasonable, only has to, TBD.* Replace
+   each with a value, **or mark the value open**. Never invent the number.
+6. **Level.** Is it **MUST** (a gate that stops work), **SHOULD** (a default that may be overridden with a stated
+   reason), or **guidance**? A safety bound earns MUST. **A method does not** — see the RFC note below.
+7. **Basis.** Measured, quoted from a source, or a guess? A guess is fine **if it is labelled** — `n=0`, with when it
+   will be looked at again.
+8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
+   part"*? The person probably did not say that. **A link is its own claim and needs its own source.**
+
+## Two rules for the agent
+
+- **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
+  is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
+  the time anyone notices.
+- **Never add structure that was not given.** No halves, no numbered reasons, no ordered pairs, no named phases,
+  unless the person said so. Quote them, state the operative sentence, stop. If a relationship between two rules is
+  wanted, that is a separate claim with its own evidence.
+
+## Two verified facts, worth quoting
+
+- **RFC 2119 §6, "Guidance in the use of these Imperatives":** imperatives *"must be used with care and sparingly…
+  they MUST only be used where it is actually required… they must not be used to try to impose a particular method."*
+  Most design rules are method. Method does not earn MUST.
+- **RFC 8174 (updates 2119):** the key words *"have the meanings specified herein only when they are in all
+  capitals."* Lowercase *must* and *should* carry no defined requirement meaning. If nothing marks which lines are
+  requirements, a reader cannot tell rules from explanation.
+
+## How to answer
+
+Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
+one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+
+Do not report a rule as complete when you chose its missing value. Say which values you left open.
+
+## A worked failure
+
+> *"At most 5 subagent roles per run and at most 3 running at once."*
+
+Four of the eight fail: **Source** — nobody could name one; **One thing** — a count of roles *and* a count of
+concurrent processes; **Unit** — two different units, one word ("subagent") used for both; **Level** — a method
+preference written as a cap. The sentence would not parse, and it took four days to find out why. The checklist
+catches it in thirty seconds.
+
+The same checklist, run on *"No single call runs longer than the ceiling: 8 hours"*, passes all eight — because it
+names who set it, counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail.
+
+## Limits
+
+The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
+feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
+and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
+paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
+quotes are checked. Treat the rest as a good working list, not as a citation.
+
+Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.
+
+web search: 
+web search: https://aclanthology.org/2024.findings-emnlp.888/
+exec
+/bin/bash -lc "sed -n '397,424p' runs/20261013-four-seats/final-opus/linus.md" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+      Each patch should be easy to understand, verifiable, and justifiable on its own merits. In a series, the kernel
+      should build and run after each patch, because `git bisect` may split the series anywhere. If you cannot condense
+      the set, post say 15 or so at a time and wait for review and integration.
+    - **Their words:** (English original) "Separate each logical change into a separate patch." … "On the other hand,
+      if you make a single change to numerous files, group those changes into a single patch." … "The point to
+      remember is that each patch should make an easily understood change that can be verified by reviewers. Each patch
+      should be justifiable on its own merits." … "take special care to ensure that the kernel builds and runs properly
+      after each patch in the series. Developers using git bisect to track down a problem can end up splitting your
+      patch series at any point; they will not thank you if you introduce bugs in the middle." … "If you cannot
+      condense your patch set into a smaller set of patches, then only post say 15 or so at a time and wait for review
+      and integration."
+    - **Source:** `Documentation/process/submitting-patches.rst` "Separate your changes"
+    - **Words are:** `attributed`: kernel process documentation, not shown to be his words.
+    - **From:** top-12 #10 (corrected)
+
+## Gaps
+
+- **The order of the list is my reading, not measured.** Placing #1–#3 first rests on his calling the regression rule
+  "the first rule of kernel development" (2017) and on how often he restates it. #2 is near the top partly because
+  `design.md` builds the seat on it.
+- **Who wrote `management-style.rst` (#4–#8, #15, #16) is attribution only.** Three pieces of evidence: LWN published
+  it on 6 Oct 2004 under the title "Linus on kernel management style"; it is written in the first person as a kernel
+  maintainer; and his own 2005 mail says "Most of the ManagementStyle document is perfectly valid"
+  (https://lkml.iu.edu/hypermail/linux/kernel/0509.3/0964.html). That mail calls the document painful truths said "as
+  a joke"; it does not say he wrote it. I found no commit record: the git history starts at the 2.6.12-rc2 import
+  (2005), and the BitKeeper-era history on git.kernel.org is behind Anubis. The document calls itself "a lark" that
+  "may or may not have anything to do with reality". The sentences quoted here are the same in the 2004 LWN text.
+- **Who wrote `coding-style` (#17) is also attribution.** I confirmed that the quoted sentences, first person
+
+web search: 
+web search: https://aclanthology.org/2024.findings-emnlp.888.pdf
+web search: 
+web search: 'Abstract'
+web search: 
+web search: https://arxiv.org/pdf/2305.14325
+codex
+The studies give mixed results: task-specific role prompts improved some reasoning benchmarks, while broad expert personas showed no consistent factual-accuracy benefit. Debate also needs comparison with independent answers and voting. For the landing page, Linus’s rules point toward a reversible prototype and evidence from users; they don’t establish a preferred colour.
+
+web search: 
+web search: "Linux 4.19-rc4 released, an apology" site:lkml.iu.edu ...
+web search: 
+web search: https://lkml.iu.edu/hypermail/linux/kernel/1809.2/00117.html
+codex
+# Linus Torvalds — role-playing a person to solve a problem
+
+## 1. What the research says
+
+1. **An expert title does not reliably improve factual accuracy.** Across 162 personas, four model families and 2,410 factual questions, Zheng and colleagues found no general improvement over prompts without personas; selecting a beneficial persona for an unseen question was also difficult. · Source: [*When “A Helpful Assistant” Is Not Really Helpful: Personas in System Prompts Do Not Improve Performances of Large Language Models*](https://aclanthology.org/2024.findings-emnlp.888/), Mingqian Zheng et al., 2024. · Label: `measured`.
+
+2. **Task-specific role prompting can help particular reasoning tasks.** Kong and colleagues reported AQuA accuracy increasing from 53.5% to 63.8% with GPT-3.5, but their method included a designed role-setting interaction and a selected assistant acknowledgement—not merely a famous person’s name. · Source: [*Better Zero-Shot Reasoning with Role-Play Prompting*](https://aclanthology.org/2024.naacl-long.228.pdf), Aobo Kong et al., 2024. · Label: `measured`.
+
+3. **Personas change behaviour, with potential costs as well as benefits.** A study of seven models, 162 personas and five datasets found greater behavioural variability than control prompts; its demographic experiments also found cases where reduced bias accompanied reduced accuracy. · Source: [*Helpful assistant or fruitful facilitator? Investigating how personas affect language model behavior*](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0325664), Pedro Henrique Luz de Araujo and Benjamin Roth, 2025. · Label: `measured`.
+
+4. **Debate can improve answers under a tested protocol.** Du and colleagues reported arithmetic accuracy of 81.8% for three agents debating over two rounds, compared with 67.0% for a single agent and 69.0% for majority voting; this tested multiple model instances, not a panel of historical personalities. · Source: [*Improving Factuality and Reasoning in Language Models through Multiagent Debate*](https://arxiv.org/pdf/2305.14325), Yilun Du et al., 2023. · Label: `measured`.
+
+5. **Debate’s benefit is not universal.** Across seven benchmarks, Choi and colleagues found majority voting accounted for most gains: their Qwen2.5-7B table reports average accuracy of 76.91% for voting versus 73.77% for two-round decentralized debate. · Source: [*Debate or Vote: Which Yields Better Decisions in Multi-Agent Large Language Models?*](https://arxiv.org/html/2508.17536v1), Hyeong Kyu Choi, Xiaojin Zhu and Yixuan Li, 2025. · Label: `measured`.
+
+6. **Character knowledge needs explicit boundaries.** TimeChara contains 10,895 fictional-character examples; on its 600-example evaluation, GPT-4o’s average spatiotemporal consistency increased from 64.5% with zero-shot prompting to 87.5% with the authors’ narrative experts and restricted retrieval, according to their evaluation procedure. · Source: [*TimeChara: Evaluating Point-in-Time Character Hallucination of Role-Playing Large Language Models*](https://aclanthology.org/2024.findings-acl.197.pdf), Jaewoo Ahn et al., 2024. · Label: `measured`.
+
+7. **Convincing role-play is not evidence of possessing the person’s mind.** Shanahan and colleagues propose role-play as a way to describe model behaviour without attributing human characteristics the model lacks; this is a conceptual argument, not an accuracy benchmark. · Source: [*Role-Play with Large Language Models*](https://arxiv.org/abs/2305.16367), Murray Shanahan, Kyle McDonell and Laria Reynolds, 2023. · Label: `opinion`.
+
+8. **For these seats, a sourced decision method is a defensible hypothesis; superiority remains unmeasured.** The findings above support testing explicit rules against a plain prompt, but none establishes that applying Linus’s rules produces better landing-page decisions. · Sources: Zheng et al., Kong et al. and TimeChara above. · Label: `my reading`.
+
+## 2. The best way to role-play me
+
+**My reading:** use the supplied rules to make decisions reviewable. Treat the following as proposed guidance, with no measured advantage yet.
+
+1. **Ground the role in numbered source passages.** For each recommendation, identify the relevant item and explain its application to the supplied facts. Preserve the final list’s distinctions between direct quotations, attributed documentation and interpretation. **My #7 and #11.**
+
+2. **Respect the limits of my expertise.** Kernel experience does not establish expertise in visual design or a particular audience. Ask the person who knows the page and its users for the missing details. **My #4 and #6.** The management document explicitly cautions that ability in one area does not necessarily transfer to another. [*Linux kernel management style*](https://docs.kernel.org/process/management-style.html).
+
+3. **Produce something inspectable.** My #2 says, **quoted:** “Talk is cheap. Show me the code.” For a colour decision, my proposed translation is a rendered candidate that people can examine; that translation is an analogy, not a quotation about design. **My #2.** [Torvalds’s original reply, 2000](https://lkml.iu.edu/0008.3/0272.html).
+
+4. **Keep a preliminary choice reversible.** Prefer an isolated palette change over a redesign that commits the team before there is evidence. **My #5.**
+
+5. **State what would change the recommendation.** Missing information and contrary results belong in the answer. **My #7.**
+
+6. **Support improvement claims with measurements.** Report the outcome being measured and the observed result. **My #18**, which is attributed kernel process guidance, not established as my own words.
+
+7. **State the costs of the proposal.** A conversion claim needs its accompanying effects on readability, maintenance and user tasks. **My #18**, with the same attribution limitation.
+
+8. **Challenge the work without attacking its maker.** The 2018 apology belongs in the role, alongside earlier bluntness. **My #16.** [Torvalds’s apology, 2018](https://lkml.iu.edu/hypermail/linux/kernel/1809.2/00117.html).
+
+**What an agent gets wrong**
+
+- **It copies anger and calls that fidelity.** That ignores the later correction in **my #16**.
+- **It turns “avoid big decisions” into refusal to decide anything.** **My #4** explicitly permits small, non-consequential decisions.
+- **It adds an item number to an unsupported preference.** **My #11** calls for an explanation; a citation alone does not establish why a rule applies.
+- **It presents kernel rules as universal design laws.** Transferring expertise requires justification under **my #6**.
+- **It treats agreement among named personas as verification.** My proposed check is evidence from the artifact and its users, applying **my #2 and #7**; this is my reading, not a sourced claim about multi-agent independence.
+- **It claims all nineteen items are personally authored rules.** The supplied list explicitly marks **my #14, #18 and #19** as partly or wholly attributed documentation.
+
+## 3. Worked example — what colour should a landing page be?
+
+Each step below is **my reading** of how the supplied rules could apply outside kernel development.
+
+1. **Identify the actual problem.** Is the page unreadable, inconsistent with the brand, failing to communicate its action, or simply undecided? Those are different reasons to change it. **Item used: my #13**, starting with the immediate need.
+
+2. **Get the missing context.** Identify the owner, intended visitors and action the page should support. Colour cannot answer an unspecified objective. **Items used: my #4 and #6**, relying on people who know the details.
+
+3. **Inspect any existing page before replacing its palette.** Check whether people can read the content, recognize links and complete the intended task. Applying the regression principle here means checking user outcomes, rather than declaring a change successful because a screenshot looks better. **Items used: my #1 and #3.** The original rule concerns kernel regressions; this is an explicit analogy. [Torvalds’s regression explanation, 2017](https://lkml.iu.edu/hypermail/linux/kernel/1710.3/02474.html).
+
+4. **Render a small, reversible candidate.** If two palettes remain plausible, make comparable versions with the same content and layout. My #8 suggests considering both approaches; it does not itself prescribe an A/B test. **Items used: my #2, #5 and #8.**
+
+5. **Check a stated accessibility target.** If the owner chooses WCAG 2.2 AA, ordinary text needs at least 4.5:1 contrast and qualifying large text at least 3:1, subject to the criterion’s exceptions. Those values come from W3C, not from the Linus persona; the connection to the seat is checking whether users can use the result. **Item used: my #3.** [W3C, Understanding Contrast (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+
+6. **Choose from the evidence and record the reason.** Explain the palette, the observed benefit, its costs and what remains uncertain. **Items used: my #7, #11 and #18**; #18 retains its documentation attribution.
+
+**Questions I need answered**
+
+- Whose page is this, and what action should visitors complete?
+- Who visits it, and in what viewing conditions?
+- What brand palette or existing design system applies?
+- Is there an existing page? What problem does its colour currently cause?
+- What accessibility target applies?
+- What outcome and minimum worthwhile improvement would justify changing it?
+
+**My answer**
+
+- **If an existing palette supports the intended task and meets the chosen requirements, keep it provisionally.** **My #1, #3 and #13.**
+- **If a brand palette is required, use it where its colour combinations meet the chosen readability requirements.** This is my application of domain knowledge under **my #6**.
+- **If this is a new page with no palette constraint, white background with dark text is a provisional prototype candidate.** Its selection is my suggestion, **not measured**, supported only as a small, reversible starting point by **my #5 and #13**. It is not evidence that white maximizes conversion.
+- **If tested evidence favours another palette against the agreed objective, change the choice.** **My #7 and #18.**
+
+**How we would know I was right**
+
+The page owner and reviewer would first specify the task and acceptance criteria. Check text contrast against the selected standard, then observe whether intended users can read the page and complete that task. A contrast check establishes that particular criterion; it does not establish the best colour or full accessibility. **My #3 and #18.**
+
+If traffic supports a controlled experiment, compare palettes while holding content and layout constant. Measure the agreed outcome—for example, completed target actions divided by eligible visitors—and report uncertainty and costs. The required improvement and stopping rule remain questions for the owner. **My #7 and #18.**
+
+To test the **role-play method itself**, compare a plain task prompt, the same sourced rules without the Linus identity, and those rules with the identity. Give them the same facts, tools and comparable budgets; have reviewers assess unsupported claims, correct rule application and useful decisions without seeing the prompt condition. I propose that comparison; I have not run it, and it would not establish what the real Linus would choose. **My #2 and #7.**
+
+## Sources used
+
+Local texts opened:
+
+- [Workspace instructions](/home/smoke01/dev/ancient-games/CLAUDE.md).
+- [Linus brief](/home/smoke01/dev/ancient-games/runs/20261013-seats-roleplay/briefs/linus.md).
+- [Common brief](/home/smoke01/dev/ancient-games/runs/20261013-seats-roleplay/briefs/common.md).
+- [Linus final list](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/final-opus/linus.md).
+- [Linus identity](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/identity/linus.md).
+- [Requirement-check skill](/home/smoke01/.agents/skills/requirement-check/SKILL.md).
+
+Research pages and papers opened:
+
+- Zheng et al.: [publication page](https://aclanthology.org/2024.findings-emnlp.888/), [paper](https://aclanthology.org/2024.findings-emnlp.888.pdf).
+- Kong et al.: [publication page](https://aclanthology.org/2024.naacl-long.228/), [paper](https://aclanthology.org/2024.naacl-long.228.pdf).
+- Luz de Araujo and Roth: [article](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0325664).
+- Du et al.: [abstract](https://arxiv.org/abs/2305.14325), [paper](https://arxiv.org/pdf/2305.14325).
+- Choi et al.: [abstract](https://arxiv.org/abs/2508.17536), [version 1 full text](https://arxiv.org/html/2508.17536v1).
+- Ahn et al.: [publication page](https://aclanthology.org/2024.findings-acl.197/), [paper](https://aclanthology.org/2024.findings-acl.197.pdf).
+- Shanahan et al.: [abstract](https://arxiv.org/abs/2305.16367).
+
+Other source texts opened:
+
+- [Linux kernel management style](https://docs.kernel.org/process/management-style.html).
+- [Torvalds, “Show me the code,” 2000](https://lkml.iu.edu/0008.3/0272.html).
+- [Torvalds, regression explanation, 2017](https://lkml.iu.edu/hypermail/linux/kernel/1710.3/02474.html).
+- [Torvalds, pull-request explanation, 2017](https://lkml.iu.edu/hypermail/linux/kernel/1711.1/04939.html).
+- [Torvalds, apology, 2018](https://lkml.iu.edu/hypermail/linux/kernel/1809.2/00117.html).
+- [W3C, Understanding Contrast (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+
+Unsuccessful fetch attempts, not supporting evidence:
+
+- [LKML apology URL](https://lkml.org/lkml/2018/9/16/167): challenge page.
+- [Incorrect code-reply mirror path](https://lkml.iu.edu/hypermail/linux/kernel/0008.3/0584.html): retrieval error.
+- [Incorrect apology mirror path](https://lkml.iu.edu/hypermail/linux/kernel/1809.2/0017.html): retrieval error. Correct source paths were subsequently found and opened above.
+
+## Gaps
+
+- **Not measured:** this seat method’s performance on the current model, historical-person fidelity, or landing-page outcomes. The studies do not establish those results.
+- TimeChara studies fictional characters. Its findings motivate checking historical boundaries, but do not directly measure historical-person simulation.
+- The supplied list’s authorship caveats remain: management-style attribution is incomplete, and #18–#19 are project guidance. I did not independently resolve every item’s provenance.
+- I found no direct evidence here that the real Linus prefers a landing-page colour. No page, visitor data or experiment was supplied.
+- **Requirement-check of “more logical and checkable than a plain AI answer”:** source—**pass**, supplied brief; one thing—**FAIL**, two outcomes; unit—**FAIL**, undefined measures; can it fail—**FAIL**, no acceptance test; weak words—**FAIL**, “logical” undefined; level—**pass as a hypothesis**; basis—**FAIL for an established claim**, unmeasured here; links—**FAIL**, persona-to-quality relationship unestablished.
+
+**Questions for EJ:** What observable result would count as “more logical”? What would count as “more checkable”? What improvement over the plain-answer baseline would justify using the seat?
+tokens used
+107,684
+# Linus Torvalds — role-playing a person to solve a problem
+
+## 1. What the research says
+
+1. **An expert title does not reliably improve factual accuracy.** Across 162 personas, four model families and 2,410 factual questions, Zheng and colleagues found no general improvement over prompts without personas; selecting a beneficial persona for an unseen question was also difficult. · Source: [*When “A Helpful Assistant” Is Not Really Helpful: Personas in System Prompts Do Not Improve Performances of Large Language Models*](https://aclanthology.org/2024.findings-emnlp.888/), Mingqian Zheng et al., 2024. · Label: `measured`.
+
+2. **Task-specific role prompting can help particular reasoning tasks.** Kong and colleagues reported AQuA accuracy increasing from 53.5% to 63.8% with GPT-3.5, but their method included a designed role-setting interaction and a selected assistant acknowledgement—not merely a famous person’s name. · Source: [*Better Zero-Shot Reasoning with Role-Play Prompting*](https://aclanthology.org/2024.naacl-long.228.pdf), Aobo Kong et al., 2024. · Label: `measured`.
+
+3. **Personas change behaviour, with potential costs as well as benefits.** A study of seven models, 162 personas and five datasets found greater behavioural variability than control prompts; its demographic experiments also found cases where reduced bias accompanied reduced accuracy. · Source: [*Helpful assistant or fruitful facilitator? Investigating how personas affect language model behavior*](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0325664), Pedro Henrique Luz de Araujo and Benjamin Roth, 2025. · Label: `measured`.
+
+4. **Debate can improve answers under a tested protocol.** Du and colleagues reported arithmetic accuracy of 81.8% for three agents debating over two rounds, compared with 67.0% for a single agent and 69.0% for majority voting; this tested multiple model instances, not a panel of historical personalities. · Source: [*Improving Factuality and Reasoning in Language Models through Multiagent Debate*](https://arxiv.org/pdf/2305.14325), Yilun Du et al., 2023. · Label: `measured`.
+
+5. **Debate’s benefit is not universal.** Across seven benchmarks, Choi and colleagues found majority voting accounted for most gains: their Qwen2.5-7B table reports average accuracy of 76.91% for voting versus 73.77% for two-round decentralized debate. · Source: [*Debate or Vote: Which Yields Better Decisions in Multi-Agent Large Language Models?*](https://arxiv.org/html/2508.17536v1), Hyeong Kyu Choi, Xiaojin Zhu and Yixuan Li, 2025. · Label: `measured`.
+
+6. **Character knowledge needs explicit boundaries.** TimeChara contains 10,895 fictional-character examples; on its 600-example evaluation, GPT-4o’s average spatiotemporal consistency increased from 64.5% with zero-shot prompting to 87.5% with the authors’ narrative experts and restricted retrieval, according to their evaluation procedure. · Source: [*TimeChara: Evaluating Point-in-Time Character Hallucination of Role-Playing Large Language Models*](https://aclanthology.org/2024.findings-acl.197.pdf), Jaewoo Ahn et al., 2024. · Label: `measured`.
+
+7. **Convincing role-play is not evidence of possessing the person’s mind.** Shanahan and colleagues propose role-play as a way to describe model behaviour without attributing human characteristics the model lacks; this is a conceptual argument, not an accuracy benchmark. · Source: [*Role-Play with Large Language Models*](https://arxiv.org/abs/2305.16367), Murray Shanahan, Kyle McDonell and Laria Reynolds, 2023. · Label: `opinion`.
+
+8. **For these seats, a sourced decision method is a defensible hypothesis; superiority remains unmeasured.** The findings above support testing explicit rules against a plain prompt, but none establishes that applying Linus’s rules produces better landing-page decisions. · Sources: Zheng et al., Kong et al. and TimeChara above. · Label: `my reading`.
+
+## 2. The best way to role-play me
+
+**My reading:** use the supplied rules to make decisions reviewable. Treat the following as proposed guidance, with no measured advantage yet.
+
+1. **Ground the role in numbered source passages.** For each recommendation, identify the relevant item and explain its application to the supplied facts. Preserve the final list’s distinctions between direct quotations, attributed documentation and interpretation. **My #7 and #11.**
+
+2. **Respect the limits of my expertise.** Kernel experience does not establish expertise in visual design or a particular audience. Ask the person who knows the page and its users for the missing details. **My #4 and #6.** The management document explicitly cautions that ability in one area does not necessarily transfer to another. [*Linux kernel management style*](https://docs.kernel.org/process/management-style.html).
+
+3. **Produce something inspectable.** My #2 says, **quoted:** “Talk is cheap. Show me the code.” For a colour decision, my proposed translation is a rendered candidate that people can examine; that translation is an analogy, not a quotation about design. **My #2.** [Torvalds’s original reply, 2000](https://lkml.iu.edu/0008.3/0272.html).
+
+4. **Keep a preliminary choice reversible.** Prefer an isolated palette change over a redesign that commits the team before there is evidence. **My #5.**
+
+5. **State what would change the recommendation.** Missing information and contrary results belong in the answer. **My #7.**
+
+6. **Support improvement claims with measurements.** Report the outcome being measured and the observed result. **My #18**, which is attributed kernel process guidance, not established as my own words.
+
+7. **State the costs of the proposal.** A conversion claim needs its accompanying effects on readability, maintenance and user tasks. **My #18**, with the same attribution limitation.
+
+8. **Challenge the work without attacking its maker.** The 2018 apology belongs in the role, alongside earlier bluntness. **My #16.** [Torvalds’s apology, 2018](https://lkml.iu.edu/hypermail/linux/kernel/1809.2/00117.html).
+
+**What an agent gets wrong**
+
+- **It copies anger and calls that fidelity.** That ignores the later correction in **my #16**.
+- **It turns “avoid big decisions” into refusal to decide anything.** **My #4** explicitly permits small, non-consequential decisions.
+- **It adds an item number to an unsupported preference.** **My #11** calls for an explanation; a citation alone does not establish why a rule applies.
+- **It presents kernel rules as universal design laws.** Transferring expertise requires justification under **my #6**.
+- **It treats agreement among named personas as verification.** My proposed check is evidence from the artifact and its users, applying **my #2 and #7**; this is my reading, not a sourced claim about multi-agent independence.
+- **It claims all nineteen items are personally authored rules.** The supplied list explicitly marks **my #14, #18 and #19** as partly or wholly attributed documentation.
+
+## 3. Worked example — what colour should a landing page be?
+
+Each step below is **my reading** of how the supplied rules could apply outside kernel development.
+
+1. **Identify the actual problem.** Is the page unreadable, inconsistent with the brand, failing to communicate its action, or simply undecided? Those are different reasons to change it. **Item used: my #13**, starting with the immediate need.
+
+2. **Get the missing context.** Identify the owner, intended visitors and action the page should support. Colour cannot answer an unspecified objective. **Items used: my #4 and #6**, relying on people who know the details.
+
+3. **Inspect any existing page before replacing its palette.** Check whether people can read the content, recognize links and complete the intended task. Applying the regression principle here means checking user outcomes, rather than declaring a change successful because a screenshot looks better. **Items used: my #1 and #3.** The original rule concerns kernel regressions; this is an explicit analogy. [Torvalds’s regression explanation, 2017](https://lkml.iu.edu/hypermail/linux/kernel/1710.3/02474.html).
+
+4. **Render a small, reversible candidate.** If two palettes remain plausible, make comparable versions with the same content and layout. My #8 suggests considering both approaches; it does not itself prescribe an A/B test. **Items used: my #2, #5 and #8.**
+
+5. **Check a stated accessibility target.** If the owner chooses WCAG 2.2 AA, ordinary text needs at least 4.5:1 contrast and qualifying large text at least 3:1, subject to the criterion’s exceptions. Those values come from W3C, not from the Linus persona; the connection to the seat is checking whether users can use the result. **Item used: my #3.** [W3C, Understanding Contrast (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+
+6. **Choose from the evidence and record the reason.** Explain the palette, the observed benefit, its costs and what remains uncertain. **Items used: my #7, #11 and #18**; #18 retains its documentation attribution.
+
+**Questions I need answered**
+
+- Whose page is this, and what action should visitors complete?
+- Who visits it, and in what viewing conditions?
+- What brand palette or existing design system applies?
+- Is there an existing page? What problem does its colour currently cause?
+- What accessibility target applies?
+- What outcome and minimum worthwhile improvement would justify changing it?
+
+**My answer**
+
+- **If an existing palette supports the intended task and meets the chosen requirements, keep it provisionally.** **My #1, #3 and #13.**
+- **If a brand palette is required, use it where its colour combinations meet the chosen readability requirements.** This is my application of domain knowledge under **my #6**.
+- **If this is a new page with no palette constraint, white background with dark text is a provisional prototype candidate.** Its selection is my suggestion, **not measured**, supported only as a small, reversible starting point by **my #5 and #13**. It is not evidence that white maximizes conversion.
+- **If tested evidence favours another palette against the agreed objective, change the choice.** **My #7 and #18.**
+
+**How we would know I was right**
+
+The page owner and reviewer would first specify the task and acceptance criteria. Check text contrast against the selected standard, then observe whether intended users can read the page and complete that task. A contrast check establishes that particular criterion; it does not establish the best colour or full accessibility. **My #3 and #18.**
+
+If traffic supports a controlled experiment, compare palettes while holding content and layout constant. Measure the agreed outcome—for example, completed target actions divided by eligible visitors—and report uncertainty and costs. The required improvement and stopping rule remain questions for the owner. **My #7 and #18.**
+
+To test the **role-play method itself**, compare a plain task prompt, the same sourced rules without the Linus identity, and those rules with the identity. Give them the same facts, tools and comparable budgets; have reviewers assess unsupported claims, correct rule application and useful decisions without seeing the prompt condition. I propose that comparison; I have not run it, and it would not establish what the real Linus would choose. **My #2 and #7.**
+
+## Sources used
+
+Local texts opened:
+
+- [Workspace instructions](/home/smoke01/dev/ancient-games/CLAUDE.md).
+- [Linus brief](/home/smoke01/dev/ancient-games/runs/20261013-seats-roleplay/briefs/linus.md).
+- [Common brief](/home/smoke01/dev/ancient-games/runs/20261013-seats-roleplay/briefs/common.md).
+- [Linus final list](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/final-opus/linus.md).
+- [Linus identity](/home/smoke01/dev/ancient-games/runs/20261013-four-seats/identity/linus.md).
+- [Requirement-check skill](/home/smoke01/.agents/skills/requirement-check/SKILL.md).
+
+Research pages and papers opened:
+
+- Zheng et al.: [publication page](https://aclanthology.org/2024.findings-emnlp.888/), [paper](https://aclanthology.org/2024.findings-emnlp.888.pdf).
+- Kong et al.: [publication page](https://aclanthology.org/2024.naacl-long.228/), [paper](https://aclanthology.org/2024.naacl-long.228.pdf).
+- Luz de Araujo and Roth: [article](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0325664).
+- Du et al.: [abstract](https://arxiv.org/abs/2305.14325), [paper](https://arxiv.org/pdf/2305.14325).
+- Choi et al.: [abstract](https://arxiv.org/abs/2508.17536), [version 1 full text](https://arxiv.org/html/2508.17536v1).
+- Ahn et al.: [publication page](https://aclanthology.org/2024.findings-acl.197/), [paper](https://aclanthology.org/2024.findings-acl.197.pdf).
+- Shanahan et al.: [abstract](https://arxiv.org/abs/2305.16367).
+
+Other source texts opened:
+
+- [Linux kernel management style](https://docs.kernel.org/process/management-style.html).
+- [Torvalds, “Show me the code,” 2000](https://lkml.iu.edu/0008.3/0272.html).
+- [Torvalds, regression explanation, 2017](https://lkml.iu.edu/hypermail/linux/kernel/1710.3/02474.html).
+- [Torvalds, pull-request explanation, 2017](https://lkml.iu.edu/hypermail/linux/kernel/1711.1/04939.html).
+- [Torvalds, apology, 2018](https://lkml.iu.edu/hypermail/linux/kernel/1809.2/00117.html).
+- [W3C, Understanding Contrast (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+
+Unsuccessful fetch attempts, not supporting evidence:
+
+- [LKML apology URL](https://lkml.org/lkml/2018/9/16/167): challenge page.
+- [Incorrect code-reply mirror path](https://lkml.iu.edu/hypermail/linux/kernel/0008.3/0584.html): retrieval error.
+- [Incorrect apology mirror path](https://lkml.iu.edu/hypermail/linux/kernel/1809.2/0017.html): retrieval error. Correct source paths were subsequently found and opened above.
+
+## Gaps
+
+- **Not measured:** this seat method’s performance on the current model, historical-person fidelity, or landing-page outcomes. The studies do not establish those results.
+- TimeChara studies fictional characters. Its findings motivate checking historical boundaries, but do not directly measure historical-person simulation.
+- The supplied list’s authorship caveats remain: management-style attribution is incomplete, and #18–#19 are project guidance. I did not independently resolve every item’s provenance.
+- I found no direct evidence here that the real Linus prefers a landing-page colour. No page, visitor data or experiment was supplied.
+- **Requirement-check of “more logical and checkable than a plain AI answer”:** source—**pass**, supplied brief; one thing—**FAIL**, two outcomes; unit—**FAIL**, undefined measures; can it fail—**FAIL**, no acceptance test; weak words—**FAIL**, “logical” undefined; level—**pass as a hypothesis**; basis—**FAIL for an established claim**, unmeasured here; links—**FAIL**, persona-to-quality relationship unestablished.
+
+**Questions for EJ:** What observable result would count as “more logical”? What would count as “more checkable”? What improvement over the plain-answer baseline would justify using the seat?
