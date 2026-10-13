@@ -39,12 +39,12 @@ MEMORY_DIR = "project-memory"
 ENTRIES_DIR = "project-memory/entries"
 INDEX_PATH = "project-memory/INDEX.md"
 
-ENTRY_NAME = re.compile(r"[DFLROH]-[^/]+\.md")
+# The five kinds of W1.1. Runbooks (R-) were dropped by EJ on 2026-10-13; an R- file is not an entry (B1.1).
+ENTRY_NAME = re.compile(r"[DFLOH]-[^/]+\.md")
 PREFIX_KIND = {
     "D": "decision",
     "F": "fact",
     "L": "lesson",
-    "R": "runbook",
     "O": "observation",
     "H": "hypothesis",
 }
@@ -281,7 +281,7 @@ def split_nul(raw: bytes) -> list[str]:
 
 
 def entry_name(path: str) -> str:
-    r"""The file name of an entry: a `^[DFLROH]-[^/]+\.md$` name directly in `project-memory/entries/`."""
+    r"""The file name of an entry: a `^[DFLOH]-[^/]+\.md$` name directly in `project-memory/entries/`."""
     return path[len(ENTRIES_DIR) + 1:]
 
 
