@@ -174,6 +174,16 @@ def entries(document):
     return document if isinstance(document, list) else document["cases"]
 
 
+def judge_folder(run):
+    """The folder F2 builds outside the run folder for judge call 1, named after the run folder."""
+    return Path("/tmp") / f"evaluator-judge-{Path(run).name}"
+
+
+def planted_case(run):
+    """The case the run planted, read from the coordinator's own file: F2 keeps it out of judge-input.json."""
+    return read(Path(run) / ".coordinator/plant.json")["plant_case"]
+
+
 def one_per_case(document):
     """The entries keyed by case, insisting there is exactly one entry per case."""
     written = entries(document)
@@ -231,10 +241,13 @@ def confirm_answers(root, answers):
 
 
 def judge_answers(root, call_one, call_two, classify=None):
-    """judge-input's real output, then the judge step's two answers, ready for judged-merge."""
+    """judge-input's real output, then the judge step's two answers, ready for judged-merge.
+
+    Call 1 writes into the judge's own folder (F2) and call 2 into the run folder, which is where DATA.md puts them.
+    """
     run = build_run(root, classify=classify)
     cli_ok("judge-input", run)
-    write_json(run / "judge-1.json", call_one)
+    write_json(judge_folder(run) / "judge-1.json", call_one)
     write_json(run / "judge-2.json", call_two)
     return run
 
@@ -290,7 +303,7 @@ def test_confirm_check_keeps_a_probe_whose_both_quotes_are_there(tmp_path):
     """DATA.md model_io.py confirm-check — quotes found in both sources keep the answer faithful."""
     run = confirm_answers(tmp_path, CONFIRMED)
     result = cli_ok("confirm-check", run)
-    assert result.stdout.strip() == "2 checked, 0 voided", result.stdout
+    assert result.stdout.strip() == "2 checked, 0 voided, 0 unfaithful", result.stdout
     checked = {entry["case"]: entry for entry in entries(read(run / "confirm.json"))}
     assert all(entry["faithful"] is True for entry in checked.values()), checked
     assert all("note" not in entry for entry in checked.values()), checked
@@ -301,7 +314,7 @@ def test_confirm_check_voids_a_requirement_quote_the_group_does_not_hold(tmp_pat
     answers = [dict(CONFIRMED[0], requirement_quote="a line nobody wrote"), CONFIRMED[1]]
     run = confirm_answers(tmp_path, answers)
     result = cli_ok("confirm-check", run)
-    assert result.stdout.strip() == "2 checked, 1 voided", result.stdout
+    assert result.stdout.strip() == "2 checked, 1 voided, 0 unfaithful", result.stdout
     checked = {entry["case"]: entry for entry in entries(read(run / "confirm.json"))}
     assert checked["B1-F1"]["faithful"] is False, checked
     assert checked["B1-F1"]["note"] == "quote not found", checked
@@ -313,7 +326,7 @@ def test_confirm_check_voids_a_probe_quote_the_probe_does_not_hold(tmp_path):
     answers = [CONFIRMED[0], dict(CONFIRMED[1], probe_quote="assert calc.first_line(\"no such file\") == \"here\"")]
     run = confirm_answers(tmp_path, answers)
     result = cli_ok("confirm-check", run)
-    assert result.stdout.strip() == "2 checked, 1 voided", result.stdout
+    assert result.stdout.strip() == "2 checked, 1 voided, 0 unfaithful", result.stdout
     checked = {entry["case"]: entry for entry in entries(read(run / "confirm.json"))}
     assert checked["B2-F1"]["faithful"] is False, checked
     assert checked["B2-F1"]["note"] == "quote not found", checked
@@ -328,7 +341,7 @@ def test_confirm_check_collapses_whitespace_runs_before_comparing(tmp_path):
                                               'reported, not raised."""')]
     run = confirm_answers(tmp_path, answers)
     result = cli_ok("confirm-check", run)
-    assert result.stdout.strip() == "2 checked, 0 voided", result.stdout
+    assert result.stdout.strip() == "2 checked, 0 voided, 0 unfaithful", result.stdout
     checked = {entry["case"]: entry for entry in entries(read(run / "confirm.json"))}
     assert all(entry["faithful"] is True for entry in checked.values()), checked
 
@@ -336,9 +349,10 @@ def test_confirm_check_collapses_whitespace_runs_before_comparing(tmp_path):
 def test_judge_input_names_the_first_judged_case_with_a_valid_plant(evaluation_run):
     """DATA.md model_io.py judge-input — G2-F1's plant text is in no file, so G2-F2 is the plant case."""
     result = cli_ok("judge-input", evaluation_run)
-    assert result.stdout.strip() == "3 to judge", result.stdout
+    assert result.stdout.splitlines() == ["3 to judge", "plant G2-F2"], result.stdout
+    assert planted_case(evaluation_run) == "G2-F2"
     written = read(evaluation_run / "judge-input.json")
-    assert written["plant_case"] == "G2-F2", written["plant_case"]
+    assert "plant_case" not in written, written.keys()  # F2: the judge may not read the plant out of its own input
     judged = {entry["case"]: entry for entry in entries(written)}
     assert sorted(judged) == ["G2-F1", "G2-F2", "G2-F3"], sorted(judged)
     assert judged["G2-F1"]["case_text"] == "a judged verdict has no quoted evidence"
@@ -347,14 +361,15 @@ def test_judge_input_names_the_first_judged_case_with_a_valid_plant(evaluation_r
 
 
 def test_judge_copy_is_the_product_with_only_that_plant_applied(evaluation_run):
-    """DATA.md model_io.py judge-input (EV-C5.2) — judge-copy is the product plus one plant; the copy is untouched."""
+    """DATA.md model_io.py judge-input (EV-C5.2) — the judge's copy is the product plus one plant; the copy is untouched."""
     product = evaluation_run / "workspace/product/calc.py"
     before = product.read_text(encoding="utf-8")
     cli_ok("judge-input", evaluation_run)
-    planted = (evaluation_run / "judge-copy/calc.py").read_text(encoding="utf-8")
+    copy = judge_folder(evaluation_run) / "product"
+    planted = (copy / "calc.py").read_text(encoding="utf-8")
     assert "return a - b" in planted, repr(planted)
     assert "return a + b" not in planted, "the plant was added without taking the original out"
-    notes = (evaluation_run / "judge-copy/notes.txt").read_text(encoding="utf-8")
+    notes = (copy / "notes.txt").read_text(encoding="utf-8")
     assert notes == NOTES, "the rest of the product did not come across"
     assert product.read_text(encoding="utf-8") == before, "the product copy was changed (EV-R3.2)"
 
@@ -380,9 +395,8 @@ def test_judge_input_with_judged_cases_but_no_valid_plant_names_none(tmp_path, p
     run = build_run(tmp_path, plants=plants)
     result = cli_ok("judge-input", run)
     assert result.stdout.strip() == "3 to judge", result.stdout
-    written = read(run / "judge-input.json")
-    assert written["plant_case"] is None, written["plant_case"]
-    assert sorted(entry["case"] for entry in entries(written)) == ["G2-F1", "G2-F2", "G2-F3"]
+    assert planted_case(run) is None
+    assert sorted(entry["case"] for entry in entries(read(run / "judge-input.json"))) == ["G2-F1", "G2-F2", "G2-F3"]
 
 
 def test_judged_merge_calls_the_plant_found_when_call_one_says_the_case_does_not_hold(tmp_path):

@@ -76,14 +76,25 @@ const HAPPY = {
   'e11-end': ran(),
 }
 
+// The two conditional groups get answers for every label the new table makes them call: the repair round is five
+// labels, and the rerun is four, of which only e9-input-2 runs when it prints "no other plant".
+const REPAIR_ANSWERS = {
+  'e8-repair': WROTE, 'e6-matrix-2': ran(), 'e8-input-2': ran('2 to confirm'),
+  'e8-confirm-2': WROTE, 'e8-check-2': checked(0, 0),
+}
+const RERUN_ANSWERS = {
+  'e9-input-2': ran('3 to judge\nplant G2-F3'), 'e9-judge-1b': WROTE,
+  'e9-judge-2b': WROTE, 'e9-merge-2': ran('plant_found: true'),
+}
+
 // The happy path's labels in order: no probe was unfaithful and the plant was found, so neither group runs.
 const HAPPY_ORDER = ORDER.filter(label => !REPAIR.includes(label) && !RERUN.includes(label))
 
 // A scenario in which both conditional groups run, so the stop cases can walk every label in ORDER.
 const EVERYTHING = {
-  ...HAPPY,
+  ...HAPPY, ...REPAIR_ANSWERS, ...RERUN_ANSWERS,
   'e8-check': checked(1, 1), 'e8-check-2': checked(0, 1),
-  'e9-merge': ran('plant_found: false'), 'e9-input-2': ran('3 to judge\nplant G2-F3'),
+  'e9-merge': ran('plant_found: false'),
 }
 
 const withGroup = (base, after, group) => {
@@ -154,6 +165,10 @@ const carries = (prompt, cmd) => {
 // A flag may be written "--step classify" or "--step=classify"; DATA.md fixes the meaning, not the spacing.
 const hasFlag = (prompt, flag, value) => new RegExp(`${flag}([ =]${value})\\b`).test(prompt)
 
+// A value that is safe unquoted is passed as it is; anything else is single-quoted, so it reaches the shell as one
+// argument. This is the workflow's own rule, written once here so the case can say what it wanted.
+const shellArgument = value => /^[A-Za-z0-9_./-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`
+
 // --- the cases ----------------------------------------------------------------------------------------------------------
 
 async function happyPath(script) {
@@ -182,7 +197,7 @@ async function meetsFalse(script) {
 // F6: one repair round, and only when a probe came back unfaithful from the model itself.
 async function repairRound(script) {
   const order = withGroup(HAPPY_ORDER, 'e8-check', REPAIR)
-  const repaired = { ...HAPPY, 'e8-check': checked(1, 1), 'e8-check-2': checked(0, 0) }
+  const repaired = { ...HAPPY, ...REPAIR_ANSWERS, 'e8-check': checked(1, 1), 'e8-check-2': checked(0, 0) }
   const { result, calls } = await run(repaired, ARGS, script)
   if (calledOrder(calls) !== order.join(' ')) {
     return `e8-check reported 1 unfaithful, and the labels were called in this order: ${calledOrder(calls)}\n${wanted(order)}`
@@ -190,7 +205,7 @@ async function repairRound(script) {
   if (result.status !== 'done') return `status ${JSON.stringify(result.status)}, reason ${JSON.stringify(result.reason)}`
   // The round is written into the group between e8-check and e9-input and never repeated, so a second unfaithful
   // answer from e8-check-2 must not produce a third e8-repair: the same order is the whole proof.
-  const stillUnfaithful = { ...HAPPY, 'e8-check': checked(1, 1), 'e8-check-2': checked(1, 1) }
+  const stillUnfaithful = { ...HAPPY, ...REPAIR_ANSWERS, 'e8-check': checked(1, 1), 'e8-check-2': checked(1, 1) }
   const again = await run(stillUnfaithful, ARGS, script)
   if (calledOrder(again.calls) !== order.join(' ')) {
     return `e8-check-2 reported 1 unfaithful and the run repaired again: ${calledOrder(again.calls)}\n${wanted(order)}`
@@ -227,7 +242,7 @@ async function skips(script) {
 // F7: the rerun happens once, on plant_found: false, and not at all with no second plant.
 async function judgeRerun(script) {
   const order = withGroup(HAPPY_ORDER, 'e9-merge', RERUN)
-  const missed = { ...HAPPY, 'e9-merge': ran('plant_found: false'), 'e9-input-2': ran('3 to judge\nplant G2-F3') }
+  const missed = { ...HAPPY, ...RERUN_ANSWERS, 'e9-merge': ran('plant_found: false') }
   const { result, calls } = await run(missed, ARGS, script)
   if (calledOrder(calls) !== order.join(' ')) {
     return `e9-merge reported a missed plant, and the labels were called in this order: ${calledOrder(calls)}\n${wanted(order)}`
@@ -240,7 +255,11 @@ async function judgeRerun(script) {
     return `e9-input-2 printed "no other plant" and the rerun still ran: ${order2}`
   }
   if (!again.calls.some(c => c.label === 'e9-input-2')) return 'e9-input-2 did not run at all'
-  if (order2 !== HAPPY_ORDER.join(' ')) return `with no other plant the labels were called in this order: ${order2}\n${wanted(HAPPY_ORDER)}`
+  // "no other plant" stops the three steps after it, not the one that asked: e9-input-2 runs and then the run goes on.
+  const noPlantOrder = withGroup(HAPPY_ORDER, 'e9-merge', ['e9-input-2'])
+  if (order2 !== noPlantOrder.join(' ')) {
+    return `with no other plant the labels were called in this order: ${order2}\n${wanted(noPlantOrder)}`
+  }
   if (again.result.status !== 'done') return `with no other plant the run came back ${JSON.stringify(again.result)}`
   const found = await run(HAPPY, ARGS, script)
   if (found.calls.some(c => RERUN.includes(c.label))) {
@@ -390,8 +409,10 @@ async function excludeGlobs(script) {
   const { calls } = await run(HAPPY, ARGS_WITH_EXCLUDES, script)
   const prompt = promptOf(calls, 'e2-workspace')
   for (const glob of EXCLUDES) {
-    if (!prompt.includes(`--exclude ${glob}`)) {
-      return `the e2-workspace prompt does not carry --exclude ${glob}.\n      prompt:  ${prompt}`
+    // A glob is one shell argument: 'docs/*.md' quoted is right, an unquoted 'docs/*.md' would be expanded by the
+    // shell into whatever files happen to match, and the runner would get a different command each day.
+    if (!prompt.includes(`--exclude ${shellArgument(glob)}`)) {
+      return `the e2-workspace prompt does not carry --exclude ${shellArgument(glob)}.\n      prompt:  ${prompt}`
     }
   }
   const plain = await run(HAPPY, ARGS, script)

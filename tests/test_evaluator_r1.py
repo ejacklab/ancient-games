@@ -138,12 +138,12 @@ def test_meets_is_false_when_there_is_no_in_scope_requirement_at_all(tmp_path):
     every_id_open = requirements_document(CASE, ids=["B1.1", "B1.2"], open_ids=["B1.1", "B1.2"])
     empty_spec = {"spec": {"requirements": "spec/REQUIREMENTS.md", "vision": None},
                   "groups": [], "vision": [], "manifest": []}
-    for index, requirements in enumerate([every_id_open, empty_spec]):
+    for index, (requirements, out_of_scope) in enumerate([(every_id_open, 2), (empty_spec, 0)]):
         verdict = module.decide(make_run(tmp_path / f"case-{index}", requirements=requirements))
         assert verdict["requirements"] == [], requirements
         assert verdict["meets"] is False, requirements
         assert verdict["meets_reason"] == "no in-scope requirements", verdict.get("meets_reason")
-    assert verdict["counts"]["out_of_scope"] == 2, verdict["counts"]
+        assert verdict["counts"]["out_of_scope"] == out_of_scope, verdict["counts"]
 
 
 def test_meets_true_says_nothing_against_itself(tmp_path):
@@ -171,7 +171,7 @@ def test_a_matrix_that_does_not_prove_the_copy_is_intact_blocks_every_probe_case
         assert verdict["meets"] is False, shape
         for case in verdict["cases"]:
             assert case["verdict"] == "UNKNOWN", (shape, case)
-            assert case["reason"] == "product copy not intact", (shape, case["reason"])
+            assert case["reason"] == "product copy not restored or changed", (shape, case["reason"])
             assert case["repro"] == "", shape
 
 
@@ -238,11 +238,16 @@ def test_a_probe_that_ended_in_a_junit_error_is_not_proof(tmp_path):
 
 
 @pytest.mark.parametrize("results", [
-    pytest.param({RED_PROBE: "fail"}, id="the run reported one probe, and it is the one that failed"),
     pytest.param({RED_PROBE: "fail", GREEN_PROBE: "fail"}, id="every probe went red, so nothing was proved"),
+    pytest.param({RED_PROBE: "fail", GREEN_PROBE: "fail", "test_b9::test_third": "fail"},
+                 id="three probes went red, so nothing was proved"),
 ])
 def test_a_mutant_run_that_turned_everything_red_proves_nothing(tmp_path, results):
-    """R1-F5 — Dave's guarded rule: a mutant that breaks every probe breaks the run, not the one requirement."""
+    """R1-F5 — Dave's guarded rule: a mutant run with 2 or more probes that turns them all red broke the run.
+
+    A run reporting a single probe is not judged by this rule: nothing else went red to show the run itself was
+    unhealthy, so `test_a_matrix_with_no_runs_key_is_an_older_matrix_and_still_proves` is its guard.
+    """
     module = load_verdict()
     verdict = module.decide(make_run(tmp_path, matrix=mutant_matrix(results, "ok", [])))
     case = case_of(verdict)
@@ -335,7 +340,7 @@ def test_a_judge_answer_whose_root_is_not_an_object_is_dropped_rather_than_crash
     """R1-F11 — one bad judgement file ends the judging as unknown, it does not end the run in a traceback."""
     run = build_run(tmp_path)
     cli_ok("judge-input", run)
-    write_json(run / "judge-1.json", ["not an object", {"case": "G2-F1"}])
+    write_json(judge_folder(run) / "judge-1.json", ["not an object", {"case": "G2-F1"}])
     write_json(run / "judge-2.json", "not an object at all")
     result = cli_ok("judged-merge", run)
     assert "Traceback" not in result.stderr, result.stderr

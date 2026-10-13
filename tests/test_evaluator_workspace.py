@@ -110,16 +110,17 @@ def test_a_marker_planted_in_the_product_tests_never_reaches_the_workspace(tmp_p
             assert MARKER_CONTENT not in path.read_text(encoding="utf-8", errors="replace"), path
 
 
-def test_an_exclude_glob_replaces_the_default_tests_glob(tmp_path):
-    """EV-R2.2 — an --exclude that only added to the default would go on hiding the product's tests forever."""
+def test_an_exclude_glob_adds_to_the_default_tests_glob(tmp_path):
+    """EV-R2.2 — --exclude replaces the defaults (R1-F8), so one glob for a build note brought the product's tests back."""
     module = load_workspace()
     run, manifest = build(module, tmp_path, excludes=["*.log"])
     copied = run / "workspace/product"
-    assert (copied / "tests/MARKER.txt").is_file()
+    assert not (copied / "tests/MARKER.txt").is_file(), "one --exclude turned the product's tests back on"
+    assert "tests/MARKER.txt" not in manifest["copied"], "the default exclusion was replaced, not added to"
+    assert "tests/MARKER.txt" in manifest["excluded"], "the default exclusion no longer covers the product's tests"
     assert (copied / "src/app.py").is_file()
     assert not (copied / "notes.log").exists()
     assert "notes.log" in manifest["excluded"]
-    assert "tests/MARKER.txt" not in manifest["excluded"]
 
 
 def test_the_product_and_spec_trees_are_unchanged_by_the_run(tmp_path):

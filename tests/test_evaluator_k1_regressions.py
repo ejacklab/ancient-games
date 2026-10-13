@@ -12,7 +12,7 @@ Helpers come from the model_io tests, so these cases build the same small run fo
 """
 from __future__ import annotations
 
-from test_evaluator_model_io import MATRIX, build_run, cli_ok, read, run_model_io, write_json
+from test_evaluator_model_io import MATRIX, build_run, cli_ok, judge_folder, read, run_model_io, write_json
 
 
 def test_a_confirmation_with_no_failure_output_is_voided(tmp_path):
@@ -60,6 +60,30 @@ def test_a_fail_repro_runs_from_the_run_folder_with_an_absolute_product_path():
     assert repro.startswith('EVAL_PRODUCT="$PWD"/workspace/product ')
 
 
+def test_probes_run_with_home_and_tmpdir_in_a_scratch_folder(tmp_path):
+    """R1-F9 — a model-written probe must not see the user's real HOME or shared TMPDIR (COO, after R1)."""
+    import importlib.util
+    import json
+    import os
+    from pathlib import Path
+    run = tmp_path / "run"
+    (run / "workspace/product").mkdir(parents=True)
+    (run / "workspace/product/calc.py").write_text("def add(a, b):\n    return a + b\n", encoding="utf-8")
+    (run / "probes").mkdir()
+    (run / "probes/test_env.py").write_text(
+        "import os\n\ndef test_env():\n    '''X1-F1 — env'''\n"
+        "    open(os.path.join(os.environ['EVAL_PRODUCT'], '..', 'seen.json'), 'w').write("
+        "__import__('json').dumps([os.environ['HOME'], os.environ['TMPDIR']]))\n", encoding="utf-8")
+    tool = Path(__file__).resolve().parents[1] / "tools/evaluator/probe_matrix.py"
+    spec = importlib.util.spec_from_file_location("probe_matrix_f9", tool)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.build_matrix(run, timeout=30)
+    home, tmpdir = json.loads((run / "workspace/seen.json").read_text())
+    assert home != os.environ.get("HOME") and tmpdir == home
+    assert "probe-matrix-" in home
+
+
 def test_confirm_check_blocks_when_the_confirm_step_wrote_nothing(tmp_path):
     """EV-C6.2 — work to confirm and no confirm.json is a failed model step: exit 1, never an empty answer."""
     run = build_run(tmp_path)
@@ -84,10 +108,12 @@ def test_a_judge_may_cite_code_by_its_run_folder_path(tmp_path):
     run = build_run(tmp_path)
     cli_ok("judge-input", run)
     judge_input = read(run / "judge-input.json")
-    plant = judge_input["plant_case"]
-    copy_text = (run / "judge-copy/calc.py").read_text(encoding="utf-8")
+    # After R1-F2 the plant lives in .coordinator/ and call 1 works in its own folder outside the run (COO, R1).
+    plant = read(run / ".coordinator/plant.json")["plant_case"]
+    folder = judge_folder(run)
+    copy_text = (folder / "product/calc.py").read_text(encoding="utf-8")
     line = next(l for l in copy_text.splitlines() if l.strip())
-    write_json(run / "judge-1.json", {"cases": [
+    write_json(folder / "judge-1.json", {"cases": [
         {"case": c["case"], "holds": c["case"] != plant, "evidence": f'judge-copy/calc.py:1 "{line.strip()}" — reason'}
         for c in judge_input["cases"]]})
     clean = (run / "workspace/product/calc.py").read_text(encoding="utf-8").splitlines()[0].strip()

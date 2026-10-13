@@ -273,7 +273,7 @@ def test_an_open_id_gets_no_verdict_and_is_listed_out_of_scope(tmp_path):
     verdict = module.decide(make_run(tmp_path, requirements=requirements))
     assert [entry["id"] for entry in verdict["requirements"]] == ["B1.1"]
     assert requirement_of(verdict, "B1.1")["verdict"] == "PASS"
-    assert verdict["out_of_scope"] == ["B1.2"]
+    assert verdict["out_of_scope"] == [{"id": "B1.2", "reason": "marked open in the spec"}]
     assert verdict["counts"]["out_of_scope"] == 1
     assert verdict["meets"] is True
 
@@ -352,7 +352,7 @@ def test_a_run_writes_the_verdict_files_and_the_coverage_manifest(tmp_path, monk
     written = json.loads((run / "verdict.json").read_text(encoding="utf-8"))
     report = (run / "verdict.md").read_text(encoding="utf-8")
     assert written["manifest"] == ["B1.1", "B1.2"]
-    assert written["out_of_scope"] == ["B1.2"]
+    assert written["out_of_scope"] == [{"id": "B1.2", "reason": "marked open in the spec"}]
     for requirement_id in ("B1.1", "B1.2"):
         assert requirement_id in report
     assert case_of(written)["repro"] in report
