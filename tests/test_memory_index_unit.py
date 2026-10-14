@@ -40,16 +40,16 @@ ENTRY_TEXT = (
 def test_header_reads_top_level_fields_and_strips_quotes():
     """B2.1 — an indented line is a nested field, and one pair of quotes comes off a value."""
     fields, end, problem = memory_index.parse_header([
-        "---", "id:  'D-1'  ", 'kind: "decision"', "status: 'active'", "scope:", "  id: nested", "---", "body",
+        "---", "id:  '14-10-a1b2c3-2026'  ", 'kind: "decision"', "status: 'active'", "scope:", "  id: nested", "---", "body",
     ])
-    assert fields == {"id": "D-1", "kind": "decision", "status": "active"}
+    assert fields == {"id": "14-10-a1b2c3-2026", "kind": "decision", "status": "active"}
     assert (end, problem) == (6, None)
 
 
 def test_header_problems_are_reported_not_raised():
     """B2.1 — a missing opening or closing `---` is a problem, never an exception."""
-    assert memory_index.parse_header(["id: x"])[2] == "no header"
-    assert memory_index.parse_header(["---", "id: x"])[2] == "header is not closed"
+    assert memory_index.parse_header(["id: 14-10-a1b2c3-2026"])[2] == "no header"
+    assert memory_index.parse_header(["---", "id: 14-10-a1b2c3-2026"])[2] == "header is not closed"
 
 
 def test_claim_stops_at_why_and_collapses_whitespace():
@@ -87,7 +87,7 @@ def test_active_problems_are_errors_and_inactive_ones_are_warnings():
 
 def test_invalid_utf8_is_a_problem_not_a_crash():
     """B2.6 — undecodable bytes name the file and stop the build."""
-    assert memory_index.entry_from_bytes("F-bad.md", b"---\nid: x\n\xff\n").errors == ["not valid UTF-8"]
+    assert memory_index.entry_from_bytes("F-bad.md", b"---\nid: 14-10-a1b2c3-2026\n\xff\n").errors == ["not valid UTF-8"]
 
 
 def test_duplicate_ids_are_found_in_any_status():
@@ -120,7 +120,7 @@ def test_id_outside_w11_form_is_an_error_in_every_status(entry_id, status):
     grandfathered, so B2.3 and B2.7 are the only exceptions to B2.5."""
     entry = memory_index.parse_entry(
         "D-one.md", f"---\nid: {entry_id}\nkind: decision\nstatus: {status}\n---\nC.\n**Why:** r\n")
-    assert entry.errors == [f"id {entry_id!r} is not in the form DD-MM-xxxxxx-YYYY"], (entry_id, status)
+    assert entry.errors == [f"id {entry_id!r} is not in the form DD-MM-xxxxxx-YYYY (x: a lowercase letter or digit)"], (entry_id, status)
 
 
 def test_missing_id_is_still_reported_as_empty():
@@ -146,6 +146,13 @@ def test_conflict_marker_is_an_error_in_every_status(location, marker, status):
     entry = memory_index.parse_entry("D-one.md", raw)
     assert len(entry.errors) == 1, entry.errors
     assert entry.errors[0].startswith("unresolved conflict marker on line"), entry.errors
+
+
+def test_every_marker_line_is_reported():
+    """B2.7 — a conflict leaves both markers; each is named, as DESIGN step 5 reports every problem."""
+    raw = ENTRY_TEXT.replace("Use code-point order.", "<<<<<<< ours\nUse code-point order.\n>>>>>>> theirs")
+    errors = memory_index.parse_entry("D-one.md", raw).errors
+    assert len(errors) == 2 and all(e.startswith("unresolved conflict marker on line") for e in errors), errors
 
 
 def test_only_a_line_starting_with_the_marker_is_one():
