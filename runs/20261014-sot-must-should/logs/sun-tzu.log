@@ -1,0 +1,985 @@
+dsh: reasoning:
+I need to read the seat's list and identity. Let me read both.
+dsh: reasoning:
+Let me read the rest of the list file (lines 304+).
+dsh: reasoning:
+Now I understand the task. I'm playing the Sun Tzu seat. I need to answer the question: which source-of-truth memory requirements are MUST, SHOULD, guidance — assign one level to each numbered requirement (W1.1, W1.2, ... Rd6.1).
+
+Let me enumerate all the requirement ids:
+- W1: W1.1, W1.2, W1.3
+- W2: W2.1, W2.2
+- W3: W3.1, W3.2, W3.3, W3.4, W3.5, W3.6
+- W4: W4.1, W4.2, W4.3
+- W5: W5.1, W5.2, W5.3
+- W6: W6.1, W6.2, W6.3
+- K1: K1.1
+- K4: K4.1, K4.2, K4.3
+- K5: K5.1, K5.2
+- K6: K6.1, K6.2, K6.3
+- Rd1: Rd1.1, Rd1.2
+- Rd2: Rd2.1, Rd2.2, Rd2.3
+- Rd3: Rd3.1
+- Rd4: Rd4.1, Rd4.2, Rd4.3, Rd4.4, Rd4.5
+- Rd5: Rd5.1, Rd5.2, Rd5.3, Rd5.4, Rd5.5
+- Rd6: Rd6.1
+
+Total count: 3+2+6+3+3+3 = 20 for W. K: 1+3+2+3 = 9. Rd: 2+3+1+5+5+1 = 17. Total 46.
+
+Let me recount carefully:
+W1: 3 (W1.1, W1.2, W1.3)
+W2: 2
+W3: 6 (W3.1-3.6)
+W4: 3
+W5: 3
+W6: 3
+Subtotal W = 20
+K1: 1
+K4: 3
+K5: 2
+K6: 3
+Subtotal K = 9 (K1.1, K4.1, K4.2, K4.3, K5.1, K5.2, K6.1, K6.2, K6.3)
+Rd1: 2
+Rd2: 3
+Rd3: 1
+Rd4: 5
+Rd5: 5
+Rd6: 1
+Subtotal Rd = 17
+Total = 20+9+17 = 46 ids.
+
+Now, the brief says "Below are the core requirements of the project's Source-of-Truth memory design (`docs/memory-system/SOURCE_OF_TRUTH.md`, confirmed by EJ 2026-10-12, amended 2026-10-13). Today none carries a level." and gives the requirements verbatim. Wait — but the "Fails if" lines are given below each requirement group. Interesting: the requirements text given already contains "Fails if" for each group. But those are group-level? Actually each group has a "Fails if" paragraph. Hmm, but the task says "Give each numbered requirement (W1.1, W1.2, … Rd6.1) one level".
+
+Note: There's a subtlety — the brief gives the requirements verbatim with "Fails if" statements. But should I read the actual source file `docs/memory-system/SOURCE_OF_TRUTH.md`? The brief says "Below are the core requirements ... verbatim". I should probably check whether that file exists and read it, to be accurate. But the brief says "Do not write files; your final message is the answer." Reading is fine. Let me check if the source file exists, to ground the answer. Also possibly read other seat answers? No — independence matters. The brief says re-read my list while working. I should probably not read other seats' outputs (that would contaminate independence). Let me focus.
+
+Actually, importantly, the brief gives me verbatim requirements. But let me verify against the actual doc to be safe — the doc might have additional context. However the task explicitly says "Below are the core requirements... verbatim" and "The requirements, verbatim". I'll trust the brief but a quick read of the source could help nuance MUST vs SHOULD (e.g., which already say "must" vs "may"). Let me check the file.
+
+Also I should be careful: this is a "seat" run, and the brief says my final message is the answer, in exactly the given format. I should not write files. So the deliverable is a response.
+
+Now, how would Sun Tzu decide? Using the rules from my list (20 items, though the brief says "items are numbered 1–20"). I need to cite "my #n" for steps.
+
+Let me think about the substance deeply. The question: which source-of-truth memory requirements are MUST, SHOULD, guidance?
+
+The definitions:
+- MUST — a gate that stops work: when it fails, the commit, task or handoff does not go ahead.
+- SHOULD — a default: it may be overridden, with the reason written down.
+- guidance — explanation or advice; nothing fails when it is not followed.
+
+Key facts:
+- RFC 2119 §6: MUST sparingly, only where actually required, not to impose a particular method.
+- requirement-check skill: "A safety bound earns MUST. A method does not."
+- EJ's design choices: no owners, no human approval gate (W4.1); no fixed numbers, comparisons by measurement; "judged" checks by a reviewer reading, not a script.
+- Only `tools/memory_index.py` exists. No lint over entries yet, no project-memory folder, n=0.
+- Do not change wording. If an id has two levels in it, say so and which part.
+
+So the core principle: MUST should go where failure would actually break the system's guarantees — safety bounds and things that make memory unrecoverable / irreversible loss / silent corruption. SHOULD for defaults that are good practice but overridable. guidance for explanation.
+
+Let me go through each id and assign a level with a one-line reason. I should ground each in my Sun Tzu rules where possible. Since the "How I decided" section cites "my #n", I'll make a few general rules and apply them. But the table needs a reason per row (one line). The "How I decided" section should be numbered steps citing items.
+
+Let me think about my Sun Tzu rules that are most relevant:
+- #1 Reckon before battle — count before commit; and foreknowledge from people, not measurement (#11). This maps to: every requirement that is a gate must have a check that can actually run; don't declare MUST where there is no mechanism (n=0, no lint).
+- #2 Make yourself unbeatable first — build the position; the "safety bound" idea: make loss impossible rather than rely on the other side.
+- #3 Whole over broken — prefer the cheaper, whole option; don't break things. For memory: never delete (#K4) preserves whole; MUST.
+- #5 Move only on advantage, never from anger — do not gate on method; RFC 2119 says MUST not to impose method. Also "non-beneficial" gates.
+- #6 Mix harm into benefit — think about failure modes; what happens if not followed.
+- #8 Value victory not duration / speed — the gate must be cheap; too many MUSTs are a cost.
+- #13 Not every road is taken, not every command accepted — local judgment: judged checks vs scripted; SHOULD overridable.
+- #14 Choose action by ratio of forces — proportion the response: script-checkable things can be MUST (the tool exists: memory_index.py, K6); judged things should be SHOULD because enforcement is weak.
+- #16 Orders clear first, then enforced — a rule can only be MUST if it is clear and checkable.
+- #20 Judge by land/tax/what they breed — no fixed numbers; measure.
+
+Actually the most powerful mapping: the MUST/SHOULD/guidance decision is like deciding which rules are 不可不察 (must be examined) versus method. Sun Tzu's #1: 「不可不察也」 (must be examined) — that phrase marks the things that are 国之大事. #15: 「不可不察也」 for the five dangers. So "must be examined" = MUST. And method is not MUST (RFC 2119 §6, and my #5: don't move without advantage; #13: not every command accepted).
+
+Let me formulate a decision procedure:
+1. A requirement earns MUST only if (a) its failure causes irreversible loss or silent corruption (my #2 "make yourself unbeatable", #3 "whole over broken", K4 non-deletion), or (b) it is a safety bound (W3.2 credentials — the one thing the brief's requirement-check skill names as MUST: "A safety bound earns MUST").
+2. A requirement earns MUST only if a check can actually stop the work today, or a human gate that EJ asserted (e.g., `changed:` line verifiable from git; K6 checked by the tool that exists). If no mechanism and n=0, then MUST is a rule that cannot fire → it should be SHOULD until the mechanism exists (my #16: orders must be clear and enforced; my #1/#11: foreknowledge from people/from what is actual). Actually careful: MUST is defined as a gate that stops work; a MUST without a check is just words. Hmm, but "commit does not go ahead" can be enforced by the writer/reviewer. For judged checks, a reviewer reading can be the gate. The brief says "judged checks are done by a reviewer reading, not a script." So judged checks can still be MUST? Possibly, but enforcement is weak. Sun Tzu #14: proportion the method to the means.
+
+Let me now go id by id. I'll be systematic.
+
+### W1 — The shape of an entry
+
+W1.1 (one file, prefix, id form, kind never changes). The file-naming and id uniqueness are structural: two entries with same id is corruption; prefix must match kind. "Fails if" includes lint findings and git showing renamed prefix/id. This is machine-checkable (mostly) and its failure breaks the index/uniqueness. But the lint doesn't exist yet. Nonetheless, a MUST here is safe: uniqueness of id and prefix-kind matching is a safety/property bound — duplicate ids silently overwrite/lose entries. However parts are method (the specific `DD-MM-xxxxxx-YYYY` format is a convention). Hmm. Two levels in one id: the "id form / uniqueness / prefix matches kind" vs "the exact format". Actually the format is what makes uniqueness checkable. I'd say W1.1 is MUST (it protects against two entries with the same id and against silent identity change), with the note that the day-month-year-random format is the checkable convention that makes it so. Maybe that's overreach. Let me consider: the whole memory system's identity is the file name + id. If an id changes, links break; if two entries share an id, one is lost. That's exactly irreversible loss. MUST.
+
+W1.2 (header between `---`, field list, multi-value indented). This is a parseable format. Failure = missing field → the entry isn't machine-readable; the index tool reads it. If a field is missing, the entry may be invisible to K6 tool → silent loss. This is also lint-checkable. Is it a safety bound? It's more like a schema. Schema errors cause silent exclusion. I'd say MUST for the delimiter and required fields (the entry doesn't parse → lost), but the "indented multi-value" style is method → SHOULD. Hmm, the brief allows splitting within one id if two levels. So W1.2: MUST for "header bounded by two `---` lines, one key:value per field, the listed keys present"; SHOULD for the indentation style. Actually wait — the exact key list is method-ish. But if `id`/`kind`/`status` missing, tooling breaks. Let me keep it clean: W1.2 MUST (a header that does not parse makes the entry invisible — silent loss); note the indentation style is the SHOULD part. Hmm, but is that "two levels in one id"? Yes I could say: MUST for the two `---` delimiters and the `id`/`kind`/`status` keys; SHOULD for the remaining keys and the indented style. That's fine and shows care.
+
+Actually, let me step back. There might be a more strategic answer here. The whole point: 46 ids, and applying RFC 2119 correctly means FEW MUSTs. The Sun Tzu move is to identify the few things that are truly existential (irreversible loss, safety, identity) as MUST, and push almost everything else to SHOULD/guidance because MUSTs that can't fire or that impose method weaken the system. This aligns with RFC 2119 §6 and the requirement-check skill.
+
+Let me establish the "safety bounds" in this design:
+- W3.2 No credentials/sensitive data — the clearest safety bound. MUST.
+- K4.1 never deleted; K4.3 claim never rewritten — irreversibility / audit integrity. MUST.
+- W6.2 branch/worktree — prevents silent overwrite (loss). MUST? It's the mechanism that makes W6.3 possible. Maybe SHOULD (default; solo work on one branch with no other writer can't collide). Hmm.
+- W1.1 id uniqueness/prefix — silent identity loss. MUST.
+- K6.2 INDEX regenerated in same commit — without it, the index lies silently, and the next session reads stale state. The tool exists (memory_index.py --check), so a real gate can fire. MUST.
+- Rd1.2 read from clone alone (no network/cache/private store) — the core guarantee that memory isn't lost when a machine/agent is gone. This is the "make yourself unbeatable" bound. MUST? Its failure = an entry exists only in a place a fresh clone can't read → loss for others. That's a safety bound against silent loss. MUST.
+- Rd2.3 never loaded (credentials, transcripts, whole tree, superseded...). Contains credentials — safety. MUST for credentials/transcripts; SHOULD for the rest (context budget defaults). Hmm, Rd2.3 is a list.
+- W5.1 written immediately before code — order matters: if the decision isn't written before code, the memory becomes a description of code (violates W3.1) and the decision's reason is lost. But is failure a "gate that stops work"? The brief defines MUST as a gate that stops the commit/task/handoff. A commit changing code under a new decision with no entry → W5.1's fails-if. That's checkable via git (partly). But n=0, and it's often judged. Could be MUST — it's the central ordering discipline. Hmm. But RFC 2119 caution: this is method (write the entry first). Actually it's more than method — it's the thing that makes the memory true rather than a changelog. Still, the harm from violating is recoverable (write the entry late, note it). So SHOULD.
+
+Let me think about what EJ likely wants. The question is genuine: which requirements are MUST. The four experts decide. My job is a well-reasoned assignment, grounded in my rules. There's no single right answer, but the reasoning must be checkable and honest.
+
+Let me build a consistent rubric (from my rules) and apply it uniformly:
+
+**Rubric (three tests for MUST):**
+- T1 Loss test: does failing it cause irreversible loss or silent corruption of memory? (my #2, #3, K4-like)
+- T2 Safety test: is it a safety or security bound? (requirement-check skill; my #1 must-examine)
+- T3 Enforceability test: can it actually stop a commit/task/handoff today, by script or by a named judging step? If nothing can catch it, MUST is a command that cannot be obeyed and will be ignored — SHOULD instead. (my #16 orders clear then enforced; my #11 foreknowledge from what is real; my #1 count before commit)
+
+Then:
+- Anything that is method/presentation (format style, ordering preference, context budget) → SHOULD.
+- Explanations → guidance.
+
+Now apply.
+
+Let me enumerate with proposed levels:
+
+**W1 — shape**
+- W1.1 ⇒ **MUST**. Two entries with the same id, or a changed prefix/id, silently loses or breaks an entry's identity; the file name is the id. (T1; checkable by a lint/git.)
+  - Note: the random 6-char format is method; but it's what prevents "next free number" collisions. I'll keep MUST and say the format is the mechanism.
+- W1.2 ⇒ **split**: MUST for the two `---` delimiters plus `id`, `kind`, `status` (an unparseable header makes the entry invisible to the index and to readers — silent loss); SHOULD for the remaining keys and the indented multi-value style (schema convention, overridable).
+  - Actually, the brief says give each id one level; if two levels in one id say which part gets which. Good.
+- W1.3 ⇒ **SHOULD**. Body sections (`**Why:**`, `**How to apply:**`, one claim) are a default shape; a missing `**How to apply:**` doesn't lose memory. The one-claim rule (K4.3/W1.3) is separate; the "two claims in one entry" fail is judged. Hmm — one claim per entry is important for K4.3 (never rewrite a claim). But W1.3 also covers Why/How. I'd say SHOULD, with note that "one claim per entry" is the part that could earn MUST (it is what K4.3 protects) — actually no, it's the same as K4.3. I'll say SHOULD for section spelling; the one-claim part is a MUST in K4.3's vicinity. Hmm, but I can only assign per id. Let me mark W1.3 SHOULD and note the one-claim clause carries the weight, worth MUST if enforced.
+
+Hmm, wait. Let me reconsider whether to be more generous with MUST. The design is a memory system for agent work. Its guarantees:
+1. Never lose a claim (K4.3, W1.1).
+2. Never store secrets (W3.2).
+3. Always readable from a clone (Rd1.2).
+4. Index always matches entries (K6.2).
+5. Decisions/facts recorded before code (W5.1/K1.1).
+6. Changes logged (W4.2).
+
+These are the "load-bearing" properties. The rest is method.
+
+I think a defensible answer: MUST for the load-bearing, machine-checkable, safety/irreversibility set; SHOULD for the rest of the mechanics; guidance for pure explanation. Let me aim for maybe ~8-12 MUSTs out of 46.
+
+Let me continue.
+
+**W2 — kinds**
+- W2.1 ⇒ **guidance** (or SHOULD). It explains what decision and fact mean and asserts "written before the code" (which is W5.1/K1.1's job). A definition is explanation; nothing fails if a definition isn't followed — the fail is covered by W2.2's `kind` check. So **guidance**.
+- W2.2 ⇒ **SHOULD** for the kind definitions; but "Fails if kind holds any other value, or a guess is recorded under any kind but hypothesis" is checkable. Is mislabeling a hypothesis harmful? It misleads readers about confidence — a correctness-of-record issue, but recoverable. It's a default (label your guess as a guess) → SHOULD. Hmm, but a fact vs hypothesis confusion undermines trust. I'd say SHOULD, with the "kind ∈ {decision,fact,lesson,observation,hypothesis}" part being checkable and arguably MUST. Let me split: MUST for `kind` must be one of the five; SHOULD for which one. Actually that's W1.1's prefix matching kind. Hmm, overlap. I'll say W2.2 SHOULD.
+
+Wait — actually, re-reading W2.2: "**Fails if** `kind` holds any other value, or a guess is recorded under any kind but hypothesis." The first half is a closed enum → machine-checkable, and it's already W1.1's prefix check. The second half is a judged correctness-of-attribution. I'll split: MUST for kind ∈ five; SHOULD for a guess must be hypothesis.
+
+Hmm, but is "kind ∈ five" a safety bound? It's schema. If kind is invalid, the prefix check fails. I earlier put the enum in W1.1 (prefix matches kind). To avoid double-assigning MUST to the same content, let me be careful:
+- W1.1's MUST is about id/prefix identity (uniqueness, immutability).
+- W2.2's MUST is about kind being one of the five / a guess labeled hypothesis. 
+
+I think that's fine; they're distinct clauses in distinct ids.
+
+**W3 — what never goes in**
+- W3.1 ⇒ **SHOULD**. Don't duplicate what code/tests/commit log says. This is a default about content (memory should carry reasons, not restate code). Failure = redundancy, not loss. Judged. SHOULD.
+- W3.2 ⇒ **MUST**. Security/safety bound: no credentials or sensitive data. This is the one the requirement-check skill explicitly names. (T2)
+- W3.3 ⇒ **MUST** for "no raw transcripts and nothing from another agent's private state" — privacy/safety bound (another agent's private state is not yours to copy; transcripts may contain secrets). Hmm, or SHOULD? The credential case is W3.2. Raw transcripts = context bloat and private-state leakage. I'd say SHOULD for raw transcripts, MUST for another agent's private state? The id bundles them. Split: MUST for no copy of another agent's private state (privacy/safety); SHOULD for no raw transcripts (bulk/lossy). Hmm, but raw transcripts can also contain secrets. Since W3.2 covers secrets, W3.3 is about volume and provenance. I'll say SHOULD, with the private-state part being the safety part → maybe MUST. Let me decide: **split** — MUST for another agent's private state (privacy bound); SHOULD for raw transcripts. That's defensible.
+- W3.4 ⇒ **SHOULD**. Don't call implemented work "verified". Mislabeling status is a correctness default; the fix is to correct the line. But it's about truthfulness of the record. Could be MUST (a false "verified" can make someone skip verification — a real hazard). Hmm. I'd say **SHOULD**, because it's judged and the claim is about wording; but the hazard is real. Actually, "no work described as verified when it is only implemented" — if violated, a reader trusts unverified work → that can cause a bad action. That's close to a safety bound. Yet the design says no script checks it. I'll mark **SHOULD** but note that its risk is high and a project could raise it. Hmm. Let me think about what's more useful: the question asks for levels. I want to be principled, not fence-sitting. Let me rank by harm:
+  - False "verified" → someone builds on unverified work → potential silent defect. That's a correctness-of-record hazard, but not irreversible, and judged.
+  - I'll keep SHOULD.
+
+Actually, maybe I should define the rubric threshold more sharply: MUST only where failure is *irreversible* (loss, secrets exposure, identity corruption) or where the design declared a hard gate (EJ's stated boundaries). Everything else SHOULD/guidance. Then W3.4 = SHOULD. Good.
+
+- W3.5 ⇒ **SHOULD**. No user/agent memory mixed into project memory. This is a boundary/default about scope; failure = pollution, recoverable by removal (but K4.1 says entries never deleted... so a wrongly-added entry would linger as retired). Hmm, actually since entries can't be deleted, adding out-of-scope content is semi-permanent → that argues for MUST. But the entry can be retired and linked. I'll say SHOULD. Hmm, but user/agent memory cross-contamination is a privacy issue too. The addresses are home-folder. I'll say **SHOULD** (scope default), note K4.1 makes mistakes sticky.
+- W3.6 ⇒ **SHOULD** (or guidance). No copy of existing docs/procedures; link instead. Default about avoiding duplication; guidance-ish. It also fixes where procedures live (script or docs page, named in AGENTS.md). That's method. SHOULD.
+
+**W4 — who writes / change log**
+- W4.1 ⇒ **guidance**? It states EJ's design choice: no owners, no approval, status only the three. The "status" half is checkable (W4's fails-if). Actually W4.1 is a *permission* statement — "anyone may create or change" — that's a design fact, not a requirement to be obeyed. But it also contains `status` only active/superseded/retired. The brief says these are "EJ's design choices that stand". A design choice is guidance/explanation of why there's no gate. Hmm. But the `status` enum is checkable. Split: **guidance** for "no owner/approval" (it explains the absence of a gate); **MUST** for `status` ∈ {active, superseded, retired}? That enum is checkable and an invalid status breaks the index (K6 lists active entries). Hmm, index only lists active. An invalid status could hide/keep an entry. I'd say MUST for the status enum, guidance for the no-owner statement. Let me do **split**: guidance for the no-owner/no-approval choice; MUST for `status` ∈ three (an unknown status makes the index's active/superseded logic undefined → silent mislisting).
+
+  Actually careful: is "status ∈ three" really in W4.1? Yes: "status is only `active`, `superseded` or `retired`." And W4's fails-if includes "a status outside the three." So yes.
+- W4.2 ⇒ **MUST** or SHOULD? Every change adds a `changed:` line; earlier lines never edited. This is the audit trail. Git shows a change with no matching line → W4's fails-if (machine-checkable-ish via git). Loss of attribution is semi-irreversible (you can't reconstruct who/why later). The audit log is a safety property of the memory system (provenance). I lean **MUST**: it is checkable from git and its failure is a silent hole in provenance. Hmm, but is provenance a "safety bound"? It's an integrity bound. The brief's examples of MUST: "a gate that stops work." Which things would stop a commit? A missing `changed:` line could be caught by a lint/git check. But is it truly required? If a change is made and logged in git (W4.3 says non-entries rely on git), the `changed:` line is somewhat redundant with git. But the design explicitly asks for it, and "who made it (model ID)" is not reliably in git. Hmm, it is in git (author). The `changed:` log is the human-readable provenance inside the claim file that survives rebases/squashes. I'll say **SHOULD**? No — I think provenance of a memory that "is never deleted" is load-bearing; without it the "never deleted" guarantee loses accountability. Let me mark **MUST** and explain: it is git-checkable and its absence is a permanent hole in the record. I'll note the override is nil.
+
+  Hmm, I worry about over-MUSTing. Let me apply T3 (enforceability): git can show a change with no matching `changed:` line — that's a real check. T1 (loss): attribution lost. OK, MUST is defensible.
+
+  Actually, let me reconsider: K4.3 says after first commit an entry only gains changed/status/superseded_by/done. So `changed:` is the only mutable part. The whole audit model rests on it. MUST.
+
+- W4.3 ⇒ **guidance**. "Files that are not entries rely on git history." This is a statement about how non-entry files are versioned — explanation, not a gate. guidance.
+
+**W5 — when to write**
+- W5.1 ⇒ **SHOULD** or MUST? "Written immediately: a decision or fact, before the code it governs; a human correction; and the state of unfinished work, before a handoff..." The "before the code" ordering is central (K1.1). Fails-if: a commit changes code under a new decision with no entry in that commit or earlier (judged). This is enforceability-weak (judged) and the harm is recoverable (write it now). BUT W5.1 also includes "state of unfinished work before handoff" — losing that loses the task thread across sessions. Hmm. I'll split: **MUST** for the handoff-state part (losing unfinished state before an interruption is irrecoverable — no record of what was in flight); **SHOULD** for the decision/fact-before-code part (recoverable, judged) — no wait, that seems backwards from the project's emphasis. The project emphasizes K1.1/W5.1 (decision before code) as the heart. And "a human correction" — if not written immediately, the correction is lost. Hmm.
+
+  Let me think about which single level W5.1 most deserves. The design's central claim: memory is written before code, so the reason exists. If violated, the reason is often unrecoverable (you don't remember why). That's T1 (irreversible loss of *reason*). And a commit with code under an unwritten new decision is caught by git (a check). So **MUST** is defensible for "decision/fact before code". But RFC caution... 
+
+  Actually, let me reconsider the whole framing. The question asks which are MUST. If nearly everything is SHOULD, the answer is boring and arguably wrong: a memory system's guarantees must include "write it before the code" or there's no memory. I think a good answer has a clear spine: MUST = the properties that make memory *trustworthy and recoverable*: never lose a claim (K4.1/K4.3/W1.1), never store a secret (W3.2), always readable from a clone (Rd1.2), index in step (K6.2), provenance (W4.2), decision-before-code (W5.1/K1.1), session-start reads (Rd2.1), check before acting (Rd5.1). That's ~10-12 MUSTs. The rest SHOULD/guidance.
+
+  I'll go with that spine and be consistent.
+
+- W5.2 ⇒ **SHOULD**. Lessons/observations/hypotheses at end of task — a default if they matter; nothing is lost structurally if deferred (though content can be). SHOULD.
+- W5.3 ⇒ **SHOULD** (or MUST for the closing of a build decision?). A decision to build is "started when written"; at completion add `done:` with time, result, tests. Fails-if: a finished task's decision has no `done:` (judged). Without `done:`, a decision looks perpetually in-progress, so readers can't tell what's built; and it's a mismatch-check input. It's a correctness/status default, judged → SHOULD. Hmm, but a `done:` without tests is a false completion claim. The test-result line is the "verified vs implemented" guard (W3.4). I'll say **SHOULD**, noting the test-result part is the trust-bearing clause.
+
+**W6 — no collisions**
+- W6.1 ⇒ **SHOULD**. One file per entry; never append to shared file; one journal file per session. Prevents collisions; with W6.2 it's the mechanism. If violated, conflicts. It's a default (append to a shared file is bad but might work for a lone writer). Hmm, actually a shared file that many agents append to is a classic silent-overwrite hazard, but git would conflict. I'll say SHOULD.
+- W6.2 ⇒ **MUST**? Own branch/worktree so edits meet as merge conflict not silent overwrite. This is precisely a "never lose an edit" safety mechanism (T1). Without it, two agents can silently overwrite each other → irreversible loss. Git makes it checkable in the sense that worktree/branch is observable. But a lone agent doesn't need it. Still, the loss it prevents is exactly irreversible. I lean **MUST**.
+- W6.3 ⇒ **MUST**? Keep both sides in a merge; never choose between claims; report double-supersession. Resolving a conflict by choosing one side *deletes* a claim — irreversible, violates K4.3. And INDEX conflicts resolved by regenerating (K6.3). This is the "never lose a claim" bound again. MUST. (Index regeneration is method/checkable.)
+
+**K1 — decision/fact first**
+- K1.1 ⇒ **MUST** (same as W5.1's ordering; K1.1 is the rule, W5.1 the timing). Change the entry first, then code. Failure = code governs on an unwritten rule → reason lost; and git shows a behaviour change with no entry (judged). I'll mark MUST. Hmm, but I marked W5.1 MUST too — that's fine, they're the same spine stated twice; but maybe I should differentiate: W5.1 = when to write (timing); K1.1 = order for a behaviour change. Both load-bearing. Alternatively, to avoid double counting, mark K1.1 MUST and W5.1 SHOULD except the handoff part. Let me do that to be more precise and avoid redundant MUSTs:
+  - W5.1: MUST for "state of unfinished work before a handoff/interruption/context reduction" (loss of the thread is irrecoverable); SHOULD for decision/fact before code (that gate is K1.1, which is the MUST) and for human correction (recoverable? a correction not written may be re-made or lost — I'll include it in MUST? Hmm).
+  
+  This is getting complicated. Let me simplify: I'll assign each id one primary level, and only split where the brief's "two levels in one id" clearly applies. For W5.1, the id is a "when to write" list. I'll mark it **MUST** for the whole thing with a reason: each item is a moment where, if missed, the reason/state is gone and cannot be reconstructed from the code. That's T1. Then K1.1 **MUST** too — the ordering rule. Redundancy is fine; two ids can both be MUST.
+
+  Hmm, but then I have many MUSTs. Let me count as I go and see.
+
+**K4 — never deleted**
+- K4.1 ⇒ **MUST**. Never delete; mark superseded/retired and link. Irreversible loss otherwise. Clear.
+- K4.2 ⇒ **guidance**? "Age alone never expires an entry." This is a statement of policy / explanation of why there's no TTL. Nothing fails if you... well, if someone expires an entry by age, that's deletion (K4.1). K4.2 mostly explains. I'd say **guidance** (or SHOULD). It rules out a method (age-based expiry) — that's advice: don't build a TTL. Nothing fails. guidance.
+- K4.3 ⇒ **MUST**. Claim never rewritten; changed claim is a new entry. This is the audit-integrity core. MUST.
+
+**K5 — journal becomes entries**
+- K5.1 ⇒ **SHOULD**. Journals exist, one file per session, appended never edited; agent/user memory keep no journal. Structure default. SHOULD. (The "never edited" matches K4.3; but the journal is raw notes and losing/editing it is less catastrophic.) Hmm, "appended to and never edited" is integrity. But it's a default. SHOULD.
+- K5.2 ⇒ **MUST**? At end of task / before handoff, read journal since last read, write entries, log the read in state.md. Fails-if: state.md shows task complete or handed off with no journal-read log line. This is the "nothing lost between sessions" guarantee — if skipped, journal content is lost (the next read "covers it" though, per the text: "A session cut off before it can read loses nothing: the next read covers it"). But at task completion, there is no next read → loss. And it's checkable in state.md (a log line). I lean **MUST**: the journal-read before handoff/completion is the only thing that converts raw notes into durable entries; missing it at the terminal moment loses them. This maps to my #2/#3 (make the position safe) and #5 (finish it). Actually my #5 is "move only on advantage and finish it" (費留 — victory gained then squandered), which fits perfectly: work done but not harvested into memory is 費留. I'll cite #5.
+- K5.2 also says "logs that read in the task's state.md". The log line is checkable. Good.
+
+**K6 — INDEX**
+- K6.1 ⇒ **SHOULD** for "generated, one line per active entry, id/kind/claim" (format/method); but MUST for "never edited by hand" — hand edits desync the index, and the tool will overwrite them anyway → silent divergence. Split: MUST for "never edited by hand" (the generated-vs-manual invariant is what makes the check meaningful); SHOULD for the line contents. Hmm. Or simply **SHOULD** for the whole, because K6.2's regeneration makes hand edits visible. But a hand-edited index that isn't caught by K6.2's check would lie. Since K6.2 requires regeneration in the same commit, hand edits get overwritten. I'll say **SHOULD**, or split. Let me split lightly: MUST for "never edited by hand," SHOULD for the line format. Actually "generated from entries: one line per active entry showing id, kind, one-line claim" is the tool's spec → guidance/method. I'll do: **SHOULD** for the format spec; **MUST** for "never edited by hand" because a hand-edited index can diverge silently and hide entries. Hmm, but with K6.2 check, diverge is caught. In the absence of the check running... the check exists (memory_index.py --check). So the combination catches it. Then "never by hand" doesn't need MUST separately. Ugh.
+
+  Let me keep it simple: **K6.1 = SHOULD** (the index is a generated artifact; the format is method). The MUST lives in K6.2 (regenerate and commit so it stays true).
+  
+  Hmm, but "never edited by hand" is really a process rule to avoid conflicts. SHOULD is fine.
+- K6.2 ⇒ **MUST**. Regenerate and commit INDEX with every entry change; the tool's `--check` compares. This is the one place a real gate exists today (tools/memory_index.py), and a stale index means the next session reads a false map → silent loss of the entry from view. MUST. (T1 + T3.)
+- K6.3 ⇒ **SHOULD**? INDEX never merged by hand; resolve entries first, regenerate. This is the merge procedure (method). The "no conflict markers left" part is judged and is a correctness bound. Hmm, the fails-if for K6 says also fails if entry or INDEX holds a conflict-marker line (judged). Leaving `<<<<<<<` in a committed file is silent corruption. That's T1. I'd say **MUST** for "no conflict markers in entries or INDEX"; SHOULD for "regenerate rather than merge by hand". Let me split.
+  
+  Actually the conflict-marker clause is in K6's "Fails if" (group-level), not in K6.3's text per se. K6.3 says never merge by hand; resolve entries first with no conflict markers, then regenerate. So no-markers is in K6.3. I'll split: MUST (no conflict markers committed — silent corruption); SHOULD (regenerate the index rather than hand-merge).
+
+**Rd1 — where it lives**
+- Rd1.1 ⇒ **SHOULD** or guidance. Specifies `AGENTS.md` at root, `project-memory/` layout, `.cache/` gitignored. Layout is method but load-bearing for tools (paths). IS a schema for the tool. Hmm. If `entries/` isn't at the expected path, tooling breaks. But it's a one-time design decision already made. I'd say **SHOULD** (path layout default, needed by tooling; overridable with reason). Or MUST for the root path of AGENTS.md because tooling/readers assume it. Eh. SHOULD.
+- Rd1.2 ⇒ **MUST**. Fresh clone with no network/cache/private store can read INDEX and every entry. This is the anti-lock-in, anti-loss guarantee. Clear safety bound. MUST.
+- Rd1's fails-if: an entry exists only in a database/cache/private memory. Covered.
+
+**Rd2 — session start**
+- Rd2.1 ⇒ **MUST** or SHOULD? At session start read AGENTS.md, INDEX.md, work/ listing, task state.md; make them load automatically. Fails-if: a session starts work before the four reached it (judged). The whole "fresh session carries on" depends on it. Is failure irreversible? Not exactly — you can re-read mid-session. But starting without them means decisions get relitigated / lost. I'd say **SHOULD** (a strong default). Hmm, but Rd6.1 (carry on) rests on it. Hmm. The means ("@ import, tool loading, start hook, first instruction") is method. I'll say **MUST** for "read the four at session start" — it is the load-bearing read that makes memory work, and Rd6's test measures it. Actually, let me think about enforceability: a start hook can load them; the fails-if is judged from session start. That's a named judging step. I'll go MUST. Hmm, but there's a risk of over-MUST. Let me consider the design's purpose: the entire value is that a fresh session carries on. If session start reads are optional, memory never reaches the agent → system is dead. So MUST is right for *the four being read*. But the *mechanism* (auto-load wherever tool allows) is method → SHOULD. I'll mark Rd2.1 MUST, note the loading mechanism is the SHOULD part.
+- Rd2.2 ⇒ **SHOULD**. What is read later at its set time. Default timing. SHOULD.
+- Rd2.3 ⇒ **must for safety parts, SHOULD for the rest**. Never loaded: credentials (safety → MUST), another agent's transcripts (privacy → MUST), whole tree / graph dumps / bulk issue text (context budget → SHOULD), superseded/retired except by link (SHOULD). Split: MUST for credentials and transcripts; SHOULD for the bulk/noise items. The brief allows splitting.
+
+**Rd3 — index fits**
+- Rd3.1 ⇒ **SHOULD** or MUST? INDEX fits the strictest start-file limit; the K6 check also fails when it doesn't fit. This is a size bound: if the index exceeds the limit, agents silently truncate/drop it → memory doesn't reach them (the system fails quietly). That's a real "safety bound" on the delivery mechanism, and it's machine-checkable (the tool). The brief's project said "no fixed numbers, comparisons decided by measurement" — so the limit is measured per project, not fixed. That's fine. I'd say **MUST**: a start file that doesn't fit is a gate failure (the check exists), and the harm is silent non-delivery. Hmm, but is the number a safety bound? It's a capacity bound. "A safety bound earns MUST." A size limit that prevents silent truncation is close. And ironically, because it's measurable by the existing tool, it's one of the few enforceables. I'll say **MUST**. Hmm, wait: the fail is "the K6 check passes an INDEX that exceeds it" — meaning the tool must also implement the size check. Does it? The brief says only memory_index.py exists (builds/checks INDEX). Not clear it checks size. If the tool doesn't check size, then enforceability is weak. Let me mark **MUST** anyway but note the tool must check it, else SHOULD. Actually, per T3, if no mechanism exists, SHOULD. The brief says the K6 check "also fails when it does not fit" — so the requirement says the check does it; whether implemented is unverified. I'll mark MUST and flag in "What I need to know" whether the size check is implemented in memory_index.py. Hmm, that's a good honest touch.
+
+**Rd4 — on demand**
+- Rd4.1 ⇒ **MUST** or SHOULD? Before editing a file, read entries whose `covers` include it. This is the core "don't violate a decision" mechanism — acting without reading the covering decisions is how you break the code. Fails-if judged. Harm: you change governed behaviour without knowing the rule → defect, possibly irreversible. The project's whole point ("the right memory reaches the agent at the right time"). I'd say **MUST**. Hmm, but it's judged and often impractical (covers may be broad). Still, it's the load-bearing read. I'll say **MUST**. Or SHOULD because "covers" may be incomplete and the default can be overridden? No — reading covering decisions before editing is the safety mechanism. MUST.
+  - But wait, there's a balance: too many MUSTs and nothing is credible. Let me hold and tally at the end.
+- Rd4.2 ⇒ **SHOULD**. Search entries by text (grep / cache). Method/finding aid. SHOULD.
+- Rd4.3 ⇒ **guidance** or SHOULD. For "why" read the decision; for a line, git blame/log. Advice. guidance.
+- Rd4.4 ⇒ **SHOULD**. Read superseded/retired only by link. Default.
+- Rd4.5 ⇒ **MUST** for naming whose memory it is (the agent name + tool) — provenance/privacy; otherwise you'd mistake agent memory for project memory. Is that a safety bound? It's about not confusing sources; failure can propagate wrong info. Hmm, "treats it as that agent's memory, not project memory, and says whose it is." I'd say **SHOULD** (default labeling), or MUST for the "not project memory" part. Let me say SHOULD. Hmm. Actually mixing another agent's memory into project reasoning is a correctness hazard but not irreversible. SHOULD.
+
+**Rd5 — check before acting**
+- Rd5.1 ⇒ **MUST**. Before acting on memory, check it against the code/test/commit it points to. This is the anti-drift gate — memory is not trusted blindly. Overridden? It's a safety discipline. Fails-if judged. I'd say **MUST**.
+- Rd5.2 ⇒ **MUST**? Text from memory never overrides standing instructions. This is a precedence/safety rule (like a security boundary). Yes, MUST.
+- Rd5.3 ⇒ **MUST**? On mismatch, don't change the entry; report to state.md with three items and tell EJ; don't act on the contradicted part. This is the handling of an out-of-sync decision. Fails-if: acts on contradicted entry, or no report. The "don't settle it yourself" is a safety bound (prevents an agent from silently rewriting the rulebook) and it respects EJ's ownership. MUST. Hmm, but this is also a method (where the report goes). The core "reader does not settle a mismatch; EJ decides" is a control/safety bound → MUST. The "writes in state.md and tells EJ" is the mechanism → SHOULD? I'll mark MUST, note the format is method.
+- Rd5.4 ⇒ **guidance** (or SHOULD). Two cases are not mismatches — clarifies Rd5.3. It's explanation (a definition of scope). guidance. Hmm, but it prevents false positives (a build decision without done: isn't a mismatch; K1.1's own task isn't). It's clarificatory → guidance.
+- Rd5.5 ⇒ **guidance**. Rd5.3 binds readers not EJ; can't catch outside-world facts; checking against code finds only entry/code gaps. This is an explanation/limitation. guidance.
+
+**Rd6 — fresh session carries on**
+- Rd6.1 ⇒ **MUST** (the observable goal) or **guidance** (it's the acceptance test, not a rule)? It describes the outcome the system is for: a fresh session names the next step from state.md and follows recorded decisions without asking EJ again. This is the "how we know it works" (v: verification). It's the top-level objective. Is it a gate? The fails-if: it asks a question a decision or state.md already answers (judged, on a real handoff). I'd say **MUST** as the system's acceptance test — but it's not a rule an agent follows so much as the goal. Hmm. In the requirement-check framing, a requirement that is the acceptance criterion is a MUST (the system fails if it fails). I'll mark **MUST** as the system-level acceptance gate, noting it's a test of the whole design, not a separate rule.
+
+Hmm, that's a lot of MUSTs. Let me tally:
+W1.1 M, W1.2 M/S, W1.3 S
+W2.1 g, W2.2 S/M
+W3.1 S, W3.2 M, W3.3 M/S, W3.4 S, W3.5 S, W3.6 S
+W4.1 g/M, W4.2 M, W4.3 g
+W5.1 M, W5.2 S, W5.3 S
+W6.1 S, W6.2 M, W6.3 M
+K1.1 M
+K4.1 M, K4.2 g, K4.3 M
+K5.1 S, K5.2 M
+K6.1 S, K6.2 M, K6.3 M/S
+Rd1.1 S, Rd1.2 M
+Rd2.1 M, Rd2.2 S, Rd2.3 M/S
+Rd3.1 M
+Rd4.1 M, Rd4.2 S, Rd4.3 g, Rd4.4 S, Rd4.5 S
+Rd5.1 M, Rd5.2 M, Rd5.3 M, Rd5.4 g, Rd5.5 g
+Rd6.1 M
+
+Count MUST (full or partial): W1.1, W1.2, W2.2, W3.2, W3.3, W4.1(status), W4.2, W5.1, W6.2, W6.3, K1.1, K4.1, K4.3, K5.2, K6.2, K6.3, Rd1.2, Rd2.1, Rd2.3, Rd3.1, Rd4.1, Rd5.1, Rd5.2, Rd5.3, Rd6.1 ≈ 25 of 46. That's more than half. RFC says MUST sparingly. Hmm.
+
+Maybe the right move — and the more Sun Tzu move — is to be *sparing*: identify a small hard core (say 6-10) that are genuinely existential, and push the rest to SHOULD, because a rule that cannot be enforced or that imposes method should not be MUST (RFC 2119 §6). The brief explicitly quotes RFC 2119 §6 and the requirement-check skill: "A safety bound earns MUST. A method does not." This strongly signals that the expected answer has FEW MUSTs — only safety bounds.
+
+So I should re-examine which are genuinely safety bounds vs method. A "safety bound" here = a limit that prevents harm (loss, exposure, corruption). Let me define:
+- Safety/security: W3.2 (secrets), W3.3 (private state/transcripts).
+- Irreversibility/loss: K4.1 (no delete), K4.3 (no claim rewrite), W1.1 (id uniqueness/immutability), K1.1/W5.1 (decision before code? that's method, not a safety bound exactly).
+- Corruption: W6.2/W6.3 (silent overwrite), K6.2 (index truth), K6.3 (conflict markers), Rd1.2 (clone-readable).
+- Trust: Rd5.1/Rd5.2/Rd5.3 (check before acting).
+
+Hmm. Let me reconsider each against "is it a *method*?" RFC 2119's warning is about imposing a particular method. Many of these rules ARE methods (write a header this way, name files this way, regenerate an index). If a requirement is a method, it should not be MUST — but it can still be SHOULD. So the distinguishing question isn't only "safety vs method" but also "is there a real gate."
+
+The brief says MUST = "a gate that stops work: when it fails, the commit, task or handoff does not go ahead." SHOULD = "a default: it may be overridden, with the reason written down." guidance = "explanation or advice; nothing fails."
+
+So the operational test: if this requirement fails, does something concrete *stop*? For a MUST to be real, there must be a stopping mechanism. Today, only memory_index.py exists (K6). No lint over entries. n=0. So:
+- K6.2 (index in step) → the tool `--check` is a real gate. MUST.
+- W3.2 (secrets) → a secret scanner is named in the fails-if ("a secret scanner finds a credential"). So there is a gate mechanism (scanner). MUST.
+- Everything else that is judged by "a reviewer reading" is a default enforced by judgment — the brief tells me judged checks are done by a reviewer reading, not a script. A reviewer reading *can* stop a commit. So judged checks can be MUST too, in principle. Hmm.
+
+Let me reconsider the "safety bound" phrase. The requirement-check skill says "A safety bound earns MUST. A method does not." What's a "bound" here? A limit/limit-condition. Safety bound = a limit that prevents harm: no secrets; never delete; never rewrite a claim; clone-readable (no lock-in); no silent overwrite; index truth. Those are bounds. Formats, timing preferences, who reads what, aggregation of findings — methods.
+
+I think the strongest answer has a clear, small MUST set of maybe 10-14, each tied to an irreversibility, security, or truth bound, and everything else SHOULD/guidance. Let me settle the set:
+
+MUST:
+1. W1.1 — id/prefix identity (uniqueness + immutability): loss of an entry by collision/rename. BOUND.
+2. W3.2 — no credentials/sensitive data. SAFETY.
+3. W3.3 — no other agent's private state (part). SAFETY/privacy. (Raw transcripts → SHOULD.)
+4. W4.2 — every change adds a `changed:` line; never edit earlier lines. Integrity/provenance bound, git-checkable.
+5. W6.2 — own branch/worktree; no silent overwrite. LOSS bound.
+6. W6.3 — a merge keeps both sides; never drop a claim. LOSS bound.
+7. K1.1 — change the entry first, then the code (the ordering bound; also W5.1). TRUTH bound.
+8. K4.1 — never deleted. LOSS bound.
+9. K4.3 — claim never rewritten. LOSS/integrity bound.
+10. K6.2 — INDEX regenerated in the same commit; the tool checks. TRUTH + real gate.
+11. Rd1.2 — readable from a clone alone. LOSS/lock-in bound.
+12. Rd5.1 — check memory against the code before acting. TRUST bound.
+13. Rd5.2 — memory never overrides standing instructions. PRECEDENCE/safety bound.
+14. Rd5.3 — reader reports a mismatch, EJ decides; does not settle it. CONTROL/safety bound.
+
+Maybe also:
+15. Rd2.1 — session start reads the four. This is the delivery bound; without it memory doesn't reach the agent. But is it safety/irreversibility? It's the system's purpose. Hmm. I could make it MUST as the "the memory must reach the agent" bound. But its mechanism is method (hooks/imports). The requirement itself is "read them at start." I'll consider SHOULD, with Rd6.1 as the acceptance test. Actually, if it's not MUST, then the whole session-start guarantee is soft. But "SHOULD" with a strong reason still means default; overridable with a written reason. That seems right: an agent might legitimately skip `work/` listing in a tiny task. So SHOULD.
+16. Rd6.1 — the acceptance test. It's the goal; mark MUST? It's not a rule the agent follows. Hmm. I'll mark it **MUST (as the acceptance gate)** or guidance. The brief lists it under requirements, so assign a level. I think the honest call: Rd6.1 is the system's acceptance criterion — it should be MUST, because if a fresh session can't carry on, the design has failed and the handoff doesn't go ahead. Actually, "a gate that stops work: when it fails, the ... handoff does not go ahead." A handoff that fails Rd6.1 is precisely a handoff that should not go ahead. MUST. But there's no mechanism to measure except a real handoff (n=0). Still, the definition fits. I'll mark MUST and note it is the acceptance test.
+
+17. K5.2 — journal read before handoff/completion. This is a loss bound at the terminal moment (raw notes → entries). And it's checkable via state.md log line. Hmm. Include as MUST? It overlaps with Rd6/K1. I'd say SHOULD, because a missed read can often be recovered by reading later (unless the task ended). But at task completion, no next read. Hmm. The text itself says "A session cut off before it can read loses nothing: the next read covers it" — so the mechanism tolerates missed reads except at the terminal point. The terminal point is exactly when it matters. I'll mark **SHOULD** with a note that at task end it becomes a MUST-like gate. Or split. Eh. Let me keep it SHOULD to keep the MUST set tight, and mention the terminal case.
+
+Hmm, W4.2: is provenance a safety bound? I'll include it. Hmm, but git already records who/when. The `changed:` line is redundant with git except for the model ID and for surviving as part of the claim body after squash. Is its absence a *bound* failure? It's an audit-integrity bound. I'll include MUST. Hmm, or SHOULD. Let me think about "silent overwrite" — K4.3 makes claims immutable; the `changed:` list is the only append point. Without it, a change to an entry (status, links) is invisible except in git. Actually git shows it. So W4.2 is largely redundant with git. The one thing git gives too (author, time). So W4.2 is a *readable-in-file* convenience → SHOULD. Hmm! That's a good argument for SHOULD. But the design explicitly says "Earlier lines are never edited" — that's an integrity rule (you can't rewrite history). If someone edits an earlier changed: line, that's tampering. Still, git shows it. I'll go **SHOULD** for W4.2, and note that its "never edit earlier lines" part is the integrity bit. Hmm, but then provenance isn't MUST. Is that ok? Git is the provenance. Yes, I think SHOULD is defensible and more RFC-faithful.
+
+Let me reconsider W6.2/W6.3: a single writer on one branch does not need a worktree. So W6.2 is a default → SHOULD? But the design is explicitly multi-agent (agents on branches). Silent overwrite = irreversible loss. In a multi-agent repo, this is a bound. Hmm, the brief says "Each agent works on its own branch or worktree." In the intended use, always multi-agent. I'll keep MUST. Actually, one could argue git itself prevents silent overwrite for committed work (a push conflict). The danger is local uncommitted overwrite. Eh. Keep MUST as a loss bound.
+
+K1.1/W5.1: "decision first then code" — is it a safety bound or a method? It's the design's central method of truth-keeping. If violated, the entry becomes documentation of code (W3.1), and the *reason* is often lost. Is the reason irretrievably lost? Often yes (you can't reconstruct why later). That's T1. I'll keep K1.1 MUST. W5.1: timing list — I'll make W5.1 **MUST** for the handoff-state item and the human-correction item, **SHOULD** for the rest? Hmm. Actually let me make W5.1 **SHOULD** and K1.1 **MUST**, since K1.1 is the ordering rule and W5.1 is the timing default. But W5.1's "state of unfinished work before a handoff/interruption/context reduction" is a loss bound. Since I can split, I'll split W5.1: MUST for the handoff-state item (loss of the thread across a context cut is irrecoverable); SHOULD for decision/fact-before-code (K1.1 covers it) and for human corrections. Hmm, a human correction not written is lost forever too. Let me include it in MUST. So W5.1: MUST for "human correction" and "state of unfinished work before handoff/interruption/context reduction"; SHOULD for the rest. That's three-way. Maybe too fussy. Alternatively mark W5.1 **MUST** whole. I think a clean answer is better than excessive splitting.
+
+Let me reconsider the whole approach and aim for clarity + defensibility. I'll present:
+- A clear rubric (3-4 tests).
+- A table with one level each, splitting only where genuinely two levels (W1.2, W2.2, W3.3, W4.1, K6.3, Rd2.3).
+- About 12-14 MUSTs, ~20 SHOULD, ~8 guidance.
+
+Let me finalize each id now, writing a crisp reason and the Sun Tzu item it derives from where useful. Actually the table's Reason column is "one line" — I don't need to cite items there. The "How I decided" section carries the rule citations.
+
+Let me decide the final levels:
+
+**W1**
+- W1.1: **MUST**. Reason: the file name is the identity; a duplicate id or a changed prefix/id silently overwrites or orphans an entry (irreversible). [my #2 make yourself unbeatable; #3 whole over broken]
+- W1.2: **MUST for the two `---` delimiters and the `id`/`kind`/`status` keys; SHOULD for the other keys and the indented multi-value style.** Reason: an unparseable header hides the entry from the index tool and readers; the remaining schema is convention.
+- W1.3: **SHOULD**. Reason: the body shape (`Why:`/`How to apply:`, one claim) is a default; the one-claim rule is protected by K4.3. Hmm — one claim per entry is protected by K4.3 but the W1.3 wording includes it, and "a reviewer finds two claims" is judged. Should W1.3 be MUST for "one claim per entry"? That is what makes K4.3's immutability work. Actually yes: if an entry can hold two claims, then changing one requires rewriting the entry → violates K4.3. So "one claim per entry" is load-bearing. Let me split W1.3: **MUST for one claim per entry** (it is what keeps K4.3's never-rewrite possible); **SHOULD for the body's section spelling**. Hmm, that's a good insight and shows care.
+- Actually wait, is that right? K4.3 says the claim is never rewritten; a changed claim is a new entry. If an entry had two claims, one could change independently, and the entry would need rewriting → so one claim per entry is required for K4.3. Yes. Split W1.3 accordingly.
+
+**W2**
+- W2.1: **guidance**. Definitions of decision/fact; the "written before code" is K1.1's. Nothing fails here.
+- W2.2: **MUST for `kind` ∈ the five; SHOULD for which kind** (a guess labeled hypothesis). Hmm. Is `kind` ∈ five a safety bound? It's schema integrity; W1.1's prefix check depends on it. I'll make it **MUST** (enum), **SHOULD** (the labeling judgment). Or simpler: **SHOULD**. Let me think: if kind is invalid, the prefix can't match, and the entry is malformed. But the fail is caught by the same lint as W1.1. Since I already put prefix-must-match-kind under W1.1's MUST, W2.2's enum is redundant. I'll mark W2.2 **SHOULD** (the definitions and the guess→hypothesis label) and note the enum is enforced through W1.1's prefix rule. That keeps it clean. Hmm, but "a guess recorded under any kind but hypothesis" is a correctness-of-confidence issue → SHOULD. Good: W2.2 = SHOULD.
+
+**W3**
+- W3.1: **SHOULD**. Don't restate code/tests/commit log; link. Redundancy default.
+- W3.2: **MUST**. Security bound; the secret scanner is the gate.
+- W3.3: **MUST for another agent's private state; SHOULD for raw transcripts.** Privacy bound vs volume default.
+- W3.4: **SHOULD**. Truthful "verified"; high-value default, judged.
+- W3.5: **SHOULD**. Scope boundary user/agent/project memory; recoverable by retire+link.
+- W3.6: **SHOULD**. Link, don't copy; procedures live as scripts/docs. Method.
+
+**W4**
+- W4.1: **guidance for the no-owner/no-approval choice; MUST for `status` ∈ three values.** Reason: a status outside the three breaks the index's active/superseded logic; "no owner" is a design fact, not a gate.
+- W4.2: **SHOULD**. The `changed:` line is the in-file audit trail; git already carries who/when, so it is a default, and its "never edit earlier lines" is integrity worth keeping. Hmm. I'll make it SHOULD. Actually hold on — let me reconsider. The instruction "Earlier lines are never edited" is an anti-tampering rule. But git. SHOULD.
+- W4.3: **guidance**. Non-entries rely on git — explanation.
+
+**W5**
+- W5.1: **MUST for a human correction and for unfinished-work state before a handoff/interruption/context reduction; SHOULD for decision/fact before the code** (that ordering is K1.1). Hmm, three items. Let me phrase: MUST for the two loss cases (human correction, handoff state); SHOULD for decision/fact-before-code (K1.1 makes it a gate). Actually, why not put decision/fact-before-code as MUST here and simplify K1.1? Both are the same. Let me just say W5.1 **MUST** (all three are moments where the record is otherwise gone) and K1.1 **MUST** (the ordering). Redundant but consistent. Hmm.
+  Alternatively, to avoid double MUST and to be precise: W5.1 = **MUST** (it is the timing bound: a decision/fact not written at the moment is gone; K1.1 gives the order). Fine.
+- W5.2: **SHOULD**. End-of-task lessons etc.; deferred is fine.
+- W5.3: **SHOULD**. `done:` record; judged; the test-results clause is the trust bit.
+
+**W6**
+- W6.1: **SHOULD**. One file per entry / journal per session; collision default.
+- W6.2: **MUST**. Branch/worktree; no silent overwrite (loss bound).
+- W6.3: **MUST**. Keep both sides in a merge; never drop a claim (loss bound). The INDEX-regeneration part is method → note.
+
+**K1**
+- K1.1: **MUST**. Entry first, then code (truth/order bound).
+
+**K4**
+- K4.1: **MUST**. Never deleted (loss bound).
+- K4.2: **guidance**. Age never expires; explains the absence of TTL.
+- K4.3: **MUST**. Claim never rewritten (loss/integrity bound).
+
+**K5**
+- K5.1: **SHOULD**. Journal layout/default.
+- K5.2: **SHOULD** (at task end it becomes the gate; journal read). Hmm, I keep going back and forth. Let me make it **MUST**? The "nothing lost between sessions" is the K5 heading's value (v: nothing lost between sessions). The fails-if: a task's state.md shows complete/handed off with no journal-read log line. That is checkable and it is a loss point. I'll make it **SHOULD** and note the terminal case is MUST-like — no, that's wishy-washy. Decide: **MUST**. Reason: at handoff/completion there is no later read, so raw notes are lost; and the state.md log line makes it checkable. It fits T1 (loss) + T3 (checkable). OK MUST. That raises the count. Fine.
+
+**K6**
+- K6.1: **SHOULD**. Generated index format; the MUST is K6.2.
+- K6.2: **MUST**. Regenerate + commit; real tool gate.
+- K6.3: **MUST for no conflict markers in entries/INDEX (silent corruption); SHOULD for regenerate-don't-hand-merge.** Hmm, the no-markers clause is in the group fails-if, and K6.3 says "no conflict markers left in them." I'll split.
+
+**Rd1**
+- Rd1.1: **SHOULD**. Layout/paths; tooling default.
+- Rd1.2: **MUST**. Clone-readable; lock-in bound. (This is arguably the single most Sun Tzu requirement: don't depend on the other side's position.)
+
+**Rd2**
+- Rd2.1: **SHOULD**. Session-start reads; strong default, but the loading mechanism and the four-file set should be overridable for a small task. Hmm, or MUST. Let me think once more. The system's value is delivery at session start. If it's SHOULD, an agent may skip with a written reason — which is exactly the right flexibility. The *guarantee* that memory reaches the agent is Rd6's test. I'll mark SHOULD and explain. Hmm, but the brief's "judged from the start of the session" for starting work before the four arrive suggests a gate. I could mark **MUST**. Ugh.
+  Decision: **MUST**. Rationale: the four reads are the minimum that makes a fresh session safe; starting work without them is how a session violates decisions. And it's named as a fail. The loading *mechanism* is method (SHOULD). OK.
+- Rd2.2: **SHOULD**.
+- Rd2.3: **MUST for credentials and another agent's transcripts; SHOULD for the wide loads (whole tree, graph dumps, bulk issue text, superseded entries).** Reason: secrets/privacy are safety; the rest is context budget.
+
+**Rd3**
+- Rd3.1: **MUST**? Or SHOULD? Size bound on the start file; the K6 check fails when it doesn't fit. If it doesn't fit, the index is truncated/dropped → silent non-delivery. That's a delivery safety bound, measured. And checkable if implemented. I'll mark **MUST**, with a note (What I need to know) whether the size limit is implemented in memory_index.py. Hmm, but "no fixed numbers, comparisons decided by measurement" — the requirement is measured per project; fine.
+  Alternative: SHOULD because it's a project-specific capacity default. Hmm. The fail is silent and the fix is required for the system to work. MUST.
+
+**Rd4**
+- Rd4.1: **MUST**. Read covering decisions before editing. Trust bound.
+- Rd4.2: **SHOULD**. Search method.
+- Rd4.3: **guidance**. Which artifact answers "why".
+- Rd4.4: **SHOULD**. Superseded only by link.
+- Rd4.5: **SHOULD**. Name whose memory; label provenance.
+
+**Rd5**
+- Rd5.1: **MUST**. Verify before acting.
+- Rd5.2: **MUST**. Memory never overrides standing instructions.
+- Rd5.3: **MUST**. Report, don't settle; EJ decides.
+- Rd5.4: **guidance**. Two non-mismatch cases.
+- Rd5.5: **guidance**. Scope/limitation.
+
+**Rd6**
+- Rd6.1: **MUST** (acceptance gate) — or guidance? It is "how we know it works". I'll mark **MUST** as the acceptance criterion that a handoff must meet. Hmm, but it's not a rule of the memory design so much as its test. The brief includes it as a requirement with a fails-if. MUST.
+
+Now tally MUSTs (full or partial): W1.1, W1.2, W1.3(one-claim), W2? no, W3.2, W3.3, W4.1(status), W5.1, W6.2, W6.3, K1.1, K4.1, K4.3, K5.2, K6.2, K6.3, Rd1.2, Rd2.1, Rd2.3, Rd3.1, Rd4.1, Rd5.1, Rd5.2, Rd5.3, Rd6.1 = 24. That's over half. Too many for "sparingly."
+
+I need to cut. Which of these are NOT truly safety/irreversibility bounds but method/trust defaults?
+
+Reconsider with the "safety bound" lens, and with the fact that the framework has no enforcement except K6:
+- W1.3 one-claim: this is really K4.3's mechanism. Since K4.3 is MUST, W1.3 can be SHOULD (the one-claim shape is a default). Drop to SHOULD. Hmm, but if W1.3 is SHOULD, K4.3 could be violated by a two-claim entry. But K4.3's own gate covers claims. I'll make W1.3 SHOULD.
+- W1.2 header parse: is this safety? Unparseable entry = invisible = effectively lost. But it's caught by lint (which doesn't exist yet) or a reader. It's schema. I could argue it's a bound (visibility). Keep MUST? Or SHOULD. Since no lint exists yet, enforceability is weak. Hmm. I'll keep MUST for the delimiters + id/kind/status because "invisible entry" is silent loss, which is the design's core fear. Hmm, actually — maybe the stronger move is to say: W1.2 = MUST only for `id`, `kind`, `status` presence (the three the tooling needs to list/regenerate the index); SHOULD for the rest. That's what I have.
+- W4.1 status enum: it's schema, checked by a reviewer/git. Is it safety? A bad status could keep a superseded entry listed active (index lies) → trust. It's a correctness bound, but low severity. Drop to SHOULD? The index tool lists active entries; an unknown status might be treated as non-active → entry silently dropped from index. That's silent exclusion. Hmm. But it'd be caught by the tool. I'll keep MUST for `status` ∈ three. Or SHOULD. Let me drop it to SHOULD to trim, and note the index impact. Hmm, but then W4.1 has no MUST and its "no owner" is guidance. That's fine.
+  Actually, I realize the question's spirit is likely: most of these are SHOULD (defaults) because RFC 2119 warns against MUSTs, and only a handful are MUST. Let me be disciplined: MUST = only irreversible loss / security / silent corruption where the failure cannot be detected and repaired in the same breath.
+  
+  Let me re-rate every candidate:
+  - W1.1 id uniqueness/immutability: failure = collision silently loses an entry (undetectable without extra work) → MUST.
+  - W1.2 id/kind/status parse: failure = entry missing from index → detectable by tool; recoverable → SHOULD? But if undetected, silent. Hmm. The tool builds from entries; a malformed header might just be skipped. I'll keep W1.2 MUST for the delimiters + the three keys. Actually, let me downgrade W1.2 to **SHOULD**, reason: format is method; the one bound is that a malformed header can hide an entry, so the *lint* should be the MUST carrier. Hmm, but the brief wants a level per requirement. If I say SHOULD, I'm saying it's overridable — but you can't override "the header must parse." Hmm. A schema is arguably a safety bound for a machine-read memory. I'll keep W1.2 MUST (delimiters + id/kind/status), SHOULD (rest). It's genuinely load-bearing for K6.
+  - W2.2: SHOULD. OK.
+  - W3.2: MUST. OK.
+  - W3.3: MUST for private state; SHOULD transcripts. OK.
+  - W4.1: SHOULD for status enum + guidance for no-owner. Hmm, then it's guidance/SHOULD split. Let me say **SHOULD** (status enum and no-owner both defaults; the fails-if is judged). Actually "no owners, no approval" is a design choice EJ made — marking it guidance is right. And status enum: SHOULD. So W4.1 = guidance (no-owner) + SHOULD (status). Fine.
+  - W5.1: MUST for handoff-state and human correction (loss), SHOULD for decision/fact-before-code (K1.1 is the MUST). Hmm, or just SHOULD whole. I'll keep the split but that's one MUST.
+  - W6.2: MUST (silent overwrite loss). Keep.
+  - W6.3: MUST (drop a claim loss). Keep.
+  - K1.1: MUST. Keep.
+  - K4.1: MUST. Keep.
+  - K4.3: MUST. Keep.
+  - K5.2: SHOULD? At task end, missed read = lost notes. I'll keep MUST? Hmm. Cut to SHOULD to trim, note terminal. No — "nothing lost between sessions" is a core v. I'll keep MUST. Hmm.
+  - K6.2: MUST. Keep.
+  - K6.3: MUST (conflict markers = corruption). Keep.
+  - Rd1.2: MUST. Keep.
+  - Rd2.1: SHOULD (I'll downgrade; the mechanism is method and a small task may skip). 
+  - Rd2.3: MUST for credentials/transcripts; SHOULD rest. Keep.
+  - Rd3.1: SHOULD (capacity default, measured; the tool check is K6's). Downgrade to trim.
+  - Rd4.1: SHOULD? Reading covering decisions before editing is trust-critical, but "covers" is often incomplete and it's judged. Hmm. It's the core read-on-demand rule. I'll keep MUST? Or SHOULD. The harm: you can break a governed behaviour unknowingly → defect, often recoverable in git. I'll make it **SHOULD**. Hmm, but this is the memory system's whole point. Ugh.
+  - Rd5.1: MUST. Keep.
+  - Rd5.2: MUST. Keep.
+  - Rd5.3: MUST. Keep.
+  - Rd6.1: MUST. Keep.
+
+Revised MUST set: W1.1, W1.2, W3.2, W3.3, W5.1(partial), W6.2, W6.3, K1.1, K4.1, K4.3, K5.2, K6.2, K6.3, Rd1.2, Rd2.3(partial), Rd5.1, Rd5.2, Rd5.3, Rd6.1 = 19. Still high but more defensible. Hmm.
+
+Maybe I'm overthinking the count. RFC 2119 "sparingly" is relative to the whole spec, but a memory system's core invariants legitimately deserve MUST. Let me not force a number; let the rubric decide. I'll state the rubric clearly and let the count fall where it falls, then note that ~1/3 of ids are MUST/full or partial.
+
+Actually, let me reconsider whether to be even more sparing by distinguishing "MUST" body from "MUST for a sub-part." The table's Level column can hold "MUST" or "SHOULD" or "guidance" or a split. The instruction: "Give each numbered requirement one level, with a one-line reason... If a requirement cannot get a level as written (two levels in one id), say so in its row and say which part gets which."
+
+So splits are the exception, for genuinely two-level ids. I should use them sparingly too. Let me identify which ids genuinely bundle two levels:
+- W1.2: format (delimiters/keys) vs what is convention. Genuinely mixed? The whole thing is a schema. Maybe it's simply MUST for the delimiters + required keys, SHOULD for the indentation. That's a legit split.
+- W2.2: enum vs labeling. Eh, I'll make it SHOULD whole.
+- W3.3: private state vs transcripts → genuine split.
+- W4.1: no-owner (design choice) vs status enum → genuine split.
+- K6.3: markers vs hand-merge → genuine split.
+- Rd2.3: secrets/transcripts vs bulk → genuine split.
+- W5.1: three timing moments → could be one level (MUST) or split. I'll make it MUST whole for simplicity, or split. Hmm.
+
+OK. Let me just commit to a final table. I'll aim for roughly 12-15 MUST (counting splits as MUST where the primary is MUST).
+
+Let me lock in the final answer now, writing concise reasons. I'll write the table with groups.
+
+Final levels:
+
+| Id | Level | Reason |
+W1.1 MUST — id and prefix are the entry's identity; a duplicate or renamed id silently orphans or overwrites an entry.
+W1.2 MUST for the two `---` lines and `id`/`kind`/`status`; SHOULD for the other keys and the indented multi-value style — an unparseable header hides the entry from the index; the rest is schema taste.
+W1.3 SHOULD — body sections and one claim are a default; the immutability they serve is already gated by K4.3.
+
+Hmm, I said earlier one-claim is load-bearing for K4.3. But I'll note that in the reason. Actually, let me make W1.3 MUST for "one claim per entry," SHOULD for section spelling. That's more honest and shows the dependency. Let me do that. But it adds a MUST. Fine. Hmm — actually, "one claim per entry" being MUST is hard to enforce (judged) and is exactly K4.3's precondition. I'll keep it as MUST-for-one-claim. Ugh, or SHOULD. Let me decide: **W1.3 = SHOULD**, reason: "section spelling and one-claim are a default; a two-claim entry is caught by K4.3's rule that a claim is never rewritten." Hmm, that's circular. Let me just say SHOULD and not overclaim.
+
+I'll go with W1.3 SHOULD.
+
+W2.1 guidance — definitions; the ordering it mentions is already an order rule in K1.1.
+W2.2 SHOULD — a default that a guess is labelled a hypothesis; the five-kind enum is enforced through W1.1's prefix match.
+
+W3.1 SHOULD — memory should add reason, not restate code; redundancy, not loss.
+W3.2 MUST — a security bound: a leaked credential is unrecoverable; the secret scanner is the gate.
+W3.3 MUST for another agent's private state (privacy bound); SHOULD for raw transcripts (volume/lossy).
+W3.4 SHOULD — truthful "verified"; high-value default, judged by a reader.
+W3.5 SHOULD — scope boundary; a mistake can be retired and linked.
+W3.6 SHOULD — link, don't copy; where procedures live is method.
+
+W4.1 guidance for no owners/no approval (a design choice, not a gate); SHOULD for `status` ∈ three (a schema default, caught by review).
+W4.2 SHOULD — the `changed:` line is the in-file audit trail; git already carries who and when.
+W4.3 guidance — how non-entry files are versioned; explanation.
+
+W5.1 MUST — a decision, a human correction, or the state of unfinished work not written at its moment is gone; the next session cannot reconstruct it.
+W5.2 SHOULD — end-of-task lessons/observations/hypotheses can wait.
+W5.3 SHOULD — `done:` is a completion default; judged, and the test-results clause carries the trust.
+
+W6.1 SHOULD — one file per entry/journal is a collision default.
+W6.2 MUST — a silent overwrite loses an edit; branch/worktree turns it into a conflict.
+W6.3 MUST — keep both sides of a merge; dropping one side deletes a claim. (Regenerating INDEX is method.)
+
+K1.1 MUST — the entry first, then the code; done the other way the reason is lost and the entry only documents the code.
+K4.1 MUST — never delete; deletion is the one loss nothing else can repair.
+K4.2 guidance — age never expires an entry; it explains why there is no TTL.
+K4.3 MUST — a claim is never rewritten; a new claim supersedes; this is what keeps history auditable.
+
+K5.1 SHOULD — journal layout, one file per session; a default.
+K5.2 MUST — at handoff or task end there is no later read, so unharvested notes are lost; the state.md log line makes it checkable.
+
+K6.1 SHOULD — the index is generated; its line format is method.
+K6.2 MUST — the only gate with a tool behind it; a stale index silently misleads the next session.
+K6.3 MUST for no committed conflict markers (silent corruption); SHOULD for regenerate-don't-hand-merge (method).
+
+Rd1.1 SHOULD — the folder layout is a tooling default.
+Rd1.2 MUST — a fresh clone must read everything; an entry only in a cache or one agent's store can be lost.
+
+Rd2.1 SHOULD — read the four at session start; a strong default that a small task may override with a reason. Hmm — or MUST. Let me go SHOULD.
+  Actually wait: "a session starts work on a task before the four in Rd2.1 have reached it" fails. This is the delivery guarantee. If SHOULD, then it's overridable — which fits "agents skip optional reads." I'll say SHOULD.
+Rd2.2 SHOULD — the later read times are defaults.
+Rd2.3 MUST for credentials and another agent's transcripts (security/privacy); SHOULD for the wide loads (a context-budget default).
+
+Rd3.1 SHOULD — a capacity bound measured per project; a default until the K6 check enforces it. Hmm, "a safety bound earns MUST." A size cap that prevents silent truncation is a safety bound. Let me make it MUST, conditional on the K6 size check existing. I'll say **MUST (if the K6 check implements the size test; today unverified)**. Hmm, the brief says the check "also fails when it does not fit" — as a requirement. I'll mark MUST and ask in What I need to know whether tools/memory_index.py implements it. That's a good, honest, Sun-Tzu-like condition ("if… then…").
+  Let me do: Rd3.1 = MUST — if the index exceeds the strictest limit, agents silently truncate it, so memory stops arriving; ask whether the tool checks it.
+  
+  Hmm, conditional. The brief says answer conditionally when facts are missing. Good.
+
+Rd4.1 MUST — editing a covered file without reading its decisions is how a rule is broken unknowingly.
+Rd4.2 SHOULD — how to search is method.
+Rd4.3 guidance — which artifact answers a "why".
+Rd4.4 SHOULD — superseded entries by link only.
+Rd4.5 SHOULD — name whose memory you use.
+
+Rd5.1 MUST — memory is checked against the code before it is acted on; this is the anti-drift gate.
+Rd5.2 MUST — memory never overrides standing instructions; precedence is a safety bound.
+Rd5.3 MUST — a reader reports a mismatch, never settles it; EJ decides.
+Rd5.4 guidance — two clarifications of what is not a mismatch.
+Rd5.5 guidance — a statement of what Rd5.3 cannot catch.
+
+Rd6.1 MUST — the acceptance gate: a fresh clone must carry on without re-asking. Hmm, or guidance? It's the system's test. I'll mark MUST and say it is the one requirement whose failure means the design failed, not a rule an agent follows.
+
+Hmm, let me reconsider Rd6.1: The brief's definition of MUST is "a gate that stops work." Rd6.1's failure (asking a question already answered) doesn't stop a commit; it's the design's acceptance test. Maybe it should be **guidance** (it's a statement of the goal, "how we know it works"). But it has a fails-if. I'll mark it **MUST as the acceptance gate on a handoff** — a handoff that repeats a recorded decision has failed and should not stand. That's defensible.
+
+Now count MUST (primary): W1.1, W1.2, W3.2, W3.3, W5.1, W6.2, W6.3, K1.1, K4.1, K4.3, K5.2, K6.2, K6.3, Rd1.2, Rd2.3, Rd3.1, Rd4.1, Rd5.1, Rd5.2, Rd5.3, Rd6.1 = 21. Still ~46%. Hmm. And SHOULD ~15, guidance ~10.
+
+Is 21/46 "sparing"? Not really. Let me trim more aggressively, because the RFC quote is prominent and the whole point of the exercise is to not over-MUST.
+
+Which MUSTs are weakest? Let me apply a sharper test: **Would a failure here be (a) undetectable at the time, and (b) unrecoverable?** If either no, it's SHOULD.
+
+- W1.1: duplicate id — git/readers would likely notice; but a collision can silently overwrite if writing the same filename. Unrecoverable yes; undetectable maybe. Keep MUST (identity corruption).
+- W1.2: unparseable header — detectable by the tool/reader in the same pass; recoverable. → **SHOULD**? Hmm. But the tool doesn't exist for entries yet. Given n=0 and no lint, a malformed header is not gated. So by T3, SHOULD. Let me downgrade W1.2 to SHOULD. Hmm, but then what's MUST about the shape? Nothing. That's fine and RFC-faithful: format is method. But the three keys id/kind/status are needed by the index. If missing, the entry is invisible to K6... K6 lists active entries; without kind/id, the tool can't list it. That is silent loss from the index. But again, no tool yet. I'll mark W1.2 **SHOULD**, reason: it is a schema (method); the bound it serves is the index's completeness, gated by K6.2. That trims one. Hmm, but I earlier argued invisible = silent loss. The difference from W1.1 is uniqueness vs parseability. Parseability is a formatting matter → SHOULD. OK, W1.2 SHOULD.
+- W3.2: MUST (security).
+- W3.3: private state is a privacy bound → MUST; keep.
+- W5.1: handoff state loss → MUST; keep? Hmm. The handoff state isn't destroyed; the next session just starts cold and re-derives. It's costly, not unrecoverable (the code and journal are still there; the journal read covers it per K5.2). Actually W5.1's "state of unfinished work before a handoff" — if not written, the next session loses the in-flight reasoning. The journal (K5) may hold it. So recoverable-ish. → **SHOULD**? A human correction, though, if not written, is often lost (you may not remember the correction). Hmm. I'll downgrade W5.1 to **SHOULD**, noting the human-correction part is the closest to MUST. Then K1.1 carries the ordering MUST. Hmm, but K1.1 is "entry first then code" — that's also arguably method, not safety. Ugh.
+
+  Let me reconsider K1.1. Is "change the entry first, then the code" a safety bound or method? It's the project's chosen method for keeping memory true. The harm of not doing it: the entry lags; you may forget the reason. Recoverable (you can still write the entry). It's a *method* in RFC terms → SHOULD. Hmm! That would remove a central MUST. But is it? The design says the decision must precede the code so the code follows a written rule. If violated, the memory is written after the fact, possibly rationalized. That's a truth-integrity concern, but it's still a method. And RFC 2119 §6 explicitly says MUST "must not be used to try to impose a particular method." Writing the entry before the code is a method/order. So K1.1 should be SHOULD. Hmm, but then what stops the memory from becoming a changelog? Nothing hard; it's a discipline. SHOULD.
+  
+  Hmm, I'm torn. Let me think about what EJ would consider a "safety bound." In the code world: MUST = "the build fails", "the secret is never committed", "the data is never lost." Method = "write tests first", "commit messages in this format." K1.1 (entry before code) is closer to "tests before code" — a method. So SHOULD. W5.1 (write immediately) likewise SHOULD for the decision part; MUST for secrets? no. Hmm. But then the "nothing lost" family (K4, W1.1, W6) is the MUST core.
+
+  This suggests a much tighter MUST set: the **loss/security/truth-of-artifact** bounds:
+  - W1.1 identity (loss)
+  - W3.2 secrets (security)
+  - W3.3 private state (privacy)
+  - W6.2 no silent overwrite (loss)
+  - W6.3 keep both sides of a merge (loss)
+  - K4.1 never delete (loss)
+  - K4.3 never rewrite a claim (loss/integrity)
+  - K6.2 index in step (truth, and the only real tool gate)
+  - K6.3 no conflict markers (corruption)
+  - Rd1.2 clone-readable (loss/lock-in)
+  - Rd2.3 credentials/transcripts (security/privacy) — overlaps W3.
+  - Rd5.2 memory doesn't override instructions (precedence)
+  - Rd5.3 report, don't settle (control)
+  
+  That's ~13. Plus maybe Rd5.1 (verify before acting) and Rd4.1 (read before editing) — these are "check" disciplines (my #1/#17: probe and read the signs; never act on unverified intelligence). Are they safety bounds? Rd5.1 is the anti-drift gate: acting on stale memory can cause a wrong change. Recoverable via git, but it can also cause harm (e.g., a destructive migration). Hmm. I'd keep Rd5.1 MUST: it's a check-before-act bound, the closest thing to Sun Tzu's #17/#1. And Rd4.1 MUST: read the governing rule before you change the thing. These are "verify" bounds, not method.
+  
+  And K5.2 (journal read before handoff) — loss at terminal point. Keep MUST? It's a "harvest before you leave" bound. Hmm. I'll keep it SHOULD? Let me decide MUST, because at task end the notes are gone. Actually the text says the next read covers a cut-off session; only the terminal read is unrecoverable. A task can be "complete" and later re-opened, but the journal file persists — so the notes aren't lost, they're just not turned into entries yet. A future session could still read the journal. So it's recoverable → SHOULD. Good, downgrade K5.2 to SHOULD. That trims.
+  
+  W4.2: SHOULD (git covers provenance). OK.
+  Rd3.1: size bound — silent truncation. Keep MUST? It's a real silent-failure bound, but it's a capacity measured per project and the tool check may not exist. I'll mark MUST conditional. Hmm, or SHOULD. Let me mark **MUST** because silent non-delivery is exactly the failure mode MUST exists to prevent, with the condition noted. Keep.
+  Rd6.1: acceptance test. Maybe guidance. I'll mark **MUST** as the acceptance gate. Hmm, or drop to guidance to trim. It is "how we know it works" (v: verification) — the heading labels it a verification item. Verification criteria are MUST (the acceptance gate). Keep MUST.
+
+Final MUST set (13-16):
+1. W1.1
+2. W3.2
+3. W3.3 (private-state part)
+4. W6.2
+5. W6.3
+6. K4.1
+7. K4.3
+8. K6.2
+9. K6.3 (markers part)
+10. Rd1.2
+11. Rd2.3 (security/privacy part)
+12. Rd3.1 (conditional)
+13. Rd4.1
+14. Rd5.1
+15. Rd5.2
+16. Rd5.3
+17. Rd6.1
+
+That's 17, with several as partial. Hmm, ~37%. Let me trim Rd4.1 and Rd5.1? No — those are the "check before you act" core, and Sun Tzu #1/#17. Keep. Trim Rd3.1 → SHOULD? Its failure is silent and the requirement says the K6 check fails when it doesn't fit, so it IS a gate. Keep MUST. Trim Rd6.1 → it's the acceptance test, keep MUST.
+
+Trim W3.3 partial? Keep. Trim Rd2.3 partial? It overlaps W3.2/W3.3; maybe Rd2.3 should be SHOULD as a loading rule (the safety is already in W3). Hmm — yes! Rd2.3's credentials/transcripts are already forbidden by W3.2/W3.3; Rd2.3 is about what a session loads. So Rd2.3 = SHOULD (context-budget default), with a note that the security items are already MUST under W3. That trims a MUST and is more coherent (no double-counting). 
+
+Similarly, W3.3's private-state part and W3.2 cover security; Rd2.3 is the loading default → SHOULD.
+
+Now MUST set: W1.1, W3.2, W3.3(part), W6.2, W6.3, K4.1, K4.3, K6.2, K6.3(part), Rd1.2, Rd3.1, Rd4.1, Rd5.1, Rd5.2, Rd5.3, Rd6.1 = 16 (with 3 partial). That's ~35%. Good enough, and each is a genuine bound.
+
+Hmm, is W6.2 truly MUST? "Each agent works on its own branch or worktree." For a single agent, no. It's contingent on multiple writers. But the design assumes multiple agents. Silent overwrite is irreversible. MUST. Keep.
+
+Is W1.1 truly MUST vs W1.2 SHOULD? Yes: identity vs format.
+
+Is K6.3's markers part MUST? Committed conflict markers = the file is corrupt and a reader may act on garbled content. And it's judged (no tool). Silent corruption → MUST. Keep.
+
+Is W3.3's private-state part MUST? Copying another agent's private state could leak its scratch/credentials and mislead project memory. It's a privacy bound → MUST. Keep.
+
+Let me also reconsider Rd1.1 (layout). Is it MUST? If `entries/` moves, tools break → detectable, not silent. SHOULD.
+
+And W4.1: guidance+S... let me make it a split: guidance for no-owner; SHOULD for status enum. Or maybe **MUST** for status enum? An unknown status could make the index tool drop the entry (treat as non-active) → silent loss from the index. Hmm. But it's review-checked. I'll keep SHOULD.
+
+Now, the "How I decided" section must be numbered steps, each citing "my #n" or "my reading". Let me craft ~7-9 steps using the list items:
+
+1. My #1 (reckon before battle; five matters, and foreknowledge comes from what is real, not from assumption — also #11/identity's #1): before assigning levels, I listed what each requirement actually protects — an entry's identity, a secret, a claim, the index, a session's reads — and asked, for each, what happens when it fails. My reading: a level is a statement about harm, not about importance.
+2. My #2 (make yourself unbeatable first; being unbeatable is in your own hands): the requirements that keep a failure from being possible in the first place (never delete, never rewrite, never overwrite, never leak) are the unbeatable position. These earn MUST. my #2.
+3. My #3 (whole over broken): a requirement that keeps the record whole (identity, both sides of a merge, no conflict markers) earns MUST; one that only costs tidiness earns SHOULD. my #3.
+4. My #6 (mix harm into benefit; know the harm of using troops to know its benefit): for each MUST candidate I wrote the failure first: is the loss undetectable at the time and unrecoverable after? If yes → MUST. If detectable or repairable → SHOULD. my #6.
+5. My #8 (value victory, not duration; 費留) and #5 (move only on advantage): a MUST that no mechanism can enforce is a cost with no victory; today only `tools/memory_index.py` exists (K6), so K6.2 is the one requirement with a real gate behind it. my #8, my #5.
+6. My #11 (foreknowledge must come from people; cannot be taken from measurement/precedent): I did not assign MUST from the importance of the topic; I asked what can actually be observed. Where the only check is a reviewer reading, I still allow MUST when the harm is irreversible (my reading), but I do not multiply MUSTs to signal importance.
+7. RFC 2119 §6 and the requirement-check rule ("a safety bound earns MUST; a method does not"): I put every format, timing, path and search method at SHOULD, and every definition or limitation at guidance. my reading.
+8. My #13/#14 (not every road is taken; choose the action by the ratio of forces): where a requirement binds only one role or one case (a reader, a merge, a small task), I split the id or marked it SHOULD with the case named. my #13.
+9. My #16 (orders clear first, then enforced) and #17 (learn by probing and signs): K6.2 and the secret scanner are the two named checks; where no check can fire, I did not use MUST. my #16.
+10. My #5 (never move from anger / 費留): I finished with the count: N MUST, M SHOULD, G guidance — and each MUST names the loss it prevents. my #5.
+
+Good. That's a solid decision narrative.
+
+Now "What I need to know" — questions whose answers would change the answer:
+- Does `tools/memory_index.py` actually implement the Rd3.1 size check and the K6.3 conflict-marker check, or only the build/compare? If not, Rd3.1 and K6.3's marker clause are SHOULD until the check exists. (This is the big one.)
+- Is there a secret scanner configured (W3.2's gate), or is "a secret scanner" aspirational? If none, W3.2 is a MUST without a gate — still MUST by harm, but then the gate must be built.
+- Will a lint over `entries/` exist (W1.1/W1.2)? Until it does, the MUSTs on identity and header rest on review.
+- Does "one project" mean one writer or many? W6.2/W6.3 are MUST for many; for a single writer they'd be SHOULD defaults.
+- Is the "strictest start-file limit" measured from the agents list (CACHES.md), and by whom? Rd3.1's MUST depends on that number being measured.
+
+"Costs and risks" — each with the item:
+- Every MUST adds a stopping condition; with n=0 and almost no tooling, most MUSTs are enforced by a reader's judgment, and a MUST that cannot fire teaches readers to ignore the word (my #8, my #16). Cost: the few real gates (K6.2, the scanner) get diluted.
+- Making W3.2 MUST without a scanner means the security promise is unenforced; the cheap fix is a pre-commit scan (my #2: make the position safe rather than rely on discipline).
+- Keeping entries never-deletable (K4.1 MUST) means a wrong or embarrassing entry is permanent; the price is that the retire+link path must be easy and must not be treated as loss (my #3: whole over broken).
+- Splitting ids (W1.2, W3.3, K6.3) gives precise levels but makes the rule longer and easier to misread; the price of precision (my #13: not every road is taken).
+- If too many ids are SHOULD, a reviewer cannot tell which failures matter; the price is a soft system. If too many MUST, RFC §6 warns the word loses force. The chosen set is my reading of that line (my #5: 費留 — the cost of a victory not finished).
+- Marking W4.1 (no owner/no approval) guidance means nothing stops a bad change; the price is placed on Rd5.3 and git review instead (my #13).
+
+"How we would know I was right": a test/measure/observable:
+- Ask two independent readers to classify the 46 ids with the same definitions; measure agreement on the MUST set. If they disagree on which ids are MUST, my boundaries are drawn in the wrong place (my #1: compare and reckon; my #17: test in contact). 
+- Run one real task through the memory system (n=1) and count how many MUST ids actually stopped a commit/task/handoff. A MUST that never fires in a task where it should have is a misleveled MUST (my #14: choose by the ratio of forces; measure, don't assume).
+- Specifically, break the system on purpose (delete an entry, commit a secret, hand-edit INDEX, leave a conflict marker) and check whether each named gate fires; the ones that do are MUST, the ones that don't are SHOULD until tooled (my #17: probe and read the signs).
+- Re-read a fresh session's first question: if it asks something state.md answers, Rd6.1's MUST failed (my #2: victory is known before the battle).
+
+Good.
+
+Now the Answer section: one or two sentences. Something like:
+"Assign MUST to the few requirements whose failure is silent and unrecoverable — an entry's identity (W1.1), a secret (W3.2), another agent's private state (W3.3), a silent overwrite or a dropped claim in a merge (W6.2, W6.3), deletion or rewriting a claim (K4.1, K4.3), the index falling out of step or carrying conflict markers (K6.2, K6.3), an entry that a clone cannot read (Rd1.2), an index that does not fit (Rd3.1), and the check-before-acting rules (Rd4.1, Rd5.1–Rd5.3), with Rd6.1 as the acceptance gate; put every format, timing, layout and search method at SHOULD, and every definition or limitation at guidance."
+
+Hmm that's long. The brief says "your recommendation in one or two sentences; conditional if it must be." Let me make it two sentences, concise.
+
+Now let me double check I include EVERY id exactly once in the table. Let me list them in order and verify against my final levels:
+
+W1.1 MUST
+W1.2 SHOULD
+W1.3 SHOULD
+W2.1 guidance
+W2.2 SHOULD
+W3.1 SHOULD
+W3.2 MUST
+W3.3 MUST (private state) / SHOULD (raw transcripts)
+W3.4 SHOULD
+W3.5 SHOULD
+W3.6 SHOULD
+W4.1 guidance (no owner/approval) / SHOULD (status ∈ three)
+W4.2 SHOULD
+W4.3 guidance
+W5.1 MUST
+W5.2 SHOULD
+W5.3 SHOULD
+W6.1 SHOULD
+W6.2 MUST
+W6.3 MUST
+K1.1 MUST
+K4.1 MUST
+K4.2 guidance
+K4.3 MUST
+K5.1 SHOULD
+K5.2 SHOULD
+K6.1 SHOULD
+K6.2 MUST
+K6.3 MUST (no markers) / SHOULD (regenerate)
+Rd1.1 SHOULD
+Rd1.2 MUST
+Rd2.1 SHOULD
+Rd2.2 SHOULD
+Rd2.3 SHOULD (with note that W3's security MUSTs apply)
+Rd3.1 MUST (conditional)
+Rd4.1 MUST
+Rd4.2 SHOULD
+Rd4.3 guidance
+Rd4.4 SHOULD
+Rd4.5 SHOULD
+Rd5.1 MUST
+Rd5.2 MUST
+Rd5.3 MUST
+Rd5.4 guidance
+Rd5.5 guidance
+Rd6.1 MUST
+
+Count: let me count MUSTs as primary: W1.1, W3.2, W3.3, W5.1, W6.2, W6.3, K1.1, K4.1, K4.3, K6.2, K6.3, Rd1.2, Rd3.1, Rd4.1, Rd5.1, Rd5.2, Rd5.3, Rd6.1 = 18. Hmm, W5.1 and K1.1 I flip-flopped on. Let me settle:
+- W5.1: I'll mark MUST for the decision/fact-before-code and handoff-state, since the design's whole truth depends on it... but I argued it's method. Hmm. Let me think about what a *gate* would be: "a commit changes code under a new decision with no entry" — that's git-checkable and the commit shouldn't go ahead → gate. So W5.1 IS a gate with a check (git). MUST. And K1.1 is the same gate stated as order. Both MUST. OK, keep both MUST.
+- W1.2: SHOULD (format).
+- W4.1: guidance/SHOULD.
+- K5.2: SHOULD.
+
+So 18 MUST of 46 = 39%. "Sparingly" — hmm. Let me reconsider a couple more:
+- Rd4.1: Is "read covering decisions before editing" a bound or a practice? It's a check-before-act. It maps to my #1 (reckon) and #17 (probe). But it's contingent ("whose covers include it") and judged. I'll keep MUST — it's the read-side core, and without it the write-side MUSTs are pointless. Hmm. Actually, if I'm worried about over-MUSTing, this is a candidate for SHOULD ("read them when the covers list is present; override with reason"). But no — editing governed code without reading the decision is how you break the record. Keep MUST.
+- Rd5.1: verify before acting — check. Keep MUST.
+- Rd3.1: capacity. I'll keep MUST conditional. Or downgrade to SHOULD because it's a measured default and the check's existence is unverified. Given T3 and n=0, maybe SHOULD is more RFC-faithful: without the size check implemented, MUST can't fire. I'll mark it **MUST if the K6 check implements the size test; otherwise SHOULD** — a conditional, which is allowed ("answer conditionally"). That's honest. In the table I'll write "MUST (if the K6 check tests size; else SHOULD)". 
+- W6.2: branch/worktree. Keep MUST.
+- W3.3: private state. Keep MUST.
+
+18 is fine if each is justified as a bound. But the brief's RFC quote is a nudge; I should explicitly address the count in the Answer/How: "MUST is 18 of 46; I kept it to the ids where a failure is silent and unrecoverable, and pushed every method to SHOULD." Hmm, 18/46 might be too many for EJ's taste. Let me see if I can defensibly cut to ~12 by grouping.
+
+Candidates to downgrade with a defensible reason:
+1. W5.1 → SHOULD (method/order; the gate that matters is K1.1 and git). Reason: "when to write is a default; the ordering gate is K1.1." That cuts one.
+2. K1.1 → SHOULD (method). Hmm, but then the "entry first" discipline has no MUST at all, and I earlier called it truth-bearing. Let me keep K1.1 MUST and downgrade W5.1 to SHOULD. Good, one cut.
+3. Rd3.1 → SHOULD unless tooled (conditional). Cut one.
+4. W3.3 → mark SHOULD? No, privacy bound. Keep.
+5. Rd4.1 → SHOULD? Hmm. Keep MUST.
+6. Rd6.1 → guidance? It's the acceptance test. Keep MUST.
+7. W6.2 → SHOULD for a single writer; MUST for many. I'll mark MUST (design assumes many). Keep.
+8. Rd2.3 → SHOULD (already decided). 
+9. K5.2 → SHOULD (already).
+
+Now MUST: W1.1, W3.2, W3.3, W6.2, W6.3, K1.1, K4.1, K4.3, K6.2, K6.3, Rd1.2, Rd4.1, Rd5.1, Rd5.2, Rd5.3, Rd6.1 = 16, plus Rd3.1 conditional. ~35%. 
+
+I think that's acceptable. Let me also double-check the guidance set: W2.1, W4.1(no-owner), W4.3, K4.2, Rd4.3, Rd5.4, Rd5.5 = 7. Everything else SHOULD.
+
+Let me count SHOULD: W1.2, W1.3, W2.2, W3.1, W3.4, W3.5, W3.6, W4.1(status part), W4.2, W5.1, W5.2, W5.3, W6.1, K5.1, K5.2, K6.1, K6.3(regenerate part), Rd1.1, Rd2.1, Rd2.2, Rd2.3, Rd3.1(else), Rd4.2, Rd4.4, Rd4.5 = ~25. Plus guidance 7 and MUST 16 = 48 (with splits overlapping). Fine.
+
+Hmm wait, I should double check W1.2 again: I flip-flopped between MUST and SHOULD. Let me decide finally. The header delimiters and `id`/`kind`/`status` are what the index tool needs to list an entry. If missing, the entry is invisible to the index → silent loss from the next session's map. That's the same class as Rd1.2. So MUST for those three keys + delimiters, SHOULD for the rest. I'll keep the split MUST/SHOULD. That adds back a MUST: W1.2 partial. So MUST = 17.
+
+Hmm, let me just accept ~17 and be explicit. Actually, you know, let me reconsider: for a MUST to be credible it needs a gate. The header parsing will be gated by "a lint over `entries/`" (which doesn't exist). The brief explicitly says no lint yet. So by T3, W1.2 should be SHOULD until the lint exists — EXCEPT the harm (invisible entry) is silent. Hmm. I keep going in circles. Let me apply my own stated rule: "MUST where failure is silent AND unrecoverable." An unparseable header: the entry may be skipped by the index (silent) and the writer's content is still on disk (recoverable by fixing the header). So it's silent but recoverable → SHOULD. Good, W1.2 = SHOULD. That's consistent. Similarly W1.1 duplicate id: if two files have the same id, both are on disk (recoverable by renaming), but the *link* `superseded_by`/references become ambiguous → the identity is corrupted, and if the writer literally wrote to the same filename, one is overwritten (unrecoverable). So W1.1 MUST. Good.
+
+Similarly, W6.3 conflict markers: recoverable by editing the file (git shows the conflict). Hmm, so by "recoverable" it'd be SHOULD. But a committed marker can be acted on before anyone notices. It's silent and *the garbled content can cause a wrong action*. Hmm. I'll keep it MUST for the "drop a side / lose a claim" part (unrecoverable) and treat the marker clause as the judged check. Actually W6.3's own text is about keeping both sides (loss) — MUST. The marker clause is in K6's fails-if; K6.3 says "with no conflict markers left in them." I'll mark K6.3 MUST for keeping both sides; SHOULD for the marker-cleanliness procedure. Hmm, I earlier split K6.3 as MUST(no markers)/SHOULD(regenerate). Let me restructure: K6.3's body: "INDEX is never merged by hand... resolve entry files first, with no conflict markers left in them, then regenerate INDEX." So: MUST for "no conflict markers committed" (corruption), SHOULD for "regenerate rather than hand-merge." And W6.3's body: "keep both sides" → MUST (loss). Fine; the markers clause can live under K6.3.
+
+OK. Let me also sanity check K6.2: "the tool --check compares staging/commit INDEX with what it builds" — real gate. MUST.
+
+Let me also verify I'm not missing the K2/K3 note — those were removed; no ids. Good.
+
+Now, one more consideration: the brief says "confirmed by EJ 2026-10-12, amended 2026-10-13". And "Do not change any requirement's wording; only assign a level." So no rewording. Good — I'm only assigning levels.
+
+Let me also reconsider W3.4 once more: "No work described as 'verified' when it is only implemented." If violated, a reader may rely on unverified work. Silent + could be unrecoverable (if the work then ships). Hmm. This one might deserve MUST. It's a truthfulness-of-record bound (like K4.3 but about status claims). The brief's facts say "judged checks are done by a reviewer reading." A reviewer can catch it. I'll keep SHOULD but flag it as the strongest SHOULD (a candidate to raise). Actually, let me raise it to MUST? Hmm. The distinction: W3.4 is not about the *artifact's integrity* but about a *statement's truth*. It's a safety-of-decision bound. I'll keep SHOULD and mention in Costs that W3.4 is the SHOULD closest to MUST. That's a nice honest touch.
+
+Also W5.3's test-results clause: same class. SHOULD, flagged.
+
+Now let me write the final answer in the exact format. No preamble. The heading: "# 孫子 (Sun Tzu) — <the question in a few words>". So e.g. "# 孫子 (Sun Tzu) — which memory requirements are MUST".
+
+Let me write the Answer (1-2 sentences).
+"Assign MUST only to the requirements whose failure is silent and unrecoverable: an entry's identity (W1.1), a secret (W3.2), another agent's private state (W3.3), a silent overwrite or a claim dropped in a merge (W6.2–W6.3), deletion or rewriting a claim (K4.1, K4.3), the index out of step or carrying conflict markers (K6.2, K6.3), a clone that cannot read an entry (Rd1.2), and the check-before-acting rules (Rd4.1, Rd5.1–Rd5.3), with K1.1 as the ordering gate and Rd6.1 as the acceptance gate. Everything that is format, timing, path or search method is SHOULD, and every definition or limitation is guidance."
+
+That's two sentences. Good.
+
+Then "How I decided" numbered steps.
+
+Then the table? The brief says: "Put your levels in a table in your Answer section: `| Id | Level | Reason (one line) |`, every id once." So the table must be in the Answer section. But the Answer section is supposed to be one or two sentences. Hmm — "your recommendation in one or two sentences" then "Put your levels in a table in your Answer section". So the Answer section contains the recommendation + the table. I'll put the two-sentence recommendation then the table. Good.
+
+Then "How I decided", "What I need to know", "Costs and risks", "How we would know I was right".
+
+Wait, the required output structure is:
+```
+# 孫子 (Sun Tzu) — <the question in a few words>
+
+## Answer
+<recommendation + table>
+
+## How I decided
+...
+
+## What I need to know
+...
+
+## Costs and risks
+...
+
+## How we would know I was right
+...
+```
+Yes.
+
+Let me now carefully compose the table. 46 rows. Reasons one line each.
+
+Let me write them:
+
+| Id | Level | Reason (one line) |
+| W1.1 | MUST | The id and its prefix are the entry's identity; a duplicate or a renamed prefix/id silently orphans or overwrites an entry, and no link can repair that. |
+| W1.2 | SHOULD | The header format is schema: a malformed header is caught and fixed by a reader or lint, and the content is not lost, so the shape stays a default. |
+| W1.3 | SHOULD | The body sections and one-claim rule are a default; the immutability they serve is already gated by K4.3 and the "two claims" test is judged. |
+| W2.1 | guidance | These are definitions of decision and fact; the "written before the code" clause is an order rule, and its gate lives in K1.1 and W5.1. |
+| W2.2 | SHOULD | Which kind a claim is, and labelling a guess a hypothesis, is a default; the five-value enum is enforced through W1.1's prefix match. |
+| W3.1 | SHOULD | Not restating code, tests or commit log is a redundancy default; a link takes the place of a copy and nothing is lost. |
+| W3.2 | MUST | A leaked credential is unrecoverable and is the clearest safety bound; the secret scanner named in the fails-if is its gate. |
+| W3.3 | MUST for another agent's private state; SHOULD for raw transcripts | Copying another agent's private state is a privacy bound; raw transcripts are a volume and provenance default. |
+| W3.4 | SHOULD | Calling implemented work "verified" is a truthfulness default, judged by a reader; it costs trust, not the record. |
+| W3.5 | SHOULD | Keeping user, agent and project memory apart is a scope default; a mistake can be retired and linked. |
+| W3.6 | SHOULD | Linking to docs and keeping procedures as scripts or pages is method, and where a procedure lives is a project choice. |
+| W4.1 | guidance for no owners or approval; SHOULD for `status` ∈ the three values | "No owner, no approval" is a design choice that removes a gate, not a gate; an unknown `status` is a schema default a reviewer catches. |
+| W4.2 | SHOULD | The `changed:` line is the in-file audit trail, but git already carries who and when, so it is a default, not the only record. |
+| W4.3 | guidance | Relying on git history for non-entry files is an explanation of how those files are versioned. |
+| W5.1 | SHOULD | When to write is method; the ordering gate that matters is K1.1, and a late entry can still be written and dated. |
+| W5.2 | SHOULD | End-of-task lessons, observations and hypotheses are a default; they can be deferred without breaking a guarantee. |
+| W5.3 | SHOULD | `done:` is a completion default, judged by a reviewer; the test-results clause is the part that carries trust. |
+| W6.1 | SHOULD | One file per entry and per session is a collision default; a shared append is a risk, not a lost claim. |
+| W6.2 | MUST | Without a branch or worktree two edits meet as a silent overwrite, and the lost edit cannot be recovered from the entry. |
+| W6.3 | MUST | A merge must keep both sides; choosing between two claims deletes one, which is the loss K4.3 forbids. |
+| K1.1 | MUST | Changing the code before the entry turns the record into a description of the code and loses the reason, which git cannot restore. |
+| K4.1 | MUST | Deletion is the one loss nothing else can repair; the entry must be retired and linked instead. |
+| K4.2 | guidance | "Age never expires an entry" explains why there is no TTL; the prohibition on deletion is already K4.1's gate. |
+| K4.3 | MUST | Rewriting a claim destroys the audit trail and hides what was believed; a new claim must supersede the old. |
+| K5.1 | SHOULD | The journal layout and one-file-per-session rule is a default; the safe terminal harvest is K5.2's job. |
+| K5.2 | SHOULD | A missed read can be covered by the next one because the journal persists; only the terminal read approaches a gate. |
+| K6.1 | SHOULD | The index being generated, with one line per active entry, is method; the gate that keeps it true is K6.2. |
+| K6.2 | MUST | A stale `INDEX.md` silently misleads the next session, and this is the one requirement with a working tool behind it (`--check`). |
+| K6.3 | MUST for no committed conflict markers; SHOULD for regenerating rather than hand-merging | A committed `<<<<<<<` line is silent corruption a reader may act on; regenerating the index is method. |
+| Rd1.1 | SHOULD | The folder layout is a tooling default; a moved path breaks tooling visibly, not silently. |
+| Rd1.2 | MUST | If an entry lives only in a database, cache or one agent's store, a fresh clone has lost it, and no other rule recovers that. |
+| Rd2.1 | SHOULD | Reading the four files at session start is a strong default, but a small task may override it with a written reason. |
+| Rd2.2 | SHOULD | The later read times (journals, cache, bodies on demand) are defaults about when, not bounds. |
+| Rd2.3 | SHOULD | What a session loads is a context-budget default; the security items it names are already MUST under W3.2 and W3.3. |
+| Rd3.1 | MUST if the K6 check tests the size limit; SHOULD otherwise | An index over the strictest limit is silently truncated or dropped, so it must stop the commit once the tool tests it. |
+| Rd4.1 | MUST | Editing a covered file without reading its covering decisions is how a rule is broken unknowingly; the covering link is the check. |
+| Rd4.2 | SHOULD | How to search (grep, or the cache when its trigger fires) is method. |
+| Rd4.3 | guidance | Which artifact answers a "why" (the decision entry, or git blame) is advice on where to look. |
+| Rd4.4 | SHOULD | Reading superseded or retired entries only by link is a default that keeps the active set clean. |
+| Rd4.5 | SHOULD | Naming whose memory you used is a labelling default that prevents agent memory being read as project memory. |
+| Rd5.1 | MUST | Acting on memory without checking it against the code it points to is the drift the whole design exists to prevent. |
+| Rd5.2 | MUST | Memory must never override standing instructions; precedence is a safety bound. |
+| Rd5.3 | MUST | A reader who settles a mismatch takes EJ's decision; the report-and-wait rule is the control bound. |
+| Rd5.4 | guidance | Naming two cases that are not mismatches explains the scope of Rd5.3. |
+| Rd5.5 | guidance | What Rd5.3 cannot catch (a wrong outside-world fact) is a limitation, not a rule. |
+| Rd6.1 | MUST | This is the acceptance gate: a handoff that makes the next session ask what state.md or a decision already answers has failed. |
+
+Wait, I set W5.1 to SHOULD in this table, and earlier I intended MUST. Let me re-decide W5.1: I'll go SHOULD (method) and let K1.1 be the MUST. Hmm, but then "a decision or fact, before the code" is only SHOULD, while K1.1 (same content, "change the entry first") is MUST. That's a bit inconsistent: K1.1 covers "to change behaviour that a decision or fact governs, change the entry first." W5.1 covers "written immediately: a decision or fact, before the code it governs." They're nearly the same. If K1.1 is MUST, W5.1 being SHOULD is a fine nuance: K1.1 is the gate for changing governed behaviour; W5.1 is the timing default for new decisions. I'll keep K1.1 MUST, W5.1 SHOULD. Good.
+
+Hmm, but wait: is K1.1 really the ordering gate while W5.1 is just timing? W5.1 says "a decision or fact, before the code it governs" — that IS the ordering. K1.1 says "To change behaviour that a decision or fact governs, change the entry first, then the code." They overlap. If I mark W5.1 SHOULD and K1.1 MUST, I'm saying the *change* case is a gate but the *new* case is a default. That's odd. Maybe both should be MUST, or both SHOULD. Let me make both MUST? Or make both SHOULD? 
+
+Given the design's central claim (memory before code), I think both MUST is more coherent. But it adds a MUST. Hmm. Alternatively, treat W5.1 as MUST and K1.1 as MUST — they're the same bound stated twice, so the level should match. Let me make both MUST. Coherence beats trimming.
+
+Then MUST count: W1.1, W3.2, W3.3, W5.1, W6.2, W6.3, K1.1, K4.1, K4.3, K6.2, K6.3, Rd1.2, Rd3.1(cond), Rd4.1, Rd5.1, Rd5.2, Rd5.3, Rd6.1 = 18.
+
+Hmm. Let me reconsider once more whether the "entry before code" is a safety bound. I said method. But actually, its function is to prevent the memory from being a rationalization of code — a *truth* bound. The requirement-check rule says "a safety bound earns MUST; a method does not." Is "entry before code" a method or a bound? I'd argue it's a bound on the integrity of the record (it prevents a whole class of untruth). But it's also a workflow order. Ugh.
+
+Let me look at the design's own framing: W5 is "When to write" and K1 is "The decision or fact first, then the code." K1's heading (v; d) and it says "Work that has to go the other way is a matter for the project's workflow, not for memory." So it's a hard rule: memory governs code. W5.1 is the timing of writing. I'll mark K1.1 MUST (it is the precedence of the record over the code — a truth bound) and W5.1 SHOULD (timing default; a decision may be written a moment after if the order is recorded, but K1.1 still binds). Hmm, but W5.1 says "before the code it governs" which is the same. 
+
+You know what, I'll do this: W5.1 = **SHOULD**, with the reason "when to write is timing; the order that binds is K1.1." And K1.1 = **MUST**. This is a defensible, precise distinction: K1.1 binds *changes to governed behaviour* (the dangerous case — you're about to alter something a decision covers); W5.1 is the general habit of writing at the moment. I'll state that in the reasoning. Fine. Final: W5.1 SHOULD.
+
+Now MUST count = 17 (including Rd3.1 conditional and the partials W3.3, K6.3). ~37%. I'll own it and explain that I resisted raising more.
+
+Hmm, actually, let me reconsider W6.2 (branch/worktree) once more. In a repo with a single human and agents serialized, a branch is unnecessary and overridable. But the design is explicitly multi-writer. The requirement's own wording "Each agent works on its own branch or worktree" is a method for achieving W6.3's outcome (keep both sides). Is the *outcome* (no silent overwrite) the bound, and the branch the method? Yes! W6.3 is the outcome bound; W6.2 is the method to achieve it. So W6.2 = SHOULD (method), W6.3 = MUST (outcome). That trims a MUST and is conceptually clean. Hmm, but W6.2's failure (silent overwrite) is exactly the harm. The method is the branch. If there's another way to avoid silent overwrite (locking, serialization), the branch isn't required. So SHOULD. Good, downgrade W6.2 to SHOULD. 
+
+Wait, but is the "no silent overwrite" outcome captured if both W6.2 and W6.3 are... W6.3 MUST covers merge conflicts; W6.2 covers local/staging silent overwrite. Hmm. If W6.2 is SHOULD, an agent could work on the same branch and silently overwrite. But with git, if both commit, the second commit either conflicts on push or is based on the first. Local uncommitted overwrite is possible if two agents share a worktree — unlikely. I'll keep W6.2 SHOULD, W6.3 MUST. Good.
+
+Similarly, Rd2.1: SHOULD (already). Rd4.1: MUST (outcome: don't break a governed rule; method: read). Keep.
+
+Now MUST = W1.1, W3.2, W3.3, W6.3, K1.1, K4.1, K4.3, K6.2, K6.3, Rd1.2, Rd3.1(cond), Rd4.1, Rd5.1, Rd5.2, Rd5.3, Rd6.1 = 16. 
+
+Hmm, is W1.1 a bound or method? The id format is method; uniqueness/immutability is outcome. The id text bundles both. I'll mark W1.1 MUST (identity bound) with a note that the day-random format is the mechanism, not the bound. Good.
+
+Now, I feel good about the set. Let me finalize and also present the counts in "How I decided": "16 MUST (one conditional), 23 SHOULD, 7 guidance" — let me count precisely from the table.
+
+Let me recount by final table:
+MUST: W1.1, W3.2, W3.3, W6.3, K1.1, K4.1, K4.3, K6.2, K6.3, Rd1.2, Rd3.1, Rd4.1, Rd5.1, Rd5.2, Rd5.3, Rd6.1 = 16.
+guidance: W2.1, W4.1, W4.3, K4.2, Rd4.3, Rd5.4, Rd5.5 = 7.
+SHOULD: everything else = 46 - 16 - 7 = 23.
+Note W4.1 is "guidance/SHOULD" and W3.3, K6.3 are "MUST/SHOULD" and Rd3.1 is "MUST(cond)/SHOULD" — I'll count primary level. Fine.
+
+Let me now write the final response. I need to be careful to write in plain English, refer to EJ as they/them, and not write files. The answer is the message.
+
+Let me refine the "How I decided" steps to be numbered and cite items. Also include "my reading" where I use no item.
+
+How I decided:
+1. **my #1 (reckon before battle, and foreknowledge comes from what is real, not from measurement or precedent).** Before assigning a level I listed what each id actually protects — an entry's identity, a secret, a claim, the index, a session's reads — and asked what happens when it fails. A level is a statement about harm, not about how important the topic feels.
+2. **my #2 (make yourself unbeatable first; being unbeatable lies with you).** The ids that remove a failure rather than promise to detect it — never delete (K4.1), never rewrite a claim (K4.3), never overwrite an edit (W6.3), never leak (W3.2, W3.3) — are the unbeatable position. They get MUST.
+3. **my #6 (the wise always mix harm into benefit; know the harm of using troops to know its benefit).** For every MUST candidate I wrote the harm first: is the loss silent at the time and unrecoverable after? Yes → MUST. Detectable or repairable → SHOULD. Guideline: "silent AND unrecoverable."
+4. **my reading, from RFC 2119 §6 and the requirement-check skill ("a safety bound earns MUST. A method does not.").** Format, timing, path and search method stay SHOULD; definitions and limitations are guidance. This is why W1.2 (header format), W5.1 (when to write), Rd1.1 (folder layout) and Rd4.2 (how to search) are not MUST.
+5. **my #8 (value victory, not duration; 費留 — victory gained and then squandered) and my #16 (orders clear first, then enforced).** A MUST that no check can fire is a cost with no victory. Today only `tools/memory_index.py` exists, so K6.2 is the one id with a real gate behind it; W3.2's scanner is the second named gate. I did not raise ids above SHOULD merely because they matter.
+6. **my #5 (move only on advantage; never from anger; do not act without gain).** I resisted MUSTs whose only effect is to impose a way of working: K1.1 is MUST because it decides whether the record or the code governs, but W5.1 is SHOULD because it only sets the moment.
+7. **my #13 (not every road is taken; not every command of the ruler is accepted) and my #14 (choose the action by the ratio of forces).** Where one id bound several different cases, I split it and named the part that carries the bound: W3.3 (private state vs transcripts), W4.1 (no-owner choice vs `status`), K6.3 (conflict markers vs regeneration). The branch rule W6.2 is the method for W6.3's outcome, so the outcome is MUST and the method is SHOULD.
+8. **my #17 (probe, then read the signs) and my #11 (foreknowledge from people, not from arithmetic).** The check-before-acting family (Rd4.1, Rd5.1–Rd5.3) is MUST because it is the only thing that keeps stale memory from being acted on; the check is a reader or git, and that is enough when the harm is a rule broken unknowingly.
+9. **my #3 (whole over broken).** On the read side, Rd1.2 (a fresh clone reads everything) is MUST because it keeps the record whole across machines and agents; the rest of Rd1/Rd2 is how the read is arranged, so SHOULD.
+10. **my #5 again (finish it; 費留).** I ended by counting: 16 MUST (one conditional), 23 SHOULD, 7 guidance, and made each MUST name the loss it prevents rather than the value it expresses.
+
+That's 10 items. Good.
+
+What I need to know:
+- Does `tools/memory_index.py` test the Rd3.1 size limit and K6.3's conflict markers, or only build-and-compare? If it does not, Rd3.1 and K6.3's marker clause fall to SHOULD until it does. (My #11: foreknowledge must come from what can be observed, not from what the text declares.)
+- Is a secret scanner actually configured for W3.2, or is "a secret scanner" in the fails-if aspirational? If none, the bound still stands but the gate must be built (my #2).
+- Will a lint over `entries/` exist, and when? W1.1's identity bound and W1.2's shape rest on review until it does.
+- Is the project one writer or many? W6.2/W6.3 are MUST as written for many agents; for a single serial writer I would move W6.2 and possibly W6.3 to SHOULD.
+- Who measures the "strictest start-file limit" in Rd3.1, and from which agents? The number is a measurement, not a fixed value (my #1, my #14).
+- Does "the commit does not go ahead" have a real stopping point in this repo (a hook or CI), or is every MUST enforced by a person reading? That answer moves several ids between MUST and SHOULD (my #16).
+
+Costs and risks:
+- Every MUST is a stopping condition, and with n=0 and almost no tooling most of mine are enforced by a reader's judgment; a MUST that cannot fire teaches readers to ignore the word and dilutes K6.2, the one gate that can fire (my #8, my #16).
+- Marking W4.1 (no owners, no approval) guidance means nothing stops a bad change at the door; the price is placed on git review and Rd5.3 (my #13: not every road is taken).
+- K4.1 (never delete) as MUST makes a wrong or embarrassing entry permanent; the price is that the retire-and-link path must be cheap or people will work around it (my #3: whole over broken).
+- W3.2 must without a scanner is a promise with no gate; the cheap fix is to make the scanner the first tool built, before the entry lint (my #2: make the position safe rather than rely on discipline).
+- The splits (W3.3, W4.1, K6.3) buy precision but lengthen the rule and invite misreading; the price of exactness (my #13).
+- If I have over-MUSTed, the word loses force (RFC 2119 §6); if I have under-MUSTed, a reader cannot tell which failures matter. My line — silent and unrecoverable — puts 16 of 46 at MUST, and that ratio is my reading, not a measured one (my #5: 費留, a victory not finished).
+- W3.4 and W5.3's test-results clause are the two SHOULDs nearest MUST; leaving them at SHOULD means a false "verified" or a `done:` with no test result is overridable (my #6: write the harm first).
+
+How we would know I was right:
+- Give the 46 ids and these three definitions to two independent readers; if they agree with my MUST set on the ids I called MUST and the ids I called guidance, the line is drawn where a reader can see it. Disagreement on a specific id is the finding (my #1: compare the reckonings; my #17: test in contact).
+- Run one real task through the memory system (n=1) and count how many of my 16 MUSTs actually stopped a commit, task or handoff when they should have, and how many fired when they should not have. A MUST that never fires where it should is misleveled (my #14: choose by the ratio of forces; measure, don't assume).
+- Break the system on purpose — delete an entry, commit a credential, leave a conflict marker, hand-edit INDEX, change code under an unwritten decision — and record which gate catches it. The ones that catch are MUST; the ones that don't are SHOULD until tooled (my #17: probe, then read the signs).
+- Read the next fresh session's first question. If it asks something `state.md` or a decision already answers, the Rd6.1 gate failed, and the design's claim is not yet true (my #2: the winning army wins first and then seeks battle).
+- Track the level assignments as decisions and re-measure after the first tool lands: if the entry lint and the size check change which ids can fire, the MUST set should be revisited (my #11: foreknowledge comes from what is observed).
+
+Good. Now let me write it all out cleanly. I must keep the exact headings. No preamble.
+
+One thing: the brief says "Quote only from your list, exactly as it is written there, and keep its label (`quoted`, `attributed`)." I'll quote short Chinese phrases from my list where I cite items (e.g., 「不可不察也」, 「先為不可勝」, 「必雜於利害」, 「兵聞拙速」, 「非利不動」, 「途有所不由」, 「策之而知得失之計」, 「全國為上」). Let me make sure these are in my list:
+- #1: 「不可不察也」 yes (in Their words).
+- #2: 「先為不可勝，以待敵之可勝」 yes.
+- #3: 「全國為上，破國次之」 yes.
+- #5: 「非利不動」 yes.
+- #6: 「必雜於利害」 — the list says 「必雜於利害」 — actually it's 「智者之慮，必雜於利害」. Yes.
+- #8: 「兵聞拙速，未睹巧之久也」 yes; 費留 yes.
+- #13: 「途有所不由…君命有所不受」 yes.
+- #14: 「十則圍之…」 yes.
+- #16: 「約束不明，申令不熟，將之罪也」 yes.
+- #17: 「策之而知得失之計…」 yes.
+- #11: 「不可取於鬼神…必取於人」 yes.
+Good — all quoted from the list. I'll keep the `quoted` label as the list gives: #1's words are `quoted`; #2 quoted; #6 quoted; #8 quoted; #13 quoted (九變, 地形, 謀攻); #16 行軍/地形 quoted; #17 quoted; #11 quoted. Fine. Actually I should be careful not to overload with Chinese. I'll use a few and label them.
+
+The brief's instruction 3 says quote only from my list. Using the Chinese from the list is fine. I'll put them as `quoted` maybe once or twice, and mostly cite "my #n".
+
+Now write the final answer. Make it clean and not overly long. The table is long but required.
+
+Let me double check the exact id list once more against the brief to ensure "every id once":
+W1.1, W1.2, W1.3
+W2.1, W2.2
+W3.1, W3.2, W3.3, W3.4, W3.5, W3.6
+W4.1, W4.2, W4.3
+W5.1, W5.2, W5.3
+W6.1, W6.2, W6.3
+K1.1
+K4.1, K4.2, K4.3
+K5.1, K5.2
+K6.1, K6.2, K6.3
+Rd1.1, Rd1.2
+Rd2.1, Rd2.2, Rd2.3
+Rd3.1
+Rd4.1, Rd4.2, Rd4.3, Rd4.4, Rd4.5
+Rd5.1, Rd5.2, Rd5.3, Rd5.4, Rd5.5
+Rd6.1
+Total 46. My table has all 46. Let me verify the table order matches. Yes.
+
+Let me finalize. I'll update W6.2 to SHOULD in the table (since I decided). Let me rewrite the relevant rows.
+
+Final table rows (revised):
+- W6.2 SHOULD: The branch or worktree is the method for W6.3's outcome; the outcome (no silent overwrite) is the bound, not the mechanism.
+- W5.1 SHOULD.
+- K1.1 MUST.
+
+Good.
+
+Now write it.

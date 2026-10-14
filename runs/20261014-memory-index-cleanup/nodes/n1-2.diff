@@ -1,0 +1,42 @@
+diff --git a/tests/test_memory_index.py b/tests/test_memory_index.py
+index e809636..66f9fac 100644
+--- a/tests/test_memory_index.py
++++ b/tests/test_memory_index.py
+@@ -501,6 +501,37 @@ def test_heading_underline_is_not_a_conflict_marker(tmp_path, status, mode, loca
+     assert (repo / INDEX).read_bytes() == expected
+ 
+ 
++@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
++@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
++@pytest.mark.parametrize("location", ["header", "claim", "after-why"])
++@pytest.mark.parametrize("marker", ["<<<<<<< ours", ">>>>>>> theirs"])
++@pytest.mark.parametrize("prefix", ["   ", "Example: "])
++def test_conflict_markers_after_other_characters_are_accepted(tmp_path, status, mode, location, marker, prefix):
++    """B2.7 — markers after spaces or other text in the header or body must pass in every status."""
++    repo = make_repo(tmp_path)
++    claim = "Use code-point order for the index."
++    path = write_entry(repo, status=status, claim=claim)
++    raw = path.read_text(encoding="utf-8")
++    marker_line = prefix + marker
++    if location == "header":
++        raw = raw.replace("---\n", f"---\n{marker_line}\n", 1)
++    elif location == "claim":
++        raw = raw.replace(claim, f"{claim}\n{marker_line}", 1)
++        claim += " " + marker_line.strip()
++    else:
++        raw += f"{marker_line}\n"
++    path.write_text(raw, encoding="utf-8")
++    expected = HEADER + (
++        f"- [14-10-a1b2c3-2026](entries/D-one.md) decision: {claim}\n"
++    ).encode("utf-8") if status == "active" else EMPTY_INDEX
++    (repo / INDEX).write_bytes(expected)
++    git(repo, "add", "-A")
++    result = run_index(repo, *snapshot_args(repo, mode))
++    assert result.returncode == 0, output(result)
++    assert "Traceback" not in output(result)
++    assert (repo / INDEX).read_bytes() == expected
++
++
+ def test_all_validation_problems_are_reported(tmp_path):
+     """B2.3 B2.4 B2.6 — one invalid file must not hide problems in other files."""
+     repo = make_repo(tmp_path)

@@ -1,0 +1,118 @@
+[0m
+> plan · MiniMax-M3.1-Flash-Preview
+[0m
+[0m→ [0mRead runs/20261014-memory-index-cleanup/experts/briefs/lao-tzu.md
+[0m→ [0mRead runs/20261014-memory-index-cleanup/experts/seats/lao-tzu-list.md
+[0m→ [0mRead runs/20261014-memory-index-cleanup/experts/seats/lao-tzu-identity.md
+[0m
+[0m$ [0mls -R /home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup | head -60
+/home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup:
+experts
+readiness.md
+state.md
+workflow-design.md
+
+/home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts:
+answers
+briefs
+logs
+question.md
+seats
+
+/home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts/answers:
+lao-tzu.md
+sun-tzu.md
+
+/home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts/briefs:
+dave.md
+lao-tzu.md
+linus.md
+sun-tzu.md
+
+/home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts/logs:
+lao-tzu.log
+linus.log
+sun-tzu.log
+
+/home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts/seats:
+dave-identity.md
+dave-list.md
+lao-tzu-identity.md
+lao-tzu-list.md
+linus-identity.md
+linus-list.md
+sun-tzu-identity.md
+sun-tzu-list.md
+[0m
+[0m✱ [0mGrep "cost|estimate|Predictability|not measured"[90m in docs/WORKFLOW_DESIGN_METHOD.md · 100 matches[0m
+[0m→ [0mRead runs/20261014-memory-index-cleanup/experts/question.md
+[0m
+[0m$ [0msed -n 240,300p /home/smoke01/dev/ancient-games/docs/WORKFLOW_DESIGN_METHOD.md
+**Ask the experts once the list is written** (EJ, 2026-10-13; SHOULD; n=0). In a workflow design — not a prompt
+file — after every spot is listed and before the questions go to EJ, the COO runs the `four-experts` skill with
+`--only linus,sun-tzu,lao-tzu,dave` on the algorithm and the spot list (question template
+`.claude/skills/four-experts/assets/questions/unclear-spots.md`). Each answers its own question:
+
+- **Linus** (Codex): which choices depend on missing technical facts, and what would make a mistaken choice reversible?
+- **孫子** (dsh): for each piece, do we know that our engines and tools can do it, that the task as posed can be done,
+  and that the ground (files, blueprint, information) permits it — and which is only half known?
+- **老子** (opencode): which spots can be answered by giving up a step rather than by resolving it?
+- **Dave** (Claude): for each *unknown*, what is the smallest reversible experiment, what is predicted before it
+  runs, and when does it stop?
+
+Their answers are advice. A spot an expert raises goes into the table with *raised by* that expert. A spot an
+expert says can be dropped goes to EJ as a question — never dropped silently: 老子 named the risk himself, his rules
+reward subtraction where the method needs coverage. A proposed experiment becomes a bounded explore loop only when
+the COO or EJ accepts it. Experts who disagree are shown side by side, under the contradiction rule above. The state
+file records the expert run's folder, or *not asked* with the reason. Basis: four of the five experts named 3.3 as
+where their rules help most (`runs/20261013-four-experts-where-in-ej-s-workflow/compare.md`) — their own reading,
+not measured. Look again after the first three designs that use it: count the spots the experts added, dropped or
+changed, and whether the run still reached its stop.
+
+### 3.4 Size
+
+- Up to 3 steps and nothing unclear except decisions that have a provisional assumption → one piece → a prompt
+  file, with those decisions listed at the top as questions for EJ. A spot of kind information or unknown always
+  means a workflow design. Blueprint spots follow the same rule: a missing or incomplete section
+  always means a workflow design; a draft section alone does not.
+- More than 3 steps → consider a new piece. Split only if each part keeps its own check **and** splitting changes
+  how the work is done ("Split iff it changes the route", `challenge-mediation` skill).
+- **Health is a reason to split.** A long single attempt hides its failure and cannot be
+  watched; a run whose work is cut into segments ends each one and can be looked at.
+- **Size from an estimate, and never hand an engine one huge prompt** (a design guideline). A model can estimate a
+  piece's workload **before** it runs — use that, rather than discovering the size from a timeout. **A piece whose work is hours long is not a piece: split it into six or more logical pieces**, each with
+  its own deliverable and its own check. The anti-pattern is concrete — one ten-hour prompt to Codex.
+
+  It does not remove 3.2's warning that every hand-off has a fixed cost and loses context at the split.
+- Risk is judged separately from size: how late a mistake would be noticed, whether it can be undone, how many
+  things it touches. Tiny but risky → the prompt file gets one independent check.
+
+**Default-first design.** When the size decision says workflow design, the design starts from a lookup, not a
+blank page: each piece's category row (labelled in 3.2) or combination pipeline in `docs/TASK_TYPES.md` supplies the default pattern,
+engine, check and sabotage; `others` gets the full method from first principles. A bespoke (challenger) design
+replaces a default only on a written claim of ≥20% lower projected run cost **at equal coverage** (same
+criteria ids, same checks, same blindness — coverage is a gate, never an axis). The decision is reviewed by the
+script gate (`design_gate.py`) plus one blind fixed-checklist pass (Sonnet 5.5; a different kind when the
+design builds or EJ flagged high risk), and every run reconciles its claim in `docs/TASK_TYPES_LEDGER.md` —
+that ledger is how the defaults earn their n.
+
+Anchors for the number 3 **in a piece's step count** (not a cap on roles or concurrency — there is none, 3.7): Gate
+splits capability lists over three (`ancient_games/stages.py:109`) and the plan-wide cap of 3 dispatched
+corroborating sources (`ancient_games/registry.py:24`, used at `stages.py:309`; it caps dispatches per plan, not
+agents running at once).
+
+### 3.5 Clear pieces run as loops
+
+While the unclear spots are being resolved, the pieces that are already clear and not blocked run as loops: a
+defined output, the agent attempts, the check runs, pass → close the loop, fail → the feedback goes back to the agent.
+
+A piece is loop-ready only if it has all five:
+[0m
+[0m$ [0mwc -l /home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts/answers/*.md /home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts/logs/*.md; head -12 /home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts/answers/lao-tzu.md
+1 /home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts/answers/lao-tzu.md
+  52 /home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts/answers/linus.md
+   0 /home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts/answers/sun-tzu.md
+wc: '/home/smoke01/dev/ancient-games/runs/20261014-memory-index-cleanup/experts/logs/*.md': No such file or directory
+  53 total
+I'll read the brief first.
+[0m
