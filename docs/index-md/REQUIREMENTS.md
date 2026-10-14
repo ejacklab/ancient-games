@@ -39,14 +39,14 @@
   `retired`. No two entries share an `id`.
 - **B2.4** An **active** entry must also have: a `kind` from the five (decision, fact, lesson, observation,
   hypothesis); a file prefix that matches its `kind`; a `**Why:**` line; and a non-empty claim.
-- **B2.5** A problem in an inactive entry beyond B2.3 is a warning, not an error, so one old entry cannot block every
-  memory commit.
+- **B2.5** A problem in an inactive entry beyond B2.3 and B2.7 is a warning, not an error, so one old entry cannot
+  block every memory commit.
 - **B2.6** A file that is not valid UTF-8 is reported as `<file>: <problem>`, not as a crash.
 - **B2.7** No entry holds a line that starts with `<<<<<<<` or `>>>>>>>`, a git conflict marker (SoT K6.3). It is an
   error in every status.
-- **Fails if** a malformed active entry gets a line, a prefix/kind mismatch passes, a duplicate id passes, a broken
-  retired entry stops the build, or any input ends in a traceback; an id not in W1.1's form passes, or an entry with a
-  conflict-marker line passes.
+- **Fails if** a malformed active entry gets a line, a prefix/kind mismatch passes, a duplicate id passes, a retired
+  entry broken beyond B2.3 and B2.7 stops the build, or any input ends in a traceback; an id not in W1.1's form
+  passes, or an entry with a conflict-marker line passes.
 
 **B3 — What it writes** (p steps 2, 5, 6; r codex 6, opencode 7, agy 8)
 - **B3.1** One line per active entry, sorted by file name in code-point order:
