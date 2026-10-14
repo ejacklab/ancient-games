@@ -15,7 +15,7 @@ The design is `docs/memory-system/`:
 
 The tool `tools/memory_index.py` checks the id form and conflict markers (merged `6415a1c`, pushed).
 
-**Not committed:** the three files above and this run folder. Last pushed commit: `3f74440`.
+**Committed and pushed:** `66f3bcc` (the three files and this run folder).
 
 ## Steps
 
@@ -23,10 +23,10 @@ The tool `tools/memory_index.py` checks the id form and conflict markers (merged
 |---|---|---|---|
 | 1 | MUST/SHOULD levels for the 46 requirements | done | `runs/20261014-sot-must-should/` (rounds 1–2, EJ's id-form MUST, the COO's six) |
 | 2 | memory_index.py: id form and conflict markers | done, merged, pushed | `runs/20261014-memory-index-cleanup/` |
-| 3 | History out of the design, into release notes | done, not committed | `docs/memory-system/` |
+| 3 | History out of the design, into release notes | done, pushed `66f3bcc` | `docs/memory-system/` |
 | 4 | Requirements to YAML: draft, four experts' review | done | `experts/compare.md` |
-| 5 | Requirements to YAML: the majority layout, "project owner" | done, not committed | `docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml` |
-| 6 | Commit and push 3–5 | waiting for EJ | — |
+| 5 | Requirements to YAML: the majority layout, "project owner" | done, pushed `66f3bcc` | `docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml` |
+| 6 | Commit and push 3–5 | done | `66f3bcc` |
 
 ## Log (append only)
 
@@ -34,11 +34,11 @@ The tool `tools/memory_index.py` checks the id form and conflict markers (merged
 - 2026-10-14 EJ: *"I got a feeling this memory design doc better change to use yaml format"*, then *"we can have this doc point to a YAML file"* → draft `draft-SOURCE_OF_TRUTH_REQUIREMENTS.yaml` (word for word, round trip identical).
 - 2026-10-14 EJ: *"yes ask the 4 experts to review the draft"* → `experts/`; check 3 failures, all 老子 script or variant readings (為/爲 twice, 吾/我有三寶). Majority: split mixed-level requirements (4/4), `fails_if` per requirement (4/4), `links:` (3/4), `who_decides` on open choices (4/4). Dave (control): test first, keep A and B.
 - 2026-10-14 EJ: *"yes 1 and 2, use project owner, skip the test"* → YAML rebuilt to the majority layout (`build_requirements.py`: 64 records, checks pass); `SOURCE_OF_TRUTH.md` points to it; "EJ" → "the project owner". New wording the COO wrote is listed in the release notes (2026-10-14). Suite: 993 passed, 1 failed (`test_skills_export_is_current`, another session's uncommitted skill edits, not this work).
+- 2026-10-15 EJ: *"commit and push"* → `66f3bcc` pushed (`3f74440..66f3bcc`).
 
 ## TODO next
 
-1. **Commit and push** `docs/memory-system/` (the three files) and `runs/20261014-sot-yaml-review/` — waiting for
-   EJ's word.
+1. ~~Commit and push~~ — done 2026-10-15, `66f3bcc`.
 2. **Who reviews the judged checks.** `check: reviewer` sits on most records; the YAML says the project owner names
    who reviews, and nobody is named. All five experts raised it. EJ's decision.
 3. **The open `who_decides`:** W3.6 (whether a procedure can be a script) and Rd3.1a (which agents work on the
