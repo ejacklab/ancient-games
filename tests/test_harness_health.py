@@ -19,6 +19,7 @@ SCRIPT = SCRIPTS / "harness_health.py"
 HARNESSES = ["claude", "codex", "agy", "qwen", "dsh", "opencode"]
 VERSIONS = {"claude": "2.1.299 (Claude Code)", "codex": "codex-cli 0.160.0"}
 SECRET = "SECRET-PLANT-7f3a9c"
+ALPHA = "SecretPlantToken"  # passes a letters-only filter, which SECRET does not
 
 sys.path.insert(0, str(SCRIPTS))
 import harness_health as hh  # noqa: E402
@@ -75,8 +76,8 @@ def claude_settings(box, obj, scope="user"):
 
 
 def tree_hash(*roots: Path) -> dict:
-    return {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
-            for r in roots for p in sorted(r.rglob("*")) if p.is_file()}
+    return {str(p): (p.stat().st_mode, hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else "dir")
+            for r in roots for p in sorted(r.rglob("*"))}
 
 
 def test_hh_01_ten_rows_and_no_machine_paths(box):
@@ -102,10 +103,17 @@ CASES = [
      {"permissions": {"defaultMode": "acceptEdits"}}),
     ("claude", "bypass-mode prompt", {"skipDangerousModePermissionPrompt": True}, {}),
     ("claude", "hooks", {"hooks": {}}, {"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "true"}]}]}}),
+    ("claude", "deny rules", {"permissions": {"deny": [None, "", 3]}}, {"permissions": {"deny": [None, "Read(./x)"]}}),
+    ("claude", "hooks", {"hooks": {"Stop": [{"hooks": []}]}},
+     {"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "x"}]}]}}),
+    ("claude", "hooks", {"disableAllHooks": True, "hooks": {"Stop": [{"hooks": [{"command": "x"}]}]}},
+     {"disableAllHooks": False, "hooks": {"Stop": [{"hooks": [{"command": "x"}]}]}}),
+    ("claude", "permission mode", {"permissions": {"defaultMode": "auto"}}, {"permissions": {"defaultMode": "plan"}}),
+    ("claude", "permission mode", {"permissions": {"defaultMode": "dontAsk"}}, {"permissions": {"defaultMode": "default"}}),
 ]
 
 
-@pytest.mark.parametrize("harness,item,bad,good", CASES, ids=[c[1] for c in CASES])
+@pytest.mark.parametrize("harness,item,bad,good", CASES, ids=[f"{c[1]}-{i}" for i, c in enumerate(CASES)])
 def test_hh_02_claude_absent_and_present(box, harness, item, bad, good):
     box.full()
     claude_settings(box, bad)
@@ -133,7 +141,7 @@ def test_hh_02_engine_kinds_and_instruction_file(box):
     write(box.cwd / "AGENTS.md", "# x\n")
     f = box.findings()
     assert one(f, "-", "engine kinds on PATH")["finding"] == "present"
-    assert not [x for x in f if x["item"] == "project instruction file"]
+    assert one(f, "-", "project instruction file")["finding"] == "present"
     assert one(f, "-", "./AGENTS.md")["detail"] == "1 lines, 4 bytes"
 
 
@@ -150,14 +158,16 @@ def test_hh_02_scopes_add_deny_and_local_overrides_mode(box):
 
 def test_hh_03_planted_secret_never_printed(box):
     box.full()
-    claude_settings(box, {"env": {"API_KEY": SECRET}, "permissions": {"deny": [f"Read({SECRET})"],
-                          "defaultMode": SECRET}, "hooks": {SECRET: [{"command": SECRET}]}})
-    write(box.home / ".codex/config.toml",
-          f'sandbox_mode = "{SECRET}"\n[model_providers.x]\napi_key = "{SECRET}"\n')
-    for args in ((), ("--json",)):
-        r = box.run(*args)
-        assert r.returncode == 0, r.stderr
-        assert SECRET not in r.stdout + r.stderr
+    for token in (SECRET, ALPHA):
+        claude_settings(box, {"env": {"API_KEY": token}, "permissions": {"deny": [f"Read({token})"],
+                              "defaultMode": token}, "hooks": {token: [{"hooks": [{"command": token}]}]},
+                              "sandbox": {"enabled": token}, "skipDangerousModePermissionPrompt": token})
+        write(box.home / ".codex/config.toml",
+              f'sandbox_mode = "{token}"\napproval_policy = "{token}"\n[model_providers.x]\napi_key = "{token}"\n')
+        for args in ((), ("--json",)):
+            r = box.run(*args)
+            assert r.returncode == 0, r.stderr
+            assert token not in r.stdout + r.stderr, (token, args)
 
 
 def resolve(box, shown: str) -> Path:
@@ -195,6 +205,9 @@ def test_hh_04_every_snippet_flips_its_finding(box):
         ("claude", "deny rules"), ("claude", "sandbox"), ("claude", "permission mode"),
         ("claude", "bypass-mode prompt"), ("codex", "sandbox_mode"), ("codex", "approval_policy")}
     for f in before:
+        assert f["help"]["how"] == (hh.JSON_HOW if f["help"]["lang"] == "json" else
+                                    "a top-level line in ~/.codex/config.toml, above the first [table]; "
+                                    "replace the line if the key is already set")
         apply_help(box, f["help"])
         assert one(box.findings(), f["harness"], f["item"])["finding"] == "present", f
 
@@ -207,6 +220,7 @@ def test_hh_05_no_file_changes(box):
     before = tree_hash(box.home, box.cwd)
     assert box.run().returncode == 0
     assert box.run("--json").returncode == 0
+    assert box.run("--self-test").returncode == 0
     assert tree_hash(box.home, box.cwd) == before
 
 
@@ -270,3 +284,40 @@ def test_hh_11_config_dir_overrides(box):
     f = box.findings(extra_env={"CLAUDE_CONFIG_DIR": str(alt_claude), "CODEX_HOME": str(alt_codex)})
     assert one(f, "claude", "deny rules")["finding"] == "present"
     assert one(f, "codex", "sandbox_mode")["finding"] == "present"
+
+
+@pytest.mark.parametrize("settings,toml", [
+    ({"permissions": {"defaultMode": []}}, "sandbox_mode = []\n"),
+    ({"permissions": {"defaultMode": {}}, "sandbox": []}, "approval_policy = {}\n"),
+    ({"permissions": [], "hooks": [], "skipDangerousModePermissionPrompt": {}}, "sandbox_mode = 3\n"),
+    ({"hooks": {"Stop": "x"}, "sandbox": {"enabled": []}}, "approval_policy = true\n"),
+])
+def test_hh_12_odd_shapes_never_crash(box, settings, toml):
+    box.full()
+    claude_settings(box, settings)
+    write(box.home / ".codex/config.toml", toml)
+    for args in ((), ("--harness", "codex")):
+        r = box.run(*args)
+        assert r.returncode == 0 and "Traceback" not in r.stderr, r.stderr
+    f = box.findings()
+    assert all(x["finding"] in {"absent", "unknown", "present"} for x in f if x["req"] in (6, 8, 10))
+    assert one(f, "claude", "permission mode")["finding"] in {"present", "unknown"}
+
+
+def test_hh_13_non_utf8_codex_config_is_unknown(box):
+    box.full()
+    p = box.home / ".codex/config.toml"
+    p.parent.mkdir(parents=True)
+    p.write_bytes(b'sandbox_mode = "read-only"\n\xff\n')
+    assert one(box.findings(), "codex", "config")["finding"] == "unknown"
+
+
+def test_hh_14_no_absolute_path_outside_home(box):
+    box.full()
+    shared = box.home.parent / "shared-codex"
+    write(shared / "config.toml", "sandbox_mode = [\n")
+    for args in ((), ("--json",)):
+        r = box.run(*args, extra_env={"CODEX_HOME": str(shared)})
+        assert r.returncode == 0, r.stderr
+        assert str(shared) not in r.stdout and str(box.home) not in r.stdout
+    assert "$CODEX_HOME/config.toml" in r.stdout

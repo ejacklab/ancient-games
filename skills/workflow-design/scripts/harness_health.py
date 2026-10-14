@@ -3,25 +3,27 @@
 
 readiness.py proves what is installed; this script reads how each installed harness is set up, against ten
 requirements for a harness (context, tools, planning, state, verification, guardrails, recovery, human gates,
-observability, feedback). It never spends quota, never writes a file, and never prints a config value other than
-a recognised mode name or a count — config files hold keys.
+observability, feedback). It never spends quota and never prints a config value other than a recognised mode or
+event name or a count — config files hold keys. A run only reads; `--self-test` writes two settings files in a
+temporary folder and deletes it.
 
 Configured is not enforced: a line reads what a config file says; none proves the harness enforces it.
 
 Every line is one finding:
   present   the thing the requirement names is configured
-  absent    it is not — and a Help entry says which file, which key, and a snippet the person applies
+  absent    it is not — a Help entry names the file and what to change, with a snippet where the fix is a setting
   measured  a number with no verdict (no threshold is given)
   covered   a per-run requirement the method's own script covers; the line goes MISSING if that script is gone
-  unknown   the harness's config format has not been verified, or the file could not be read
+  unknown   the harness's config format has not been verified, the file could not be read, or a value is not one
+            the harness accepts
 Status keeps readiness's meaning: verified (key names proved on the installed version: the harness rejected a bad
 value) · reported (key names from another version or the binary's strings) · unknown · MISSING.
 
 Key names, and the version they were checked on (runs/20261015-harness-health/evidence/ in the Ancient Games repo):
   codex   sandbox_mode, approval_policy — verified on codex-cli 0.160.0 (`codex -c 'sandbox_mode="bogus"' login
           status` is rejected; a misspelled key is silently accepted)
-  claude  permissions.deny / defaultMode, sandbox.enabled, skipDangerousModePermissionPrompt, hooks — reported from
-          the 2.1.299 binary's strings; no quota-free command validates them
+  claude  permissions.deny / defaultMode, sandbox.enabled, skipDangerousModePermissionPrompt, hooks and their event
+          names, disableAllHooks — reported from the 2.1.299 binary's strings; no quota-free command validates them
   agy, qwen, dsh, opencode — not verified: unknown
 
 Usage: harness_health.py [--harness NAME ...] [--json] [--self-test]
@@ -49,9 +51,20 @@ SCRIPTS = Path(__file__).resolve().parent
 HARNESSES = ["claude", "codex", "agy", "qwen", "dsh", "opencode"]
 CODEX_VERIFIED_ON = "0.160.0"
 CLAUDE_KEYS_FROM = "2.1.299"
-CLAUDE_MODES = {"default", "acceptEdits", "plan", "auto", "bypassPermissions", "dontAsk"}
+CLAUDE_ASKS = {"default", "acceptEdits", "plan"}                 # a person is asked for what no rule allows
+CLAUDE_NO_PERSON = {"bypassPermissions": "no approval prompts",
+                    "auto": "a classifier, not a person, approves actions",
+                    "dontAsk": "actions no rule allows are denied without asking anyone"}
+CLAUDE_HOOK_EVENTS = {
+    "PreToolUse", "PostToolUse", "PostToolUseFailure", "PostToolBatch", "Notification", "UserPromptSubmit",
+    "UserPromptExpansion", "SessionStart", "SessionEnd", "Stop", "StopFailure", "SubagentStart", "SubagentStop",
+    "PreCompact", "PostCompact", "PreModelSwitch", "PostModelSwitch", "PermissionRequest", "PermissionDenied",
+    "Setup", "TeammateIdle", "TaskCreated", "TaskCompleted", "Elicitation", "ElicitationResult", "ConfigChange",
+    "WorktreeCreate", "WorktreeRemove", "InstructionsLoaded", "CwdChanged", "FileChanged", "DirectoryAdded",
+    "MessageDisplay"}
 CODEX_SANDBOX = {"read-only", "workspace-write", "danger-full-access"}
 CODEX_APPROVAL = {"untrusted", "on-failure", "on-request", "granular", "never"}
+JSON_HOW = "merge into the file: keep its other keys, and add list items to a list that is already there"
 
 REQUIREMENTS = {1: "Clear context delivery", 2: "Well-designed tools", 3: "Planning and task structure",
                 4: "State and memory across sessions", 5: "Independent verification",
@@ -65,7 +78,8 @@ class Help:
     file: str
     changes: str
     snippet: str = ""
-    lang: str = ""          # json: merge into the file · toml: a top-level line above the first [table]
+    lang: str = ""
+    how: str = ""           # how to apply the snippet, printed with it
 
 
 @dataclass
@@ -80,14 +94,23 @@ class Finding:
     help: Help | None = field(default=None)
 
 
-def shown(p: Path, home: Path, cwd: Path) -> str:
-    """A path as the person would type it, never the machine's absolute home or project path."""
-    for base, label in ((cwd, "."), (home, "~")):
-        try:
-            return f"{label}/{p.relative_to(base)}"
-        except ValueError:
-            pass
-    return str(p)
+class Where:
+    """The machine's folders, and paths shown as the person would type them — never an absolute path."""
+
+    def __init__(self, home: Path, cwd: Path, env: dict):
+        self.home, self.cwd = home, cwd
+        self.claude = Path(env["CLAUDE_CONFIG_DIR"]) if env.get("CLAUDE_CONFIG_DIR") else home / ".claude"
+        self.codex = Path(env["CODEX_HOME"]) if env.get("CODEX_HOME") else home / ".codex"
+        self.bases = ([(self.claude, "$CLAUDE_CONFIG_DIR")] if env.get("CLAUDE_CONFIG_DIR") else []) + \
+                     ([(self.codex, "$CODEX_HOME")] if env.get("CODEX_HOME") else []) + [(cwd, "."), (home, "~")]
+
+    def show(self, p: Path) -> str:
+        for base, label in self.bases:
+            try:
+                return f"{label}/{p.relative_to(base)}"
+            except ValueError:
+                pass
+        return f"…/{p.name}"
 
 
 def load_json(p: Path) -> tuple[dict | None, str]:
@@ -110,6 +133,7 @@ COVERED = [(2, "engine adapters with pinned flags", "engines.py"), (2, "dispatch
 
 
 def covered_lines(scripts: Path) -> list[Finding]:
+    """The script exists — not that the gate it names works; that is the gate's own tests' job."""
     out = []
     for req, what, rel in COVERED:
         p = (scripts / rel).resolve()
@@ -123,48 +147,49 @@ def covered_lines(scripts: Path) -> list[Finding]:
 
 # --- requirement 1, 4, 5, 9: files and engines -----------------------------------------------------------------
 
-def context_lines(home: Path, cwd: Path, claude_dir: Path, codex_dir: Path) -> list[Finding]:
+def context_lines(w: Where) -> list[Finding]:
     out = []
-    project = [cwd / n for n in ("CLAUDE.md", "AGENTS.md", "QWEN.md", "GEMINI.md")]
-    for p in project + [claude_dir / "CLAUDE.md", codex_dir / "AGENTS.md"]:
+    project = [w.cwd / n for n in ("CLAUDE.md", "AGENTS.md", "QWEN.md", "GEMINI.md")]
+    found = [p.name for p in project if p.is_file()]
+    if found:
+        out.append(Finding(1, "-", "project instruction file", VERIFIED, "present", ", ".join(found), "."))
+    else:
+        f = Finding(1, "-", "project instruction file", VERIFIED, "absent",
+                    "none of CLAUDE.md, AGENTS.md, QWEN.md, GEMINI.md in the project", ".")
+        f.help = Help("./AGENTS.md", "gives every harness one short, durable entry point; the bootstrap skill writes "
+                      "one from the project's blueprint")
+        out.append(f)
+    for p in project + [w.claude / "CLAUDE.md", w.codex / "AGENTS.md"]:
         if p.is_file():
             try:
                 text = p.read_text(errors="replace")
             except OSError as e:
-                out.append(Finding(1, "-", shown(p, home, cwd), UNKNOWN, "unknown", f"unreadable: {e}", shown(p, home, cwd)))
+                out.append(Finding(1, "-", w.show(p), UNKNOWN, "unknown", f"unreadable: {type(e).__name__}", w.show(p)))
                 continue
-            out.append(Finding(1, "-", shown(p, home, cwd), VERIFIED, "measured",
-                               f"{len(text.splitlines())} lines, {len(text.encode())} bytes", shown(p, home, cwd)))
-    if not any(p.is_file() for p in project):
-        out.append(Finding(1, "-", "project instruction file", VERIFIED, "absent",
-                           "none of CLAUDE.md, AGENTS.md, QWEN.md, GEMINI.md in the project", "."))
-        out[-1].help = Help("./AGENTS.md", "gives every harness one short, durable entry point; the bootstrap skill "
-                            "writes one from the project's blueprint")
+            out.append(Finding(1, "-", w.show(p), VERIFIED, "measured",
+                               f"{len(text.splitlines())} lines, {len(text.encode())} bytes", w.show(p)))
     return out
 
 
-def memory_and_log_lines(home: Path, cwd: Path, claude_dir: Path, codex_dir: Path,
-                         installed: set[str]) -> list[Finding]:
+def memory_and_log_lines(w: Where, installed: set[str]) -> list[Finding]:
     out = []
-    slug = re.sub(r"[^A-Za-z0-9]", "-", str(cwd))
-    proj = claude_dir / "projects" / slug
+    proj = w.claude / "projects" / re.sub(r"[^A-Za-z0-9]", "-", str(w.cwd))
     if "claude" in installed:
         mem = proj / "memory"
         n = len(list(mem.glob("*.md"))) if mem.is_dir() else 0
         out.append(Finding(4, "claude", "project memory", REPORTED, "measured",
-                           f"{n} memory files" if mem.is_dir() else "no memory folder for this project",
-                           shown(mem, home, cwd)))
+                           f"{n} memory files" if mem.is_dir() else "no memory folder for this project", w.show(mem)))
         n = len(list(proj.glob("*.jsonl"))) if proj.is_dir() else 0
         out.append(Finding(9, "claude", "session transcripts", REPORTED, "measured",
-                           f"{n} session logs for this project", shown(proj, home, cwd)))
+                           f"{n} session logs for this project", w.show(proj)))
     if "codex" in installed:
-        p = codex_dir / "sessions"
+        p = w.codex / "sessions"
         out.append(Finding(9, "codex", "session rollouts", VERIFIED, "measured",
-                           "folder present" if p.is_dir() else "no sessions folder", shown(p, home, cwd)))
+                           "folder present" if p.is_dir() else "no sessions folder", w.show(p)))
     if "dsh" in installed:
-        p = home / ".dsh" / "sessions"
+        p = w.home / ".dsh" / "sessions"
         out.append(Finding(9, "dsh", "sessions", VERIFIED, "measured",
-                           "folder present" if p.is_dir() else "no sessions folder", shown(p, home, cwd)))
+                           "folder present" if p.is_dir() else "no sessions folder", w.show(p)))
     return out
 
 
@@ -183,118 +208,134 @@ def engine_kind_line(installed: set[str]) -> Finding:
 
 # --- Claude Code -----------------------------------------------------------------------------------------------
 
-def claude_lines(home: Path, cwd: Path, claude_dir: Path) -> list[Finding]:
-    scopes = [("user", claude_dir / "settings.json"), ("project", cwd / ".claude" / "settings.json"),
-              ("local", cwd / ".claude" / "settings.local.json")]
+def claude_lines(w: Where) -> list[Finding]:
+    scopes = [("user", w.claude / "settings.json"), ("project", w.cwd / ".claude" / "settings.json"),
+              ("local", w.cwd / ".claude" / "settings.local.json")]
     rc, out = run_cmd(["claude", "--version"])
     version = out.split()[0] if rc == 0 and out else "?"
     basis = f"key names from the {CLAUDE_KEYS_FROM} binary; installed {version}"
-    proof = ", ".join(shown(p, home, cwd) for _, p in scopes)
+    proof = ", ".join(w.show(p) for _, p in scopes)
+    project_file = w.show(scopes[1][1])
     loaded = []
     for scope, p in scopes:
         d, why = load_json(p)
         if d is None:
-            return [Finding(6, "claude", "settings", UNKNOWN, "unknown", f"{shown(p, home, cwd)} {why}",
-                            shown(p, home, cwd))]
+            return [Finding(6, "claude", "settings", UNKNOWN, "unknown", f"{w.show(p)} {why}", w.show(p))]
         loaded.append((scope, p, d))
 
-    def perms(d):
-        v = d.get("permissions")
-        return v if isinstance(v, dict) else {}
-
-    lines = []
-    # R6 deny rules: they add up across scopes
-    deny = [(s, len(perms(d)["deny"])) for s, _, d in loaded
-            if isinstance(perms(d).get("deny"), list) and perms(d)["deny"]]
-    if deny:
-        lines.append(Finding(6, "claude", "deny rules", REPORTED, "present",
-                             f"{', '.join(f'{n} in {s}' for s, n in deny)}; {basis}", proof))
-    else:
-        f = Finding(6, "claude", "deny rules", REPORTED, "absent", f"no permissions.deny in any scope; {basis}", proof)
-        f.help = Help(shown(scopes[1][1], home, cwd),
-                      "blocks the listed tools/paths outright, whatever is allowed elsewhere. The two rules are "
-                      "examples from Claude Code's settings docs — replace them with what this project must never "
-                      "touch", json.dumps({"permissions": {"deny": ["Read(./.env)", "Read(./secrets/**)"]}}, indent=2),
-                      "json")
-        lines.append(f)
+    def at(d, key_path):
+        for k in key_path:
+            d = d.get(k) if isinstance(d, dict) else None
+        return d
 
     def effective(key_path):
-        """(value, scope, path) from the most specific scope that sets it: local > project > user."""
+        """(value, scope, shown path) from the most specific scope that sets it: local > project > user."""
         for scope, p, d in reversed(loaded):
-            v = d
-            for k in key_path:
-                v = v.get(k) if isinstance(v, dict) else None
+            v = at(d, key_path)
             if v is not None:
-                return v, scope, p
-        return None, None, None
+                return v, scope, w.show(p)
+        return None, None, project_file
+
+    def line(req, item, finding, detail, help_=None):
+        return Finding(req, "claude", item, REPORTED, finding, f"{detail}; {basis}", proof, help_)
+
+    lines = []
+    # R6 deny rules add up across scopes; only non-empty strings are rules
+    deny = []
+    for s, _, d in loaded:
+        rules = at(d, ("permissions", "deny"))
+        n = sum(1 for r in rules if isinstance(r, str) and r.strip()) if isinstance(rules, list) else 0
+        if n:
+            deny.append((s, n))
+    if deny:
+        lines.append(line(6, "deny rules", "present", ", ".join(f"{n} in {s}" for s, n in deny)))
+    else:
+        lines.append(line(6, "deny rules", "absent", "no deny rule in any scope", Help(
+            project_file, "blocks the listed tools/paths outright, whatever is allowed elsewhere. The two rules are "
+            "examples from Claude Code's settings docs — replace them with what this project must never touch",
+            json.dumps({"permissions": {"deny": ["Read(./.env)", "Read(./secrets/**)"]}}, indent=2), "json",
+            JSON_HOW)))
 
     # R6 sandbox
-    v, scope, p = effective(("sandbox", "enabled"))
+    v, scope, where = effective(("sandbox", "enabled"))
     if v is True:
-        lines.append(Finding(6, "claude", "sandbox", REPORTED, "present", f"sandbox.enabled true ({scope}); {basis}", proof))
+        lines.append(line(6, "sandbox", "present", f"sandbox.enabled true ({scope})"))
+    elif v is None or v is False:
+        lines.append(line(6, "sandbox", "absent", f"sandbox.enabled {'false (' + scope + ')' if v is False else 'not set'}",
+                          Help(where, "runs Bash commands inside Claude Code's OS sandbox (filesystem and network "
+                               "limits)", json.dumps({"sandbox": {"enabled": True}}, indent=2), "json", JSON_HOW)))
     else:
-        f = Finding(6, "claude", "sandbox", REPORTED, "absent",
-                    f"sandbox.enabled {'false (' + scope + ')' if v is False else 'not set'}; {basis}", proof)
-        f.help = Help(shown(p or scopes[1][1], home, cwd), "runs Bash commands inside Claude Code's OS sandbox "
-                      "(filesystem and network limits)", json.dumps({"sandbox": {"enabled": True}}, indent=2), "json")
-        lines.append(f)
+        lines.append(line(6, "sandbox", "unknown", f"sandbox.enabled is not true/false ({scope})"))
 
-    # R8 permission mode — a human approves unless the mode bypasses it
-    v, scope, p = effective(("permissions", "defaultMode"))
-    if v == "bypassPermissions":
-        f = Finding(8, "claude", "permission mode", REPORTED, "absent",
-                    f"defaultMode bypassPermissions ({scope}): no approval prompts; {basis}", proof)
-        f.help = Help(shown(p, home, cwd), "brings back approval prompts for actions not allowed by a rule",
-                      json.dumps({"permissions": {"defaultMode": "default"}}, indent=2), "json")
-        lines.append(f)
+    # R8 permission mode — does a person approve what no rule allows?
+    v, scope, where = effective(("permissions", "defaultMode"))
+    if v is None:
+        lines.append(line(8, "permission mode", "present", "defaultMode not set (default: a person is asked)"))
+    elif isinstance(v, str) and v in CLAUDE_ASKS:
+        lines.append(line(8, "permission mode", "present", f"defaultMode {v} ({scope}): a person is asked"))
+    elif isinstance(v, str) and v in CLAUDE_NO_PERSON:
+        lines.append(line(8, "permission mode", "absent", f"defaultMode {v} ({scope}): {CLAUDE_NO_PERSON[v]}", Help(
+            where, "a person is asked before any action no rule allows",
+            json.dumps({"permissions": {"defaultMode": "default"}}, indent=2), "json", JSON_HOW)))
     else:
-        mode = v if v in CLAUDE_MODES else ("not set (default)" if v is None else "unrecognised value (not shown)")
-        lines.append(Finding(8, "claude", "permission mode", REPORTED, "present",
-                             f"defaultMode {mode}{f' ({scope})' if scope else ''}; {basis}", proof))
+        lines.append(line(8, "permission mode", "unknown", f"defaultMode not a recognised mode (not shown) ({scope})"))
 
     # R8 the prompt before entering bypass mode
-    v, scope, p = effective(("skipDangerousModePermissionPrompt",))
+    v, scope, where = effective(("skipDangerousModePermissionPrompt",))
     if v is True:
-        f = Finding(8, "claude", "bypass-mode prompt", REPORTED, "absent",
-                    f"skipDangerousModePermissionPrompt true ({scope}); {basis}", proof)
-        f.help = Help(shown(p, home, cwd), "asks the person before a session enters bypass-permissions mode",
-                      json.dumps({"skipDangerousModePermissionPrompt": False}, indent=2), "json")
-        lines.append(f)
+        lines.append(line(8, "bypass-mode prompt", "absent", f"skipDangerousModePermissionPrompt true ({scope})", Help(
+            where, "asks the person before a session enters bypass-permissions mode",
+            json.dumps({"skipDangerousModePermissionPrompt": False}, indent=2), "json", JSON_HOW)))
+    elif v is None or v is False:
+        lines.append(line(8, "bypass-mode prompt", "present", "not skipped"))
     else:
-        lines.append(Finding(8, "claude", "bypass-mode prompt", REPORTED, "present",
-                             f"not skipped; {basis}", proof))
+        lines.append(line(8, "bypass-mode prompt", "unknown", f"skipDangerousModePermissionPrompt not true/false ({scope})"))
 
-    # R10 hooks: event names add up across scopes
-    events = sorted({e for _, _, d in loaded if isinstance(d.get("hooks"), dict)
-                     for e, v in d["hooks"].items() if v and re.fullmatch(r"[A-Za-z]+", str(e))})
-    if events:
-        lines.append(Finding(10, "claude", "hooks", REPORTED, "present", f"events: {', '.join(events)}; {basis}", proof))
+    # R10 hooks: an event counts when it holds at least one hook with a command; names shown only if recognised
+    def has_command(groups):
+        return isinstance(groups, list) and any(
+            isinstance(g, dict) and isinstance(g.get("hooks"), list) and any(
+                isinstance(h, dict) and isinstance(h.get("command"), str) and h["command"].strip()
+                for h in g["hooks"]) for g in groups)
+
+    disabled, scope, where = effective(("disableAllHooks",))
+    events = {e for _, _, d in loaded if isinstance(d.get("hooks"), dict)
+              for e, groups in d["hooks"].items() if has_command(groups)}
+    named = sorted(e for e in events if e in CLAUDE_HOOK_EVENTS)
+    others = len(events) - len(named)
+    if disabled is True:
+        lines.append(line(10, "hooks", "absent", f"disableAllHooks true ({scope}): no hook runs", Help(
+            where, "lets the configured hooks run again", json.dumps({"disableAllHooks": False}, indent=2), "json",
+            JSON_HOW)))
+    elif named:
+        lines.append(line(10, "hooks", "present",
+                          f"events: {', '.join(named)}" + (f"; {others} unrecognised (not shown)" if others else "")))
     else:
-        f = Finding(10, "claude", "hooks", REPORTED, "absent", f"no hooks in any scope; {basis}", proof)
-        f.help = Help(shown(scopes[1][1], home, cwd), "a hook is how a recorded mistake becomes a check that "
-                      "runs every time (e.g. a UserPromptSubmit or Stop hook); the command is the project's to write")
-        lines.append(f)
+        lines.append(line(10, "hooks", "absent", "no hook with a command for a recognised event" +
+                          (f"; {others} unrecognised (not shown)" if others else ""), Help(
+            project_file, "a hook is how a recorded mistake becomes a check that runs every time (e.g. a "
+            "UserPromptSubmit or Stop hook); the command is the project's to write")))
     return lines
 
 
 # --- Codex -----------------------------------------------------------------------------------------------------
 
-def codex_lines(home: Path, cwd: Path, codex_dir: Path) -> list[Finding]:
-    p = codex_dir / "config.toml"
+def codex_lines(w: Where) -> list[Finding]:
+    p = w.codex / "config.toml"
     rc, out = run_cmd(["codex", "--version"])
     version = out.split()[-1] if rc == 0 and out else "?"
     status = VERIFIED if version == CODEX_VERIFIED_ON else REPORTED
     basis = f"key names verified on {CODEX_VERIFIED_ON}" + ("" if status == VERIFIED else f"; installed {version}")
-    where = shown(p, home, cwd)
+    where = w.show(p)
     if p.exists():
         try:
             d = tomllib.loads(p.read_text())
-        except (OSError, tomllib.TOMLDecodeError) as e:
+        except (OSError, ValueError) as e:  # TOMLDecodeError and UnicodeDecodeError are ValueErrors
             return [Finding(6, "codex", "config", UNKNOWN, "unknown", f"{where} unreadable: {type(e).__name__}", where)]
     else:
         d = {}
     note = "; profiles and -c flags may override (not read)" if "profiles" in d else ""
-    placement = f"a top-level line in {where}, above the first [table] (replace the line if it exists)"
+    how = f"a top-level line in {where}, above the first [table]; replace the line if the key is already set"
     lines = []
     for req, key, allowed, bad, fix, changes in [
             (6, "sandbox_mode", CODEX_SANDBOX, "danger-full-access", "workspace-write",
@@ -302,18 +343,17 @@ def codex_lines(home: Path, cwd: Path, codex_dir: Path) -> list[Finding]:
             (8, "approval_policy", CODEX_APPROVAL, "never", "on-request",
              "Codex asks the person before commands it may not run on its own")]:
         v = d.get(key)
-        if v in allowed and v != bad:
-            lines.append(Finding(req, "codex", key, status, "present", f"{v}; {basis}{note}", where))
-            continue
+        help_ = Help(where, changes, f'{key} = "{fix}"', "toml", how)
         if v is None:
-            detail = "not set: Codex's built-in default applies (not checked)"
+            lines.append(Finding(req, "codex", key, status, "absent",
+                                 f"not set: Codex's built-in default applies (not checked); {basis}{note}", where, help_))
+        elif not isinstance(v, str) or v not in allowed:
+            lines.append(Finding(req, "codex", key, status, "unknown",
+                                 f"not a value Codex accepts (not shown); {basis}{note}", where))
         elif v == bad:
-            detail = f"{v}"
+            lines.append(Finding(req, "codex", key, status, "absent", f"{v}; {basis}{note}", where, help_))
         else:
-            detail = "unrecognised value (not shown)"
-        f = Finding(req, "codex", key, status, "absent", f"{detail}; {basis}{note}", where)
-        f.help = Help(where, f"{changes}. Where: {placement}", f'{key} = "{fix}"', "toml")
-        lines.append(f)
+            lines.append(Finding(req, "codex", key, status, "present", f"{v}; {basis}{note}", where))
     return lines
 
 
@@ -327,18 +367,17 @@ def unverified_lines(installed: set[str]) -> list[Finding]:
 
 def gather(home: Path, cwd: Path, env: dict, scripts: Path = SCRIPTS) -> list[Finding]:
     installed = {h for h in HARNESSES if shutil.which(h, path=env.get("PATH"))}
-    claude_dir = Path(env["CLAUDE_CONFIG_DIR"]) if env.get("CLAUDE_CONFIG_DIR") else home / ".claude"
-    codex_dir = Path(env["CODEX_HOME"]) if env.get("CODEX_HOME") else home / ".codex"
+    w = Where(home, cwd, env)
     lines = [Finding(0, h, "installed", VERIFIED if h in installed else MISSING, "-",
                      "on PATH" if h in installed else "not on PATH", f"`command -v {h}`") for h in HARNESSES]
-    lines += context_lines(home, cwd, claude_dir, codex_dir)
+    lines += context_lines(w)
     lines += covered_lines(scripts)
-    lines += memory_and_log_lines(home, cwd, claude_dir, codex_dir, installed)
+    lines += memory_and_log_lines(w, installed)
     lines.append(engine_kind_line(installed))
     if "claude" in installed:
-        lines += claude_lines(home, cwd, claude_dir)
+        lines += claude_lines(w)
     if "codex" in installed:
-        lines += codex_lines(home, cwd, codex_dir)
+        lines += codex_lines(w)
     lines += unverified_lines(installed)
     return sorted(lines, key=lambda f: f.req)
 
@@ -365,9 +404,10 @@ def to_markdown(lines: list[Finding]) -> str:
     if not helps:
         out.append("Nothing absent.")
     for f in helps:
-        out += [f"### R{f.req} · {f.harness} · {f.item}", "", f"- File: `{f.help.file}`", f"- What it changes: {f.help.changes}"]
+        out += [f"### R{f.req} · {f.harness} · {f.item}", "", f"- File: `{f.help.file}`",
+                f"- What it changes: {f.help.changes}"]
         if f.help.snippet:
-            out += ["", f"```{f.help.lang}", f.help.snippet, "```"]
+            out += [f"- How: {f.help.how}", "", f"```{f.help.lang}", f.help.snippet, "```"]
         out.append("")
     out.append("You apply any change; this script changed nothing.")
     return "\n".join(out) + "\n"
@@ -379,19 +419,20 @@ def self_test() -> int:
         home, cwd = Path(td) / "home", Path(td) / "proj"
         (home / ".claude").mkdir(parents=True)
         cwd.mkdir()
+        w = Where(home, cwd, {})
         (home / ".claude" / "settings.json").write_text('{"permissions": {"allow": ["Bash(ls:*)"]}}')
-        bad = [f for f in claude_lines(home, cwd, home / ".claude") if f.item == "deny rules"]
+        bad = [f.finding for f in claude_lines(w) if f.item == "deny rules"]
         (home / ".claude" / "settings.json").write_text('{"permissions": {"deny": ["Read(./.env)"]}}')
-        good = [f for f in claude_lines(home, cwd, home / ".claude") if f.item == "deny rules"]
-    if [f.finding for f in bad] == ["absent"] and [f.finding for f in good] == ["present"]:
+        good = [f.finding for f in claude_lines(w) if f.item == "deny rules"]
+    if bad == ["absent"] and good == ["present"]:
         print("self-test PASS: no deny list → absent, a deny list → present — the check can fail.")
         return 0
-    print(f"self-test FAIL: bad={[f.finding for f in bad]} good={[f.finding for f in good]}")
+    print(f"self-test FAIL: bad={bad} good={good}")
     return 1
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="Harness health for method 3.1 (no quota spent, nothing written).")
+    ap = argparse.ArgumentParser(description="Harness health for method 3.1 (no quota spent; a run only reads).")
     ap.add_argument("--harness", action="append", default=[], choices=HARNESSES,
                     help="narrow the lines and help to this harness (repeatable); exit 1 if it is not installed")
     ap.add_argument("--json", action="store_true", help="JSON instead of markdown")
