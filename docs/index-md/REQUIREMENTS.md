@@ -34,15 +34,19 @@
   is W1.2's.
 - **B2.2** The claim is the body after the header, up to the first line that starts with `**Why:**`. Blank lines are
   dropped and runs of whitespace become one space. The spelling `**Why:**` is W1.3's.
-- **B2.3** Every entry must have a readable header with a non-empty `id` and a `status` of `active`, `superseded` or
+- **B2.3** Every entry must have a readable header with an `id` in W1.1's form, `DD-MM-xxxxxx-YYYY` (two
+  digits, two digits, six lowercase letters or digits, four digits), and a `status` of `active`, `superseded` or
   `retired`. No two entries share an `id`.
 - **B2.4** An **active** entry must also have: a `kind` from the five (decision, fact, lesson, observation,
   hypothesis); a file prefix that matches its `kind`; a `**Why:**` line; and a non-empty claim.
-- **B2.5** A problem in an inactive entry beyond B2.3 is a warning, not an error, so one old entry cannot block every
-  memory commit.
+- **B2.5** A problem in an inactive entry beyond B2.3 and B2.7 is a warning, not an error, so one old entry cannot
+  block every memory commit.
 - **B2.6** A file that is not valid UTF-8 is reported as `<file>: <problem>`, not as a crash.
-- **Fails if** a malformed active entry gets a line, a prefix/kind mismatch passes, a duplicate id passes, a broken
-  retired entry stops the build, or any input ends in a traceback.
+- **B2.7** No entry holds a line that starts with `<<<<<<<` or `>>>>>>>`, a git conflict marker (SoT K6.3). It is an
+  error in every status.
+- **Fails if** a malformed active entry gets a line, a prefix/kind mismatch passes, a duplicate id passes, a retired
+  entry broken beyond B2.3 and B2.7 stops the build, or any input ends in a traceback; an id not in W1.1's form
+  passes, or an entry with a conflict-marker line passes.
 
 **B3 — What it writes** (p steps 2, 5, 6; r codex 6, opencode 7, agy 8)
 - **B3.1** One line per active entry, sorted by file name in code-point order:
@@ -117,7 +121,7 @@
 **G4 — Ids across branches** (p must-not 5; d W1.1)
 - **G4.1** An entry's `id` is unique without coordination between branches. It is never "the next free number". Its
   form is W1.1's: `DD-MM-xxxxxx-YYYY` (EJ, 2026-10-13).
-- **G4.2** The script rejects a duplicate id (B2.3); it does not choose the form.
+- **G4.2** The script rejects a duplicate id and an id not in W1.1's form (B2.3); it does not choose an id.
 - **Fails if** two branches can each create the same id and the clash shows only after a merge.
 
 ## Open, for EJ

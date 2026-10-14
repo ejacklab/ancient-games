@@ -44,7 +44,7 @@ another session; do not settle a requirement by building it.
      inline code span (r codex 8). It is accepted, since claims are plain sentences.
 5. **Validate** (B2.3–B2.5). Collect every problem and report them all.
    - **Errors, for every entry:** no header; empty `id`; `status` not one of active, superseded or retired; a
-     duplicate `id`.
+     duplicate `id`; an `id` not in W1.1's form; a line starting `<<<<<<<` or `>>>>>>>`.
    - **Errors, for active entries:** `kind` not one of the five; file prefix not matching `kind`
      (D decision, F fact, L lesson, O observation, H hypothesis); no `**Why:**` line; empty claim.
    - **Warnings:** anything else wrong in an inactive entry.

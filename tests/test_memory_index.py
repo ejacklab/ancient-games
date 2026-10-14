@@ -19,15 +19,15 @@ HEADER = (
 )
 EMPTY_INDEX = HEADER + b"(no active entries)\n"
 SINGLE_INDEX = HEADER + (
-    b"- [D-20261012-a1](entries/D-one.md) decision: Use code-point order for the index.\n"
+    b"- [14-10-a1b2c3-2026](entries/D-one.md) decision: Use code-point order for the index.\n"
 )
 GOLDEN_INDEX = HEADER + (
-    "- [upper](entries/D-B.md) decision: Upper first.\n"
-    "- [spaces](entries/D-a%20b%23.md) decision: Keep this claim together.\n"
-    "- [accent](entries/F-%C3%A9.md) fact: Café is UTF-8.\n"
-    "- [guess](entries/H-guess.md) hypothesis: A hypothesis.\n"
-    "- [lesson](entries/L-lesson.md) lesson: A lesson.\n"
-    "- [observation](entries/O-observation.md) observation: An observation.\n"
+    "- [14-10-upper0-2026](entries/D-B.md) decision: Upper first.\n"
+    "- [14-10-spaces-2026](entries/D-a%20b%23.md) decision: Keep this claim together.\n"
+    "- [14-10-accent-2026](entries/F-%C3%A9.md) fact: Café is UTF-8.\n"
+    "- [14-10-guess0-2026](entries/H-guess.md) hypothesis: A hypothesis.\n"
+    "- [14-10-lesson-2026](entries/L-lesson.md) lesson: A lesson.\n"
+    "- [14-10-observ-2026](entries/O-observation.md) observation: An observation.\n"
 ).encode("utf-8")  # no runbook line: R- is not one of the five prefixes (EJ, 2026-10-13: "drop the R- and runbooks")
 SIZE_LINE = re.compile(r"INDEX\.md: (\d+)/(\d+) lines, (\d+)/(\d+) bytes")
 
@@ -81,7 +81,7 @@ def make_repo(tmp_path, *, copy_tool=True):
     return repo
 
 
-def write_entry(repo, name="D-one.md", *, id="D-20261012-a1", kind="decision",
+def write_entry(repo, name="D-one.md", *, id="14-10-a1b2c3-2026", kind="decision",
                 status="active", claim="Use code-point order for the index.", raw=None):
     path = repo / ENTRIES / name
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -148,7 +148,7 @@ def test_untracked_matching_entry_is_an_error(tmp_path):
     """B1.2 — an untracked entry must be named and rejected instead of silently indexed."""
     repo = make_repo(tmp_path)
     stage_single_entry(repo)
-    write_entry(repo, "F-untracked é.md", id="untracked", kind="fact")
+    write_entry(repo, "F-untracked é.md", id="14-10-untrac-2026", kind="fact")
     result = run_index(repo)
     assert result.returncode == 1, output(result)
     assert "F-untracked é.md: " in output(result)
@@ -160,7 +160,7 @@ def test_untracked_inactive_entry_is_an_error(tmp_path, status):
     """B1.2 — an untracked inactive entry must still be named and rejected in write mode."""
     repo = make_repo(tmp_path)
     stage_single_entry(repo)
-    write_entry(repo, "D-untracked.md", id="untracked", status=status)
+    write_entry(repo, "D-untracked.md", id="14-10-untrac-2026", status=status)
     result = run_index(repo)
     assert result.returncode == 1, output(result)
     assert "D-untracked.md: " in output(result)
@@ -178,7 +178,7 @@ def test_write_reads_working_tree_for_git_known_entries(tmp_path, staged_only):
     result = run_index(repo)
     assert result.returncode == 0, output(result)
     assert (repo / INDEX).read_bytes() == HEADER + (
-        b"- [D-20261012-a1](entries/D-one.md) decision: Working-tree claim.\n"
+        b"- [14-10-a1b2c3-2026](entries/D-one.md) decision: Working-tree claim.\n"
     )
 
 
@@ -201,11 +201,11 @@ def test_check_uses_snapshot_instead_of_working_tree(tmp_path, mode):
 def test_snapshot_reads_use_nul_paths_and_one_batch(tmp_path, mode):
     """B1.3 — paths with spaces and non-ASCII characters require NUL listing and one blob batch."""
     repo = make_repo(tmp_path)
-    write_entry(repo, "D-a b.md", id="space", claim="Space.")
-    write_entry(repo, "F-é.md", id="accent", kind="fact", claim="Accent.")
+    write_entry(repo, "D-a b.md", id="14-10-space0-2026", claim="Space.")
+    write_entry(repo, "F-é.md", id="14-10-accent-2026", kind="fact", claim="Accent.")
     expected = HEADER + (
-        b"- [space](entries/D-a%20b.md) decision: Space.\n"
-        b"- [accent](entries/F-%C3%A9.md) fact: Accent.\n"
+        b"- [14-10-space0-2026](entries/D-a%20b.md) decision: Space.\n"
+        b"- [14-10-accent-2026](entries/F-%C3%A9.md) fact: Accent.\n"
     )
     (repo / INDEX).write_bytes(expected)
     args = snapshot_args(repo, mode)
@@ -241,8 +241,8 @@ def test_header_reads_only_top_level_fields_and_strips_quotes(tmp_path):
     """B2.1 — nested fields must not override top-level fields and quoted values must be stripped."""
     repo = make_repo(tmp_path)
     write_entry(repo, raw=(
-        "---\nid:   'D-20261012-a1'  \nkind:  \"decision\" \nstatus: 'active'\n"
-        "ignored:\n  id: nested\n  kind: fact\n  status: retired\n---\n"
+        "---\nid:   '14-10-a1b2c3-2026'  \nkind:  \"decision\" \nstatus: 'active'\n"
+        "ignored:\n  id: 14-10-nested-2026\n  kind: fact\n  status: retired\n---\n"
         "Use code-point order for the index.\n**Why:** reason\n"
     ))
     git(repo, "add", "-A")
@@ -262,19 +262,16 @@ def test_claim_ends_at_why_and_collapses_whitespace(tmp_path):
 
 
 INVALID_ENTRIES = [
-    "id: bad\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
-    "\n---\nid: bad\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
-    "---\nid: bad\nkind: decision\nstatus: active\nClaim.\n**Why:** reason\n",
-    "---\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
-    "---\nid: ''\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
-    "---\n  id: nested-only\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
-    "---\nid: bad\nkind: decision\n---\nClaim.\n**Why:** reason\n",
-    "---\nid: bad\nkind: decision\nstatus: unknown\n---\nClaim.\n**Why:** reason\n",
-    "---\nid: bad\nkind: unknown\nstatus: active\n---\nClaim.\n**Why:** reason\n",
-    "---\nid: bad\nstatus: active\n---\nClaim.\n**Why:** reason\n",
-    "---\nid: bad\nkind: fact\nstatus: active\n---\nClaim.\n**Why:** reason\n",
-    "---\nid: bad\nkind: decision\nstatus: active\n---\nClaim without rationale.\n",
-    "---\nid: bad\nkind: decision\nstatus: active\n---\n \t\n**Why:** reason\n",
+    "id: 14-10-bad000-2026\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+    "\n---\nid: 14-10-bad000-2026\nkind: decision\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+    "---\nid: 14-10-bad000-2026\nkind: decision\nstatus: active\nClaim.\n**Why:** reason\n",
+    "---\nid: 14-10-bad000-2026\nkind: decision\n---\nClaim.\n**Why:** reason\n",
+    "---\nid: 14-10-bad000-2026\nkind: decision\nstatus: unknown\n---\nClaim.\n**Why:** reason\n",
+    "---\nid: 14-10-bad000-2026\nkind: unknown\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+    "---\nid: 14-10-bad000-2026\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+    "---\nid: 14-10-bad000-2026\nkind: fact\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+    "---\nid: 14-10-bad000-2026\nkind: decision\nstatus: active\n---\nClaim without rationale.\n",
+    "---\nid: 14-10-bad000-2026\nkind: decision\nstatus: active\n---\n \t\n**Why:** reason\n",
 ]
 
 
@@ -285,6 +282,7 @@ def test_malformed_entries_fail_without_writing(tmp_path, mode, raw):
     repo = make_repo(tmp_path)
     stage_single_entry(repo)
     write_entry(repo, "D-bad.md", raw=raw)
+    git(repo, "add", "-A")
     result = run_index(repo, *snapshot_args(repo, mode))
     assert result.returncode == 1, output(result)
     assert "D-bad.md: " in output(result)
@@ -294,19 +292,19 @@ def test_malformed_entries_fail_without_writing(tmp_path, mode, raw):
 
 @pytest.mark.parametrize("raw", [
     pytest.param(
-        "---\nid: bad\nkind: unknown\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+        "---\nid: 14-10-bad000-2026\nkind: unknown\nstatus: active\n---\nClaim.\n**Why:** reason\n",
         id="unknown-kind",
     ),
     pytest.param(
-        "---\nid: bad\nkind: fact\nstatus: active\n---\nClaim.\n**Why:** reason\n",
+        "---\nid: 14-10-bad000-2026\nkind: fact\nstatus: active\n---\nClaim.\n**Why:** reason\n",
         id="prefix-kind-mismatch",
     ),
     pytest.param(
-        "---\nid: bad\nkind: decision\nstatus: active\n---\nClaim without rationale.\n",
+        "---\nid: 14-10-bad000-2026\nkind: decision\nstatus: active\n---\nClaim without rationale.\n",
         id="missing-why",
     ),
     pytest.param(
-        "---\nid: bad\nkind: decision\nstatus: active\n---\n \t\n**Why:** reason\n",
+        "---\nid: 14-10-bad000-2026\nkind: decision\nstatus: active\n---\n \t\n**Why:** reason\n",
         id="empty-claim",
     ),
 ])
@@ -324,11 +322,78 @@ def test_staged_malformed_active_entries_fail_without_writing(tmp_path, raw):
 
 @pytest.mark.parametrize("status", ["active", "superseded", "retired"])
 @pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("entry_id", [
+    pytest.param("14-10-a1b2c3-2026", id="valid-form"),
+    pytest.param("31-02-a1b2c3-2026", id="form-not-calendar"),
+])
+def test_id_form_is_accepted_without_calendar_validation(tmp_path, status, mode, entry_id):
+    """B2.3 G4.2 — ids in W1.1's form must pass in every status, even with an impossible date."""
+    repo = make_repo(tmp_path)
+    write_entry(repo, id=entry_id, status=status)
+    expected = HEADER + (
+        f"- [{entry_id}](entries/D-one.md) decision: Use code-point order for the index.\n"
+    ).encode("utf-8") if status == "active" else EMPTY_INDEX
+    (repo / INDEX).write_bytes(expected)
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == expected
+
+
+@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("entry_id", [
+    pytest.param("D-20261012-a1", id="legacy-form"),
+    pytest.param('" "', id="whitespace"),
+    pytest.param("14-10-a1b2c-2026", id="five-random-characters"),
+    pytest.param("14-10-a1B2c3-2026", id="uppercase"),
+    pytest.param("14-10-a1b2c3-2026x", id="trailing-junk"),
+    pytest.param("١٤-10-a1b2c3-2026", id="non-ascii-digits"),
+])
+def test_invalid_id_forms_fail_in_every_status(tmp_path, status, mode, entry_id):
+    """B2.3 G4.2 — ids outside W1.1's form must fail in every status before changing INDEX.md."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    write_entry(repo, "D-bad-id.md", id=entry_id, status=status)
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 1, output(result)
+    assert "D-bad-id.md: " in output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("id_line", [
+    pytest.param("", id="missing-id"),
+    pytest.param("id: ''\n", id="empty-id"),
+    pytest.param("  id: 14-10-nested-2026\n", id="nested-only-id"),
+])
+def test_entries_require_top_level_nonempty_id(tmp_path, status, mode, id_line):
+    """B2.3 — missing, empty and nested-only ids must fail in every status without changing INDEX.md."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    write_entry(repo, "D-missing-id.md", raw=(
+        f"---\n{id_line}kind: decision\nstatus: {status}\n---\nClaim.\n**Why:** reason\n"
+    ))
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 1, output(result)
+    assert "D-missing-id.md: " in output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
 def test_duplicate_ids_are_rejected_in_every_status(tmp_path, status, mode):
     """B2.3 G4.2 — duplicate ids must be rejected even when one duplicate is inactive."""
     repo = make_repo(tmp_path)
     stage_single_entry(repo)
     write_entry(repo, "D-duplicate.md", status=status)
+    git(repo, "add", "-A")
     result = run_index(repo, *snapshot_args(repo, mode))
     assert result.returncode == 1, output(result)
     assert "D-duplicate.md: " in output(result) or "D-one.md: " in output(result)
@@ -337,9 +402,9 @@ def test_duplicate_ids_are_rejected_in_every_status(tmp_path, status, mode):
 
 @pytest.mark.parametrize("status", ["superseded", "retired"])
 @pytest.mark.parametrize("raw", [
-    "---\nid: old\nstatus: {status}\n---\n",
-    "---\nid: old\nkind: unknown\nstatus: {status}\n---\nClaim.\n",
-    "---\nid: old\nkind: fact\nstatus: {status}\n---\nClaim.\n**Why:** reason\n",
+    "---\nid: 14-10-old000-2026\nstatus: {status}\n---\n",
+    "---\nid: 14-10-old000-2026\nkind: unknown\nstatus: {status}\n---\nClaim.\n",
+    "---\nid: 14-10-old000-2026\nkind: fact\nstatus: {status}\n---\nClaim.\n**Why:** reason\n",
 ])
 @pytest.mark.parametrize("mode", ["write", "staged", "commit"])
 def test_inactive_content_problems_warn_without_blocking(tmp_path, status, raw, mode):
@@ -361,9 +426,10 @@ def test_inactive_entries_still_require_id_and_status(tmp_path, status, field):
     """B2.3 B2.5 — inactive entries with missing ids or invalid statuses must remain errors."""
     repo = make_repo(tmp_path)
     stage_single_entry(repo)
-    raw = f"---\nid: old\nstatus: {status}\n---\n"
-    raw = raw.replace("id: old", "id: ''") if field == "id" else raw.replace(f"status: {status}", "status: unknown")
+    raw = f"---\nid: 14-10-old000-2026\nstatus: {status}\n---\n"
+    raw = raw.replace("id: 14-10-old000-2026", "id: ''") if field == "id" else raw.replace(f"status: {status}", "status: unknown")
     write_entry(repo, "D-old.md", raw=raw)
+    git(repo, "add", "-A")
     result = run_index(repo)
     assert result.returncode == 1, output(result)
     assert "D-old.md: " in output(result)
@@ -375,7 +441,8 @@ def test_invalid_utf8_reports_filename_without_traceback(tmp_path, mode):
     """B2.6 — undecodable entries must report a file problem rather than crash."""
     repo = make_repo(tmp_path)
     stage_single_entry(repo)
-    write_entry(repo, "F-bad-utf8.md", raw=b"---\nid: bad\nkind: fact\nstatus: active\n---\n\xff\n**Why:** reason\n")
+    write_entry(repo, "F-bad-utf8.md", raw=b"---\nid: 14-10-bad000-2026\nkind: fact\nstatus: active\n---\n\xff\n**Why:** reason\n")
+    git(repo, "add", "-A")
     result = run_index(repo, *snapshot_args(repo, mode))
     assert result.returncode == 1, output(result)
     assert "F-bad-utf8.md: " in output(result)
@@ -383,10 +450,92 @@ def test_invalid_utf8_reports_filename_without_traceback(tmp_path, mode):
     assert (repo / INDEX).read_bytes() == SINGLE_INDEX
 
 
+@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("location", ["header", "claim", "after-why"])
+@pytest.mark.parametrize("marker", ["<<<<<<< ours", ">>>>>>> theirs"])
+def test_conflict_markers_fail_in_every_status(tmp_path, status, mode, location, marker):
+    """B2.7 — either conflict-marker prefix in the header or body must fail in every status without writing."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    path = write_entry(repo, "D-conflict.md", id="14-10-confli-2026", status=status)
+    raw = path.read_text(encoding="utf-8")
+    if location == "header":
+        raw = raw.replace("---\n", f"---\n{marker}\n", 1)
+    elif location == "claim":
+        raw = raw.replace("\n**Why:**", f"\n{marker}\n**Why:**", 1)
+    else:
+        raw += f"{marker}\n"
+    path.write_text(raw, encoding="utf-8")
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 1, output(result)
+    assert "D-conflict.md: " in output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("location", ["header", "body"])
+def test_heading_underline_is_not_a_conflict_marker(tmp_path, status, mode, location):
+    """B2.7 — a line containing only ======= must pass as header content or a Markdown heading underline."""
+    repo = make_repo(tmp_path)
+    claim = "Use code-point order for the index."
+    path = write_entry(repo, status=status, claim=claim)
+    raw = path.read_text(encoding="utf-8")
+    if location == "header":
+        raw = raw.replace("---\n", "---\n=======\n", 1)
+    else:
+        raw = raw.replace(claim, claim + "\n=======", 1)
+        claim += " ======="
+    path.write_text(raw, encoding="utf-8")
+    expected = HEADER + (
+        f"- [14-10-a1b2c3-2026](entries/D-one.md) decision: {claim}\n"
+    ).encode("utf-8") if status == "active" else EMPTY_INDEX
+    (repo / INDEX).write_bytes(expected)
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == expected
+
+
+@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("location", ["header", "claim", "after-why"])
+@pytest.mark.parametrize("marker", ["<<<<<<< ours", ">>>>>>> theirs"])
+@pytest.mark.parametrize("prefix", ["   ", "Example: "])
+def test_conflict_markers_after_other_characters_are_accepted(tmp_path, status, mode, location, marker, prefix):
+    """B2.7 — markers after spaces or other text in the header or body must pass in every status."""
+    repo = make_repo(tmp_path)
+    claim = "Use code-point order for the index."
+    path = write_entry(repo, status=status, claim=claim)
+    raw = path.read_text(encoding="utf-8")
+    marker_line = prefix + marker
+    if location == "header":
+        raw = raw.replace("---\n", f"---\n{marker_line}\n", 1)
+    elif location == "claim":
+        raw = raw.replace(claim, f"{claim}\n{marker_line}", 1)
+        claim += " " + marker_line.strip()
+    else:
+        raw += f"{marker_line}\n"
+    path.write_text(raw, encoding="utf-8")
+    expected = HEADER + (
+        f"- [14-10-a1b2c3-2026](entries/D-one.md) decision: {claim}\n"
+    ).encode("utf-8") if status == "active" else EMPTY_INDEX
+    (repo / INDEX).write_bytes(expected)
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == expected
+
+
 def test_all_validation_problems_are_reported(tmp_path):
     """B2.3 B2.4 B2.6 — one invalid file must not hide problems in other files."""
     repo = make_repo(tmp_path)
-    for name, raw in (("D-a.md", "no header"), ("F-b.md", b"\xff"), ("L-c.md", "---\nid: c\nstatus: unknown\n---\n")):
+    for name, raw in (("D-a.md", "no header"), ("F-b.md", b"\xff"), ("L-c.md", "---\nid: 14-10-c00000-2026\nstatus: unknown\n---\n")):
         write_entry(repo, name, raw=raw)
     git(repo, "add", "-A")
     result = run_index(repo)
@@ -402,18 +551,18 @@ def test_golden_bytes_for_all_kinds_and_encoded_paths(tmp_path):
     file is outside B1.1 and gets no line (EJ dropped runbooks, 2026-10-13)."""
     repo = make_repo(tmp_path)
     samples = [
-        ("R-runbook.md", "runbook", "runbook", "A runbook."),
-        ("O-observation.md", "observation", "observation", "An observation."),
-        ("L-lesson.md", "lesson", "lesson", "A lesson."),
-        ("H-guess.md", "guess", "hypothesis", "A hypothesis."),
-        ("F-é.md", "accent", "fact", "Café is UTF-8."),
-        ("D-a b#.md", "spaces", "decision", "Keep\tthis claim\n\ntogether."),
-        ("D-B.md", "upper", "decision", "Upper first."),
+        ("R-runbook.md", "14-10-runboo-2026", "runbook", "A runbook."),
+        ("O-observation.md", "14-10-observ-2026", "observation", "An observation."),
+        ("L-lesson.md", "14-10-lesson-2026", "lesson", "A lesson."),
+        ("H-guess.md", "14-10-guess0-2026", "hypothesis", "A hypothesis."),
+        ("F-é.md", "14-10-accent-2026", "fact", "Café is UTF-8."),
+        ("D-a b#.md", "14-10-spaces-2026", "decision", "Keep\tthis claim\n\ntogether."),
+        ("D-B.md", "14-10-upper0-2026", "decision", "Upper first."),
     ]
     for name, entry_id, kind, claim in samples:
         write_entry(repo, name, id=entry_id, kind=kind, claim=claim)
-    write_entry(repo, "D-old.md", id="old", status="superseded")
-    write_entry(repo, "F-retired.md", id="retired", kind="fact", status="retired")
+    write_entry(repo, "D-old.md", id="14-10-old000-2026", status="superseded")
+    write_entry(repo, "F-retired.md", id="14-10-retire-2026", kind="fact", status="retired")
     git(repo, "add", "-A")
     result = run_index(repo)
     assert result.returncode == 0, output(result)
@@ -425,7 +574,7 @@ def test_runbook_is_not_a_kind_any_more(tmp_path):
     it held before the change too (D- with runbook fails the prefix match); the golden test is the one that moves."""
     repo = make_repo(tmp_path)
     stage_single_entry(repo)
-    write_entry(repo, "D-run.md", id="run", kind="runbook", claim="How to run it.")
+    write_entry(repo, "D-run.md", id="14-10-run000-2026", kind="runbook", claim="How to run it.")
     git(repo, "add", "-A")
     result = run_index(repo)
     assert result.returncode == 1, output(result)
@@ -447,14 +596,15 @@ def test_no_active_entries_has_fixed_placeholder(tmp_path, status):
 def test_locale_does_not_change_bytes(tmp_path):
     """B3.3 — the same entries must give byte-identical INDEX.md under two different locales."""
     repo = make_repo(tmp_path)
-    for name in ("D-b.md", "D-B.md", "D-é.md", "D-a b.md"):
-        write_entry(repo, name, id=name[:-3])
+    for name, entry_id in (("D-b.md", "14-10-lower0-2026"), ("D-B.md", "14-10-upper0-2026"),
+                           ("D-é.md", "14-10-accent-2026"), ("D-a b.md", "14-10-space0-2026")):
+        write_entry(repo, name, id=entry_id)
     git(repo, "add", "-A")
     expected = HEADER + (
-        "- [D-B](entries/D-B.md) decision: Use code-point order for the index.\n"
-        "- [D-a b](entries/D-a%20b.md) decision: Use code-point order for the index.\n"
-        "- [D-b](entries/D-b.md) decision: Use code-point order for the index.\n"
-        "- [D-é](entries/D-%C3%A9.md) decision: Use code-point order for the index.\n"
+        "- [14-10-upper0-2026](entries/D-B.md) decision: Use code-point order for the index.\n"
+        "- [14-10-space0-2026](entries/D-a%20b.md) decision: Use code-point order for the index.\n"
+        "- [14-10-lower0-2026](entries/D-b.md) decision: Use code-point order for the index.\n"
+        "- [14-10-accent-2026](entries/D-%C3%A9.md) decision: Use code-point order for the index.\n"
     ).encode("utf-8")
     for locale in ("C", "C.UTF-8"):
         result = run_index(repo, env_extra={"LC_ALL": locale})
@@ -519,15 +669,16 @@ def stage_overflow(repo, limit):
         rows = []
         for number in range(max_lines - len(HEADER.splitlines()) + 1):
             name = f"D-{number}.md"
-            write_entry(repo, name, id=str(number), claim="x")
-            rows.append((name, f"- [{number}](entries/{name}) decision: x\n"))
+            entry_id = f"14-10-{number:06x}-2026"
+            write_entry(repo, name, id=entry_id, claim="x")
+            rows.append((name, f"- [{entry_id}](entries/{name}) decision: x\n"))
         expected = HEADER + "".join(row for _, row in sorted(rows)).encode("utf-8")
         assert len(expected.splitlines()) > max_lines
     else:
-        base = HEADER + b"- [x](entries/D-x.md) decision: \n"
+        base = HEADER + b"- [14-10-xxxxxx-2026](entries/D-x.md) decision: \n"
         claim = "é" * (max(0, (max_bytes - len(base)) // 2) + 1)
-        write_entry(repo, "D-x.md", id="x", claim=claim)
-        expected = HEADER + f"- [x](entries/D-x.md) decision: {claim}\n".encode("utf-8")
+        write_entry(repo, "D-x.md", id="14-10-xxxxxx-2026", claim=claim)
+        expected = HEADER + f"- [14-10-xxxxxx-2026](entries/D-x.md) decision: {claim}\n".encode("utf-8")
         assert len(expected) > max_bytes
     git(repo, "add", "-A")
     return expected
@@ -775,7 +926,7 @@ def test_conflicted_index_is_regenerated_from_merged_entries(tmp_path):
     stage_single_entry(repo)
     git(repo, "commit", "-m", "Common memory")
     git(repo, "checkout", "-b", "other")
-    write_entry(repo, "F-other.md", id="other", kind="fact", claim="Other branch fact.")
+    write_entry(repo, "F-other.md", id="14-10-other0-2026", kind="fact", claim="Other branch fact.")
     git(repo, "add", "-A")
     result = run_index(repo)
     assert result.returncode == 0, output(result)
@@ -795,8 +946,8 @@ def test_conflicted_index_is_regenerated_from_merged_entries(tmp_path):
     result = run_index(repo)
     assert result.returncode == 0, output(result)
     expected = HEADER + (
-        b"- [D-20261012-a1](entries/D-one.md) decision: Main branch decision.\n"
-        b"- [other](entries/F-other.md) fact: Other branch fact.\n"
+        b"- [14-10-a1b2c3-2026](entries/D-one.md) decision: Main branch decision.\n"
+        b"- [14-10-other0-2026](entries/F-other.md) fact: Other branch fact.\n"
     )
     assert (repo / INDEX).read_bytes() == expected
     git(repo, "add", "-A")

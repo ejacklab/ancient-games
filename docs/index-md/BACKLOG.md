@@ -29,7 +29,8 @@ Sources:
 ### Hardening
 
 4. **A rev that starts with `-`** is passed to git as an option (n4 O2). Guard it with `--end-of-options`.
-5. **A blank id**: `id: " "` gives the id `" "`, which is non-empty and renders `- [ ](…)` (n4 O5). Also, a
+5. **A blank id**: `id: " "` gives the id `" "`, which is non-empty and renders `- [ ](…)` (n4 O5). *Closed
+   2026-10-14 by B2.3's id form (run `20261014-memory-index-cleanup`): a blank id is not in the form.* Also, a
    duplicate-id error names only the later file.
 6. **The unit tests import the tool in-process**, which may write `tools/__pycache__/` in the real repo (n4 O3).
 
@@ -45,3 +46,18 @@ Sources:
 9. Problems go to stderr and status to stdout. Warnings end in `(warning)`.
 10. An unborn `HEAD` passes `--check` in both modes. A revision without `--check` is a usage error (exit 2).
 11. A file name that is not valid UTF-8 is reported as a problem.
+
+## From run 20261014-memory-index-cleanup (2026-10-14)
+
+Sources: `n4` is the blind review, `runs/20261014-memory-index-cleanup/nodes/n4-1.result.md`; `n3` is the mutant run.
+
+1. **No acceptance test has a marker late in a long entry** (n4 F2). Every marker test puts it within the first ten
+   lines, so a scan cut short would pass the acceptance file.
+2. **No acceptance test shows that every marker line is reported** (n3 N14). The unit test does; the acceptance
+   tests check only that the file is named.
+3. **The acceptance tests do not show which problem caused the exit 1** (n4 F8): they assert `<file>: ` only, as the
+   file's older tests do.
+4. **Spaces inside quotes**: `id: ' 14-10-a1b2c3-2026 '` fails the form, because B2.1 strips spaces and then one pair
+   of quotes, not the spaces inside them (n4 O1). The result is an error either way; EJ to say what B2.1 means.
+5. **`check_content`'s docstring** says every entry needs an id and a known status, but those checks live in
+   `parse_entry` (n4 O3; older text).

@@ -329,7 +329,8 @@ read (Rd5).*
   markers left in them, then regenerate `INDEX.md` and commit it with them.
 - **Fails if** a commit's `INDEX.md` differs from what the tool builds from that commit's entries, or it lists a
   superseded or retired entry as active. It also fails if an entry or `INDEX.md` holds a git conflict-marker line
-  (`<<<<<<<` or `>>>>>>>`); that part is judged, because the tool does not check for markers.
+  (`<<<<<<<` or `>>>>>>>`). In an entry, the tool's check catches it (`docs/index-md/` B2.7); in `INDEX.md`, the
+  comparison in K6.2 does.
 
 ### Read — the right memory reaches the agent at the right time
 
