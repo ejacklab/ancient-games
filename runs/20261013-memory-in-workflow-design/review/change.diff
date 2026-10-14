@@ -1,0 +1,149 @@
+diff --git a/.claude/skills/workflow-design/SKILL.md b/.claude/skills/workflow-design/SKILL.md
+index 47f38a4..6c7ffe7 100644
+--- a/.claude/skills/workflow-design/SKILL.md
++++ b/.claude/skills/workflow-design/SKILL.md
+@@ -72,17 +72,17 @@ method section named beside it.
+    method 3.8; `scripts/dispatch.py run PLAN` enforces it in code (`--dry-run` first; `docs/DISPATCHER_DESIGN.md`).
+ 8. **The run ends at the acceptance criteria** (method 3.6). A piece that builds names the blueprint sections it
+    depends on and the criteria it covers; its stop is the three-part stop of method 3.6. Anything else found goes to
+-   `docs/blueprint/backlog.md`, never into the current run. The product's memory files: method §4.
++   `docs/blueprint/backlog.md`, never into the current run. How nodes use project memory and its caches: method §4.
+ 
+ ## Every node carries five things
+ 
+ | | What to write |
+ |---|---|
+ | **Tools** | what the agent uses, each proved working |
+-| **Context** | exactly what it is given, and what is withheld (a verifier never sees the worker's reasoning) |
++| **Context** | exactly what it is given, and what is withheld (a verifier never sees the worker's reasoning); the memory entries it needs, delivered in the brief, an import or a start hook, never asked for (method §4) |
+ | **Contract** | the intent, the observable stop condition (for a piece that builds: its acceptance criteria pass, the baseline still passes, "must not change" holds), what it returns and in what shape, what it may and must not change |
+ | **Evidence** | the proof that comes back with the result (a command and its output, or file:line) and the file it is saved in |
+-| **State** | what it reads from the state file before starting and what it writes back |
++| **State** | what it reads from the state file before starting and what it writes back, and the memory entries it writes, and when (method §4) |
+ 
+ An edge is then concrete: the earlier node's returns and evidence become the later node's context.
+ 
+diff --git a/docs/METHOD_CHANGELOG.md b/docs/METHOD_CHANGELOG.md
+index dda70e8..2e28788 100644
+--- a/docs/METHOD_CHANGELOG.md
++++ b/docs/METHOD_CHANGELOG.md
+@@ -41,6 +41,7 @@ verbatim from the text they replaced.
+ - 2026-10-05 — 3.7, caps deleted (EJ: "not logic at all"): the rule *"at most 5 subagent roles per run and at most 3 running at once"* re-labelled the spike rule's numbers in `docs/TASK_TYPES.md` (*"run at most 3 in parallel"*, *"up to 5 in a round"*, both about candidate approaches) as a rule about roles and concurrency; "5 roles" counted distinct `role` values (a property of a design), "3 running" counted engine processes alive (a property of the machine, now `MAX_ENGINE_PROCESSES` in `scripts/dispatch.py`); `validate_plan` no longer refuses a plan for many roles or a wide parallel group, and the pair survives only in the spike rule.
+ - 2026-10-05 — 3.8 item 5, fallback removed: one engine per node, and a failure blocks the node and reports rather than hopping to an engine nobody chose.
+ - 2026-10-05 — 3.6, design-vs-plan comparison: first decided as *"C — leave it"* (one author writes both and can see both, so a checker would guard against someone standing right there); revisited the same day after a traversal (`intake` → design → gate → plan → dispatch) in which the hand-written plan silently dropped two of three nodes' checks, plus `touched_paths`, the baseline, the categories and the estimate, while `validate_plan` said *"plan ok"* — so `dispatch.py validate PLAN --design DESIGN` now compares them. Moral recorded at the time: *"The first measurement of a decision's cost changed the decision. That is the argument for traversing a chain once rather than reasoning about it."*
++- 2026-10-13 — §4: the three project-memory files in `docs/blueprint/` (*"A product keeps three small append-only files beside its blueprint"*: `decisions.md`, `changelog.md`, `lessons.md`) replaced by "Memory in a designed workflow": project memory follows `docs/memory-system/SOURCE_OF_TRUTH.md` and its caches `docs/memory-system/CACHES.md`, applied per node in the Context, Contract, State and Tools fields (memory delivered, never asked for). The blueprint template's memory files, the research-file template's pointer, 3.8 item 9's pointer and the skill's Context and State rows follow. EJ: *"we better enhance the workflow design algorithm to remind the ai agent when and how to use memory more effectively. both the source-of-truth and caches"*, after a four-expert run in sequence (`runs/20261013-memory-in-workflow-design/`: all four recommended the pointer and delivery by brief, import or hook); n=0.
+ 
+ ## Restructured
+ 
+diff --git a/docs/WORKFLOW_DESIGN_METHOD.md b/docs/WORKFLOW_DESIGN_METHOD.md
+index e0a5784..085b7bb 100644
+--- a/docs/WORKFLOW_DESIGN_METHOD.md
++++ b/docs/WORKFLOW_DESIGN_METHOD.md
+@@ -458,7 +458,7 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
+ 9. **Research is written to files** — the *researcher* reads docs, papers and the web, writes full findings (each
+    with an id, a source and a label) to `docs/research/<date>-<topic>/FINDINGS.md` and returns a digest of about 15
+    lines, no more than 20, plus the path (`docs/workflow-templates/research-file.md`); a doubt is settled by reading
+-   one finding by id or by a small verify node; a design decided from research goes to `decisions.md` (4).
++   one finding by id or by a small verify node; a design decided from research becomes a decision entry in `project-memory/entries/` (§4).
+ 10. **Exploring existing code is its own role** — the *explorer* reads code, tests, configs and git history, never
+    the web, read-only under a stated budget and never a repo-wide overview (TASK_TYPES, case C); every claim carries
+    file:line and a verbatim quote that `scripts/quote_check.py` confirms (a failing quote is a failed finding;
+@@ -487,27 +487,28 @@ detailed notes go in its own output file, so a verifier can be kept blind to the
+ Of the kinds of memory an agent has (Appendix B), **files in the repo** are the one every tool and every agent can
+ read — use them for anything that must last.
+ 
+-Working rules: each agent gets a brief with only what its piece needs (with a template, an example and a standard, 3.8) and writes its full result to a file; research and decided designs are files too (3.8, `docs/research/`, `decisions.md`); the
++Working rules: each agent gets a brief with only what its piece needs (with a template, an example and a standard, 3.8) and writes its full result to a file; research and decided designs are files too (3.8, `docs/research/`, decision entries in `project-memory/entries/`); the
+ main agent keeps conclusions, not details; stored knowledge carries a date and is rechecked before it is relied on;
+ knowledge (stable) is kept apart from state (changes every run).
+ 
+-**Project memory for software work.** A release note is written for users
+-after the fact; it tells an agent what shipped, not why or what to avoid, so it is an output here, not the
+-memory. A product keeps three small append-only files beside its blueprint, each existing to answer one listed
+-query (the rule above: no store without a query):
++**Memory in a designed workflow.** Agents do not use memory well on their own: their tool loads a fixed set of
++files, and anything past that is read only if the model decides to, which in measured runs it often does not
++(`runs/20261013-memory-in-workflow-design/report.md`, E1, E2). So the design decides, for every node, what memory
++reaches it and what it writes; nothing is left to a reminder the agent may skip. Project memory follows
++`docs/memory-system/SOURCE_OF_TRUTH.md` and its caches follow `docs/memory-system/CACHES.md`; the method does not
++repeat their rules. It applies them per node, in the fields every node already has (3.6; the skill's "Every node
++carries five things"):
+ 
+-| File (`docs/blueprint/`) | Answers | Entry (kept to about 5 lines) | Written by, when |
+-|---|---|---|---|
+-| `decisions.md` | "Why did we choose X? What did we reject?" | date · decision · why · alternatives rejected · the R/N ids it serves · source (finding ids, or *model knowledge*, 3.8 item 12) | the COO, when a decision spot is answered (3.3) or a design choice is made; EJ's answers are the decisions |
+-| `changelog.md` | "What did run N change, and did it pass?" | date · run id · what changed · criteria covered (R1.1…) · commits · baseline result · optional `release note:` line for users | the COO, once at the end of each run that builds, from the state file |
+-| `lessons.md` | "What goes wrong around module Y?" | date · where (path or module) · the trap · how it was found · recheck by (a date or a trigger) | any node proposes, the COO appends; an entry past its recheck is marked stale, never silently trusted |
+-
+-Working rules: append only, never rewritten (a reversal is a new entry that points at the old one); every entry
+-carries a date and, where it applies, a requirement id or a path, so an agent finds it by `grep`, not by reading the
+-file; readiness (3.1, information) and the design read only the entries for the sections, ids and paths the task
+-touches; the blueprint's `README.md` map lists the files so an agent knows they exist. A release note, when one is
+-needed, is generated from the `release note:` lines of the changelog, not written separately. The qwen findings of
+-2026-10-02 (silent model substitution, exit 0 with no file) are examples of lessons.
++| Field | Memory in it |
++|---|---|
++| **Context** — memory in | The entries the node needs, named by id or by the paths they cover, and how they reach it: in the brief, by an import, or by a start hook, never as a sentence asking it to read them (SoT Rd2.1). What it must not receive: a verifier gets no worker's reasoning, and no entry or journal that carries it. |
++| **Contract** — before acting | A node that acts on a decision or fact checks it against the code first; a mismatch is reported in the state file and to EJ, not settled (SoT Rd5). |
++| **State** — memory out | What the node writes, and when: a decision or fact before the code it governs (W5.1); `done:` on a decision when its work is complete (W5.3); raw notes to the task's `journal/`, turned into lessons, observations and hypotheses at the end of the task (K5.2); `INDEX.md` regenerated in the same commit as any entry (K6.2). The node's return lists the entries it wrote, and its check fails if a required one is missing. |
++| **Tools** — the caches | A cache is never loaded at start (CACHES Rd1). A node uses full-text search or the vector index only for a free-text "what do we know about X" question, and only when that cache exists (its trigger fired, B1); otherwise `INDEX.md`, grep, then read the entry. Exact strings, "every entry covering X", "have we never…", header fields and "why" questions go to the files, never to a cache (CACHES § When to use which store). A cache answer names its entry, and the node reads that entry before acting on it (Rd2). |
++
++An engine's own built-in memory (Claude Code auto memory, a subagent's `memory` field, Codex memories) is not part of
++the design: a rule a node must follow lives in the repo files that reach it, never only in one engine's memory (report
++M14, T6).
+ 
+ Caution on graphs: this repo built two graphs nobody queried and then deferred a third. Its rule — "no node or edge
+ type without a listed query" — applies here too (`docs/KNOWLEDGE_GRAPH_DESIGN.md` §1, `docs/STORE_DESIGN_DECISION.md`).
+diff --git a/docs/workflow-templates/blueprint.md b/docs/workflow-templates/blueprint.md
+index 61f7ea6..e38e83c 100644
+--- a/docs/workflow-templates/blueprint.md
++++ b/docs/workflow-templates/blueprint.md
+@@ -18,9 +18,6 @@ docs/blueprint/
+   08-non-functional.md
+   backlog.md             what a run found that neither its acceptance criteria nor its baseline covers; never
+                          worked on inside the run that found it
+-  decisions.md           append-only: why a choice was made and what was rejected (method §4, project memory)
+-  changelog.md           append-only: one entry per run that builds; release notes come from it
+-  lessons.md             append-only: dated traps with a recheck date or trigger
+ ```
+ 
+ A section kept somewhere else (for example a project's own spec) is not copied: its row in the map points there,
+@@ -82,22 +79,7 @@ missing (method §3.1).
+ | Date | Run id | Found by | What | Why it is out of scope (neither the criteria in scope nor the baseline covers it) | Suspected break? (yes / no) |
+ |---|---|---|---|---|---|
+ 
+-## Memory files — `decisions.md`, `changelog.md`, `lessons.md`
++## Project memory — not in the blueprint
+ 
+-Append only; never rewrite an entry (a reversal is a new entry pointing at the old one). Each entry is about five
+-lines, dated, and carries a requirement id or a path so it can be found by `grep`. Method §4, project memory.
+-
+-`decisions.md`
+-
+-| Date | Decision | Why | Alternatives rejected | Serves (R/N ids) | Source (finding ids, or *model knowledge*) |
+-|---|---|---|---|---|---|
+-
+-`changelog.md`
+-
+-| Date | Run id | What changed | Criteria covered | Commits | Baseline result | Release note (optional, for users) |
+-|---|---|---|---|---|---|---|
+-
+-`lessons.md`
+-
+-| Date | Where (path or module) | The trap | How it was found | Recheck by (date or trigger) | Stale? |
+-|---|---|---|---|---|---|
++Decisions, facts, lessons, observations and hypotheses live in the product's `project-memory/`, as
++`docs/memory-system/SOURCE_OF_TRUTH.md` sets out; how a workflow's nodes read and write them is method §4.
+diff --git a/docs/workflow-templates/research-file.md b/docs/workflow-templates/research-file.md
+index bc036cc..adced7f 100644
+--- a/docs/workflow-templates/research-file.md
++++ b/docs/workflow-templates/research-file.md
+@@ -35,7 +35,7 @@ Full findings: FINDINGS.md. Status: <open | parked | decided | negative result>.
+ ```
+ 
+ The digest is checked by `validate_result.py FILE --kind digest` (the three bold parts present, length capped). A
+-design that follows from the research is a decision: it goes to `docs/blueprint/decisions.md` (method §4).
++design that follows from the research is a decision: it becomes a decision entry in `project-memory/entries/` (method §4).
+ 
+ ## Example
+ 

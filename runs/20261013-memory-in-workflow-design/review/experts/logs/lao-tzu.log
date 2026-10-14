@@ -1,0 +1,365 @@
+[0m
+> plan · MiniMax-M3.1-Flash-Preview
+[0m
+[0m→ [0mRead runs/20261013-memory-in-workflow-design/review/experts/briefs/lao-tzu.md
+[0m→ [0mRead runs/20261013-memory-in-workflow-design/review/experts/seats/lao-tzu-list.md
+[0m→ [0mRead runs/20261013-memory-in-workflow-design/review/experts/seats/lao-tzu-identity.md
+[0m→ [0mRead runs/20261013-memory-in-workflow-design/review/change.diff
+[0m→ [0mRead runs/20261013-memory-in-workflow-design/experts/compare.md
+[0m
+[0m$ [0msed -n '440,520p' /home/smoke01/dev/ancient-games/docs/WORKFLOW_DESIGN_METHOD.md
+4. **Pass-back contract** — one result file per call at `runs/<id>/nodes/<node>-<attempt>.result.*`, written to a
+   temp name and renamed, with the fixed header of `docs/workflow-templates/result-file.md`; the script
+   `.claude/skills/workflow-design/scripts/validate_result.py` checks it, and the COO reads only the capped summary
+   (provisional: the header and the first 40 lines) and the path, never the raw output.
+5. **An unstable return is a failure of the executor, not of the work** — no file, empty file, unparseable header,
+   wrong model, a timeout, or a clean exit with no result (instances: `docs/EXECUTOR_KINDS.md`); it does not count
+   against the attempt limit, the node is **blocked** and goes to EJ, and there is no fallback — one engine per node;
+   `partial` is the COO's call: retry only the remainder as a new small call.
+6. **A half-finished node must not leave a mess** — a node that builds writes only inside its "may change" paths,
+   from a clean commit or a worktree, so a failed call is discarded whole; the COO never reverts by hand to "tidy
+   up": a revert of anything but a discarded worktree is a Rule 6 confirmation.
+7. **Keep the COO's reading small** — results by path, one-line Log entries, only the state rows the next step
+   needs; raw tool output never enters her context.
+8. **The stronger model gives the worker a template, an example and a standard** — every brief
+   (`docs/workflow-templates/node-brief.md`) carries the template the result must follow, one small real worked
+   example, and the standard it is judged by (the check as the worker can run it, what failing looks like, the
+   sabotage it catches); a brief missing any of the three is not dispatched, and a part the COO cannot write is an
+   unclear spot (3.3).
+9. **Research is written to files** — the *researcher* reads docs, papers and the web, writes full findings (each
+   with an id, a source and a label) to `docs/research/<date>-<topic>/FINDINGS.md` and returns a digest of about 15
+   lines, no more than 20, plus the path (`docs/workflow-templates/research-file.md`); a doubt is settled by reading
+   one finding by id or by a small verify node; a design decided from research becomes a decision entry in `project-memory/entries/` (§4).
+10. **Exploring existing code is its own role** — the *explorer* reads code, tests, configs and git history, never
+   the web, read-only under a stated budget and never a repo-wide overview (TASK_TYPES, case C); every claim carries
+   file:line and a verbatim quote that `scripts/quote_check.py` confirms (a failing quote is a failed finding;
+   `docs/workflow-templates/explorer-file.md`); every behaviour claim is marked `read` (inferred) or `ran`
+   (confirmed by running it), and a `read` claim a build depends on is an unclear spot until it is run; it returns a
+   digest and the path; the COO explores herself when the affected area fits her context (`docs/EXECUTOR_KINDS.md`,
+   roles).
+11. **Every run leaves a feedback record** (`docs/research/20261002-workflow-feedback`) — `scripts/runlog.py exec`
+   wraps each Codex, `qwen` or `agy` call (raw output to the gitignored `runs/<id>/raw/`) and `runlog.py verdict`
+   logs each node check; afterwards `scripts/harvest_run.py` writes `runs/<id>/feedback.jsonl` from the engines' own
+   records, never guessed, and prints a digest whose last line is the ledger's Actual cost; tokens are kept in parts
+   (new input, cache read, output), only ids, numbers, paths and status are written (the repo is public), and every
+   parser fails loudly when an engine changes its format.
+12. **Design decisions cite their evidence** — every design decision cites the finding ids it rests on (items 9,
+   10); one with no source is marked *model knowledge*, treated like a `read` claim, and may not drive a node that
+   builds until checked against a source or by running code; the researcher and explorer gather, the COO designs; the
+   codebase comes first for a feature in an existing system (case C), current docs first for a new stack (case D).
+
+## 4. State and memory
+
+The state lives in a file (`docs/workflow-templates/state.md`). Each agent reads it, does one step, writes the new
+state back; the next agent, or another tool, continues from there, and a broken run resumes from the last written
+state. One writer at a time. The state file holds progress and results, never a worker's reasoning; a worker's
+detailed notes go in its own output file, so a verifier can be kept blind to them.
+
+Of the kinds of memory an agent has (Appendix B), **files in the repo** are the one every tool and every agent can
+read — use them for anything that must last.
+
+Working rules: each agent gets a brief with only what its piece needs (with a template, an example and a standard, 3.8) and writes its full result to a file; research and decided designs are files too (3.8, `docs/research/`, decision entries in `project-memory/entries/`); the
+main agent keeps conclusions, not details; stored knowledge carries a date and is rechecked before it is relied on;
+knowledge (stable) is kept apart from state (changes every run).
+
+**Memory in a designed workflow.** Agents do not use memory well on their own: their tool loads a fixed set of
+files, and anything past that is read only if the model decides to, which in measured runs it often does not
+(`runs/20261013-memory-in-workflow-design/report.md`, E1, E2). So the design decides, for every node, what memory
+reaches it and what it writes; nothing is left to a reminder the agent may skip. Project memory follows
+`docs/memory-system/SOURCE_OF_TRUTH.md` and its caches follow `docs/memory-system/CACHES.md`; the method does not
+repeat their rules. It applies them per node, in the fields every node already has (3.6; the skill's "Every node
+carries five things"):
+
+| Field | Memory in it |
+|---|---|
+| **Context** — memory in | The entries the node needs, named by id or by the paths they cover, and how they reach it: in the brief, by an import, or by a start hook, never as a sentence asking it to read them (SoT Rd2.1). What it must not receive: a verifier gets no worker's reasoning, and no entry or journal that carries it. |
+| **Contract** — before acting | A node that acts on a decision or fact checks it against the code first; a mismatch is reported in the state file and to EJ, not settled (SoT Rd5). |
+| **State** — memory out | What the node writes, and when: a decision or fact before the code it governs (W5.1); `done:` on a decision when its work is complete (W5.3); raw notes to the task's `journal/`, turned into lessons, observations and hypotheses at the end of the task (K5.2); `INDEX.md` regenerated in the same commit as any entry (K6.2). The node's return lists the entries it wrote, and its check fails if a required one is missing. |
+| **Tools** — the caches | A cache is never loaded at start (CACHES Rd1). A node uses full-text search or the vector index only for a free-text "what do we know about X" question, and only when that cache exists (its trigger fired, B1); otherwise `INDEX.md`, grep, then read the entry. Exact strings, "every entry covering X", "have we never…", header fields and "why" questions go to the files, never to a cache (CACHES § When to use which store). A cache answer names its entry, and the node reads that entry before acting on it (Rd2). |
+
+An engine's own built-in memory (Claude Code auto memory, a subagent's `memory` field, Codex memories) is not part of
+the design: a rule a node must follow lives in the repo files that reach it, never only in one engine's memory (report
+M14, T6).
+
+Caution on graphs: this repo built two graphs nobody queried and then deferred a third. Its rule — "no node or edge
+type without a listed query" — applies here too (`docs/KNOWLEDGE_GRAPH_DESIGN.md` §1, `docs/STORE_DESIGN_DECISION.md`).
+Not verified: Codex's memory and subagent features beyond `AGENTS.md`.
+
+## 5. Three qualities every design must show
+
+- **Predictability** — the edges schedule and stop conditions are written before the run (3.6), attempts are
+  bounded (3.5), and a cost estimate comes before the run (3.4, 3.8 item 2).
+[0m
+[0m$ [0mwc -l /home/smoke01/dev/ancient-games/docs/memory-system/SOURCE_OF_TRUTH.md /home/smoke01/dev/ancient-games/docs/memory-system/CACHES.md /home/smoke01/dev/ancient-games/runs/20261013-memory-in-workflow-design/report.md
+404 /home/smoke01/dev/ancient-games/docs/memory-system/SOURCE_OF_TRUTH.md
+   593 /home/smoke01/dev/ancient-games/docs/memory-system/CACHES.md
+   653 /home/smoke01/dev/ancient-games/runs/20261013-memory-in-workflow-design/report.md
+  1650 total
+[0m
+[0m→ [0mRead docs/memory-system/SOURCE_OF_TRUTH.md
+[0m→ [0mRead docs/memory-system/CACHES.md
+[0m→ [0mRead runs/20261013-memory-in-workflow-design/report.md
+[0m
+[0m$ [0msed -n '1,120p' /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/SKILL.md
+---
+name: workflow-design
+description: "Designing a workflow for an incoming task or challenge — or deciding that none is needed — before any agents are dispatched: understand the challenge (objective, scope, six whys, category and its default pattern), check readiness (including the product blueprint: vision, requirements with acceptance criteria, domain, architecture, data, UI, non-functional), write the algorithm first, list every unclear spot, size the pieces, run clear pieces as loops with objective checks, then wire the rest as a graph whose nodes each carry tools, context, a contract, evidence and state; sequential and state-file driven first, parallel decided last. Use whenever someone asks to design, plan, create, improve or review a workflow, an agent pipeline, an orchestration or a multi-agent / subagent setup; asks how many agents a task needs, whether to parallelise or loop, or how agents should pass information; brings a task too big for one prompt; or when you are about to write a Workflow script or dispatch several subagents without a written design. NOT for: a task of one to three obvious steps (just do it), the Workflow script API, or running an already designed workflow."
+---
+
+# Workflow design
+
+This is the method half of the **Ancient Games** framework (see `CLAUDE.md`): the method designs a workflow, the
+referee (`ancient_games/`) clears the plan, the knowledge (`docs/`) is shared.
+
+The job: turn a challenge into **a prompt file** (small task) or **a workflow design** (bigger task). You are
+designing, not executing. The full method with its reasons is `references/method.md`; the templates are in
+`assets/templates/`. Read the method once before your first design in a session.
+
+Why this exists: agents left alone pick a pattern first ("let's fan out five subagents") and discover later that
+they lacked information, that a loop had no way to close, or that two parallel workers collided. This method makes
+the cheap discoveries first.
+
+## First: understand the challenge (method 3.0)
+
+From the challenge text alone — no tools, no agents — state the **objective**, what is **in scope** and what is
+**out of scope**, answer the **six whys** (stop when an answer no longer changes the design), and end with a
+**provisional category** from `references/task-types.md`. The table of whys, what each feeds, and what an
+unanswerable one becomes: method 3.0.
+
+## Then: is it tiny?
+
+If it is tiny, do not design a workflow: do the task, or fill in `assets/templates/prompt-file.md`. The test reads the
+restatement, not the raw text — method §2. A process that costs more than the task is a failure of the method, not a
+success. (Trial 1, n=1: a one-line README fix went through the full process and cost about 309k tokens, partly
+because checks and handover were counted as steps. Count only the steps the challenge itself needs.)
+
+## The steps
+
+Work through these in order. Each step's output is a file, because files are the one memory every tool and every
+agent can read; a subagent starts with nothing but its prompt. Each step is a summary; the rule itself is in the
+method section named beside it.
+
+1. **Readiness** (method 3.1). Prove each tool by running it (`scripts/readiness.py` runs the standard inventory and
+   marks each line verified/reported/unknown), list the skills that already cover part of the work, and check the
+   information. Anything missing becomes a preparation piece at the front. Template: `readiness.md`. A node run by
+   Codex or `agy`: `references/executor-kinds.md` first — the canary, read-only versus write, the bundled-runtime
+   trap, CLI first and provider second, and the COO's contract. Every node names its role, engine, exact model and
+   effort (never a default).
+   **Blueprint check** (method 3.1): if the task changes a product, the kind of task decides which sections of
+   `docs/blueprint/` it needs, and each needed section's status (settled, draft, incomplete, missing) decides the
+   flow. A piece that builds waits for settled sections — blueprint questions are not answered by silence (method
+   3.1). Why: without a fixed target every review finds more to do, and the run never ends.
+2. **Write the algorithm** (method 3.2). Steps that each name their check; a step you cannot write clearly, or
+   whose check you cannot name, is an **unclear spot**. Then **label the pieces** by category from
+   `references/task-types.md`. **A label is not a node**: a subagent hand-off must buy an objective check, a
+   different kind, or context room.
+3. **List every unclear spot before resolving any** (method 3.3): its kind (information · decision · unknown), what
+   it blocks, what it depends on. Questions go to the person as one batch, each with a provisional assumption.
+   In a workflow design, **ask the experts once the list is written**: the `four-experts` skill with
+   `--only linus,sun-tzu,lao-tzu,dave` and its `unclear-spots` question. Their answers are advice: a raised spot is
+   added and marked, a "drop it" goes to EJ as a question, never silently.
+4. **Size** (method 3.4). Up to 3 steps with nothing unclear except decisions that have a default → a prompt file;
+   otherwise a workflow design, **default-first** from `references/task-types.md`. Never hand an engine one huge
+   prompt: hours-long work splits into six or more logical pieces. Judge risk separately from size.
+5. **Clear pieces run as loops** (method 3.5) while the unclear spots are being resolved — only when loop-ready: the
+   five conditions are in method 3.5. A loop closes only on an objective check; escalation is a fresh node on a
+   stronger tier, never a switch inside the session. Before a piece runs as a loop, **ask the experts about its
+   check**: `four-experts` with `--only linus,fan-li,sun-tzu,dave` and its `loop-check` question; a failure the
+   check would miss strengthens the check or sends the piece back to the unclear list.
+6. **The rest is a knowledge graph** (method 3.6). Nodes, edges, a result verified before anything that depends on
+   it starts, joins where contradictions are a stop. The design's edges schedule; role agents do not decide who
+   works next. The design and the plan are compared by `scripts/dispatch.py validate PLAN --design DESIGN`.
+7. **The workflow is a checked sequence** (method 3.7): sequential, state-file-driven steps; parallel only where the
+   five conditions of method 3.7 hold, and never without naming the unit. Running a node — executors are tools, two
+   timers, no polling, pass-back, the brief's template, example and standard, the researcher and explorer roles — is
+   method 3.8; `scripts/dispatch.py run PLAN` enforces it in code (`--dry-run` first; `docs/DISPATCHER_DESIGN.md`).
+8. **The run ends at the acceptance criteria** (method 3.6). A piece that builds names the blueprint sections it
+   depends on and the criteria it covers; its stop is the three-part stop of method 3.6. Anything else found goes to
+   `docs/blueprint/backlog.md`, never into the current run. How nodes use project memory and its caches: method §4.
+
+## Every node carries five things
+
+| | What to write |
+|---|---|
+| **Tools** | what the agent uses, each proved working |
+| **Context** | exactly what it is given, and what is withheld (a verifier never sees the worker's reasoning); the memory entries it needs, delivered in the brief, an import or a start hook, never asked for (method §4) |
+| **Contract** | the intent, the observable stop condition (for a piece that builds: its acceptance criteria pass, the baseline still passes, "must not change" holds), what it returns and in what shape, what it may and must not change |
+| **Evidence** | the proof that comes back with the result (a command and its output, or file:line) and the file it is saved in |
+| **State** | what it reads from the state file before starting and what it writes back, and the memory entries it writes, and when (method §4) |
+
+An edge is then concrete: the earlier node's returns and evidence become the later node's context.
+
+## State file
+
+The state lives in a file (`assets/templates/state.md`): each agent reads it, does one step, writes the new state
+back. One writer at a time. It holds progress and results, never reasoning — notes go in the worker's own output
+file. This is what lets another agent, another tool, or tomorrow's session continue the run.
+
+## Before calling a design finished
+
+Check it shows all three — **predictability**, **debuggability**, **quality control** — and say so in the design.
+What each needs, and the step that defines it: method §5.
+
+
+**One more thing, and it is not a quality: the engine split.**
+For build work, run `scripts/workload.py --plan <plan> --write` before the run starts. It gives **opencode priority** (EJ, 2026-10-04) by **module**, crossing each module's code and tests so the tests are written by the engine that did not write the code. The default is the *smallest* lead that counts as priority — which at five modules is exactly 60/40, costing one module its independent tests; demanding 60% on a larger plan costs far more, so `--share` is there when the bigger lead is wanted. Never split dev and tests independently: that gives half the modules their code *and* their tests from one engine. `check()` refuses a plan where opencode does not lead, that self-tests more than its lead costs, or whose verifier shares its node's engine. `docs/EXECUTOR_KINDS.md` has the rule and the arithmetic.
+
+## Writing a rule down
+
+Before adding or changing any rule in these documents, run it through the **`requirement-check` skill**
+(source, one thing, unit, can it fail, weak words, level, basis, links). One copy of the checklist, in that skill.
+**Never fill a missing unit or threshold with your own value; leave it open and ask.**
+
+## Output
+
+- Small task → `assets/templates/prompt-file.md`, filled in.
+- Bigger task → `assets/templates/workflow-design.md`, filled in, with `state.md` and `readiness.md` beside it.
+- A blueprint piece writes into the product's `docs/blueprint/`, following `assets/templates/blueprint.md`.
+- Put a run's files in one folder (in the Ancient Games repo: `runs/<YYYYMMDD-slug>/`).
+- Give the person the questions batch and the cost estimate before anything is run. Designing is cheap; running
+  agents is not, so a run needs their go-ahead.
+
+## Running the method as a script
+[0m
+[0m→ [0mRead runs/20261013-memory-in-workflow-design/report.md[90m [offset=537][0m
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && rg -n --glob '!runs/**' --glob '!.git/**' -e 'decisions\.md' -e 'changelog\.md' -e 'lessons\.md' -e 'release note' -e 'release-note' | head -60
+tests/fixtures/operator_prompts_r3.jsonl:67:{"id": "p267", "src": "general", "prompt": "Search whether the new SDK version fixed the retry bug we hit; link the release note.", "exp": {"cats": ["web search"], "tiny": false, "builds": false, "pipe": null}}
+docs/METHOD_CHANGELOG.md:19:- 2026-10-02 — §4: project memory for software work (`decisions.md`, `changelog.md`, `lessons.md`), at EJ's request; n=0.
+docs/METHOD_CHANGELOG.md:44:- 2026-10-13 — §4: the three project-memory files in `docs/blueprint/` (*"A product keeps three small append-only files beside its blueprint"*: `decisions.md`, `changelog.md`, `lessons.md`) replaced by "Memory in a designed workflow": project memory follows `docs/memory-system/SOURCE_OF_TRUTH.md` and its caches `docs/memory-system/CACHES.md`, applied per node in the Context, Contract, State and Tools fields (memory delivered, never asked for). The blueprint template's memory files, the research-file template's pointer, 3.8 item 9's pointer and the skill's Context and State rows follow. EJ: *"we better enhance the workflow design algorithm to remind the ai agent when and how to use memory more effectively. both the source-of-truth and caches"*, after a four-expert run in sequence (`runs/20261013-memory-in-workflow-design/`: all four recommended the pointer and delivery by brief, import or hook); n=0.
+site/ancients/tests/test_mobile.py:481:    # allowed: Google Fonts, and Cloudflare Web Analytics that the ejai.ai zone injects (EJ, decisions.md D1)
+site/ancients/docs/blueprint/changelog.md:7:  20261013-ancients-page). N2 widened to allow Cloudflare Web Analytics (decisions.md D1).
+site/ancients/docs/blueprint/08-non-functional.md:13:  `Set-Cookie`). *Changed 2026-10-13 — EJ: "Cloudflare analytics on ancients.ejai.ai can keep" (see decisions.md D1).*
+site/ancients/docs/blueprint/01-vision.md:20:every subdomain and EJ chose to keep (`decisions.md` D1; requirement N2). *Changed 2026-10-13 — EJ: "fix the vision
+site/ancients/docs/blueprint/README.md:17:Memory files: `decisions.md`, `changelog.md`, `lessons.md`, `backlog.md` (append only).
+skills/workflow-design/references/task-types.md:234:| A. Requirements not clear | EJ, through questions | "Not now" is a valid exit of the restatement (method 3.0). At most 5 questions, ranked by impact × uncertainty, each multiple-choice or answerable in a few words, with a recommended answer; anything findable in the code is research, not a question. Everything not asked goes on an assumptions list that EJ accepts with the R-blocks; the questions and answers are logged in `decisions.md`. A throwaway prototype only for a question EJ cannot answer in words; EJ accepts the list of requirements taken from it, never the prototype. Nothing builds until the slice's requirements are settled. | The criteria EJ accepted, with their examples | Building the wrong thing |
+skills/workflow-design/references/task-types.md:237:| D. Feature for a new system | EJ's blueprint | Stack and standards questions (below); a mainstream stack, its reason in `decisions.md`. Blueprint: all eight sections present, four settled before scaffolding (method 3.1). A walking-skeleton node before dev ∥ verifier: lint, tests, one end-to-end test, and a deliberate layer break the checks must catch. A few structural checks: a secret scan, an authorization test if there is auth, one layer rule. | The criteria, the skeleton's end-to-end test and the structural checks (no behavioural baseline yet) | Architecture fixed too early or too vaguely; agents writing everything in one file |
+skills/workflow-design/references/task-types.md:262:  loser gets one line in `decisions.md` saying why it lost.
+skills/workflow-design/references/task-types.md:274:  (non-functional) and in `decisions.md`; coding standards go into the conventions file; all settled before
+docs/TASK_TYPES.md:234:| A. Requirements not clear | EJ, through questions | "Not now" is a valid exit of the restatement (method 3.0). At most 5 questions, ranked by impact × uncertainty, each multiple-choice or answerable in a few words, with a recommended answer; anything findable in the code is research, not a question. Everything not asked goes on an assumptions list that EJ accepts with the R-blocks; the questions and answers are logged in `decisions.md`. A throwaway prototype only for a question EJ cannot answer in words; EJ accepts the list of requirements taken from it, never the prototype. Nothing builds until the slice's requirements are settled. | The criteria EJ accepted, with their examples | Building the wrong thing |
+docs/TASK_TYPES.md:237:| D. Feature for a new system | EJ's blueprint | Stack and standards questions (below); a mainstream stack, its reason in `decisions.md`. Blueprint: all eight sections present, four settled before scaffolding (method 3.1). A walking-skeleton node before dev ∥ verifier: lint, tests, one end-to-end test, and a deliberate layer break the checks must catch. A few structural checks: a secret scan, an authorization test if there is auth, one layer rule. | The criteria, the skeleton's end-to-end test and the structural checks (no behavioural baseline yet) | Architecture fixed too early or too vaguely; agents writing everything in one file |
+docs/TASK_TYPES.md:262:  loser gets one line in `decisions.md` saying why it lost.
+docs/TASK_TYPES.md:274:  (non-functional) and in `decisions.md`; coding standards go into the conventions file; all settled before
+docs/research/20261011-agent-memory-graph-r2/INDEX.md:72:| s1-F4 | Mem0's shipping form moved inside the window, reported by a third party and not by vendor release notes: graph database support removed from the open-source SDK in v2.0.0 (2026-04-16), entity extraction moved into a parallel vector collection, single-pass extraction per add() call. | reported | https://raw.githubusercontent.com/MohamedAbdallah-14/prompt-to-asset/refs/heads/main/docs/research/30-agent-memory-state/30a-agent-memory-architectures.md (2026-04-21) | s1-architectures |
+docs/research/20261011-agent-memory-graph-r2/FINDINGS-s1-architectures.md:13:| F4 | Mem0's current shipping form has moved in the window, and the change is reported by a third party rather than by the vendor's own release notes: graph database support is reported removed from the open-source SDK in v2.0.0 (2026-04-16), with entity extraction moved into a parallel vector collection and a single-pass extraction per `add()` call. | reported | <https://raw.githubusercontent.com/MohamedAbdallah-14/prompt-to-asset/refs/heads/main/docs/research/30-agent-memory-state/30a-agent-memory-architectures.md> (updated 2026-04-21), quoted verbatim: "Mem0 SDK v2.0.0 launched April 16, 2026 — a breaking release. Key changes: (1) Graph database support removed from the open-source SDK" |
+docs/research/20261003-feature-cases/D-new-system.md:59:- 5 architecture, i.e. only the hard-to-reverse choices (stack, main parts, data store, auth model), each as a short ADR in `decisions.md` (D4);
+docs/research/20261003-feature-cases/D-new-system.md:76:**R5 — Choose a mainstream stack and record why (change to the lead-in).** *Built on D24, D4, D14.* Readiness asks whether the stack is well represented in model training (a popular language and libraries). The choice and the rejected alternatives go into `decisions.md` before scaffolding.
+docs/research/20261003-feature-cases/A-unclear-requirements.md:111:   slice the feature instead of reviewing a long spec; log each Q→A under the R-blocks (or `decisions.md`) so the
+docs/research/20261003-feature-cases/CRITIC.md:160:| A-R7 size limit + Q→A log | shrink | Log Q→A in decisions.md; size limit replaced by S7 |
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && ls project-memory 2>&1; ls docs/blueprint/ 2>&1 | head -20; git status --short | head -20; git log --oneline -3
+ls: cannot access 'project-memory': No such file or directory
+ls: cannot access 'docs/blueprint/': No such file or directory
+ M .claude/skills/workflow-design/SKILL.md
+ M docs/METHOD_CHANGELOG.md
+ M docs/TASK_TYPES_LEDGER.md
+ M docs/WORKFLOW_DESIGN_METHOD.md
+ M docs/code-graph/CODE_GRAPH.md
+ M docs/workflow-templates/blueprint.md
+ M docs/workflow-templates/research-file.md
+ M runs/20261012-index-md-build/state.md
+ M skills/workflow-design/SKILL.md
+ M skills/workflow-design/assets/templates/blueprint.md
+ M skills/workflow-design/assets/templates/research-file.md
+ M skills/workflow-design/references/method.md
+?? docs/code-graph/vision-statements/
+?? docs/evaluator/
+?? docs/research/20261011-agent-memory-graph-r2/
+?? docs/research/20261011-agent-memory-graph/
+?? runs/20261011-agent-memory-graph-r2/
+?? runs/20261011-agent-memory-graph/
+?? runs/20261011-project-memory-engines/
+?? runs/20261012-caches-enhance/
+d137f48 Source of truth memory: INDEX.md changes, id form, claims never rewritten
+5c68878 Researcher agent: global fallback paths for the template and the tags file
+4456dd1 Ledger: row for run 20261013-research-tags-retag
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && ls -la skills/workflow-design/ | head; echo ---; ls -la .claude/skills/workflow-design/ | head; echo ---; git diff --stat; echo ---; git diff skills/workflow-design/references/method.md | head -20
+total 32
+drwxr-xr-x 5 smoke01 smoke01  4096 Oct 13 23:07 .
+drwxr-xr-x 6 smoke01 smoke01  4096 Oct 13 23:07 ..
+-rw-r--r-- 1 smoke01 smoke01 11506 Oct 13 23:06 SKILL.md
+drwxr-xr-x 3 smoke01 smoke01  4096 Oct 13 23:07 assets
+drwxr-xr-x 2 smoke01 smoke01  4096 Oct 13 23:07 references
+drwxr-xr-x 2 smoke01 smoke01  4096 Oct 13 23:07 scripts
+---
+total 32
+drwxr-xr-x 5 smoke01 smoke01  4096 Oct 13 18:43 .
+drwxr-xr-x 7 smoke01 smoke01  4096 Oct 13 18:48 ..
+-rw-r--r-- 1 smoke01 smoke01 11506 Oct 13 23:06 SKILL.md
+drwxr-xr-x 2 smoke01 smoke01  4096 Sep 20 14:17 assets
+drwxr-xr-x 2 smoke01 smoke01  4096 Oct 13 21:01 references
+drwxr-xr-x 3 smoke01 smoke01  4096 Oct  7 04:28 scripts
+---
+ .claude/skills/workflow-design/SKILL.md            |   6 +-
+ docs/METHOD_CHANGELOG.md                           |   1 +
+ docs/TASK_TYPES_LEDGER.md                          |   8 ++
+ docs/WORKFLOW_DESIGN_METHOD.md                     |  37 +++---
+ docs/code-graph/CODE_GRAPH.md                      | 139 ++++++++++++++++++++-
+ docs/workflow-templates/blueprint.md               |  24 +---
+ docs/workflow-templates/research-file.md           |   2 +-
+ runs/20261012-index-md-build/state.md              |   1 +
+ skills/workflow-design/SKILL.md                    |   6 +-
+ .../workflow-design/assets/templates/blueprint.md  |  24 +---
+ .../assets/templates/research-file.md              |   2 +-
+ skills/workflow-design/references/method.md        |  37 +++---
+ 12 files changed, 197 insertions(+), 90 deletions(-)
+---
+diff --git a/skills/workflow-design/references/method.md b/skills/workflow-design/references/method.md
+index e0a5784..085b7bb 100644
+--- a/skills/workflow-design/references/method.md
++++ b/skills/workflow-design/references/method.md
+@@ -458,7 +458,7 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
+ 9. **Research is written to files** — the *researcher* reads docs, papers and the web, writes full findings (each
+    with an id, a source and a label) to `docs/research/<date>-<topic>/FINDINGS.md` and returns a digest of about 15
+    lines, no more than 20, plus the path (`docs/workflow-templates/research-file.md`); a doubt is settled by reading
+-   one finding by id or by a small verify node; a design decided from research goes to `decisions.md` (4).
++   one finding by id or by a small verify node; a design decided from research becomes a decision entry in `project-memory/entries/` (§4).
+ 10. **Exploring existing code is its own role** — the *explorer* reads code, tests, configs and git history, never
+    the web, read-only under a stated budget and never a repo-wide overview (TASK_TYPES, case C); every claim carries
+    file:line and a verbatim quote that `scripts/quote_check.py` confirms (a failing quote is a failed finding;
+@@ -487,27 +487,28 @@ detailed notes go in its own output file, so a verifier can be kept blind to the
+ Of the kinds of memory an agent has (Appendix B), **files in the repo** are the one every tool and every agent can
+ read — use them for anything that must last.
+ 
+-Working rules: each agent gets a brief with only what its piece needs (with a template, an example and a standard, 3.8) and writes its full result to a file; research and decided designs are files too (3.8, `docs/research/`, `decisions.md`); the
++Working rules: each agent gets a brief with only what its piece needs (with a template, an example and a standard, 3.8) and writes its full result to a file; research and decided designs are files too (3.8, `docs/research/`, decision entries in `project-memory/entries/`); the
+ main agent keeps conclusions, not details; stored knowledge carries a date and is rechecked before it is relied on;
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && rg -n 'Memory in a designed workflow|Context\*\* — memory in|Contract\*\* — before acting|State\*\* — memory out|Tools\*\* — the caches|engine.s own built-in memory|Not verified: Codex' docs/WORKFLOW_DESIGN_METHOD.md
+494:**Memory in a designed workflow.** Agents do not use memory well on their own: their tool loads a fixed set of
+504:| **Context** — memory in | The entries the node needs, named by id or by the paths they cover, and how they reach it: in the brief, by an import, or by a start hook, never as a sentence asking it to read them (SoT Rd2.1). What it must not receive: a verifier gets no worker's reasoning, and no entry or journal that carries it. |
+505:| **Contract** — before acting | A node that acts on a decision or fact checks it against the code first; a mismatch is reported in the state file and to EJ, not settled (SoT Rd5). |
+506:| **State** — memory out | What the node writes, and when: a decision or fact before the code it governs (W5.1); `done:` on a decision when its work is complete (W5.3); raw notes to the task's `journal/`, turned into lessons, observations and hypotheses at the end of the task (K5.2); `INDEX.md` regenerated in the same commit as any entry (K6.2). The node's return lists the entries it wrote, and its check fails if a required one is missing. |
+507:| **Tools** — the caches | A cache is never loaded at start (CACHES Rd1). A node uses full-text search or the vector index only for a free-text "what do we know about X" question, and only when that cache exists (its trigger fired, B1); otherwise `INDEX.md`, grep, then read the entry. Exact strings, "every entry covering X", "have we never…", header fields and "why" questions go to the files, never to a cache (CACHES § When to use which store). A cache answer names its entry, and the node reads that entry before acting on it (Rd2). |
+509:An engine's own built-in memory (Claude Code auto memory, a subagent's `memory` field, Codex memories) is not part of
+515:Not verified: Codex's memory and subagent features beyond `AGENTS.md`.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && sed -n '228,246p' docs/TASK_TYPES.md
+7. Requirements are settled per slice: a very unclear or large feature is cut into thin end-to-end slices, each
+   run through the pipeline.
+8. Behavioural equivalence and regressions are judged only by running code, never by an LLM reading it.
+
+| Case | Source of truth | Lead-in (before anything builds) | Verifier's oracle | Main risk |
+|---|---|---|---|---|
+| A. Requirements not clear | EJ, through questions | "Not now" is a valid exit of the restatement (method 3.0). At most 5 questions, ranked by impact × uncertainty, each multiple-choice or answerable in a few words, with a recommended answer; anything findable in the code is research, not a question. Everything not asked goes on an assumptions list that EJ accepts with the R-blocks; the questions and answers are logged in `decisions.md`. A throwaway prototype only for a question EJ cannot answer in words; EJ accepts the list of requirements taken from it, never the prototype. Nothing builds until the slice's requirements are settled. | The criteria EJ accepted, with their examples | Building the wrong thing |
+| B. Migration from an old system | The old system's recorded behaviour | One port / drop / change list of the old behaviours; EJ marks each, and intended differences are tracked there. The oracle is the old system's recorded output (golden input → output pairs, or old-versus-new runs), never the extracted description. Readiness: the old system can be run to record outputs. The verifier aims golden inputs at the measured bug classes (types and precision, parsing and formatting, boundaries, error paths). Only when old-versus-old runs differ: a noise ignore list with reasons. Only when data moves: schema, then counts per column, then a hash per row. Small pieces in dependency order. | Parity on the goldens, plus the data checks when data moves | A plausible but wrong description of the old system; old bug workarounds ported as requirements |
+| C. New feature in an existing system | The existing code plus the new requirement | The scan is systematic inside the affected area, under a budget, favouring recall; never a repo-wide overview. It produces a 4-item impact map with file:line: where the change goes; what calls it and what it calls; the nearby conventions; what must not change. Load-bearing behaviour claims are checked by running code (shared 8). Characterization tests only for "must not change" entries that have no test; they join the baseline. In phase 1 the verifier gets only the "must not change" list from the map. Language and conventions are read, not asked. | The new criteria, plus the per-test baseline still passing | Breaking something not known to be connected; agents going beyond the request |
+| D. Feature for a new system | EJ's blueprint | Stack and standards questions (below); a mainstream stack, its reason in `decisions.md`. Blueprint: all eight sections present, four settled before scaffolding (method 3.1). A walking-skeleton node before dev ∥ verifier: lint, tests, one end-to-end test, and a deliberate layer break the checks must catch. A few structural checks: a secret scan, an authorization test if there is auth, one layer rule. | The criteria, the skeleton's end-to-end test and the structural checks (no behavioural baseline yet) | Architecture fixed too early or too vaguely; agents writing everything in one file |
+
+Deferred (evidence too thin or not EJ's single-developer case): shadow or dark launch (B); a repo map or code graph
+(C); a larger retry budget for mechanical translation (it conflicts with the 2-round cap); a duplication limit and a
+security rescan after every fix round (D).
+
+**Proof of concept (POC) — when and how (EJ, 2026-10-03; n=0).** A POC answers one technical risk that nobody
+can settle by reading or asking (will this library do X, is it fast enough, does this API behave as documented).
+It is method 3.3's bounded explore loop for a technical unknown; the age of the system is not the reason for it.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && rg -n 'decisions\.md' docs/TASK_TYPES.md docs/TASK_TYPES_LEDGER.md .claude/skills/workflow-design/SKILL.md skills/workflow-design/SKILL.md 2>/dev/null; echo "--- ledger:"; rg -n 'decisions' docs/TASK_TYPES_LEDGER.md | head
+docs/TASK_TYPES.md:234:| A. Requirements not clear | EJ, through questions | "Not now" is a valid exit of the restatement (method 3.0). At most 5 questions, ranked by impact × uncertainty, each multiple-choice or answerable in a few words, with a recommended answer; anything findable in the code is research, not a question. Everything not asked goes on an assumptions list that EJ accepts with the R-blocks; the questions and answers are logged in `decisions.md`. A throwaway prototype only for a question EJ cannot answer in words; EJ accepts the list of requirements taken from it, never the prototype. Nothing builds until the slice's requirements are settled. | The criteria EJ accepted, with their examples | Building the wrong thing |
+docs/TASK_TYPES.md:237:| D. Feature for a new system | EJ's blueprint | Stack and standards questions (below); a mainstream stack, its reason in `decisions.md`. Blueprint: all eight sections present, four settled before scaffolding (method 3.1). A walking-skeleton node before dev ∥ verifier: lint, tests, one end-to-end test, and a deliberate layer break the checks must catch. A few structural checks: a secret scan, an authorization test if there is auth, one layer rule. | The criteria, the skeleton's end-to-end test and the structural checks (no behavioural baseline yet) | Architecture fixed too early or too vaguely; agents writing everything in one file |
+docs/TASK_TYPES.md:262:  loser gets one line in `decisions.md` saying why it lost.
+docs/TASK_TYPES.md:274:  (non-functional) and in `decisions.md`; coding standards go into the conventions file; all settled before
+--- ledger:
+30:| 2026-10-13 | 20261013-ancients-page | information extraction + ui/ux dev + deploy (deploy has no TASK_TYPES row; first principles) | default | — | — | not estimated in tokens; EJ's target: within one hour | not instrumented: opencode 2 build calls (1 blocked by external_directory, exit 0 no work), Codex 1 test-writing call, Sonnet 1 blind reviewer; P1 by script; about 1.5 h wall clock to live, plus waits on EJ (login, decisions) | R1.1–R5.2, N1–N3 covered: content check PASS 76 items (sabotage caught); 14/14 phone tests local, preview and live (red baseline 0/14; sabotages caught for quote, swipe and foreign request); blind review found its plant and one real defect (Aa at screen edge), fixed; live sha256 = tested build; ejai.ai hash and DNS unchanged; N2 widened by EJ's decision D1 (Cloudflare analytics kept); EJ's phone check of the edge-back gesture (U4) not reported | no — token cost not measured |
+[0m

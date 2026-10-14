@@ -35,7 +35,7 @@ Full findings: FINDINGS.md. Status: <open | parked | decided | negative result>.
 ```
 
 The digest is checked by `validate_result.py FILE --kind digest` (the three bold parts present, length capped). A
-design that follows from the research is a decision: it goes to `docs/blueprint/decisions.md` (method §4).
+design that follows from the research is a decision: it becomes a decision entry in `project-memory/entries/` (method §4).
 
 ## Example
 

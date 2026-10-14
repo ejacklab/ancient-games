@@ -72,17 +72,17 @@ method section named beside it.
    method 3.8; `scripts/dispatch.py run PLAN` enforces it in code (`--dry-run` first; `docs/DISPATCHER_DESIGN.md`).
 8. **The run ends at the acceptance criteria** (method 3.6). A piece that builds names the blueprint sections it
    depends on and the criteria it covers; its stop is the three-part stop of method 3.6. Anything else found goes to
-   `docs/blueprint/backlog.md`, never into the current run. The product's memory files: method §4.
+   `docs/blueprint/backlog.md`, never into the current run. How nodes use project memory and its caches: method §4.
 
 ## Every node carries five things
 
 | | What to write |
 |---|---|
-| **Tools** | what the agent uses, each proved working |
-| **Context** | exactly what it is given, and what is withheld (a verifier never sees the worker's reasoning) |
-| **Contract** | the intent, the observable stop condition (for a piece that builds: its acceptance criteria pass, the baseline still passes, "must not change" holds), what it returns and in what shape, what it may and must not change |
+| **Tools** | what the agent uses, each proved working; a memory cache only for search, and only where it is built (method §4) |
+| **Context** | exactly what it is given, and what is withheld (a verifier never sees the worker's reasoning); the memory entries it needs, as text in the brief or by an import; a sentence asking for them only as the stated fallback (method §4) |
+| **Contract** | the intent, the observable stop condition (for a piece that builds: its acceptance criteria pass, the baseline still passes, "must not change" holds), what it returns and in what shape, what it may and must not change; the memory entries it reads before editing and checks before acting on (method §4) |
 | **Evidence** | the proof that comes back with the result (a command and its output, or file:line) and the file it is saved in |
-| **State** | what it reads from the state file before starting and what it writes back |
+| **State** | what it reads from the state file before starting and what it writes back, and the memory entries it writes, and when (method §4) |
 
 An edge is then concrete: the earlier node's returns and evidence become the later node's context.
 

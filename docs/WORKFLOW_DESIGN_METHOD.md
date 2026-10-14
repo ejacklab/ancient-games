@@ -458,7 +458,7 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
 9. **Research is written to files** — the *researcher* reads docs, papers and the web, writes full findings (each
    with an id, a source and a label) to `docs/research/<date>-<topic>/FINDINGS.md` and returns a digest of about 15
    lines, no more than 20, plus the path (`docs/workflow-templates/research-file.md`); a doubt is settled by reading
-   one finding by id or by a small verify node; a design decided from research goes to `decisions.md` (4).
+   one finding by id or by a small verify node; a design decided from research becomes a decision entry in `project-memory/entries/` (§4).
 10. **Exploring existing code is its own role** — the *explorer* reads code, tests, configs and git history, never
    the web, read-only under a stated budget and never a repo-wide overview (TASK_TYPES, case C); every claim carries
    file:line and a verbatim quote that `scripts/quote_check.py` confirms (a failing quote is a failed finding;
@@ -487,31 +487,42 @@ detailed notes go in its own output file, so a verifier can be kept blind to the
 Of the kinds of memory an agent has (Appendix B), **files in the repo** are the one every tool and every agent can
 read — use them for anything that must last.
 
-Working rules: each agent gets a brief with only what its piece needs (with a template, an example and a standard, 3.8) and writes its full result to a file; research and decided designs are files too (3.8, `docs/research/`, `decisions.md`); the
+Working rules: each agent gets a brief with only what its piece needs (with a template, an example and a standard, 3.8) and writes its full result to a file; research and decided designs are files too (3.8, `docs/research/`, decision entries in `project-memory/entries/`); the
 main agent keeps conclusions, not details; stored knowledge carries a date and is rechecked before it is relied on;
 knowledge (stable) is kept apart from state (changes every run).
 
-**Project memory for software work.** A release note is written for users
-after the fact; it tells an agent what shipped, not why or what to avoid, so it is an output here, not the
-memory. A product keeps three small append-only files beside its blueprint, each existing to answer one listed
-query (the rule above: no store without a query):
+**Memory in a designed workflow.** Agents do not use memory well on their own: their tool loads a fixed set of
+files, and anything past that is read only if the model decides to (`runs/20261013-memory-in-workflow-design/report.md`
+§1, my reading; E1 and E2 measured invoking a skill or a tool, not reading a file). So the design decides, for every
+node, what memory reaches it and what it writes; nothing is left to a reminder the agent may skip. Project memory
+follows `docs/memory-system/SOURCE_OF_TRUTH.md` and its caches follow `docs/memory-system/CACHES.md`; the method does
+not repeat their rules. It applies them per node, in the fields every node already has (3.6; the skill's "Every node
+carries five things"), in the table below.
 
-| File (`docs/blueprint/`) | Answers | Entry (kept to about 5 lines) | Written by, when |
-|---|---|---|---|
-| `decisions.md` | "Why did we choose X? What did we reject?" | date · decision · why · alternatives rejected · the R/N ids it serves · source (finding ids, or *model knowledge*, 3.8 item 12) | the COO, when a decision spot is answered (3.3) or a design choice is made; EJ's answers are the decisions |
-| `changelog.md` | "What did run N change, and did it pass?" | date · run id · what changed · criteria covered (R1.1…) · commits · baseline result · optional `release note:` line for users | the COO, once at the end of each run that builds, from the state file |
-| `lessons.md` | "What goes wrong around module Y?" | date · where (path or module) · the trap · how it was found · recheck by (a date or a trigger) | any node proposes, the COO appends; an entry past its recheck is marked stale, never silently trusted |
+**Until a product has `project-memory/`.** A product that already keeps `docs/blueprint/decisions.md`, `changelog.md`
+and `lessons.md` keeps writing them under the rules this section had before 2026-10-13 (`docs/METHOD_CHANGELOG.md`),
+until that product's owner moves it to `project-memory/`. The table below still applies, read
+against those files. Nothing in this change moves or deletes them. A new product starts with `project-memory/`; the
+first node that writes an entry creates the folder.
 
-Working rules: append only, never rewritten (a reversal is a new entry that points at the old one); every entry
-carries a date and, where it applies, a requirement id or a path, so an agent finds it by `grep`, not by reading the
-file; readiness (3.1, information) and the design read only the entries for the sections, ids and paths the task
-touches; the blueprint's `README.md` map lists the files so an agent knows they exist. A release note, when one is
-needed, is generated from the `release note:` lines of the changelog, not written separately. The qwen findings of
-2026-10-02 (silent model substitution, exit 0 with no file) are examples of lessons.
+| Field | Memory in it |
+|---|---|
+| **Context** — memory in | The entries the node needs, named by id or by the paths they cover (SoT Rd4.1), and how they reach it: their text inside the brief, or by an import where the engine has one, so the node does not have to choose to read them. A brief that carries an entry's text is an on-demand read for the node's task (SoT Rd4), not a session-start load (EJ, 2026-10-13: *"apply all"*, on the COO's recommendation). A start hook carries only the four session-start reads (SoT Rd2.1); entry bodies are never loaded by a hook (SoT Rd2.2). A sentence asking the node to read an entry is the fallback, used only where neither the brief nor an import can carry it, and the design says so (SoT Rd2.1). What it must not receive: a verifier gets no worker's reasoning, and no entry or journal that carries it. |
+| **Contract** — before acting | Before editing a file, the node reads the entries whose `covers` include it (SoT Rd4.1). Before acting on a decision or fact, it checks it against the code, test or commit it points to; a mismatch is reported in the state file and to EJ, not settled (SoT Rd5.1, Rd5.3). Two cases are not mismatches: a decision with no `done:` yet whose code is still being built, and the node whose own task is that change (SoT Rd5.4). |
+| **State** — memory out | What the node writes, and when: a decision or fact before the code it governs, and a human correction at once (W5.1); `done:` on a decision to build something when its work is complete (W5.3); raw notes to the task's `journal/` (K5.1), read at the end of the task and before a handoff, turned into lessons, observations and hypotheses, with that read logged in `state.md` (W5.2, K5.2); `INDEX.md` regenerated in the same commit as any entry (K6.2). The node's return lists the entries it wrote, and its check fails if a required one is missing (this method's rule, not the design's; n=0). |
+| **Tools** — the caches | A cache is never loaded at start (CACHES Rd1). Each is used only once it exists, after its own trigger fired: full-text search for a free-text "what do we know about X" question (B1.1), and the vector index when the question's wording may differ from the entry's (B1.2; built after the full-text index, a *proposed* policy). Otherwise `INDEX.md`, grep, then read the entry. Exact strings, "every entry covering X", "have we never…", header fields and "why" questions go to the files, never to a cache (CACHES § When to use which store). A cache answer names its entry (CACHES Rd2.1), and the node reads that entry before acting on it (SoT Rd5.1). |
+
+An engine's own built-in memory (Claude Code auto memory, a subagent's `memory` field, Codex memories) is not part of
+the design: a rule a node must follow lives in the repo files that reach it, never only in one engine's memory (report
+M14, T6; no run has broken such a rule, so the harm is not measured).
+
+A release note is for users, not for agents: it says what shipped, not why, so it is an output of the run and not
+memory. A product on `project-memory/` keeps one, in the blueprint's `changelog.md` (EJ, 2026-10-14: *"yes want a
+release note"*, to 老子's proposal in the review of 2026-10-13). The node whose work ships adds its entry when the work
+ships, written from the decisions' `done:` lines (SoT W5.3) and the commits.
 
 Caution on graphs: this repo built two graphs nobody queried and then deferred a third. Its rule — "no node or edge
 type without a listed query" — applies here too (`docs/KNOWLEDGE_GRAPH_DESIGN.md` §1, `docs/STORE_DESIGN_DECISION.md`).
-Not verified: Codex's memory and subagent features beyond `AGENTS.md`.
 
 ## 5. Three qualities every design must show
 
