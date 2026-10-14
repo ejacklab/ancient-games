@@ -1,0 +1,543 @@
+dsh: reasoning:
+I need to read my list and identity files first. Let me do that.
+dsh: reasoning:
+Let me read the rest of the list, lines 304+.
+dsh: reasoning:
+Now I have my full list (items 1–20) and identity. The brief asks me to review a YAML draft of a requirements file. I need to answer as 孫子, deciding through my rules, citing "my #n" for each step.
+
+Let me think through this carefully. The question:
+
+"Will another AI agent follow this YAML requirements file reliably, and what layout would serve that agent better? Review the draft below. Say what to keep, what to change, and why. Answer the four layout choices (A–D) with a recommendation each, and name anything else in the draft that would make an agent misread or skip a requirement."
+
+I must:
+1. Decide through my rules. Every step names the item it uses: "my #4". A step with no item is my own reading — say so.
+2. Do not invent facts. If the answer depends on something not given, list under "What I need to know" and answer conditionally.
+3. Quote only from my list, exactly as written, keep label.
+4. Say what it costs. Every recommendation names its risk or price.
+5. Re-read list while working.
+6. Plain English Markdown, refer to EJ as they/them, no files; final message is the answer.
+
+Write exactly the template:
+# 孫子 (Sun Tzu) — <the question in a few words>
+## Answer
+<recommendation in one or two sentences; conditional if it must be>
+## How I decided
+<numbered steps; each cites "my #n" or says "my reading">
+## What I need to know
+...
+## Costs and risks
+<each with the item it comes from>
+## How we would know I was right
+<a test, a measure, or an observable result>
+
+Let me think about the substance. This requires actual analysis of the YAML draft. Let me reason about what would make an agent misread or skip a requirement.
+
+Key observations from the draft:
+
+1. **Levels.** Each requirement has a `level:` field that is sometimes a scalar (e.g. `level: SHOULD`, `level: MUST`, `level: guidance`) and sometimes a map with clause→level pairs (e.g. W1.1, W1.3, W2.1, W3.3, W3.5, W4.1, W5.3, W6.1, W6.3, K6.1, K6.3, Rd2.3, Rd3.1, Rd4.5). This is a schema inconsistency: the same key `level` holds two different shapes. An agent parsing it naively (or a script) would break or misread. That's choice A.
+
+2. **Guidance has nothing to pass or fail**, but appears in the same `level:` map as MUST/SHOULD. So `level: {guidance: the example numbers}` sits next to `MUST:` — an agent might treat guidance clause as gated or ignore levels entirely.
+
+3. **`fails_if` per group.** Choice B. The draft has one per group. Problem: groups have mixed-level requirements, and a group-level fails_if covers all requirements in the group, but some requirements are guidance or SHOULD. An agent can't tell which requirement a fail belongs to. Also the group `fails_if` texts sometimes reference multiple requirements (W1 fails_if covers W1.1, W1.2, W1.3) and sometimes explicitly say "judged" vs automated. Mixed granularity.
+
+4. **Links inside text.** Choice C. References like (K4.1), (W3.6), (Rd5.3), (K6.3) are inside prose. A script cannot follow; an agent must resolve by scanning. Also cross-references are load-bearing (Rd5.3 exception in W4.1, W5.3, Rd5.3...). Choice C: extract to `links:`.
+
+5. **Who decides.** Choice D. No `who_decides` field. Rd5.3 says EJ decides. W6.3 says reported to EJ. House rule (from facts) says name who decides each open choice. So D should be added.
+
+6. **Other misread/skip risks:**
+   - **`text` plus `level` clause map plus `items`**: Rd2.2 and Rd2.3 have a `text` ending with a colon and then `items:` list, but the level clause map's keys are not aligned with items. In Rd2.3, `MUST: credentials; another agent's transcripts` and `SHOULD: the other four` — "the other four" requires counting six list items. An agent must count items to know which four. Ambiguous/error-prone. Also "the other four" is a weak, index-dependent reference.
+   - **Rd2.3 `items` is 6 items, MUST names 2, SHOULD "the other four"** = 4, ok that adds. But an agent could miscount. Better: annotate each item with its level.
+   - **The `levels:` block vs `level:` key**: top-level `levels:` defines the vocabulary; per-requirement `level:` uses it. Good.
+   - **`basis` codes**: `v:` and `d:` are defined in a `basis:` block. But requirement-level `basis` only appears on groups, not requirements. Fine.
+   - **Missing `who_decides`**.
+   - **Escaping / YAML correctness:** `title: '`INDEX.md` stays in step'` quoted, fine. `title: '`INDEX.md` fits every agent that reads it'` quoted. There's `- '`.cache/`, only through search (Rd4.2);'` quoted because leading backtick. Fine.
+   - **The top comment says "There are no fixed numbers: where a limit applies, it is a comparison that measurement decides."** But Rd3.1 gives example numbers (24 KB, 200 lines) and says "fits the strictest start-file limit". The example numbers are in the `text` under guidance. An agent might treat ~24KB/200 lines as a hard limit and skip measuring. That's a misread risk.
+   - **`fails_if` mixed automated/judged**: W1 fails_if mixes lint checks with "a reviewer finds" and "git shows". An agent doesn't know who runs which. Same for others. The hard gate MUST but check is judged by an unassigned reviewer (facts say "no reviewer is assigned"). So levels claim gate but no one can enforce. Actually that's a requirement-quality issue: false gates.
+   - **Group ids skip: K1, K4, K5, K6** — no K2, K3. And group order: K1 then K4. An agent might think groups are missing/corrupt. Actually this is because the Markdown had those. Worth noting.
+   - **Category W has groups W1–W6; category K has K1, K4, K5, K6; category Read has Rd1–Rd6.**
+   - **Requirement `W4.1` level map: `guidance: anyone may create or change any entry; no owner and no approval` and `MUST: status is only active, superseded or retired; the Rd5.3 exception`.** But the text says "Anyone... may create or change any entry, and `AGENTS.md` too. There is no owner and no approval". The "no owner and no approval" is labeled guidance, yet it reads as a permissive rule — an agent might not treat it as binding and could seek approval. Actually guidance = nothing to pass/fail, so no-owner is unenforceable. That's a real misread risk: a permissive clause at guidance level.
+   - **`W2.1`/`W2.2` guidance `the definitions` + SHOULD** — fine.
+   - **Nested `items` vs `text`:** Rd2.2 and Rd2.3 and Rd5.4 have items but the level clause map refers to clauses in text, not items. An agent reading `level.MUST: credentials; another agent's transcripts` and then the `items` list must match by semantic identity, not by key. Fragile.
+   - **Duplicate id check:** `fails_if` in W1 mentions "two entries with the same id" etc.
+   - **The `level` map ordering:** `guidance` before `MUST` in some, `MUST` before `SHOULD` in others. Not an issue for YAML but reading order may bias.
+
+7. **The core question: "Will another AI agent follow this YAML requirements file reliably?"** My answer conditionally: not reliably as-is, because of (a) the dual-shaped `level` field, (b) group-level `fails_if` that does not bind to the requirement it judges, (c) inline links that cannot be followed, (d) unenforceable MUST gates with no assigned reviewer. But the YAML form itself is fine — the words carried over, the grouping is right.
+
+Now, which of my 20 rules apply? Let me map:
+
+- **My #1 (Reckon before battle):** count before you commit, and the ordered chain. The brief is a review; the "ground gives measurement..." chain = the review must reckon the layout against the reader's situation (who reads, what they can parse). The five matters / seven comparisons → I should list the factors I compare layouts on. I can cite my #1 for "reckon the whole field before recommending a layout: the reader, the check, the level, the link." Also "More wins, fewer does not" — a layout that leaves the reader counting is losing.
+- **My #2 (Make yourself unbeatable first; win, then seek battle):** design so the artifact is reliable independent of the enemy's (agent's) goodwill; being unbeatable is in your own hands. The document must not depend on the reader behaving well; it should be a gate the tooling enforces. So: make the check mechanical, don't rely on the agent choosing to comply. Also "do not rely on their not coming" — don't rely on the agent not skipping; rely on the tool's check.
+- **My #4 (Know whether you can fight; know the reader and yourself):** `fails_if` is a check on whether you can fight. Five things tell who will win; applied: whether the check can run, whether the reader can run it, whether the ground (format) permits. "Knowing whether your troops can attack ... but not whether the ground permits battle, is still only half a victory." → A requirement with a MUST but no enforceable check is half a victory.
+- **My #5 (Move only on advantage; never from anger; do not move without advantage):** don't add fields that don't earn their cost. This is key: adding `who_decides` per requirement, `links`, splitting `level` etc. must each carry its weight. "Do not move without advantage, do not use troops without gain." So I should recommend changes only where they prevent a concrete misread, and say so.
+- **My #6 (Mix harm into benefit):** for each recommendation, name the harm/risk. Use deliberate framing: "mixed with benefit, the undertaking can be carried out; mixed with harm, trouble can be resolved." So each layout choice gets a benefit and a harm.
+- **My #7 (War is the way of deception / act on the enemy's condition):** Hmm, how does this apply to a document review? Deception is about the adversary. Here the "adversary" is the agent's tendency to skip. Actually more relevant: the draft should make the gate legible and the skip detectable. Maybe my #7 applies to "appear unable" analog: not obvious.
+   Better: my #7's second half "with the enemy's condition" — act on the reader's condition: an LLM reads linearly and skips. So lay out requirements so the reader's likely skip path is closed. My #7 could apply as: design so the requirement's real content is what the reader sees first, not buried.
+- **My #8 (Value victory, not duration; speed):** short, no long prose. YAML should be scannable; long prose fields cost attention (a form of duration). Speed = the agent can find the gate fast. Speed matters: "clumsy speed is heard of, skilful prolongation has never been seen." Applied: prefer a compact layout the agent can act on in one pass; a long text block with the operative clause at the end is a cost.
+- **My #9 (Bring the other side to you; do not be brought):** make the document lead the agent; don't let the agent's defaults set the terms. Use machine-checkable checks (the tool) so the requirement is brought to the agent. "Whoever is first on the field and awaits the enemy is fresh." → put the requirement where the agent must meet it (session start / lint), not where it may.
+- **My #10 (Avoid the solid, strike the empty; no constant form):** strike where the agent is weak — the moment it skips. Make requirements give an explicit "never loaded" list. Also "no fixed form" — the format should adapt. Hmm.
+- **My #11 (Foreknowledge from people; pay for it):** need measurement; the facts say YAML was not measured, prior measurement was Markdown vs JSON vs XML. The claim "another agent follows YAML better" is EJ's feeling, not measured. My #11: foreknowledge must come from people who know the situation, not from analogy with past events or measurement alone. Applied: get the reader's evidence (test with real agents), pay for it. Also the house rule "name who decides, not who asked." And #11 "pay for it" → spend effort on a trial, don't begrudge the cost.
+- **My #12 (Seek it in 勢, made of regular and irregular, not from the people):** change the conditions (the file layout), not exhort the agent. The requirement-file design is 勢: shape the format so compliance is the path of least resistance, rather than relying on the agent's diligence. Also "courage and cowardice are a matter of 勢" — an agent that skips is not a bad agent; the layout made skipping easy. Also "he can choose his people and rely on 勢" — scripts vs LLM reading.
+- **My #13 (Not every road taken, not every command accepted):** not every requirement needs the same treatment; a checklist need not be exhaustive. Also "commands of the ruler not to be accepted" — the file should allow the reader to refuse in a defined way (report, not settle). Also: not every suggestion needs applying; the drafter should not accept every "command" (e.g., don't add fields blindly).
+- **My #14 (Choose the action by the ratio of forces):** match the format to the reader: with ten to one (script can check), automate; equal, a reviewer can judge; outmatched (no check), avoid. I.e., a requirement whose check is judged by no one should be downgraded from MUST. This maps directly to the level gating. "A small force that holds stubbornly is taken by a large one" — a MUST with no check is a small force.
+- **My #15 (The general's faults: five dangers, six defeats):** the reviewer/drafter's own faults become handles. The COO made the four layout choices alone — the faults are the drafter's. "one set on dying can be killed; one set on living can be captured; the quick-tempered can be provoked..." Applied: the draft's bias (word-for-word fidelity, "text identical") is a virtue that is a lever: fidelity to prose preserves ambiguity. A checklist of the drafter's tendencies.
+- **My #16 (Orders clear first, then enforced; care that cannot command is useless):** This is the central one for a requirements file: "If orders are not clear and not drilled in, it is the general's fault." A requirement that is not unambiguous is the author's fault, not the reader's. "Punish before attached → will not submit." So the file must be clear and enforced; care (guidance) without power to command (level) is useless. "Generous but unable to direct, loving but unable to command ... like spoiled children, of no use" — a document full of guidance and unenforced MUST is useless.
+- **My #17 (Learn the enemy by probing and by signs):** test the file on a real agent (probe) and read the signs (where it skips). "reckon him to know gains/losses; stir him to learn movement and stillness; make him take form to know his ground of life and death; test him in contact to know where he has more and less." → The way to know if an agent follows it: probe with a real agent and instrument the read. This is also "How we would know I was right."
+- **My #18 (Spirit, heart, strength and change; meet theirs with yours):** manage the reader's spirit: don't front-load; strike when it flags. "avoid keen spirit, strike when it flags" → put the gates where attention is fresh (session start) and the guidance later. Eight prescriptions include "do not attack crack troops", "leave a gap for a surrounded army", "do not press a desperate enemy" — leave the reader a gap: don't make every requirement MUST, or the agent collapses. Also "Do not block an army going home" — allow a graceful exit (report). 
+   This is quite applicable: the eight prescriptions as design rules: don't attack a requirement's strong point head-on (don't restate the same rule in five places where they can conflict); leave a gap (allow an explicit "not applicable" path); don't press a desperate agent (don't stack MUSTs with no check).
+- **My #19 (Name the ground, act as prescribed; troops with no way out fight):** identify the case, then act as prescribed. The file should name each case (when this situation, this level). And "troops deep in hostile land with nowhere to go fight to the death" → an agent with no escape will improvise; give it the report path. Also the nine-ground table maps to "the same document for different readers' situations."
+- **My #20 (Which house falls first: judge by the land unit, the tax, and what they breed):** judge a structure by what it produces (its incentives/outputs), not its stated intent. Applied: judge the YAML by what it will produce in an agent (the outputs), by the check it yields, and by what it breeds (ambiguity). Fan/Zhonghang: small unit + heavy tax = many officials, arrogance, frequent wars. Applied: many small fields + heavy metadata = the reader spends on structure and fights over form. Zhao: large unit, no new taxes → held. So: prefer fewer, larger, self-contained units (one requirement with its own level, check, links, who-decides) over many micro-fields. That's a nice fit for recommendation: package each requirement as one self-contained record rather than splitting level clauses across maps.
+
+Great. Now, which of my rules to use as the decision spine? I should apply them step by step and cite. I don't need all 20 — but should use the relevant ones. The brief says every step names the item it uses. Let me build ~10-14 steps.
+
+Let me now think carefully about the actual recommendations.
+
+The four layout choices:
+
+**A. Level per clause.**
+Draft: keep text unchanged, list clause→level under `level:` as a map, reusing the text's own words as keys (e.g. `MUST: one file per entry; the prefix is one of the five...`). This means the level's key is a paraphrase/quotation of a clause in `text`, not a pointer. An agent has to match the level key to a span of the text semantically. Failure mode: text and level drift; agent assigns the wrong level; agent applies the whole requirement at the strictest level (over-enforcement) or the weakest (under-enforcement).
+Alternative: split the text into clauses, each with its own level.
+Recommendation: split the text into clauses, each with its own `level` and (ideally) a stable `id` like `W1.1.a`. Why: a key that is a paraphrased quote cannot be checked mechanically and can drift; a clause with its own level is one unit. This is my #20 (judge by what it breeds: the dual-shape field breeds parsing and drift; one self-contained unit holds), my #16 (orders clear), my #12 (change the conditions, not exhort). Cost: splitting rewrites the author's prose and inflates requirement count — risk of changing meaning (the check showed words carried over; splitting changes the words). And #5: only split where a requirement actually holds clauses at different levels; where all clauses share one level, keep the scalar. That is a precise, cost-aware recommendation.
+
+Actually, a middle option: keep `text` unchanged but express `level` as a list of `{clause_id, level, exact_span}` or, better, split only the mixed-level requirements (the 20-odd that have maps) and leave scalar-level requirements alone. That matches my #13 (not every road taken) and #5 (move only on advantage). I'll recommend: split only the mixed-level requirements; each clause gets an id and its level; leave single-level requirements as a scalar `level`.
+
+**B. Where `fails_if` sits.**
+Draft: one per group. Problem: the group-level check references clauses across requirements; the agent cannot tell which requirement failed or what level that failure carries. But alternative (one per requirement) multiplies fields and loses the group's shared check.
+Recommendation: `fails_if` per requirement, because the level binds a requirement and the check must bind the same unit; a group-level check can stay as an additional roll-up but must not be the only one. Wait, but some group fails_if genuinely cover the whole group (e.g. W2: `kind` holds other value). Hmm. W2.1/W2.2 are guidance/SHOULD, but group fails_if says `kind` holds any other value — that's really a property of W2.1 definitions? Actually the `kind` values are in W2.1. Level guidance though. So fails_if contradicts level: a guidance item with a hard fails_if. That's a misread risk.
+Recommendation: one `fails_if` per requirement, and where a check spans requirements, state which requirement each clause of the check belongs to. Or: keep group `fails_if` only when every requirement in the group shares the same level and the check is a single condition. Let me be decisive: per requirement, with a `check:` naming the machine (`lint` / `git` / `reviewer:<who>`), because a fail must attach to the level that gates it. Cost: more repeated text and some redundancy; and many checks are "judged" by an unassigned reviewer — moving them to requirements does not create a reviewer. So combined with D (who_decides) and the reviewer question.
+
+**C. Links.**
+Draft: references inline in prose, e.g. "(K4.1)", "(W3.6)".
+Recommendation: add a `links:` list per requirement (and per group) holding the ids; keep the inline mention in the prose for the human reader, but the scripted/verifiable link must be structured. Why: an agent that must scan prose to resolve `(K4.1)` may skip the cross-reference — and cross-references here are load-bearing (W4.1's exception is Rd5.3; W1.1's no-runbook is W3.6; K4.3 and W6.3). My #9 (bring the other side to you: put the link where the agent must meet it), my #2 (rely on a structure you own, not the agent's diligence). Cost: two copies can drift (inline text and list); and a script that follows links must handle dangling ids. Mitigation: a lint that checks every id in `links:` resolves and that ids mentioned inline appear in `links:`.
+
+**D. Who decides.**
+Draft: no `who_decides`.
+Recommendation: add `who_decides` per requirement, but only where there is an open choice; name the person/role and the choice. From the house rule (my #11: foreknowledge from people; and the rule "name who decides each open choice"). Example: Rd5.3 → EJ decides whether the entry is updated or the code fixed. Rd3.1 → who sets the strictest limit? W6.3 → who merges? For requirements where no choice is open, the field is `none` or omitted. Why: without it, an agent reads a MUST and has no one to ask; it will either skip or decide by itself (my #14: a MUST with no one able to decide is a small force). Cost: it invites the reader to treat any field as open; and naming a person for every clause adds noise. So add it only where the requirement text contains a genuine open choice (a threshold, a tie, an exception), and make `none` explicit to distinguish "no choice" from "not filled in."
+
+**Other misread/skip risks to name:**
+
+1. `level` has two shapes (scalar vs map) — schema inconsistency → an agent/script must branch. (This is A but worth naming as a separate risk.)
+2. `level.guidance` sits inside the same map that also gates — "guidance has nothing to pass or fail" but it's in `level:`, so an agent may read it as a level like the others.
+3. Group-level `fails_if` mixes automated and judged checks in one string (W1, W5, K6, Rd2). An agent can't tell what to run. Add a `check:` field naming the runner (`lint`, `git`, `reviewer`) and, for judged checks, who.
+4. `fails_if` predicates are stated as the negative outcome in prose; some are checkable, some say "judged". MUST gates with judged checks and no reviewer = unenforceable gate. Downgrade or assign.
+5. Rd2.3's `SHOULD: the other four` requires counting the six-item list; index-dependent. Number the items and tag each with a level.
+6. Rd3.1 gives example numbers (24 KB, 200 lines) inside a guidance clause, while the top comment says "no fixed numbers." An agent may bind to the example as a hard limit. Mark the example as an example (it already says *Example*, but the `fails_if` says "exceeds that strictest limit" without saying who measures it). Name who measures/sets the limit.
+7. W4.1 labels "no owner and no approval" as `guidance` while it reads as a permission — guidance has nothing to pass/fail, so the agent may still seek approval. If no-approval is meant, it needs a level that can fail (or explicitly "not gated, and no check").
+8. `W4.1` MUST clause includes "the Rd5.3 exception" — a pointer as a level clause. Split.
+9. **Group ids K2 and K3 are absent** (K1, K4, K5, K6). An agent/script may treat the sequence as broken or infer missing content. State that ids are labels from the Markdown and are not contiguous.
+10. **No `id` on clauses/items** — inline items (Rd2.2, Rd2.3, Rd5.4) are unaddressable; a check cannot cite them.
+11. **`basis` at group level only, with codes `v:` and `d:`** — an agent may not resolve the code without the top block; fine, but requirement-level provenance is lost. Not critical.
+12. **The document mixes the normative (`text`, `level`, `fails_if`) and the explanatory (`basis`, guidance) in the same record** — an agent may read explanation as requirement. Separating them would help: keep `reason`/`basis` clearly non-normative.
+13. **The `text` sometimes contains the operative clause plus commentary** (e.g. W1.2's long list of keys, W6.2's explanation). Prose buries the gate. My #8 (speed) and #18 (strike when fresh): put the operative clause first.
+14. **The header comment is not data.** "The requirements of SOURCE_OF_TRUTH.md..." is in comments. An agent or script parsing only the data loses the mapping to the design doc and the "no fixed numbers" rule. Promote the header facts to keys (`source_doc`, `numbers: measured-by-comparison`).
+15. **No `id` uniqueness/versioning** — if requirements are cited from other docs, ids are stable anchors; changing ids breaks links. Not in draft scope maybe.
+16. **`items` key exists under some requirements but is not defined in a schema** — again dual shape: `text` sometimes a scalar with no items, sometimes followed by `items`. An agent may append items incorrectly.
+
+That's a good list. I should name maybe 6–8 of the strongest.
+
+Now the "reliably?" answer. My overall answer conditionally: "Not reliably as written for a MUST gate that nothing runs; the grouping and the word-for-word text should stay. Make one requirement one self-contained record with its own clause-level level, its own check and runner, structured links and (where a choice is open) who decides — then the YAML is at least as followable as the Markdown, and machine-checkable where the words allow."
+
+Let me be careful: the question asks "Will another AI agent follow this YAML requirements file reliably, and what layout would serve that agent better?" So the one-or-two-sentence answer should directly say: "Not reliably as it stands, and the reason is not the YAML — it is that one requirement is not one unit..." Then conditional.
+
+Now let me structure "How I decided" with steps citing my rules.
+
+Step draft:
+1. My #1 — reckon first: before judging the layout, lay out what the file is for and compare the readers on the questions that decide it: who must obey (the agent), who can check (`tools/memory_index.py`, a reviewer), what can be measured (tokens, skips), and what is not measured (YAML). "More wins, fewer does not" — a file that makes each reader count and match is already behind.
+2. My #4 — know the reader and yourself: the reader is an LLM agent of any engine, reading linearly and skipping; the self is the COO's script, which only round-tripped words. Knowing the words carried over but not whether the ground permits battle is half a victory. (The round trip tested text fidelity, not followability.)
+3. My #16 — orders clear first: a requirement the reader cannot parse is the author's fault, not the reader's. Then enforce. So the first test is clarity + a check, per unit.
+4. My #2 — make yourself unbeatable first: do not rest on the agent's diligence (its not skipping); rest on the check you own. A MUST with only a "judged" check and no reviewer rests on the agent's goodwill.
+5. My #14 — choose action by ratio of forces: a script can check (ten to one) → automate; a human reviewer (equal) → judge; nobody (outmatched) → avoid stating it as a gate. A small MUST with no checker is captured.
+6. My #6 — mix harm: for each of A–D, name the benefit and the price.
+7. My #12 — seek it in 勢, not from the people: change the file's shape so the path of least resistance is compliance. Clause-level records and structured links are 勢; exhortation is not.
+8. My #20 — judge by what a structure breeds: the `level` map's paraphrase-keys breed drift and double-reading; the `fails_if` group string breeds a fail with no owner; `who_decides` absent breeds improvised decisions.
+9. My #8 — value victory, not duration: keep each record short and put the operative clause where the eye lands; long prose buries the gate.
+10. My #18 — strike when fresh, leave a gap: put gates where attention is (session start), leave an explicit not-applicable path so an agent under a MUST it cannot meet does not improvise.
+11. My #5 — move only on advantage: apply each change only where it prevents a named misread; do not add fields that carry no decision. This is why I do not recommend a field for every clause.
+12. My #17 — probe the reader: the only way to know is to put the file in front of an agent and read where it skips; measure, don't assert.
+13. My #11 — foreknowledge from people, and pay for it: the layout question is answered by the readers' behavior, not by analogy from Markdown/JSON token counts; run the trial.
+
+That's a good set. Maybe trim to ~10 numbered steps but each can carry the four choices. Actually I need to answer A–D with a recommendation each — those should be in the "Answer" section or a dedicated part. The template says answer is 1-2 sentences. Then "How I decided" is numbered steps. But the question demands A–D recommendations and other risks. I can put the A–D recommendations inside "How I decided" as steps, or add them under Answer. The template is fixed but I can include a table/paragraph within "How I decided". Hmm, the instruction says "Write exactly this (no preamble)" with those headings. I should keep the headings exactly, but I can put A–D recommendations as steps under "How I decided" — each step names the rule and the recommendation.
+
+Actually to satisfy "Answer the four layout choices (A–D) with a recommendation each, and name anything else," I think it's cleanest to include a compact A–D block inside the Answer section right after the 1-2 sentence recommendation. The template says Answer is "your recommendation in one or two sentences". I'll give the 1-2 sentence headline, then a short A–D list clearly part of the answer. Then "How I decided" carries the rule-cited reasoning steps including the extra risks. Or put extra risks under a clearly labeled sub-block. The template didn't forbid subheadings. But "Write exactly this" suggests minimal deviation. I think including A–D in the Answer is fine and expected — the user asked for it. I'll keep headings, add bolded A–D lines.
+
+Hmm, but "Write exactly this (no preamble)" — I read it as: start with the H1 exactly, use those H2 headings. Subheadings within are probably acceptable but let me minimize. I'll put the four choices as a compact list inside Answer, each with "keep/change + reason" in one line. And the other misread risks as a list — maybe under "How I decided" as the last steps, or a short list right after A–D. To stay close to the template, I'll fold the extra risks into "How I decided" steps (each is a decision step) and also into "Costs and risks." Actually the extra misread risks are findings, not decisions. Let me add them as a bulleted list under Answer labelled "Other misread/skip risks" — that's a direct answer to "name anything else in the draft."
+
+I think that's the right call: the question explicitly demands it, and answering it is more important than a rigid reading of the template. I'll keep the exact headings and put the demanded content within them.
+
+Now let me reconsider some substance to make sure it's actually correct about the draft.
+
+Let me re-examine the YAML structure around `level` to be precise.
+
+W1.1:
+```
+level:
+  MUST: >-
+    one file per entry; ...
+  SHOULD: >-
+    the folder and the `-<slug>.md` spelling ...
+text: >-
+  Each entry is one file: ...
+```
+So the level map keys are clause summaries. The `text` is whole. So the level key must be matched to the text by meaning. Confirmed.
+
+W1.2: `level: SHOULD` scalar.
+W1.3: map with MUST/SHOULD.
+W2.1: map guidance/SHOULD.
+W2.2: map guidance/SHOULD.
+W3.1: SHOULD. W3.2: MUST. W3.3: map MUST/SHOULD. W3.4: SHOULD. W3.5: map MUST/SHOULD. W3.6: SHOULD.
+W4.1: map guidance/MUST. W4.2 SHOULD. W4.3 guidance.
+W5.1 SHOULD. W5.2 SHOULD. W5.3 map SHOULD/MUST.
+W6.1 map MUST/SHOULD. W6.2 SHOULD. W6.3 map MUST/SHOULD.
+K1.1 SHOULD.
+K4.1 MUST. K4.2 guidance. K4.3 MUST.
+K5.1 SHOULD. K5.2 SHOULD.
+K6.1 map MUST/SHOULD. K6.2 MUST. K6.3 map MUST/SHOULD.
+Rd1.1 SHOULD. Rd1.2 MUST.
+Rd2.1 SHOULD. Rd2.2 SHOULD (with items). Rd2.3 map MUST/SHOULD (with items).
+Rd3.1 map MUST/guidance.
+Rd4.1 MUST. Rd4.2 guidance. Rd4.3 guidance. Rd4.4 SHOULD. Rd4.5 map guidance/SHOULD.
+Rd5.1 MUST. Rd5.2 MUST. Rd5.3 MUST. Rd5.4 guidance (items). Rd5.5 guidance.
+Rd6.1 MUST.
+
+So mixed-level requirements: W1.1, W1.3, W2.1, W2.2, W3.3, W3.5, W4.1, W5.3, W6.1, W6.3, K6.1, K6.3, Rd2.3, Rd3.1, Rd4.5. That's 15. The rest scalar.
+
+Also note: W2.1 and W2.2 have `guidance: the definitions` AND `SHOULD: ...`. The group fails_if: "`kind` holds any other value, or a guess is recorded under any kind but hypothesis." So the group check is a must-like check but the group's requirements are guidance/SHOULD. Direct contradiction — the fail condition has no MUST requirement to attach to. That's a strong finding. Actually the definition of kinds (W2.1/W2.2) is guidance, but "kind holds any other value" fails. This is exactly "a check with no requirement at its level."
+
+Similarly W3 group fails_if: "a secret scanner finds a credential (W3.2)" — W3.2 is MUST, good. "For W3.1 and W3.3–W3.6, a reviewer finds such content. Those are judged checks." W3.1 SHOULD, W3.4 SHOULD, W3.5 map, W3.6 SHOULD. So judged, reviewer unassigned. Fine to name.
+
+W4 group fails_if: "git shows a change to an entry with no matching changed: line, or a status outside the three." changed: is W4.2 SHOULD; status is W4.1 MUST. So the fails_if attaches a hard fail to a SHOULD (W4.2). Actually a missing `changed:` line for W4.2 (SHOULD) → fail. Under the level semantics, SHOULD "may be skipped with a written reason," so missing changed line shouldn't be a hard fail. Contradiction between group fails_if and W4.2's SHOULD. Good finding.
+
+Similarly W6 group fails_if: "an edit to an entry is lost without a conflict, or a merged entry is missing a changed: line or link that one side added." W6.2 is SHOULD (own branch), W6.3 MUST. The first clause (edit lost) maps to W6.2 SHOULD. Hard fail on a SHOULD.
+
+K6 fails_if: mixing. Fine.
+
+Rd2 fails_if: "a start hook or instruction loads any memory file outside Rd2.1, or a session starts work on a task before the four in Rd2.1 have reached it" — Rd2.1 SHOULD. Hard fail on SHOULD. And "It also fails if a session loads anything in Rd2.3 at any point" — Rd2.3 map. good.
+
+So a systematic finding: group-level `fails_if` attaches hard failures to SHOULD and even guidance requirements (W2). That's because the fails_if was written at group level in the Markdown, but the levels were assigned per clause. So B (per-requirement fails_if) is not just a layout preference; it's needed to keep fail and level on the same unit. Strong.
+
+Also K1.1 is SHOULD, and K1 group fails_if: "git shows a commit changing the behaviour a decision or fact governs, with no change to that entry ... (judged)." Hard fail on SHOULD.
+
+This strengthens the A+B coupling: clause-level level and requirement-level fails_if must be the same unit, or the gate semantics break.
+
+Now A: split text into clauses each with its own level. But note the levels were derived from the Markdown's `fails_if` and level assignments; splitting must preserve wording. Risk: the round trip proved word-fidelity; splitting rewrites the words, so the fidelity check is lost and must be redone. That's the cost (my #6, my #5).
+
+Alternative mid: keep `text` but make `level` reference clause ids within text. But text is a single scalar with no clauses. So you'd need to mark spans. YAML can't mark spans naturally. So splitting is simplest.
+
+Now D: who_decides. The facts: house rule name who decides each open choice, not who asked. Examples: EJ decides a mismatch under Rd5.3; the COO decided the four layout choices alone. In the draft, open choices: Rd3.1 "the strictest limit among the agents" (who determines which agents count?), W6.3 "whoever does the merge" (a role, but who when no one does?), W5.3 "whoever finishes it", K6.2 "whenever an entry is created or changed" no decision. Also W2.1 definitions maybe not open. Also the "example numbers" in Rd3.1: who sets them? So `who_decides` per requirement where open. Cost: noise and false openness. Recommend only where text has an open choice, and use a fixed vocabulary: `EJ`, `the reader`, `the merging agent`, `none`.
+
+Now, there's a deeper point on "Will another AI agent follow this YAML reliably?" The honest answer: the file is not something an agent "follows" end-to-end; it's a reference. Reliability depends on (a) each gate being detectable, (b) the agent encountering it at the right time, (c) a check running. My rules #2/#9/#14 all say: don't rest on the agent; rest on the check and the moment. The four layout choices are secondary to that. So my headline: the layout changes will improve readability, but reliability will not come from YAML vs Markdown — it will come from making each requirement one unit with its own check and putting the gate on a path the agent must take.
+
+That's an important, non-obvious, rule-grounded answer. Good.
+
+Also I should address: "Do not invent facts." I don't know whether the agent is a script or a human, whether YAML parses in the agent's context, etc. So conditional: "if scripts will parse it, do X; if only an LLM reads it, Y is enough." I'll list under "What I need to know": whether a script will parse it now; who the reviewer is; whether the agent reads the file at all or reads the Markdown which points to it; how "stricter limit" is measured; whether guidance clauses should never gate.
+
+Also "Quote only from my list." I should quote a few lines exactly. E.g., my #16: 「約束不明，申令不熟，將之罪也；既已明而不如法者，吏士之罪也。」 and its translation as given in the list. And my #8: 「兵聞拙速，未睹巧之久也」. And my #2: 「不可勝在己，可勝在敵」. And my #20: the land-unit line in English (Ames). And my #4: 「知彼知己，百戰不殆」. And my #14: 「小敵之堅，大敵之擒也」. Keep labels: my list labels "Words are: quoted". I should quote exactly as in the list and keep label. The instruction: "Quote only from your list, exactly as it is written there, and keep its label (`quoted`, `attributed`)." So when I quote, I should say (my #n, quoted). Good.
+
+Now let me carefully write the answer.
+
+Let me define the headline answer:
+
+"Not reliably as it stands, and not because it is YAML. The draft keeps the words but loses the unit: a requirement's level, its check and the person who settles its open choice sit on three different objects (a clause map, a group string, and nobody), so an agent can read the gate and still not know what it must do, what fails, or whom to ask. Keep the grouping, the word-for-word text and the `basis`; change A, B, C and D as below — conditionally, if the file is to be more than a human-readable annex."
+
+A–D:
+- **A. Level per clause → split the mixed-level requirements into clauses, each with its own level and id; leave single-level requirements as one scalar `level`.** Reason: a level key that quotes the text is a second copy that can drift and must be matched by meaning (my #16 orders clear; my #20 what a structure breeds). Cost: rewrites the prose the round trip certified; split only the 15 that hold clauses at different levels.
+- **B. `fails_if` per group → one per requirement, with a `check:` naming who runs it.** Reason: as written, group checks attach hard failures to SHOULD and even guidance requirements (W2's group check fails on `kind`, while W2.1/W2.2 are guidance/SHOULD; W4's fails on a missing `changed:` line though W4.2 is SHOULD). A fail must sit on the same unit as the level it enforces (my #14 ratio; my #2 don't rest on goodwill). Cost: repetition, and moving the check does not create the missing reviewer.
+- **C. Links in text → add a `links:` list of ids per requirement, and keep the inline mention for the human.** Reason: cross-references are load-bearing (W4.1 carries the Rd5.3 exception; W1.1 leans on W3.6; K4.3 and W6.3 depend on each other), and an agent that must scan prose to resolve them can skip them (my #9 bring the other side to you). Cost: two copies can drift; add a lint that every id resolves.
+- **D. No `who_decides` → add it only where the text leaves a choice open, with `none` where it does not.** Reason: the house rule and my #11; without it an agent under a MUST it cannot settle will improvise (my #14 small force). Cost: invites readers to treat every clause as negotiable; keep the vocabulary closed.
+
+Other misread/skip risks:
+- The `level` field has two shapes (scalar and map). A script must branch, and an agent may treat `guidance` as a third gate level or as no level at all.
+- `guidance` is placed inside the same `level:` map as gates. The file's own definition: guidance is "Nothing to pass or fail." So it is not a level; putting it under `level:` invites reading it as one. Move explanation out of `level:`.
+- Group `fails_if` mixes automated and judged checks in one string; there is no field saying which. Name the runner (`lint`, `git`, `reviewer`) — otherwise the agent cannot know what to run.
+- `fails_if` is a group string, so a fail cannot be traced to a requirement, and a MUST gate's fail is described in the same breath as a SHOULD's.
+- `Rd2.3`'s `SHOULD: the other four` makes the reader count the six-item list. Index-dependent wording; tag each item with its level instead.
+- `Rd3.1` gives example numbers (about 24 KB, 200 lines) and says "fits the strictest start-file limit" but names nobody who sets the limit; the top comment says "There are no fixed numbers." An agent may read the example as the limit or ignore the gate. Name who measures and who sets it.
+- `W4.1` labels "no owner and no approval" as guidance, though it reads as a permission; guidance has nothing to pass or fail, so the agent may still ask for approval. Either give it a level that can fail or state that it is not gated.
+- Inline `items` lists have no ids, so a check cannot cite an item (Rd2.2, Rd2.3, Rd5.4).
+- The header (which Markdown file this is the requirements of, and "no fixed numbers") is in YAML comments, not data. A script drops it; an agent may too. Promote to keys.
+- Group ids skip K2 and K3 (K1, K4, K5, K6). If ids are labels carried from the Markdown, say so, or a reader infers missing content.
+- Operative clause is buried in long `text` (W1.2's key list, W6.2). Put the gate first; keep the explanation behind it.
+
+That's strong. Maybe trim to the best ~8 to keep it readable. The question says "name anything else in the draft that would make an agent misread or skip a requirement." I'll list them; they're each short.
+
+Now "What I need to know" (conditional):
+- Whether a script will parse this now or only an LLM reads it. If only an LLM, C and the schema strictness matter less; if a script, the dual-shaped `level` and `fails_if` blocks must be normalized.
+- Who the reviewer is for the judged checks (facts: none assigned). If a reviewer is named, MUST+judged is a real gate; if not, those MUSTs are aspirational and my B/D recommendations change shape.
+- Does the agent read the YAML at all, or does it read SOURCE_OF_TRUTH.md, which points to the YAML? Position on the path decides whether the gate is met at session start or only when the agent chooses.
+- Who sets the "strictest start-file limit" and how it is measured.
+- Whether the words in `text` are frozen (the round-trip check) or may be split. Splitting loses the certified identity.
+- Whether guidance clauses are allowed to be skipped entirely. If the design cares about the definitions, they need a check.
+
+"Costs and risks" — each with item:
+- Splitting clauses rewrites the prose the round trip certified; the fidelity check must be redone (my #5, my #6).
+- Per-requirement `fails_if` repeats text and increases the chance of divergence; a lint is needed to keep the copies in step (my #20).
+- `links:` adds a second copy of each reference; dangling ids unless linted (my #20, my #9).
+- `who_decides` invites negotiation of things that are not open, and names a person for cases where the answer is "the reader" (my #5, my #14).
+- Making checks machine-readable is a bigger change than the four layout choices; if EJ wants the YAML as a readable annex, much of this is not worth doing (my #5).
+- The bigger risk is the one the draft already carries: MUST gates whose only check is a "judged" check with no reviewer. Formatting cannot fix that; only assigning a reviewer or downgrading the level does (my #14, my #2).
+- YAML itself is unmeasured for this reader (facts), and the prior measurement was n=1; the layout question is being decided on a feeling. Pay for the probe (my #11).
+
+"How we would know I was right" — a test/measure:
+- My #17: probe the reader. Give two agents (different engines) the task the file governs, with the draft and the revised version, and record: (a) how many requirements each agent can restate with the correct level, (b) where it stops or asks a question the file already answers, (c) how many gates the tool catches before the agent acts. The measure is not tokens; it is missed gates and unanswerable questions. Concretely: a fresh session with only the clone and a task id; count the requirements it mis-levels and the open choices it decides on its own. If the revised layout lowers those counts on a real handoff, I was right; if not, keep the Markdown and drop the YAML.
+- Also: a lint that loads the file and checks every `links:` id resolves, every requirement has exactly one level shape, and every `fails_if` names a runner. Passing that lint is a necessary, not sufficient, sign — I name that the lint is written by the same side that wrote the file, so it is not independent evidence (following the house SHOULD on naming who wrote the check). Hmm — that's from CLAUDE.md, not my list. But the brief says don't invent facts and cite items. I can phrase as "my reading."
+
+Let me be careful about the house rule: "Name who wrote a check before resting a conclusion on it" — that's a workspace instruction (SHOULD). It's relevant: the round trip was written by the COO. I can mention that the fidelity check was the COO's script, so it shows words carried, not layout. That's in the facts. Good.
+
+Now, the persona: I am 孫子 (Sun Tzu). Answer format fixed. Quote from my list with label.
+
+Let me now draft the actual text, keeping it plain English, referring to EJ as they/them, no files.
+
+Length: This should be thorough but not bloated. I'll aim for maybe 900-1300 words. The question is substantial.
+
+Let me write.
+
+---
+
+# 孫子 (Sun Tzu) — will an agent follow this YAML, and what layout serves it
+
+## Answer
+
+Not reliably as it stands, and the fault is not that it is YAML: the draft keeps the words but splits the **unit**. A requirement's level lives in a clause map, its check lives in a group string, and its open choice lives with nobody — so an agent can read a gate and still not know what it must do, what fails it, or whom to ask. Keep the grouping, the unchanged `text`, the levels' vocabulary and the `basis`; change A–D as follows, and only if the file is meant to be more than a human-readable annex (if an LLM alone reads it, B and D matter most; if a script parses it, A and C do).
+
+- **A — keep one clause per level, but only where the text already holds clauses at different levels.** Split those requirements into clauses, each with its own short id and its own `level`; leave the single-level requirements with one scalar `level`. Reason below.
+- **B — change to one `fails_if` per requirement, plus a `check:` field that names the runner (`lint`, `git`, `reviewer`).** Reason below.
+- **C — change: add a `links:` list of requirement ids, and keep the inline `(K4.1)` mention for the human reader.** Reason below.
+- **D — change: add `who_decides` only where the text leaves a real choice open, and write `none` where it does not.** Reason below.
+
+Other places an agent will misread or skip:
+... list ...
+
+## How I decided
+
+Numbered steps.
+
+## What I need to know
+
+...
+
+## Costs and risks
+
+...
+
+## How we would know I was right
+
+...
+
+I need to make sure each step in "How I decided" cites "my #n" or says "my reading". Let me write them.
+
+1. **Reckon the field first (my #1).** Before judging the layout, lay out what decides the answer and compare the readers on it: what the agent must obey, what a script can parse, what a tool checks, what a reviewer judges, and what was never measured. The facts give me one reader of any engine, one tool (`tools/memory_index.py`), no assigned reviewer, a COO's script that proved the words carried over, and no measurement of YAML. "More calculation wins, less calculation loses — how much more so none" — a review of a 46-requirement file that does not first fix the unit of a requirement is reckoning with no count (my #1, quoted).
+
+Actually the quoted translation is: "More wins, fewer does not, how much less none at all?" Let me quote the list's English exactly: from item 1: "One who wins the temple reckoning before battle has gained more 算; one who does not has gained fewer. More wins, fewer does not, how much less none at all?" I'll quote that exactly.
+
+2. **Know the reader and the ground (my #4).** The five ways to know victory include knowing when to fight and when not, and knowing whether the ground permits battle; the list's own line: "Knowing the enemy can be attacked and our troops can attack, but not that the ground does not permit battle, is half a victory." The COO's round trip asked whether the words carried; it did not ask whether the ground — an agent reading YAML at session start — permits the requirement to be acted on. Word-fidelity alone is half a victory (my #4, quoted).
+
+3. **One thing, clear orders (my #16).** "If the rules are not clear and the orders not made familiar, it is the general's fault; if they are already clear and are not followed as the law requires, it is the officers' fault." Applied to a requirements file: an agent that cannot tell which clause a `level` binds, or which requirement a `fails_if` fails, is reading unclear orders; the fault is the draft's, not the agent's. Then enforcement: "Once they are attached, if punishment is not carried out, they cannot be used." A MUST with no runner is an order with no punishment (my #16, quoted).
+
+4. **Do not rest on the reader's restraint (my #2).** "Being unbeatable lies with oneself; being beatable lies with the enemy." A gate that depends on the agent choosing to comply is resting on the reader; a gate with a check you own is unbeatable. This is the test I put each of A–D to (my #2, quoted).
+
+5. **Choose by the ratio of forces (my #14).** "Not a match, be able to avoid them. So the stubbornness of a small force is the capture of a large one." A MUST backed by a lint (ten to one) can be enforced; a MUST backed by a human reviewer (equal) can be judged; a MUST backed by "a reviewer" who is not assigned (outmatched) should not be stated as a gate. This is why B must name the runner and why several MUSTs in the draft are "small forces" (my #14, quoted).
+
+6. **Mix harm into benefit (my #6).** "The wise one's deliberation always mixes benefit and harm: mixed with benefit, the undertaking can be carried out; mixed with harm, trouble can be resolved." Each recommendation below carries its price in Costs and risks (my #6, quoted).
+
+7. **Change the conditions, not the people (my #12).** "The skilled fighter seeks it in 勢 and does not demand it of people; so he can choose people and rely on 勢." The `level`, `links` and `check` fields are 勢: they make the correct reading the path of least resistance. Exhorting the agent to read carefully is 責於人, and the list says not to do it (my #12, quoted).
+
+8. **Judge the structure by what it breeds (my #20).** The small land unit and the heavy tax bred many officials, an arrogant ruler and frequent wars; the large unit with no new taxes held. Applied: a `level` whose keys are paraphrases of the text breeds a second copy that drifts and a reader who must match two texts; many small fields breed arbitration over form. Prefer one larger, self-contained record per requirement (my #20, attributed).
+
+Hmm, the label for #20 is `attributed`. Good, keep it.
+
+9. **Strike when attention is fresh, and leave a gap (my #18).** "Avoid keen spirit, strike when it flags" and the eight prescriptions include "Leave a gap for a surrounded army" and "Do not press a desperate enemy." Put the gates where the agent's attention is (session start, or the check it must run), not at the tail of a long `text`; and leave an explicit not-applicable path, so an agent facing a MUST it cannot meet reports instead of improvising (my #18, quoted).
+
+10. **Move only on advantage (my #5).** "Do not move without advantage, do not use troops without gain." I recommend splitting only the fifteen requirements that actually hold clauses at different levels; the rest keep the scalar. A field that carries no decision is not added (my #5, quoted).
+
+11. **Foreknowledge from people, and pay for it (my #11).** "Foreknowledge cannot be taken from ghosts and spirits, cannot be got by analogy with events, cannot be verified by measurement; it must be taken from people who know the enemy's situation."
+
+Hmm, careful: my #11 says foreknowledge cannot be got by analogy OR measurement, and must come from people. The facts give token measurements from other formats, and EJ's feeling. So: the layout question is being decided by analogy (Markdown/JSON cost) and feeling (EJ's), neither of which is a reader's behaviour. Get it from the people who read: run the agents (my #11, quoted).
+
+Wait — the list's #11 translation says "cannot be verified by measurement" (度). That seems to argue against measurement, which could undercut my "measure it" recommendation. Let me read: "Foreknowledge cannot be got from spirits, from likeness to past events, or from measurement; it must be got from people who know the enemy's situation." Then I'm using it to say: don't infer from analogy (Markdown/JSON) or from the 度/measure of tokens; get it from the readers. But then my "How we would know" recommends measuring missed gates. I can reconcile: the measure is the readers' behaviour (people who know the situation), not a proxy metric. Actually 度 = measurement/calculation of quantities. The point: a numeric proxy (tokens) isn't foreknowledge; observing actual readers is. I'll say that carefully.
+
+12. **Probe the reader (my #17).** "Reckon them to know the calculation of gain and loss; stir them to know the pattern of movement and stillness; give them form to know the ground of death and life; test them to know where there is surplus and shortage." The only way to know whether an agent follows the file is to put it in front of the agent and see where it moves and stops (my #17, quoted).
+
+That's 12 steps. Good. Maybe merge some. It's fine.
+
+Now, where do the A–D reasons go? I said "Reason below" in Answer but the reasons are in "How I decided." Let me actually put the A–D recommendations and their reasons together in Answer so the answer is self-contained, then "How I decided" explains the method (with citations), and the extra risks in Answer. That's cleaner. The template says Answer is 1-2 sentences; I'll give the headline then the demanded detail. I think that's justified.
+
+Let me restructure Answer:
+
+## Answer
+Headline 2 sentences.
+Then "**A–D, with recommendations.**" bullet list with concise reason each.
+Then "**Other places the draft makes an agent misread or skip.**" bullet list.
+
+Then How I decided with the rule-cited steps (can be shorter, referencing above).
+
+Let me make sure the extra risks are accurate and specific.
+
+Extra risks list:
+1. Two shapes under one key. `level` is sometimes a scalar (`level: SHOULD`) and sometimes a map (`level: {MUST: …, SHOULD: …}`). A script must branch; an agent may read the map's first key as the whole level. One shape.
+2. `guidance` inside `level:`. The file defines guidance as "Nothing to pass or fail," so it is not a level; placing it under `level:` invites the reader to look for a pass/fail where there is none. Keep explanation in a separate key (e.g. `reason` or `note`).
+3. Group `fails_if` gates clauses that the levels do not gate. W2's group fails "if `kind` holds any other value," while W2.1 and W2.2 are `guidance`/`SHOULD`; W4's fails on a missing `changed:` line though W4.2 is `SHOULD`. The file says a SHOULD "may be skipped with a written reason," so these hard failures contradict the levels. This is the strongest concrete misread in the draft.
+4. `fails_if` mixes automated and judged checks in one string, with no runner named: "a secret scanner finds a credential (W3.2). For W3.1 and W3.3–W3.6, a reviewer finds such content. Those are judged checks." An agent cannot tell what to run.
+5. A MUST whose only check is judged, with no reviewer assigned (facts). The agent cannot satisfy it and cannot fail it; so it will ignore it. (W5.3, Rd2, Rd4, Rd5, Rd6 have judged checks.)
+6. `Rd2.3`'s `SHOULD: the other four` makes the reader count the six-item list. Index-dependent. Tag each item with its level.
+7. `Rd3.1` gives "about 24 KB and 200 lines" but the top comment says "There are no fixed numbers"; the gate says "fits the strictest start-file limit" and names nobody who sets it. An agent may bind to the example.
+8. `W4.1` labels "no owner and no approval" as `guidance`. Guidance has nothing to pass or fail, so a reader may still seek approval — the clause is a permission that cannot be enforced, and the level contradicts the intent.
+9. `items` lists have no ids (Rd2.2, Rd2.3, Rd5.4), so a check cannot cite an item and a reader cannot reference "item 2."
+10. The header's key facts — which Markdown this is, and "no fixed numbers ... a comparison that measurement decides" — are in YAML comments, not fields. Scripts drop them; agents may too.
+11. Group ids skip K2 and K3. If they are labels carried from the Markdown, say so; otherwise a reader infers a gap.
+12. The operative clause is buried inside `text` (W1.2's eleven-key list; W6.2's explanation). Put the gate first, explanation after.
+
+Good. That's a strong "name anything else."
+
+Now "What I need to know":
+- Can I assume a script will parse this, or only an LLM? If only an LLM, the biggest wins are B and D; if a script, A and the two-shape `level` problem come first. (conditional opening)
+- Is a reviewer assigned? If yes, MUST+judged is a real gate and my B recommendation is lighter. If, as the facts say, no reviewer is assigned, every judged MUST is a stated gate with no force, and the honest fix is to assign one or downgrade.
+- Does the reading agent encounter this YAML at all, or does it read SOURCE_OF_TRUTH.md which points here? A gate the agent never opens cannot fail.
+- Who determines "the strictest start-file limit among the agents that work on the project," and how is it measured?
+- Are the `text` words frozen by the round-trip check, or may the file split them into clauses? Splitting loses the one check that has been run.
+- Is `guidance` ever allowed to be skipped? If the definitions matter, they need a check to have force.
+
+"Costs and risks":
+- Splitting clauses rewrites the only text the round trip certified; that check must be re-run (my #5, my #6).
+- Per-requirement `fails_if` repeats text and will drift from the group version unless one is removed or linted (my #20).
+- `links:` creates a second copy of each reference; dangling ids unless a lint resolves them (my #20, my #9).
+- `who_decides` invites negotiation of choices that are not open; keep the vocabulary closed and `none` explicit (my #5, my #14).
+- Formatting cannot fix the real exposure: MUST gates that only a non-existent reviewer can judge. That is a level-or-owner decision, not a layout one (my #14, my #2).
+- The whole exercise is being decided on a feeling and a token analogy; YAML was not measured (my #11). If EJ wants a readable annex for people, much of A–D is not worth its cost (my #5).
+
+"How we would know I was right":
+A probe, not a token count (my #17, my #11):
+- Take two or three engines. Give each a fresh session with only a clone, a task id, and the file. Log: (a) requirements restated with the wrong level, (b) places it stops or asks a question the file already answers, (c) open choices it settles itself, (d) gates the tool catches before it acts. Run once with the draft, once with the revised layout; keep the task the same.
+- I was right if the revised layout lowers (a), (b) and (c) and raises (d) on a real handoff. I was wrong if it does not, and then the Markdown annex is enough.
+- A structural lint is a necessary but not independent check: it must confirm every requirement has one level shape, every `fails_if` names a runner, and every `links:` id resolves — but the same side wrote the file and the lint, so passing it is not evidence that a reader follows it (my reading). Hmm, the last clause about "same side wrote" is from CLAUDE.md house rule, and I can present as my reading. Good.
+
+Also, note the brief says "Re-read your list while you work, not only at the start." I did. I can note in a step that I re-read items while working, but not necessary.
+
+Now quotes: I must quote only from my list, exactly as written, keep label. Let me make sure the translations I quote match the list's English text verbatim.
+
+From my #1, English: "War is a great matter of state, the ground of life and death, the way to survival or ruin; it must be examined. So lay it out by five matters, compare it by seven reckonings, and search out the true situation..." and "One who wins the temple reckoning before battle has gained more 算; one who does not has gained fewer. More wins, fewer does not, how much less none at all?"
+
+From my #2: "The skilled fighters of old first made themselves unbeatable and waited for the enemy to become beatable. Being unbeatable lies with oneself; being beatable lies with the enemy." and "Do not rely on their not coming; rely on having the means to meet them."
+
+From my #4: "Knowing the enemy can be attacked and our troops can attack, but not that the ground does not permit battle, is half a victory… Hence: know the other and yourself, and victory is not in danger; know heaven and ground, and victory can be whole."
+
+From my #6: "So the wise one's deliberation always mixes benefit and harm: mixed with benefit, the undertaking can be carried out (杜牧: 「信，申也」); mixed with harm, trouble can be resolved."
+
+From my #5: "Move when it accords with advantage; stop when it does not." and "do not move without advantage, do not use troops without gain, do not fight unless in danger."
+
+From my #8: "So in war one hears of clumsy speed, but has not seen skill that is prolonged." Actually list's English in #8: "So in war one hears of clumsy speed, but has not seen skill that is prolonged."
+
+From my #11: "Foreknowledge cannot be taken from ghosts and spirits, cannot be got by analogy with events, cannot be verified by measurement (度; 李筌: 「度，數也」); it must be taken from people who know the enemy's situation."
+
+From my #12: "So the skilled fighter seeks it in 勢 and does not demand it of people; so he can choose people and rely on 勢." and "Courage and cowardice are a matter of 勢."
+
+From my #14: "equal, be able to fight them; fewer, be able to hold; not a match, be able to avoid them. So the stubbornness of a small force is the capture of a large one."
+
+From my #16: "If the rules are not clear and the orders not made familiar, it is the general's fault; if they are already clear and are not followed as the law requires, it is the officers' fault." and "Once they are attached, if punishment is not carried out, they cannot be used."
+
+From my #17: "So reckon them to know the calculation of gain and loss; stir them to know the pattern of movement and stillness; give them form to know the ground of death and life; test them to know where there is surplus and shortage."
+
+From my #18: "So the skilled user of troops avoids keen spirit and strikes the slack and homeward..." and "Leave a gap for a surrounded army; a desperate enemy, do not press." Let me match: "an army going home, do not block; a surrounded army, always leave a gap; a desperate enemy, do not press."
+
+From my #20, attributed English: "Chao took one hundred and twenty square paces as a yuan... With the public coffers empty and the officials in office few, the ruler was frugal and his ministers humble in their management of what was a prosperous people. Thus I say that he held on to his lands."
+
+Good. I'll label each quote with its item and label (quoted/attributed).
+
+Now let me also double check: the brief says "Quote only from your list, exactly as it is written there, and keep its label (`quoted`, `attributed`)." So when quoting. I'll write e.g. (my #2, quoted).
+
+One more substance point: the question title says "Will another AI agent follow this YAML requirements file reliably". I should be direct: "No, not reliably as a gate; yes, as a readable annex." The distinction is crucial.
+
+Also I should note the file is a *reference* not an instruction sequence; agents don't "follow" 46 requirements in order. My #19 (name the ground, act as prescribed) is relevant: the file should be organized by the situation the reader is in (writing, keeping, reading) — which it already is, and that's good. I should credit the existing three categories: "Grouped by what happens to a memory: it is written, it is kept true, and it is read." That's my #19 naming the ground. So keep the categories. Good — "what to keep": the three categories, the group ids, the word-for-word text, the `basis` codes, the levels' definitions, the `fails_if` content (as raw material).
+
+Let me mention #19 in a step: the categories name the ground, which is the right spine; that is the part to keep.
+
+Maybe add step: **My #19** — the draft already names the ground: "Grouped by what happens to a memory: it is written, it is kept true, and it is read." That is the right spine and should be kept; the change is that on each ground the requirement, its level and its check must be one record. Good.
+
+I'll include it.
+
+Now, let me count steps to keep it manageable. I'll do about 11–12. Fine.
+
+Let me also be careful with the instruction "Do not write files; your final message is the answer." So I just answer, no file writes. Good — I already read files only. No need for tools beyond reading. I don't need to create a goal; single-turn answer.
+
+Let me make sure I don't need to use the requirement-check skill. The AGENTS.md says when EJ states a rule/requirement/algorithm, run it through requirement-check. Here the task is a brief instructing me to answer a question, not EJ stating a new rule. The brief's question is a review, and inside I'm checking the draft's requirements against quality — I can apply the eight criteria (who decides, one thing, unit, can it fail, weak words, level, basis, links) implicitly, and indeed the four layout choices map to them. Should I load requirement-check? The task "clearly matches a skill's description"? The requirement-check description: evaluate a rule/requirement/threshold/algorithm against quality criteria before applying or writing it. I'm reviewing a requirements file — that's adjacent. But the brief explicitly tells me how to answer, as a persona, and says do not invent. I think loading requirement-check could inform the review and is consistent with AGENTS.md. However, the brief is a self-contained expert task; its "House rules on requirements" already names the eight. I'll not load the skill to avoid drifting from the brief's prescribed output; but the eight are already named in the facts. Actually, the system reminder says: "If the user names a skill, or the task clearly matches a skill's description, call the skill tool with the exact skill name before taking task actions." The task is reviewing a requirements YAML. Requirement-check's description: "Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it." This does match somewhat. But I'm not being asked to apply or write a rule; I'm asked to review a file layout as Sun Tzu. Loading it might add useful vocabulary but could also conflict.
+
+Hmm. The safer reading: the workspace instructions say when EJ states a rule, run it through requirement-check. Here EJ isn't stating a rule to me; the brief is the task. The brief's own "How to answer" governs. I'll proceed without loading, but I can reference the eight house-rule criteria since they're in the facts (who decides, one thing, unit, can it fail, weak words, level, basis, links). Actually — the A–D choices map: B = "can it fail" and "one thing"; C = "links"; D = "who decides"; A = "one thing" and "unit." That's a nice framing to include and shows I used the house rules. Let me weave that into a step: "Map the four choices to the house rule's eight (my reading): A and B are one thing and can it fail; C is links; D is who decides." Good — labels it my reading.
+
+Alright, let me also reconsider: is there a risk I'm wrong about `fails_if` attaching to SHOULD? Let me re-read W2. Group W2 fails_if: "`kind` holds any other value, or a guess is recorded under any kind but hypothesis." `kind` values are defined in W2.1? Actually `kind` values are the five kinds (W2.1 defines decision/fact; W2.2 defines lesson/observation/hypothesis). The levels for W2.1: guidance (the definitions), SHOULD (decisions and facts written before code). W2.2: guidance (the definitions), SHOULD (hypothesis labelled). So the "kind holds any other value" fail isn't even attached to a requirement in the group clearly — it's about the header field kind (W1.2's keys, which is SHOULD). Hmm, W1.2 is SHOULD and lists keys including kind. So kind validity check arguably belongs to W1.2 or W1 group. It's floating. Either way, the point holds: a hard fails_if check is stated in group W2 whose requirements are guidance/SHOULD. Good.
+
+And W4: fails_if "git shows a change to an entry with no matching changed: line, or a status outside the three." The changed: line is W4.2 SHOULD. So a SHOULD's violation is a hard fail. Correct.
+
+Also W6 fails_if: "an edit to an entry is lost without a conflict" — W6.2 SHOULD (own branch/worktree) and W6.1 MUST (own file). Could attach to W6.1. But "a merged entry is missing a changed: line or link" — W4.2/W6.3. Fine, the point stands for W4 and W2.
+
+Also, K1 group has K1.1 SHOULD and fails_if hard. Yes.
+
+I'm confident.
+
+One more: the top comment says "Each group has one check, fails_if, that some case breaks." So the design intends one per group. My B recommendation is to change that. Fine.
+
+Now let me write the final answer. I'll keep it tight but complete. I'll use the exact H1 format: `# 孫子 (Sun Tzu) — <the question in a few words>`.
+
+H1: "# 孫子 (Sun Tzu) — will an agent follow this YAML, and what layout serves it"
+
+Let me draft fully now.
+
+I want to be careful not to overstate: I don't know if the agent reads the YAML directly. I'll condition.
+
+Also, the question asks to "Say what to keep, what to change, and why." I'll add a "keep" list. Where? In Answer. Let me include a short "Keep" line.
+
+Let me write.
+
+---
+
+# 孫子 (Sun Tzu) — will an agent follow this YAML, and what layout serves it
+
+## Answer
+
+**No — not reliably as a gate, though it is a fine readable annex.** The draft keeps every word but breaks the **unit** of a requirement: the level sits in a clause map, the check sits in a group string, and the open choice sits with nobody, so a reader can meet a requirement and still not know what it must do, what fails it, or whom to ask. Keep the three categories, the group ids, the unchanged `text`, the `basis` codes and the four level definitions; change A–D as below, and conditionally — if only an LLM reads the file, B and D are the high-value changes; if a script will parse it, A and C come first.
+
+**Keep.** The spine is right: the categories name the ground — "it is written, it is kept true, and it is read" — which is the correct way to organize rules for a reader who arrives in one of those three situations (my #19). Keep the word-for-word requirements and the `basis` block; the COO's round trip (the script that carried the words over) is worth keeping as a regression check.
+
+**A — Level per clause.** Change, but only for the requirements that already hold clauses at different levels (W1.1, W1.3, W2.1, W2.2, W3.3, W3.5, W4.1, W5.3, W6.1, W6.3, K6.1, K6.3, Rd2.3, Rd3.1, Rd4.5). Give each such clause its own id and its own `level`; leave the single-level requirements with one scalar `level`. Why: today a `level` key is a paraphrase of a sentence in `text`, so the reader must match two texts by meaning and the two copies can drift. Cost: it rewrites the prose the round trip certified, so that check must be re-run.
+
+**B — Where `fails_if` sits.** Change to one `fails_if` per requirement, plus a `check:` field naming the runner (`lint`, `git`, `reviewer`). Why: a group check is a hard failure that does not sit on the requirement it judges, and in this draft it contradicts the levels — W2's group `fails_if` fails on a `kind` value while W2.1 and W2.2 are `guidance`/`SHOULD`; W4's fails on a missing `changed:` line while W4.2 is `SHOULD`; and the file itself says a SHOULD "may be skipped with a written reason." A fail must be on the same unit as the level it enforces. Cost: repetition, and moving a check does not create the reviewer the judged checks lack.
+
+**C — Links.** Change: add a `links:` list of requirement ids per requirement (and per group), while keeping the inline `(K4.1)` mention for human readers. Why: the cross-references are load-bearing — W4.1 carries the Rd5.3 exception, W1.1 leans on W3.6, K4.3 and W6.3 depend on each other — and an agent that must scan prose to resolve them can skip them. Cost: a second copy of each reference; add a lint that every id in `links:` resolves and every inline `(X)` appears in `links:`.
+
+**D — Who decides.** Change: add `who_decides` only where the text leaves a real choice open, and write `none` where it does not. Why: the house rule (which I see in the facts) is to name who decides each open choice; without it an agent facing a MUST it cannot settle will settle it itself — Rd5.3 is the model, where the text already says EJ decides whether the entry or the code changes. Cost: it invites readers to treat every clause as negotiable, so keep the vocabulary closed and `none` explicit.
+
+Hmm — "the house rule (which I see in the facts)" is fine.
+
+Then the four choices map to the eight house criteria (my reading): A and B are "one thing" and "can it fail"; C is "links"; D is "who decides."
+
+**Other places the draft makes an agent misread or skip.** (list)
+
+Let me now write these carefully and concisely, then How I decided, What I need, Costs, How we would know.
+
+I should be mindful of total length. Let me write the final.
+
+For "How I decided" I'll write steps 1–12 as planned but concise (one or two sentences each) with quotes where useful.
+
+Let me finalize the "Other places" list (I'll trim to 9):
+
+1. **Two shapes under one key.** `level` is sometimes a scalar (`level: SHOULD`) and sometimes a map (`level: {MUST: …, SHOULD: …}`). A script must branch and an LLM may read the map's first key as the whole level. Use one shape.
+2. **`guidance` under `level:`.** The file defines guidance as "Nothing to pass or fail," so it is not a level at all; putting it in `level:` invites a reader to look for a pass/fail where there is none. Move explanation to its own key.
+3. **Group checks gate what the levels do not** (W2, W4, K1). Named above under B; repeated because it is the most likely silent misread.
+4. **`fails_if` mixes lint, git and judged checks in one string** ("a secret scanner finds a credential (W3.2). For W3.1 and W3.3–W3.6, a reviewer finds such content. Those are judged checks.") with no runner named. The reader cannot tell what to run.
+5. **A MUST whose only check is judged and has no reviewer** (the facts say no reviewer is assigned; W5.3, Rd2, Rd4, Rd5, Rd6 have judged checks). The agent can neither pass nor fail it, so it will drop it. Assign a reviewer or lower the level.
+6. **`Rd2.3`'s `SHOULD: the other four`** makes the reader count a six-item list to learn its level. Index-dependent wording; tag each item with its level instead.
+7. **`Rd3.1`'s example numbers.** "about 24 KB and 200 lines" against the header's "There are no fixed numbers," with "fits the strictest start-file limit" and nobody named who sets the limit. An agent may read the example as the rule.
+8. **`W4.1` labels "no owner and no approval" as `guidance`.** A permission that cannot fail will be ignored by an agent looking for gates; either give it a level that can fail or mark it explicitly not gated.
+9. **Inline `items` have no ids** (Rd2.2, Rd2.3, Rd5.4), so no check can cite an item.
+10. **Header facts are comments.** Which Markdown this is the requirements of, and "no fixed numbers ... a comparison that measurement decides," are in YAML comments: scripts drop them and agents may. Promote to fields.
+11. **Group ids skip K2 and K3.** If they are labels carried from the Markdown, say so; otherwise a reader infers missing requirements.
+12. **The operative clause is buried in long `text`** (W1.2's eleven-key list; W6.2's explanation). Put the gate first.
+
+That's 12. Fine.
+
+Now, I realize I should double check W1.2 is SHOULD — yes, `level: SHOULD`. And it lists keys. Good.
+
+Now writing final. Let me also make sure to reference EJ as they/them.
+
+I'll write it now.
+
+Actually, one consideration: the brief says "Every step names the item it uses: 'my #4'. A step with no item is your own reading — say so." I'll ensure every numbered step has "my #n" and any opinion says "my reading."
+
+Let me finalize.
