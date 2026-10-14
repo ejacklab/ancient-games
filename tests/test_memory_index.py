@@ -28,8 +28,7 @@ GOLDEN_INDEX = HEADER + (
     "- [guess](entries/H-guess.md) hypothesis: A hypothesis.\n"
     "- [lesson](entries/L-lesson.md) lesson: A lesson.\n"
     "- [observation](entries/O-observation.md) observation: An observation.\n"
-    "- [runbook](entries/R-runbook.md) runbook: A runbook.\n"
-).encode("utf-8")
+).encode("utf-8")  # no runbook line: R- is not one of the five prefixes (EJ, 2026-10-13: "drop the R- and runbooks")
 SIZE_LINE = re.compile(r"INDEX\.md: (\d+)/(\d+) lines, (\d+)/(\d+) bytes")
 
 
@@ -399,7 +398,8 @@ def test_all_validation_problems_are_reported(tmp_path):
 
 
 def test_golden_bytes_for_all_kinds_and_encoded_paths(tmp_path):
-    """B1.1 B3.1 B3.2 B3.3 C2.1 C2.2 — exact golden bytes fix ordering, all six kinds, links and formatting."""
+    """B1.1 B3.1 B3.2 B3.3 C2.1 C2.2 — exact golden bytes fix ordering, all five kinds, links and formatting; an R-
+    file is outside B1.1 and gets no line (EJ dropped runbooks, 2026-10-13)."""
     repo = make_repo(tmp_path)
     samples = [
         ("R-runbook.md", "runbook", "runbook", "A runbook."),
@@ -418,6 +418,19 @@ def test_golden_bytes_for_all_kinds_and_encoded_paths(tmp_path):
     result = run_index(repo)
     assert result.returncode == 0, output(result)
     assert (repo / INDEX).read_bytes() == GOLDEN_INDEX
+
+
+def test_runbook_is_not_a_kind_any_more(tmp_path):
+    """B2.4 — an active entry with kind runbook must be an error: runbooks were dropped (EJ, 2026-10-13). A guard:
+    it held before the change too (D- with runbook fails the prefix match); the golden test is the one that moves."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    write_entry(repo, "D-run.md", id="run", kind="runbook", claim="How to run it.")
+    git(repo, "add", "-A")
+    result = run_index(repo)
+    assert result.returncode == 1, output(result)
+    assert "D-run.md: " in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
 
 
 @pytest.mark.parametrize("status", ["superseded", "retired"])
