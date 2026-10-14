@@ -37,7 +37,8 @@ agent can read; a subagent starts with nothing but its prompt. Each step is a su
 method section named beside it.
 
 1. **Readiness** (method 3.1). Prove each tool by running it (`scripts/readiness.py` runs the standard inventory and
-   marks each line verified/reported/unknown), list the skills that already cover part of the work, and check the
+   marks each line verified/reported/unknown; `scripts/harness_health.py` adds how each harness is set up, with help
+   for what is absent), list the skills that already cover part of the work, and check the
    information. Anything missing becomes a preparation piece at the front. Template: `readiness.md`. A node run by
    Codex or `agy`: `references/executor-kinds.md` first — the canary, read-only versus write, the bundled-runtime
    trap, CLI first and provider second, and the COO's contract. Every node names its role, engine, exact model and

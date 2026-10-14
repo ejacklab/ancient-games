@@ -102,6 +102,9 @@ For the task, and later for each piece, list:
 - **Tools**: the commands, scripts and connections needed, each with the command that proved it works. Run it; do
   not assume. The skill's inventory script (`.claude/skills/workflow-design/scripts/readiness.py`) proves the
   standard set in one pass and marks every line verified / reported / unknown; what it cannot prove stays unknown.
+  Beside it, `harness_health.py` reads how each installed harness is set up against ten harness requirements
+  (guardrails, approval, hooks, logs, instruction files) and gives a file, key and snippet for what is absent; it
+  reads configuration, it does not prove enforcement, and it changes nothing (n=0).
   For a node run by Codex or `agy`, the proof is the canary piece in `docs/EXECUTOR_KINDS.md`, which
   also says which kind a node is assigned to and how its failure shows.
 - **Skills** that already cover part of the work.

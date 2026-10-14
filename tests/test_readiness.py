@@ -19,7 +19,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / ".claude/skills/workflow-design/scripts/readiness.py"
-BINARIES = ["claude", "codex", "agy", "qwen", "node", "python3", "git"]
+BINARIES = ["claude", "codex", "agy", "qwen", "dsh", "opencode", "node", "python3", "git"]
 GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
           "Machine", "Open unknowns"]
 MCP_LABELS = {"~/.claude/settings.json", "~/.claude.json", "~/.qwen/settings.json",
@@ -126,7 +126,7 @@ def test_rt_01_sanitized_full_inventory(sandbox):
     assert str(ROOT) not in output
     assert "Traceback" not in result.stderr
     checks = markdown_checks(result.stdout)
-    assert len(checks) == 26
+    assert len(checks) == 28
     for name in BINARIES:
         assert_row(checks, name, "verified", f"{name}-fake 0.1", f"`{name} --version`", "Tools")
         assert sandbox.calls(name) == [["--version"]]
@@ -155,7 +155,7 @@ def test_rt_01_sanitized_full_inventory(sandbox):
 def test_rt_02_broken_qwen_json_keeps_inventory(sandbox):
     path = write_file(sandbox.home / ".qwen/settings.json", '{ "model": {')
     checks = json_checks(sandbox.run("--json"))
-    assert len(checks) == 26
+    assert len(checks) == 28
     unreadable = [c for c in checks if "unreadable" in c["detail"]]
     assert {(c["group"], c["item"]) for c in unreadable} == {
         ("Models and logins", "qwen config (model, provider)"), ("MCP", "~/.qwen/settings.json")}
@@ -170,7 +170,7 @@ def test_rt_03a_truncated_and_unreadable_cache(sandbox):
     cache = write_file(sandbox.home / ".codex/models_cache.json", '{"models": [{"id": "x"},')
     cache.chmod(0o644)
     checks = json_checks(sandbox.run("--json"))
-    assert len(checks) == 26
+    assert len(checks) == 28
     check = row(checks, "codex model cache")
     assert check["status"] == "unknown" and check["proof"] == str(cache)
     assert check["detail"].startswith("unreadable:") and "Expecting" in check["detail"]
@@ -179,7 +179,7 @@ def test_rt_03a_truncated_and_unreadable_cache(sandbox):
         cache.chmod(0o000)
         try:
             checks = json_checks(sandbox.run("--json"))
-            assert len(checks) == 26
+            assert len(checks) == 28
             check = row(checks, "codex model cache")
             assert check["status"] == "unknown" and check["proof"] == str(cache)
             assert check["detail"].startswith("unreadable:") and "Permission denied" in check["detail"]
@@ -190,7 +190,7 @@ def test_rt_03a_truncated_and_unreadable_cache(sandbox):
 def test_rt_03b_non_object_codex_cache(sandbox):
     cache = write_file(sandbox.home / ".codex/models_cache.json", '[{"id": "gpt-6"}]')
     checks = json_checks(sandbox.run("--json"))
-    assert len(checks) == 26
+    assert len(checks) == 28
     check = row(checks, "codex model cache")
     assert check["status"] == "unknown" and check["proof"] == str(cache)
     assert check["detail"].startswith("unreadable:")
@@ -199,7 +199,7 @@ def test_rt_03b_non_object_codex_cache(sandbox):
 def test_rt_03c_non_object_qwen_settings(sandbox):
     settings = write_file(sandbox.home / ".qwen/settings.json", '[{"id": "gpt-6"}]')
     checks = json_checks(sandbox.run("--json"))
-    assert len(checks) == 26
+    assert len(checks) == 28
     check = row(checks, "qwen config (model, provider)")
     assert check["status"] == "unknown" and check["proof"] == str(settings)
     assert check["detail"].startswith("unreadable:")
@@ -260,7 +260,7 @@ def test_rt_06_require_matrix_and_dedupe(sandbox):
         if "nope" in args:
             assert_row(checks, "nope", "MISSING", "not on PATH", "`command -v nope`", "Tools")
         tools = [c for c in checks if c["group"] == "Tools"]
-        assert len(tools) == (8 if "nope" in args else 7)
+        assert len(tools) == (10 if "nope" in args else 9)
         assert len([c for c in tools if c["item"] == "git"]) == 1
         if not args:
             assert all(row(checks, n, "Tools")["status"] == "MISSING"
@@ -290,7 +290,7 @@ def test_rt_08_json_contract_and_markdown_row_sets(sandbox):
         assert check["group"] in GROUPS
     indices = [GROUPS.index(c["group"]) for c in checks]
     assert indices == sorted(indices)
-    assert len({c["item"] for c in checks if c["group"] == "Tools"}) == 7
+    assert len({c["item"] for c in checks if c["group"] == "Tools"}) == 9
     assert len([c for c in checks if c["group"] == "MCP"]) == 4
     unknowns = [c for c in checks if c["group"] == "Open unknowns"]
     assert len(unknowns) == 2 and all(c["status"] == "unknown" for c in unknowns)
@@ -342,7 +342,7 @@ def test_rt_10_hanging_binary_is_bounded(sandbox):
         os.kill(pid, 0)
     assert 10 <= elapsed < 25
     checks = json_checks(result)
-    assert len(checks) == 26
+    assert len(checks) == 28
     assert_row(checks, "claude", "unknown", "no answer within 10s", "`claude --version`", "Tools")
     assert all(row(checks, name, "Tools")["status"] == "MISSING" for name in BINARIES[1:])
 

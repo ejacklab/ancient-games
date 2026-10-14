@@ -37,7 +37,7 @@ from pathlib import Path
 
 CMD_TIMEOUT = 10   # seconds per local command
 NET_TIMEOUT = 30   # seconds for --net commands (agy models talks to the network)
-DEFAULT_BINARIES = ["claude", "codex", "agy", "qwen", "node", "python3", "git"]
+DEFAULT_BINARIES = ["claude", "codex", "agy", "qwen", "dsh", "opencode", "node", "python3", "git"]
 
 VERIFIED = "verified"
 REPORTED = "reported"
