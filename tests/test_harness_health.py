@@ -106,8 +106,12 @@ CASES = [
     ("claude", "deny rules", {"permissions": {"deny": [None, "", 3]}}, {"permissions": {"deny": [None, "Read(./x)"]}}),
     ("claude", "hooks", {"hooks": {"Stop": [{"hooks": []}]}},
      {"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "x"}]}]}}),
-    ("claude", "hooks", {"disableAllHooks": True, "hooks": {"Stop": [{"hooks": [{"command": "x"}]}]}},
-     {"disableAllHooks": False, "hooks": {"Stop": [{"hooks": [{"command": "x"}]}]}}),
+    ("claude", "hooks", {"disableAllHooks": True, "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "x"}]}]}},
+     {"disableAllHooks": False, "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "x"}]}]}}),
+    ("claude", "hooks", {"hooks": {"Stop": [{"hooks": [{"type": "bogus", "command": "x"}, {"command": "x"}]}]}},
+     {"hooks": {"Stop": [{"hooks": [{"type": "prompt", "prompt": "Check completion"}]}]}}),
+    ("claude", "deny rules", {"permissions": {"deny": ["mcp__github__create_issue(foo)"]}},
+     {"permissions": {"deny": ["mcp__github__create_issue"]}}),
     ("claude", "permission mode", {"permissions": {"defaultMode": "auto"}}, {"permissions": {"defaultMode": "plan"}}),
     ("claude", "permission mode", {"permissions": {"defaultMode": "dontAsk"}}, {"permissions": {"defaultMode": "default"}}),
 ]
@@ -175,8 +179,14 @@ def resolve(box, shown: str) -> Path:
 
 
 def merge(a: dict, b: dict) -> dict:
+    """As JSON_HOW says: keep other keys, add list items to a list that is already there."""
     for k, v in b.items():
-        a[k] = merge(a.get(k, {}), v) if isinstance(v, dict) and isinstance(a.get(k), dict) else v
+        if isinstance(v, dict) and isinstance(a.get(k), dict):
+            a[k] = merge(a[k], v)
+        elif isinstance(v, list) and isinstance(a.get(k), list):
+            a[k] = a[k] + [x for x in v if x not in a[k]]
+        else:
+            a[k] = v
     return a
 
 
@@ -197,13 +207,14 @@ def apply_help(box, help_: dict):
 
 def test_hh_04_every_snippet_flips_its_finding(box):
     box.full()
-    claude_settings(box, {"skipDangerousModePermissionPrompt": True,
-                          "permissions": {"defaultMode": "bypassPermissions"}})
+    claude_settings(box, {"skipDangerousModePermissionPrompt": True, "disableAllHooks": True,
+                          "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "x"}]}]},
+                          "permissions": {"defaultMode": "bypassPermissions", "deny": [None]}})
     write(box.home / ".codex/config.toml", '[profiles.x]\nmodel = "m"\n')  # a table first: placement matters
     before = [f for f in box.findings() if f["help"] and f["help"]["snippet"]]
     assert {(f["harness"], f["item"]) for f in before} == {
         ("claude", "deny rules"), ("claude", "sandbox"), ("claude", "permission mode"),
-        ("claude", "bypass-mode prompt"), ("codex", "sandbox_mode"), ("codex", "approval_policy")}
+        ("claude", "bypass-mode prompt"), ("claude", "hooks"), ("codex", "sandbox_mode"), ("codex", "approval_policy")}
     for f in before:
         assert f["help"]["how"] == (hh.JSON_HOW if f["help"]["lang"] == "json" else
                                     "a top-level line in ~/.codex/config.toml, above the first [table]; "
@@ -321,3 +332,51 @@ def test_hh_14_no_absolute_path_outside_home(box):
         assert r.returncode == 0, r.stderr
         assert str(shared) not in r.stdout and str(box.home) not in r.stdout
     assert "$CODEX_HOME/config.toml" in r.stdout
+
+
+def test_hh_15_disabled_hooks_with_none_gets_no_disable_snippet(box):
+    box.full()
+    claude_settings(box, {"disableAllHooks": True})
+    f = one(box.findings(), "claude", "hooks")
+    assert f["finding"] == "absent" and f["help"]["snippet"] == "" and "disableAllHooks true" in f["detail"]
+
+
+def test_hh_16_unreadable_folders_are_unknown_not_a_crash(box):
+    box.full()
+    locked = box.home.parent / "locked"
+    write(locked / "settings.json", "{}")
+    write(locked / "config.toml", "")
+    write(locked / "CLAUDE.md", "x")
+    locked.chmod(0)
+    try:
+        for args in ((), ("--json",), ("--harness", "codex")):
+            r = box.run(*args, extra_env={"CLAUDE_CONFIG_DIR": str(locked), "CODEX_HOME": str(locked)})
+            assert r.returncode == 0 and "Traceback" not in r.stderr, r.stderr
+            assert str(locked) not in r.stdout + r.stderr
+            assert "--json" in args or "## Ten requirements" in r.stdout
+        f = box.findings(extra_env={"CLAUDE_CONFIG_DIR": str(locked), "CODEX_HOME": str(locked)})
+        assert one(f, "claude", "settings")["finding"] == "unknown"
+        assert one(f, "codex", "config")["finding"] == "unknown"
+    finally:
+        locked.chmod(0o755)
+
+
+def test_hh_17_self_test_writes_nothing(monkeypatch):
+    """Every way the script could write is made to raise; the self-test must still pass."""
+    import builtins
+    import os as os_
+    real_open = builtins.open
+
+    def no_write(*a, **k):
+        raise AssertionError(f"write attempted: {a[:1]}")
+
+    def guarded_open(file, mode="r", *a, **k):
+        if any(c in mode for c in "wax+"):
+            no_write(file)
+        return real_open(file, mode, *a, **k)
+    monkeypatch.setattr(builtins, "open", guarded_open)
+    for name in ("write_text", "write_bytes", "mkdir", "touch"):
+        monkeypatch.setattr(Path, name, no_write)
+    for name in ("mkdir", "makedirs", "open"):
+        monkeypatch.setattr(os_, name, no_write)
+    assert hh.self_test() == 0

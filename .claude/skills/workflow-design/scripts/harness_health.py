@@ -4,8 +4,7 @@
 readiness.py proves what is installed; this script reads how each installed harness is set up, against ten
 requirements for a harness (context, tools, planning, state, verification, guardrails, recovery, human gates,
 observability, feedback). It never spends quota and never prints a config value other than a recognised mode or
-event name or a count — config files hold keys. A run only reads; `--self-test` writes two settings files in a
-temporary folder and deletes it.
+event name or a count — config files hold keys. It writes no file, `--self-test` included.
 
 Configured is not enforced: a line reads what a config file says; none proves the harness enforces it.
 
@@ -38,7 +37,6 @@ import re
 import shutil
 import socket
 import sys
-import tempfile
 import tomllib
 from dataclasses import asdict, dataclass, field
 from datetime import date
@@ -62,8 +60,11 @@ CLAUDE_HOOK_EVENTS = {
     "Setup", "TeammateIdle", "TaskCreated", "TaskCompleted", "Elicitation", "ElicitationResult", "ConfigChange",
     "WorktreeCreate", "WorktreeRemove", "InstructionsLoaded", "CwdChanged", "FileChanged", "DirectoryAdded",
     "MessageDisplay"}
+CLAUDE_HOOK_HANDLERS = {"command": ("command",), "prompt": ("prompt",), "agent": ("prompt",), "http": ("url",),
+                        "mcp_tool": ("server", "tool"), "script": ("script",)}   # type → the fields it needs
 CODEX_SANDBOX = {"read-only", "workspace-write", "danger-full-access"}
 CODEX_APPROVAL = {"untrusted", "on-failure", "on-request", "granular", "never"}
+SKIPPED_RULE = re.compile(r"mcp__.*\(")   # Claude Code skips an mcp__ rule with parentheses in a settings file
 JSON_HOW = "merge into the file: keep its other keys, and add list items to a list that is already there"
 
 REQUIREMENTS = {1: "Clear context delivery", 2: "Well-designed tools", 3: "Planning and task structure",
@@ -115,9 +116,9 @@ class Where:
 
 def load_json(p: Path) -> tuple[dict | None, str]:
     """(object, "") or (None, reason). Absent file → ({}, "absent")."""
-    if not p.exists():
-        return {}, "absent"
     try:
+        if not p.exists():
+            return {}, "absent"
         d = json.loads(p.read_text())
     except (OSError, ValueError) as e:
         return None, f"unreadable: {type(e).__name__}"
@@ -208,7 +209,7 @@ def engine_kind_line(installed: set[str]) -> Finding:
 
 # --- Claude Code -----------------------------------------------------------------------------------------------
 
-def claude_lines(w: Where) -> list[Finding]:
+def claude_lines(w: Where, read=load_json) -> list[Finding]:
     scopes = [("user", w.claude / "settings.json"), ("project", w.cwd / ".claude" / "settings.json"),
               ("local", w.cwd / ".claude" / "settings.local.json")]
     rc, out = run_cmd(["claude", "--version"])
@@ -218,7 +219,7 @@ def claude_lines(w: Where) -> list[Finding]:
     project_file = w.show(scopes[1][1])
     loaded = []
     for scope, p in scopes:
-        d, why = load_json(p)
+        d, why = read(p)
         if d is None:
             return [Finding(6, "claude", "settings", UNKNOWN, "unknown", f"{w.show(p)} {why}", w.show(p))]
         loaded.append((scope, p, d))
@@ -244,7 +245,8 @@ def claude_lines(w: Where) -> list[Finding]:
     deny = []
     for s, _, d in loaded:
         rules = at(d, ("permissions", "deny"))
-        n = sum(1 for r in rules if isinstance(r, str) and r.strip()) if isinstance(rules, list) else 0
+        n = sum(1 for r in rules if isinstance(r, str) and r.strip() and not SKIPPED_RULE.match(r)) \
+            if isinstance(rules, list) else 0
         if n:
             deny.append((s, n))
     if deny:
@@ -292,18 +294,21 @@ def claude_lines(w: Where) -> list[Finding]:
         lines.append(line(8, "bypass-mode prompt", "unknown", f"skipDangerousModePermissionPrompt not true/false ({scope})"))
 
     # R10 hooks: an event counts when it holds at least one hook with a command; names shown only if recognised
-    def has_command(groups):
+    def runnable(h):
+        need = CLAUDE_HOOK_HANDLERS.get(h.get("type")) if isinstance(h, dict) else None
+        return bool(need) and all(isinstance(h.get(k), str) and h[k].strip() for k in need)
+
+    def has_handler(groups):
         return isinstance(groups, list) and any(
-            isinstance(g, dict) and isinstance(g.get("hooks"), list) and any(
-                isinstance(h, dict) and isinstance(h.get("command"), str) and h["command"].strip()
-                for h in g["hooks"]) for g in groups)
+            isinstance(g, dict) and isinstance(g.get("hooks"), list) and any(runnable(h) for h in g["hooks"])
+            for g in groups)
 
     disabled, scope, where = effective(("disableAllHooks",))
     events = {e for _, _, d in loaded if isinstance(d.get("hooks"), dict)
-              for e, groups in d["hooks"].items() if has_command(groups)}
+              for e, groups in d["hooks"].items() if has_handler(groups)}
     named = sorted(e for e in events if e in CLAUDE_HOOK_EVENTS)
     others = len(events) - len(named)
-    if disabled is True:
+    if disabled is True and named:
         lines.append(line(10, "hooks", "absent", f"disableAllHooks true ({scope}): no hook runs", Help(
             where, "lets the configured hooks run again", json.dumps({"disableAllHooks": False}, indent=2), "json",
             JSON_HOW)))
@@ -311,8 +316,9 @@ def claude_lines(w: Where) -> list[Finding]:
         lines.append(line(10, "hooks", "present",
                           f"events: {', '.join(named)}" + (f"; {others} unrecognised (not shown)" if others else "")))
     else:
-        lines.append(line(10, "hooks", "absent", "no hook with a command for a recognised event" +
-                          (f"; {others} unrecognised (not shown)" if others else ""), Help(
+        lines.append(line(10, "hooks", "absent", "no runnable hook for a recognised event" +
+                          (f"; {others} unrecognised (not shown)" if others else "") +
+                          ("; disableAllHooks true" if disabled is True else ""), Help(
             project_file, "a hook is how a recorded mistake becomes a check that runs every time (e.g. a "
             "UserPromptSubmit or Stop hook); the command is the project's to write")))
     return lines
@@ -327,13 +333,10 @@ def codex_lines(w: Where) -> list[Finding]:
     status = VERIFIED if version == CODEX_VERIFIED_ON else REPORTED
     basis = f"key names verified on {CODEX_VERIFIED_ON}" + ("" if status == VERIFIED else f"; installed {version}")
     where = w.show(p)
-    if p.exists():
-        try:
-            d = tomllib.loads(p.read_text())
-        except (OSError, ValueError) as e:  # TOMLDecodeError and UnicodeDecodeError are ValueErrors
-            return [Finding(6, "codex", "config", UNKNOWN, "unknown", f"{where} unreadable: {type(e).__name__}", where)]
-    else:
-        d = {}
+    try:
+        d = tomllib.loads(p.read_text()) if p.exists() else {}
+    except (OSError, ValueError) as e:  # TOMLDecodeError and UnicodeDecodeError are ValueErrors
+        return [Finding(6, "codex", "config", UNKNOWN, "unknown", f"{where} unreadable: {type(e).__name__}", where)]
     note = "; profiles and -c flags may override (not read)" if "profiles" in d else ""
     how = f"a top-level line in {where}, above the first [table]; replace the line if the key is already set"
     lines = []
@@ -370,14 +373,17 @@ def gather(home: Path, cwd: Path, env: dict, scripts: Path = SCRIPTS) -> list[Fi
     w = Where(home, cwd, env)
     lines = [Finding(0, h, "installed", VERIFIED if h in installed else MISSING, "-",
                      "on PATH" if h in installed else "not on PATH", f"`command -v {h}`") for h in HARNESSES]
-    lines += context_lines(w)
-    lines += covered_lines(scripts)
-    lines += memory_and_log_lines(w, installed)
-    lines.append(engine_kind_line(installed))
-    if "claude" in installed:
-        lines += claude_lines(w)
-    if "codex" in installed:
-        lines += codex_lines(w)
+    parts = [(1, "-", "instruction files", lambda: context_lines(w)),
+             (0, "-", "covered scripts", lambda: covered_lines(scripts)),
+             (9, "-", "memory and logs", lambda: memory_and_log_lines(w, installed)),
+             (5, "-", "engine kinds", lambda: [engine_kind_line(installed)])]
+    parts += [(6, "claude", "settings", lambda: claude_lines(w))] if "claude" in installed else []
+    parts += [(6, "codex", "config", lambda: codex_lines(w))] if "codex" in installed else []
+    for req, harness, item, part in parts:
+        try:
+            lines += part()
+        except OSError as e:  # a folder the person cannot read: say so, never crash or print its path
+            lines.append(Finding(req, harness, item, UNKNOWN, "unknown", f"unreadable: {type(e).__name__}", "-"))
     lines += unverified_lines(installed)
     return sorted(lines, key=lambda f: f.req)
 
@@ -415,15 +421,15 @@ def to_markdown(lines: list[Finding]) -> str:
 
 def self_test() -> int:
     """A settings file with no deny list must come out `absent` — the check can fail."""
-    with tempfile.TemporaryDirectory() as td:
-        home, cwd = Path(td) / "home", Path(td) / "proj"
-        (home / ".claude").mkdir(parents=True)
-        cwd.mkdir()
-        w = Where(home, cwd, {})
-        (home / ".claude" / "settings.json").write_text('{"permissions": {"allow": ["Bash(ls:*)"]}}')
-        bad = [f.finding for f in claude_lines(w) if f.item == "deny rules"]
-        (home / ".claude" / "settings.json").write_text('{"permissions": {"deny": ["Read(./.env)"]}}')
-        good = [f.finding for f in claude_lines(w) if f.item == "deny rules"]
+    w = Where(Path("/nonexistent/home"), Path("/nonexistent/proj"), {})
+    user = w.claude / "settings.json"
+
+    def reader(settings):
+        return lambda p: (settings, "") if p == user else ({}, "absent")
+    bad = [f.finding for f in claude_lines(w, reader({"permissions": {"allow": ["Bash(ls:*)"]}}))
+           if f.item == "deny rules"]
+    good = [f.finding for f in claude_lines(w, reader({"permissions": {"deny": ["Read(./.env)"]}}))
+            if f.item == "deny rules"]
     if bad == ["absent"] and good == ["present"]:
         print("self-test PASS: no deny list → absent, a deny list → present — the check can fail.")
         return 0
