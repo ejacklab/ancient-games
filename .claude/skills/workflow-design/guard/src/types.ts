@@ -148,6 +148,28 @@ export interface SuccessPath {
   great?: { comparison: string; evidence: string };
 }
 
+// Round 6 (R12.7 score): the criteria a task is scored against, a YAML file written before the work.
+export interface Criterion {
+  id: string; // e.g. C1, or a register unit id such as UC1/f1
+  text: string;
+  met?: boolean | null; // null or absent until the agent marks it
+  evidence?: string; // a path or a fact; required once met is set
+}
+
+export interface CriteriaFile {
+  criteria: 1;
+  session: string;
+  request: string; // the request in a few words (never a secret)
+  items: Criterion[];
+}
+
+export interface Score {
+  met: number;
+  total: number;
+  percent: number | null; // one decimal; null when total is 0
+  unmarked: string[]; // ids with no met value
+}
+
 export interface PathReport {
   file: string;
   findings: Finding[];

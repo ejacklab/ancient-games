@@ -425,3 +425,52 @@ path of this task — run `bun <guard>/src/cli.ts path new --session <id> --out 
 changed". It records a `raised` record with `ids: ["path"]` when it blocks, so it asks once per session. A path file
 with `great` and no valid `## great:` section blocks the same way, once. Fails-if: a session with successes and no path
 stops with no ask; it is asked twice; a session with no successes is asked.
+
+## Round 6 — the score (R12.7: a result is the share of its criteria met)
+
+Types: `Criterion`, `CriteriaFile`, `Score` in `src/types.ts` (fixed).
+
+**K1 Criteria files (new `src/criteria.ts`).** A criteria file is YAML matching `CriteriaFile`, at
+`runs/**/criteria*.yaml` or `.harness-guard/criteria/*.yaml` under the root.
+- `isCriteriaFile(path): boolean` — the file name matches `criteria*.yaml` (any folder).
+- `findCriteriaFiles(root): string[]` (relative, sorted); `loadCriteria(file): CriteriaFile` (throws `CriteriaError`
+  on YAML that does not parse or lacks `criteria: 1`).
+- `checkCriteria(c: CriteriaFile): Finding[]` — `R12.7-criteria-empty` (fail) for no items; `R12.7-criterion-text`
+  (fail) for an item with no id or no text, or a repeated id; `R12.7-criterion-evidence` (fail) for an item whose
+  `met` is true or false and whose `evidence` is empty.
+- `score(c: CriteriaFile): Score` — `met` = items with `met: true`; `total` = all items; `percent` = met / total × 100
+  rounded to one decimal (null when total is 0); `unmarked` = ids whose `met` is not a boolean.
+- `fromRegister(r: Register, session: string, request: string): CriteriaFile` — one item per unit of `units(r)`
+  (M4), `id` = the unit id, `text` = the unit text, `met` absent.
+- `skeleton(session: string, request: string): string` — YAML text for a new file with two placeholder items the
+  agent replaces; `request` is cut to 120 characters.
+Fails-if: an item marked met with no evidence passes; a repeated id passes; a file with no items passes; 2 of 3 met
+does not score 66.7; an unmarked item counts as met or not met.
+
+**K2 Hooks (hooks.ts).**
+- **UserPromptSubmit:** when this session has no `touched` record for a criteria file and no `raised` record with id
+  `criteria`, add context (exit 0): "harness-guard: before you start, write the criteria this request will be scored
+  on — `bun <guard>/src/cli.ts criteria new --out runs/<run>/criteria.yaml` (or .harness-guard/criteria/<name>.yaml),
+  one item per thing the result must get right; mark each met or not met with evidence at the end." and write a
+  `raised` record with id `criteria` (so it is said once per session). Otherwise no output.
+- **PostToolUse Write / Edit / MultiEdit** on a criteria file writes a `touched` record (as for registers).
+- **Stop**, after the open-failure and raise checks and before the path ask: for each criteria file this session
+  touched (skip one that no longer exists):
+  - unreadable, or any fail finding of `checkCriteria`, or any `unmarked` id → block once per file state with the
+    finding rules and ids (no item text): "mark each criterion met: true|false with evidence";
+  - each item with `met: false` and no failure record whose `check` is `criterion:<id>` for this session → write one
+    failure record (`found_by: "guard"`, `check: "criterion:<id>"`, `input: "<criteria file name>"`, `expected:
+    "met"`, `actual: "not met"`, `reason: "a criterion of the task was not met"`, `evidence`: the criteria file's
+    relative path) — then the open-failure check blocks until an insight answers it;
+  - **late criteria:** if this session's first `touched` record for the file is later than its first `success` or
+    `failure` record not created by this criteria check, write one failure record `check: "R12.7-criteria-late"`
+    (once per file).
+- Install snippet (`install.ts`) adds `UserPromptSubmit` to the hook events.
+
+**K3 CLI and paths.** `criteria new [--session S] [--request TEXT] [--from-register FILE] [--out F]` (prints or writes;
+never outside the root); `criteria score <file>` prints `score: <met>/<total> (<percent>%)` and the unmarked ids,
+exit 1 on a fail finding or unmarked ids. `paths.ts skeleton` fills `measures.score` with the percent of this
+session's criteria files (the mean when there are several; absent when none is scored).
+Fails-if: a met:false item leaves no failure record after Stop; the reminder is given twice in a session; a session that
+already touched a criteria file gets the reminder; late criteria leave no record; criteria written first leave no late
+record; the path skeleton has no score when a scored criteria file exists.
