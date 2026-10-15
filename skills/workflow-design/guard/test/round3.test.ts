@@ -178,12 +178,14 @@ function runCli(args: string[], input = "", cwd = folder) {
 describe("C1 (R1) background calls are not checked on return", () => {
   test("C1: a codex call backgrounded with & writes no record and no output (R1 input)", () => {
     expectQuiet(handleHook(post("PostToolUse", 'codex exec "x" -o bg.md </dev/null &'), env));
-    expect(readJournal(folder).records).toEqual([]);
+    // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]);
   });
 
   test("C1: a call inside a backgrounded group writes no record", () => {
     expectQuiet(handleHook(post("PostToolUse", '(codex exec "x" -o bg.md </dev/null) &'), env));
-    expect(readJournal(folder).records).toEqual([]);
+    // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]);
   });
 
   test("C1: run_in_background with a backgroundTaskId response writes no record (R1 input)", () => {
@@ -191,23 +193,27 @@ describe("C1 (R1) background calls are not checked on return", () => {
       input: { run_in_background: true }, response: { stdout: "", backgroundTaskId: "b1" },
     });
     expectQuiet(handleHook(payload, env));
-    expect(readJournal(folder).records).toEqual([]);
+    // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]);
   });
 
   test("C1: tool_input.run_in_background alone skips the check", () => {
     expectQuiet(handleHook(post("PostToolUse", 'opencode run "review the diff"', { input: { run_in_background: true } }), env));
-    expect(readJournal(folder).records).toEqual([]);
+    // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]);
   });
 
   test("C1: tool_response.backgroundTaskId alone skips the check", () => {
     expectQuiet(handleHook(post("PostToolUse", 'opencode run "review the diff"', { response: { backgroundTaskId: "b1" } }), env));
-    expect(readJournal(folder).records).toEqual([]);
+    // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]);
   });
 
   test("C1: PostToolUseFailure of a backgrounded call writes no record", () => {
     const payload = post("PostToolUseFailure", 'codex exec "x" -o bg.md </dev/null &', { payload: { exit_code: 1 }, response: { exit_code: 1 } });
     expectQuiet(handleHook(payload, env));
-    expect(readJournal(folder).records).toEqual([]);
+    // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]);
   });
 
   test("C1 control: the same call in the foreground is still checked", () => {
@@ -249,7 +255,8 @@ describe("C2 (R2) output flags and > are read outside quotes only", () => {
 
   test("C2: a > inside the quoted prompt with a good stdout answer writes no record (R2 input)", () => {
     expectQuiet(handleHook(post("PostToolUse", `opencode run "use key > ${secret}"`, { response: { stdout: "a full answer" } }), env));
-    expect(readJournal(folder).records).toEqual([]);
+    // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]);
   });
 
   test("C2: the planted secret after > inside quotes never reaches the journal, evidence or hook output", () => {

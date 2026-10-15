@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { FailureRecord, GuardErrorRecord, JournalRecord, TouchedRecord, RaisedRecord } from "./types.ts";
+import type { FailureRecord, GuardErrorRecord, JournalRecord, TouchedRecord, RaisedRecord, SuccessRecord } from "./types.ts";
 
 const GUARD_DIR = ".harness-guard";
 const ID_RE = /^F-[0-9a-f]{8}$/;
@@ -153,7 +153,7 @@ export function appendFailure(root: string, rec: FailureRecord): FailureRecord {
   return rec;
 }
 
-export function appendRecord(root: string, rec: TouchedRecord | GuardErrorRecord | RaisedRecord): void {
+export function appendRecord(root: string, rec: TouchedRecord | GuardErrorRecord | RaisedRecord | SuccessRecord): void {
   appendLine(root, scrubRecord(rec as unknown as Record<string, unknown>));
 }
 

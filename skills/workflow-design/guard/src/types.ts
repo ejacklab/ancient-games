@@ -114,7 +114,47 @@ export interface RaisedRecord {
   ids: string[];
 }
 
-export type JournalRecord = FailureRecord | TouchedRecord | GuardErrorRecord | RaisedRecord;
+// Round 5 (R12.7): a checked result that passed — one line, no evidence.
+export interface SuccessRecord {
+  kind: "success";
+  time: string;
+  session: string;
+  check: string; // "engine-call" | "test-run"
+  engine: string; // engine name, or the test runner label
+}
+
+export type JournalRecord = FailureRecord | TouchedRecord | GuardErrorRecord | RaisedRecord | SuccessRecord;
+
+// Round 5 (R12.7): the path of a successful task, a YAML file.
+export interface PathStep {
+  did: string;
+  engine?: string;
+  model?: string;
+  check?: string;
+}
+
+export interface SuccessPath {
+  path: 1;
+  session: string;
+  category: string;
+  objective: string;
+  steps: PathStep[];
+  decisions?: string[];
+  measures: Record<string, number>; // e.g. seconds, failures, retries, checks_passed, successes
+  failures?: string[]; // the check ids of this session's failure records
+  parent?: string; // relative path of the parent's path file
+  change?: string; // what this child changed from its parent
+  aim?: { measure: string; parent_value: number; lower_is_better: boolean };
+  great?: { comparison: string; evidence: string };
+}
+
+export interface PathReport {
+  file: string;
+  findings: Finding[];
+  better: boolean | null; // null when there is no parent or no aim
+  gainPercent: number | null; // signed: positive means improved on the aim's measure
+  repeatedFailures: string[];
+}
 
 // ---- M3: insight ------------------------------------------------------------------------------------------------
 

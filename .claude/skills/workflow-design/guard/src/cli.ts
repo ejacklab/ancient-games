@@ -11,6 +11,8 @@ import { handleHook } from "./hooks.ts";
 import { HARNESSES, installSnippet } from "./install.ts";
 import { JournalError, guardRoot, recordFailureFromArgs } from "./journal.ts";
 import { checkSection, findInsightFiles, openFailures, parseInsight } from "./insight.ts";
+import { PathError, checkPath, parents, skeleton } from "./paths.ts";
+import { rates, ratesMarkdown } from "./rates.ts";
 import { RegisterError, coverage, loadRegister, validateRegister } from "./register.ts";
 import { checkResult, lintCommand, loadEngines } from "./traps.ts";
 import type { EngineCall, Finding, HookEnv } from "./types.ts";
@@ -31,6 +33,10 @@ const USAGE = [
   "  register <file>                 validate a register and report its coverage",
   "  install --print <harness>       print the hook settings for a harness",
   "  doctor [--health PATH]          report where the guard is installed",
+  "  rates [--session S]             success and failure counts per check and engine",
+  "  path new [--session S] [--out F]  print or write a success-path skeleton",
+  "  path check <file>               check a success-path file",
+  "  path parents <category>         list the path files of a category",
 ].join("\n");
 
 class UsageError extends Error {}
@@ -240,6 +246,70 @@ function doctorCommand(args: string[]): number {
   return OK;
 }
 
+// ---- rates (round 5, S2) ---------------------------------------------------------------------------------------
+
+function ratesCommand(args: string[]): number {
+  out(ratesMarkdown(rates(guardRoot(process.cwd()), flagValue(args, "--session"))));
+  return OK;
+}
+
+// ---- path (round 5, S3) -----------------------------------------------------------------------------------------
+
+function pathNew(args: string[]): number {
+  const root = guardRoot(process.cwd());
+  const session = flagValue(args, "--session") ?? "none";
+  const outFile = flagValue(args, "--out");
+  let yaml: string;
+  try {
+    yaml = skeleton(root, session, outFile === null ? undefined : path.resolve(process.cwd(), outFile));
+  } catch (error) {
+    if (error instanceof PathError) usageError(error.message);
+    throw error;
+  }
+  if (outFile === null) out(yaml);
+  else out(`skeleton written to ${outFile}`);
+  return OK;
+}
+
+function pathCheck(args: string[]): number {
+  const file = args[0];
+  if (file === undefined || file.startsWith("--")) usageError("path check: needs the path file");
+  const root = guardRoot(process.cwd());
+  let checked;
+  try {
+    checked = checkPath(root, path.relative(root, path.resolve(process.cwd(), file)));
+  } catch (error) {
+    if (error instanceof PathError) usageError(error.message);
+    throw error;
+  }
+  const code = report(checked.findings);
+  out(`better: ${checked.better === null ? "n/a" : checked.better}; gain: ${checked.gainPercent === null ? "n/a" : `${checked.gainPercent}%`}; repeated failures: ${checked.repeatedFailures.length === 0 ? "none" : checked.repeatedFailures.join(", ")}`);
+  return code;
+}
+
+function pathParents(args: string[]): number {
+  const category = args[0];
+  if (category === undefined || category.startsWith("--")) usageError("path parents: needs a category");
+  const lines = ["| file | measures | better |", "|---|---|---|"];
+  for (const entry of parents(guardRoot(process.cwd()), category)) {
+    const measures = Object.entries(entry.measures).map(([name, value]) => `${name}=${value}`).join(", ");
+    lines.push(`| ${entry.file} | ${measures} | ${entry.better === null ? "n/a" : entry.better} |`);
+  }
+  out(lines.join("\n"));
+  return OK;
+}
+
+function pathCommand(args: string[]): number {
+  const sub = args[0];
+  const rest = args.slice(1);
+  switch (sub) {
+    case "new": return pathNew(rest);
+    case "check": return pathCheck(rest);
+    case "parents": return pathParents(rest);
+    default: return usageError(`path: needs new, check or parents (got ${sub ?? "nothing"})`);
+  }
+}
+
 // ---- dispatch ---------------------------------------------------------------------------------------------------
 
 function run(args: string[]): number {
@@ -254,6 +324,8 @@ function run(args: string[]): number {
     case "register": return register(rest);
     case "install": return install(rest);
     case "doctor": return doctorCommand(rest);
+    case "rates": return ratesCommand(rest);
+    case "path": return pathCommand(rest);
     case undefined: return usageError("no command given");
     case "help":
     case "--help": return usageError("help is the usage text above");

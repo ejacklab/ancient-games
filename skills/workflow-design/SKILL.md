@@ -79,7 +79,9 @@ method section named beside it.
    depends on and the criteria it covers; its stop is the three-part stop of method 3.6. Anything else found goes to
    `docs/blueprint/backlog.md`, never into the current run. How nodes use project memory and its caches: method §4.
    A run with logged failures ends with an insight named in the final report (`guard/src/cli.ts insight` lists what is
-   open); a use-case register is checked with `guard/src/cli.ts register <file>` (method 3.8 item 13).
+   open); a use-case register is checked with `guard/src/cli.ts register <file>` (method 3.8 item 13). A run that
+   succeeded records its path (`guard/src/cli.ts path new`); a similar task starts from a recorded path
+   (`path parents <category>`), changes something and tries to beat it (method 3.8 item 13, R12.7).
 
 ## Every node carries five things
 

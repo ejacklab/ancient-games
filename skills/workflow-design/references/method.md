@@ -490,6 +490,11 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    answers each (whys to a changeable source, the root cause, 2–3 fix options with evidence) and the final message
    names it. What the code catches by itself is engine calls; the agent's own failures — a failing test run, an errored
    tool call, a step redone — are failures too (R12.2) and the agent logs them with `fail` until the guard catches them.
+   It also learns from success (R12.7): every checked result that passed is one `success` line, so `guard/src/cli.ts
+   rates` reads failures against how often a check ran; a session with successes is asked once for its **path**
+   (`path new`, then `path check`); a great success gets a `## great:` insight section; and a similar task borrows a
+   recorded path as its parent (`path parents <category>`), changes at least one thing and tries to be 2% better —
+   reported, never a gate.
    Judgment stays with the agent: the whys, the options, use cases and their fails-if. Installing the hooks is
    the owner's (`guard/src/cli.ts install --print <harness>`); the agent never edits harness config. Measured once
    (`runs/20261015-ts-hybrid/effectiveness/`, n = 3 per arm on one short task): with the rules in the working folder,

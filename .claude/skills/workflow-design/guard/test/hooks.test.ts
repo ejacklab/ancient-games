@@ -150,7 +150,8 @@ describe("PreToolUse", () => {
     const finding = lintCommand(command, { repoRoot: folder, running: [] }).find((f) => f.rule === rule)!;
     expect(finding).toBeDefined();
     expect(output.permissionDecisionReason).toContain(`${rule}: ${finding.message} Fix: ${finding.fix}`);
-    expect(readJournal(folder).records).toEqual([]);
+    // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]);
   });
 
   test("pre: every hit is included when one command triggers multiple traps", () => {
@@ -240,12 +241,14 @@ describe("PostToolUse", () => {
   test("post: a successful file answer writes no record and returns no output", () => {
     writeFile("answer.md", "the answer\n");
     expectQuiet(handleHook(bash("PostToolUse", "codex exec task -o answer.md </dev/null"), env));
-    expect(readJournal(folder).records).toEqual([]);
+    // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]);
   });
 
   test("post: a successful stdout answer writes no record", () => {
     expectQuiet(handleHook(bash("PostToolUse", "dsh headless task", { stdout: "the answer" }), env));
-    expect(readJournal(folder).records).toEqual([]);
+    // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]);
   });
 
   test("post: a successful event does not use an exit field as a tool failure", () => {
@@ -255,7 +258,8 @@ describe("PostToolUse", () => {
 
   test("post: a non-engine Bash command writes no failure", () => {
     expectQuiet(handleHook(bash("PostToolUse", "echo 'codex exec task'"), env));
-    expect(readJournal(folder).records).toEqual([]);
+    // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]);
   });
 
   test("post: nested cwd uses the git root for state and resolves engine outputs against cwd", () => {
@@ -344,7 +348,8 @@ describe("register touches and Stop", () => {
 
   test.each([["Write", "notes.md"], ["Read", "cases.register.yaml"], ["Bash", "cases.register.yaml"]])(
     "touch: %s on %s does not append a touched record",
-    (tool: string, file: string) => { expectQuiet(touch(file, tool)); expect(readJournal(folder).records).toEqual([]); },
+    (tool: string, file: string) => { expectQuiet(touch(file, tool)); // Round 5 S1 (COO): a passing call now writes a success line — only failures must be absent.
+    expect(readJournal(folder).records.filter((r) => r.kind !== "success")).toEqual([]); },
   );
 
   test.each(["Stop", "SubagentStop"])("stop: %s permits a session with no failures", (event: string) => {

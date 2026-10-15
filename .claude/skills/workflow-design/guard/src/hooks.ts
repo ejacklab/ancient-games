@@ -6,10 +6,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { appendFailure, appendRecord, failuresFor, guardRoot, newFailureId, readJournal, writeEvidence } from "./journal.ts";
-import { answered, openFailures } from "./insight.ts";
+import { answered, greatAnswered, openFailures } from "./insight.ts";
+import { findPathFiles, loadPath } from "./paths.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
 import { checkResult, commandWord, engineCallSite, lintCommand, recognizeTestRun, segments } from "./traps.ts";
-import type { Finding, GuardErrorRecord, HookEnv, HookResult, TouchedRecord, RaisedRecord } from "./types.ts";
+import type { Finding, GuardErrorRecord, HookEnv, HookResult, TouchedRecord, RaisedRecord, SuccessRecord } from "./types.ts";
 
 const HARNESS = "claude-code";
 const NO_SESSION = "none";
@@ -166,6 +167,13 @@ function recordFailure(root: string, payload: Record<string, unknown>, env: Hook
   return id;
 }
 
+// A checked result that passed: one line, no evidence, no context line (round 5, S1). It holds the check id and the
+// engine or runner name only, never command or output text.
+function recordSuccess(root: string, payload: Record<string, unknown>, env: HookEnv, check: "engine-call" | "test-run", engine: string): void {
+  const record: SuccessRecord = { kind: "success", time: env.now().toISOString(), session: sessionOf(payload), check, engine };
+  appendRecord(root, record);
+}
+
 // The record of an engine call that answered nothing: the engine and, when there was one, the output file's name, never
 // the command or the prompt (round 3, C2).
 function engineSpec(finding: Finding, facts: {
@@ -286,6 +294,19 @@ function ownFailureSpec(payload: Record<string, unknown>, command: string, faile
   };
 }
 
+// The runner of a test run that passed (round 5, S1): recognised, not interrupted, not in the background (C1), and with
+// no failure summary anywhere in its stdout — stricter than D1, which reads stdout only when the run owns it, so a
+// failing run followed by `; echo` is never counted as green. Null when it is not one.
+function greenTestRun(payload: Record<string, unknown>, response: Record<string, unknown>, command: string): string | null {
+  const runner = recognizeTestRun(command);
+  if (runner === null) return null;
+  if (payload.is_interrupt === true || response.interrupted === true) return null;
+  const run = segments(command).find((segment) => recognizeTestRun(segment.text) !== null);
+  if (runsInBackground(payload, response, run?.background === true)) return null;
+  if (FAILED_SUMMARY.test(stdoutOf(payload))) return null;
+  return runner;
+}
+
 // The folder the call ran in: the payload's own cwd when it has one, the environment's otherwise (round 3, C3).
 function workingFolder(payload: Record<string, unknown>, env: HookEnv): string {
   const own = payload.cwd;
@@ -308,8 +329,11 @@ function handlePostToolUse(payload: Record<string, unknown>, env: HookEnv, root:
     // No engine call: the failure, if any, is the agent's own (D1, D2).
     if (site === null) {
       const own = ownFailureSpec(payload, command, failed);
-      if (own === null) return quiet();
-      return logged([recordFailure(root, payload, env, own)], true);
+      if (own !== null) return logged([recordFailure(root, payload, env, own)], true);
+      // A green test run is a success line (round 5, S1).
+      const runner = failed ? null : greenTestRun(payload, response, command);
+      if (runner !== null) recordSuccess(root, payload, env, "test-run", runner);
+      return quiet();
     }
 
     // A path the text cannot name is not checked: no record, never a missing-output failure (round 4, D3).
@@ -322,7 +346,11 @@ function handlePostToolUse(payload: Record<string, unknown>, env: HookEnv, root:
     const exitCode = site.endsWithEngine ? exitCodeOf(payload, failed) : null;
     const call = site.call;
     const findings = fails(checkResult({ call, cwd: site.cwd, exitCode, stdout, stderr, interrupted }));
-    if (findings.length === 0) return quiet();
+    if (findings.length === 0) {
+      // A clean engine call is a success line; only PostToolUse writes one (round 5, S1).
+      if (!failed) recordSuccess(root, payload, env, "engine-call", call.engine);
+      return quiet();
+    }
     // The command text is never stored: the engine name and the output file's name say which call it was.
     const facts = {
       engine: call.engine,
@@ -385,7 +413,7 @@ function registerFindings(root: string, session: string): { rule: string; file: 
   return found;
 }
 
-function handleStop(payload: Record<string, unknown>, root: string): HookResult {
+function handleStop(payload: Record<string, unknown>, root: string, env: HookEnv): HookResult {
   const session = sessionOf(payload);
 
   const open = openFailures(root, session);
@@ -414,7 +442,50 @@ function handleStop(payload: Record<string, unknown>, root: string): HookResult 
     const lines = failed.map(({ rule, file }) => `  ${rule} (fail) in ${file}`);
     return block(["harness-guard: the register files this session touched still have failing checks:", ...lines].join("\n"));
   }
-  return quiet();
+  return pathAsk(root, session, raised, env);
+}
+
+// ---- the path of a success (round 5, S5) ---------------------------------------------------------------------------
+
+// The guard's own folder as the agent should type it: relative to the root when it lies inside it.
+function guardDirFor(root: string): string {
+  const dir = path.resolve(import.meta.dirname, "..");
+  const relative = path.relative(root, dir);
+  return relative === "" ? "." : relative.startsWith("..") || path.isAbsolute(relative) ? dir : relative;
+}
+
+// The path files that name this session, as root-relative paths. A file that does not load names no session.
+function sessionPathFiles(root: string, session: string): { file: string; great: boolean }[] {
+  const found: { file: string; great: boolean }[] = [];
+  for (const file of findPathFiles(root)) {
+    try {
+      const loaded = loadPath(path.join(root, file));
+      if (loaded.session === session) found.push({ file, great: loaded.great !== undefined && loaded.great !== null });
+    } catch {
+      continue;
+    }
+  }
+  return found;
+}
+
+// A session with a success line is asked once to record its path, or, when a path file of its claims a great success
+// with no valid `## great:` insight section, to write that section — the same block, once: the ask writes a `raised`
+// record with id "path", so a later stop does not ask again.
+function pathAsk(root: string, session: string, raised: Set<string>, env: HookEnv): HookResult {
+  if (raised.has("path")) return quiet();
+  if (!readJournal(root).records.some((record) => record.kind === "success" && record.session === session)) return quiet();
+  const files = sessionPathFiles(root, session);
+  const answeredGreat = files.some((entry) => entry.great) ? greatAnswered(root) : new Set<string>();
+  const greatMissing = files.filter((entry) => entry.great && !answeredGreat.has(path.normalize(entry.file))).map((entry) => entry.file);
+  if (files.length > 0 && greatMissing.length === 0) return quiet();
+
+  const record: RaisedRecord = { kind: "raised", time: env.now().toISOString(), session, ids: ["path"] };
+  appendRecord(root, record);
+  const lines = [`harness-guard: record the path of this task — run \`bun ${guardDirFor(root)}/src/cli.ts path new --session ${session} --out runs/<run>/success-path.yaml\` (or .harness-guard/paths/<name>.yaml), fill steps, decisions and measures; for a similar task, name a parent and what you changed`];
+  if (greatMissing.length > 0) {
+    lines.push(`${greatMissing.join(", ")} claims a great success with no valid insight section; add one to an insight file: \`## great: <path file>\` with Comparison:, Cause: and Options: (1–3 numbered items, each starting with [rule], [check] or [tool] and holding evidence:).`);
+  }
+  return block(lines.join("\n"));
 }
 
 // ---- SessionStart ------------------------------------------------------------------------------------------------
@@ -440,7 +511,7 @@ function dispatch(payload: Record<string, unknown>, env: HookEnv): HookResult {
       return handlePostToolUse(payload, env, root, true);
     case "Stop":
     case "SubagentStop":
-      return handleStop(payload, root);
+      return handleStop(payload, root, env);
     case "SessionStart":
       return handleSessionStart(payload, root);
     default:

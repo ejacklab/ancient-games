@@ -362,3 +362,66 @@ logs `missing-output`.
   insight file(s), it writes a `raised` record (`{kind: "raised", time, session, ids}`) for those failures; a later Stop
   asks to name only failures not yet raised. (Found live: the guard asked this session to repeat the insight path at
   every stop.)
+
+## Round 5 — learn from success (R12.7)
+
+Types: `SuccessRecord`, `PathStep`, `SuccessPath`, `PathReport` in `src/types.ts` (fixed).
+
+**S1 Success lines (hooks.ts, journal.ts).** PostToolUse for Bash writes one `success` record when (a) a recognised
+engine call's result check (M1) finds nothing — `check: "engine-call"`, `engine: <engine>` — or (b) a test run (D1)
+neither fails nor shows a failure summary — `check: "test-run"`, `engine: <runner label>`. Background calls (C1) and
+calls with unknowable paths (D3) write nothing. No context line is printed for a success. `appendRecord` accepts a
+`SuccessRecord`. Fails-if: a passing engine call or a green test run writes no success line; a failing one writes a
+success line; a success line holds command or output text.
+
+**S2 Rates (cli.ts, new `src/rates.ts`).** `rates(root, session | null): { check: string; engine: string; ok: number;
+fail: number }[]` counts `success` records and `failure` records per (check, engine). A failure's `check` maps to
+`engine-call` when it starts with `R12.1-` or `trap:` and its `engine` is not "none", to `test-run` when it is
+`R12.2-test-failed`, else to its own `check`. CLI `rates [--session S]` prints a Markdown table, exit 0. Fails-if: a
+count is wrong; a row's text holds command or output text.
+
+**S3 Path files (new `src/paths.ts`).** A path file is YAML matching `SuccessPath`, found at `runs/**/success-path*.yaml`
+or `.harness-guard/paths/*.yaml` under the root.
+- `findPathFiles(root): string[]` (relative, sorted); `loadPath(file): SuccessPath` (throws `PathError` on YAML that
+  does not parse or lacks `path: 1`).
+- `checkPath(root, file): PathReport`:
+  - `R12.7-path-missing` (fail) for a missing or empty `session`, `category`, `objective`, `steps` (≥ 1, each with a
+    non-empty `did`), or `measures` (≥ 1 numeric entry).
+  - With a `parent`: the parent file must exist and load (`R12.7-parent-missing`); `change` must be non-empty
+    (`R12.7-copied` — a child that names no change copies its parent); `aim` must name a `measure` present in both the
+    child's and the parent's `measures`, and `aim.parent_value` must equal the parent's value on it
+    (`R12.7-aim-missing`, `R12.7-aim-mismatch`).
+  - `gainPercent` = (parent − child) / parent × 100 when `lower_is_better`, else (child − parent) / parent × 100,
+    rounded to one decimal; null with no parent or aim, or a parent value of 0.
+  - `repeatedFailures` = the child's `failures` that also appear in the parent's `failures`.
+  - `better` = `gainPercent > 0` and no repeated failure; null when `gainPercent` is null. **The 2% aim is reported,
+    never a finding**: `R12.7-aim-report` is a **warn** finding whose message says the gain against the 2% aim
+    ("gain 3.1% against a 2% aim", "gain −4.0% against a 2% aim").
+  - With `great`: `comparison` and `evidence` non-empty, and `evidence` names a path that exists
+    (`R12.7-great-evidence`, fail).
+- `skeleton(root, session, out?): string` — a YAML path skeleton with `session`, `measures` filled from the journal
+  (`failures`: this session's failure records, `successes`: its success records) and `failures` (their check ids);
+  the other fields as empty placeholders the agent fills. Never writes outside the root.
+- `parents(root, category): { file: string; measures: Record<string, number>; better: boolean | null }[]` — the path
+  files with that category, most recent file name last.
+- CLI: `path new [--session S] [--out F]` (prints or writes the skeleton), `path check <file>` (exit 1 on a fail
+  finding), `path parents <category>`.
+Fails-if: a path missing steps or measures passes; a child naming a parent and no change passes; an aim whose parent
+value differs from the parent's file passes; a child 1% better is reported as failing (it is better, below the aim);
+a child that repeats a parent failure is `better`; a great success with no evidence passes; a missing parent file
+passes.
+
+**S4 Great-success insight sections (insight.ts).** An insight file may also hold sections headed `## great: <path
+file>` with `Comparison:` (non-empty), `Cause:` (non-empty) and `Options:` — 1 to 3 numbered items, each starting with
+`[rule]`, `[check]` or `[tool]` and holding `evidence:`. `checkGreatSection(s)` returns `R12.7-great-comparison`,
+`R12.7-great-cause`, `R12.7-great-options` (fail). `parseInsight` keeps such sections apart from failure sections
+(`InsightSection.ids` empty); `greatAnswered(root): Set<string>` = path files answered by a valid great section.
+Fails-if: a great section with no cause, no comparison, 0 or 4 options passes; a failure section is read as great.
+
+**S5 Stop asks for the path once (hooks.ts).** When the open-failure and raise checks pass and the session has at
+least one `success` record, Stop blocks **once** if no path file names this session: reason "harness-guard: record the
+path of this task — run `bun <guard>/src/cli.ts path new --session <id> --out runs/<run>/success-path.yaml` (or
+.harness-guard/paths/<name>.yaml), fill steps, decisions and measures; for a similar task, name a parent and what you
+changed". It records a `raised` record with `ids: ["path"]` when it blocks, so it asks once per session. A path file
+with `great` and no valid `## great:` section blocks the same way, once. Fails-if: a session with successes and no path
+stops with no ask; it is asked twice; a session with no successes is asked.

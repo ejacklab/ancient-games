@@ -62,7 +62,8 @@ function failures(): FailureRecord[] {
   const journal = readJournal(folder);
   expect(journal.badLines).toBe(0);
   // D6 (COO): the journal may also hold "raised" records after a final message names the insight.
-  expect(journal.records.every((record) => record.kind === "failure" || record.kind === "raised")).toBe(true);
+  // Round 5 S1 (COO): passing calls also write "success" lines.
+  expect(journal.records.every((record) => record.kind === "failure" || record.kind === "raised" || record.kind === "success")).toBe(true);
   return journal.records.filter((record): record is FailureRecord => record.kind === "failure");
 }
 
