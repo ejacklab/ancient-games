@@ -31,6 +31,13 @@ refusing a subagent's file, 1 is bun's cache, and 1 is a false failure from the 
 4. **F-76013d09 / F-0a1f3ca1 — Codex's sandbox loses pipe output** (its log asks for the system bubblewrap). Option:
    install bubblewrap; this is advice for your machine, I have not changed anything.
 
+5. **The guard keeps one journal per git root, so a worktree's records die with it.** The branch's journal
+   (`.claude/worktrees/integrate/.harness-guard/journal.jsonl`: F-d0736dc7, F-c055f734, F-e1161864 and the success
+   lines of the branch work) was git-ignored and deleted by `git worktree remove`. Their causes and fixes are kept in
+   `insight.md`; the records themselves are gone. Options: the guard writes to the main checkout's journal when it runs
+   in a linked worktree (`git rev-parse --git-common-dir`); or the merge step copies the worktree journal into the
+   main one before removal.
+
 ## From the research (proposed, none applied)
 
 `research/findings.md`: 29148's nine characteristics are confirmed at second hand (a 2024 paper); GtWR and Cockburn's
