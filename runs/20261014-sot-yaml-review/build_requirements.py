@@ -24,34 +24,45 @@ HEADER = {
     "how_to_read": [
         "Each record is one requirement, or one clause of one (its id ends in a letter, and part_of names the "
         "requirement). Every record has the same keys.",
-        "Read level first, then text. When a clause and its requirement seem to differ, text governs.",
+        "A requirement split into clauses (W1.1 into W1.1a, W1.1b, ...) has no text of its own: its clause records "
+        "are the requirement, each with its own level. Read level first, then text.",
+        "Where SOURCE_OF_TRUTH.md and this file differ, this file's level governs; the prose explains.",
         "fails_if is the case that breaks the record. check says who or what finds it.",
         "who_decides names who settles an open choice inside the record; none means the record leaves no choice "
         "open; unassigned means the choice is open and nobody is named yet.",
         "The records are grouped by what happens to a memory: it is written, it is kept true, and it is read.",
-        "There are no fixed numbers: where a limit applies, it is a comparison that measurement decides.",
+        "There are no fixed numbers: where a limit applies, it is a comparison that measurement decides. Rd3.1a's "
+        "interim numbers hold only until the limit is measured.",
     ],
     "levels": {
-        "MUST": "A gate. When it fails, the work it governs stops.",
-        "SHOULD": "A default. It may be skipped with a written reason; it fails only when skipped without one.",
+        "MUST": "A gate. When it fails, what its fails_if names stops (the entry, the commit, the load or the "
+                "action); the rest of the work goes on unless it depends on that.",
+        "SHOULD": "A default. It may be skipped with a reason written in the task's state.md (with no task, in the "
+                  "commit message); it fails only when skipped without one.",
         "guidance": "Explanation or advice. Nothing to pass or fail.",
     },
     "checks": {
         "tool": "tools/memory_index.py, in write mode or with --check, fails it.",
         "git": "git history shows it.",
-        "reviewer": "a person or agent reading the work judges it. The project owner names who reviews.",
-        "secret scanner": "a scanner over entries/ finds it.",
+        "reviewer": "the project owner reads the work and judges it, or names someone who does.",
+        "secret scanner": "a scanner over entries/ finds it. None exists yet; until one does, the reviewer is the "
+                          "check.",
         "none": "guidance: nothing to check.",
     },
     "roles": {
         "project owner": "The person who decides for the project: a mismatch between memory and code, a contested "
-                         "supersession, and the open choices named in who_decides.",
+                         "supersession, and the open choices named in who_decides. The project owner also reviews "
+                         "the judged checks (check: reviewer), or names someone who does.",
     },
     "basis": {
         "v": "the vision, vision-statements/source-of-truth-memory-vision-statements.md",
         "d": "this design's text, SOURCE_OF_TRUTH.md (the section named)",
     },
     "retired_ids": "K2 and K3 are not used. Other text cites K4 to K6, so the numbers stay.",
+    "kit": "These files travel together as one kit: SOURCE_OF_TRUTH.md, this file, CACHES.md and "
+           "vision-statements/; this file names them relative to its own folder. `tools/` and `docs/index-md/` are "
+           "relative to the repository root. `project-memory/`, `AGENTS.md`, `CLAUDE.md` and `runs/` are the "
+           "project's own.",
 }
 
 
@@ -79,9 +90,9 @@ CATEGORIES = [
             r("W1.1c", "SHOULD", "The file is `project-memory/entries/<prefix>-<id>-<slug>.md`.",
               "an entry file has another folder or name, with no written reason.", "reviewer", part_of="W1.1"),
             r("W1.2a", "MUST", "The header starts on the file's first line, which is exactly `---`, and ends at the "
-              "next line that is exactly `---`. Each field is one `key: value` line.",
+              "next line that is exactly `---`.",
               "a header is not between two `---` lines.", "tool", part_of="W1.2"),
-            r("W1.2b", "SHOULD", "A field with several values (`covers`, the links, `changed:`) holds them on "
+            r("W1.2b", "SHOULD", "Each field is one `key: value` line; a field with several values (`covers`, the links, `changed:`) holds them on "
               "indented lines below its key. The keys are `id`, `kind`, `status`, `author`, `recorded` (the date "
               "recorded), `covers` (the code paths it is about), `source` (its source or evidence), `depends_on`, "
               "`supersedes`, `superseded_by` and `changed:`. A decision to build something, once its work is "
@@ -177,35 +188,45 @@ CATEGORIES = [
             r("W6.2", "SHOULD", "Each agent works on its own branch or worktree, so two edits to the same lines meet as "
               "a merge conflict, not a silent overwrite.",
               "an edit to an entry is lost without a conflict, with no written reason.", "git"),
-            r("W6.3a", "MUST", "A claim is never rewritten (K4.3), so a merge conflict in an entry is only in the lines "
-              "added to it. Whoever does the merge keeps both sides: both `changed:` lines, both links. Nobody "
+            r("W6.3a", "MUST", "A claim is never rewritten (K4.3), so a merge conflict in an entry is never in its claim: "
+              "only in its header (`covers`, `status`, the links) and the lines added to it. Whoever does the merge keeps both sides: both `changed:` lines, both links, and every `covers` "
+              "path either side wrote. Nobody "
               "chooses between two claims. Two entries that each supersede the same entry are reported in the task's "
               "`state.md` and to the project owner, as in Rd5.3.",
-              "a merged entry is missing a `changed:` line or link that one side added, or two entries superseding "
+              "a merged entry is missing a `changed:` line, link or `covers` path that one side added, or two "
+              "entries superseding "
               "one go unreported.", "git; reviewer", who_decides=PO, part_of="W6.3"),
             r("W6.3b", "SHOULD", "A conflict in `INDEX.md` is resolved by regenerating it (K6.3).",
-              "as K6.3b.", "tool", part_of="W6.3"),
+              "as K6.3b.", "reviewer", part_of="W6.3"),
         ]),
     ]),
     ("Keep — memory stays true, and nothing is lost", [
         ("K1", "The decision or fact first, then the code", "v; d: What it is for", [
             r("K1.1", "SHOULD", "To change behaviour that a decision or fact governs, change the entry first, then the "
-              "code. Work that has to go the other way is a matter for the project's workflow, not for memory.",
-              "git shows a commit changing the behaviour a decision or fact governs, with no change to that entry in "
-              "the same commit or an earlier one, with no written reason.", "git; reviewer",
+              "code. Changing an entry's claim means superseding it (K4.3): write a new entry with `supersedes`; on "
+              "the old entry add a `changed:` line, `status: superseded` and `superseded_by`; regenerate `INDEX.md` in "
+              "the same commit (K6.2). Work that has to go the other way is a matter for the project's workflow, not "
+              "for memory.",
+              "git shows a commit changing the behaviour a decision or fact governs, with no superseding entry for it "
+              "in the same commit or an earlier one, with no written reason.", "git; reviewer",
               who_decides="the project's workflow: when work goes the other way"),
         ]),
         ("K4", "Never deleted, never expired by age", "v: nothing lost; d: What will not be put in", [
-            r("K4.1", "MUST", "An entry is never deleted. It is marked `superseded` or `retired`, links to what "
-              "replaced it (`superseded_by`), and keeps its old body.",
-              "git shows an entry file deleted, or a `superseded` or `retired` entry with no link.", "git"),
+            r("K4.1", "MUST", "An entry is never deleted. A `superseded` entry links to what replaced it "
+              "(`superseded_by`). A `retired` entry, which nothing replaces, gives its reason in its `changed:` line. "
+              "Either keeps its old body.",
+              "git shows an entry file deleted, a `superseded` entry with no `superseded_by` link, or a `retired` "
+              "entry with no reason in its `changed:` line.", "git; reviewer"),
             r("K4.2", "guidance", "Age alone never expires an entry. An entry is found out of date only when someone "
               "reads it and checks it against the code (Rd5).", "nothing: why there is no expiry.", "none"),
             r("K4.3", "MUST", "An entry's claim is never rewritten. A changed claim is a new entry that supersedes the "
               "old one. After an entry is first committed, it only gains a `changed:` line, a new `status`, the "
-              "`superseded_by` link, and `done:` on a decision to build something (W5.3). This also keeps merge "
-              "conflicts out of claims (W6.3).",
-              "git shows an entry's claim changed after its first commit.", "git"),
+              "`superseded_by` link, and `done:` on a decision to build something (W5.3). Its `covers` may also be "
+              "corrected, for example after a file is renamed, with a `changed:` line; `source` and `depends_on` "
+              "change only by superseding the entry. A `covers` correction changes where the entry points, not what it "
+              "claims, so it is not a mismatch under Rd5.3. This also keeps merge conflicts out of claims (W6.3).",
+              "git shows an entry's claim, `source` or `depends_on` changed after its first commit, or its `covers` "
+              "changed with no `changed:` line.", "git"),
         ]),
         ("K5", "The journal becomes entries", "v: nothing lost between sessions", [
             r("K5.1", "SHOULD", "Task and project memory each keep a journal: a task's in `work/<task-id>/journal/`, "
@@ -273,12 +294,16 @@ CATEGORIES = [
         ]),
         ("Rd3", "`INDEX.md` fits every agent that reads it", "d: the size check; CACHES.md § Example numbers by case", [
             r("Rd3.1a", "MUST", "`INDEX.md` fits the strictest start-file limit among the agents that work on the "
-              "project. The check that keeps it in step with its entries (K6) also fails when it does not fit.",
-              "`INDEX.md` exceeds that strictest limit, or the K6 check passes an `INDEX.md` that exceeds it.",
-              "tool", who_decides="unassigned: which agents work on the project, and so the strictest limit",
+              "project. The check that keeps it in step with its entries (K6) also fails when it does not fit. Until "
+              "the project owner records measured limits, the tool's limit is the example in Rd3.1b: 200 lines and "
+              "24,000 bytes.",
+              "`INDEX.md` exceeds that strictest limit (until it is recorded, the interim numbers), or the K6 check "
+              "passes an `INDEX.md` that exceeds it.",
+              "tool", who_decides="project owner: which agents work on the project, and so the strictest limit",
               part_of="Rd3.1"),
             r("Rd3.1b", "guidance", "Example, from `CACHES.md`: about 24 KB and 200 lines when Claude Code, Qwen and "
-              "agy share a project.", "nothing: an example, not a limit.", "none", part_of="Rd3.1"),
+              "agy share a project. `tools/memory_index.py` holds these numbers until measured limits are "
+              "recorded (Rd3.1a).", "nothing: an example.", "none", part_of="Rd3.1"),
         ]),
         ("Rd4", "On demand", "d: When it will be used", [
             r("Rd4.1", "MUST", "Before editing a file, an agent reads the entries whose `covers` include it.",

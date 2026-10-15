@@ -9,9 +9,10 @@ database or outside service.
 
 ## Who it is for
 
-Every agent and every person working on this project. Entries have no owners and there is no approval gate: anyone
-may change any entry, and every change is logged. One person, **the project owner**, decides for the project: a
-mismatch between memory and the code, a contested supersession, and the open choices the requirements name.
+Every agent and every person working on this project. Entries have no owners and there is no approval gate: anyone may
+change any entry, and every change is logged. One person, **the project owner**, decides for the project: a mismatch
+between memory and the code, a contested supersession, and the open choices the requirements name. The project owner
+also reviews the checks that need judgement, or names someone who does.
 
 Memory has four scopes:
 - **task:** `project-memory/work/<task-id>/`;
@@ -35,9 +36,9 @@ It holds what the code cannot tell you, as typed entries:
   it cannot be a script. `AGENTS.md` names the project's scripts, one line each. An entry links to a procedure and
   never repeats its steps. What was learned while running one is a lesson (W3.6).
 
-The order of work is: change the decision or fact first, then the code. Work that has to go the other way is a matter
-for the project's workflow, not for memory. A decision about this project is a project entry, whoever made it, the
-project owner included.
+The order of work is: change the decision or fact first, then the code. Changing a claim means superseding its entry
+with a new one (K1.1). Work that has to go the other way is a matter for the project's workflow, not for memory. A
+decision about this project is a project entry, whoever made it, the project owner included.
 
 A decision to build something is **started** when it is written: we decided to build something, and why. It is
 **complete** when the time, the result and the test results are added to it. A standing rule, such as
@@ -53,21 +54,21 @@ test results or a pointer to them; W5.3). Its
 body is the claim in one or two sentences, then **Why:**, then **How to apply:**.
 
 **Changing entries.** Anyone may change any entry, and `AGENTS.md` too. Each change adds one line to the entry's
-`changed:` log: the time, and who made it — the model ID for an agent, the name for a person. Files that are not entries
-rely on git history. An entry's claim is never rewritten: a changed claim is a new entry that supersedes the old one,
-and the old one only gains a `changed:` line, its new `status` and the `superseded_by` link (K4.3). Each new entry gets
-its own file, so agents never append to one shared file. Two writers must not
-edit the same file at the same time: each agent works on its own branch or worktree, and git shows a merge conflict when
-two edits
-touch the same lines. Edits to different lines of one file merge without warning even if they contradict each other,
-so a clean merge does not mean the file is consistent.
+`changed:` log: the time, and who made it — the model ID for an agent, the name for a person. Files that are not
+entries rely on git history. An entry's claim is never rewritten: a changed claim is a new entry that supersedes the
+old one, and the old one only gains a `changed:` line, its new `status` and the `superseded_by` link (K4.3). An
+entry's `covers` may be corrected in place, with a `changed:` line, for example after a file is renamed (K4.3). Each
+new entry gets its own file, so agents never append to one shared file. Two writers must not edit the same file at the
+same time: each agent works on its own branch or worktree, and git shows a merge conflict when two edits touch the
+same lines. Edits to different lines of one file merge without warning even if they contradict each other, so a clean
+merge does not mean the file is consistent.
 
 **When to write.**
 
 | When | What |
 |---|---|
 | Immediately | Decisions and facts, before the code. A human correction. The state of unfinished work before a handoff, an interruption or a context reduction. |
-| When the work a decision to build something is complete | The decision's `done:` line, written by whoever finishes the work: the time, the result, and the test results or "no tests", with a pointer to the evidence. |
+| When the work on a decision to build something is complete | The decision's `done:` line, written by whoever finishes the work: the time, the result, and the test results or "no tests", with a pointer to the evidence. |
 | At the end of a task | Other lessons, observations and hypotheses; merging duplicates. |
 
 Whenever an entry is created or changed, at any of these times (any kind, any status change), `INDEX.md` is
@@ -82,7 +83,8 @@ alone and carries on with the rest. A decision still being built (no `done:` yet
 changing, is not a mismatch (Rd5.4).
 
 **Merge conflicts.** A conflict in `INDEX.md` is resolved by regenerating it (K6.3). Because a claim is never
-rewritten, a conflict in an entry is only in its added lines, and whoever merges keeps both sides (W6.3).
+rewritten, a conflict in an entry is never in its claim, only in its header (`covers`, `status`, the links) and its
+added lines, and whoever merges keeps both sides (W6.3).
 
 ## What will not be put in
 
@@ -92,8 +94,9 @@ rewritten, a conflict in an entry is only in its added lines, and whoever merges
 - Raw transcripts, or another agent's private state.
 - Work described as "verified" when it is only implemented.
 
-An entry is never deleted: it is marked `superseded` or `retired` and linked to what replaced it. Age alone never
-expires an entry. Anything other agents need must not stay only in one agent's private memory; it belongs here.
+An entry is never deleted: it is marked `superseded` and linked to what replaced it, or `retired`, with its reason,
+when nothing replaces it. Age alone never expires an entry. Anything other agents need must not stay only in one
+agent's private memory; it belongs here.
 
 ## Where it is put
 
@@ -153,4 +156,6 @@ with its entries (K6) also fails when it does not fit (Rd3).
 The requirements are in `SOURCE_OF_TRUTH_REQUIREMENTS.yaml`, beside this file: 46 requirements, grouped by what
 happens to a memory (it is **written**, it is **kept** true, and it is **read**), each with its level (MUST, SHOULD or
 guidance), the case that fails it, what checks it, and who decides any choice it leaves open. The ids cited in this
-document (W1.2, K6.3, Rd5.3 and the rest) are the ids there.
+document (W1.2, K6.3, Rd5.3 and the rest) are the ids there. Where this document and the YAML differ, the YAML's level
+governs; this document explains. This document, the YAML, `CACHES.md` and `vision-statements/` travel together as one
+kit.
