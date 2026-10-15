@@ -517,14 +517,144 @@ export function recognizeEngineCall(command: string, engines?: EngineSpec[]): En
   return engineCallSite(command, process.cwd(), engines)?.call ?? null;
 }
 
+// ---- the command word and test runs (round 4, D1) ---------------------------------------------------------------
+
+// The command word of one segment, after the wrappers of M1: what the segment actually runs. A segment that holds
+// nothing but a redirect operator names no command.
+export function commandWord(segment: string): string | null {
+  const stripped = stripWrappers(segment);
+  const first = words(stripped)[0];
+  if (first === undefined) return null;
+  const value = unquote(first.text);
+  if (value === "" || REDIRECT_PREFIX.test(value)) return null;
+  return value;
+}
+
+// The test runners of round 4, D1: the segment's stripped text must be the whole invocation, so `pytest-helper` and a
+// prompt naming pytest are not test runs. The label is the runner as the specification writes it.
+const TEST_RUNNERS: { label: string; pattern: RegExp }[] = [
+  { label: "pytest", pattern: /^pytest(?:\s|$)/ },
+  { label: "pytest", pattern: /^python[0-9.]*\s+-m\s+pytest(?:\s|$)/ },
+  { label: "bun test", pattern: /^bun\s+test(?:\s|$)/ },
+  { label: "npm test", pattern: /^npm\s+test(?:\s|$)/ },
+  { label: "npm run test", pattern: /^npm\s+run\s+test(?:\s|$)/ },
+  { label: "yarn test", pattern: /^yarn\s+test(?:\s|$)/ },
+  { label: "pnpm test", pattern: /^pnpm\s+test(?:\s|$)/ },
+  { label: "npx jest", pattern: /^npx\s+jest(?:\s|$)/ },
+  { label: "npx vitest", pattern: /^npx\s+vitest(?:\s|$)/ },
+  { label: "go test", pattern: /^go\s+test(?:\s|$)/ },
+  { label: "cargo test", pattern: /^cargo\s+test(?:\s|$)/ },
+];
+
+// The runner of the first segment that is a test run, or null. Later segments count too: `cd work && pytest -q` runs
+// the tests.
+export function recognizeTestRun(command: string): string | null {
+  for (const part of segments(command)) {
+    if (hasHelpWord(part.text)) continue;
+    const text = stripWrappers(part.text);
+    const runner = TEST_RUNNERS.find((entry) => entry.pattern.test(text));
+    if (runner !== undefined) return runner.label;
+  }
+  return null;
+}
+
+// ---- paths the text cannot name (round 4, D3) --------------------------------------------------------------------
+
+// A path the shell decides, not the text: a variable, a command substitution or a glob.
+const UNKNOWABLE = /[$`*?\[]/;
+
+function unknowablePath(value: string): boolean {
+  return UNKNOWABLE.test(value);
+}
+
+// The output the engine segment asks for, when the text does not say which file it is: a stdout redirect or an output
+// flag whose target holds a variable, a backtick or a glob character, or is missing because the shell expands it.
+function outputPathUnknown(text: string, flags: string[] | undefined): boolean {
+  const list = words(text);
+  for (const [index, word] of list.entries()) {
+    const quoted = isQuotedWord(word.text);
+    const prefix = quoted ? null : REDIRECT_PREFIX.exec(word.text);
+    if (prefix !== null && /^&?>/.test(prefix[0])) {
+      const rest = word.text.slice(prefix[0].length);
+      if (rest !== "") return unknowablePath(unquote(rest));
+      const next = list[index + 1];
+      return next === undefined || unknowablePath(unquote(next.text));
+    }
+    // An output flag inside a quoted prompt is prompt text (round 3, C2).
+    if (quoted) continue;
+    for (const flag of flags ?? []) {
+      if (word.text === flag) {
+        const next = list[index + 1];
+        return next === undefined || unknowablePath(unquote(next.text));
+      }
+      if (word.text.startsWith(`${flag}=`)) return unknowablePath(unquote(word.text.slice(flag.length + 1)));
+    }
+  }
+  return false;
+}
+
+// The command split at newlines, `;`, `&&`, `||`, `|` and a single `&` outside quotes, but not at a backtick: a
+// `cd `printf work`` stays one piece, so its target is seen as written.
+function coarsePieces(command: string): { text: string; start: number }[] {
+  const found: { text: string; start: number }[] = [];
+  let quote: string | null = null;
+  let start = 0;
+  const flush = (end: number) => {
+    const text = command.slice(start, end);
+    if (text.trim() !== "") found.push({ text: text.trim(), start });
+    start = end + 1;
+  };
+  for (let i = 0; i < command.length; i++) {
+    const char = command[i]!;
+    if (quote !== null) {
+      if (char === quote) quote = null;
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+    if (char === "\n" || char === ";" || char === "|") {
+      flush(i);
+      continue;
+    }
+    if (char === "&") {
+      const next = command[i + 1];
+      const previous = command[i - 1];
+      if (next === "&") {
+        flush(i);
+        i++;
+        continue;
+      }
+      if (next !== ">" && previous !== ">" && previous !== "&") flush(i);
+    }
+  }
+  flush(command.length);
+  return found;
+}
+
+// A `cd` the text cannot resolve, before the call: the folder the engine writes into is unknown.
+function unknownCdBefore(command: string, engineStart: number): boolean {
+  for (const piece of coarsePieces(command)) {
+    if (piece.start >= engineStart) break;
+    const list = words(stripWrappers(piece.text));
+    if (list.length < 2 || wrapperName(list[0]!.text) !== "cd") continue;
+    if (list.slice(1).some((word) => unknowablePath(unquote(word.text)))) return true;
+  }
+  return false;
+}
+
 // ---- where the call happens ---------------------------------------------------------------------------------------
 
-// The call a command makes, with the folder it runs in and whether it ends the command. The hook needs all three:
-// paths resolve in the folder the command cd'd into, and a failing pipeline after the engine is not the engine's exit.
+// The call a command makes, with the folder it runs in, whether it ends the command, and whether the output path and
+// the folder are knowable from the text at all. The hook needs all five: paths resolve in the folder the command cd'd
+// into, a failing pipeline after the engine is not the engine's exit, and a path the shell decides is not checked.
 export interface EngineCallSite {
   call: EngineCall;
   cwd: string; // the folder the engine segment runs in
   endsWithEngine: boolean; // the engine segment is the last segment of the command
+  outputKnown: boolean; // the text names the output file
+  cwdKnown: boolean; // every cd before the call names a folder
 }
 
 export function engineCallSite(command: string, cwd: string, engines?: EngineSpec[]): EngineCallSite | null {
@@ -549,6 +679,9 @@ export function engineCallSite(command: string, cwd: string, engines?: EngineSpe
         },
         cwd: folderBefore(parts, index, cwd),
         endsWithEngine: index === parts.length - 1,
+        outputKnown: !outputPathUnknown(text, spec.output_flags),
+        // The raw offset of the segment's own text: what stands before it in the command is what can move the folder.
+        cwdKnown: !unknownCdBefore(command, command.indexOf(part.text.trim())),
       };
     }
   }
