@@ -6,7 +6,7 @@ writing use cases, fails-if conditions, six whys, fix options — stays with the
 and has the required shape.
 
 Runtime: **bun ≥ 1.4, TypeScript, no npm dependencies** (`bun:test` for tests, `Bun.YAML.parse` for YAML,
-`node:fs`, `node:path`, `node:crypto`, `node:child_process` only). Generic: no project name, no absolute path, no
+`node:fs`, `node:path`, `node:os`, `node:crypto`, `node:child_process` only). Generic: no project name, no absolute path, no
 user name in code or data. Never prints a secret: the journal and the outputs hold lengths, counts, ids, trap ids and
 paths — never raw stdout, stderr, prompts or config values.
 
@@ -36,8 +36,9 @@ Exports:
     target of a stdout redirect `> FILE` or `>> FILE` (not `2>`); quotes stripped; `null` if none.
   - `stdoutIsAnswer`: from the spec, but `false` when `outputFile` came from a redirect (the answer went to the file).
   - `statusFile`: for specs with `status_from_out_dir: true` (a wrapper such as `four_experts.py run --out DIR`),
-    `DIR/status.json`; else `null`.
-  - `background`: true when the command ends with `&` (outside quotes) or the caller says so.
+    `DIR/status.json`; else `null`. For such a wrapper `outputFile` is the folder `DIR` itself.
+  - `background`: true when the command ends with `&` (outside quotes). (A caller that knows more passes
+    `LintContext.background` to `lintCommand`; recognition reads the command only.)
 - `lintCommand(command: string, ctx: LintContext, traps?: Trap[]): Finding[]` — command traps only, **approved**
   entries only (a `proposed` entry never produces a finding). A trap hits when its `command` regex matches **and** its
   `unless` regex (if any) does not match **and** each extra condition it sets holds:
@@ -53,6 +54,8 @@ Exports:
 - `checkResult(input: ResultInput): Finding[]` — after an engine call:
   - `exitCode` not null and not 0 → `R12.1-exit` (fail); 124 → `R12.1-timeout` (fail) instead.
   - `interrupted` true → `R12.1-interrupted` (fail).
+  - When `call.statusFile` is set, the status file is the output check (the wrapper's `outputFile` is a folder):
+    skip the two output-file checks below.
   - `call.outputFile` set and the file does not exist → `R12.1-missing-output` (fail); exists but has no
     non-whitespace content → `R12.1-empty-output` (fail).
   - no `outputFile`, `call.stdoutIsAnswer` true, and stdout has no non-whitespace content → `R12.1-empty-output`.
