@@ -185,7 +185,7 @@ Exports:
   unit's are dropped (a variant does not add to the count).
 - `freezeHash(units: Unit[]): string` — sha256 hex of the canonical JSON of `[id, text]` pairs in order.
 - `coverage(r: Register): CoverageReport` — `total`, `covered` (units with ≥1 `covered_by`), `percent` (one decimal),
-  `target: 80`, and findings:
+  `target: 80` (a unit counts as covered only when `covered_by` holds a non-blank entry), and findings:
   - `R11.1-not-frozen` (fail): `frozen` missing; `R11.1-frozen-mismatch` (fail): `frozen` ≠ `freezeHash(units(r))`
     — the units changed, so a new count must start.
   - `R11.1-basic-uncovered` (fail): a unit with no `covered_by` and no `skippable`.
@@ -232,8 +232,10 @@ lines) and `now`, so the handler is testable without a harness. Dispatch on `hoo
 
 `HookResult = { exitCode: number; stdout: string; stderr: string }`.
 
-**`src/plugins/opencode.ts`** — default export an opencode plugin: `tool.execute.before` for the bash tool runs
-`lintCommand` on `output.args.command` and **throws** an `Error` with the finding text on any fail finding. (Blocking by
+**`src/plugins/opencode.ts`** — default export `HarnessGuardPlugin: (ctx: { directory: string }) =>
+Promise<{ "tool.execute.before": (input: { tool: string }, output: { args: { command?: string } }) => Promise<void> }>`;
+the hook, for `input.tool === "bash"`, runs `lintCommand` on `output.args.command` with `repoRoot: guardRoot(ctx.directory)`
+and `running: []` and **throws** an `Error` with the finding text on any fail finding. (Blocking by
 throwing is *reported* by opencode's docs, not verified here.)
 
 **`src/install.ts`** — `installSnippet(harness: "claude-code" | "codex" | "qwen" | "opencode", guardDir: string):
@@ -243,7 +245,18 @@ PostToolUse (Bash|Write|Edit|MultiEdit), PostToolUseFailure (Bash), Stop, Subage
 and that `.harness-guard/` belongs in `.gitignore`. opencode: the line that places `src/plugins/opencode.ts` in a
 plugins folder. Codex and Qwen snippets say their payload match is reported, not verified.
 
-**`src/doctor.ts`** — `doctor(opts): DoctorReport`: per harness, `guard: "installed" | "absent" | "unknown"` from the
+**`src/doctor.ts`** — `doctor(opts: DoctorOptions): DoctorReport`, with
+`DoctorOptions = { home: string; projectRoot: string; healthScript?: string | null; run?: (argv: string[]) => { code:
+number; stdout: string } }` (tests pass a temporary `home` and `projectRoot`, and a fake `run`). Files read, per harness:
+claude-code — `<home>/.claude/settings.json`, `<projectRoot>/.claude/settings.json`, `<projectRoot>/.claude/settings.local.json`;
+codex — `<home>/.codex/hooks.json`, `<home>/.codex/config.toml`; qwen — `<home>/.qwen/settings.json`; opencode — the
+files in `<home>/.config/opencode/plugin(s)/` and `<projectRoot>/.opencode/plugin(s)/`. `guard` is `installed` when a
+read file's hook command (or, for opencode, a plugin file) contains `harness-guard`; `absent` when every file is missing
+or readable without it; `unknown` when a file exists but cannot be read or parsed. `answers` is computed once
+(`handleHook` on a planted `codex exec` PreToolUse payload must deny) and reported on every row. `health`: when
+`healthScript` is given, `run(["python3", healthScript, "--json"])`; `ok` is exit 0 with JSON that parses;
+`summary` is `"<n> findings"` from the JSON's `findings` array length, or the error kind — never the script's text.
+Then: `doctor(opts): DoctorReport`: per harness, `guard: "installed" | "absent" | "unknown"` from the
 key names of its settings (a hook command containing `harness-guard`; values never printed), and `answers: true|false`
 from calling `handleHook` in-process on a planted PreToolUse trap payload (it must deny); plus, when a
 `harness_health.py` path is given and runs, its JSON summary counts. Markdown output.
