@@ -114,7 +114,8 @@ Exports:
   absolute)**. Unknown extra fields are allowed.
 - The journal stores the strings it is given. The "no raw content" rule of Common binds the guard's **own** writers (M5
   builds its records from fixed phrases, ids, lengths and paths); a record an agent or the owner writes through the CLI
-  holds what they wrote.
+  holds what they wrote. `writeEvidence` and `appendRecord` are the guard's own writers: they drop raw-content keys
+  (`stdout`, `stderr`, `prompt`, `command`, `config` and the like) before writing.
 - `appendFailure(root: string, rec: FailureRecord): FailureRecord` — validates (throws `JournalError` listing the
   problems if invalid), creates folders as needed, appends one line. Returns the record.
 - `appendRecord(root: string, rec: TouchedRecord | GuardErrorRecord): void` — for the other kinds (no evidence check).
