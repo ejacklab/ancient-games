@@ -130,7 +130,9 @@ bad line crashes `readJournal`; two appends lose a line; a guard-found record ha
 
 ## M3 — `src/insight.ts`: insight gate (R12.3)
 
-An insight file is Markdown at `runs/**/insight*.md` or `.harness-guard/insights/*.md` under the root. It answers
+An insight file is Markdown at `runs/**/insight*.md` (`**` matches zero or more folders, so `runs/insight.md` counts)
+or `.harness-guard/insights/*.md` under the root. M3's functions take `root` as given (the caller has already applied
+`guardRoot`). It answers
 failures by sections: a `##` heading that contains one or more failure ids (`## F-1a2b3c4d` or
 `## F-1a2b3c4d, F-5e6f7a8b — short title`). Inside a section, these labelled parts (label at the start of a line,
 case-insensitive):
@@ -138,7 +140,8 @@ case-insensitive):
 - `Source:` one of `instruction`, `check`, `tool`, `config` (the changeable source the whys end at).
 - `Root cause:` non-empty text on the same line or the next non-empty line.
 - `Options:` then a numbered list of **2 or 3** items; each item starts with a kind in brackets — `[rule]`,
-  `[check]`, `[tool]` or `[config-advice]` — and contains `evidence:` followed by non-empty text.
+  `[check]`, `[tool]` or `[config-advice]` (any other bracketed kind, e.g. `[policy]`, is `R12.3-option-kind`) — and
+  contains `evidence:` followed by non-empty text.
 
 Exports:
 - `findInsightFiles(root: string): string[]` — relative paths, sorted.
