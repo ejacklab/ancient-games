@@ -28,9 +28,10 @@ wrote none of it, before merge. Aim measure: failures recorded during the run (p
 | 7 | test: suites, tsgo, mutants | COO | all pass | done, 14/14 mutants |
 | 8 | review: whole diff, read-only | codex gpt-6.1-sol, effort high | findings answered | done, 6 fixed + 1 answered |
 | 9 | optimise: harness_health runtime | COO | before/after measured | done, test file 41.51 s -> 14.51 s |
-| 10 | Limits text from research; export; merge | COO | export test; suites on master | merge next |
+| 10 | Limits text from research; export; merge | COO | export test; suites on master | done, 3033ed7 |
 
 ## Log
 - 2026-10-16 criteria written; requirement-check edit committed (3a1984c); export test 2/2.
 - 2026-10-16 workers done; first meeting 7 + 3 test failures (spec ambiguity x3, defects x2, sandbox x3); corrections in the spec; a75e55c.
 - 2026-10-16 review: 7 findings, 6 fixed (dee660b, f64bd49), 1 answered; optimisation 41.51 s -> 14.51 s; 15 failure ids, all with insights; criteria 9/10 before merge.
+- 2026-10-16 merged 3033ed7 (not pushed); master: Python 1083 passed, guard 1187/1187, tsgo clean; criteria 10/10.
