@@ -336,7 +336,9 @@ PostToolUse (Claude Code classes it as no error); a failed **Edit** fired no hoo
 - **D1 Test runs that fail are failures.** A Bash segment whose command word (after the wrappers of M1) is a test runner
   — `pytest`, `python`/`python3 -m pytest`, `bun test`, `npm test`, `npm run test`, `yarn test`, `pnpm test`,
   `npx jest`, `npx vitest`, `go test`, `cargo test` — is a **test run**. It is a failure when PostToolUseFailure fires
-  for it, or when PostToolUse fires and its stdout matches `\b[1-9]\d* (failed|errors?)\b` (a pipe can hide the exit).
+  for it, or when PostToolUse fires and its stdout matches `\b[1-9]\d* (failed|errors?)\b` (a pipe can hide the exit)
+  — stdout counts only when every segment after the test run is piped from it (`pytest | tail -3`); after `&&`, `;` or
+  `||`, other commands write to the same stdout (found in long-session round 2).
   Record: `check: "R12.2-test-failed"`, `input: "<runner> run"`, `expected: "all tests pass"`, `actual`: the count of
   failed tests when the text gives one (`"3 failed"`), else `"exit <N>"` — never the output text. Evidence: the counts,
   the exit and the runner name.

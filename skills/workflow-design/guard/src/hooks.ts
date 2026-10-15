@@ -230,7 +230,10 @@ function ownFailureSpec(payload: Record<string, unknown>, command: string, faile
   if (runner !== null) {
     // A failure event says so by itself; a success event says so only when its stdout carries a summary, which is
     // how a pipeline hides the exit (D1).
-    const summary = failed ? FAILED_SUMMARY.exec(stderr) : FAILED_SUMMARY.exec(stdout);
+    // stdout speaks for the test run only when everything after it is its own pipeline (`pytest | tail -3`); after
+    // `&&`, `;` or `||` other commands write to the same stdout (long-session round 2, B2).
+    const ownsStdout = testRunOwnsStdout(command);
+    const summary = failed ? FAILED_SUMMARY.exec(stderr) : ownsStdout ? FAILED_SUMMARY.exec(stdout) : null;
     if (!failed && summary === null) return null;
     const exitCode = failed ? exitCodeOf(payload, true) : null;
     const failedCount = summary === null ? null : Number(summary[1]);
@@ -468,4 +471,12 @@ export function handleHook(payload: unknown, env: HookEnv): HookResult {
     const kind = error instanceof Error ? error.name : "Error";
     return { exitCode: 1, stdout: "", stderr: `${message} (${kind})\n` };
   }
+}
+
+// True when every segment after the first test-run segment is piped from the one before it.
+function testRunOwnsStdout(command: string): boolean {
+  const list = segments(command);
+  const at = list.findIndex((segment) => recognizeTestRun(segment.text) !== null);
+  if (at < 0) return false;
+  return list.slice(at + 1).every((segment) => segment.piped);
 }
