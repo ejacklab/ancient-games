@@ -23,6 +23,8 @@ elif mode == "empty":   pass
 elif mode == "noheader": out.write_text("just text\n")
 elif mode == "sleep":   time.sleep(5)
 elif mode == "unclear": out.write_text(head + "UNCLEAR: which table? / guess: users\n")
+elif mode == "selffail": out.write_text(head.replace("status: ok", "status: fail") + "could not do it\n")
+elif mode == "selfpartial": out.write_text(head.replace("status: ok", "status: partial") + "half done\n")
 elif mode == "fixed-if-feedback": out.write_text(head + ("FIXED\n" if "fail-marker" in prompt else "first try\n"))
 '''
 
@@ -85,6 +87,16 @@ def test_executor_failures_block_without_fallback(tmp_path, mode, why):
     r = run(tmp_path, "run", setup(tmp_path, fix_attempts([node("a", mode, timeout=1)])))
     assert r.returncode == 1 and "needs the COO: a blocked" in r.stdout, r.stdout
     assert why in r.stderr + r.stdout
+
+
+@pytest.mark.parametrize("mode,status", [("selffail", "fail"), ("selfpartial", "partial")])
+def test_a_worker_reporting_fail_or_partial_blocks_without_a_check(tmp_path, mode, status):
+    """R12.1 (run 20261015-ts-hybrid): a well-formed result whose own header says fail or partial is not done, even
+    when the node has no check — before this, the dispatcher never read the header's status and marked it done."""
+    r = run(tmp_path, "run", setup(tmp_path, fix_attempts([node("a", mode)])))
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert f"the worker reported status: {status}" in r.stdout + r.stderr
+    assert state(tmp_path)["nodes"]["a"]["status"] != "done"
 
 
 def test_an_external_engine_failure_blocks_and_reports(tmp_path):

@@ -297,9 +297,11 @@ def call(plan: dict, node: dict, attempt: int, run_dir: Path, base: Path, engine
     out_file.write_text(text if text.endswith("\n") else text + "\n")
     if node.get("passback") is False:                 # a plain script step: no result header expected
         return {"outcome": "ok", "why": "", "result": str(out_file)}
-    findings, body, _ = check_result(text, node=nid, attempt=str(attempt), require_model=adapter.needs_model)
+    findings, body, hdr = check_result(text, node=nid, attempt=str(attempt), require_model=adapter.needs_model)
     if findings:
         return {"outcome": "executor", "why": "pass-back: " + "; ".join(findings), "result": str(out_file)}
+    if hdr.get("status") in ("fail", "partial"):      # the worker's own verdict; a node with no check used to pass it
+        return {"outcome": "executor", "why": f"the worker reported status: {hdr['status']}", "result": str(out_file)}
     if any(l.strip().startswith("UNCLEAR:") for l in body.splitlines()):
         q = next(l.strip() for l in body.splitlines() if l.strip().startswith("UNCLEAR:"))
         return {"outcome": "unclear", "why": q, "result": str(out_file)}
