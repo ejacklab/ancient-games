@@ -85,7 +85,11 @@ comparison the owner did not set; a fix names no observable that would show it i
 
 **R12.7 Learn from success (MUST; proposed).** A failure matters more than a success, but a great success matters too.
 Every checked result is recorded — a success as one line (the time, the session, what was checked, the engine or
-runner, `ok`), a failure as its full record (R12.2) — so a check's failures can be read against how often it ran. When
+runner, `ok`), a failure as its full record (R12.2) — so a check's failures can be read against how often it ran. A
+task's result is **scored** as the share of its criteria met — each accepted use case's fails-if and minimum acceptance,
+and each accepted requirement's fails-if; for a task with no accepted use cases, the agent writes the criteria from the
+request before it starts, and the project owner may correct them. Every criterion not met is a failure (R12.2), even
+when the task looks done; a total failure is a score of 0 and needs no other rule. When
 a task succeeds, the agent records its **path**: the category and objective, the steps in order with the engine, model
 and check of each, the decisions that mattered and why, and the measures of the result (time, failures, retries,
 checks passed). A **great success** — one that beats the comparison it was measured against (its prediction, the
@@ -94,13 +98,15 @@ gets an insight in the same file as the failure insights: the cause that made it
 make it repeatable, each with evidence. For a similar task — the agent proposes the match by category and objective,
 and the project owner may overrule — the design **borrows that path, does not copy it**: it starts from the path as its
 parent, changes at least one thing (a step, its order, an engine, a check, a brief), and writes before the run what it
-changed, the measure it aims to improve and the parent's value on it. Every child tries to avoid the failures recorded
+changed, the measure it aims to improve — the score, unless it names another — and the parent's value on it. Every
+child tries to avoid the failures recorded
 in its parent's insights and to be 2% better than its parent — an aim to keep trying for, reported after the run, never a
 reason to block or discard the work. A child that improves on its parent's value without repeating those failures
 becomes a parent for the next similar task; every path stays recorded, so the paths grow like a population and are
 selected by results.
 
-Fails if: a check's successes are not recorded; a successful task leaves no path, or a path lacks its steps, engines,
+Fails if: a check's successes are not recorded; a task with criteria has no score, or its criteria are written after
+the work; a criterion not met has no failure record; a successful task leaves no path, or a path lacks its steps, engines,
 checks or measures; a great success has no insight, names no comparison or evidence, or its insight gives no cause or
 nothing to repeat; a design for a similar task neither names a parent path nor says why none applies; a design copies
 its parent unchanged; the change, the measure or the parent's value is not written before the run; a child that repeats
