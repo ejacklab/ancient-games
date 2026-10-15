@@ -108,17 +108,19 @@ another.
 **R12.10 Evolve from a success, do not copy it (SHOULD; proposed).** When a new task is similar to one with a recorded
 path — the agent proposes the match by category and objective, and the project owner may overrule — the design starts
 from that path as its **parent** and changes at least one thing in it (a step, its order, an engine, a check, a brief),
-writing before the run what it changed and what it expects the change to do. The aim of every child is to **avoid
-failure and be 2% better than its parent**: before the run the design names the measure it aims to improve (for
-example time, cost, retries or checks passed) and the parent's value on it; a child is **better** when it beats that
-value by at least 2% and repeats none of the failures recorded in its parent's insights. After the run the result is
-compared with the parent's on the same measures: a better child becomes a parent for the next similar task; a worse one is a failure
+writing before the run what it changed and what it expects the change to do. Every child **tries** to avoid
+failure and to be 2% better than its parent — an aim to keep trying for, not a gate: before the run the design
+names the measure it aims to improve (for example time, cost, retries or checks passed) and the parent's value on it,
+and after the run it reports how far it got. A child is **better** when it improves on that value and repeats none of
+the failures recorded in its parent's insights; reaching 2% or not is reported, never a reason to block or discard
+the work. The result is compared with the parent's on the same measures: a better child becomes a parent for the next similar task; a worse one is a failure
 with its insight (R12.3); both stay recorded, so the set of paths grows like a population and is selected by results.
 
 Fails if: a successful task leaves no path; a path lacks its steps, engines, checks or measures; a design for a similar
 task neither names a parent path nor says why none applies; a design names a parent and changes nothing in it; the
 change, the measure it aims at or the parent's value on it is not written before the run; a child that repeats a failure
-recorded in its parent's insights, or misses the 2% on its named measure, is counted as better; the child is not compared with its parent; a child's result overwrites its
+recorded in its parent's insights is counted as better; the report does not say how far the child got against the 2%
+aim; the child is not compared with its parent; a child's result overwrites its
 parent's path.
 
 Open — the project owner decides: where success paths are kept (proposed: the run folder, with one line per path in
