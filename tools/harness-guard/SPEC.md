@@ -270,3 +270,56 @@ Fails-if: a catalogued trap command is allowed; a clean command is denied; an em
 writes one without evidence; a good call writes a record; Stop lets a session with an unanswered failure end, or blocks
 a session with none; Stop lets the agent end without naming the insight; a touched register with a fail finding passes
 Stop; `install --print` writes a file; a handler exception freezes the agent (exit 2) or crashes without output.
+
+## Round 3 — changes from the review and the measurements (these override earlier lines where they differ)
+
+Sources: `runs/20261015-ts-hybrid/nodes/review-1.result.md` (R# = its row), the E1/E2/E4 measurements
+(`effectiveness/`). Each item is a behaviour the tests must pin with the input given.
+
+- **C1 (R1) Background calls are not checked on return.** PostToolUse / PostToolUseFailure skip the result check — no
+  record, no output — when the recognised call's segment is `background`, or `tool_input.run_in_background` is true,
+  or `tool_response.backgroundTaskId` is present. (Its result is not known yet.)
+- **C2 (R2) Output flags and `>` are read outside quotes only.** `recognizeEngineCall` reads output flags and
+  redirects from the segment's unquoted words; a `>` or `-o` inside a quoted prompt is prompt text. The failure record's
+  `input` is `"<engine> call"` plus, when an output file was found, its **basename** — never other command text.
+- **C3 (R5) The working folder of a call.** The hook resolves paths against `payload.cwd` when it is a string, else
+  `env.cwd`; and when segments before the engine segment hold `cd DIR` (absolute or relative), against that folder.
+  `ResultInput.cwd` is that resolved folder.
+- **C4 (R20) A failure exit belongs to the engine only when the engine segment is the last one in its pipeline.**
+  On PostToolUseFailure, when the engine segment is followed by `|` or `&&`/`||`/`;` and more segments, `exitCode` is
+  `null` (the output checks still run).
+- **C5 (R3) Insight files:** every `*.md` file under `.harness-guard/insights/` counts, whatever its name; under
+  `runs/**`, files named `insight*.md`.
+- **C6 (R4) Numbered lists:** after `Whys:` or `Options:`, blank lines are skipped until the first item; an item's
+  indented continuation lines are joined to it; the list ends at the next unindented line that is not an item, or the
+  next label, or the next heading.
+- **C7 (E4) `Source:`** passes when its first word (letters and `-`) is one of the four; the rest of the line is detail.
+- **C8 (R8) Malformed register entries:** a list item that is not a mapping is a `R13-malformed` fail finding naming
+  its list and position; validation and coverage never throw on any YAML shape.
+- **C9 (R19) A touched register that no longer exists** is skipped at Stop (no block).
+- **C10 (R21) Raise check needs the field:** when the Stop payload has no `last_assistant_message` string, the raise
+  check is skipped (the insight check still applies).
+- **C11 (R11) A hook payload that is not JSON, or empty stdin,** is a quiet exit 0 with one stderr line — never exit 2.
+- **C12 (R10) Agent records are stored as given:** `appendFailure` never redacts; only `writeEvidence` and
+  `appendRecord` drop raw-content keys.
+- **C13 (R17) Evidence may be a file or a folder** that exists.
+- **C14 (R18) doctor health:** JSON that is not an object, or has no `findings` array, is `ok: false`,
+  `summary: "unexpected JSON"` — never a throw.
+- **C15 (R6) opencode install:** `installSnippet("opencode", guardDir)` prints the **content of a one-line plugin
+  file** — `export { default } from "<guardDir>/src/plugins/opencode.ts";` — and the folder to put it in, so the
+  installed file imports by absolute path.
+- **C16 (R7) doctor opencode:** a plugin file counts as `installed` when its text contains `harness-guard` anywhere.
+- **C17 (R9) Concurrency list:** the CLI drops only the hook's own process and its parent (by pid) from `running`,
+  never by a text match.
+- **C18 (R12) Heredocs** open with `<<` with or without a space before it (`cat<<EOF`, `x>f<<EOF`).
+- **C19 (R13, E2) More segment starts:** backticks and `$(` … `)` also split segments; the shell words `do`, `then`,
+  `else`, `elif`, `!` and `{` at the start of a segment are stripped like wrappers.
+- **C20 (R14) codex stdin:** any input redirect — `< FILE`, `0<FILE`, `<<<` — satisfies the trap (`unless`).
+- **C21 (R15, E1) opencode paths:** redirect targets (`>`, `>>`, `2>`, `&>`) are not paths opencode reads and never
+  count; absolute paths **inside a quoted word** do count (a brief path in the prompt is the recorded trap 3), split
+  on whitespace within the quotes.
+- **C22 (R16) agy 502:** the trap matches `Bad Gateway` or `502` next to `HTTP`, `status` or `error` — not a bare
+  `502` in other text.
+- **C23 (E4) No duplicate:** the PostToolUse context line says the failure is already logged and gives its id, so the
+  agent does not log it again: "harness-guard logged <ids> — already in the journal; do not log them again. An insight
+  answering them is required before you stop."
