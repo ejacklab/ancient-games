@@ -9,9 +9,10 @@ database or outside service.
 
 ## Who it is for
 
-Every agent and every person working on this project. Entries have no owners and there is no approval gate: anyone
-may change any entry, and every change is logged. One person, **the project owner**, decides for the project: a
-mismatch between memory and the code, a contested supersession, and the open choices the requirements name.
+Every agent and every person working on this project. Entries have no owners and there is no approval gate: anyone may
+change any entry, and every change is logged. One person, **the project owner**, decides for the project: a mismatch
+between memory and the code, a contested supersession, and the open choices the requirements name. The project owner
+also reviews the checks that need judgement, or names someone who does.
 
 Memory has four scopes:
 - **task:** `project-memory/work/<task-id>/`;
@@ -35,9 +36,9 @@ It holds what the code cannot tell you, as typed entries:
   it cannot be a script. `AGENTS.md` names the project's scripts, one line each. An entry links to a procedure and
   never repeats its steps. What was learned while running one is a lesson (W3.6).
 
-The order of work is: change the decision or fact first, then the code. Work that has to go the other way is a matter
-for the project's workflow, not for memory. A decision about this project is a project entry, whoever made it, the
-project owner included.
+The order of work is: change the decision or fact first, then the code. Changing a claim means superseding its entry
+with a new one (K1.1). Work that has to go the other way is a matter for the project's workflow, not for memory. A
+decision about this project is a project entry, whoever made it, the project owner included.
 
 A decision to build something is **started** when it is written: we decided to build something, and why. It is
 **complete** when the time, the result and the test results are added to it. A standing rule, such as
@@ -92,8 +93,9 @@ rewritten, a conflict in an entry is only in its added lines, and whoever merges
 - Raw transcripts, or another agent's private state.
 - Work described as "verified" when it is only implemented.
 
-An entry is never deleted: it is marked `superseded` or `retired` and linked to what replaced it. Age alone never
-expires an entry. Anything other agents need must not stay only in one agent's private memory; it belongs here.
+An entry is never deleted: it is marked `superseded` and linked to what replaced it, or `retired`, with its reason,
+when nothing replaces it. Age alone never expires an entry. Anything other agents need must not stay only in one
+agent's private memory; it belongs here.
 
 ## Where it is put
 
@@ -153,4 +155,5 @@ with its entries (K6) also fails when it does not fit (Rd3).
 The requirements are in `SOURCE_OF_TRUTH_REQUIREMENTS.yaml`, beside this file: 46 requirements, grouped by what
 happens to a memory (it is **written**, it is **kept** true, and it is **read**), each with its level (MUST, SHOULD or
 guidance), the case that fails it, what checks it, and who decides any choice it leaves open. The ids cited in this
-document (W1.2, K6.3, Rd5.3 and the rest) are the ids there.
+document (W1.2, K6.3, Rd5.3 and the rest) are the ids there. Where this document and the YAML differ, the YAML's level
+governs; this document explains.

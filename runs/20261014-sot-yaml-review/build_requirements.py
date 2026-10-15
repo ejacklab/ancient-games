@@ -24,7 +24,9 @@ HEADER = {
     "how_to_read": [
         "Each record is one requirement, or one clause of one (its id ends in a letter, and part_of names the "
         "requirement). Every record has the same keys.",
-        "Read level first, then text. When a clause and its requirement seem to differ, text governs.",
+        "A requirement split into clauses (W1.1 into W1.1a, W1.1b, ...) has no text of its own: its clause records "
+        "are the requirement, each with its own level. Read level first, then text.",
+        "Where SOURCE_OF_TRUTH.md and this file differ, this file's level governs; the prose explains.",
         "fails_if is the case that breaks the record. check says who or what finds it.",
         "who_decides names who settles an open choice inside the record; none means the record leaves no choice "
         "open; unassigned means the choice is open and nobody is named yet.",
@@ -32,20 +34,24 @@ HEADER = {
         "There are no fixed numbers: where a limit applies, it is a comparison that measurement decides.",
     ],
     "levels": {
-        "MUST": "A gate. When it fails, the work it governs stops.",
-        "SHOULD": "A default. It may be skipped with a written reason; it fails only when skipped without one.",
+        "MUST": "A gate. When it fails, what its fails_if names stops (the entry, the commit, the load or the "
+                "action); the rest of the work goes on unless it depends on that.",
+        "SHOULD": "A default. It may be skipped with a reason written in the task's state.md (with no task, in the "
+                  "commit message); it fails only when skipped without one.",
         "guidance": "Explanation or advice. Nothing to pass or fail.",
     },
     "checks": {
         "tool": "tools/memory_index.py, in write mode or with --check, fails it.",
         "git": "git history shows it.",
-        "reviewer": "a person or agent reading the work judges it. The project owner names who reviews.",
-        "secret scanner": "a scanner over entries/ finds it.",
+        "reviewer": "the project owner reads the work and judges it, or names someone who does.",
+        "secret scanner": "a scanner over entries/ finds it. None exists yet; until one does, the reviewer is the "
+                          "check.",
         "none": "guidance: nothing to check.",
     },
     "roles": {
         "project owner": "The person who decides for the project: a mismatch between memory and code, a contested "
-                         "supersession, and the open choices named in who_decides.",
+                         "supersession, and the open choices named in who_decides. The project owner also reviews "
+                         "the judged checks (check: reviewer), or names someone who does.",
     },
     "basis": {
         "v": "the vision, vision-statements/source-of-truth-memory-vision-statements.md",
@@ -79,9 +85,9 @@ CATEGORIES = [
             r("W1.1c", "SHOULD", "The file is `project-memory/entries/<prefix>-<id>-<slug>.md`.",
               "an entry file has another folder or name, with no written reason.", "reviewer", part_of="W1.1"),
             r("W1.2a", "MUST", "The header starts on the file's first line, which is exactly `---`, and ends at the "
-              "next line that is exactly `---`. Each field is one `key: value` line.",
+              "next line that is exactly `---`.",
               "a header is not between two `---` lines.", "tool", part_of="W1.2"),
-            r("W1.2b", "SHOULD", "A field with several values (`covers`, the links, `changed:`) holds them on "
+            r("W1.2b", "SHOULD", "Each field is one `key: value` line; a field with several values (`covers`, the links, `changed:`) holds them on "
               "indented lines below its key. The keys are `id`, `kind`, `status`, `author`, `recorded` (the date "
               "recorded), `covers` (the code paths it is about), `source` (its source or evidence), `depends_on`, "
               "`supersedes`, `superseded_by` and `changed:`. A decision to build something, once its work is "
@@ -190,15 +196,20 @@ CATEGORIES = [
     ("Keep — memory stays true, and nothing is lost", [
         ("K1", "The decision or fact first, then the code", "v; d: What it is for", [
             r("K1.1", "SHOULD", "To change behaviour that a decision or fact governs, change the entry first, then the "
-              "code. Work that has to go the other way is a matter for the project's workflow, not for memory.",
-              "git shows a commit changing the behaviour a decision or fact governs, with no change to that entry in "
-              "the same commit or an earlier one, with no written reason.", "git; reviewer",
+              "code. Changing an entry's claim means superseding it (K4.3): write a new entry with `supersedes`; on "
+              "the old entry add a `changed:` line, `status: superseded` and `superseded_by`; regenerate `INDEX.md` in "
+              "the same commit (K6.2). Work that has to go the other way is a matter for the project's workflow, not "
+              "for memory.",
+              "git shows a commit changing the behaviour a decision or fact governs, with no superseding entry for it "
+              "in the same commit or an earlier one, with no written reason.", "git; reviewer",
               who_decides="the project's workflow: when work goes the other way"),
         ]),
         ("K4", "Never deleted, never expired by age", "v: nothing lost; d: What will not be put in", [
-            r("K4.1", "MUST", "An entry is never deleted. It is marked `superseded` or `retired`, links to what "
-              "replaced it (`superseded_by`), and keeps its old body.",
-              "git shows an entry file deleted, or a `superseded` or `retired` entry with no link.", "git"),
+            r("K4.1", "MUST", "An entry is never deleted. A `superseded` entry links to what replaced it "
+              "(`superseded_by`). A `retired` entry, which nothing replaces, gives its reason in its `changed:` line. "
+              "Either keeps its old body.",
+              "git shows an entry file deleted, a `superseded` entry with no `superseded_by` link, or a `retired` "
+              "entry with no reason in its `changed:` line.", "git; reviewer"),
             r("K4.2", "guidance", "Age alone never expires an entry. An entry is found out of date only when someone "
               "reads it and checks it against the code (Rd5).", "nothing: why there is no expiry.", "none"),
             r("K4.3", "MUST", "An entry's claim is never rewritten. A changed claim is a new entry that supersedes the "

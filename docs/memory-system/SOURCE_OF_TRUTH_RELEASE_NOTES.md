@@ -4,6 +4,24 @@ The history of `SOURCE_OF_TRUTH.md`: what changed, when, and who decided. The de
 so an agent reading it carries no history it does not need (EJ, 2026-10-14). Newest first. The notes up to
 2026-10-13 are the design's former status block and inline attributions, moved here unchanged.
 
+## 2026-10-15
+
+Fixes from the four experts' review of the finished design (`runs/20261015-sot-final-review/experts/compare.md`;
+EJ: *"yes apply 1-5, project owner reviews"*):
+- **Retiring without a replacement.** K4.1: a `superseded` entry links to what replaced it; a `retired` entry, which
+  nothing replaces, gives its reason in its `changed:` line. Before, every retired entry needed a `superseded_by` link
+  (4 of 5 experts; 老子 would keep the link).
+- **Superseding, spelled out.** K1.1 says changing a claim means superseding the entry, and names the steps
+  (5 of 5).
+- **What a failed MUST stops:** what its `fails_if` names (the entry, the commit, the load or the action); the rest
+  of the work goes on unless it depends on that (4 of 5).
+- **W1.2:** "each field is one `key: value` line" moved from W1.2a (MUST) to W1.2b (SHOULD), where the indented
+  multi-value layout is; W1.2a keeps only the `---` lines.
+- **Smaller:** a skipped SHOULD's reason is written in the task's `state.md` (with no task, the commit message); the
+  secret scanner is marked as not existing yet; where the prose and the YAML differ, the YAML's level governs; a
+  split requirement has no text of its own, its clauses are the requirement.
+- **Who reviews:** the project owner reviews the judged checks (`check: reviewer`), or names someone who does (EJ).
+
 ## 2026-10-14
 
 - **Requirements moved to `SOURCE_OF_TRUTH_REQUIREMENTS.yaml`.** The design keeps its prose and points to the YAML
