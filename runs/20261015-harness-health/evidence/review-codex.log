@@ -1,0 +1,2834 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games-harness-health
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a13b49-078e-70c1-a8fd-1b0c89bce670
+--------
+user
+Read /home/smoke01/dev/ancient-games/runs/20261015-harness-health/briefs/review.md and do what it says.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the folder instructions and review brief, then carry out the review.
+
+exec
+/bin/bash -lc 'cat /home/smoke01/dev/ancient-games/runs/20261015-harness-health/briefs/review.md' in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+# Review brief — harness_health.py (read-only)
+
+You are reviewing a change in the git worktree `/home/smoke01/dev/ancient-games-harness-health`, branch
+`feat/harness-health`, commit `cb808f1` (`git show cb808f1`). You may read any file and run read-only commands
+(`git show`, `python3 -m pytest -q tests/test_harness_health.py`, running the script). Do not edit any file.
+
+## What the change is for
+
+A workflow-design method has a readiness step (`.claude/skills/workflow-design/scripts/readiness.py`) that proves which
+tools are installed. The new `scripts/harness_health.py` reads how each installed agent harness (Claude Code, Codex,
+agy, qwen, dsh, opencode) is configured against ten harness requirements, and for what is absent prints the file, the
+key and a snippet the person applies. It must never write a file, never spend model quota, and never print a config
+value other than a recognised mode name or a count. `readiness.py` also gains `dsh` and `opencode`.
+
+## The standard you check against (acceptance criteria)
+
+- AC1 readiness lists `dsh` and `opencode`; all prior readiness tests pass.
+- AC2 harness_health prints ten requirement rows on any machine, with no project or home path hardcoded or printed as an absolute path.
+- AC3 every check that can say `absent` has a test that makes it say so, and one that makes it say `present`.
+- AC4 no planted secret value appears in any output (markdown or JSON).
+- AC5 every help snippet, applied as its help text says, turns its finding to `present`; the script modifies no file.
+- AC6 the full suite passes (baseline before the change: 994 passed; after: 1013 passed).
+- AC7 on this machine the output shows: Claude Code has no deny list; Codex has no top-level `sandbox_mode` or `approval_policy`; dsh and opencode are listed. Saved output: `/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/harness-health-this-machine.md`.
+
+Evidence for the key names: `/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/u6-codex-keys.txt`
+and `u6-claude-keys.txt` beside it. Mutation check of the tests: `mutation-check.txt` beside it.
+
+## What to return
+
+Plain English Markdown, these sections:
+
+1. **Verdict per criterion** — AC1–AC7: holds / does not hold / cannot tell, each with the file:line or command output that shows it.
+2. **Defects** — each: file:line, what is wrong, a concrete input that shows it, severity (high / medium / low). Look in particular for: a value that could leak a secret; a case where a finding says `present` when the harness is not set up (a false reassurance); a crash on an odd config shape (wrong types, empty files, lists where objects are expected); a claim in the output or docstring the evidence does not support; anything project-specific hardcoded.
+3. **Tests that would pass on a broken script** — a test that does not check what its name says.
+4. **What you did not check.**
+
+Do not suggest new features. Report only what is wrong or unsupported.
+
+exec
+/bin/bash -lc 'cat CLAUDE.md' in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `.claude/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+
+exec
+/bin/bash -lc 'git status --short && git show --stat cb808f1 && git show cb808f1 -- scripts/harness_health.py .claude/skills/workflow-design/scripts/readiness.py tests/test_harness_health.py' in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+commit cb808f1c2cc004f8e8c08fb2c24b8727a93eeefe
+Author: cclow <cclow@openclaw.local>
+Date:   Thu Oct 15 00:38:45 2026 +0800
+
+    Readiness: harness health beside the inventory — harness_health.py (ten requirements, Claude Code + Codex config, help with snippets), dsh and opencode probed — run 20261015-harness-health
+    
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+ .claude/skills/workflow-design/SKILL.md            |   3 +-
+ .../workflow-design/scripts/harness_health.py      | 413 +++++++++++++++++++++
+ .../skills/workflow-design/scripts/readiness.py    |   2 +-
+ docs/WORKFLOW_DESIGN_METHOD.md                     |   3 +
+ skills/workflow-design/SKILL.md                    |   3 +-
+ skills/workflow-design/references/method.md        |   3 +
+ skills/workflow-design/scripts/harness_health.py   | 413 +++++++++++++++++++++
+ skills/workflow-design/scripts/readiness.py        |   2 +-
+ tests/test_harness_health.py                       | 272 ++++++++++++++
+ tests/test_readiness.py                            |  20 +-
+ 10 files changed, 1120 insertions(+), 14 deletions(-)
+commit cb808f1c2cc004f8e8c08fb2c24b8727a93eeefe
+Author: cclow <cclow@openclaw.local>
+Date:   Thu Oct 15 00:38:45 2026 +0800
+
+    Readiness: harness health beside the inventory — harness_health.py (ten requirements, Claude Code + Codex config, help with snippets), dsh and opencode probed — run 20261015-harness-health
+    
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+diff --git a/.claude/skills/workflow-design/scripts/readiness.py b/.claude/skills/workflow-design/scripts/readiness.py
+index fc63048..6a3a3b2 100755
+--- a/.claude/skills/workflow-design/scripts/readiness.py
++++ b/.claude/skills/workflow-design/scripts/readiness.py
+@@ -37,7 +37,7 @@ from pathlib import Path
+ 
+ CMD_TIMEOUT = 10   # seconds per local command
+ NET_TIMEOUT = 30   # seconds for --net commands (agy models talks to the network)
+-DEFAULT_BINARIES = ["claude", "codex", "agy", "qwen", "node", "python3", "git"]
++DEFAULT_BINARIES = ["claude", "codex", "agy", "qwen", "dsh", "opencode", "node", "python3", "git"]
+ 
+ VERIFIED = "verified"
+ REPORTED = "reported"
+diff --git a/tests/test_harness_health.py b/tests/test_harness_health.py
+new file mode 100644
+index 0000000..86d6717
+--- /dev/null
++++ b/tests/test_harness_health.py
+@@ -0,0 +1,272 @@
++"""HH-01–HH-11: harness health with an isolated HOME and fake executables (run 20261015-harness-health)."""
++from __future__ import annotations
++
++import hashlib
++import json
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++from types import SimpleNamespace
++
++import pytest
++
++ROOT = Path(__file__).resolve().parent.parent
++SCRIPTS = ROOT / ".claude/skills/workflow-design/scripts"
++SCRIPT = SCRIPTS / "harness_health.py"
++HARNESSES = ["claude", "codex", "agy", "qwen", "dsh", "opencode"]
++VERSIONS = {"claude": "2.1.299 (Claude Code)", "codex": "codex-cli 0.160.0"}
++SECRET = "SECRET-PLANT-7f3a9c"
++
++sys.path.insert(0, str(SCRIPTS))
++import harness_health as hh  # noqa: E402
++
++
++@pytest.fixture
++def box():
++    tmp = Path(tempfile.mkdtemp(dir="/tmp"))
++    home, bin_dir, cwd = (tmp / n for n in ("home", "bin", "proj"))
++    for p in (home, bin_dir, cwd):
++        p.mkdir()
++    env = {"HOME": str(home), "PATH": str(bin_dir)}
++
++    def fake(name, version=None):
++        out = version or VERSIONS.get(name, f"{name}-fake 0.1")
++        p = bin_dir / name
++        p.write_text(f"#!{sys.executable}\nprint({out!r})\n")
++        p.chmod(0o755)
++
++    def full():
++        for h in HARNESSES:
++            fake(h)
++
++    def run(*args, extra_env=None):
++        return subprocess.run([sys.executable, str(SCRIPT), *args], env={**env, **(extra_env or {})}, cwd=cwd,
++                              capture_output=True, text=True, timeout=30)
++
++    def findings(*args, extra_env=None):
++        r = run("--json", *args, extra_env=extra_env)
++        assert r.returncode == 0, r.stderr
++        return json.loads(r.stdout)["findings"]
++
++    yield SimpleNamespace(home=home, cwd=cwd, bin=bin_dir, env=env, fake=fake, full=full, run=run,
++                          findings=findings)
++    shutil.rmtree(tmp, ignore_errors=True)
++
++
++def write(path: Path, text: str) -> Path:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_text(text)
++    return path
++
++
++def one(findings, harness, item):
++    m = [f for f in findings if f["harness"] == harness and f["item"] == item]
++    assert len(m) == 1, m
++    return m[0]
++
++
++def claude_settings(box, obj, scope="user"):
++    path = {"user": box.home / ".claude/settings.json", "project": box.cwd / ".claude/settings.json",
++            "local": box.cwd / ".claude/settings.local.json"}[scope]
++    return write(path, json.dumps(obj))
++
++
++def tree_hash(*roots: Path) -> dict:
++    return {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
++            for r in roots for p in sorted(r.rglob("*")) if p.is_file()}
++
++
++def test_hh_01_ten_rows_and_no_machine_paths(box):
++    box.full()
++    r = box.run()
++    assert r.returncode == 0, r.stderr
++    rows = re.findall(r"^\| R(\d+) \| ([^|]+) \|", r.stdout.split("## Lines")[0], re.M)
++    assert [int(n) for n, _ in rows] == list(range(1, 11))
++    assert "Configured is not enforced" in r.stdout
++    assert str(box.home) not in r.stdout and str(box.cwd) not in r.stdout and str(ROOT) not in r.stdout
++    f = json.loads(box.run("--json").stdout)["findings"]
++    for h in ("agy", "qwen", "dsh", "opencode"):
++        assert one(f, h, "permissions and sandbox")["finding"] == "unknown"
++    assert one(f, "claude", "deny rules")["finding"] == "absent"
++    assert one(f, "codex", "sandbox_mode")["detail"].startswith("not set")
++
++
++# HH-02: every check that can say absent is shown saying absent (the sabotage) and present.
++CASES = [
++    ("claude", "deny rules", {"permissions": {"allow": ["Bash(ls:*)"]}}, {"permissions": {"deny": ["Read(./x)"]}}),
++    ("claude", "sandbox", {"sandbox": {"enabled": False}}, {"sandbox": {"enabled": True}}),
++    ("claude", "permission mode", {"permissions": {"defaultMode": "bypassPermissions"}},
++     {"permissions": {"defaultMode": "acceptEdits"}}),
++    ("claude", "bypass-mode prompt", {"skipDangerousModePermissionPrompt": True}, {}),
++    ("claude", "hooks", {"hooks": {}}, {"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "true"}]}]}}),
++]
++
++
++@pytest.mark.parametrize("harness,item,bad,good", CASES, ids=[c[1] for c in CASES])
++def test_hh_02_claude_absent_and_present(box, harness, item, bad, good):
++    box.full()
++    claude_settings(box, bad)
++    assert one(box.findings(), harness, item)["finding"] == "absent"
++    claude_settings(box, good)
++    assert one(box.findings(), harness, item)["finding"] == "present"
++
++
++@pytest.mark.parametrize("key,bad,good", [("sandbox_mode", "danger-full-access", "read-only"),
++                                         ("approval_policy", "never", "on-request")])
++def test_hh_02_codex_absent_and_present(box, key, bad, good):
++    box.full()
++    write(box.home / ".codex/config.toml", f'{key} = "{bad}"\n')
++    assert one(box.findings(), "codex", key)["finding"] == "absent"
++    write(box.home / ".codex/config.toml", f'{key} = "{good}"\n')
++    assert one(box.findings(), "codex", key)["finding"] == "present"
++
++
++def test_hh_02_engine_kinds_and_instruction_file(box):
++    box.fake("claude")
++    f = box.findings()
++    assert one(f, "-", "engine kinds on PATH")["finding"] == "absent"
++    assert one(f, "-", "project instruction file")["finding"] == "absent"
++    box.fake("codex")
++    write(box.cwd / "AGENTS.md", "# x\n")
++    f = box.findings()
++    assert one(f, "-", "engine kinds on PATH")["finding"] == "present"
++    assert not [x for x in f if x["item"] == "project instruction file"]
++    assert one(f, "-", "./AGENTS.md")["detail"] == "1 lines, 4 bytes"
++
++
++def test_hh_02_scopes_add_deny_and_local_overrides_mode(box):
++    box.full()
++    claude_settings(box, {"permissions": {"defaultMode": "bypassPermissions"}}, "user")
++    claude_settings(box, {"permissions": {"deny": ["Read(./a)"]}}, "project")
++    claude_settings(box, {"permissions": {"defaultMode": "plan"}}, "local")
++    f = box.findings()
++    assert one(f, "claude", "deny rules")["finding"] == "present"
++    mode = one(f, "claude", "permission mode")
++    assert mode["finding"] == "present" and "plan (local)" in mode["detail"]
++
++
++def test_hh_03_planted_secret_never_printed(box):
++    box.full()
++    claude_settings(box, {"env": {"API_KEY": SECRET}, "permissions": {"deny": [f"Read({SECRET})"],
++                          "defaultMode": SECRET}, "hooks": {SECRET: [{"command": SECRET}]}})
++    write(box.home / ".codex/config.toml",
++          f'sandbox_mode = "{SECRET}"\n[model_providers.x]\napi_key = "{SECRET}"\n')
++    for args in ((), ("--json",)):
++        r = box.run(*args)
++        assert r.returncode == 0, r.stderr
++        assert SECRET not in r.stdout + r.stderr
++
++
++def resolve(box, shown: str) -> Path:
++    return (box.cwd / shown[2:]) if shown.startswith("./") else (box.home / shown[2:])
++
++
++def merge(a: dict, b: dict) -> dict:
++    for k, v in b.items():
++        a[k] = merge(a.get(k, {}), v) if isinstance(v, dict) and isinstance(a.get(k), dict) else v
++    return a
++
++
++def apply_help(box, help_: dict):
++    """Apply a snippet exactly as its help text says: merge JSON into the file; a TOML top-level line above the
++    first [table], replacing that key's line if there is one."""
++    path = resolve(box, help_["file"])
++    if help_["lang"] == "json":
++        old = json.loads(path.read_text()) if path.exists() else {}
++        write(path, json.dumps(merge(old, json.loads(help_["snippet"]))))
++    else:
++        key = help_["snippet"].split("=")[0].strip()
++        lines = [l for l in (path.read_text().splitlines() if path.exists() else [])
++                 if not re.match(rf"\s*{key}\s*=", l)]
++        first_table = next((i for i, l in enumerate(lines) if l.lstrip().startswith("[")), len(lines))
++        write(path, "\n".join(lines[:first_table] + [help_["snippet"]] + lines[first_table:]) + "\n")
++
++
++def test_hh_04_every_snippet_flips_its_finding(box):
++    box.full()
++    claude_settings(box, {"skipDangerousModePermissionPrompt": True,
++                          "permissions": {"defaultMode": "bypassPermissions"}})
++    write(box.home / ".codex/config.toml", '[profiles.x]\nmodel = "m"\n')  # a table first: placement matters
++    before = [f for f in box.findings() if f["help"] and f["help"]["snippet"]]
++    assert {(f["harness"], f["item"]) for f in before} == {
++        ("claude", "deny rules"), ("claude", "sandbox"), ("claude", "permission mode"),
++        ("claude", "bypass-mode prompt"), ("codex", "sandbox_mode"), ("codex", "approval_policy")}
++    for f in before:
++        apply_help(box, f["help"])
++        assert one(box.findings(), f["harness"], f["item"])["finding"] == "present", f
++
++
++def test_hh_05_no_file_changes(box):
++    box.full()
++    claude_settings(box, {"permissions": {"allow": ["Bash(ls:*)"]}})
++    write(box.home / ".codex/config.toml", 'sandbox_mode = "never-valid"\n')
++    write(box.cwd / "CLAUDE.md", "x\n")
++    before = tree_hash(box.home, box.cwd)
++    assert box.run().returncode == 0
++    assert box.run("--json").returncode == 0
++    assert tree_hash(box.home, box.cwd) == before
++
++
++def test_hh_06_covered_goes_missing_without_its_script(tmp_path):
++    scripts = tmp_path / "scripts"
++    (tmp_path / "assets/templates").mkdir(parents=True)
++    scripts.mkdir()
++    for name in ("engines.py", "dispatch.py", "design_gate.py", "feature_gate.py", "runlog.py", "harvest_run.py"):
++        (scripts / name).write_text("")
++    (tmp_path / "assets/templates/state.md").write_text("")
++    assert all(f.finding == "covered" for f in hh.covered_lines(scripts))
++    (scripts / "dispatch.py").unlink()
++    gone = [f for f in hh.covered_lines(scripts) if f.finding != "covered"]
++    assert {(f.item, f.status) for f in gone} == {("dispatcher", "MISSING"), ("timers and bounded repair", "MISSING")}
++
++
++def test_hh_07_harness_flag(box):
++    box.fake("claude")
++    box.fake("codex")
++    assert box.run("--harness", "nope").returncode == 2
++    assert box.run("--harness", "agy").returncode == 1
++    r = box.run("--json", "--harness", "codex")
++    assert r.returncode == 0
++    harnesses = {f["harness"] for f in json.loads(r.stdout)["findings"]}
++    assert harnesses == {"-", "codex"}
++
++
++def test_hh_08_self_test_and_json_contract(box):
++    r = subprocess.run([sys.executable, str(SCRIPT), "--self-test"], capture_output=True, text=True)
++    assert r.returncode == 0 and "self-test PASS" in r.stdout
++    box.full()
++    for f in box.findings():
++        assert set(f) == {"req", "harness", "item", "status", "finding", "detail", "proof", "help"}
++        assert f["status"] in {"verified", "reported", "unknown", "MISSING"}
++        assert f["finding"] in {"present", "absent", "unknown", "measured", "covered", "-"}
++        assert (f["help"] is not None) == (f["finding"] == "absent")
++
++
++def test_hh_09_codex_status_follows_the_verified_version(box):
++    box.full()
++    assert one(box.findings(), "codex", "sandbox_mode")["status"] == "verified"
++    box.fake("codex", "codex-cli 0.170.0")
++    f = one(box.findings(), "codex", "sandbox_mode")
++    assert f["status"] == "reported" and "installed 0.170.0" in f["detail"]
++
++
++def test_hh_10_unreadable_config_is_unknown(box):
++    box.full()
++    write(box.home / ".claude/settings.json", "{not json")
++    write(box.home / ".codex/config.toml", "sandbox_mode = \n")
++    f = box.findings()
++    assert one(f, "claude", "settings")["finding"] == "unknown"
++    assert one(f, "codex", "config")["finding"] == "unknown"
++
++
++def test_hh_11_config_dir_overrides(box):
++    box.full()
++    alt_claude, alt_codex = box.home / "alt-claude", box.home / "alt-codex"
++    write(alt_claude / "settings.json", json.dumps({"permissions": {"deny": ["Read(./x)"]}}))
++    write(alt_codex / "config.toml", 'sandbox_mode = "read-only"\n')
++    f = box.findings(extra_env={"CLAUDE_CONFIG_DIR": str(alt_claude), "CODEX_HOME": str(alt_codex)})
++    assert one(f, "claude", "deny rules")["finding"] == "present"
++    assert one(f, "codex", "sandbox_mode")["finding"] == "present"
+
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/requirement-check/SKILL.md' in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+---
+name: requirement-check
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, leaves a choice with no one to decide it, or is impossible to check.
+---
+
+# Requirement check
+
+A general standard (RFC 2119 / 8174), installed globally — not part of the Ancient Games framework. The
+worked failure in `meaningful-names` cites the Ancient Games as one example.
+
+A short gate between **hearing a rule** and **acting on it**. It exists because rules get written down that nobody
+can trace, that count two different things at once, or that nothing can ever fail — and the cost lands months later,
+when nobody can say whether the rule still means anything.
+
+Run it when someone states a rule, and run it on yourself before writing a normative line into any document.
+
+## The eight questions
+
+Ask them of **one statement**. Say which it passes and which it fails, then **ask the person about the failures** —
+do not fill the gaps yourself.
+
+1. **Who decides.** Find every choice the statement leaves open, and name who decides each one: the user, the agent,
+   the tool by a stated rule, a config value, a checker. Write the decider into the requirement. *"Must not read a
+   single line and conclude"* leaves open how many lines are enough — who determines that? Answering it completes the
+   requirement. This asks who decides **inside** the rule, not who asked for it; where the rule came from is
+   **Basis**. *(EJ, 2026-10-14.)*
+2. **One thing.** It is about **one action or one event**: one thing that happens, and what must be true when it
+   does. A condition or a record that belongs to that event is part of it, not a second statement. If it names two
+   events (a role is defined, a process starts), it is **two** — split them, and check each one on its own. An "and",
+   an "or", a "/" or a second number is only a hint to look; it is not the verdict. *(EJ, 2026-10-12.)*
+3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
+   files?
+4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
+   failing inputs. If you cannot name one, it is not checkable — it is a wish.
+5. **Weak words.** *like, about, appropriate, as needed, logical, fast, enough, reasonable, only has to, TBD.* Replace
+   each with a value, **or mark the value open**. Never invent the number.
+6. **Level.** Is it **MUST** (a gate that stops work), **SHOULD** (a default that may be overridden with a stated
+   reason), or **guidance**? A safety bound earns MUST. **A method does not** — see the RFC note below.
+7. **Basis.** Measured, quoted from a source, or a guess? A guess is fine **if it is labelled** — `n=0`, with when it
+   will be looked at again. In the document the basis is at most a short label and a path to the evidence, never the
+   conversation it came from.
+8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
+   part"*? The person probably did not say that. **A link is its own claim and needs its own basis.**
+
+## Four rules for the agent
+
+- **Check the line you write, not only the reply you heard.** When the person answers your question briefly ("yes",
+  "flag them", "use git"), the requirement is **your question plus their answer**. Write that whole rule — what, when,
+  who, what happens next — run the eight questions on the written line, and only then put it in the document. A
+  pasted short reply fails *one thing*, *weak words* and *can it fail* on its own. *(EJ, 2026-10-12, after "flag
+  them" was written into a design alone and later misread.)*
+- **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
+  is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
+  the time anyone notices.
+- **Never add structure that was not given.** No halves, no numbered reasons, no ordered pairs, no named phases,
+  unless the person said so. Write the operative sentence, and stop. If a relationship between two rules is
+  wanted, that is a separate claim with its own evidence.
+- **No conversation in a requirement.** A requirements document states what must be true, who decides each open
+  choice, and what makes it fail. It holds no quotes of the person, no "X said", no dates, no `Source:` line and no
+  mark of who proposed what. That history goes in the run folder (`runs/<id>/`), never in the product document. The
+  eight questions are asked of the line; their answers change the line, they are not printed beside it. *(EJ,
+  2026-10-14, after conversation was put into requirements again and again.)*
+
+## Two verified facts, worth quoting
+
+- **RFC 2119 §6, "Guidance in the use of these Imperatives":** imperatives *"must be used with care and sparingly…
+  they MUST only be used where it is actually required… they must not be used to try to impose a particular method."*
+  Most design rules are method. Method does not earn MUST.
+- **RFC 8174 (updates 2119):** the key words *"have the meanings specified herein only when they are in all
+  capitals."* Lowercase *must* and *should* carry no defined requirement meaning. If nothing marks which lines are
+  requirements, a reader cannot tell rules from explanation.
+
+## How to answer
+
+Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
+one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+
+Do not report a rule as complete when you chose its missing value. Say which values you left open.
+
+## A worked failure
+
+> *"At most 5 subagent roles per run and at most 3 running at once."*
+
+Four of the eight fail: **Basis** — nobody could say where it came from; **One thing** — a count of roles *and* a count of
+concurrent processes; **Unit** — two different units, one word ("subagent") used for both; **Level** — a method
+preference written as a cap. The sentence would not parse, and it took four days to find out why. The checklist
+catches it in thirty seconds.
+
+The same checklist, run on *"No single call runs longer than the ceiling: 8 hours"*, passes *one thing*,
+*unit* and *can it fail* — it counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail. *Who
+decides* still asks who stops a call that reaches the ceiling.
+
+## Limits
+
+The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
+feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
+and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
+paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
+quotes are checked. Treat the rest as a good working list, not as a citation.
+
+Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.
+
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/coding-discipline/SKILL.md' in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+---
+name: coding-discipline
+description: Baseline engineering discipline for any hands-on task in a repository. Use when writing, editing, refactoring, debugging or reviewing code, when running builds, tests or linters, when adding a dependency, or when preparing a git commit.
+---
+
+# Coding discipline
+
+Baseline rules for working in a repository. They apply regardless of language,
+framework or project.
+
+## Before changing anything
+
+- Read the actual file first. Never write or edit from an assumption about its contents.
+- Read a neighbouring example of the same kind of thing — a sibling module, an existing
+  test, an existing endpoint — and match it. The repository's own conventions outrank
+  your preferences on naming, formatting, typing, file layout and error style.
+- Confirm a dependency is already in use in the project, via its manifest, existing
+  imports or neighbouring code, before reaching for it. Do not add a new dependency to
+  solve something the existing ones already cover.
+
+## Keep the change minimal
+
+- Do the task that was asked. Not the adjacent task, not the cleanup you noticed on the
+  way past, not the refactor that would leave this nicer than you found it.
+- No speculative abstraction. Three similar lines beat a helper with one caller.
+- No error handling, fallbacks or validation for conditions that cannot occur. Validate
+  at boundaries only: user input, external APIs, data arriving from outside the process.
+- Comments explain *why*, and only where the code cannot carry it. No comment that
+  narrates what the next line does, and never a comment addressed to the reader about
+  the changes you are making.
+- Existing code you did not expect to find is someone's in-progress work. Leave it alone
+  unless the task requires otherwise, and stop to ask if it conflicts with what you were
+  asked to do.
+
+## Verify instead of assuming
+
+- Find the project's real check commands from its README, Makefile or package manifest.
+  Never assume `npm test`, `pytest` or `make build` is correct for this repo.
+- Run them after the change. A change you did not run is a change you did not finish.
+- Report what actually happened. If a check failed, show the failure. If you could not
+  run a check, say so and say why. Never describe unverified work as working, and never
+  skip, suppress or weaken a failing check to produce a clean result.
+
+## Git
+
+- Before committing, run `git status`, `git diff HEAD` and `git log -n 3` — to separate
+  your change from what was already in the working tree, and to match the repository's
+  commit message style.
+- Stage only the paths that belong to this change. No `git add -A` while unrelated
+  modifications are present.
+- Draft the commit message yourself, weighted toward why rather than what.
+- Never push, force-push, amend a published commit, delete a branch, or rewrite history
+  unless explicitly asked to in this conversation. Prior approval does not carry over to
+  a later commit.
+- Do not revert work that is not yours. Revert your own change only if it caused a
+  failure or you are asked to.
+- For history questions, `git log` and `git blame` are authoritative. Run the command
+  rather than reasoning from memory of the codebase.
+
+## When blocked or unsure
+
+- Ask one focused question when only the user can decide, and keep it to a single round.
+- Otherwise choose the safe default, do the work, and state which default you chose so
+  it can be corrected.
+- Investigate before working around an obstacle: read the error, check your assumption,
+  address the root cause. Do not bypass a guard, a lock or a failing check just to make
+  the obstacle go away.
+- Clean up scratch files you created. Leave the working tree containing only the change
+  you were asked for.
+
+codex
+I’m using the coding-discipline and requirement-check skills. The brief gives concrete acceptance checks, so I’ll assess them as written, test unusual config shapes, and distinguish what the tests prove from what remains unsupported.
+
+exec
+/bin/bash -lc 'nl -ba .claude/skills/workflow-design/scripts/readiness.py && git show cb808f1 -- tests/test_readiness.py docs/WORKFLOW_DESIGN_METHOD.md .claude/skills/workflow-design/SKILL.md' in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+     1	#!/usr/bin/env python3
+     2	"""readiness.py — the standard tool inventory for method 3.1 (readiness).
+     3	
+     4	Proves what is installed and logged in on this machine. It never spends quota:
+     5	no canary is run, so "executes a task" stays unknown here and remains an
+     6	explicit, separately approved step (docs/EXECUTOR_KINDS.md in the Ancient Games
+     7	repo). Every line carries a status and the command or path that proved it:
+     8	
+     9	  verified  a command run just now proved it
+    10	  reported  a local file claims it (may be stale)
+    11	  unknown   not provable on this machine
+    12	  MISSING   expected and not there
+    13	
+    14	Generic by design (the skill is global): nothing hardcodes a project. Project
+    15	extras come in through flags (--blueprint, --workflows).
+    16	
+    17	Usage:
+    18	  readiness.py [--net] [--json] [--require TOOL ...] [--blueprint DIR]
+    19	               [--workflows DIR] [--self-test]
+    20	
+    21	Exit codes: 0 ok · 1 a --require'd tool that is not verified, or an explicit --blueprint dir that is
+    22	MISSING · 2 usage error.
+    23	"""
+    24	from __future__ import annotations
+    25	
+    26	import argparse
+    27	import json
+    28	import os
+    29	import shutil
+    30	import socket
+    31	import subprocess
+    32	import sys
+    33	from concurrent.futures import ThreadPoolExecutor
+    34	from dataclasses import asdict, dataclass
+    35	from datetime import date, datetime, timezone
+    36	from pathlib import Path
+    37	
+    38	CMD_TIMEOUT = 10   # seconds per local command
+    39	NET_TIMEOUT = 30   # seconds for --net commands (agy models talks to the network)
+    40	DEFAULT_BINARIES = ["claude", "codex", "agy", "qwen", "dsh", "opencode", "node", "python3", "git"]
+    41	
+    42	VERIFIED = "verified"
+    43	REPORTED = "reported"
+    44	UNKNOWN = "unknown"
+    45	MISSING = "MISSING"
+    46	
+    47	GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
+    48	          "Machine", "Open unknowns"]
+    49	
+    50	# The blueprint's own section files (docs/workflow-templates/blueprint.md); a .md that is not one of these
+    51	# is not a section, and a mapless directory is MISSING rather than verified.
+    52	SECTION_FILES = {"01-vision.md", "02-requirements.md", "03-domain-model.md", "04-business-logic.md",
+    53	                 "05-architecture.md", "06-data-model.md", "07-ui-ux.md", "08-non-functional.md"}
+    54	
+    55	
+    56	@dataclass
+    57	class Probe:
+    58	    group: str
+    59	    item: str
+    60	    status: str
+    61	    detail: str
+    62	    proof: str
+    63	
+    64	
+    65	def run_cmd(cmd: list[str], timeout: int = CMD_TIMEOUT) -> tuple:
+    66	    """(returncode, stripped output). rc is None if the binary does not exist,
+    67	    'timeout' if it did not answer in time."""
+    68	    try:
+    69	        p = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=timeout)
+    70	    except FileNotFoundError:
+    71	        return None, "not on PATH"
+    72	    except subprocess.TimeoutExpired:
+    73	        return "timeout", f"no answer within {timeout}s"
+    74	    except OSError as e:
+    75	        return None, str(e)
+    76	    return p.returncode, ((p.stdout or "").strip() or (p.stderr or "").strip())
+    77	
+    78	
+    79	def first_line(out: str) -> str:
+    80	    return out.splitlines()[0][:100] if out else "(no output)"
+    81	
+    82	
+    83	def probe_binary(name: str) -> Probe:
+    84	    """The version of the binary **on PATH**.
+    85	
+    86	    That is NOT necessarily the binary that will make a call: a provider can bundle its own, older copy of an
+    87	    engine, and the two do not accept the same model names (docs/EXECUTOR_KINDS.md, "The bundled-runtime trap").
+    88	    This line is the most likely thing in the inventory to be misread as proof for a provider call, so the canary
+    89	    records the version of the binary that actually ran.
+    90	    """
+    91	    rc, out = run_cmd([name, "--version"])
+    92	    proof = f"`{name} --version`"
+    93	    if rc is None:
+    94	        return Probe("Tools", name, MISSING, "not on PATH", f"`command -v {name}`")
+    95	    if rc == "timeout":
+    96	        return Probe("Tools", name, UNKNOWN, out, proof)
+    97	    if rc == 0:
+    98	        return Probe("Tools", name, VERIFIED, first_line(out), proof)
+    99	    return Probe("Tools", name, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+   100	
+   101	
+   102	def probe_codex_cache() -> Probe:
+   103	    item = "codex model cache"
+   104	    p = Path.home() / ".codex" / "models_cache.json"
+   105	    if not p.exists():
+   106	        return Probe("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+   107	    try:
+   108	        d = json.loads(p.read_text())
+   109	    except (OSError, ValueError) as e:
+   110	        return Probe("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+   111	    if not isinstance(d, dict):
+   112	        return Probe("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
+   113	    models = d.get("models")
+   114	    ids: list[str] = []
+   115	    if isinstance(models, list):
+   116	        for m in models:
+   117	            ids.append(str(m.get("id") or m.get("slug") or m.get("name") or "?")
+   118	                       if isinstance(m, dict) else str(m))
+   119	    elif isinstance(models, dict):
+   120	        ids = list(models)
+   121	    age = ""
+   122	    f_at = d.get("fetched_at")
+   123	    if isinstance(f_at, (int, float)):
+   124	        age = f", cache {(datetime.now(timezone.utc).timestamp() - f_at) / 86400:.0f}d old"
+   125	    elif isinstance(f_at, str):
+   126	        age = f", fetched_at {f_at[:10]}"
+   127	    shown = f": {', '.join(ids[:6])}" + (" …" if len(ids) > 6 else "") if ids else ""
+   128	    return Probe("Models and logins", item, REPORTED,
+   129	                 f"{len(ids)} model ids{age}{shown} (cache may be stale)", str(p))
+   130	
+   131	
+   132	def probe_agy_login(net: bool) -> Probe:
+   133	    item = "agy login (model list)"
+   134	    proof = "`agy models` (network)"
+   135	    if not net:
+   136	        return Probe("Models and logins", item, UNKNOWN,
+   137	                     "offline run: not provable without `agy models`; rerun with --net", proof)
+   138	    rc, out = run_cmd(["agy", "models"], timeout=NET_TIMEOUT)
+   139	    if rc is None:
+   140	        return Probe("Models and logins", item, MISSING, "agy not on PATH", "`agy --version`")
+   141	    if rc == "timeout":
+   142	        return Probe("Models and logins", item, UNKNOWN, out, proof)
+   143	    ids = [l.split()[0] for l in out.splitlines()
+   144	           if l.split() and not l.lower().startswith("fetching")
+   145	           and not l.split()[0].endswith(":")]  # a label line ("Fetching…", "error: …") is not a model id
+   146	    if rc == 0 and ids:
+   147	        return Probe("Models and logins", item, VERIFIED,
+   148	                     f"{len(ids)} models: {', '.join(ids[:4])} …", proof)
+   149	    return Probe("Models and logins", item, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+   150	
+   151	
+   152	def probe_qwen_config(home: Path) -> Probe:
+   153	    """Reads ~/.qwen/settings.json only; never prints a key and never calls `qwen`
+   154	    (a bare `qwen <word>` is a one-shot prompt that spends quota)."""
+   155	    item = "qwen config (model, provider)"
+   156	    p = home / ".qwen" / "settings.json"
+   157	    if not p.exists():
+   158	        return Probe("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+   159	    try:
+   160	        d = json.loads(p.read_text())
+   161	    except (OSError, ValueError) as e:
+   162	        return Probe("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+   163	    if not isinstance(d, dict):
+   164	        return Probe("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
+   165	    for key in ("model", "modelProviders", "env", "security"):
+   166	        if d.get(key) is not None and not isinstance(d[key], dict):
+   167	            return Probe("Models and logins", item, UNKNOWN,
+   168	                         f"unreadable: settings.{key} is not an object", str(p))
+   169	    model = d.get("model") or {}
+   170	    providers = d.get("modelProviders") or {}
+   171	    n_models = sum(len(v) for v in providers.values() if isinstance(v, list))
+   172	    env = d.get("env") or {}
+   173	    key = "key set in settings env" if any(env.values()) else "no key in settings env"
+   174	    host = str(model.get("baseUrl", "?")).split("/")[2:3]
+   175	    auth = (d.get("security") or {}).get("auth", {}).get("selectedType", "?")
+   176	    return Probe("Models and logins", item, REPORTED,
+   177	                 f"default {model.get('name', '?')}, auth {auth}, {n_models} listed models, "
+   178	                 f"endpoint {host[0] if host else '?'}, {key} (file claim; key validity not tested)", str(p))
+   179	
+   180	
+   181	def list_names(p: Path) -> list[str] | None:
+   182	    if not p.is_dir():
+   183	        return None
+   184	    out = []
+   185	    for e in sorted(p.iterdir()):
+   186	        if e.name.startswith("."):
+   187	            continue
+   188	        if e.is_symlink():
+   189	            out.append(f"{e.name} → {os.readlink(e)}")
+   190	        elif e.is_dir() or e.suffix in (".js", ".mjs", ".md"):
+   191	            out.append(e.name)
+   192	    return out
+   193	
+   194	
+   195	def probe_dir_listing(group: str, item: str, p: Path, absent_status: str = MISSING) -> Probe:
+   196	    try:
+   197	        names = list_names(p)
+   198	    except OSError as e:
+   199	        return Probe(group, item, UNKNOWN, f"unreadable: {e}", str(p))
+   200	    if names is None:
+   201	        return Probe(group, item, absent_status, f"absent ({p})", str(p))
+   202	    if not names:
+   203	        return Probe(group, item, absent_status, f"empty ({p})", str(p))
+   204	    shown = ", ".join(names[:8]) + (" …" if len(names) > 8 else "")
+   205	    return Probe(group, item, VERIFIED, f"{len(names)}: {shown}", str(p))
+   206	
+   207	
+   208	def probe_blueprint(p: Path) -> Probe:
+   209	    item = f"blueprint ({p})"
+   210	    if not p.is_dir():
+   211	        return Probe("Skills and workflows", item, MISSING, "directory not found", str(p))
+   212	    sections = sorted(e.name for e in p.iterdir() if e.is_file() and e.name in SECTION_FILES)
+   213	    if not (p / "README.md").is_file():
+   214	        return Probe("Skills and workflows", item, MISSING,
+   215	                     f"map MISSING, {len(sections)} sections: {', '.join(sections) or 'none'}", str(p))
+   216	    if not sections:
+   217	        return Probe("Skills and workflows", item, MISSING, "map present, 0 sections", str(p))
+   218	    return Probe("Skills and workflows", item, VERIFIED,
+   219	                 f"{len(sections)} sections, map present: {', '.join(sections)}", str(p))
+   220	
+   221	
+   222	def probe_instruction_files(cwd: Path) -> Probe:
+   223	    names = ["CLAUDE.md", "AGENTS.md", "QWEN.md", "GEMINI.md"]
+   224	    present = [n for n in names if (cwd / n).exists()]
+   225	    absent = [n for n in names if n not in present]
+   226	    detail = (f"present: {', '.join(present) or 'none'}"
+   227	              + (f"; absent: {', '.join(absent)}" if absent else ""))
+   228	    return Probe("Memory", "project instruction files", VERIFIED, detail, str(cwd))
+   229	
+   230	
+   231	def probe_qwen_memory(home: Path) -> Probe:
+   232	    p = home / ".qwen" / "memories"
+   233	    idx = p / "MEMORY.md"
+   234	    if not p.is_dir():
+   235	        return Probe("Memory", "qwen auto-memory (user)", VERIFIED, f"absent ({p})", str(p))
+   236	    try:
+   237	        n = len(idx.read_text(errors="replace").splitlines()) if idx.exists() else 0
+   238	    except OSError as e:
+   239	        return Probe("Memory", "qwen auto-memory (user)", UNKNOWN, f"MEMORY.md unreadable: {e}", str(p))
+   240	    return Probe("Memory", "qwen auto-memory (user)", VERIFIED,
+   241	                 f"{n} index lines in MEMORY.md; project dirs under ~/.qwen/projects/", str(p))
+   242	
+   243	
+   244	def probe_claude_history(home: Path) -> Probe:
+   245	    p = home / ".claude" / "projects"
+   246	    if not p.is_dir():
+   247	        return Probe("Memory", "claude session history", VERIFIED, f"absent ({p})", str(p))
+   248	    try:
+   249	        n = sum(1 for e in p.iterdir() if e.is_dir())
+   250	    except OSError as e:
+   251	        return Probe("Memory", "claude session history", UNKNOWN, f"unreadable: {e}", str(p))
+   252	    return Probe("Memory", "claude session history", VERIFIED, f"{n} project histories", str(p))
+   253	
+   254	
+   255	def probe_mcp(home: Path, cwd: Path) -> list[Probe]:
+   256	    out = []
+   257	    sources = [("~/.claude/settings.json", home / ".claude" / "settings.json"),
+   258	               ("~/.claude.json", home / ".claude.json"),
+   259	               ("~/.qwen/settings.json", home / ".qwen" / "settings.json"),
+   260	               (".mcp.json (project)", cwd / ".mcp.json")]
+   261	    for label, p in sources:
+   262	        if not p.exists():
+   263	            out.append(Probe("MCP", label, VERIFIED, "file absent → no servers from it", str(p)))
+   264	            continue
+   265	        try:
+   266	            d = json.loads(p.read_text())
+   267	        except (OSError, ValueError) as e:
+   268	            out.append(Probe("MCP", label, UNKNOWN, f"unreadable: {e}", str(p)))
+   269	            continue
+   270	        servers = d.get("mcpServers") if isinstance(d, dict) else None
+   271	        if servers:
+   272	            out.append(Probe("MCP", label, VERIFIED,
+   273	                             f"{len(servers)} servers: {', '.join(list(servers)[:6])}", str(p)))
+   274	        else:
+   275	            out.append(Probe("MCP", label, VERIFIED,
+   276	                             "no mcpServers key" if servers is None else "mcpServers present but empty", str(p)))
+   277	    return out
+   278	
+   279	
+   280	def probe_machine(cwd: Path) -> Probe:
+   281	    cores = os.cpu_count() or "?"
+   282	    mem_gib = "?"
+   283	    try:
+   284	        for line in Path("/proc/meminfo").read_text().splitlines():
+   285	            if line.startswith("MemAvailable:"):
+   286	                mem_gib = f"{int(line.split()[1]) / 1048576:.1f} GiB"
+   287	                break
+   288	    except OSError:
+   289	        pass
+   290	    du = shutil.disk_usage(cwd)
+   291	    return Probe("Machine", "this machine", VERIFIED,
+   292	                 f"{cores} cores; {mem_gib} RAM available; {du.free / 2**30:.0f} G free on {cwd}",
+   293	                 "`os.cpu_count`, `/proc/meminfo`, `shutil.disk_usage`")
+   294	
+   295	
+   296	def open_unknowns() -> list[Probe]:
+   297	    return [
+   298	        Probe("Open unknowns", "subagent concurrency limit", UNKNOWN,
+   299	              "runtime policy, not provable from outside. Claude Code docs report 20 concurrent, nesting depth 3 "
+   300	              "(v2.1.217+, env overrides; reported, not measured here); codex/agy: no figure",
+   301	              "docs/EXECUTOR_KINDS.md, Concurrency row"),
+   302	        Probe("Open unknowns", "codex/agy/qwen execute a task", UNKNOWN,
+   303	              "canary required (spends quota; needs the person's go-ahead)",
+   304	              "docs/EXECUTOR_KINDS.md canary piece"),
+   305	    ]
+   306	
+   307	
+   308	def gather(args: argparse.Namespace) -> list[Probe]:
+   309	    home, cwd = Path.home(), Path.cwd()
+   310	    binaries = list(dict.fromkeys(DEFAULT_BINARIES + list(args.require or [])))
+   311	    with ThreadPoolExecutor(max_workers=max(1, min(8, len(binaries)))) as ex:
+   312	        checks: list[Probe] = list(ex.map(probe_binary, binaries))
+   313	    checks.append(probe_codex_cache())
+   314	    checks.append(probe_agy_login(args.net))
+   315	    checks.append(probe_qwen_config(home))
+   316	    for label, p in [("claude skills (user)", home / ".claude" / "skills"),
+   317	                     ("agents skills (cross-tool)", home / ".agents" / "skills"),
+   318	                     ("codex skills (user)", home / ".codex" / "skills"),
+   319	                     ("qwen skills (user)", home / ".qwen" / "skills"),
+   320	                     ("project skills", cwd / ".claude" / "skills")]:
+   321	        checks.append(probe_dir_listing("Skills and workflows", label, p))
+   322	    checks.append(probe_dir_listing("Skills and workflows", "workflow scripts",
+   323	                                    Path(args.workflows) if args.workflows else cwd / ".claude" / "workflows"))
+   324	    if args.blueprint:
+   325	        checks.append(probe_blueprint(Path(args.blueprint)))
+   326	    checks.append(probe_instruction_files(cwd))
+   327	    checks.append(probe_qwen_memory(home))
+   328	    checks.append(probe_claude_history(home))
+   329	    checks.extend(probe_mcp(home, cwd))
+   330	    checks.append(probe_machine(cwd))
+   331	    checks.extend(open_unknowns())
+   332	    checks.sort(key=lambda c: GROUPS.index(c.group))
+   333	    return checks
+   334	
+   335	
+   336	def exit_code(checks: list[Probe], requires: list[str]) -> int:
+   337	    for r in requires:  # a --require'd tool must be VERIFIED: present-but-unproven is not enough
+   338	        if not any(c.item == r and c.status == VERIFIED for c in checks):
+   339	            return 1
+   340	    for c in checks:  # an explicitly named --blueprint dir that is not there is a hard fail
+   341	        if c.item.startswith("blueprint (") and c.status == MISSING:
+   342	            return 1
+   343	    return 0
+   344	
+   345	
+   346	def cell(text: str) -> str:
+   347	    return text.replace("|", "\\|")
+   348	
+   349	
+   350	def to_markdown(checks: list[Probe]) -> str:
+   351	    lines = [f"# Readiness tools check — {date.today().isoformat()} — {socket.gethostname()}", "",
+   352	             "Installed and logged in only; no canary was run, no quota spent.", ""]
+   353	    current = None
+   354	    for c in checks:
+   355	        if c.group != current:
+   356	            if current is not None:
+   357	                lines.append("")
+   358	            current = c.group
+   359	            lines += [f"## {current}", "", "| Item | Status | Detail | Proof |", "|---|---|---|---|"]
+   360	        lines.append(f"| {cell(c.item)} | {c.status} | {cell(c.detail)} | {cell(c.proof)} |")
+   361	    return "\n".join(lines) + "\n"
+   362	
+   363	
+   364	def self_test() -> int:
+   365	    fake = "readiness-selftest-fake-tool"
+   366	    c = probe_binary(fake)
+   367	    code = exit_code([c], [fake])
+   368	    if c.status == MISSING and code == 1:
+   369	        print(f"self-test PASS: `{fake}` reported MISSING and --require on it exits 1 — the check can fail.")
+   370	        return 0
+   371	    print(f"self-test FAIL: status={c.status}, exit code={code} (expected MISSING, 1)")
+   372	    return 1
+   373	
+   374	
+   375	def main(argv: list[str] | None = None) -> int:
+   376	    ap = argparse.ArgumentParser(description="Method 3.1 readiness inventory (no quota spent).")
+   377	    ap.add_argument("--net", action="store_true",
+   378	                    help="also run network checks (`agy models`); off by default")
+   379	    ap.add_argument("--json", action="store_true", help="JSON instead of markdown")
+   380	    ap.add_argument("--require", action="append", default=[],
+   381	                    help="tool that must be verified present; exit 1 if not verified (repeatable)")
+   382	    ap.add_argument("--blueprint", metavar="DIR", help="a product's blueprint directory to include")
+   383	    ap.add_argument("--workflows", metavar="DIR", help="workflow scripts directory (default .claude/workflows)")
+   384	    ap.add_argument("--self-test", action="store_true", help="prove the check can fail, then exit")
+   385	    args = ap.parse_args(argv)
+   386	    if args.self_test:
+   387	        return self_test()
+   388	    checks = gather(args)
+   389	    if args.json:
+   390	        print(json.dumps({"date": date.today().isoformat(), "host": socket.gethostname(),
+   391	                          "checks": [asdict(c) for c in checks]}, indent=1))
+   392	    else:
+   393	        print(to_markdown(checks), end="")
+   394	    return exit_code(checks, args.require)
+   395	
+   396	
+   397	if __name__ == "__main__":
+   398	    sys.exit(main())
+commit cb808f1c2cc004f8e8c08fb2c24b8727a93eeefe
+Author: cclow <cclow@openclaw.local>
+Date:   Thu Oct 15 00:38:45 2026 +0800
+
+    Readiness: harness health beside the inventory — harness_health.py (ten requirements, Claude Code + Codex config, help with snippets), dsh and opencode probed — run 20261015-harness-health
+    
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+diff --git a/.claude/skills/workflow-design/SKILL.md b/.claude/skills/workflow-design/SKILL.md
+index 0de932e..08420cc 100644
+--- a/.claude/skills/workflow-design/SKILL.md
++++ b/.claude/skills/workflow-design/SKILL.md
+@@ -37,7 +37,8 @@ agent can read; a subagent starts with nothing but its prompt. Each step is a su
+ method section named beside it.
+ 
+ 1. **Readiness** (method 3.1). Prove each tool by running it (`scripts/readiness.py` runs the standard inventory and
+-   marks each line verified/reported/unknown), list the skills that already cover part of the work, and check the
++   marks each line verified/reported/unknown; `scripts/harness_health.py` adds how each harness is set up, with help
++   for what is absent), list the skills that already cover part of the work, and check the
+    information. Anything missing becomes a preparation piece at the front. Template: `readiness.md`. A node run by
+    Codex or `agy`: `references/executor-kinds.md` first — the canary, read-only versus write, the bundled-runtime
+    trap, CLI first and provider second, and the COO's contract. Every node names its role, engine, exact model and
+diff --git a/docs/WORKFLOW_DESIGN_METHOD.md b/docs/WORKFLOW_DESIGN_METHOD.md
+index b328293..8bdb1e2 100644
+--- a/docs/WORKFLOW_DESIGN_METHOD.md
++++ b/docs/WORKFLOW_DESIGN_METHOD.md
+@@ -102,6 +102,9 @@ For the task, and later for each piece, list:
+ - **Tools**: the commands, scripts and connections needed, each with the command that proved it works. Run it; do
+   not assume. The skill's inventory script (`.claude/skills/workflow-design/scripts/readiness.py`) proves the
+   standard set in one pass and marks every line verified / reported / unknown; what it cannot prove stays unknown.
++  Beside it, `harness_health.py` reads how each installed harness is set up against ten harness requirements
++  (guardrails, approval, hooks, logs, instruction files) and gives a file, key and snippet for what is absent; it
++  reads configuration, it does not prove enforcement, and it changes nothing (n=0).
+   For a node run by Codex or `agy`, the proof is the canary piece in `docs/EXECUTOR_KINDS.md`, which
+   also says which kind a node is assigned to and how its failure shows.
+ - **Skills** that already cover part of the work.
+diff --git a/tests/test_readiness.py b/tests/test_readiness.py
+index a6a7789..9286e69 100644
+--- a/tests/test_readiness.py
++++ b/tests/test_readiness.py
+@@ -19,7 +19,7 @@ import pytest
+ 
+ ROOT = Path(__file__).resolve().parent.parent
+ SCRIPT = ROOT / ".claude/skills/workflow-design/scripts/readiness.py"
+-BINARIES = ["claude", "codex", "agy", "qwen", "node", "python3", "git"]
++BINARIES = ["claude", "codex", "agy", "qwen", "dsh", "opencode", "node", "python3", "git"]
+ GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
+           "Machine", "Open unknowns"]
+ MCP_LABELS = {"~/.claude/settings.json", "~/.claude.json", "~/.qwen/settings.json",
+@@ -126,7 +126,7 @@ def test_rt_01_sanitized_full_inventory(sandbox):
+     assert str(ROOT) not in output
+     assert "Traceback" not in result.stderr
+     checks = markdown_checks(result.stdout)
+-    assert len(checks) == 26
++    assert len(checks) == 28
+     for name in BINARIES:
+         assert_row(checks, name, "verified", f"{name}-fake 0.1", f"`{name} --version`", "Tools")
+         assert sandbox.calls(name) == [["--version"]]
+@@ -155,7 +155,7 @@ def test_rt_01_sanitized_full_inventory(sandbox):
+ def test_rt_02_broken_qwen_json_keeps_inventory(sandbox):
+     path = write_file(sandbox.home / ".qwen/settings.json", '{ "model": {')
+     checks = json_checks(sandbox.run("--json"))
+-    assert len(checks) == 26
++    assert len(checks) == 28
+     unreadable = [c for c in checks if "unreadable" in c["detail"]]
+     assert {(c["group"], c["item"]) for c in unreadable} == {
+         ("Models and logins", "qwen config (model, provider)"), ("MCP", "~/.qwen/settings.json")}
+@@ -170,7 +170,7 @@ def test_rt_03a_truncated_and_unreadable_cache(sandbox):
+     cache = write_file(sandbox.home / ".codex/models_cache.json", '{"models": [{"id": "x"},')
+     cache.chmod(0o644)
+     checks = json_checks(sandbox.run("--json"))
+-    assert len(checks) == 26
++    assert len(checks) == 28
+     check = row(checks, "codex model cache")
+     assert check["status"] == "unknown" and check["proof"] == str(cache)
+     assert check["detail"].startswith("unreadable:") and "Expecting" in check["detail"]
+@@ -179,7 +179,7 @@ def test_rt_03a_truncated_and_unreadable_cache(sandbox):
+         cache.chmod(0o000)
+         try:
+             checks = json_checks(sandbox.run("--json"))
+-            assert len(checks) == 26
++            assert len(checks) == 28
+             check = row(checks, "codex model cache")
+             assert check["status"] == "unknown" and check["proof"] == str(cache)
+             assert check["detail"].startswith("unreadable:") and "Permission denied" in check["detail"]
+@@ -190,7 +190,7 @@ def test_rt_03a_truncated_and_unreadable_cache(sandbox):
+ def test_rt_03b_non_object_codex_cache(sandbox):
+     cache = write_file(sandbox.home / ".codex/models_cache.json", '[{"id": "gpt-6"}]')
+     checks = json_checks(sandbox.run("--json"))
+-    assert len(checks) == 26
++    assert len(checks) == 28
+     check = row(checks, "codex model cache")
+     assert check["status"] == "unknown" and check["proof"] == str(cache)
+     assert check["detail"].startswith("unreadable:")
+@@ -199,7 +199,7 @@ def test_rt_03b_non_object_codex_cache(sandbox):
+ def test_rt_03c_non_object_qwen_settings(sandbox):
+     settings = write_file(sandbox.home / ".qwen/settings.json", '[{"id": "gpt-6"}]')
+     checks = json_checks(sandbox.run("--json"))
+-    assert len(checks) == 26
++    assert len(checks) == 28
+     check = row(checks, "qwen config (model, provider)")
+     assert check["status"] == "unknown" and check["proof"] == str(settings)
+     assert check["detail"].startswith("unreadable:")
+@@ -260,7 +260,7 @@ def test_rt_06_require_matrix_and_dedupe(sandbox):
+         if "nope" in args:
+             assert_row(checks, "nope", "MISSING", "not on PATH", "`command -v nope`", "Tools")
+         tools = [c for c in checks if c["group"] == "Tools"]
+-        assert len(tools) == (8 if "nope" in args else 7)
++        assert len(tools) == (10 if "nope" in args else 9)
+         assert len([c for c in tools if c["item"] == "git"]) == 1
+         if not args:
+             assert all(row(checks, n, "Tools")["status"] == "MISSING"
+@@ -290,7 +290,7 @@ def test_rt_08_json_contract_and_markdown_row_sets(sandbox):
+         assert check["group"] in GROUPS
+     indices = [GROUPS.index(c["group"]) for c in checks]
+     assert indices == sorted(indices)
+-    assert len({c["item"] for c in checks if c["group"] == "Tools"}) == 7
++    assert len({c["item"] for c in checks if c["group"] == "Tools"}) == 9
+     assert len([c for c in checks if c["group"] == "MCP"]) == 4
+     unknowns = [c for c in checks if c["group"] == "Open unknowns"]
+     assert len(unknowns) == 2 and all(c["status"] == "unknown" for c in unknowns)
+@@ -342,7 +342,7 @@ def test_rt_10_hanging_binary_is_bounded(sandbox):
+         os.kill(pid, 0)
+     assert 10 <= elapsed < 25
+     checks = json_checks(result)
+-    assert len(checks) == 26
++    assert len(checks) == 28
+     assert_row(checks, "claude", "unknown", "no answer within 10s", "`claude --version`", "Tools")
+     assert all(row(checks, name, "Tools")["status"] == "MISSING" for name in BINARIES[1:])
+ 
+
+exec
+/bin/bash -lc 'cat /home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/u6-codex-keys.txt /home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/u6-claude-keys.txt /home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/mutation-check.txt /home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/harness-health-this-machine.md' in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+$ codex --version
+codex-cli 0.160.0
+$ codex -c 'sandbox_mode="bogus"' login status
+Error loading configuration: unknown variant `bogus`, expected one of `read-only`, `workspace-write`, `danger-full-access`
+in `sandbox_mode`
+
+$ codex -c 'approval_policy="bogus"' login status
+Error loading configuration: unknown variant `bogus`, expected one of `untrusted`, `on-failure`, `on-request`, `granular`, `never`
+in `approval_policy`
+
+$ codex -c 'sandbox_modez="bogus"' login status
+Logged in using ChatGPT
+# Claude Code settings key names — evidence from the installed binary's strings (2026-10-15)
+$ claude --version
+2.1.299 (Claude Code)
+$ grep -c -a -F 'skipDangerousModePermissionPrompt' <binary>  →  9
+$ grep -c -a -F 'disableBypassPermissionsMode' <binary>  →  12
+$ grep -c -a -F 'defaultMode' <binary>  →  64
+$ grep -c -a -F '"deny"' <binary>  →  257
+$ grep -c -a -F '"ask"' <binary>  →  238
+$ grep -c -a -F '"allow"' <binary>  →  225
+$ grep -c -a -F '"sandbox"' <binary>  →  33
+$ grep -c -a -F '"hooks"' <binary>  →  102
+$ grep -a -o -E (defaultMode enum)
+ko=["default","acceptEdits","plan","auto","bypassPermissions","dontAsk"
+
+Behaviour check: `claude --settings bad.json mcp list` with defaultMode="bogus", deny="notalist", sandbox.enabled="yes" printed no validation error (rc 0) — so no quota-free command was found that validates settings; key names stay *reported* (binary strings), not verified by the harness rejecting a bad value.
+# Mutation check of tests/test_harness_health.py (worktree ../ancient-games-harness-health, 2026-10-15)
+# Each line: one deliberate break of harness_health.py, then `pytest -q tests/test_harness_health.py`.
+M1 deny always present                        4 failed, 15 passed
+M2 print raw defaultMode (secret)             1 failed, 18 passed
+M3 snippet with misspelled key                1 failed, 18 passed
+M4 script writes a file                       1 failed, 18 passed
+restored                                      19 passed
+# Harness health — 2026-10-15 — wangIsHere0000001
+
+Configured is not enforced: each line reads what a config file says; none proves the harness enforces it. Nothing was changed; no quota spent.
+
+## Ten requirements
+
+| # | Requirement | present | absent | unknown | measured | covered |
+|---|---|---|---|---|---|---|
+| R1 | Clear context delivery | 0 | 0 | 0 | 2 | 0 |
+| R2 | Well-designed tools | 0 | 0 | 0 | 0 | 2 |
+| R3 | Planning and task structure | 0 | 0 | 0 | 0 | 1 |
+| R4 | State and memory across sessions | 0 | 0 | 0 | 1 | 1 |
+| R5 | Independent verification | 1 | 0 | 0 | 0 | 1 |
+| R6 | Guardrails and permissions | 0 | 3 | 4 | 0 | 0 |
+| R7 | Recovery and retries | 0 | 0 | 0 | 0 | 1 |
+| R8 | Human-in-the-loop gates | 1 | 2 | 0 | 0 | 0 |
+| R9 | Observability | 0 | 0 | 0 | 3 | 2 |
+| R10 | Feedback loop that improves the harness | 1 | 0 | 0 | 0 | 0 |
+
+## Lines
+
+| # | Harness | Item | Status | Finding | Detail | Proof |
+|---|---|---|---|---|---|---|
+| — | claude | installed | verified | - | on PATH | `command -v claude` |
+| — | codex | installed | verified | - | on PATH | `command -v codex` |
+| — | agy | installed | verified | - | on PATH | `command -v agy` |
+| — | qwen | installed | verified | - | on PATH | `command -v qwen` |
+| — | dsh | installed | verified | - | on PATH | `command -v dsh` |
+| — | opencode | installed | verified | - | on PATH | `command -v opencode` |
+| R1 | - | ./CLAUDE.md | verified | measured | 127 lines, 9205 bytes | ./CLAUDE.md |
+| R1 | - | ./AGENTS.md | verified | measured | 4 lines, 257 bytes | ./AGENTS.md |
+| R2 | - | engine adapters with pinned flags | verified | covered | per run, by engines.py | engines.py |
+| R2 | - | dispatcher | verified | covered | per run, by dispatch.py | dispatch.py |
+| R3 | - | design gate | verified | covered | per run, by design_gate.py | design_gate.py |
+| R4 | - | run state template | verified | covered | per run, by state.md | state.md |
+| R4 | claude | project memory | reported | measured | 44 memory files | ~/.claude/projects/-home-smoke01-dev-ancient-games/memory |
+| R5 | - | build gate (tests, scope, tamper) | verified | covered | per run, by feature_gate.py | feature_gate.py |
+| R5 | - | engine kinds on PATH | verified | present | 6: agy, claude, codex, dsh, opencode, qwen (installed, not canary-proved) | `command -v` |
+| R6 | claude | deny rules | reported | absent | no permissions.deny in any scope; key names from the 2.1.299 binary; installed 2.1.299 | ~/.claude/settings.json, ./.claude/settings.json, ./.claude/settings.local.json |
+| R6 | claude | sandbox | reported | absent | sandbox.enabled not set; key names from the 2.1.299 binary; installed 2.1.299 | ~/.claude/settings.json, ./.claude/settings.json, ./.claude/settings.local.json |
+| R6 | codex | sandbox_mode | verified | absent | not set: Codex's built-in default applies (not checked); key names verified on 0.160.0 | ~/.codex/config.toml |
+| R6 | agy | permissions and sandbox | unknown | unknown | config format not verified for this harness; prove key names on the installed version first | harness_health.py docstring |
+| R6 | qwen | permissions and sandbox | unknown | unknown | config format not verified for this harness; prove key names on the installed version first | harness_health.py docstring |
+| R6 | dsh | permissions and sandbox | unknown | unknown | config format not verified for this harness; prove key names on the installed version first | harness_health.py docstring |
+| R6 | opencode | permissions and sandbox | unknown | unknown | config format not verified for this harness; prove key names on the installed version first | harness_health.py docstring |
+| R7 | - | timers and bounded repair | verified | covered | per run, by dispatch.py | dispatch.py |
+| R8 | claude | permission mode | reported | present | defaultMode not set (default); key names from the 2.1.299 binary; installed 2.1.299 | ~/.claude/settings.json, ./.claude/settings.json, ./.claude/settings.local.json |
+| R8 | claude | bypass-mode prompt | reported | absent | skipDangerousModePermissionPrompt true (user); key names from the 2.1.299 binary; installed 2.1.299 | ~/.claude/settings.json, ./.claude/settings.json, ./.claude/settings.local.json |
+| R8 | codex | approval_policy | verified | absent | not set: Codex's built-in default applies (not checked); key names verified on 0.160.0 | ~/.codex/config.toml |
+| R9 | - | run event log | verified | covered | per run, by runlog.py | runlog.py |
+| R9 | - | token harvest | verified | covered | per run, by harvest_run.py | harvest_run.py |
+| R9 | claude | session transcripts | reported | measured | 72 session logs for this project | ~/.claude/projects/-home-smoke01-dev-ancient-games |
+| R9 | codex | session rollouts | verified | measured | folder present | ~/.codex/sessions |
+| R9 | dsh | sessions | verified | measured | folder present | ~/.dsh/sessions |
+| R10 | claude | hooks | reported | present | events: UserPromptSubmit; key names from the 2.1.299 binary; installed 2.1.299 | ~/.claude/settings.json, ./.claude/settings.json, ./.claude/settings.local.json |
+
+## Help
+
+### R6 · claude · deny rules
+
+- File: `./.claude/settings.json`
+- What it changes: blocks the listed tools/paths outright, whatever is allowed elsewhere. The two rules are examples from Claude Code's settings docs — replace them with what this project must never touch
+
+```json
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./secrets/**)"
+    ]
+  }
+}
+```
+
+### R6 · claude · sandbox
+
+- File: `./.claude/settings.json`
+- What it changes: runs Bash commands inside Claude Code's OS sandbox (filesystem and network limits)
+
+```json
+{
+  "sandbox": {
+    "enabled": true
+  }
+}
+```
+
+### R6 · codex · sandbox_mode
+
+- File: `~/.codex/config.toml`
+- What it changes: commands run in Codex's sandbox: writes limited to the workspace. Where: a top-level line in ~/.codex/config.toml, above the first [table] (replace the line if it exists)
+
+```toml
+sandbox_mode = "workspace-write"
+```
+
+### R8 · claude · bypass-mode prompt
+
+- File: `~/.claude/settings.json`
+- What it changes: asks the person before a session enters bypass-permissions mode
+
+```json
+{
+  "skipDangerousModePermissionPrompt": false
+}
+```
+
+### R8 · codex · approval_policy
+
+- File: `~/.codex/config.toml`
+- What it changes: Codex asks the person before commands it may not run on its own. Where: a top-level line in ~/.codex/config.toml, above the first [table] (replace the line if it exists)
+
+```toml
+approval_policy = "on-request"
+```
+
+You apply any change; this script changed nothing.
+
+exec
+/bin/bash -lc 'nl -ba .claude/skills/workflow-design/scripts/harness_health.py' in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+     1	#!/usr/bin/env python3
+     2	"""harness_health.py — harness health for method 3.1 (readiness), beside readiness.py.
+     3	
+     4	readiness.py proves what is installed; this script reads how each installed harness is set up, against ten
+     5	requirements for a harness (context, tools, planning, state, verification, guardrails, recovery, human gates,
+     6	observability, feedback). It never spends quota, never writes a file, and never prints a config value other than
+     7	a recognised mode name or a count — config files hold keys.
+     8	
+     9	Configured is not enforced: a line reads what a config file says; none proves the harness enforces it.
+    10	
+    11	Every line is one finding:
+    12	  present   the thing the requirement names is configured
+    13	  absent    it is not — and a Help entry says which file, which key, and a snippet the person applies
+    14	  measured  a number with no verdict (no threshold is given)
+    15	  covered   a per-run requirement the method's own script covers; the line goes MISSING if that script is gone
+    16	  unknown   the harness's config format has not been verified, or the file could not be read
+    17	Status keeps readiness's meaning: verified (key names proved on the installed version: the harness rejected a bad
+    18	value) · reported (key names from another version or the binary's strings) · unknown · MISSING.
+    19	
+    20	Key names, and the version they were checked on (runs/20261015-harness-health/evidence/ in the Ancient Games repo):
+    21	  codex   sandbox_mode, approval_policy — verified on codex-cli 0.160.0 (`codex -c 'sandbox_mode="bogus"' login
+    22	          status` is rejected; a misspelled key is silently accepted)
+    23	  claude  permissions.deny / defaultMode, sandbox.enabled, skipDangerousModePermissionPrompt, hooks — reported from
+    24	          the 2.1.299 binary's strings; no quota-free command validates them
+    25	  agy, qwen, dsh, opencode — not verified: unknown
+    26	
+    27	Usage: harness_health.py [--harness NAME ...] [--json] [--self-test]
+    28	Exit: 0 ok · 1 a --harness named harness is not installed · 2 usage error. Findings never change the exit code.
+    29	"""
+    30	from __future__ import annotations
+    31	
+    32	import argparse
+    33	import json
+    34	import os
+    35	import re
+    36	import shutil
+    37	import socket
+    38	import sys
+    39	import tempfile
+    40	import tomllib
+    41	from dataclasses import asdict, dataclass, field
+    42	from datetime import date
+    43	from pathlib import Path
+    44	
+    45	sys.path.insert(0, str(Path(__file__).resolve().parent))
+    46	from readiness import MISSING, REPORTED, UNKNOWN, VERIFIED, cell, run_cmd  # noqa: E402
+    47	
+    48	SCRIPTS = Path(__file__).resolve().parent
+    49	HARNESSES = ["claude", "codex", "agy", "qwen", "dsh", "opencode"]
+    50	CODEX_VERIFIED_ON = "0.160.0"
+    51	CLAUDE_KEYS_FROM = "2.1.299"
+    52	CLAUDE_MODES = {"default", "acceptEdits", "plan", "auto", "bypassPermissions", "dontAsk"}
+    53	CODEX_SANDBOX = {"read-only", "workspace-write", "danger-full-access"}
+    54	CODEX_APPROVAL = {"untrusted", "on-failure", "on-request", "granular", "never"}
+    55	
+    56	REQUIREMENTS = {1: "Clear context delivery", 2: "Well-designed tools", 3: "Planning and task structure",
+    57	                4: "State and memory across sessions", 5: "Independent verification",
+    58	                6: "Guardrails and permissions", 7: "Recovery and retries", 8: "Human-in-the-loop gates",
+    59	                9: "Observability", 10: "Feedback loop that improves the harness"}
+    60	FINDINGS = ["present", "absent", "unknown", "measured", "covered"]
+    61	
+    62	
+    63	@dataclass
+    64	class Help:
+    65	    file: str
+    66	    changes: str
+    67	    snippet: str = ""
+    68	    lang: str = ""          # json: merge into the file · toml: a top-level line above the first [table]
+    69	
+    70	
+    71	@dataclass
+    72	class Finding:
+    73	    req: int
+    74	    harness: str            # "-" when the line is not about one harness
+    75	    item: str
+    76	    status: str
+    77	    finding: str
+    78	    detail: str
+    79	    proof: str
+    80	    help: Help | None = field(default=None)
+    81	
+    82	
+    83	def shown(p: Path, home: Path, cwd: Path) -> str:
+    84	    """A path as the person would type it, never the machine's absolute home or project path."""
+    85	    for base, label in ((cwd, "."), (home, "~")):
+    86	        try:
+    87	            return f"{label}/{p.relative_to(base)}"
+    88	        except ValueError:
+    89	            pass
+    90	    return str(p)
+    91	
+    92	
+    93	def load_json(p: Path) -> tuple[dict | None, str]:
+    94	    """(object, "") or (None, reason). Absent file → ({}, "absent")."""
+    95	    if not p.exists():
+    96	        return {}, "absent"
+    97	    try:
+    98	        d = json.loads(p.read_text())
+    99	    except (OSError, ValueError) as e:
+   100	        return None, f"unreadable: {type(e).__name__}"
+   101	    return (d, "") if isinstance(d, dict) else (None, "unreadable: top level is not a JSON object")
+   102	
+   103	
+   104	# --- per-run requirements: covered by the method's own scripts -------------------------------------------------
+   105	
+   106	COVERED = [(2, "engine adapters with pinned flags", "engines.py"), (2, "dispatcher", "dispatch.py"),
+   107	           (3, "design gate", "design_gate.py"), (4, "run state template", "../assets/templates/state.md"),
+   108	           (5, "build gate (tests, scope, tamper)", "feature_gate.py"), (7, "timers and bounded repair", "dispatch.py"),
+   109	           (9, "run event log", "runlog.py"), (9, "token harvest", "harvest_run.py")]
+   110	
+   111	
+   112	def covered_lines(scripts: Path) -> list[Finding]:
+   113	    out = []
+   114	    for req, what, rel in COVERED:
+   115	        p = (scripts / rel).resolve()
+   116	        name = Path(rel).name
+   117	        if p.is_file():
+   118	            out.append(Finding(req, "-", what, VERIFIED, "covered", f"per run, by {name}", name))
+   119	        else:
+   120	            out.append(Finding(req, "-", what, MISSING, "unknown", f"{name} not found beside this script", name))
+   121	    return out
+   122	
+   123	
+   124	# --- requirement 1, 4, 5, 9: files and engines -----------------------------------------------------------------
+   125	
+   126	def context_lines(home: Path, cwd: Path, claude_dir: Path, codex_dir: Path) -> list[Finding]:
+   127	    out = []
+   128	    project = [cwd / n for n in ("CLAUDE.md", "AGENTS.md", "QWEN.md", "GEMINI.md")]
+   129	    for p in project + [claude_dir / "CLAUDE.md", codex_dir / "AGENTS.md"]:
+   130	        if p.is_file():
+   131	            try:
+   132	                text = p.read_text(errors="replace")
+   133	            except OSError as e:
+   134	                out.append(Finding(1, "-", shown(p, home, cwd), UNKNOWN, "unknown", f"unreadable: {e}", shown(p, home, cwd)))
+   135	                continue
+   136	            out.append(Finding(1, "-", shown(p, home, cwd), VERIFIED, "measured",
+   137	                               f"{len(text.splitlines())} lines, {len(text.encode())} bytes", shown(p, home, cwd)))
+   138	    if not any(p.is_file() for p in project):
+   139	        out.append(Finding(1, "-", "project instruction file", VERIFIED, "absent",
+   140	                           "none of CLAUDE.md, AGENTS.md, QWEN.md, GEMINI.md in the project", "."))
+   141	        out[-1].help = Help("./AGENTS.md", "gives every harness one short, durable entry point; the bootstrap skill "
+   142	                            "writes one from the project's blueprint")
+   143	    return out
+   144	
+   145	
+   146	def memory_and_log_lines(home: Path, cwd: Path, claude_dir: Path, codex_dir: Path,
+   147	                         installed: set[str]) -> list[Finding]:
+   148	    out = []
+   149	    slug = re.sub(r"[^A-Za-z0-9]", "-", str(cwd))
+   150	    proj = claude_dir / "projects" / slug
+   151	    if "claude" in installed:
+   152	        mem = proj / "memory"
+   153	        n = len(list(mem.glob("*.md"))) if mem.is_dir() else 0
+   154	        out.append(Finding(4, "claude", "project memory", REPORTED, "measured",
+   155	                           f"{n} memory files" if mem.is_dir() else "no memory folder for this project",
+   156	                           shown(mem, home, cwd)))
+   157	        n = len(list(proj.glob("*.jsonl"))) if proj.is_dir() else 0
+   158	        out.append(Finding(9, "claude", "session transcripts", REPORTED, "measured",
+   159	                           f"{n} session logs for this project", shown(proj, home, cwd)))
+   160	    if "codex" in installed:
+   161	        p = codex_dir / "sessions"
+   162	        out.append(Finding(9, "codex", "session rollouts", VERIFIED, "measured",
+   163	                           "folder present" if p.is_dir() else "no sessions folder", shown(p, home, cwd)))
+   164	    if "dsh" in installed:
+   165	        p = home / ".dsh" / "sessions"
+   166	        out.append(Finding(9, "dsh", "sessions", VERIFIED, "measured",
+   167	                           "folder present" if p.is_dir() else "no sessions folder", shown(p, home, cwd)))
+   168	    return out
+   169	
+   170	
+   171	def engine_kind_line(installed: set[str]) -> Finding:
+   172	    kinds = sorted(installed)
+   173	    if len(kinds) >= 2:  # two is what "a reviewer that is not the builder" means, not a chosen threshold
+   174	        return Finding(5, "-", "engine kinds on PATH", VERIFIED, "present",
+   175	                       f"{len(kinds)}: {', '.join(kinds)} (installed, not canary-proved)", "`command -v`")
+   176	    f = Finding(5, "-", "engine kinds on PATH", VERIFIED, "absent",
+   177	                f"{len(kinds)}: {', '.join(kinds) or 'none'} — a builder's work cannot get a different-kind reviewer",
+   178	                "`command -v`")
+   179	    f.help = Help("-", "install and canary-prove a second engine kind (docs: executor-kinds), or plan every "
+   180	                       "building node's review as a script check")
+   181	    return f
+   182	
+   183	
+   184	# --- Claude Code -----------------------------------------------------------------------------------------------
+   185	
+   186	def claude_lines(home: Path, cwd: Path, claude_dir: Path) -> list[Finding]:
+   187	    scopes = [("user", claude_dir / "settings.json"), ("project", cwd / ".claude" / "settings.json"),
+   188	              ("local", cwd / ".claude" / "settings.local.json")]
+   189	    rc, out = run_cmd(["claude", "--version"])
+   190	    version = out.split()[0] if rc == 0 and out else "?"
+   191	    basis = f"key names from the {CLAUDE_KEYS_FROM} binary; installed {version}"
+   192	    proof = ", ".join(shown(p, home, cwd) for _, p in scopes)
+   193	    loaded = []
+   194	    for scope, p in scopes:
+   195	        d, why = load_json(p)
+   196	        if d is None:
+   197	            return [Finding(6, "claude", "settings", UNKNOWN, "unknown", f"{shown(p, home, cwd)} {why}",
+   198	                            shown(p, home, cwd))]
+   199	        loaded.append((scope, p, d))
+   200	
+   201	    def perms(d):
+   202	        v = d.get("permissions")
+   203	        return v if isinstance(v, dict) else {}
+   204	
+   205	    lines = []
+   206	    # R6 deny rules: they add up across scopes
+   207	    deny = [(s, len(perms(d)["deny"])) for s, _, d in loaded
+   208	            if isinstance(perms(d).get("deny"), list) and perms(d)["deny"]]
+   209	    if deny:
+   210	        lines.append(Finding(6, "claude", "deny rules", REPORTED, "present",
+   211	                             f"{', '.join(f'{n} in {s}' for s, n in deny)}; {basis}", proof))
+   212	    else:
+   213	        f = Finding(6, "claude", "deny rules", REPORTED, "absent", f"no permissions.deny in any scope; {basis}", proof)
+   214	        f.help = Help(shown(scopes[1][1], home, cwd),
+   215	                      "blocks the listed tools/paths outright, whatever is allowed elsewhere. The two rules are "
+   216	                      "examples from Claude Code's settings docs — replace them with what this project must never "
+   217	                      "touch", json.dumps({"permissions": {"deny": ["Read(./.env)", "Read(./secrets/**)"]}}, indent=2),
+   218	                      "json")
+   219	        lines.append(f)
+   220	
+   221	    def effective(key_path):
+   222	        """(value, scope, path) from the most specific scope that sets it: local > project > user."""
+   223	        for scope, p, d in reversed(loaded):
+   224	            v = d
+   225	            for k in key_path:
+   226	                v = v.get(k) if isinstance(v, dict) else None
+   227	            if v is not None:
+   228	                return v, scope, p
+   229	        return None, None, None
+   230	
+   231	    # R6 sandbox
+   232	    v, scope, p = effective(("sandbox", "enabled"))
+   233	    if v is True:
+   234	        lines.append(Finding(6, "claude", "sandbox", REPORTED, "present", f"sandbox.enabled true ({scope}); {basis}", proof))
+   235	    else:
+   236	        f = Finding(6, "claude", "sandbox", REPORTED, "absent",
+   237	                    f"sandbox.enabled {'false (' + scope + ')' if v is False else 'not set'}; {basis}", proof)
+   238	        f.help = Help(shown(p or scopes[1][1], home, cwd), "runs Bash commands inside Claude Code's OS sandbox "
+   239	                      "(filesystem and network limits)", json.dumps({"sandbox": {"enabled": True}}, indent=2), "json")
+   240	        lines.append(f)
+   241	
+   242	    # R8 permission mode — a human approves unless the mode bypasses it
+   243	    v, scope, p = effective(("permissions", "defaultMode"))
+   244	    if v == "bypassPermissions":
+   245	        f = Finding(8, "claude", "permission mode", REPORTED, "absent",
+   246	                    f"defaultMode bypassPermissions ({scope}): no approval prompts; {basis}", proof)
+   247	        f.help = Help(shown(p, home, cwd), "brings back approval prompts for actions not allowed by a rule",
+   248	                      json.dumps({"permissions": {"defaultMode": "default"}}, indent=2), "json")
+   249	        lines.append(f)
+   250	    else:
+   251	        mode = v if v in CLAUDE_MODES else ("not set (default)" if v is None else "unrecognised value (not shown)")
+   252	        lines.append(Finding(8, "claude", "permission mode", REPORTED, "present",
+   253	                             f"defaultMode {mode}{f' ({scope})' if scope else ''}; {basis}", proof))
+   254	
+   255	    # R8 the prompt before entering bypass mode
+   256	    v, scope, p = effective(("skipDangerousModePermissionPrompt",))
+   257	    if v is True:
+   258	        f = Finding(8, "claude", "bypass-mode prompt", REPORTED, "absent",
+   259	                    f"skipDangerousModePermissionPrompt true ({scope}); {basis}", proof)
+   260	        f.help = Help(shown(p, home, cwd), "asks the person before a session enters bypass-permissions mode",
+   261	                      json.dumps({"skipDangerousModePermissionPrompt": False}, indent=2), "json")
+   262	        lines.append(f)
+   263	    else:
+   264	        lines.append(Finding(8, "claude", "bypass-mode prompt", REPORTED, "present",
+   265	                             f"not skipped; {basis}", proof))
+   266	
+   267	    # R10 hooks: event names add up across scopes
+   268	    events = sorted({e for _, _, d in loaded if isinstance(d.get("hooks"), dict)
+   269	                     for e, v in d["hooks"].items() if v and re.fullmatch(r"[A-Za-z]+", str(e))})
+   270	    if events:
+   271	        lines.append(Finding(10, "claude", "hooks", REPORTED, "present", f"events: {', '.join(events)}; {basis}", proof))
+   272	    else:
+   273	        f = Finding(10, "claude", "hooks", REPORTED, "absent", f"no hooks in any scope; {basis}", proof)
+   274	        f.help = Help(shown(scopes[1][1], home, cwd), "a hook is how a recorded mistake becomes a check that "
+   275	                      "runs every time (e.g. a UserPromptSubmit or Stop hook); the command is the project's to write")
+   276	        lines.append(f)
+   277	    return lines
+   278	
+   279	
+   280	# --- Codex -----------------------------------------------------------------------------------------------------
+   281	
+   282	def codex_lines(home: Path, cwd: Path, codex_dir: Path) -> list[Finding]:
+   283	    p = codex_dir / "config.toml"
+   284	    rc, out = run_cmd(["codex", "--version"])
+   285	    version = out.split()[-1] if rc == 0 and out else "?"
+   286	    status = VERIFIED if version == CODEX_VERIFIED_ON else REPORTED
+   287	    basis = f"key names verified on {CODEX_VERIFIED_ON}" + ("" if status == VERIFIED else f"; installed {version}")
+   288	    where = shown(p, home, cwd)
+   289	    if p.exists():
+   290	        try:
+   291	            d = tomllib.loads(p.read_text())
+   292	        except (OSError, tomllib.TOMLDecodeError) as e:
+   293	            return [Finding(6, "codex", "config", UNKNOWN, "unknown", f"{where} unreadable: {type(e).__name__}", where)]
+   294	    else:
+   295	        d = {}
+   296	    note = "; profiles and -c flags may override (not read)" if "profiles" in d else ""
+   297	    placement = f"a top-level line in {where}, above the first [table] (replace the line if it exists)"
+   298	    lines = []
+   299	    for req, key, allowed, bad, fix, changes in [
+   300	            (6, "sandbox_mode", CODEX_SANDBOX, "danger-full-access", "workspace-write",
+   301	             "commands run in Codex's sandbox: writes limited to the workspace"),
+   302	            (8, "approval_policy", CODEX_APPROVAL, "never", "on-request",
+   303	             "Codex asks the person before commands it may not run on its own")]:
+   304	        v = d.get(key)
+   305	        if v in allowed and v != bad:
+   306	            lines.append(Finding(req, "codex", key, status, "present", f"{v}; {basis}{note}", where))
+   307	            continue
+   308	        if v is None:
+   309	            detail = "not set: Codex's built-in default applies (not checked)"
+   310	        elif v == bad:
+   311	            detail = f"{v}"
+   312	        else:
+   313	            detail = "unrecognised value (not shown)"
+   314	        f = Finding(req, "codex", key, status, "absent", f"{detail}; {basis}{note}", where)
+   315	        f.help = Help(where, f"{changes}. Where: {placement}", f'{key} = "{fix}"', "toml")
+   316	        lines.append(f)
+   317	    return lines
+   318	
+   319	
+   320	def unverified_lines(installed: set[str]) -> list[Finding]:
+   321	    return [Finding(6, h, "permissions and sandbox", UNKNOWN, "unknown",
+   322	                    "config format not verified for this harness; prove key names on the installed version first",
+   323	                    "harness_health.py docstring") for h in ("agy", "qwen", "dsh", "opencode") if h in installed]
+   324	
+   325	
+   326	# --- gather, render ---------------------------------------------------------------------------------------------
+   327	
+   328	def gather(home: Path, cwd: Path, env: dict, scripts: Path = SCRIPTS) -> list[Finding]:
+   329	    installed = {h for h in HARNESSES if shutil.which(h, path=env.get("PATH"))}
+   330	    claude_dir = Path(env["CLAUDE_CONFIG_DIR"]) if env.get("CLAUDE_CONFIG_DIR") else home / ".claude"
+   331	    codex_dir = Path(env["CODEX_HOME"]) if env.get("CODEX_HOME") else home / ".codex"
+   332	    lines = [Finding(0, h, "installed", VERIFIED if h in installed else MISSING, "-",
+   333	                     "on PATH" if h in installed else "not on PATH", f"`command -v {h}`") for h in HARNESSES]
+   334	    lines += context_lines(home, cwd, claude_dir, codex_dir)
+   335	    lines += covered_lines(scripts)
+   336	    lines += memory_and_log_lines(home, cwd, claude_dir, codex_dir, installed)
+   337	    lines.append(engine_kind_line(installed))
+   338	    if "claude" in installed:
+   339	        lines += claude_lines(home, cwd, claude_dir)
+   340	    if "codex" in installed:
+   341	        lines += codex_lines(home, cwd, codex_dir)
+   342	    lines += unverified_lines(installed)
+   343	    return sorted(lines, key=lambda f: f.req)
+   344	
+   345	
+   346	def select(lines: list[Finding], harnesses: list[str]) -> list[Finding]:
+   347	    return [f for f in lines if not harnesses or f.harness in ("-", *harnesses)]
+   348	
+   349	
+   350	def to_markdown(lines: list[Finding]) -> str:
+   351	    out = [f"# Harness health — {date.today().isoformat()} — {socket.gethostname()}", "",
+   352	           "Configured is not enforced: each line reads what a config file says; none proves the harness enforces "
+   353	           "it. Nothing was changed; no quota spent.", "", "## Ten requirements", "",
+   354	           "| # | Requirement | " + " | ".join(FINDINGS) + " |", "|---|---|" + "---|" * len(FINDINGS)]
+   355	    for n, name in REQUIREMENTS.items():
+   356	        counts = [sum(1 for f in lines if f.req == n and f.finding == k) for k in FINDINGS]
+   357	        out.append(f"| R{n} | {name} | " + " | ".join(str(c) for c in counts) + " |")
+   358	    out += ["", "## Lines", "", "| # | Harness | Item | Status | Finding | Detail | Proof |",
+   359	            "|---|---|---|---|---|---|---|"]
+   360	    for f in lines:
+   361	        out.append(f"| {'R' + str(f.req) if f.req else '—'} | {f.harness} | {cell(f.item)} | {f.status} | "
+   362	                   f"{f.finding} | {cell(f.detail)} | {cell(f.proof)} |")
+   363	    helps = [f for f in lines if f.help]
+   364	    out += ["", "## Help", ""]
+   365	    if not helps:
+   366	        out.append("Nothing absent.")
+   367	    for f in helps:
+   368	        out += [f"### R{f.req} · {f.harness} · {f.item}", "", f"- File: `{f.help.file}`", f"- What it changes: {f.help.changes}"]
+   369	        if f.help.snippet:
+   370	            out += ["", f"```{f.help.lang}", f.help.snippet, "```"]
+   371	        out.append("")
+   372	    out.append("You apply any change; this script changed nothing.")
+   373	    return "\n".join(out) + "\n"
+   374	
+   375	
+   376	def self_test() -> int:
+   377	    """A settings file with no deny list must come out `absent` — the check can fail."""
+   378	    with tempfile.TemporaryDirectory() as td:
+   379	        home, cwd = Path(td) / "home", Path(td) / "proj"
+   380	        (home / ".claude").mkdir(parents=True)
+   381	        cwd.mkdir()
+   382	        (home / ".claude" / "settings.json").write_text('{"permissions": {"allow": ["Bash(ls:*)"]}}')
+   383	        bad = [f for f in claude_lines(home, cwd, home / ".claude") if f.item == "deny rules"]
+   384	        (home / ".claude" / "settings.json").write_text('{"permissions": {"deny": ["Read(./.env)"]}}')
+   385	        good = [f for f in claude_lines(home, cwd, home / ".claude") if f.item == "deny rules"]
+   386	    if [f.finding for f in bad] == ["absent"] and [f.finding for f in good] == ["present"]:
+   387	        print("self-test PASS: no deny list → absent, a deny list → present — the check can fail.")
+   388	        return 0
+   389	    print(f"self-test FAIL: bad={[f.finding for f in bad]} good={[f.finding for f in good]}")
+   390	    return 1
+   391	
+   392	
+   393	def main(argv: list[str] | None = None) -> int:
+   394	    ap = argparse.ArgumentParser(description="Harness health for method 3.1 (no quota spent, nothing written).")
+   395	    ap.add_argument("--harness", action="append", default=[], choices=HARNESSES,
+   396	                    help="narrow the lines and help to this harness (repeatable); exit 1 if it is not installed")
+   397	    ap.add_argument("--json", action="store_true", help="JSON instead of markdown")
+   398	    ap.add_argument("--self-test", action="store_true", help="prove the check can fail, then exit")
+   399	    args = ap.parse_args(argv)
+   400	    if args.self_test:
+   401	        return self_test()
+   402	    lines = select(gather(Path.home(), Path.cwd(), dict(os.environ)), args.harness)
+   403	    if args.json:
+   404	        print(json.dumps({"date": date.today().isoformat(), "host": socket.gethostname(),
+   405	                          "findings": [asdict(f) for f in lines]}, indent=1))
+   406	    else:
+   407	        print(to_markdown(lines), end="")
+   408	    missing = [f for f in lines if f.item == "installed" and f.harness in args.harness and f.status == MISSING]
+   409	    return 1 if missing else 0
+   410	
+   411	
+   412	if __name__ == "__main__":
+   413	    sys.exit(main())
+
+exec
+/bin/bash -lc "rg --files -g AGENTS.md -g CLAUDE.md -g '*pytest*' -g pyproject.toml -g setup.cfg -g tox.ini && git rev-parse HEAD && git diff --quiet cb808f1" in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+CLAUDE.md
+AGENTS.md
+pyproject.toml
+runs/20261002-open-items/agy-rereview/pytest_m1.out
+runs/20261002-open-items/agy-rereview/pytest_m3.out
+runs/20261002-open-items/agy-rereview/pytest_m2.out
+runs/20261002-open-items/agy-rereview/pytest_m0.out
+cb808f1c2cc004f8e8c08fb2c24b8727a93eeefe
+
+exec
+/bin/bash -lc "sed -n '320,430p' .claude/skills/workflow-design/scripts/harness_health.py | nl -ba -v320 && sed -n '1,120p' .claude/skills/workflow-design/scripts/readiness.py | nl -ba && cat pyproject.toml" in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+   320	def unverified_lines(installed: set[str]) -> list[Finding]:
+   321	    return [Finding(6, h, "permissions and sandbox", UNKNOWN, "unknown",
+   322	                    "config format not verified for this harness; prove key names on the installed version first",
+   323	                    "harness_health.py docstring") for h in ("agy", "qwen", "dsh", "opencode") if h in installed]
+   324	
+   325	
+   326	# --- gather, render ---------------------------------------------------------------------------------------------
+   327	
+   328	def gather(home: Path, cwd: Path, env: dict, scripts: Path = SCRIPTS) -> list[Finding]:
+   329	    installed = {h for h in HARNESSES if shutil.which(h, path=env.get("PATH"))}
+   330	    claude_dir = Path(env["CLAUDE_CONFIG_DIR"]) if env.get("CLAUDE_CONFIG_DIR") else home / ".claude"
+   331	    codex_dir = Path(env["CODEX_HOME"]) if env.get("CODEX_HOME") else home / ".codex"
+   332	    lines = [Finding(0, h, "installed", VERIFIED if h in installed else MISSING, "-",
+   333	                     "on PATH" if h in installed else "not on PATH", f"`command -v {h}`") for h in HARNESSES]
+   334	    lines += context_lines(home, cwd, claude_dir, codex_dir)
+   335	    lines += covered_lines(scripts)
+   336	    lines += memory_and_log_lines(home, cwd, claude_dir, codex_dir, installed)
+   337	    lines.append(engine_kind_line(installed))
+   338	    if "claude" in installed:
+   339	        lines += claude_lines(home, cwd, claude_dir)
+   340	    if "codex" in installed:
+   341	        lines += codex_lines(home, cwd, codex_dir)
+   342	    lines += unverified_lines(installed)
+   343	    return sorted(lines, key=lambda f: f.req)
+   344	
+   345	
+   346	def select(lines: list[Finding], harnesses: list[str]) -> list[Finding]:
+   347	    return [f for f in lines if not harnesses or f.harness in ("-", *harnesses)]
+   348	
+   349	
+   350	def to_markdown(lines: list[Finding]) -> str:
+   351	    out = [f"# Harness health — {date.today().isoformat()} — {socket.gethostname()}", "",
+   352	           "Configured is not enforced: each line reads what a config file says; none proves the harness enforces "
+   353	           "it. Nothing was changed; no quota spent.", "", "## Ten requirements", "",
+   354	           "| # | Requirement | " + " | ".join(FINDINGS) + " |", "|---|---|" + "---|" * len(FINDINGS)]
+   355	    for n, name in REQUIREMENTS.items():
+   356	        counts = [sum(1 for f in lines if f.req == n and f.finding == k) for k in FINDINGS]
+   357	        out.append(f"| R{n} | {name} | " + " | ".join(str(c) for c in counts) + " |")
+   358	    out += ["", "## Lines", "", "| # | Harness | Item | Status | Finding | Detail | Proof |",
+   359	            "|---|---|---|---|---|---|---|"]
+   360	    for f in lines:
+   361	        out.append(f"| {'R' + str(f.req) if f.req else '—'} | {f.harness} | {cell(f.item)} | {f.status} | "
+   362	                   f"{f.finding} | {cell(f.detail)} | {cell(f.proof)} |")
+   363	    helps = [f for f in lines if f.help]
+   364	    out += ["", "## Help", ""]
+   365	    if not helps:
+   366	        out.append("Nothing absent.")
+   367	    for f in helps:
+   368	        out += [f"### R{f.req} · {f.harness} · {f.item}", "", f"- File: `{f.help.file}`", f"- What it changes: {f.help.changes}"]
+   369	        if f.help.snippet:
+   370	            out += ["", f"```{f.help.lang}", f.help.snippet, "```"]
+   371	        out.append("")
+   372	    out.append("You apply any change; this script changed nothing.")
+   373	    return "\n".join(out) + "\n"
+   374	
+   375	
+   376	def self_test() -> int:
+   377	    """A settings file with no deny list must come out `absent` — the check can fail."""
+   378	    with tempfile.TemporaryDirectory() as td:
+   379	        home, cwd = Path(td) / "home", Path(td) / "proj"
+   380	        (home / ".claude").mkdir(parents=True)
+   381	        cwd.mkdir()
+   382	        (home / ".claude" / "settings.json").write_text('{"permissions": {"allow": ["Bash(ls:*)"]}}')
+   383	        bad = [f for f in claude_lines(home, cwd, home / ".claude") if f.item == "deny rules"]
+   384	        (home / ".claude" / "settings.json").write_text('{"permissions": {"deny": ["Read(./.env)"]}}')
+   385	        good = [f for f in claude_lines(home, cwd, home / ".claude") if f.item == "deny rules"]
+   386	    if [f.finding for f in bad] == ["absent"] and [f.finding for f in good] == ["present"]:
+   387	        print("self-test PASS: no deny list → absent, a deny list → present — the check can fail.")
+   388	        return 0
+   389	    print(f"self-test FAIL: bad={[f.finding for f in bad]} good={[f.finding for f in good]}")
+   390	    return 1
+   391	
+   392	
+   393	def main(argv: list[str] | None = None) -> int:
+   394	    ap = argparse.ArgumentParser(description="Harness health for method 3.1 (no quota spent, nothing written).")
+   395	    ap.add_argument("--harness", action="append", default=[], choices=HARNESSES,
+   396	                    help="narrow the lines and help to this harness (repeatable); exit 1 if it is not installed")
+   397	    ap.add_argument("--json", action="store_true", help="JSON instead of markdown")
+   398	    ap.add_argument("--self-test", action="store_true", help="prove the check can fail, then exit")
+   399	    args = ap.parse_args(argv)
+   400	    if args.self_test:
+   401	        return self_test()
+   402	    lines = select(gather(Path.home(), Path.cwd(), dict(os.environ)), args.harness)
+   403	    if args.json:
+   404	        print(json.dumps({"date": date.today().isoformat(), "host": socket.gethostname(),
+   405	                          "findings": [asdict(f) for f in lines]}, indent=1))
+   406	    else:
+   407	        print(to_markdown(lines), end="")
+   408	    missing = [f for f in lines if f.item == "installed" and f.harness in args.harness and f.status == MISSING]
+   409	    return 1 if missing else 0
+   410	
+   411	
+   412	if __name__ == "__main__":
+   413	    sys.exit(main())
+     1	#!/usr/bin/env python3
+     2	"""readiness.py — the standard tool inventory for method 3.1 (readiness).
+     3	
+     4	Proves what is installed and logged in on this machine. It never spends quota:
+     5	no canary is run, so "executes a task" stays unknown here and remains an
+     6	explicit, separately approved step (docs/EXECUTOR_KINDS.md in the Ancient Games
+     7	repo). Every line carries a status and the command or path that proved it:
+     8	
+     9	  verified  a command run just now proved it
+    10	  reported  a local file claims it (may be stale)
+    11	  unknown   not provable on this machine
+    12	  MISSING   expected and not there
+    13	
+    14	Generic by design (the skill is global): nothing hardcodes a project. Project
+    15	extras come in through flags (--blueprint, --workflows).
+    16	
+    17	Usage:
+    18	  readiness.py [--net] [--json] [--require TOOL ...] [--blueprint DIR]
+    19	               [--workflows DIR] [--self-test]
+    20	
+    21	Exit codes: 0 ok · 1 a --require'd tool that is not verified, or an explicit --blueprint dir that is
+    22	MISSING · 2 usage error.
+    23	"""
+    24	from __future__ import annotations
+    25	
+    26	import argparse
+    27	import json
+    28	import os
+    29	import shutil
+    30	import socket
+    31	import subprocess
+    32	import sys
+    33	from concurrent.futures import ThreadPoolExecutor
+    34	from dataclasses import asdict, dataclass
+    35	from datetime import date, datetime, timezone
+    36	from pathlib import Path
+    37	
+    38	CMD_TIMEOUT = 10   # seconds per local command
+    39	NET_TIMEOUT = 30   # seconds for --net commands (agy models talks to the network)
+    40	DEFAULT_BINARIES = ["claude", "codex", "agy", "qwen", "dsh", "opencode", "node", "python3", "git"]
+    41	
+    42	VERIFIED = "verified"
+    43	REPORTED = "reported"
+    44	UNKNOWN = "unknown"
+    45	MISSING = "MISSING"
+    46	
+    47	GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
+    48	          "Machine", "Open unknowns"]
+    49	
+    50	# The blueprint's own section files (docs/workflow-templates/blueprint.md); a .md that is not one of these
+    51	# is not a section, and a mapless directory is MISSING rather than verified.
+    52	SECTION_FILES = {"01-vision.md", "02-requirements.md", "03-domain-model.md", "04-business-logic.md",
+    53	                 "05-architecture.md", "06-data-model.md", "07-ui-ux.md", "08-non-functional.md"}
+    54	
+    55	
+    56	@dataclass
+    57	class Probe:
+    58	    group: str
+    59	    item: str
+    60	    status: str
+    61	    detail: str
+    62	    proof: str
+    63	
+    64	
+    65	def run_cmd(cmd: list[str], timeout: int = CMD_TIMEOUT) -> tuple:
+    66	    """(returncode, stripped output). rc is None if the binary does not exist,
+    67	    'timeout' if it did not answer in time."""
+    68	    try:
+    69	        p = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=timeout)
+    70	    except FileNotFoundError:
+    71	        return None, "not on PATH"
+    72	    except subprocess.TimeoutExpired:
+    73	        return "timeout", f"no answer within {timeout}s"
+    74	    except OSError as e:
+    75	        return None, str(e)
+    76	    return p.returncode, ((p.stdout or "").strip() or (p.stderr or "").strip())
+    77	
+    78	
+    79	def first_line(out: str) -> str:
+    80	    return out.splitlines()[0][:100] if out else "(no output)"
+    81	
+    82	
+    83	def probe_binary(name: str) -> Probe:
+    84	    """The version of the binary **on PATH**.
+    85	
+    86	    That is NOT necessarily the binary that will make a call: a provider can bundle its own, older copy of an
+    87	    engine, and the two do not accept the same model names (docs/EXECUTOR_KINDS.md, "The bundled-runtime trap").
+    88	    This line is the most likely thing in the inventory to be misread as proof for a provider call, so the canary
+    89	    records the version of the binary that actually ran.
+    90	    """
+    91	    rc, out = run_cmd([name, "--version"])
+    92	    proof = f"`{name} --version`"
+    93	    if rc is None:
+    94	        return Probe("Tools", name, MISSING, "not on PATH", f"`command -v {name}`")
+    95	    if rc == "timeout":
+    96	        return Probe("Tools", name, UNKNOWN, out, proof)
+    97	    if rc == 0:
+    98	        return Probe("Tools", name, VERIFIED, first_line(out), proof)
+    99	    return Probe("Tools", name, UNKNOWN, f"exit {rc}: {first_line(out)}", proof)
+   100	
+   101	
+   102	def probe_codex_cache() -> Probe:
+   103	    item = "codex model cache"
+   104	    p = Path.home() / ".codex" / "models_cache.json"
+   105	    if not p.exists():
+   106	        return Probe("Models and logins", item, UNKNOWN, f"no {p}", str(p))
+   107	    try:
+   108	        d = json.loads(p.read_text())
+   109	    except (OSError, ValueError) as e:
+   110	        return Probe("Models and logins", item, UNKNOWN, f"unreadable: {e}", str(p))
+   111	    if not isinstance(d, dict):
+   112	        return Probe("Models and logins", item, UNKNOWN, "unreadable: top level is not a JSON object", str(p))
+   113	    models = d.get("models")
+   114	    ids: list[str] = []
+   115	    if isinstance(models, list):
+   116	        for m in models:
+   117	            ids.append(str(m.get("id") or m.get("slug") or m.get("name") or "?")
+   118	                       if isinstance(m, dict) else str(m))
+   119	    elif isinstance(models, dict):
+   120	        ids = list(models)
+[project]
+name = "ancient-games"
+version = "0.1.0"
+description = "The Ancient Games v1 — program-side spine of an agent-orchestration framework (V3_3_SPEC)"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "code_graph/tests"]
+
+exec
+/bin/bash -lc "cmp .claude/skills/workflow-design/scripts/harness_health.py skills/workflow-design/scripts/harness_health.py && nl -ba tests/test_harness_health.py | sed -n '70,275p'" in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+    70	
+    71	def claude_settings(box, obj, scope="user"):
+    72	    path = {"user": box.home / ".claude/settings.json", "project": box.cwd / ".claude/settings.json",
+    73	            "local": box.cwd / ".claude/settings.local.json"}[scope]
+    74	    return write(path, json.dumps(obj))
+    75	
+    76	
+    77	def tree_hash(*roots: Path) -> dict:
+    78	    return {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
+    79	            for r in roots for p in sorted(r.rglob("*")) if p.is_file()}
+    80	
+    81	
+    82	def test_hh_01_ten_rows_and_no_machine_paths(box):
+    83	    box.full()
+    84	    r = box.run()
+    85	    assert r.returncode == 0, r.stderr
+    86	    rows = re.findall(r"^\| R(\d+) \| ([^|]+) \|", r.stdout.split("## Lines")[0], re.M)
+    87	    assert [int(n) for n, _ in rows] == list(range(1, 11))
+    88	    assert "Configured is not enforced" in r.stdout
+    89	    assert str(box.home) not in r.stdout and str(box.cwd) not in r.stdout and str(ROOT) not in r.stdout
+    90	    f = json.loads(box.run("--json").stdout)["findings"]
+    91	    for h in ("agy", "qwen", "dsh", "opencode"):
+    92	        assert one(f, h, "permissions and sandbox")["finding"] == "unknown"
+    93	    assert one(f, "claude", "deny rules")["finding"] == "absent"
+    94	    assert one(f, "codex", "sandbox_mode")["detail"].startswith("not set")
+    95	
+    96	
+    97	# HH-02: every check that can say absent is shown saying absent (the sabotage) and present.
+    98	CASES = [
+    99	    ("claude", "deny rules", {"permissions": {"allow": ["Bash(ls:*)"]}}, {"permissions": {"deny": ["Read(./x)"]}}),
+   100	    ("claude", "sandbox", {"sandbox": {"enabled": False}}, {"sandbox": {"enabled": True}}),
+   101	    ("claude", "permission mode", {"permissions": {"defaultMode": "bypassPermissions"}},
+   102	     {"permissions": {"defaultMode": "acceptEdits"}}),
+   103	    ("claude", "bypass-mode prompt", {"skipDangerousModePermissionPrompt": True}, {}),
+   104	    ("claude", "hooks", {"hooks": {}}, {"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "true"}]}]}}),
+   105	]
+   106	
+   107	
+   108	@pytest.mark.parametrize("harness,item,bad,good", CASES, ids=[c[1] for c in CASES])
+   109	def test_hh_02_claude_absent_and_present(box, harness, item, bad, good):
+   110	    box.full()
+   111	    claude_settings(box, bad)
+   112	    assert one(box.findings(), harness, item)["finding"] == "absent"
+   113	    claude_settings(box, good)
+   114	    assert one(box.findings(), harness, item)["finding"] == "present"
+   115	
+   116	
+   117	@pytest.mark.parametrize("key,bad,good", [("sandbox_mode", "danger-full-access", "read-only"),
+   118	                                         ("approval_policy", "never", "on-request")])
+   119	def test_hh_02_codex_absent_and_present(box, key, bad, good):
+   120	    box.full()
+   121	    write(box.home / ".codex/config.toml", f'{key} = "{bad}"\n')
+   122	    assert one(box.findings(), "codex", key)["finding"] == "absent"
+   123	    write(box.home / ".codex/config.toml", f'{key} = "{good}"\n')
+   124	    assert one(box.findings(), "codex", key)["finding"] == "present"
+   125	
+   126	
+   127	def test_hh_02_engine_kinds_and_instruction_file(box):
+   128	    box.fake("claude")
+   129	    f = box.findings()
+   130	    assert one(f, "-", "engine kinds on PATH")["finding"] == "absent"
+   131	    assert one(f, "-", "project instruction file")["finding"] == "absent"
+   132	    box.fake("codex")
+   133	    write(box.cwd / "AGENTS.md", "# x\n")
+   134	    f = box.findings()
+   135	    assert one(f, "-", "engine kinds on PATH")["finding"] == "present"
+   136	    assert not [x for x in f if x["item"] == "project instruction file"]
+   137	    assert one(f, "-", "./AGENTS.md")["detail"] == "1 lines, 4 bytes"
+   138	
+   139	
+   140	def test_hh_02_scopes_add_deny_and_local_overrides_mode(box):
+   141	    box.full()
+   142	    claude_settings(box, {"permissions": {"defaultMode": "bypassPermissions"}}, "user")
+   143	    claude_settings(box, {"permissions": {"deny": ["Read(./a)"]}}, "project")
+   144	    claude_settings(box, {"permissions": {"defaultMode": "plan"}}, "local")
+   145	    f = box.findings()
+   146	    assert one(f, "claude", "deny rules")["finding"] == "present"
+   147	    mode = one(f, "claude", "permission mode")
+   148	    assert mode["finding"] == "present" and "plan (local)" in mode["detail"]
+   149	
+   150	
+   151	def test_hh_03_planted_secret_never_printed(box):
+   152	    box.full()
+   153	    claude_settings(box, {"env": {"API_KEY": SECRET}, "permissions": {"deny": [f"Read({SECRET})"],
+   154	                          "defaultMode": SECRET}, "hooks": {SECRET: [{"command": SECRET}]}})
+   155	    write(box.home / ".codex/config.toml",
+   156	          f'sandbox_mode = "{SECRET}"\n[model_providers.x]\napi_key = "{SECRET}"\n')
+   157	    for args in ((), ("--json",)):
+   158	        r = box.run(*args)
+   159	        assert r.returncode == 0, r.stderr
+   160	        assert SECRET not in r.stdout + r.stderr
+   161	
+   162	
+   163	def resolve(box, shown: str) -> Path:
+   164	    return (box.cwd / shown[2:]) if shown.startswith("./") else (box.home / shown[2:])
+   165	
+   166	
+   167	def merge(a: dict, b: dict) -> dict:
+   168	    for k, v in b.items():
+   169	        a[k] = merge(a.get(k, {}), v) if isinstance(v, dict) and isinstance(a.get(k), dict) else v
+   170	    return a
+   171	
+   172	
+   173	def apply_help(box, help_: dict):
+   174	    """Apply a snippet exactly as its help text says: merge JSON into the file; a TOML top-level line above the
+   175	    first [table], replacing that key's line if there is one."""
+   176	    path = resolve(box, help_["file"])
+   177	    if help_["lang"] == "json":
+   178	        old = json.loads(path.read_text()) if path.exists() else {}
+   179	        write(path, json.dumps(merge(old, json.loads(help_["snippet"]))))
+   180	    else:
+   181	        key = help_["snippet"].split("=")[0].strip()
+   182	        lines = [l for l in (path.read_text().splitlines() if path.exists() else [])
+   183	                 if not re.match(rf"\s*{key}\s*=", l)]
+   184	        first_table = next((i for i, l in enumerate(lines) if l.lstrip().startswith("[")), len(lines))
+   185	        write(path, "\n".join(lines[:first_table] + [help_["snippet"]] + lines[first_table:]) + "\n")
+   186	
+   187	
+   188	def test_hh_04_every_snippet_flips_its_finding(box):
+   189	    box.full()
+   190	    claude_settings(box, {"skipDangerousModePermissionPrompt": True,
+   191	                          "permissions": {"defaultMode": "bypassPermissions"}})
+   192	    write(box.home / ".codex/config.toml", '[profiles.x]\nmodel = "m"\n')  # a table first: placement matters
+   193	    before = [f for f in box.findings() if f["help"] and f["help"]["snippet"]]
+   194	    assert {(f["harness"], f["item"]) for f in before} == {
+   195	        ("claude", "deny rules"), ("claude", "sandbox"), ("claude", "permission mode"),
+   196	        ("claude", "bypass-mode prompt"), ("codex", "sandbox_mode"), ("codex", "approval_policy")}
+   197	    for f in before:
+   198	        apply_help(box, f["help"])
+   199	        assert one(box.findings(), f["harness"], f["item"])["finding"] == "present", f
+   200	
+   201	
+   202	def test_hh_05_no_file_changes(box):
+   203	    box.full()
+   204	    claude_settings(box, {"permissions": {"allow": ["Bash(ls:*)"]}})
+   205	    write(box.home / ".codex/config.toml", 'sandbox_mode = "never-valid"\n')
+   206	    write(box.cwd / "CLAUDE.md", "x\n")
+   207	    before = tree_hash(box.home, box.cwd)
+   208	    assert box.run().returncode == 0
+   209	    assert box.run("--json").returncode == 0
+   210	    assert tree_hash(box.home, box.cwd) == before
+   211	
+   212	
+   213	def test_hh_06_covered_goes_missing_without_its_script(tmp_path):
+   214	    scripts = tmp_path / "scripts"
+   215	    (tmp_path / "assets/templates").mkdir(parents=True)
+   216	    scripts.mkdir()
+   217	    for name in ("engines.py", "dispatch.py", "design_gate.py", "feature_gate.py", "runlog.py", "harvest_run.py"):
+   218	        (scripts / name).write_text("")
+   219	    (tmp_path / "assets/templates/state.md").write_text("")
+   220	    assert all(f.finding == "covered" for f in hh.covered_lines(scripts))
+   221	    (scripts / "dispatch.py").unlink()
+   222	    gone = [f for f in hh.covered_lines(scripts) if f.finding != "covered"]
+   223	    assert {(f.item, f.status) for f in gone} == {("dispatcher", "MISSING"), ("timers and bounded repair", "MISSING")}
+   224	
+   225	
+   226	def test_hh_07_harness_flag(box):
+   227	    box.fake("claude")
+   228	    box.fake("codex")
+   229	    assert box.run("--harness", "nope").returncode == 2
+   230	    assert box.run("--harness", "agy").returncode == 1
+   231	    r = box.run("--json", "--harness", "codex")
+   232	    assert r.returncode == 0
+   233	    harnesses = {f["harness"] for f in json.loads(r.stdout)["findings"]}
+   234	    assert harnesses == {"-", "codex"}
+   235	
+   236	
+   237	def test_hh_08_self_test_and_json_contract(box):
+   238	    r = subprocess.run([sys.executable, str(SCRIPT), "--self-test"], capture_output=True, text=True)
+   239	    assert r.returncode == 0 and "self-test PASS" in r.stdout
+   240	    box.full()
+   241	    for f in box.findings():
+   242	        assert set(f) == {"req", "harness", "item", "status", "finding", "detail", "proof", "help"}
+   243	        assert f["status"] in {"verified", "reported", "unknown", "MISSING"}
+   244	        assert f["finding"] in {"present", "absent", "unknown", "measured", "covered", "-"}
+   245	        assert (f["help"] is not None) == (f["finding"] == "absent")
+   246	
+   247	
+   248	def test_hh_09_codex_status_follows_the_verified_version(box):
+   249	    box.full()
+   250	    assert one(box.findings(), "codex", "sandbox_mode")["status"] == "verified"
+   251	    box.fake("codex", "codex-cli 0.170.0")
+   252	    f = one(box.findings(), "codex", "sandbox_mode")
+   253	    assert f["status"] == "reported" and "installed 0.170.0" in f["detail"]
+   254	
+   255	
+   256	def test_hh_10_unreadable_config_is_unknown(box):
+   257	    box.full()
+   258	    write(box.home / ".claude/settings.json", "{not json")
+   259	    write(box.home / ".codex/config.toml", "sandbox_mode = \n")
+   260	    f = box.findings()
+   261	    assert one(f, "claude", "settings")["finding"] == "unknown"
+   262	    assert one(f, "codex", "config")["finding"] == "unknown"
+   263	
+   264	
+   265	def test_hh_11_config_dir_overrides(box):
+   266	    box.full()
+   267	    alt_claude, alt_codex = box.home / "alt-claude", box.home / "alt-codex"
+   268	    write(alt_claude / "settings.json", json.dumps({"permissions": {"deny": ["Read(./x)"]}}))
+   269	    write(alt_codex / "config.toml", 'sandbox_mode = "read-only"\n')
+   270	    f = box.findings(extra_env={"CLAUDE_CONFIG_DIR": str(alt_claude), "CODEX_HOME": str(alt_codex)})
+   271	    assert one(f, "claude", "deny rules")["finding"] == "present"
+   272	    assert one(f, "codex", "sandbox_mode")["finding"] == "present"
+
+exec
+/bin/bash -lc 'env PYTHONDONTWRITEBYTECODE=1 python3 .claude/skills/workflow-design/scripts/harness_health.py' in /home/smoke01/dev/ancient-games-harness-health
+exec
+/bin/bash -lc 'env -u NO_COLOR PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -q -p no:cacheprovider' in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 12ms:
+# Harness health — 2026-10-15 — wangIsHere0000001
+
+Configured is not enforced: each line reads what a config file says; none proves the harness enforces it. Nothing was changed; no quota spent.
+
+## Ten requirements
+
+| # | Requirement | present | absent | unknown | measured | covered |
+|---|---|---|---|---|---|---|
+| R1 | Clear context delivery | 0 | 0 | 0 | 2 | 0 |
+| R2 | Well-designed tools | 0 | 0 | 0 | 0 | 2 |
+| R3 | Planning and task structure | 0 | 0 | 0 | 0 | 1 |
+| R4 | State and memory across sessions | 0 | 0 | 0 | 1 | 1 |
+| R5 | Independent verification | 1 | 0 | 0 | 0 | 1 |
+| R6 | Guardrails and permissions | 0 | 3 | 4 | 0 | 0 |
+| R7 | Recovery and retries | 0 | 0 | 0 | 0 | 1 |
+| R8 | Human-in-the-loop gates | 1 | 2 | 0 | 0 | 0 |
+| R9 | Observability | 0 | 0 | 0 | 3 | 2 |
+| R10 | Feedback loop that improves the harness | 1 | 0 | 0 | 0 | 0 |
+
+## Lines
+
+| # | Harness | Item | Status | Finding | Detail | Proof |
+|---|---|---|---|---|---|---|
+| — | claude | installed | verified | - | on PATH | `command -v claude` |
+| — | codex | installed | verified | - | on PATH | `command -v codex` |
+| — | agy | installed | verified | - | on PATH | `command -v agy` |
+| — | qwen | installed | verified | - | on PATH | `command -v qwen` |
+| — | dsh | installed | verified | - | on PATH | `command -v dsh` |
+| — | opencode | installed | verified | - | on PATH | `command -v opencode` |
+| R1 | - | ./CLAUDE.md | verified | measured | 127 lines, 9200 bytes | ./CLAUDE.md |
+| R1 | - | ./AGENTS.md | verified | measured | 4 lines, 257 bytes | ./AGENTS.md |
+| R2 | - | engine adapters with pinned flags | verified | covered | per run, by engines.py | engines.py |
+| R2 | - | dispatcher | verified | covered | per run, by dispatch.py | dispatch.py |
+| R3 | - | design gate | verified | covered | per run, by design_gate.py | design_gate.py |
+| R4 | - | run state template | verified | covered | per run, by state.md | state.md |
+| R4 | claude | project memory | reported | measured | no memory folder for this project | ~/.claude/projects/-home-smoke01-dev-ancient-games-harness-health/memory |
+| R5 | - | build gate (tests, scope, tamper) | verified | covered | per run, by feature_gate.py | feature_gate.py |
+| R5 | - | engine kinds on PATH | verified | present | 6: agy, claude, codex, dsh, opencode, qwen (installed, not canary-proved) | `command -v` |
+| R6 | claude | deny rules | reported | absent | no permissions.deny in any scope; key names from the 2.1.299 binary; installed 2.1.299 | ~/.claude/settings.json, ./.claude/settings.json, ./.claude/settings.local.json |
+| R6 | claude | sandbox | reported | absent | sandbox.enabled not set; key names from the 2.1.299 binary; installed 2.1.299 | ~/.claude/settings.json, ./.claude/settings.json, ./.claude/settings.local.json |
+| R6 | codex | sandbox_mode | verified | absent | not set: Codex's built-in default applies (not checked); key names verified on 0.160.0 | ~/.codex/config.toml |
+| R6 | agy | permissions and sandbox | unknown | unknown | config format not verified for this harness; prove key names on the installed version first | harness_health.py docstring |
+| R6 | qwen | permissions and sandbox | unknown | unknown | config format not verified for this harness; prove key names on the installed version first | harness_health.py docstring |
+| R6 | dsh | permissions and sandbox | unknown | unknown | config format not verified for this harness; prove key names on the installed version first | harness_health.py docstring |
+| R6 | opencode | permissions and sandbox | unknown | unknown | config format not verified for this harness; prove key names on the installed version first | harness_health.py docstring |
+| R7 | - | timers and bounded repair | verified | covered | per run, by dispatch.py | dispatch.py |
+| R8 | claude | permission mode | reported | present | defaultMode not set (default); key names from the 2.1.299 binary; installed 2.1.299 | ~/.claude/settings.json, ./.claude/settings.json, ./.claude/settings.local.json |
+| R8 | claude | bypass-mode prompt | reported | absent | skipDangerousModePermissionPrompt true (user); key names from the 2.1.299 binary; installed 2.1.299 | ~/.claude/settings.json, ./.claude/settings.json, ./.claude/settings.local.json |
+| R8 | codex | approval_policy | verified | absent | not set: Codex's built-in default applies (not checked); key names verified on 0.160.0 | ~/.codex/config.toml |
+| R9 | - | run event log | verified | covered | per run, by runlog.py | runlog.py |
+| R9 | - | token harvest | verified | covered | per run, by harvest_run.py | harvest_run.py |
+| R9 | claude | session transcripts | reported | measured | 0 session logs for this project | ~/.claude/projects/-home-smoke01-dev-ancient-games-harness-health |
+| R9 | codex | session rollouts | verified | measured | folder present | ~/.codex/sessions |
+| R9 | dsh | sessions | verified | measured | folder present | ~/.dsh/sessions |
+| R10 | claude | hooks | reported | present | events: UserPromptSubmit; key names from the 2.1.299 binary; installed 2.1.299 | ~/.claude/settings.json, ./.claude/settings.json, ./.claude/settings.local.json |
+
+## Help
+
+### R6 · claude · deny rules
+
+- File: `./.claude/settings.json`
+- What it changes: blocks the listed tools/paths outright, whatever is allowed elsewhere. The two rules are examples from Claude Code's settings docs — replace them with what this project must never touch
+
+```json
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./secrets/**)"
+    ]
+  }
+}
+```
+
+### R6 · claude · sandbox
+
+- File: `./.claude/settings.json`
+- What it changes: runs Bash commands inside Claude Code's OS sandbox (filesystem and network limits)
+
+```json
+{
+  "sandbox": {
+    "enabled": true
+  }
+}
+```
+
+### R6 · codex · sandbox_mode
+
+- File: `~/.codex/config.toml`
+- What it changes: commands run in Codex's sandbox: writes limited to the workspace. Where: a top-level line in ~/.codex/config.toml, above the first [table] (replace the line if it exists)
+
+```toml
+sandbox_mode = "workspace-write"
+```
+
+### R8 · claude · bypass-mode prompt
+
+- File: `~/.claude/settings.json`
+- What it changes: asks the person before a session enters bypass-permissions mode
+
+```json
+{
+  "skipDangerousModePermissionPrompt": false
+}
+```
+
+### R8 · codex · approval_policy
+
+- File: `~/.codex/config.toml`
+- What it changes: Codex asks the person before commands it may not run on its own. Where: a top-level line in ~/.codex/config.toml, above the first [table] (replace the line if it exists)
+
+```toml
+approval_policy = "on-request"
+```
+
+You apply any change; this script changed nothing.
+
+ exited 1 in 127ms:
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/smoke01/.local/lib/python3.12/site-packages/pytest/__main__.py", line 9, in <module>
+    raise SystemExit(pytest.console_main())
+                     ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/_pytest/config/__init__.py", line 223, in console_main
+    code = main()
+           ^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/_pytest/config/__init__.py", line 193, in main
+    config = _prepareconfig(new_args, plugins)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/_pytest/config/__init__.py", line 361, in _prepareconfig
+    config: Config = pluginmanager.hook.pytest_cmdline_parse(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/home/smoke01/.local/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/smoke01/.local/lib/python3.12/site-packages/_pytest/helpconfig.py", line 124, in pytest_cmdline_parse
+    config = yield
+             ^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/_pytest/config/__init__.py", line 1186, in pytest_cmdline_parse
+    self.parse(args)
+  File "/home/smoke01/.local/lib/python3.12/site-packages/_pytest/config/__init__.py", line 1556, in parse
+    self.hook.pytest_load_initial_conftests(
+  File "/home/smoke01/.local/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/home/smoke01/.local/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/smoke01/.local/lib/python3.12/site-packages/_pytest/warnings.py", line 128, in pytest_load_initial_conftests
+    return (yield)
+            ^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/pluggy/_callers.py", line 116, in _multicall
+    next(function_gen)  # first yield
+    ^^^^^^^^^^^^^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/_pytest/capture.py", line 170, in pytest_load_initial_conftests
+    capman.start_global_capturing()
+  File "/home/smoke01/.local/lib/python3.12/site-packages/_pytest/capture.py", line 773, in start_global_capturing
+    self._global_capturing = _get_multicapture(self._method)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/_pytest/capture.py", line 714, in _get_multicapture
+    return MultiCapture(in_=FDCapture(0), out=FDCapture(1), err=FDCapture(2))
+                                              ^^^^^^^^^^^^
+  File "/home/smoke01/.local/lib/python3.12/site-packages/_pytest/capture.py", line 493, in __init__
+    TemporaryFile(buffering=0),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tempfile.py", line 770, in TemporaryFile
+    prefix, suffix, dir, output_type = _sanitize_params(prefix, suffix, dir)
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tempfile.py", line 265, in _sanitize_params
+    dir = gettempdir()
+          ^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tempfile.py", line 454, in gettempdir
+    return _os.fsdecode(_gettempdir())
+                        ^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tempfile.py", line 447, in _gettempdir
+    tempdir = _get_default_tempdir()
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tempfile.py", line 362, in _get_default_tempdir
+    raise FileNotFoundError(_errno.ENOENT,
+FileNotFoundError: [Errno 2] No usable temporary directory found in ['/tmp', '/var/tmp', '/usr/tmp', '/home/smoke01/dev/ancient-games-harness-health']
+
+codex
+I found a possible secret leak in hook event names and crashes when mode fields contain lists or objects. The suite could not start because the read-only sandbox blocks pytest’s temporary files. I’ll reproduce the config cases in memory so the review can continue without changing files.
+
+exec
+/bin/bash -lc "env PYTHONDONTWRITEBYTECODE=1 python3 - <<'PY'
+import sys, json
+from pathlib import Path
+from unittest.mock import patch
+sys.path.insert(0, '.claude/skills/workflow-design/scripts')
+import harness_health as hh
+home, cwd, cd = Path('/virtual/home'), Path('/virtual/project'), Path('/virtual/home/.claude')
+
+def claude(obj):
+    def load(p):
+        return (obj if p == cd/'settings.json' else {}), ''
+    with patch.object(hh, 'load_json', side_effect=load), patch.object(hh, 'run_cmd', return_value=(0,'2.1.299 (Claude Code)')):
+        return hh.claude_lines(home,cwd,cd)
+for label,obj in [
+ ('alphabetic secret hook',{'hooks':{'SecretPlantToken':[{'command':'true'}]}}),
+ ('list permission mode',{'permissions':{'defaultMode':[]}}),
+ ('object permission mode',{'permissions':{'defaultMode':{}}}),
+ ('unknown permission mode',{'permissions':{'defaultMode':'bogus'}}),
+ ('dontAsk permission mode',{'permissions':{'defaultMode':'dontAsk'}}),
+ ('deny null rule',{'permissions':{'deny':[None]}}),
+ ('empty Stop hook',{'hooks':{'Stop':[{'hooks':[]}]}}),
+ ('invalid bypass prompt',{'skipDangerousModePermissionPrompt':'true'})]:
+    try:
+        fs=claude(obj)
+        if label=='alphabetic secret hook':
+            print(label, 'markdown leaked:', 'SecretPlantToken' in hh.to_markdown(fs), 'json leaked:', 'SecretPlantToken' in json.dumps([hh.asdict(f) for f in fs]))
+        else:
+            item='permission mode' if 'permission mode' in label else 'deny rules' if 'deny' in label else 'hooks' if 'hook' in label else 'bypass-mode prompt'
+            print(label, [(f.finding,f.detail) for f in fs if f.item==item])
+    except Exception as e: print(label, type(e).__name__, str(e))
+for txt in ['sandbox_mode = []','approval_policy = []','sandbox_mode = {}','approval_policy = {}']:
+    with patch.object(hh, 'run_cmd', return_value=(0,'codex-cli 0.160.0')), patch.object(Path,'exists',return_value=True), patch.object(Path,'read_text',return_value=txt):
+        try: hh.codex_lines(home,cwd,home/'.codex'); print(txt,'NO CRASH')
+        except Exception as e: print(txt,type(e).__name__,str(e))
+with patch.object(hh, 'run_cmd', return_value=(0,'codex-cli 0.160.0')), patch.object(Path,'exists',return_value=True), patch.object(Path,'read_text',side_effect=UnicodeDecodeError('utf-8',b'\\xff',0,1,'invalid start byte')):
+    try: hh.codex_lines(home,cwd,home/'.codex')
+    except Exception as e: print('non-UTF8 Codex config',type(e).__name__)
+print('outside override path:',hh.shown(Path('/opt/shared/config.toml'),home,cwd))
+with patch.object(Path,'is_file',return_value=True):
+    print('all empty backing scripts:',[(f.item,f.status,f.finding) for f in hh.covered_lines(Path('/virtual/scripts'))])
+with patch.object(Path,'is_file',return_value=True),patch.object(Path,'read_text',return_value=''):
+    print('project instruction findings:',[(f.item,f.finding,f.detail) for f in hh.context_lines(home,cwd,cd,home/'.codex')])
+PY" in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+alphabetic secret hook markdown leaked: True json leaked: True
+list permission mode TypeError unhashable type: 'list'
+object permission mode TypeError unhashable type: 'dict'
+unknown permission mode [('present', 'defaultMode unrecognised value (not shown) (user); key names from the 2.1.299 binary; installed 2.1.299')]
+dontAsk permission mode [('present', 'defaultMode dontAsk (user); key names from the 2.1.299 binary; installed 2.1.299')]
+deny null rule [('present', '1 in user; key names from the 2.1.299 binary; installed 2.1.299')]
+empty Stop hook [('present', 'events: Stop; key names from the 2.1.299 binary; installed 2.1.299')]
+invalid bypass prompt [('present', 'not skipped; key names from the 2.1.299 binary; installed 2.1.299')]
+sandbox_mode = [] TypeError unhashable type: 'list'
+approval_policy = [] TypeError unhashable type: 'list'
+sandbox_mode = {} TypeError unhashable type: 'dict'
+approval_policy = {} TypeError unhashable type: 'dict'
+non-UTF8 Codex config UnicodeDecodeError
+outside override path: /opt/shared/config.toml
+all empty backing scripts: [('engine adapters with pinned flags', 'verified', 'covered'), ('dispatcher', 'verified', 'covered'), ('design gate', 'verified', 'covered'), ('run state template', 'verified', 'covered'), ('build gate (tests, scope, tamper)', 'verified', 'covered'), ('timers and bounded repair', 'verified', 'covered'), ('run event log', 'verified', 'covered'), ('token harvest', 'verified', 'covered')]
+project instruction findings: [('./CLAUDE.md', 'measured', '0 lines, 0 bytes'), ('./AGENTS.md', 'measured', '0 lines, 0 bytes'), ('./QWEN.md', 'measured', '0 lines, 0 bytes'), ('./GEMINI.md', 'measured', '0 lines, 0 bytes'), ('~/.claude/CLAUDE.md', 'measured', '0 lines, 0 bytes'), ('~/.codex/AGENTS.md', 'measured', '0 lines, 0 bytes')]
+
+web search: 
+exec
+/bin/bash -lc "rg -n 'tomllib|pytest|1013|994' .claude/skills/workflow-design/scripts tests/test_harness_health.py /home/smoke01/dev/ancient-games/runs/20261015-harness-health -g '*.md' -g '*.txt' -g '*.py' && git status --short" in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+tests/test_harness_health.py:14:import pytest
+tests/test_harness_health.py:27:@pytest.fixture
+tests/test_harness_health.py:108:@pytest.mark.parametrize("harness,item,bad,good", CASES, ids=[c[1] for c in CASES])
+tests/test_harness_health.py:117:@pytest.mark.parametrize("key,bad,good", [("sandbox_mode", "danger-full-access", "read-only"),
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/briefs/review.md:5:(`git show`, `python3 -m pytest -q tests/test_harness_health.py`, running the script). Do not edit any file.
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/briefs/review.md:22:- AC6 the full suite passes (baseline before the change: 994 passed; after: 1013 passed).
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/pre-run-git-status.txt:21:?? runs/20261013-code-graph-blueprint-eval/
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/pre-run-git-status.txt:22:?? runs/20261013-four-experts-clean-up-the-code-graph/
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/pre-run-git-status.txt:23:?? runs/20261013-four-experts-review-the-ancients-page-what/
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/pre-run-git-status.txt:24:?? runs/20261013-four-experts-round-2-approve-the-merged/
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/pre-run-git-status.txt:25:?? runs/20261013-four-experts-round-3-approve-the-final/
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/pre-run-git-status.txt:26:?? runs/20261013-four-experts-two-open-decisions-in-the/
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/pre-run-git-status.txt:27:?? runs/20261013-four-experts-write-a-skill-how-to/
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/pre-run-git-status.txt:28:?? runs/20261013-requirements-evaluator/
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/pre-run-git-status.txt:29:?? runs/20261013-requirements-relay/
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/workflow-design.md:55:- **AC6** the full suite (`env -u NO_COLOR python3 -m pytest -q`) passes, compared with the baseline taken in the worktree before the change.
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/state.md:24:env -u NO_COLOR python3 -m pytest -q tests/test_readiness.py
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/state.md:65:- 2026-10-15 step 4 done: worktree ../ancient-games-harness-health, branch feat/harness-health, commit cb808f1. Baseline 994 passed → 1013 passed. Mutation check 4/4 caught (evidence/mutation-check.txt). Machine run: evidence/harness-health-this-machine.md.
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/mutation-check.txt:2:# Each line: one deliberate break of harness_health.py, then `pytest -q tests/test_harness_health.py`.
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/baseline-full-suite.txt:1:$ env -u NO_COLOR python3 -m pytest -q   (worktree ../ancient-games-harness-health at 2dbf276, before any change)
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/baseline-full-suite.txt:2:994 passed in 53.70s
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/experts/answers/fan-li.md:67:      *Check that can fail (Sabotage)*: Introduce an intentional assertion inversion; verify pytest detects failure immediately.
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/experts/seats/linus-list.md:266:      `alpine.LFD.2.00.0903291409030.3994@localhost.localdomain`, as published at https://lwn.net/Articles/328438/
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/experts/seats/linus-list.md:452:- **I did not read `runs/20261013-four-seats/final/`,** as my brief required. Codex's review was read and used row by
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/experts/seats/fan-li-list.md:411:  and I did not try ctext.org. I did not read `runs/20261013-four-seats/final/`, as instructed.
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/experts/seats/sun-tzu-list.md:44:Ranking is my reading. Line numbers refer to `runs/20261013-four-seats/sources/sun-tzu/孫子兵法.txt` (Wikisource raw text) and `史記_卷065.txt`.
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/experts/seats/sun-tzu-list.md:335:- **Independence:** I did not read `runs/20261013-four-seats/final/`.
+.claude/skills/workflow-design/scripts/feature_gate.py:6:            suite (pytest --junitxml=FILE). A test whose outcome differs between reports is marked flaky.
+.claude/skills/workflow-design/scripts/design_gate.py:435:        "baseline": {"command": "env -u NO_COLOR python3 -m pytest -q", "captured_by": "script"},
+.claude/skills/workflow-design/scripts/design_gate.py:440:             "check": "pytest -q green", "sabotage": "break the code → the check goes red",
+.claude/skills/workflow-design/scripts/design_gate.py:501:    d["coverage"] = d["default_coverage"] = {"criteria": ["R1.1"], "checks": ["pytest -q"]}
+.claude/skills/workflow-design/scripts/design_gate.py:509:    d["coverage"] = {"criteria": ["R1.1"], "checks": ["pytest -q"]}
+.claude/skills/workflow-design/scripts/design_gate.py:510:    d["default_coverage"] = {"criteria": ["R1.1", "R1.2"], "checks": ["pytest -q"]}
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/experts/seats/linus-identity.md:6:Linus Benedict Torvalds (born 28 December 1969 in Helsinki, Finland; Swedish-speaking Finn, naturalised US citizen 2010) has been the creator and lead developer of the Linux kernel since 1991. He announced his "free operating system … just a hobby" for 386/486 AT clones on comp.os.minix on 25 August 1991 (Message-ID `1991Aug25.205708.9541@klaava.Helsinki.FI`), released 1.0 on 14 March 1994, and relicensed the kernel under the GPLv2 after hearing Richard Stallman speak in the autumn of 1991 (Wikipedia, *Linus Torvalds*, citing *Torvalds & Diamond, Just for Fun*, and comp.os.minix; *The early days of Linux*, Lars Wirzenius, LWN). He worked at Transmeta from February 1997 to June 2003, then at OSDL and the Linux Foundation, and moved to Oregon in 2004. In 2005, after the BitKeeper dispute, he wrote Git starting 3 April 2005 and handed it to Junio Hamano by mid-2005; Git exists because "the Linux kernel developers needed a tool they could use to version the kernel". He wrote very little of the kernel himself — about 2% as of 2006 — and said in 2012 that his own contribution is now "mostly merging code written by others". What he kept was the last word: `Documentation/process/submitting-patches.rst` states, in the present tense, "Linus Torvalds is the final arbiter of all changes accepted into the Linux kernel", while noting that "very few patches go through Linus directly". He codified how he would exercise that power in prose rather than edicts — `Documentation/process/management-style.rst` ("This is a short document describing the preferred (or made up, depending on who you ask) management style for the linux kernel") and the much older `coding-style.rst` ("this is what goes for anything that I have to be able to maintain"). In September 2018, after The New Yorker reported on his years of abusive mailing-list mail, he replaced the kernel's Code of Conflict with a Code of Conduct, called his past attacks "unprofessional and uncalled for", took time off to work on how he responds to people, and returned to maintaining 4.19 in October 2018. Awards: 2012 Millennium Technology Prize, 2014 IEEE Computer Pioneer Award, 2018 IEEE Masaru Ibuka Consumer Electronics Award.
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/experts/seats/lao-tzu-list.md:188:  - These fetched copies are in my scratchpad, not in the run. My brief allowed one file. If EJ agrees, `runs/20261013-four-seats/sources/lao-tzu/` is the place to save them so the checks can be repeated.
+.claude/skills/workflow-design/scripts/harness_health.py:40:import tomllib
+.claude/skills/workflow-design/scripts/harness_health.py:291:            d = tomllib.loads(p.read_text())
+.claude/skills/workflow-design/scripts/harness_health.py:292:        except (OSError, tomllib.TOMLDecodeError) as e:
+
+exec
+/bin/bash -lc 'env -u NO_COLOR PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -q --capture=sys -p no:cacheprovider --collect-only tests/test_harness_health.py tests/test_readiness.py' in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 132ms:
+tests/test_harness_health.py::test_hh_01_ten_rows_and_no_machine_paths
+tests/test_harness_health.py::test_hh_02_claude_absent_and_present[deny rules]
+tests/test_harness_health.py::test_hh_02_claude_absent_and_present[sandbox]
+tests/test_harness_health.py::test_hh_02_claude_absent_and_present[permission mode]
+tests/test_harness_health.py::test_hh_02_claude_absent_and_present[bypass-mode prompt]
+tests/test_harness_health.py::test_hh_02_claude_absent_and_present[hooks]
+tests/test_harness_health.py::test_hh_02_codex_absent_and_present[sandbox_mode-danger-full-access-read-only]
+tests/test_harness_health.py::test_hh_02_codex_absent_and_present[approval_policy-never-on-request]
+tests/test_harness_health.py::test_hh_02_engine_kinds_and_instruction_file
+tests/test_harness_health.py::test_hh_02_scopes_add_deny_and_local_overrides_mode
+tests/test_harness_health.py::test_hh_03_planted_secret_never_printed
+tests/test_harness_health.py::test_hh_04_every_snippet_flips_its_finding
+tests/test_harness_health.py::test_hh_05_no_file_changes
+tests/test_harness_health.py::test_hh_06_covered_goes_missing_without_its_script
+tests/test_harness_health.py::test_hh_07_harness_flag
+tests/test_harness_health.py::test_hh_08_self_test_and_json_contract
+tests/test_harness_health.py::test_hh_09_codex_status_follows_the_verified_version
+tests/test_harness_health.py::test_hh_10_unreadable_config_is_unknown
+tests/test_harness_health.py::test_hh_11_config_dir_overrides
+tests/test_readiness.py::test_rt_01_sanitized_full_inventory
+tests/test_readiness.py::test_rt_02_broken_qwen_json_keeps_inventory
+tests/test_readiness.py::test_rt_03a_truncated_and_unreadable_cache
+tests/test_readiness.py::test_rt_03b_non_object_codex_cache
+tests/test_readiness.py::test_rt_03c_non_object_qwen_settings
+tests/test_readiness.py::test_rt_03d_non_object_model_field
+tests/test_readiness.py::test_rt_04_cache_fallbacks_cap_and_age
+tests/test_readiness.py::test_rt_05_qwen_secrets_never_printed
+tests/test_readiness.py::test_rt_06_require_matrix_and_dedupe
+tests/test_readiness.py::test_rt_07_WART_require_accepts_present_broken_tool
+tests/test_readiness.py::test_rt_08_json_contract_and_markdown_row_sets
+tests/test_readiness.py::test_rt_09_markdown_groups_escaping_and_truncation
+tests/test_readiness.py::test_rt_10_hanging_binary_is_bounded
+tests/test_readiness.py::test_rt_11_qwen_quota_tripwire
+tests/test_readiness.py::test_rt_12_net_opt_in_and_agy_banner_parsing
+tests/test_readiness.py::test_rt_agy_models_rc0_error_is_unknown
+tests/test_readiness.py::test_rt_13_blueprint_workflows_and_usage_errors
+tests/test_readiness.py::test_rt_14_self_test_pass_fail_and_json_precedence
+tests/test_readiness.py::test_rt_15_blueprint_without_map
+tests/test_readiness.py::test_rt_16_empty_skill_directory
+tests/test_readiness.py::test_rt_17_skill_symlink_and_listing_cap
+tests/test_readiness.py::test_rt_18_mcp_servers_and_empty_object
+tests/test_readiness.py::test_rt_19_populated_memory_and_history
+tests/test_readiness.py::test_rt_20_present_instruction_files
+tests/test_readiness.py::test_rt_21_net_agy_absent_and_nonzero
+tests/test_readiness.py::test_rt_22_unreadable_dirs_report_unknown
+
+45 tests collected in 0.02s
+
+web search: site.code.claude.com/docs/en/permissions "dontAsk" ...
+web search: 
+exec
+/bin/bash -lc 'rg --files /home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence && nl -ba /home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/baseline-full-suite.txt && env -u NO_COLOR PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -q --capture=sys -p no:cacheprovider --collect-only | tail -n 2' in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 269ms:
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/baseline-full-suite.txt
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/review-codex.log
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/mutation-check.txt
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/u6-claude-keys.txt
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/harness-health-this-machine.md
+/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/u6-codex-keys.txt
+     1	$ env -u NO_COLOR python3 -m pytest -q   (worktree ../ancient-games-harness-health at 2dbf276, before any change)
+     2	994 passed in 53.70s
+
+1013 tests collected in 0.14s
+
+web search: https://code.claude.com/docs/en/permissions
+web search: 
+exec
+/bin/bash -lc "env PYTHONDONTWRITEBYTECODE=1 python3 - <<'PY'
+import sys, json, io
+from pathlib import Path
+from unittest.mock import patch
+from contextlib import redirect_stdout
+sys.path.insert(0,'.claude/skills/workflow-design/scripts')
+import harness_health as hh
+home,cwd=Path('/virtual/home'),Path('/virtual/project')
+base_exists=Path.exists
+configs={home/'.claude/settings.json':json.dumps({'hooks':{'Stop':[{'hooks':[{'type':'command','command':'true'}]}]},'disableAllHooks':True})}
+with patch.object(hh,'run_cmd',side_effect=lambda cmd:(0,'2.1.299 (Claude Code)' if cmd[0]=='claude' else 'codex-cli 0.160.0')),patch.object(Path,'exists',side_effect=None) as pe:
+    pe.return_value=False
+    with patch.object(hh,'load_json',side_effect=lambda p:(json.loads(configs[p]),'') if p in configs else ({},'absent')):
+        print('disabled hooks',[(f.finding,f.detail) for f in hh.claude_lines(home,cwd,home/'.claude') if f.item=='hooks'])
+with patch.object(hh,'run_cmd',return_value=(0,'2.1.299 (Claude Code)')),patch.object(hh,'load_json',side_effect=lambda p:({'hooks':{'SECRET-PLANT-7f3a9c':[{'command':'SECRET-PLANT-7f3a9c'}]},'permissions':{'defaultMode':'SECRET-PLANT-7f3a9c','deny':['Read(SECRET-PLANT-7f3a9c)']}},'') if p==home/'.claude/settings.json' else ({},'')):
+    f=hh.claude_lines(home,cwd,home/'.claude')
+    print('original planted token not leaked:',all('SECRET-PLANT-7f3a9c' not in out for out in [hh.to_markdown(f),json.dumps([hh.asdict(x) for x in f])]))
+with patch.object(hh,'load_json',return_value=({},'')),patch.object(hh,'run_cmd',return_value=(0,'2.1.299 (Claude Code)')):
+    helps=[(f.item,f.help.snippet) for f in hh.claude_lines(home,cwd,home/'.claude') if f.finding=='absent']
+    print('absent help snippets:',helps)
+with patch.object(Path,'home',return_value=home),patch.object(Path,'cwd',return_value=cwd),patch.object(hh.shutil,'which',return_value='/virtual/bin/tool'),patch.object(hh,'run_cmd',return_value=(0,'2.1.299 (Claude Code)')),patch.object(hh,'load_json',side_effect=lambda p:({'permissions':{'defaultMode':[]}},'') if p==home/'.claude/settings.json' else ({},'')),patch.object(Path,'is_file',return_value=False),patch.object(Path,'is_dir',return_value=False):
+    stdout=io.StringIO()
+    try:
+        with redirect_stdout(stdout): hh.main([])
+    except Exception as e: print('CLI wrong-shaped mode:',type(e).__name__,'stdout bytes:',len(stdout.getvalue()))
+with patch.object(Path,'is_file',return_value=True),patch.object(Path,'read_text',side_effect=PermissionError(13,'Permission denied','/virtual/project/AGENTS.md')):
+    f=hh.context_lines(home,cwd,home/'.claude',home/'.codex')
+    print('context error reveals absolute path:', '/virtual/project/AGENTS.md' in hh.to_markdown(f))
+PY" in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 0ms:
+disabled hooks [('present', 'events: Stop; key names from the 2.1.299 binary; installed 2.1.299')]
+original planted token not leaked: True
+absent help snippets: [('deny rules', '{\n  "permissions": {\n    "deny": [\n      "Read(./.env)",\n      "Read(./secrets/**)"\n    ]\n  }\n}'), ('sandbox', '{\n  "sandbox": {\n    "enabled": true\n  }\n}'), ('hooks', '')]
+CLI wrong-shaped mode: TypeError stdout bytes: 0
+context error reveals absolute path: True
+
+web search: 'disableAllHooks'
+codex
+The in-memory probes confirmed the hook-name leak in both Markdown and JSON, and confirmed that malformed mode fields crash before any requirement rows print. They also found several false `present` results. The live output matches AC7’s expected findings; test collection finds 1013 tests, but I cannot confirm they pass in this sandbox.
+
+exec
+/bin/bash -lc "env PYTHONDONTWRITEBYTECODE=1 python3 - <<'PY'
+import sys,json,importlib.util
+from pathlib import Path
+from unittest.mock import patch
+sys.path.insert(0,'.claude/skills/workflow-design/scripts')
+import harness_health as hh
+spec=importlib.util.spec_from_file_location('review_tests','tests/test_harness_health.py')
+t=importlib.util.module_from_spec(spec);spec.loader.exec_module(t)
+home,cwd=Path('/virtual/home'),Path('/virtual/project')
+files={home/'.claude/settings.json':json.dumps({'skipDangerousModePermissionPrompt':True,'permissions':{'defaultMode':'bypassPermissions'}}),home/'.codex/config.toml':'[profiles.x]\\nmodel = \"m\"\\n'}
+class Box: pass
+box=Box();box.home=home;box.cwd=cwd
+orig_exists=Path.exists;orig_read=Path.read_text
+
+def fake_exists(p): return p in files
+
+def fake_read(p,*a,**kw): return files[p]
+
+def write(p,text): files[p]=text;return p
+
+def findings(): return hh.claude_lines(home,cwd,home/'.claude')+hh.codex_lines(home,cwd,home/'.codex')
+with patch.object(Path,'exists',fake_exists),patch.object(Path,'read_text',fake_read),patch.object(hh,'run_cmd',side_effect=lambda cmd:(0,'2.1.299 (Claude Code)' if cmd[0]=='claude' else 'codex-cli 0.160.0')),patch.object(t,'write',write):
+    before=[f for f in findings() if f.help and f.help.snippet]
+    for f in before:
+        t.apply_help(box,hh.asdict(f.help))
+        after=next(x for x in findings() if x.harness==f.harness and x.item==f.item)
+        print(f.harness,f.item,'->',after.finding)
+print('snippet check used the implementation author\\'s apply_help helper with in-memory files; it does not prove harness enforcement or completeness of printed instructions.')
+PY
+" in /home/smoke01/dev/ancient-games-harness-health
+ succeeded in 19ms:
+claude deny rules -> present
+claude sandbox -> present
+claude permission mode -> present
+claude bypass-mode prompt -> present
+codex sandbox_mode -> present
+codex approval_policy -> present
+snippet check used the implementation author's apply_help helper with in-memory files; it does not prove harness enforcement or completeness of printed instructions.
+
+codex
+Reviewed commit `cb808f1`; no files were edited. **My reading:** the change does not meet AC2–AC5. It leaks an alphabetic planted token, crashes on malformed mode fields, and reports several unsupported `present` findings.
+
+## 1. Verdict per criterion
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC1 | **Cannot tell** | `dsh` and `opencode` are added at [readiness.py:40](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/readiness.py:40). The 26 readiness tests collect, but I could not run them successfully in this sandbox. |
+| AC2 | **Does not hold** | Lists or objects in mode fields crash before any rows print. External config directories and instruction-file read errors can print absolute paths; see defects below. The ordinary machine run prints ten rows. |
+| AC3 | **Does not hold** | The project-instruction check can say `absent`, but existing files produce `measured`, never `present`, at [harness_health.py:136](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:136). Its test checks that the absent finding disappears at [test_harness_health.py:136](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:136). The other absent-capable checks have both cases. |
+| AC4 | **Does not hold** | With `{"hooks":{"SecretPlantToken":[{"command":"true"}]}}`, the planted token appears in both Markdown and JSON. |
+| AC5 | **Does not hold** | `--self-test` creates directories and writes settings files at [harness_health.py:378](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:378). All six nonempty snippets flipped their findings in an in-memory replay using the implementation author’s helper; that does not establish their correctness under the printed instructions or actual harness behavior. |
+| AC6 | **Cannot tell** | The full suite collects **1013 tests**. Execution stops before tests start with `FileNotFoundError: No usable temporary directory found`, because the sandbox is read-only. The saved baseline records 994 passes; the run state reports 1013 passes, which I could not independently reproduce. |
+| AC7 | **Holds** | The live machine run reports Claude deny rules `absent`, Codex’s two top-level keys `not set`, and both `dsh` and `opencode` installed. The [saved output](/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/harness-health-this-machine.md) contains the same required findings. |
+
+## 2. Defects
+
+Both copies of `harness_health.py` are identical; these findings apply to both.
+
+1. **High — arbitrary hook names leak configuration strings.**  
+   [harness_health.py:268](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:268) accepts any alphabetic event name and prints it at line 271. Input `{"hooks":{"SecretPlantToken":[{"command":"true"}]}}` prints `events: SecretPlantToken` in both output formats. An alphabetic filter does not establish that a string is a recognized event or safe to disclose.
+
+2. **Medium — malformed mode types crash the entire report.**  
+   [harness_health.py:251](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:251) and [harness_health.py:305](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:305) perform set membership without checking types. Concrete inputs:
+   - Claude: `{"permissions":{"defaultMode":[]}}` or `defaultMode: {}`.
+   - Codex: `sandbox_mode = []`, `approval_policy = []`, or either key assigned `{}`.
+
+   Each raises `TypeError: unhashable type`. A mocked CLI replay produced zero stdout bytes before crashing. Selection happens after gathering at line 402, so a malformed unselected harness can also break `--harness codex`.
+
+3. **High — permission mode gives false reassurance about human approval.**  
+   [harness_health.py:244](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:244) treats everything except `bypassPermissions` as `present`, including `"bogus"` and `"dontAsk"`. The former is unrecognized; the latter suppresses approval prompts by denying calls that would prompt. `auto` also runs without routine human prompts. These results do not support the line’s stated human-approval interpretation. [Claude’s permission-mode documentation](https://code.claude.com/docs/en/permissions#permission-modes) describes those behaviors.
+
+4. **Medium — nonempty malformed deny lists count as configured deny rules.**  
+   [harness_health.py:207](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:207) checks only list type and nonemptiness. `{"permissions":{"deny":[null]}}` produces `present`, with `1 in user`, although it contains no tool/path rule.
+
+5. **Medium — hooks can say `present` with no runnable or enabled hook.**  
+   [harness_health.py:268](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:268) accepts `{"hooks":{"Stop":[{"hooks":[]}]}}`. It also ignores `disableAllHooks`: a valid Stop hook alongside `"disableAllHooks":true` still produces `present`. Both were reproduced in memory. [Claude’s hook documentation](https://code.claude.com/docs/en/hooks#disable-or-remove-hooks) confirms that this setting disables configured hooks.
+
+6. **Medium — absolute paths escape the path formatter.**  
+   [harness_health.py:90](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:90) returns the absolute path when it falls outside home and cwd. For example, `CODEX_HOME=/opt/shared` exposes `/opt/shared/config.toml`. Separately, line 134 prints the raw `OSError`; an instruction-file `PermissionError` exposes its absolute filename even when the formatted proof is relative.
+
+7. **Medium — non-UTF-8 Codex configuration crashes.**  
+   [harness_health.py:291](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:291) reads text, but its exception handler excludes `UnicodeDecodeError`. A config containing byte `0xff` raises that exception instead of returning `unknown`.
+
+8. **Medium — the no-write claim excludes an advertised execution path.**  
+   [harness_health.py:378](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:378) creates temporary directories and writes two configurations during `--self-test`. Cleanup does not satisfy “never writes a file.”
+
+9. **Low — help claims exceed what is emitted.**  
+   [harness_health.py:274](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:274) emits an empty snippet for absent hooks. Engine and instruction-file help also lack snippets, despite the blanket file/key/snippet claim in the docstring and [method documentation:105](/home/smoke01/dev/ancient-games-harness-health/docs/WORKFLOW_DESIGN_METHOD.md:105). JSON merge instructions exist in the test helper, but are not printed to the person applying the snippets.
+
+## 3. Tests that would pass on a broken script
+
+- **`test_hh_03_planted_secret_never_printed`**, [line 151](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:151): its token contains hyphens and digits, so the hook-name regex rejects it. The same output code leaks an alphabetic token. I reproduced both outcomes.
+- **`test_hh_04_every_snippet_flips_its_finding`**, [line 188](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:188): skips empty snippets and supplies its own JSON merge procedure. It can pass while absent findings have no snippet and printed application instructions are incomplete.
+- **`test_hh_05_no_file_changes`**, [line 202](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:202): checks file contents only under fake home and cwd. It misses empty-directory creation, permission changes, writes elsewhere, and `--self-test`.
+- **`test_hh_06_covered_goes_missing_without_its_script`**, [line 213](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:213): explicitly uses empty backing scripts and accepts `verified / covered`. It proves file existence, not that the claimed gates, logging, or recovery work.
+- **`test_hh_02_engine_kinds_and_instruction_file`**, [line 127](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:127): never asserts `present` for the instruction-file check, leaving AC3’s stated requirement unchecked.
+
+## 4. What I did not check
+
+I could not execute the test suite or apply snippets to disk under the read-only sandbox. I did not launch model tasks, measure quota consumption, verify harness enforcement, or rerun the saved mutation checks.
+
+The adversarial probes were checks I wrote using mocked file reads and version commands. They establish the script’s parsing and rendering behavior; they do not independently establish how installed harnesses interpret those configurations.
+tokens used
+78,300
+Reviewed commit `cb808f1`; no files were edited. **My reading:** the change does not meet AC2–AC5. It leaks an alphabetic planted token, crashes on malformed mode fields, and reports several unsupported `present` findings.
+
+## 1. Verdict per criterion
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC1 | **Cannot tell** | `dsh` and `opencode` are added at [readiness.py:40](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/readiness.py:40). The 26 readiness tests collect, but I could not run them successfully in this sandbox. |
+| AC2 | **Does not hold** | Lists or objects in mode fields crash before any rows print. External config directories and instruction-file read errors can print absolute paths; see defects below. The ordinary machine run prints ten rows. |
+| AC3 | **Does not hold** | The project-instruction check can say `absent`, but existing files produce `measured`, never `present`, at [harness_health.py:136](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:136). Its test checks that the absent finding disappears at [test_harness_health.py:136](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:136). The other absent-capable checks have both cases. |
+| AC4 | **Does not hold** | With `{"hooks":{"SecretPlantToken":[{"command":"true"}]}}`, the planted token appears in both Markdown and JSON. |
+| AC5 | **Does not hold** | `--self-test` creates directories and writes settings files at [harness_health.py:378](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:378). All six nonempty snippets flipped their findings in an in-memory replay using the implementation author’s helper; that does not establish their correctness under the printed instructions or actual harness behavior. |
+| AC6 | **Cannot tell** | The full suite collects **1013 tests**. Execution stops before tests start with `FileNotFoundError: No usable temporary directory found`, because the sandbox is read-only. The saved baseline records 994 passes; the run state reports 1013 passes, which I could not independently reproduce. |
+| AC7 | **Holds** | The live machine run reports Claude deny rules `absent`, Codex’s two top-level keys `not set`, and both `dsh` and `opencode` installed. The [saved output](/home/smoke01/dev/ancient-games/runs/20261015-harness-health/evidence/harness-health-this-machine.md) contains the same required findings. |
+
+## 2. Defects
+
+Both copies of `harness_health.py` are identical; these findings apply to both.
+
+1. **High — arbitrary hook names leak configuration strings.**  
+   [harness_health.py:268](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:268) accepts any alphabetic event name and prints it at line 271. Input `{"hooks":{"SecretPlantToken":[{"command":"true"}]}}` prints `events: SecretPlantToken` in both output formats. An alphabetic filter does not establish that a string is a recognized event or safe to disclose.
+
+2. **Medium — malformed mode types crash the entire report.**  
+   [harness_health.py:251](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:251) and [harness_health.py:305](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:305) perform set membership without checking types. Concrete inputs:
+   - Claude: `{"permissions":{"defaultMode":[]}}` or `defaultMode: {}`.
+   - Codex: `sandbox_mode = []`, `approval_policy = []`, or either key assigned `{}`.
+
+   Each raises `TypeError: unhashable type`. A mocked CLI replay produced zero stdout bytes before crashing. Selection happens after gathering at line 402, so a malformed unselected harness can also break `--harness codex`.
+
+3. **High — permission mode gives false reassurance about human approval.**  
+   [harness_health.py:244](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:244) treats everything except `bypassPermissions` as `present`, including `"bogus"` and `"dontAsk"`. The former is unrecognized; the latter suppresses approval prompts by denying calls that would prompt. `auto` also runs without routine human prompts. These results do not support the line’s stated human-approval interpretation. [Claude’s permission-mode documentation](https://code.claude.com/docs/en/permissions#permission-modes) describes those behaviors.
+
+4. **Medium — nonempty malformed deny lists count as configured deny rules.**  
+   [harness_health.py:207](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:207) checks only list type and nonemptiness. `{"permissions":{"deny":[null]}}` produces `present`, with `1 in user`, although it contains no tool/path rule.
+
+5. **Medium — hooks can say `present` with no runnable or enabled hook.**  
+   [harness_health.py:268](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:268) accepts `{"hooks":{"Stop":[{"hooks":[]}]}}`. It also ignores `disableAllHooks`: a valid Stop hook alongside `"disableAllHooks":true` still produces `present`. Both were reproduced in memory. [Claude’s hook documentation](https://code.claude.com/docs/en/hooks#disable-or-remove-hooks) confirms that this setting disables configured hooks.
+
+6. **Medium — absolute paths escape the path formatter.**  
+   [harness_health.py:90](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:90) returns the absolute path when it falls outside home and cwd. For example, `CODEX_HOME=/opt/shared` exposes `/opt/shared/config.toml`. Separately, line 134 prints the raw `OSError`; an instruction-file `PermissionError` exposes its absolute filename even when the formatted proof is relative.
+
+7. **Medium — non-UTF-8 Codex configuration crashes.**  
+   [harness_health.py:291](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:291) reads text, but its exception handler excludes `UnicodeDecodeError`. A config containing byte `0xff` raises that exception instead of returning `unknown`.
+
+8. **Medium — the no-write claim excludes an advertised execution path.**  
+   [harness_health.py:378](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:378) creates temporary directories and writes two configurations during `--self-test`. Cleanup does not satisfy “never writes a file.”
+
+9. **Low — help claims exceed what is emitted.**  
+   [harness_health.py:274](/home/smoke01/dev/ancient-games-harness-health/.claude/skills/workflow-design/scripts/harness_health.py:274) emits an empty snippet for absent hooks. Engine and instruction-file help also lack snippets, despite the blanket file/key/snippet claim in the docstring and [method documentation:105](/home/smoke01/dev/ancient-games-harness-health/docs/WORKFLOW_DESIGN_METHOD.md:105). JSON merge instructions exist in the test helper, but are not printed to the person applying the snippets.
+
+## 3. Tests that would pass on a broken script
+
+- **`test_hh_03_planted_secret_never_printed`**, [line 151](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:151): its token contains hyphens and digits, so the hook-name regex rejects it. The same output code leaks an alphabetic token. I reproduced both outcomes.
+- **`test_hh_04_every_snippet_flips_its_finding`**, [line 188](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:188): skips empty snippets and supplies its own JSON merge procedure. It can pass while absent findings have no snippet and printed application instructions are incomplete.
+- **`test_hh_05_no_file_changes`**, [line 202](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:202): checks file contents only under fake home and cwd. It misses empty-directory creation, permission changes, writes elsewhere, and `--self-test`.
+- **`test_hh_06_covered_goes_missing_without_its_script`**, [line 213](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:213): explicitly uses empty backing scripts and accepts `verified / covered`. It proves file existence, not that the claimed gates, logging, or recovery work.
+- **`test_hh_02_engine_kinds_and_instruction_file`**, [line 127](/home/smoke01/dev/ancient-games-harness-health/tests/test_harness_health.py:127): never asserts `present` for the instruction-file check, leaving AC3’s stated requirement unchecked.
+
+## 4. What I did not check
+
+I could not execute the test suite or apply snippets to disk under the read-only sandbox. I did not launch model tasks, measure quota consumption, verify harness enforcement, or rerun the saved mutation checks.
+
+The adversarial probes were checks I wrote using mocked file reads and version commands. They establish the script’s parsing and rendering behavior; they do not independently establish how installed harnesses interpret those configurations.
+exit=0

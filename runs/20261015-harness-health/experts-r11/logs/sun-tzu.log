@@ -1,0 +1,400 @@
+dsh: reasoning:
+I need to read the seat files.
+dsh: reasoning:
+Let me read the rest of the sun-tzu list (from line 304).
+dsh: reasoning:
+Now I understand the task. I need to answer as the Sun Tzu expert seat, per the brief. Let me also read the CLI/harness-health context maybe. The brief says the question. Let me check if there is any additional context in the run folder — other seats' briefs, the harness_health.py, etc. But the brief says "Do not write files; your final message is the answer." So I should produce the answer as my final message.
+
+Let me consider whether I need more facts. The brief is self-contained. But let me check the run folder structure to see if there's anything else, like the requirements list and the harness_health.py. Actually the brief says answer through the rules. I have my list and identity. I should apply the rules to evaluate R1–R11.2.
+
+Let me think carefully and produce a high-quality answer.
+
+The question: Review the eleven harness requirements as the list a "harness health" check works from. For each:
+- keep / change / split / drop
+- say whether it can be checked at the readiness step (before any work is sent out), and with what check that can fail.
+Then answer Q1 and Q2 on R11.1.
+Then name anything the list misses, raised as N1, N2…, each with the failure it would catch.
+
+Answer format exactly:
+# 孫子 (Sun Tzu) — <the question in a few words>
+## Answer
+## How I decided
+## What I need to know
+## Costs and risks
+## How we would know I was right
+
+Each step names the item it uses: "my #4". A step with no item is "my reading".
+
+I need to be careful: Sun Tzu's rules are about warfare/decision, applied as a lens. The brief's house rules: every check must be able to fail, shown failing once on a planted wrong input; never fill missing threshold with invented number; trigger is a comparison; MUST only for safety bound; no canary; never print a secret; skill runs in other projects so nothing project-specific hardcoded.
+
+Let me structure the verdict per requirement. My list has 20 items. Relevant:
+1. Reckon before battle (count/compare before committing) — relevant to R1 context, R3 planning.
+2. Make yourself unbeatable first; wait — active/relevant to readiness: build own readiness (verified), enemy's move is not yours to control. "Do not rely on their not coming; rely on having what cannot be attacked." That maps to R6/R7, R2 tools.
+3. Whole over broken; strike plans first, walled cities last — prefer less-forceful target; relevant to verification design? Maybe a review of ordered targets: cheap checks before expensive ones? Actually #3's ranking is about striking plans first, cities last. For a harness health check: prefer the cheap indirect fault (config) vs the expensive (dispatch). Hmm.
+4. Know whether you can fight; know the other side and yourself — readiness is exactly this: know yourself (what's installed), know the enemy? In harness health, the "enemy" is the failure mode. Knowing five ways. Relevant to R11 at readiness vs post-step-2.
+5. Move only on advantage; never from anger — threshold: don't add a requirement without the gain; don't move on dislike of a clause.
+6. Mix harm into benefit — each requirement's benefit must be judged with its harm; reviewers must know the harm before benefit. And "whoever does not fully know the harm of using troops cannot fully know its benefit" — apply to each requirement: ask what it costs to run.
+7. War is the way of deception — the harness failures "looked like success (exit 0)". The enemy (failure) conceals itself: appear able when not. This is a key insight for the harness health check: exit 0 is deception; must check the output, not the exit code. Also relevant to prompt injection defenses (R6). But my #7 says "attack where they are unprepared" — the check should attack the harness's blind spot.
+8. Value victory, not duration; speed — R11.2 first signal: fast feedback. "clumsy speed" vs "skillful prolongation" — a slow judge is a liability; but not any speed. Also R7 retries (long campaign blunts). Relevant to Q timing.
+9. Bring the other side to you; do not be brought — for readiness: the check sets the ground (runs commands itself), doesn't rely on the harness. Also "first seize what he cherishes" — target what matters. Relevant to R5 verifier independence? Maybe not.
+10. Avoid the solid, strike the empty; no constant form — a health check must not have a fixed form; attack the gaps the config readers don't read (the 7 behavior failures). "Preparing everywhere, he is few everywhere" — a check trying to cover all 11 requirements shallowly is thin; concentrate. Relevant to where to put the check.
+11. Foreknowledge must come from people; pay for it — readiness must get knowledge from people who know (run commands, logs), not from precedent or measurement alone. "cannot be verified by measurement (度)" — config files are 度? Actually "不可驗於度" means cannot be verified by measurement/precedent; must come from people who know the enemy's situation. This directly attacks the built check: it reads config files only ("reported") and cannot get at the true situation, which is the dispatched behavior. Also don't begrudge the cost of a canary/spend — but house rule says no canary without EJ's go-ahead. So #11 says pay for foreknowledge (a small paid call is worth it compared to a ruined multi-year campaign), but the binding house rule overrides: no canary without EJ. That's a real tension worth naming. Also #11's "not from spirits, not from likeness to past events" — a check must not rely on precedent ("this worked last time").
+12. Seek it in 勢 (regular + irregular), not blame people — build the ground so correct behavior is easy; the harness failures are position/fault of the harness, not the agent's character. Relevant to R10 feedback loop: fix the harness, not exhort the agent.
+13. Not every road is taken, and not every command of the ruler is accepted — requirements should not be MUSTs blindly; the general may refuse. Relevant to R6/R8: rules that can't be checked at readiness shouldn't be forced into the readiness list. Also "there are roads not to be taken" — a health check should decline to check what it cannot check, rather than claim.
+14. Choose action by ratio of forces — a check's depth should match the strength: 10:1 surround, 1:1 hold. For requirements: don't spend more check than the failure is worth; small stubborn force is captured. Relevant to sizing checks and to the 80% count.
+15. General's faults: five dangers — each virtue is a handle. The harness health check has its own faults: e.g., "MUST" list can be gamed; "loves the people" (over-cautious check that never fails); "set on dying" (a check that always fails). Each requirement could itself be a handle for the opposite failure. Relevant to R11.2 and the checks being able to fail.
+16. Orders clear first, then enforced — requirements must be clear and drilled (checked) before they're held against anyone. R11 is unclear (Q1/Q2). If the rule isn't clear, it's the requirement author's fault, not the check's. Relevant.
+17. Learn the enemy by probing and signs — the harness health check should probe (run commands) and read signs (outputs), not just config. Also "humble words with more preparation mean advance" etc. — signs in logs.
+18. Spirit/heart/strength/change — ignore the flagging tool? Hmm. "avoid keen spirit, strike when it flags" — an unverified check? Maybe relevant to timing: run the check when? "Eight prescriptions" including leave a gap for a surrounded army, don't press a desperate enemy — relevant to R7 retries: leave a gap, don't press a failing engine. Relevant to R6 permission: leave a gap.
+19. Name the ground, act as prescribed — readiness's four labels (verified/reported/unknown/MISSING) are exactly "name the ground, then act": each ground has a prescribed action. This is a strong mapping. "troops with no way out fight" — a check with no escape (a hard gate) fights. Also a requirement list should be a table from condition to response, not a fixed sequence.
+20. Which house falls first: judge by land unit, tax, and what they breed — measure structural cause (unit size, tax rate), not symptom. For a harness health check: judge by the structural configuration that predicts failure, not by the failure itself. Also the closing line is the king's, not Sunzi's — attribute correctly (the requirements' author unknown — don't put words in the author's mouth / label). This is a strong metaphor: the health check judged by the "tax unit" (how small the unit, how heavy the tax) — i.e., structural metrics predict which harness falls. Relevant to R9 observability and to the backtest (config predicts 0 of 7 behavior failures — so config is the wrong unit).
+
+Now R1-R11 review with keep/change/split/drop and readiness checkability.
+
+Let me think about the overall answer. The key strategic insight from the list: 
+- The requirements mostly describe "being", not "doing" — they are prescriptions without a check, so at readiness they can only be labelled, not verified. Per my #13 (roads not taken) and #19, readiness should label each requirement's state (verified/reported/unknown/MISSING) rather than pretend to enforce.
+- The 7 behavior failures all looked like success (exit 0). My #7 deception and #17 signs: a config-only check is foreknowledge from 度 (measurement), which 用間 forbids — must come from people/behavior. So the health check must run a probe at dispatch, not read config.
+- R11.1's 80% over prompts vs acceptance criteria: Q1.
+- R11.2 first signal: my #8 (speed) supports it, and my #14 (ratio of forces) defines "fast" as relative to the judged thing.
+
+Let me go through each requirement carefully.
+
+R1 Clear context delivery. Keep. Checkable at readiness? Partially. A check that can fail: does an instruction file exist at the expected path and is it non-empty; is its size within a budget? But "treat the window as a budget" — the budget number is not given → cannot check without an invented threshold (house rule). So change: split the checkable part (file exists, is read, is loaded) from the unmeasurable part (is it "good"). My #1 says count before commit; my #14 says numbers not valued for their own sake — size is not the goal. So R1's "budget not dumping ground" needs a comparison, not a number. A failing check: feed the harness an instruction file that does not exist / is empty / is not loaded into the first prompt → the check must fail. That is testable at readiness only if we can inspect the prompt actually assembled — which spends no quota if the harness echoes context? Hmm. Actually "readiness" proves what's installed and logged in, spends no model quota. So checking R1 at readiness = "the file exists and is at a discoverable path" (verified by reading the filesystem), not "the agent received it". To prove delivery needs a dispatch (quota). So R1: keep, readiness check = instruction file found and non-empty (can fail), but note it proves presence, not delivery — label accordingly. My #17/#11 (probe and signs) says delivery is proven by the agent's output, which is post-readiness.
+
+R2 Well-designed tools. Keep, but not checkable at readiness as stated — "simple, unambiguous, error messages that tell how to fix, explicit boundaries" is a property of a tool's whole behavior, not its config. Readiness could check: each tool has a declared name and a schema/description; an invalid call returns a message naming the invalid field. That second one requires calling the tool (a dispatch, possibly quota, maybe not if it's a local tool). Split: (a) declared interface check — readable at readiness (can fail: a tool with no description); (b) error-message quality — must be probed by a planted bad call (my #17: "test him in contact (角)"), and the planted call must be made to fail once before the check is trusted (house rule). My #15 warns: a tool that never errors can't be tested — the "loving the people" fault. So split R2.
+
+R3 Planning and task structure. Keep. Checkable at readiness? The done-criteria exists per task — but tasks aren't defined yet at readiness (readiness is step 1, before the algorithm step 2). So R3 belongs to step 2's output, not readiness. Readiness could check "a task-list template/format exists". A failing check: a task with no written done-criterion → the check fails. That is post-step-2. My #1 (reckon first) and #8 (don't prolong): done-criteria is the count before committing. Keep, move check to step 2. My #12 (choose people, rely on 勢): a structure that depends on the agent's diligence rather than a required field is the wrong design.
+
+R4 State and memory across sessions. Keep, but change: make it a check on a handoff artifact, not on "memory directories exist". Readiness can check the directory/paths exist (verified), cannot check that a fresh context can resume. The real check is a drill: a fresh session, given only the state file, names the next step — that's a dispatch. Actually there is a cheap version: take the last state file and ask whether it names the next action and its evidence path; a human or a rule can check this without quota. My #1/#4: know yourself. A failing check: state file's last entry is older than the last completed step, or names no next action. My #16: orders clear first. So R4 keep, readiness = paths exist (reported), real check = state file names next action and the step it refers to exists.
+
+R5 Independent verification. Keep — this is the core. Change: state it as "the builder does not judge its own work" and require a named verifier per task. Checkable at readiness? Partially: readiness can check the verifier exists as a tool/command/agent. Cannot check it is independent or effective. My #2 (make yourself unbeatable) and #11 (foreknowledge from people): evidence over claim — the check must be on the output, not the claim. Also my #15: a verifier that always passes (loving the people) is a fault. My #14: verification depth should match the risk. So R5 keep; check at step 2 = every task names its verifier, and readiness = the verifier's command exists and runs. Can fail: a task whose verifier is the same agent/engine as the builder.
+
+R6 Guardrails and permissions. Keep — but per house rule "MUST only for a safety bound", this is one of the few that can be MUST. Readiness checkable? Yes partly: config keys exist (deny rules, sandbox mode, approval policy) — that's the built check. But note: config is `reported`, not `verified`; the built check itself says "configured is not enforced". My #17 (probe) and #7 (deception): the only way to verify a guardrail is to attempt the forbidden action in a safe way and observe the denial. That may not be possible at readiness without a canary/quota; for local sandbox, a planted write outside the allowed path can be attempted with no quota. So R6: keep; readiness = read config (reported) + one planted denial probe where cheap. My #13 (roads not taken): never let the health check edit config — advise only (house rule). My #15: the check's own permission is a fault — if the health check runs with broad access, it's the "loving the people" problem.
+
+R7 Recovery and retries. Keep, change. "Idempotent, rollback points, sensible retry limits" — "sensible" is a weak word with no number; house rule: never invent the number; trigger is a comparison. So make it: each dispatched step declares (a) whether re-running it is safe, (b) its rollback point, (c) its retry limit compared to what? A retry limit is a number EJ must set, or compare to the step's cost. Readiness cannot check idempotence of a step that hasn't run; it can check the declaration exists. My #8 (value victory, not duration; speed): retries prolong; a long campaign blunts. My #18 #8: "do not press a desperate enemy; leave a gap for a surrounded army" — a retry limit must leave an escape/stop condition. My #2: don't rely on the step not failing. So R7 keep; readiness = the dispatch wrapper declares retry limit and rollback; a planted failing step must exhaust the limit and stop, not loop.
+
+R8 Human-in-the-loop gates. Keep. Readiness = the approval policy is set and the bypass prompt is not skipped (built check finds it skipped). But this is config = reported. Real check: a planted action that requires approval actually blocks (probe). My #13: the ruler's command not accepted — a gate must allow the operator to refuse/override. My #16: clear first. My #5: don't move without advantage — gates should sit only where judgment is needed, not everywhere (EJ's words: people handle only calls needing judgment). A failing check: a risky action proceeds without approval → check fails.
+
+R9 Observability. Keep, but change from "log every action, token and cost, decision point and anomaly" — "every" is a universal that almost nothing can fail against without exhaustive coverage. My #1: count, but count what matters. Split: (a) each dispatch writes a log with the fields that let a failure be found (exit code, command, duration, engine, prompt id, cost if any); (b) anomalies are visible. Checkable at readiness: no — needs a prior run's logs. Check: run one no-quota action and confirm a log line appears with the fields. A failing check: a run whose log lacks the engine or the output — and the 7 failures show exit 0 with no output, so the log must capture output, not just exit status. My #17 signs: read the signs, not the claim. My #7: exit 0 is deception.
+
+R10 Feedback loop that improves the harness. Keep. "Every agent mistake becomes a permanent fix." Checkable at readiness? No — it's a property of the process over time. Readiness can check a register/ledger file exists and has an entry per recorded failure. A failing check: a recorded failure with no rule/check/tool linked → fail. My #10 (no constant form) and #20 (judge by the unit/tax): review the scaffold as models improve — some scaffolding exists to compensate for current weaknesses; my #12 says move the ground, not blame people. My #1 (reckon): a feedback entry must name the failure, the fix, and how the fix is checked. My #15: a check that can't fail is a fault.
+
+R11.1 80% of prompts have their result judged by a pre-existing rule/check/test/eval/standard. Change — needs definitions (Q1, Q2) and a trigger comparison. Not checkable at readiness as written, because prompts don't exist at readiness; it is checkable at step 2's exit (per the conflict note and my #1/#19: name the ground then act). But readiness can list the judges (my #1's count of your own resources). A failing check: a step with no named judge → the step becomes an unclear spot (as the method already says). Note: the 80% is n=0, not measured; per house rule, do not enforce a number that isn't defined. Change: define the denominator (Q1), define judge (Q2), and count at step 2. Also per my #14: "more is not what is valued" — 80% is not the goal; every catastrophic step should be judged, and cheap low-risk steps may not need it. Actually careful: the 80% is EJ's number; I should not override it, but I can note it lacks a basis and ask.
+
+R11.2 (SHOULD) first signal before full verdict; a fast check that can fail on its own; full verdict after; expected duration written; exception with reason. Keep — this matches my #8 (speed) and my #17 (probe) and #14 (proportion). "Fast" is defined by comparison — good, that's the house rule (a trigger is a comparison). Checkable at readiness? The judge's declaration of its first check and duration is readable at readiness (per the design), so yes as a plan — but whether the first check actually runs first is only verified by watching it run. A failing check: a judge that produces a full verdict without its declared first check, or a first check slower than the judged prompt. Change: make "can fail the result on its own" the testable core (planted wrong input → fail). My #15: a first check that never fails is a fault. My #18: don't press the enemy — the first check should be cheap.
+
+Q1: 80% over prompts or acceptance criteria? My answer conditionally, through my #1 and #14 and #19. My reading: the unit should be the thing that can fail — the acceptance criterion, because that's what "judged" means and where a judge attaches. But R5's unit is the task/prompt. Hmm. Let me think: a prompt can cover several criteria; a criterion can span prompts. The thing a judge returns pass/fail on is the criterion (or the deliverable). Counting over prompts lets a prompt with 5 criteria and 1 judge count as judged; over criteria it counts 1/5. My #1 (reckon with more/fewer 算) and #19 (name the ground, act as prescribed — the unit defines the prescription) say: pick the unit that the judge actually returns a verdict on. If the judge returns a verdict on a prompt's output as a whole, count prompts; if it returns verdicts per criterion, count criteria. But that makes the denominator depend on the judge, which is circular. So my recommendation: define the unit as the acceptance criterion, because that is where pass/fail lives and it is the finer unit; con: more bookkeeping, and the number falls (a prompt with one judge covering 5 criteria counts 20%, not 100%). But per my #14 "numbers are not valued for their own sake" — the number's purpose is to find the unjudged piece, and criteria-level finds more. However I should not decide for EJ; I answer conditionally and list the deciding fact: which unit the design already numbers tasks by (the method's step 2 is per step, so prompts). Actually the method's step 2 numbers algorithm steps, each naming its check. So the natural unit in the method is the step. Hmm — the method says "every step must name its check". That's per-step, and step ≈ prompt. Given the method already attaches checks to steps, counting over steps is cheaper; but acceptance criteria are the pass/fail unit. I'll answer: if the goal is to catch an unjudged result, use acceptance criteria, because a prompt's "result" is judged criterion by criterion; if the goal is to catch an unjudged prompt, use prompts. And ask EJ which failure they want to catch — that changes the unit. That's honest and follows "if … then …".
+
+Q2: Does any design-standard document count as a judge, or only something that can return pass or fail? My #4 (know whether you can fight — knowing how to use many and few), my #13 (not every road), my #16 (clear first then enforced), my #15 (a virtue as a handle). Answer: only something that can return pass or fail — because the house rule says every check must be able to fail, and a document that cannot fail is a reference, not a judge. My #11 (foreknowledge from people): a standard is 度/measurement unless a person applies it to return a verdict. So: a design-standard counts only when paired with a named human or rule that reads the result against it and can say fail. Otherwise it's context (R1), not a judge. That answers Q2 crisply. Per my #1, the standard must be named up front (before the prompt) — matches R11.1's "exists before the prompt is sent".
+
+What the list misses — N1, N2...
+
+Looking at the 7 failures and the requirements, the gaps:
+- N1: A check on the output, not the exit code — "success that is not success." The 7 failures looked like exit 0 with empty output. No requirement says "a dispatched result must carry evidence that the work happened." R5 says evidence not claim, but at the *builder's* level; what's missing is a per-dispatch output check that can fail on empty/no-op output (agy soft-deny, opencode auto-reject). Failure caught: a task marked done with an empty or unchanged output. This is my #7/#17.
+- N2: Dispatch environment/transport requirements — stdin redirected (codex hang), concurrency limits (opencode database lock), worktree write policy (heredoc refusals). The list has nothing about the *dispatch mechanics*: how work is handed to an engine and what preconditions each engine needs. Failure caught: a hang, a lock collision, a refused write. My #1 (count before commit — know the ground) and #14 (ratio of forces — don't start two against one database) and #17 (probe).
+- N3: Idempotent re-dispatch for engines that write — R7 covers idempotence of steps but not parallel-safety / shared resource locking. Actually that overlaps N2. Maybe make N3: a liveness/timeout requirement — every dispatch has a deadline after which it is killed and reported, because codex hang and 502 show a hung dispatch can look like slow work. My #8 (speed) and #18 (do not press).
+- N4: Cost/quota accounting per dispatch (R9 says log tokens and cost; but no requirement caps or budgets quota; "no canary without EJ's go-ahead"). The list misses a rule on when spending is allowed and who approves it. My #11 (pay for foreknowledge) vs house rule. Failure caught: quota spent by an unapproved canary / run over budget. Actually R9 logs cost; a budget is different. Good N.
+- N5: An explicit "unknown/MISSING" handling rule — what the workflow does when readiness can't prove a requirement. agy/qwen/dsh/opencode are unknown for R6/R8. The list has no requirement on what to do with an unverifiable line: block, warn, or proceed with a named risk. My #13 (not every road is taken) and #19 (name the ground and act as prescribed — the four labels are the ground, but there's no prescription attached to `unknown`). Failure caught: work dispatched to an engine whose guardrails were never verified, silently. That's a real gap and directly answers "can it be checked at readiness".
+- N6: The list is about a single harness, but the design dispatches to six engines; nothing requires per-engine capability/contract (which engine can do what, read-only form, structured output). EXECUTOR_KINDS exists in the project, but the requirement list misses "the engine's known failure modes are written and checked before dispatch". Failure caught: agy plan mode stops at a plan; opencode rejects outside-repo files. My #17 (learn the enemy by probing).
+- N7: Feedback from *other* projects / the field — R10 is a loop but the list has no requirement that a check is portable (skill runs in other projects, nothing project-specific hardcoded). Hmm, that's a house rule, and R10 says review the harness as models improve. The missed item: each check names what it does not establish and who wrote it — no, that's the project's SHOULD. Maybe N7: a requirement that a check be shown failing on a planted wrong input before it is trusted (the house rule) — the requirement list has no home for the meta-rule "every check must be able to fail and be shown failing once." R11.2 comes close ("can fail on its own") but doesn't require the failure be demonstrated. Failure caught: a check that always passes (the built check's 0-of-7 backtest). This is my #15 (five dangers — the check's own fault) and #16 (orders clear then enforced). Strong N.
+
+Also note R11.1's "judged by at least one rule..." — "at least one" invites the "at least one" problem; my #14 (numbers not valued for their own sake) and #1 (more 算 wins). Maybe fold into R11.1 change.
+
+Also, "the eleven harness requirements" but the brief numbering lists R1-R10 and R11.1/R11.2 = twelve lines. Verdict per R1–R11.2. I'll give R11 as a pair.
+
+Now, the "can it be checked at readiness" question for each. The definition: readiness proves what is installed and logged in, spends no model quota, marks each line verified/reported/unknown/MISSING. So "checked at readiness" means a no-quota local probe. I'll answer each with: yes (and the check, and how it fails), no (why), or partly (split into a readiness part and a later part).
+
+Let me build a table in the Answer maybe, then detail. The brief asks: "For each one: keep, change, split or drop it — and say whether it can be checked at the readiness step (before any work is sent out), and with what check that can fail."
+
+I'll structure the answer with a verdict table (verdict | readiness? | check that can fail | what it costs), then the Q1/Q2, then N1..N7, then the required sections.
+
+Wait — the brief says "Write exactly this (no preamble)" with sections: title, Answer, How I decided, What I need to know, Costs and risks, How we would know I was right. It says no preamble. But the content required (a) verdict per requirement, (b) Q1/Q2, (c) N1... So those must go inside "## Answer" presumably. The "How I decided" is numbered steps citing items. I'll put the verdict/R/Q/N content in Answer, and keep How I decided as the process steps. That satisfies "write exactly this".
+
+Let me now be careful about quoting only from my list. I can quote the list's rule text, labelled. I'll quote from my list exactly and keep labels (`quoted`).
+
+Let me now think about the quality of the per-requirement verdicts. The user (EJ) wants Sun Tzu's rules applied, checkable, with costs. I should be decisive and plain.
+
+Let me draft.
+
+Title: # 孫子 (Sun Tzu) — judging a harness-health list before committing to it
+
+Answer (one or two sentences): Keep the list as a checklist of lines to *label*, not as a list of things a config reader can *verify*. Readiness can honestly mark a line `verified`, `reported`, `unknown` or `MISSING`; and only 4 of the 12 can be `verified` there without running the harness. Change R1–R5, R7, R9–R11 to name the observable and the check; split R2, R9, R11.1; keep R6, R8, R13 as safety/authority lines; drop none. Don't enforce the 80% until Q1 and Q2 are answered. My reading: the decisive defect is that the built check's unit is config, and the seven recorded failures were behaviour at dispatch — the check reads the wrong ground (my #17, my #20).
+
+Hmm, "keep R6, R8, R13" — R13 doesn't exist. Let me be careful. Keep R6, R8; R13 is my list item. Let me phrase cleanly.
+
+Let me produce the table.
+
+R1 Clear context delivery — Verdict: Change. Readiness: partly. Check: instruction file exists, is non-empty, and a declared list of on-demand docs/skills resolves to real paths (verified, no quota). Can fail: path missing, empty file, a doc named but absent. Not checkable at readiness: whether the agent actually received it (delivery) or whether the budget was respected — those need a dispatch/observed prompt. Price: a file-exists check passes on a stale or misleading file; "budget as dumping ground" has no comparison, so it must not be given an invented number.
+
+R2 Well-designed tools — Verdict: Split. (a) Interface declaration: every tool has a name, a description, and a stated boundary — readable at readiness, can fail (unnamed/ undocumented tool). (b) Error message that tells how to fix: must be probed with a planted invalid call; that check can fail only after it is shown failing once on a bad call. Price: (b) costs a dispatch for some tools; for local tools, no quota.
+
+R3 Planning and task structure — Verdict: Keep; move the check to step 2. Readiness cannot check done-criteria because tasks don't exist at step 1. Readiness check: a task-list format with a required done-criterion field exists (verified). Step-2 check can fail: a step with no done-criterion. Price: a format can be present and ignored.
+
+R4 State and memory across sessions — Verdict: Change. Readiness: partly. Check: state file exists and its last entry names the next action and the evidence path (no quota, readable). Can fail: last entry names no next action, or points at a step not in the table. Not at readiness: that a fresh context can actually resume — that is a drill, and it is the check that matters (my #4/#16). Price: the drill costs a session.
+
+R5 Independent verification — Verdict: Keep. Readiness: partly. Check: every task names a verifier, and the verifier's command resolves (verified). Can fail: verifier is the builder, or no command. Not at readiness: that the verifier is independent and can actually fail — that is shown by the planted wrong input (my #15). Price: bookkeeping, and a verifier that always passes (the "loving the people" fault).
+
+R6 Guardrails and permissions — Verdict: Keep, and this is the one that may be MUST (safety bound). Readiness: config readable = reported, not verified. Check that can fail: a planted forbidden action (write outside the sandbox path, a denied shell command) is refused and the refusal is logged; also the config key exists. Can fail: action succeeds, or no deny rule. Not at readiness for engines whose config format is unverified (agy/qwen/dsh/opencode) — mark unknown, don't claim. Price: a denial probe must be safe; never edit config (advice only).
+
+R7 Recovery and retries — Verdict: Change. Readiness: can check a declaration, not idempotence. Check: each dispatch declares retry limit, rollback point and re-run safety; a planted failing step exhausts the limit and stops. "Sensible" must be replaced by a comparison or an EJ number — do not invent it. Price: the planted failing step costs a dispatch; without the declaration, retries can loop.
+
+R8 Human-in-the-loop gates — Verdict: Keep. Readiness: config readable = reported. Check that can fail: a planted action that requires approval blocks until approved/refused. On this machine the built check finds the bypass prompt skipped — that is the check failing, and it can fail. Price: a gate made too broad micromanages (EJ's words), a gate too narrow lets a risky call through.
+
+R9 Observability — Verdict: Split. (a) Each dispatch writes one log line with the fields that find a failure: engine, command, exit code, duration, output (or its hash/length), cost. (b) Anomaly detection (empty output, exit 0 with no change, timeout). Readiness: no prior logs, so not verifiable; run one no-quota action and confirm a line appears. Check can fail: a dispatch with no log line, or a log line lacking output. Price: logging output can leak secrets — never print a secret, so record output length/hash or redact.
+
+R10 Feedback loop — Verdict: Keep. Readiness: only that a register exists and is non-empty (reported). Check: every recorded failure has a linked rule/check/tool, and that check is shown failing once. Can fail: a failure with no fix, or a fix with no check. The backtest (0 of 7) is exactly this check returning a bad number. Price: the ledger itself can become a dumping ground (my #1).
+
+R11.1 80% — Verdict: Change (and do not enforce until Q1/Q2 answered and the number has a basis). Readiness: cannot count prompts (they do not exist); readiness can only list the judges the project has (my #1: count your own resources). The count belongs at step 2's gate. Check that can fail: a step (or criterion, per Q1) with no named pre-existing judge. 80% has no basis (n=0) — treat as a target, comparison over time, not a gate. Price: a bare percentage invites "at least one" box-ticking, and my #14: numbers are not valued for their own sake.
+
+R11.2 first signal — Verdict: Keep. Readiness: the declaration (first check exists, and its expected duration, and the reason if not) is readable at readiness — verified as a plan. Whether the first check actually runs first and is faster is only shown by running. Check that can fail: a judge producing the full verdict with no first check; a first check that cannot fail on its own; a first check slower than the thing judged. Price: an extra hop; a first check that never fails is a fault (my #15).
+
+Q1 and Q2 as above.
+
+Now let me be careful about "R11.2 (SHOULD)" — I keep.
+
+N items:
+N1 Output check per dispatch (success that isn't success). Failure: agy soft-deny / opencode auto-reject: exit 0, empty output, task marked done. My #7, #17.
+N2 Dispatch preconditions per engine (stdin, concurrency, write policy). Failure: codex hang; opencode database locked; worktree heredoc refuse. My #1 (know the ground), #14.
+N3 Deadline/liveness per dispatch. Failure: a hung engine looks like slow progress (codex hang, agy 502). My #8, #18.
+N4 An unverifiable line needs a prescription, not just a label. Failure: work sent to an engine whose guardrails are unknown. My #13, #19.
+N5 Spend authority per dispatch. Failure: a canary spends quota without EJ's go-ahead. My #11 vs the house rule — name the conflict.
+N6 Per-engine contract (what each engine can do, its read-only form, its structured output, its known failure modes). Failure: agy plan mode stops at a plan; a task sent to an engine that cannot do it. My #17.
+N7 The meta-rule in the list: every check is shown failing once on a planted wrong input before it is trusted. R11.2's "can fail on its own" is a claim; without the demonstration it's a claim about a claim. Failure: the built check (0 of 7). My #15, #16.
+
+Maybe also N8: the list has no requirement on what happens when the same resource is used by two agents (locking) — that's N2.
+
+Could add: the list misses a requirement that the health check itself is independent of what it checks and that its author is named / what it does not establish. That is a project SHOULD (from CLAUDE.md) but the harness list may miss it. I'll fold into N7.
+
+Also: R9 says log "every action, token and cost" — but "no canary without EJ's go-ahead" means token/cost logging may be empty; that's fine.
+
+Let me also address the conflict about where R11 sits (readiness step 1, prompts step 2). My answer: agreed, readiness cannot count prompts; readiness lists judges. My #1 (count before commit — count what you have), #19 (name the ground then act — the counting is a later ground). So support the main agent's proposal, with the addition that the list of judges is itself of two kinds: commands that return pass/fail (run now, no quota) and standards that only a person/rule can apply (my Q2). The 80% denominator must be fixed (Q1) before it is counted.
+
+Now "How I decided" — numbered steps each citing "my #n" or "my reading".
+
+Steps:
+1. my #1 — reckon before battle: a requirement is a claim of advantage; count what you have before you commit. Readiness is the temple reckoning: five matters and seven comparisons map to "what is installed / what can I run now". So first I asked, per line, what evidence exists at readiness.
+2. my #2 — make yourself unbeatable first: readiness can only secure what is in your own hands (files, commands, config reads); it cannot make an engine behave. So any line that depends on the engine's behavior cannot be "verified" at readiness; the design must not rest on "they will not fail".
+3. my #4 — know the other and yourself: the "other" here is the failure mode. Five of the seven failures came from not knowing the other (dispatch behavior).
+4. my #5 — no move without advantage: keep/drop each line by the failure it catches, not by how good it sounds. A line with no failure it catches is a cost with no gain.
+5. my #6 — mix harm: for each line, the harm (bookkeeping, a dispatch, a false pass) is stated with its benefit.
+6. my #7 and #17 — deception and signs: the seven failures exited 0. Exit code is not a sign; output is. This drove N1 and the split of R9.
+7. my #8 — speed, victory not duration: R11.2's first signal is right; a check that costs more than the thing it judges blunts the force.
+8. my #11 — foreknowledge must come from people, not from 度: a config file is 度/measurement; the true situation at dispatch is the thing to be learned from probes and logs. This drove "config reads are `reported`, never `verified`", and the refusal to count a document as a judge (Q2).
+9. my #13 — not every road is taken: neither readiness nor the health check should claim a line it cannot prove; the honest output is `unknown`/`MISSING`, and it should decline the unprovable road rather than take it.
+10. my #14 — ratio of forces: spend the check in proportion to the failure; don't send a 1:1 probe at a 10:1 risk; don't count "more judges" as the goal.
+11. my #15 — the general's faults: each check has a virtue that is a handle — the over-cautious check that never fails ("loving the people"), the check set on dying that always fails. This drove the "shown failing once" requirement (N7) and R5.
+12. my #16 — orders clear first: Q1 and Q2 are unclear orders; until they are clear, the check cannot be held against anyone. This is why I do not enforce the 80%.
+13. my #19 — name the ground, then act as prescribed: readiness's four labels are the ground; my change is that each label must carry a prescription (N4), and the list is a condition→response table, not a sequence.
+14. my #20 — judge by the land unit and the tax, and note the closing line is the king's: the unit of measure decides what you see; config was the wrong unit (my reading of the backtest), and the requirements' author is unknown so their words are `attributed`, not a standard (my reading).
+
+Good. Note "my #20" closing line — "the king's, not Sunzi's" is in the list. Fine.
+
+"What I need to know": the questions whose answers change the answer. Q1, Q2 (already asked by brief; but they are EJ's). Plus:
+- What "readiness" may run: may it call the harness at all (a no-quota `--version`/`--help`), or only read files? This changes R2, R6, R8.
+- Is there a budget for denial probes / drills (a dispatch that fails on purpose)? Changes R4, R5, R7, R11.2.
+- Whose failure list is the 80% protecting against: the operator's (unjudged result reaching the human) or the auditor's (the design has no judge)? Changes Q1's unit.
+- Are the four labels `verified/reported/unknown/MISSING` a gate (block) or a report? Changes N4 and R6.
+- Is the author of the ten requirements known enough to quote, and do they count as a standard? (my #20: attribute correctly; my #16: clear first).
+
+"Costs and risks": each with the item it comes from.
+- A check with real teeth costs a dispatch or a drill; the current config reader costs nothing and proves little (my #11, my #8).
+- Every requirement kept adds bookkeeping to every run; the list itself can become a dumping ground (my #1).
+- Marking a line `unknown` honestly protects nothing by itself; without a prescription it is a silent risk (my #13, my #19).
+- Counting over criteria instead of prompts lowers the 80% and adds bookkeeping; counting over prompts hides unjudged criteria (my #14, my reading).
+- A denial probe or planted failure can itself cause harm if not sandboxed; never edit config (house rule; my #15).
+- Adopting the 80% as a gate before Q1/Q2 invites box-ticking: one weak judge per prompt (my #14).
+- Running the health check on another project risks hardcoding: the list must stay engine-agnostic (house rule; my #10 "no constant form").
+
+"How we would know I was right":
+A measure with a comparison and a can-fail check. E.g.:
+- Backtest the revised list against the seven recorded failures: it must flag at least the ones that were checkable at readiness and name, for each of the rest, the post-dispatch check that would have caught it — a number against 7, not a claim. The built config check scored 0 of 7; a list whose checks never leave config will not beat that.
+- Take one engine, run a planted empty-output dispatch: the output check (N1) fails it, and it is shown failing once first.
+- Ask a fresh reader to fill the readiness table from the four labels and the list alone: if any line cannot be filled without guessing, my split/change is what it needs.
+- Re-run the 80% count after Q1/Q2 and see whether the number changes with the unit — if it does, the unit matters and must be fixed.
+
+Let me make "how we would know" concrete and falsifiable.
+
+I should keep the answer readable, not overly long, but the task is substantial. I'll write a solid, organized response.
+
+One more consideration: the brief says "Do not write files; your final message is the answer." So I just answer. Good. But the system prompt mentions AGENTS.md etc. No need to use skills? The instructions say "If the user names a skill, or the task clearly matches a skill's description, call the skill tool." Here the task is to answer as the Sun Tzu seat. It doesn't clearly match a listed skill; requirement-check could be argued since we're evaluating requirements. Hmm — "Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria... Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline." The brief asks me to review requirements — that's arguably the requirement-check skill's domain. But the brief explicitly defines its own method (answer through your own rules, output format). The brief's instruction is more specific and says to answer through the list's rules. Loading requirement-check might be appropriate, but the brief is from an expert-seat harness and says exactly what to write. The CLAUDE.md says when EJ states a rule, run through requirement-check. Here EJ is asking a review of requirements. I think loading requirement-check could improve the answer (weak words, can it fail, unit, basis). Actually those criteria are already core to this brief (house rules: can it fail, weak words, no invented number). The brief's own house rules mirror them. I'll load requirement-check to be safe and align vocabulary — it's cheap and the task clearly matches "review requirements". Let me load it.
+
+Actually, let me reconsider. The instruction: "Load all applicable skills, then follow their full instructions." requirement-check is applicable (evaluating requirements). Let me load it. Also maybe workflow-design? No — the task is not designing a workflow; it's reviewing a requirement list. requirement-check yes.
+
+Let me load requirement-check.
+dsh: reasoning:
+Good. Now I have the requirement-check criteria. I'll weave in pass/fail where useful (the brief asks keep/change/split/drop, readiness, check, Q1/Q2, N items). I can note which of the eight each R fails — that adds rigor, and the CLAUDE.md says to evaluate requirements through this skill. But the brief's format is fixed; I can embed the eight-question failures inside the Answer table/section. Let me include a compact "fails the requirement check on: …" per line. That's valuable and matches EJ's standing instruction.
+
+Let me now write the final answer. Keep it well-organized.
+
+I need to decide how much detail. This is a review of 12 lines plus 2 questions plus N items. A table is efficient. Then a short paragraph per requirement maybe. Let me do a verdict table with columns: Line | Verdict | Can readiness check it? | The check that can fail (and where it runs) | Requirement-check failures.
+
+Then Q1, Q2. Then N1–N8.
+
+Then the required sections. I'll put the table etc. under ## Answer.
+
+Let me be precise about "the eight" names by name: who decides · one thing · unit · can it fail · weak words · level · basis · links.
+
+Let me map each requirement's failures:
+
+R1: Fails unit (budget in what unit? tokens? bytes? files?), weak words ("short, durable"), can it fail (yes if we pick a concrete: file missing; but "budget not dumping ground" can't fail), who decides (who sets the budget), level (method rule but reads as MUST). Passes basis? The source is outside, unknown author — basis is "input, not a standard" (the brief says so). Links: none.
+
+R2: Fails can it fail as worded ("simple, unambiguous" no input fails), weak words (simple, unambiguous, explicit), one thing (interface + error messages + boundaries = several), who decides (who judges "unambiguous"). If split into declarable interface + planted bad call, the second can fail.
+
+R3: Fails links? "done-criteria so the agent doesn't declare victory early" is a causal claim (link) needing basis. Weak word: "clear". Unit: task list count? Passes can-it-fail? "a step with no done-criterion" fails it. Level: method → SHOULD.
+
+R4: Fails can it fail as worded (a directory existing isn't resumability), weak words ("clean handoffs", "across sessions"), one thing? Actually one event: a fresh context resumes. Unit: sessions. Who decides: who judges "resume where it stopped".
+
+R5: Passes can-it-fail ("builder is the verifier" fails; "claim without evidence" fails). Fails who decides (who decides the verifier is independent?) and one thing (two events: run the checks; use a separate evaluator — arguably two; the concrete event is "completion is evidenced"). Weak word: "independent". Level: method, but this is close to a safety/integrity bound — still SHOULD unless EJ makes it MUST.
+
+R6: Passes can-it-fail (a denied action succeeds). Fails one thing (sandbox + least privilege + hard policies + injection defenses = four things → split). Unit: which actions. Level: safety bound → MUST earned for the parts about not exceeding a bound; the injection-defense part is method/guidance. Who decides: which actions count as risky.
+
+R7: Fails weak words ("sensible retry limits", "idempotent" no test), can it fail as worded (no concrete input), unit (retries counted per step? per engine?), who decides (who sets the limit → EJ). Level: method → SHOULD.
+
+R8: Passes can-it-fail (a risky action proceeds without approval). Fails who decides (which calls "need judgment" — the decider must be named), one thing (approve and decide are two). Weak word: "risky".
+
+R9: Fails unit ("every token and cost" — cost in what currency/unit; token of whose?), one thing (log actions + tokens + cost + decisions + anomalies = five), can it fail as worded ("every" is not falsifiable without exhaustive coverage), weak word: "anomaly". If reworded to a required field set per dispatch, it can fail.
+
+R10: Fails can it fail (an abstract loop cannot fail), who decides (who decides a mistake is permanent-fixed), one thing (mistake→fix; and review the harness as models improve = two), unit (how often reviewed). Level: method → SHOULD/guidance.
+
+R11.1: Fails unit (prompts or criteria — Q1), who decides (who counts the 80%), can it fail (yes if unit fixed: a prompt with no judge), basis (n=0, labelled — that's fine, passes basis if labelled), weak words (none? "at least 80%" is a number), links ("result judged by" links prompt to judge). Level: method → SHOULD.
+
+R11.2: Passes can it fail (a judge with no first check; a first check that cannot fail). Fails unit ("less time" — less than what; the comparison is stated: less than the prompt it judges → good, passes unit if duration is written; but "the prompt's time" must be estimated), weak words ("fast" is defined by comparison — passes), who decides (who writes the expected duration), one thing (first signal; full verdict; duration; exception = several — split into: a judge has a first check; the first check can fail; duration is written; exception has a reason). Level: SHOULD as marked — correct.
+
+I'll note the most important ones per line, not all eight each — the brief wants the verdict. But I'll include the failures compactly.
+
+Now, let me write. I want to be careful with the quote rule: "Quote only from your list, exactly as it is written there, and keep its label (quoted, attributed)." So when I quote Sun Tzu, use exact strings from the list and label them. I'll quote a few key ones. Let me get exact quotes:
+
+- my #2: 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 label `quoted`.
+- my #7: 「兵者，詭道也。」 and 「攻其無備，出其不意。」 `quoted`.
+- my #11: 「先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也。」 `quoted`.
+- my #8: 「故兵聞拙速，未睹巧之久也。」 `quoted`.
+- my #13: 「途有所不由，軍有所不擊，城有所不攻，地有所不爭，君命有所不受。」 `quoted`.
+- my #15: 「凡此五者，將之過也，用兵之災也。」 `quoted`.
+- my #19: 「是故散地則無戰…死地則戰。」 and 「九地之變，屈伸之利，人情之理，不可不察也。」 `quoted`.
+- my #20: the closing line is the king's, not Sunzi's: 「王者之道明矣，厚爱其民者也」 — in the list, labelled as the king's. And the rule.
+- my #1: 「夫未戰而廟算勝者，得算多也…多算勝，少算不勝，而況於無算乎？」 `quoted`.
+
+Good.
+
+Now write final answer. I'll aim for thorough but tight. Let me draft the markdown.
+
+I should mention "my reading" labels where it's my inference: the backtest mapping (config unit vs behavior failures) is "my reading" of the facts given. The brief itself says the backtest is the main agent's reading; I can say "my reading" of that.
+
+Let me write it.
+
+Structure:
+
+# 孫子 (Sun Tzu) — the harness list must be labelled at readiness, not verified there
+
+## Answer
+
+Opening 2 sentences. Then:
+
+### Verdicts, R1–R11.2
+A table. Then subsections with the check and requirement-check failures? A table with wide cells might be enough. Let me do the table plus a short "where each line fails the requirement check" list. Actually to keep it scannable, I'll do the table with the four asked fields, and add a final column "fails the eight on". Then Q1/Q2, then N.
+
+Table columns: Line | Verdict | Readiness? | The check that can fail | Fails the eight on
+
+Let me write the cells concisely.
+
+R1:
+Verdict: Change
+Readiness: Partly
+Check: file at the declared path exists, non-empty, and every doc/skill it names resolves (no quota). Fails on: missing path, empty file, a named doc absent.
+Fails eight: unit (budget in what — tokens/bytes/files), weak words (short, durable), can fail (the "budget not dumping ground" half has no failing input), who decides (who sets the budget), level (method written as MUST).
+
+R2:
+Verdict: Split
+Readiness: Partly (a) yes; (b) no — needs a planted call
+Check: (a) every tool declares name, purpose, boundary — fails on an undocumented tool. (b) send a deliberately invalid call; the error must name the field and the fix — fails on a silent error, and the probe is shown failing once first.
+Fails eight: one thing (interface, errors, boundaries), weak words (simple, unambiguous, explicit), can fail (as worded no input fails it), who decides (who judges "unambiguous").
+
+R3:
+Verdict: Keep, move the check to step 2
+Readiness: No (tasks do not exist at step 1); readiness checks only the template
+Check: at step 2, a step with no done-criterion fails. At readiness, the task format has a required done-criterion field.
+Fails eight: weak words (clear), links (the "doesn't declare victory early" is a causal claim with no basis), level (method, SHOULD).
+
+R4:
+Verdict: Change
+Readiness: Partly
+Check: the state file's last entry names the next action and the evidence path (no quota) — fails if it names no next action or points at a step not in the table. A drill (fresh session resumes from the file alone) is the real check; it costs a session.
+Fails eight: can fail (a directory existing is not resumability), weak words (clean handoff), who decides (who judges "where it stopped"), one thing (checkpoint + handoff).
+
+R5:
+Verdict: Keep
+Readiness: Partly
+Check: every task names a verifier and the verifier's command resolves — fails if the verifier is the builder or no command exists. Independence and that it can fail are shown by a planted wrong input.
+Fails eight: who decides (who judges "independent"), one thing (run the checks; a separate evaluator), weak word (independent).
+
+R6:
+Verdict: Keep (MUST earned only for the safety bound)
+Readiness: Config read = reported, not verified; a safe denial probe is verified
+Check: a planted forbidden action is refused and the refusal logged — fails if it succeeds or no deny rule exists. For agy/qwen/dsh/opencode the format is unverified → `unknown`, no claim.
+Fails eight: one thing (sandbox + privilege + policies + injection = split), who decides (which actions are risky/forbidden), level (injection defense is method, not MUST). Can fail: passes for the denial.
+
+R7:
+Verdict: Change
+Readiness: Declaration only
+Check: each dispatch declares re-run safety, rollback point and retry limit; a planted failing step exhausts the limit and stops — fails if it loops or if the declaration is absent. "Sensible" must become an EJ number or a comparison; I will not invent it.
+Fails eight: weak words (sensible, idempotent), can fail (as worded no input fails it), unit (retries per step? per engine?), who decides (who sets the limit).
+
+R8:
+Verdict: Keep
+Readiness: Config read = reported; a planted approval probe is verified
+Check: a planted action that requires approval blocks until approved or refused — fails if it proceeds. The built check found the bypass prompt skipped: that is the check returning fail.
+Fails eight: who decides (which calls need judgement), one thing (approve + decide), weak word (risky).
+
+R9:
+Verdict: Split
+Readiness: No prior logs → not verifiable; run one no-quota action and look
+Check: (a) each dispatch writes one line with engine, command, exit code, duration, output length/hash, cost — fails if a dispatch has no line or the line lacks output. (b) anomaly rule: exit 0 with empty output or no change fails. Guard: never print a secret; log length/hash or redact.
+Fails eight: unit (cost in what, tokens of whose), one thing (five kinds of record), can fail ("every" is not falsifiable), weak word (anomaly).
+
+R10:
+Verdict: Keep
+Readiness: Register existence only (reported)
+Check: every recorded failure links to a rule/check/tool, and that fix is shown failing once — fails on a failure with no fix or a fix with no check. The 0-of-7 backtest is this check returning a bad number.
+Fails eight: can fail (the loop as worded cannot), who decides (who calls a fix permanent), one thing (fix the mistake; review the scaffold), unit (review how often).
+
+R11.1:
+Verdict: Change; do not enforce until Q1/Q2 and a basis
+Readiness: Cannot count prompts (they do not exist); readiness lists the judges
+Check: at step 2's gate, a step (or criterion — Q1) with no named pre-existing judge fails. 80% is n=0: keep as a target measured over runs, not a gate.
+Fails eight: unit (prompts or criteria — Q1), who decides (who counts), level (method → SHOULD), links (judge-at-step-2 is a claim). Basis is labelled n=0, so it passes basis.
+
+R11.2:
+Verdict: Keep
+Readiness: The declaration is readable (verified as a plan); that it runs first is shown by running
+Check: a judge with no first check (and no written reason), a first check that cannot fail on its own, or a first check slower than the thing it judges — each fails.
+Fails eight: one thing (first signal + duration + exception), unit ("less time" needs the judged duration to exist), who decides (who writes the duration). Good: "fast" is comparison-defined, and it is correctly marked SHOULD.
+
+Then Q1, Q2.
+
+Q1 answer: conditional. If the failure you want to catch is "a result reached the human unjudged", count acceptance criteria, because pass/fail attaches to a criterion, and a prompt with one judge over five criteria would otherwise score as judged when four are not. If the failure is "a prompt was sent with no judge attached", count prompts, because that is the unit the method's step 2 already numbers. The two differ, so pick by the failure; my reading is criteria, because it is the finer unit and finds more unjudged results (my #14: numbers are not the goal; the goal is finding the gap). It makes the number fall and adds bookkeeping. Which failure do you want the 80% to catch?
+
+Q2 answer: only something that can return pass or fail. A design-standard document is 度 — measurement, not testimony — until a named person or rule reads a result against it and can say fail; my #11 `quoted`: 「先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也。」 A document that cannot fail is context (R1), not a judge. So: a standard counts only when paired with a named applier and a failing input; otherwise the 80% counts a shelf, not a judge.
+
+Then N1..N8 as above.
+
+Then sections: What I need to know, Costs and risks, How we would know I was right.
+
+"How I decided" numbered steps.
+
+I need to be careful: "How I decided" should be the numbered steps citing items. Let me put it after Answer.
+
+Length is fine. Let me write it now.
+
+One more: the brief says "name anything the list misses" as N1, N2..., each with the failure it would catch. I'll do N1–N8.
+
+Also the brief says "Each of you: answer through your own rules." Good.
+
+Let me finalize the "What I need to know" — questions whose answers change the answer. Include Q1/Q2 already answered conditionally (they're EJ's). Additional: may readiness run the harness (no-quota version/help)? Is there budget for planted-failure probes? Is a label a gate or a report? Which failure the 80% targets? Is the author known/labelled?
+
+"How we would know I was right" — the backtest: revised list must beat 0-of-7; for each of the 7, name the check that catches it and at what stage. Show one check failing once on a planted wrong input (empty output). Count the 80% under both units and see if it moves.
+
+Let me write it all out.
+
+I should also acknowledge the main agent's proposal on where R11 sits — I agree, with the addition of Q2's filter on the judge list. Put in Q1/Q2 section.
+
+Write now.

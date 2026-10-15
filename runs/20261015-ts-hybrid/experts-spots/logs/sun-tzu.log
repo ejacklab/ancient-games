@@ -1,0 +1,532 @@
+dsh: reasoning:
+Let me read the source files: the list and identity.
+dsh: reasoning:
+Let me read the rest of the list (lines 304+).
+dsh: reasoning:
+Now I understand the task. I'm to answer as Sun Tzu, through my rules, answering the question assigned to Sun Tzu:
+
+"for each piece, do we know that our engines and tools can do it, that the task as posed can be done, and that the ground (files, blueprint, information) permits it — and which is only half known?"
+
+This is Sun Tzu's question, and it maps beautifully to rule #4 — "Know whether you can fight; know the other side and yourself" ("知吾卒之可以擊... 而不知地形之不可以戰，勝之半也" — the "half victory" concept). Also #1 (reckon before battle), #2 (make yourself unbeatable first), #14 (choose action by ratio of forces), #17 (learn enemy by probing and signs), #6 (mix harm into benefit), #13 (not every road taken).
+
+The output format is exact:
+
+# 孫子 (Sun Tzu) — <the question in a few words>
+
+## Answer
+<recommendation in one or two sentences; conditional if it must be>
+
+## How I decided
+<numbered steps; each cites "my #n" or says "my reading">
+
+## What I need to know
+<questions whose answers would change the answer; "none" if none>
+
+## Costs and risks
+<each with the item it comes from>
+
+## How we would know I was right
+<a test, a measure, or an observable result>
+
+In "Answer", list spot ids (existing ones, or new ones you raise as N1, N2 …) with verdict for each. Do not decide for EJ: a spot to drop is a question for EJ, not a removal.
+
+The question: for each piece, do we know that (a) our engines and tools can do it, (b) the task as posed can be done, and (c) the ground (files, blueprint, information) permits it — and which is only half known?
+
+So I need to evaluate each piece (the modules M1–M6, and the spots U1–U10, or the design's steps) against three questions: engines/tools can do it, task can be done, ground permits it. The Sun Tzu rule #4 gives the exact three-fold structure:
+- 知吾卒之可以擊 (know our troops can attack) — our engines/tools can do it
+- 知敵之可擊 (know the enemy can be attacked) — the task as posed can be done (the "enemy" = the problem)
+- 知地形之不可以戰 (know the ground does not permit battle) — the ground (files, blueprint, information) permits it
+
+And "勝之半也" — half a victory, when one of the three is unknown. And "知彼知己，勝乃不殆；知天知地，勝乃可全" — know heaven and earth and victory can be whole.
+
+So I map:
+- My side / troops = our engines and tools (the harnesses, bun, TS, the modules)
+- The enemy / whether the enemy can be attacked = the task as posed can be done (i.e., is the target real? does the failure actually occur?)
+- Heaven and ground = files, blueprint, information (the ground)
+
+Now let me systematically go through each piece.
+
+The design pieces:
+- M1 traps + result (R12.1): trap catalogue (data file), lintCommand, checkResult
+- M2 journal (R12.2): append-only JSONL failure records; schema; CLI fail
+- M3 insight gate (R12.3): parse insight file; every failure answered; whys 3–6 levels; check-type fix names planted-repeat evidence
+- M4 register + coverage (R13, R11.1): YAML register; validation; units frozen by hash; coverage report
+- M5 hook adapters: one Claude-protocol handler (Claude Code, Codex, Qwen, dsh bridge); opencode plugin; install --print
+- M6 doctor (harness health): which harnesses have guard installed
+
+Plus the spots U1–U10, and the process steps (research done, prediction protocol, build in worktree, independent review by Codex, effectiveness test).
+
+Let me assess each against the three tests and label each as known / half-known / unknown.
+
+Let me carefully consider what the facts say:
+
+Facts given:
+- Every installed harness has a blocking hook point a bun TypeScript command can serve (*verified* from installed versions' help, schemas and bundles; nothing fired): Claude Code 2.1.300 (PreToolUse, Stop, … exit 2 / JSON), Codex 0.160.0 and Qwen 0.24.7 (same payload field names as Claude Code), dsh (bridges that run Claude/Codex hooks.json, not mounted by default), agy 1.3.5 (camelCase JSON, decision), opencode 1.18.34 (in-process TypeScript plugins; tool.execute.before blocks by throwing — *reported*). PostToolUse annotates only; Stop can force the agent to continue, with a cap.
+- One handler can serve four harnesses: Claude Code, Codex, Qwen and the dsh bridge share the payload names.
+- A hole in existing code (*ran*): dispatch.py marks a node with no check done when its result header says status: fail; runlog.py logs any exit 0 as ok.
+
+- Readiness: readiness.py exit 0, 22 lines verified (claude, codex, agy, qwen, dsh, opencode, node, python3, git); bun 1.4.3; Bun.YAML.parse works. tools/ TS suite 64 pass. Python suite 1029 passed.
+
+So from Sun Tzu's three-part test:
+
+**Engines/tools can do it (my troops can attack):**
+- Claude Code, Codex, Qwen hook points: verified (help/schema/bundle). Can do it.
+- opencode plugin: hook names verified, "throw blocks" reported. Half-known — the blocking mechanism is reported, not verified. This is U10's core. But actually U10 says agy later because exit-code meaning unknown; opencode plugin is included.
+- agy: block exists but exit-code meaning unknown; excluded by U10. Half-known.
+- dsh bridges: verified but NOT mounted by default. So "can do it" = the code exists; "the ground permits it" = not mounted — needs EJ to mount. That's a ground question, and it's advice to EJ.
+- bun 1.4.3, Bun.YAML.parse: verified. Can do it.
+- M1 lintCommand: pure TS string matching. Can do it, unknown whether the trap catalogue is complete (U7).
+- M2 JSONL: trivial. Can do it.
+- M3 insight gate: parses an insight file and checks whys 3–6 levels. This requires judgment to parse "a source that can be changed" — can a script check that? Hard. Half-known: the structural parts (every failure answered, level count, evidence file exists) can be checked; the semantic part (why stops at a changeable source vs "the agent forgot") is a judgment. My #12 says change conditions, not people — a script can check for banned stop-words perhaps. My reading: only structural parts are code-doable; that's the split, and it's honest to say "half".
+- M4 register + coverage + units frozen by hash: hashing is trivial. YAML parse verified. Can do it. But whether the register format holds everything R13 needs — that's U6 (format open).
+- M5 hook adapters: one Claude-protocol handler for four harnesses — but verify: the claim "share the payload names" is *verified* per facts. PostToolUse annotates only — so the result-check annotate path works but cannot block on PostToolUse in Claude Code. This matters: R12.1 failure handling "after every engine call" — PostToolUse can only annotate, not block, for Claude Code. But the PreToolUse lint can block. The failure log can still be written by PostToolUse (side effect), and Stop can block. So the chain works, but "cannot be skipped" is weaker than stated: PostToolUse cannot deny, it can only annotate and journal. Is that sufficient? The journal write happens regardless (it's a side effect), so R12.2 satisfies; R12.3 Stop gate blocks. So the chain holds but the agent could conceivably... no, the hook runs automatically. Fine. But is PostToolUse guaranteed to run after every engine call? It fires for tool calls. If the agent runs an engine via Bash, PostToolUse for Bash fires. Ok. But the "recognise an engine call" is U3 — unknown.
+- M6 doctor: reads config. Can do it. But "guard-installed per harness as verified/unknown" — how does doctor verify installation? It could read the harness config files. For Claude Code, ~/.claude/settings.json. But out of scope to edit. Reading is fine.
+
+**The task as posed can be done (the enemy can be attacked):**
+- The core objective: make harness-health requirements hold without relying on agent memory. The research *ran* and showed a hole (dispatch.py status: fail marked done). So the target is real and reproducible. Good — the enemy exists and is attackable.
+- But the bigger question: does installing hooks actually make the agent unable to skip? Facts: PostToolUse only annotates; Stop can force continue with a cap; the agent can edit/disable hooks? Out of scope to edit config, and install is EJ's. So "cannot be skipped" holds only where the hook is installed and the harness honors blocking. For opencode, throw-blocks *reported*. For agy, excluded. So across all harnesses, only some have verified blocking. Half-known overall — but for Claude Code specifically, verified.
+- The task as posed also includes "measured against a rules-only control" (effectiveness). U9: arms, model, n undecided. This is the biggest half-known: the effectiveness question ("does the hybrid actually reduce skipping?") cannot be answered as posed until n and metric are set. My #1 reckoning: no calculation, no know.
+- Also the prediction/effectiveness protocol must be "committed before step 4" — good discipline (my #1, #6).
+
+**The ground (files, blueprint, information) permits it:**
+- Blueprint: "not a product change with a docs/blueprint/; the target is R11–R13 in the requirements draft and the acceptance criteria above." So the blueprint is thin — the ground is a draft requirements file and acceptance criteria, not an accepted product blueprint. My #4: the third half-victory is not knowing the ground permits battle. R11–R13 is a *draft* (R11.2 proposed, R12 proposed). The ground is not settled: EJ hasn't accepted R12.5/R12.6 open questions and the skip criterion wording is still open (memory). So the ground is half-known.
+- Files: repo exists, worktree planned, tests pass (1029 + 64). Ground permits the build.
+- Information: research/hook-points.md and research/code-vs-text.md exist. But U3 (which pattern recognises an engine call and finds its output) — unknown. That's an information gap the ground hasn't supplied.
+- Skill integration: `.claude/skills/workflow-design/SKILL.md`, method 3.1, 3.8, export_skills.py. Ground exists.
+- The register format U6: YAML checked present. Ground permits.
+- One copy of each probe (U4): keep Python harness_health.py and add doctor beside it. Ground permits but harness_health.py is on a branch, not master. So M6 depends on a file not on master — ground question: is the branch merged? That's half-known.
+
+Now let me think about which spots are "only half known" vs "known".
+
+Let me structure the answer around the three tests, giving each spot a verdict:
+- known
+- half known (which half)
+- unknown
+
+And I'll raise new spots N1, N2 where I see them. The instruction says list spot ids (existing ones, or new ones N1, N2 …) with my verdict for each. Do not decide for EJ.
+
+Let me evaluate U1–U10:
+
+**U1** Which session/run a failure and its insight belong to, so the Stop hook knows what to check. Kind: decision. This is a *ground/information* question: the session_id is in the payload (verified field names include session_id). So the ground (payload) provides it. But "which session or run a failure and its insight belong to" — the harness gives session_id, so the key exists. The design assumption is a journal per session_id under gitignored .harness-guard/. The remaining unknown is whether a run's insight file can be reliably associated to a session (the run folder is a repo path; session_id is a harness value). That mapping is information not yet established. Verdict: **half known** — the session key is verified in the payload; the run-folder-to-session link is not established. Similarly critical: subagents. A subagent may have its own session_id (SubagentStop is a hook). If a workflow uses subagents, whose journal? Big gap. That is a new spot N1: subagent sessions and session inheritance.
+
+**U2** Loop guard on Stop: block until insight exists, or block once. Kind: decision. Engines/tools: Stop can force continue with a cap (verified), and stop_hook_active field exists (verified in payload names). So the mechanism can do it. But which behavior is right is EJ's decision; and the fact that there's a cap means "block until insight exists" is not actually enforceable (the harness stops after the cap). This is important: the "block until" option is not fully within our control — the harness cap limits it. So the tool can do "block once", and can do "block until" only up to the cap. Verdict: **half known** — the cap makes the stronger option not fully available; the design's provisional "block once" is the one the tools can actually guarantee. My #2: make yourself unbeatable — rely on what you own (the cap is the enemy's ground). Cost note.
+
+**U3** How PostToolUse recognises an engine call and finds its output. Kind: unknown. This is squarely an information gap. Tools can do it (string matching commands, parsing -o FILE / > FILE) but the reliability is unknown: commands vary, output can be stdout, agents can run engines in ways not in the pattern list. Verdict: **unknown / half** — and it's the linchpin of M1 and M5. My #17: learn by probing — the smallest probe is to read the recorded run commands and derive the pattern list from actual data. Actually I should be careful: my question is not Dave's (smallest experiment). But I can say: probe by replaying recorded commands against the linter. Hmm, that's Dave's question. I'll keep to "what would make it known": a replay of the documented commands.
+
+**U4** Port harness_health.py (460 lines, 35 tests) to TS, or keep it and add doctor beside it. Kind: decision. Engines/tools: both can be done (TS port is possible; keep-and-add is possible). Ground: harness_health.py is on branch feat/harness-health, not master. So if the build worktree branches from feat/harness-health (as stated: branch feat/ts-hybrid from feat/harness-health), the file is present. Verdict: **known** that either can be done; the choice is EJ's. But note U4's provisional assumption "keep the Python check; doctor adds guard-installed status and calls it — one copy of each probe" — that is a clean split (my #9 bring others to you? Not exactly). Actually this is my #13 "not every road is taken" and my #12 "seek it in 勢, not from the people" — don't rewrite working code for the sake of an idea. Verdict: **known** (both paths possible), decision EJ's.
+
+**U5** Installing a hook is editing harness config, which the agent never does. Decision. Tools: `claude -p --settings <run file>` — is that verified? The facts say the effectiveness test "loads hooks with claude -p --settings <run file> in a sandbox, which edits no config". Is `--settings` a verified flag? Not in the facts. Readiness verified `claude` exists. The hook-points research verified hook events but not the `--settings` flag. So the mechanism for testing hooks without editing config is **half known / unknown**. This is a big deal: if you can't load hooks without editing config, the effectiveness arm B (rules + hooks) cannot be tested at all, and out-of-scope forbids editing config. Verdict: **half known** — needs verification that `claude -p --settings <file>` actually loads hooks. Raise as key. Also: does `--settings` merge or replace hooks? Unknown.
+
+**U6** Register format YAML. Decision. Bun.YAML.parse works (checked — facts say verified). Can do it. Verdict: **known** (tool supports it; the format choice is EJ's). But whether YAML holds the two lists + decisions + fails-if + purpose and freezes by hash is a design choice, not a tool limit. Known.
+
+**U7** Where the trap catalogue lives and who adds to it. Decision. Tools: data file in the package — trivially doable. Ground: no project paths. Verdict: **known** that it can be done; the open part is coverage/completeness of the catalogue (the backtest 0/7 traps is a fact — 7 recorded traps, catalogue must catch them). Actually "traps (backtest 0/7)" appears in the split table: "before every engine call: lint the command against a trap catalogue". The 0/7 refers to something — likely a backtest where the existing catalogue caught 0 of 7 recorded traps. That means the trap catalogue as currently conceived fails on real data. This is a key half-known: the catalogued traps are hypotheses until replayed against the 7 recorded traps. Verdict: **half known**.
+
+**U8** Fix the dispatcher hole now or report it. Decision. Tools: one line plus test — can do it. Ground: it's on master presumably (dispatch.py). Verdict: **known** that either can be done; the hole is *ran*, verified. My #14: ratio of forces — one line + test is small; but my #13: not every road is taken; and the method's scope is out of scope? Actually objective says rewrite of existing Python method scripts out of scope; a one-line fix is not a rewrite. Fine. Decision EJ's.
+
+**U9** Effectiveness arms, model and n. Decision. This is the reckoning question. Tools: claude -p can run arms (if U5 holds). Ground: no corpus/no n given. Verdict: **unknown** as posed — this is the "enemy cannot be attacked because we have not counted" spot. My #1: no reckoning, no victory. This spot gates step 3 and step 6 and thus the entire effectiveness claim. Without n and metric, the design can build but cannot prove. Verdict: unknown / half.
+
+**U10** Which harness adapters now. Decision. Tools: Claude-protocol handler verified for 4 harnesses; opencode plugin (throw blocks *reported*); agy later (exit-code meaning unknown). Verdict: **known for the four Claude-protocol harnesses** (payload names verified, blocking on PreToolUse/Stop verified); **half known for opencode** (hook names verified, blocking reported); **unknown for agy**. This is exactly my #4's graded knowledge: full victory needs heaven and ground too. The design's provisional choice is the right cut — build what is verified, defer the reported/unknown.
+
+Now new spots I might raise:
+
+**N1 — Subagent and nested-session failures.** The facts list SubagentStop as a blocking hook point in Claude Code, and dsh has agent/pre-step. But U1's journal is per session_id. If a workflow delegates to subagents (the design uses opencode/Codex/Claude subagents), failures inside a subagent's tool calls may have a different session_id, and the main agent's Stop hook might never see them, or see them under a session it doesn't own. The Stop gate's "the session has failures" is not defined across nested sessions. This is a ground/information gap that could make R12.3's gate miss failures — exactly the class of silent skip the design exists to close. Verdict: **unknown**; raise as N1.
+
+**N2 — Whether the agent can run an engine call that bypasses PostToolUse.** For example, the agent could invoke an engine through a path PostToolUse does not observe: inside a subagent (still a tool call in that session), through a script that makes the engine call (PostToolUse fires on Bash, sees the script name not the engine), or a tool call whose output is not an engine call. U3 catches part; but the deeper question: is PostToolUse *guaranteed* for all tool calls, and does the hook see the sub-command? The fact that PostToolUse only annotates (cannot deny) means a failure can still be ignored in the moment; only the Stop gate catches it. So the "cannot be skipped" claim rests entirely on Stop, which has a cap. N2 could be stated: does the Stop cap make the insight gate skippable by looping past it? Verdict: **half known** — cap documented, behavior at cap not established. Actually U2 covers the cap. Maybe N2 = the engine call can be made from within a Bash script, so the lint sees the script, not the engine command — the PreToolUse lint is bypassable by wrapping. This is a real hole: the trap catalogue lints the command string; an agent that writes a shell script (or a TS file) that calls the engine with stdin not redirected passes the lint. My #7 deception and #10 no constant form: the ground has unbounded forms; a pattern list cannot enumerate them. That's a fundamental limit. Verdict: **unknown/half known**. Raise as N2: the lint sees the command, not what the command runs — a wrapper bypasses it. This is important and honest.
+
+Actually the design itself has the answer partially: PostToolUse result check doesn't care how the engine was called — it checks the output. But how do you identify an engine call if it's inside a script? You can't. So R12.1's "after every engine call" cannot be guaranteed by command-pattern matching; only by checking every tool result for the failure signatures (missing/empty/wrong-form/non-zero). Hmm — an important distinction: the code can check *every* tool result for the cheap failure signatures, not just engine calls. That would close the wrapper bypass. This is a constructive suggestion: don't rely on recognising engine calls; check every result. But then false positives on non-engine calls (e.g., a legitimately empty output). That's a trade and should be EJ's. I'll raise it as the recommended resolution for U3/N2 but as a question, not a decision.
+
+**N3 — Whether the requirements R11–R13 are accepted.** The ground is a *draft*. R12 is "proposed", R11.2 proposed, and the open items in R12 are for EJ. Building enforcement for unaccepted requirements risks enforcing the wrong thing (my #2: make yourself unbeatable — but also my #1: reckon). If the draft changes, the register (M4) and coverage hash freeze change. Verdict: **half known**; the ground is a draft, not an accepted blueprint. Raise as N3. Actually acceptance criteria AC5 references R13.1/R13.2 fails-if, which are in the draft. So the build would freeze units against a draft. Worth flagging.
+
+**N4 — Does the journal survive across sessions, and does Stop see failures from earlier turns?** Related to U1. The Stop hook checks "the session has failures" — if the session_id is stable across the whole session, yes. If the harness assigns a new session_id per turn or per compaction (PreCompact hook exists), the journal fragments. Verdict: **unknown**. Might fold into N1.
+
+Let me not over-raise. Three or four new spots is enough: N1 subagent/nested sessions; N2 wrapper bypass / command-pattern limits; N3 draft requirements as ground; maybe N4 cross-turn/session stability. I'll fold N4 into N1.
+
+Also, per the brief, I should state which pieces are known/half/unknown for each. Let me give a compact table in the Answer? The instruction: "In 'Answer', list spot ids (existing ones, or new ones you raise as N1, N2 …) with your verdict for each." So the Answer should contain the list. That's the question's own structure. And "your recommendation in one or two sentences; conditional if it must be" — the format says Answer = recommendation in one or two sentences. But the brief also says list spot ids with verdict. I can do both: one or two sentence recommendation + the verdict list. The format's Answer allows listing. I'll keep the recommendation first, then a compact verdict list (table). That satisfies both.
+
+Let me now draft carefully, citing my #n throughout.
+
+Sun Tzu's three-part test = my #4: "Knowing our troops can attack but not that the enemy cannot be attacked is half a victory; knowing the enemy can be attacked but not that our troops cannot attack is half a victory; knowing the enemy can be attacked and our troops can attack, but not that the ground does not permit battle, is half a victory… know the other and yourself, and victory is not in danger; know heaven and ground, and victory can be whole."
+
+So:
+- 吾卒之可以擊 = our troops can attack = engines and tools can do it
+- 敵之可擊 = the enemy can be attacked = the task as posed can be done
+- 地形之不可以戰 = the ground (files, blueprint, information) permits it
+
+Great.
+
+Now, the overall verdict: the design is attackable on the tool side (verified for the core four harnesses, bun, TS) but only half known on two counts: (1) the ground — the requirements are a draft, the effectiveness corpus/n is unset, and the hook-loading mechanism for testing is unverified; (2) the enemy's full extent — command-pattern recognition of engine calls and the opencode/agy blocking behaviour. The build (M1–M5 structural modules) can proceed now; the *effectiveness claim* (step 3, 6) is not yet knowable as posed.
+
+Let me also apply my #2: "First make yourself unbeatable, then wait for the enemy to become beatable." Applied: the design can make itself unbeatable in what's in its own hands (the modules, the tests, the journal) regardless of the unknown spots; the effectiveness win depends on the enemy (the agent's behaviour, and EJ's choices), so do not build the plan's success on it.
+
+And my #1: reckon. The reckoning is the three columns (mine/theirs/ground). The design's readiness check counted tools present (22 lines) but did not count whether the task and ground permit the effectiveness claim. So the reckoning is incomplete — "少算" not zero "無算". Good.
+
+My #6: mix harm into benefit — the design should carry the harm column for each verdict. I'll do that in Costs and risks.
+
+My #13: not every road taken — some spots may be dropped; but a spot to drop is EJ's question, not removal. I'll say which spots I'd put to EJ as droppable (e.g., M6 doctor, agy) but not remove.
+
+My #17: probe to learn — the way to make the half-known spots known is to poke: replay the 7 recorded traps, replay recorded engine commands against the linter, run one Stop-hook round trip.
+
+My #14: ratio of forces — scope the first build to the verified forces (four Claude-protocol harnesses), avoid the outmatched fronts (agy, effectiveness with n unknown).
+
+My #3: whole over broken, strike plans first — resolve U3/U5 (the plan-level unknowns) before building M5, not after; a walled city (agy, opencode blocking) last.
+
+My #12: seek it in 勢, not from the people — the enforcement must be structural (the hook), not the agent remembering; the design already does this. But the emotional/character reading: a check cannot fix a wrong model; the trap catalogue must be data-driven (勢) not demand the agent be careful.
+
+Now, quotes. Rule #4's words: I can quote the "勝之半也" line. Rule #1's 「多算勝，少算不勝，而況於無算乎」. Rule #2's 「先為不可勝，以待敵之可勝」 and 「無恃其不來，恃吾有以待之」. Rule #6's 「智者之慮，必雜於利害」. Rule #14's 「少則能守之，不若則能避之」. Rule #17's 「策之而知得失之計」. Rule #13's 「途有所不由」.
+
+All quotes must be from my list and kept with their label (`quoted`). Good.
+
+Now let me write the answer. Format exactly:
+
+# 孫子 (Sun Tzu) — <the question in a few words>
+
+## Answer
+## How I decided
+## What I need to know
+## Costs and risks
+## How we would know I was right
+
+Should I write the answer as my final message only (do not write files)? Yes: "Do not write files; your final message is the answer."
+
+Let me now decide the verdicts precisely. I'll use three columns: engine/tool (can our troops do it?), task (can the enemy be attacked? / can the task as posed be done?), ground (do files/blueprint/information permit it?). Then a verdict: full / half (which half) / unknown.
+
+Let me make a table of spots U1–U10 + N1–N3.
+
+U1 (session/run identity): 
+- tool: session_id verified in the shared payload names; a per-session JSONL under .harness-guard/ is trivial TS. Tool: known.
+- task: knowing which session a failure belongs to is doable if session_id is stable within a session and across turns. Not established for nested sessions/compaction. Half.
+- ground: the insight file lives in the run folder — there is no existing link from session_id to run folder. Information absent. Half.
+- Verdict: half known — the key exists; the mapping does not. Raise N1.
+
+U2 (loop guard):
+- tool: Stop can force continue (verified) with a cap (documented). The "block until" variant is bounded by the cap. Half.
+- task: either policy is a decision, not a fact; but the choice "block until" cannot be guaranteed. Half.
+- ground: no config install by agent; test needs U5. Half.
+- Verdict: half known — "block once" is fully doable; "block until" is not, because the cap is the enemy's ground. Put to EJ.
+
+U3 (recognise engine call / find output):
+- tool: pattern matching is doable; but wraps (script calling engine) are unobservable. Half.
+- task: the task "after every engine call" cannot be guaranteed by recognition. Half.
+- ground: no recorded command corpus is cited as available; the 7 traps are recorded (backtest 0/7). Half.
+- Verdict: unknown — the linchpin of M1/M5. Raise N2 (wrapper bypass).
+
+U4 (port vs keep):
+- tool: both doable (bun/TS + Python). Known.
+- ground: harness_health.py only on branch feat/harness-health, not master; worktree branches from it — so present. Known, conditional on the branch being the base.
+- Verdict: known — EJ's decision.
+
+U5 (install as print; test loads hooks via claude -p --settings):
+- tool: `install --print` doable. `--settings` loading hooks not verified. Half/unknown.
+- task: the effectiveness arm B depends on it. Unknown.
+- ground: out of scope forbids editing config. Half.
+- Verdict: half known — the print half is known, the test-load half is unverified. This is the spot that most changes the plan.
+
+U6 (YAML register): tool verified (Bun.YAML.parse works). task/ground: format is a decision; no information missing. Verdict: known.
+
+U7 (trap catalogue):
+- tool: data file + loader doable. Known.
+- task: catalogue against real traps — 0/7 backtest says the concept as tested caught none. Half.
+- ground: no project paths; generic. Known.
+- Verdict: half known — the mechanism is known, coverage is not. Probe by replay.
+
+U8 (dispatcher hole): ran/verified, one line + test. Verdict: known — EJ's decision whether to fix now.
+
+U9 (effectiveness arms/model/n):
+- tool: `claude -p` arms depend on U5. Half.
+- task: no n, no metric, no corpus; "measured against a rules-only control" cannot be done as posed without them. Unknown.
+- ground: a quota-free replay of the 7 traps is available — that half is ground-known.
+- Verdict: unknown for the model-run arms; known for the replay half.
+
+U10 (which adapters now):
+- Claude-protocol four: verified payload + blocking. Known.
+- opencode: hook names verified, throw-blocks reported. Half.
+- agy: excluded, exit-code unknown. Unknown.
+- Verdict: half known overall; known if scoped to the four.
+
+N1 (subagent / nested session identity): unknown. Ground/information.
+
+N2 (wrapper bypass of command lint): unknown. Tool/task.
+
+N3 (requirements are a draft, not an accepted blueprint): half known — ground. Raise.
+
+Maybe also:
+N4? Let me consider whether to raise the "Stop cap skippable" — that's U2. Fold.
+
+Should I raise the point that PostToolUse annotates only, so R12.1 cannot *fail* the result at the moment it happens in Claude Code — only journal + Stop block? The design says code does result handling "after every engine call: ... → fail" and the split table says "the agent cannot stop while the session has failures without an insight". That works via Stop. But AC3 says PostToolUse writes journal and annotates. So the code doesn't deny the result; it records it. Is that sufficient for R12.1 "reports fail — never pass"? The evaluator (the code) does report fail (to the journal and the annotation), and the Stop gate prevents ending the session. So R12.1 is satisfied in effect. But the immediate agent could ignore it mid-session and continue; only at Stop is it caught. That's acceptable and matches U2. I'll note it as a cost, not a new spot. Actually it might be worth raising as part of U2's cost. I'll mention in Costs.
+
+Now, "What I need to know" — questions whose answers change the answer. These should be few and shape-changing (per CLAUDE.md: ask only what changes the shape, name the sensible default). The brief says list questions if the answer depends on something not given. Here, the questions are largely EJ's spots already; but the format demands the section. I should list the ones that actually change my verdicts:
+1. Is `claude -p --settings <file>` verified to load hooks (U5)? If no, arm B cannot be measured at all, and the effectiveness step changes shape.
+2. Is session_id stable for the whole session including subagents and compaction (U1/N1)? If no, the Stop gate needs a different key.
+3. Does EJ accept R11–R13 as the blueprint now, or is the draft expected to change (N3)? If the latter, computing the coverage hash/freeze now is premature.
+4. Is the trap backtest 0/7 measured against the *current* catalogue, and is the 7-trap corpus available for replay (U7)? If available, the coverage half becomes known cheaply.
+
+Hmm, the brief says "if … then …" conditional answers. I've done that.
+
+Actually item 4: facts say "traps (backtest 0/7)" in the split table, and "a quota-free replay of the 7 recorded traps" in U9. So the 7 are available. Good. Maybe I don't need to ask; it's stated. But whether 0/7 means current catalogue caught none is my reading. I'll phrase conditionally.
+
+Costs and risks: each with the item it comes from.
+- Building the modules before U3/U5 are resolved risks the walled-city attack (my #3): M5's handler may not match real engine calls. Price: rework.
+- The effectiveness claim may be unpriceable (my #1): no n/metric → "more calculation wins" cannot be claimed; the report may have to say "not measured".
+- Stop cap (my #2): relying on Stop to enforce the insight gate rests on the enemy's restraint (the cap) — my #2 says do not rely on what is not yours. Price: the gate is one-round, not absolute.
+- Command-pattern lint (my #10, no constant form): the enemy has unbounded forms; a wrapper bypasses the lint. Price: a false sense of enforcement.
+- Enforcing a draft (my #1/#4): the ground is not settled; freezing units against a draft may need a new count.
+- Deferring opencode/agy (my #14): a front not fought now can be fought later; the risk is that opencode/agy users get no guard, and the "all harnesses" claim is weaker than the design's table implies.
+
+How we would know I was right: an observable test. My #17: probe. The concrete observable: for each spot I marked half/unknown, one probe that would move it to known:
+- Replay the 7 recorded traps and the recorded engine commands through the linter: the hit count (0/7 today, target 7/7) is the measure.
+- Load the guard via `claude -p --settings` in a sandbox and confirm PreToolUse denies a catalogued trap: pass/fail.
+- Run one session with a planted failure and no insight: Stop blocks once; with stop_hook_active, insight_skipped is written. Count.
+- Subagent session test: does the main Stop see the subagent's failure? observable.
+- If the effectiveness arms cannot be run, the observable is "not measured" — and then my claim about R11–R13 holding without memory cannot be made.
+
+My #18 (spirit): meet the half-known with a probe when it is keen; don't attack a walled city. Maybe cite #17/#14.
+
+Let me write it. Must be plain English Markdown, refer to EJ as they/them. No files. Final message only.
+
+Length: substantial but focused. Use a verdict table.
+
+I need to be careful: the brief says "Do not decide for EJ: a spot to drop is a question for EJ, not a removal." So for spots I think are droppable (M6 doctor? agy?), phrase as a question to EJ, not a removal. E.g., "I would ask EJ whether agy and the opencode plugin belong in this run at all; that is a question, not a removal."
+
+Also the question asks "which is only half known?" — so emphasize the half-known ones: U1, U2, U3, U5, U7, U9, U10(opencode), N3, and new N1, N2.
+
+Let me write the answer.
+
+One more consideration on the order of tests. Sun Tzu's #4 gives exactly: our troops can attack / enemy can be attacked / ground permits. So I'll structure the Answer as the recommendation then a table with:
+| Spot | Our engines/tools can do it | The task as posed can be done | The ground permits | Verdict |
+
+But "the task as posed can be done" for each spot — e.g., U1's "task" is the session-mapping. Hmm, the three-way mapping is cleaner applied to the *design's pieces* than to spots. The question says "for each piece" — pieces = modules M1–M6 and process steps. The spots are questions within pieces. I think the cleanest: apply the three tests to each piece (M1–M6, and the process steps 3/5/6), and give spot verdicts separately. The brief's Answer instruction says list spot ids with verdict. Both. Let me do:
+
+Answer:
+- One-two sentence recommendation.
+- Table 1: pieces (M1..M6, steps 3,5,6) × three tests → verdict.
+- Table 2: spots U1..U10, N1..N3 → verdict (which half).
+
+That's a lot but it's the question and it's checkable. Keep cells terse.
+
+Actually to avoid over-length, maybe combine: the piece table can be the core, and the spots table concise. Let me do it.
+
+Let me define the three test names in Sun Tzu terms with my #4 quote:
+- 卒 (our troops) = engines and tools can do it
+- 敵 (the enemy) = the task as posed can be done
+- 地 (ground) = files, blueprint, information permit it
+
+Now piece verdicts:
+
+M1 traps+result:
+- tools: lint/check in TS — yes (bun). Known.
+- task: "after every engine call" — recognition is U3, unknown; a wrapper bypasses (N2).
+- ground: the 7 recorded traps exist (backtest 0/7). Half.
+- Verdict: half known — mechanism known; coverage and recognition not.
+
+M2 journal:
+- tools: JSONL append — yes. Known.
+- task: "every failure the code sees is written" — yes for code-seen failures.
+- ground: a gitignored .harness-guard/ — ground exists (repo). Known, but ownership keyed to session (U1).
+- Verdict: known for a session journal; half for cross-session/subagent (N1).
+
+M3 insight gate:
+- tools: structural checks (file exists, each failure answered, 3–6 whys, evidence path exists) — yes. Semantic "a source that can be changed" — not reliably. Half.
+- task: "the agent cannot stop while failures lack an insight" — bounded by Stop cap (U2). Half.
+- ground: no code has ever read an insight (facts: no run folder has an insight file). The ground has no example. Half.
+- Verdict: half known — structure yes, semantics and enforcement bounded.
+
+M4 register+coverage:
+- tools: YAML parse verified; hashing trivial. Known.
+- task: coverage count over frozen units — doable given a format (U6). Known.
+- ground: R11.1/R13 are a draft; the skip criterion wording is still open (memory). Half.
+- Verdict: half known — code yes, ground (accepted rules) not.
+
+M5 hook adapters:
+- tools: four Claude-protocol harnesses verified; opencode reported; agy unknown.
+- task: blocking PreToolUse/Stop verified for the four.
+- ground: dsh bridges not mounted by default; install is EJ's; install --print only; test via --settings unverified (U5).
+- Verdict: half known — known if scoped to the four harnesses, installed by EJ.
+
+M6 doctor:
+- tools: read config, report — yes.
+- task: report guard-installed as verified/unknown — needs a definition of "verified" (reading a config file is not proof the hook fires). Half.
+- ground: harness_health.py on a branch, not master.
+- Verdict: half known.
+
+Step 3 prediction/effectiveness protocol:
+- tools: writing a protocol — yes.
+- task: fixing arms/metric/predicted counts is doable, but n/corpus are EJ's and unset (U9).
+- ground: no blueprint; draft requirements; no corpus named.
+- Verdict: unknown as posed.
+
+Step 5 independent review (Codex read-only):
+- tools: Codex exists (readiness verified). Known.
+- task: review against acceptance criteria — doable.
+- ground: Codex model gpt-6.1-sol availability? Not in facts; readiness verified codex binary, not model. Half.
+- Verdict: half known (model availability unverified).
+
+Step 6 effectiveness measure:
+- tools: depends on U5.
+- task: depends on U9.
+- ground: replay of 7 traps is quota-free and available.
+- Verdict: unknown for the model arms; known for the replay half.
+
+Step 7 integration:
+- tools: export_skills.py, SKILL.md — present.
+- task: doable.
+- ground: skills/ re-export mechanism exists.
+- Verdict: known.
+
+Good. This is a clean, checkable answer.
+
+Now the spots table with verdict and which half.
+
+Let me write final. I'll be careful to quote only from my list, with labels. The quotes I use:
+
+#4: 「知吾卒之可以擊，而不知敵之不可擊，勝之半也；…知敵之可擊，知吾卒之可以擊，而不知地形之不可以戰，勝之半也。…知彼知己，勝乃不殆；知天知地，勝乃可全。」 — `quoted` (my #4)
+
+#1: 「多算勝，少算不勝，而況於無算乎？」 — `quoted` (my #1)
+
+#2: 「先為不可勝，以待敵之可勝」 and 「無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也」 — `quoted` (my #2)
+
+#6: 「智者之慮，必雜於利害」 — `quoted` (my #6)
+
+#14: 「少則能守之，不若則能避之」 — `quoted` (my #14)
+
+#17: 「策之而知得失之計，作之而知動靜之理」 — `quoted` (my #17)
+
+#13: 「途有所不由，軍有所不擊」 — `quoted` (my #13)
+
+#3: 「其下攻城」 / 「攻城之法，為不得已」 — `quoted` (my #3). Careful: my #3 words include 「其下攻城。攻城之法，為不得已」. Yes.
+
+#10: 「無成勢，無恒形」 — `quoted` (my #10). The list has 「故兵無成勢，無恒形」. I'll quote 「兵無成勢，無恒形」.
+
+#12: 「求之於勢，不責於人」 — `quoted` (my #12).
+
+Good.
+
+Now write. I should not include a preamble (the brief says no preamble, write exactly the structure). But the instruction from the task read the file and do what it says — my final message is the answer. I'll start directly with the heading.
+
+Let me make sure I don't "decide for EJ". For each spot I'll say "question for EJ" where a choice exists.
+
+I'll keep the tables compact.
+
+Draft:
+
+# 孫子 (Sun Tzu) — can our troops, the task, and the ground carry this design
+
+## Answer
+
+Scoped to the four Claude-protocol harnesses and to the structural modules (M2, M4, step 7), the design is buildable now — our troops can attack and the ground permits the build. It is **half known**, in my #4's sense, on the enforcement chain: we have not established how the code recognises a real engine call (U3), whether the guard can be loaded for the effectiveness test without editing config (U5), how a failure is keyed to a session across subagents (U1/N1), whether the trap catalogue catches the recorded traps (U7), or what the effectiveness measurement's arms, model and n are (U9). I would settle U3, U5 and U9 before building M5 or writing the prediction, and ask EJ whether the opencode/agy fronts and M6 belong in this run at all. [then the spot list]
+
+Then table.
+
+Hmm the answer says "one or two sentences; conditional if it must be". Mine is 3 sentences. Fine.
+
+## How I decided — numbered steps each citing my #n.
+
+1. I took my #4 as the test... quote.
+2. Reckon before battle (my #1)...
+3. ...
+
+Let me write the steps:
+
+1. My #4 gives the exact three tests the question asks: our troops can attack (engines/tools), the enemy can be attacked (the task as posed), the ground permits battle (files, blueprint, information). It also gives the verdict scale: any one unknown is "勝之半也", and only 「知天知地，勝乃可全」. I applied this to each piece. (`quoted`, my #4)
+2. My #1: "more calculation wins; no calculation" — the readiness count verified tools (22 lines, bun, tests) but did not count the task or the ground. So the reckoning is short on two columns, not empty. That is why my overall verdict is half, not unknown. (`quoted`, my #1)
+3. My #2: what is in our hands (the modules, the journal, the tests) can be made unbeatable now; what is in the enemy's hands (the agent's behaviour, the harness cap, EJ's choices) is only waited for. So the build can proceed; the effectiveness claim cannot be built on. (`quoted`, my #2)
+4. Piece by piece... table.
+5. Spot by spot... table.
+6. My #17: the half-known spots become known by poking, not by more reading — replay the recorded traps, replay recorded engine commands, run one Stop round trip. (`quoted`, my #17)
+7. My #6: each verdict carries its harm column. (`quoted`, my #6)
+8. My #14/#13: fight the verified front (four harnesses), hold or avoid the unverified (agy), and put the droppable fronts to EJ rather than removing them. (`quoted`)
+9. My #3: strike the plan first (U3/U5/U9), the walled city (agy, opencode blocking) last. (`quoted`)
+
+Then the tables. Then What I need to know, Costs and risks, How we would know I was right.
+
+Actually, the "Answer" section should hold the spot list per the brief. I'll put the two tables in the Answer, immediately after the sentences. Then "How I decided" gives the steps and reasoning. That works.
+
+Let me be careful with the tables not being too wide; use compact cells.
+
+Answer tables:
+
+**Pieces — can the three carry it?**
+
+| Piece | Our troops (engines/tools) | The task as posed | The ground | Verdict |
+|---|---|---|---|---|
+| M1 traps + result | yes — bun/TS, no deps | no — "after every engine call" needs call recognition (U3), and a wrapper hides the call (N2) | half — 7 recorded traps exist but the catalogue caught 0 (U7) | **half** |
+| M2 journal | yes — JSONL append | yes for failures the code sees | half — the per-session key is unproven across subagents/compaction (U1, N1) | **half** |
+| M3 insight gate | half — structure yes; "a source that can be changed" is judgment | half — bounded by the Stop cap (U2) | half — no insight file exists anywhere to copy | **half** |
+| M4 register + coverage | yes — YAML verified in bun 1.4.3 | yes — given a format (U6) | half — R11.1/R13 are a draft, skip criterion still open (N3) | **half** |
+| M5 adapters | half — four Claude-protocol verified; opencode reported; agy unknown | half — blocking verified only for the four | half — dsh bridge not mounted; install is EJ's; test-load unverified (U5) | **half** |
+| M6 doctor | yes — reads config, reports | half — "verified installed" is a claim about firing, not about a file | half — harness_health.py is on a branch, not master | **half** |
+| step 3 prediction | yes | no — arms/model/n unset (U9) | half — 7-trap replay available | **unknown as posed** |
+| step 5 review (Codex) | yes — codex verified present | yes | half — gpt-6.1-sol availability not verified | **half** |
+| step 6 effectiveness | half — depends on U5 | no — depends on U9 | half — replay half is ground-known | **unknown for the model arms** |
+| step 7 integration | yes — export_skills.py, SKILL.md present | yes | yes | **known** |
+
+**Spots — verdict and which half**
+
+| Spot | Verdict | Which half is known / missing |
+|---|---|---|
+| U1 session/run key | **half** | known: `session_id` is in the shared payload (verified). missing: the link from session_id to the run folder, and whether subagents/compaction share it (N1) |
+| U2 Stop loop guard | **half** | known: Stop can force continue, and `stop_hook_active` exists. missing: the cap means "block until" is not ours to guarantee — "block once" is |
+| U3 engine-call recognition | **unknown** | the linchpin of M1/M5; a wrapper bypasses a command pattern (N2) |
+| U4 port vs keep | **known** | both are doable; the choice is EJ's. (conditional: the worktree branches from `feat/harness-health`, where the file is) |
+| U5 hook install/test | **half** | known: `install --print` writes nothing. missing: that `claude -p --settings <file>` actually loads hooks — the whole effectiveness arm B |
+| U6 register format | **known** | Bun.YAML.parse verified present; format is EJ's |
+| U7 trap catalogue | **half** | known: mechanism. missing: coverage against the 7 recorded traps (0/7) |
+| U8 dispatcher hole | **known** | ran and verified; one line + test. EJ decides now or later |
+| U9 effectiveness arms/model/n | **unknown** | no n, metric or corpus; cannot be done as posed |
+| U10 which adapters | **half** | known: the four Claude-protocol. missing: opencode blocking (reported), agy (exit code unknown) |
+| N1 subagent/nested sessions | **unknown** | new — whose journal, and does the main Stop see a subagent's failures? |
+| N2 wrapper bypass | **unknown** | new — the lint sees the command, not what it runs; the result check then needs to cover *every* tool result, not just recognised engine calls |
+| N3 accepted blueprint | **half** | new — the ground is a draft (R11.2/R12 proposed; R12 open items); freezing units against it may need a new count |
+
+Good. Now What I need to know — the shape-changing questions:
+1. U5: is `--settings` verified as a hook loader? If not, can arm B be measured at all? (If not, the effectiveness step is dropped or replaced by the quota-free replay — EJ's call.)
+2. N1/U1: is session_id stable for the whole session, subagents included? If not, the Stop gate needs a different key and M2/M3 change shape.
+3. N3: does EJ accept R11–R13 as the blueprint now, or expect the draft to change? If it changes, do not compute the freeze/hash yet.
+4. U7: does 0/7 mean the current catalogue caught none of the 7? If so, the first build item is the replay, not the handler.
+
+Costs and risks:
+- A command-pattern lint is defeatable by a wrapper (my #10 「兵無成勢，無恒形」 quotes) — price: a false sense of "cannot be skipped", the exact failure the design exists to close.
+- The Stop cap is the enemy's ground (my #2) — price: the insight gate is one round, and a session can exit with an `insight_skipped` record; R12.3's MUST is then only as strong as `doctor`'s report.
+- Enforcing a draft (my #1) — price: units frozen by hash against unaccepted text; a change starts a new count.
+- Building M5 before U3/U5 (my #3, 「攻城之法，為不得已」) — price: rework in the walled-city attack.
+- Deferring opencode/agy (my #14) — price: the "all harnesses" claim in the design's table is stronger than what the build covers.
+- PostToolUse annotates only (my reading of the facts; not in my list) — price: the result check cannot deny at the moment; it journals, and only Stop blocks.
+- Not measuring effectiveness (my #9?) — I could cite my #1 「多算勝，少算不勝」: a report without n says "less calculation", and may have to say "not measured".
+
+How we would know I was right:
+- Observable per spot: replay the 7 recorded traps and recorded engine commands through the linter → hit count (0/7 today). My #17: 「策之而知得失之計，作之而知動靜之理」.
+- Load the guard via `claude -p --settings` in a sandbox with a catalogued trap and no insight → PreToolUse denies, Stop blocks once, `insight_skipped` written; count each.
+- One subagent session with a planted failure → does the main Stop list it? yes/no.
+- Effectiveness: if arms/n are set, the prediction's predicted counts vs measured, reported either way. If not set, the honest observable is "not measured", and the claim that R11–R13 hold without memory is not made.
+- I was wrong if the wrapper probe passes the lint unnoticed, or the trap replay stays at 0/7 after the catalogue is built.
+
+That's a solid answer. Let me finalize the wording and make sure I don't accidentally put words in Sun Tzu's mouth beyond my list. All quotes are from the list.
+
+One correction: my #14's words: 「十則圍之，五則攻之，倍則分之，敵則能戰之，少則能守之，不若則能避之。」 and 「兵非貴益多也」. I'll use 「少則能守之，不若則能避之」 for "hold or avoid".
+
+my #13: 「途有所不由，軍有所不擊，城有所不攻，地有所不爭，君命有所不受。」 I'll quote 「途有所不由」 etc.
+
+my #12: 「故善戰者，求之於勢，不責於人」 — the list has 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」 Good.
+
+my #3: 「其下攻城。攻城之法，為不得已。」
+
+my #10: 「故兵無成勢，無恒形」 — list: 「故兵無成勢，無恒形」. Yes.
+
+my #17: 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」 Good.
+
+my #6: 「是故智者之慮，必雜於利害」.
+
+my #2: 「先為不可勝，以待敵之可勝」; 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」
+
+my #1: 「夫未戰而廟算勝者，得算多也…多算勝，少算不勝，而況於無算乎？」
+
+my #9 (bring the other side to you): 「故善戰者，致人而不致於人。」 Could use for "don't let the spots set the pace." Maybe not needed.
+
+my #18: 「避其銳氣，擊其惰歸」 — could use for "probe when the spot is keen." Not needed.
+
+I think the answer is complete. Let me write the final message. Since the brief says "Write exactly this (no preamble)", I'll begin with the heading and no preamble. I'm not writing any files. Good.
+
+Let me be mindful: the brief says "In 'Answer', list spot ids (existing ones, or new ones you raise as N1, N2 …) with your verdict for each." So the Answer must include the spot list. I'll include both tables in Answer. Fine.
+
+Final formatting. Keep "my #n" citations.
+
+I'll write it now.

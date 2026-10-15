@@ -1,0 +1,22 @@
+// E1: the 7 recorded traps replayed through the guard's hook handler (and, for the control, nothing).
+import { handleHook } from "/home/smoke01/dev/ancient-games-ts-hybrid/tools/harness-guard/src/hooks.ts";
+import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
+import { execSync } from "node:child_process";
+import os from "node:os"; import path from "node:path";
+const repo = mkdtempSync(path.join(os.tmpdir(), "hg-e1-repo-")); execSync("git init -q", { cwd: repo });
+const env = (running: string[] = []) => ({ cwd: repo, running, now: () => new Date() });
+const pre = (command: string, running: string[] = []) => handleHook({ hook_event_name: "PreToolUse", session_id: "e1", tool_name: "Bash", tool_input: { command } }, env(running));
+const post = (command: string, stdout: string, stderr: string) => handleHook({ hook_event_name: "PostToolUse", session_id: "e1", tool_name: "Bash", tool_input: { command }, tool_response: { stdout, stderr, interrupted: false } }, env());
+const postFail = (command: string, stderr: string) => handleHook({ hook_event_name: "PostToolUseFailure", session_id: "e1", tool_name: "Bash", tool_input: { command }, error: stderr, exit_code: 1 }, env());
+const caught = (r: any) => /deny|logged|failure/.test(r.stdout) ? "caught" : "not caught";
+mkdirSync(path.join(repo, "out"), { recursive: true });
+const rows: [string, string, string][] = [];
+rows.push(["1 codex exec without </dev/null", caught(pre('timeout 600 codex exec -m gpt-6.1-sol -s read-only "do the task"')), "PreToolUse"]);
+rows.push(["2 parallel opencode starts", caught(pre('opencode run -m m --agent build "task two"', ["opencode run -m m --agent build task one"])), "PreToolUse, another opencode running"]);
+rows.push(["3 opencode file outside the repo", caught(pre('opencode run -m m "Read /home/someone/elsewhere/brief.md and do what it says"')), "PreToolUse"]);
+rows.push(["4 agy soft-deny, exit 0 empty", caught(post('agy -p "summarise" --model g', "", "tool run_shell auto-denied")), "PostToolUse"]);
+rows.push(["5 agy plan mode stops at a plan", caught(post('agy -p "write the file" --mode plan', "Here is my plan: 1. read 2. write", "")), "PostToolUse (output non-empty)"]);
+rows.push(["6 agy transient 502 at login", caught(postFail('agy -p "task"', "Error: 502 Bad Gateway")), "PostToolUseFailure"]);
+rows.push(["7 worktree refuses subagent heredoc writes", "not caught", "the refusal happens inside the harness; no hook payload of ours carries it"]);
+console.log("| Trap | Hybrid | Where |\n|---|---|---|"); for (const r of rows) console.log(`| ${r[0]} | ${r[1]} | ${r[2]} |`);
+console.log(`\nhybrid caught: ${rows.filter((r) => r[1] === "caught").length} of 7`);

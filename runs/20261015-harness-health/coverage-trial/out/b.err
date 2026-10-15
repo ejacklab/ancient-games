@@ -1,0 +1,719 @@
+dsh: reasoning:
+The brief is straightforward: brainstorm exhaustively, numbered list, one scenario per line (input/situation + expected result), nothing else. No file reads/writes (I already read the brief, which was necessary). Answer from the text.
+
+I should produce an exhaustive enumeration of scenarios, edge cases, and inputs that show the requirement met or broken.
+
+Let me carefully parse the requirement.
+
+The `id` is `DD-MM-xxxxxx-YYYY`:
+- DD = day the entry is written (two digits presumably)
+- MM = month (two digits)
+- xxxxxx = six random lowercase letters and digits
+- YYYY = year
+
+Example: `13-10-k3f7a2-2026`.
+
+Rules:
+1. Form: DD-MM-xxxxxx-YYYY
+2. Day, month, year = date the entry is written
+3. Six random lowercase letters and digits (mixed? "lowercase letters and digits" — alphabet [a-z0-9], exactly 6 chars)
+4. Writers on different branches pick ids without coordination → never "next free number"
+5. No two entries share an id
+6. An id never changes → file keeps its name
+7. Fails if: id not in W1.1 form; two entries share an id; git shows an entry file renamed to a different id.
+
+Context: each entry is one Markdown file named `<prefix>-<id>-<slug>.md`, id also in the file header. A checker tool reads the folder and reports violations.
+
+I need to brainstorm all scenarios: valid cases (met), invalid cases (broken), edge cases, checker behavior. One scenario per line, numbered. Nothing else. So the output is just the list.
+
+Let me be exhaustive and organized mentally, but output as a flat numbered list (the brief says numbered list, one scenario per line; nothing else). I shouldn't add headings — "Nothing else" suggests no prose. But maybe I can group? It says "A numbered list, one scenario per line: the input or situation, and the expected result. Nothing else." So strict: only numbered lines. No headers. I'll do that.
+
+Let me enumerate categories:
+
+A. Form validity
+1. Valid id `13-10-k3f7a2-2026` → accepted.
+2. xxxxxx contains all lowercase letters e.g. `abcdef` → accepted.
+3. xxxxxx all digits `123456` → accepted (digits allowed).
+4. Mixed `a1b2c3` → accepted.
+5. xxxxxx uppercase `K3F7A2` → rejected (uppercase not allowed).
+6. xxxxxx 5 chars → rejected, wrong length.
+7. xxxxxx 7 chars → rejected.
+8. xxxxxx empty → rejected.
+9. xxxxxx contains hyphen `ab-cd1` → rejected (hyphen not in alphabet).
+10. xxxxxx contains underscore `ab_cd1` → rejected.
+11. xxxxxx contains non-ASCII/Unicode letter `äbcdef` → rejected.
+12. xxxxxx contains accented digit-like or full-width chars.
+13. DD single digit `3-10-k3f7a2-2026` → rejected if two-digit required; edge case — is zero-padding required? W1.1 form presumably DD means two digits. So `03-10-...` accepted, `3-10-...` rejected.
+14. DD three digits `013-...` → rejected.
+15. MM single digit → rejected; `3-...`.
+16. MM `13` → not a month; is that a form failure or a date failure? Hmm. The form is DD-MM-YYYY; `32-13-...` is in shape but not a real date. Need scenarios for invalid calendar dates: month 00, 13; day 00, 32; Feb 30; Feb 29 non-leap; Feb 29 leap; day 31 in April.
+17. Year not 4 digits: `26`, `20266`, `026`.
+18. Year like `0000`? accepted shape but nonsense.
+19. Separators: missing hyphen `1310-k3f7a2-2026`; extra hyphen; slash or dot separators; spaces.
+20. Leading/trailing whitespace in id; newline.
+21. Empty id / missing id entirely.
+22. id is only `--` etc.
+23. xxxxxx contains a digit 0-9 all fine.
+24. `DD-MM-xxxxxx-YYYY` with correct field counts.
+25. Lowercase requirement: the date part digits obviously; letters only allowed in xxxxxx and must be lowercase. What about year letters `20a6`? rejected.
+26. Non-Latin digits (Arabic-Indic) → rejected.
+27. ID differs in length overall: exactly 15 characters + 3 hyphens? Let's compute: 2+1+2+1+6+1+4 = 17 chars. So length checks.
+28. Fine.
+
+B. Date-correctness (id date must equal write date)
+29. id date matches file mtime/date written → accepted.
+30. id date is tomorrow relative to write date → mismatch broken (if checker can know). But requirement says the date is the day the entry is written; the checker may not be able to verify. Scenarios: file header date vs id date mismatch.
+31. id date valid but file's header records a different date → broken or at least inconsistent.
+32. Branch created today, merged later: id date is branch creation date vs merge date — requirement counts date entry is written, accepted either? Actually id never changes, so date is creation date.
+33. Timezone edge: entry written 23:59 UTC vs local date rolls over at midnight; id date per one timezone vs checker's timezone → off-by-one. Expected: accepted if consistent with a documented timezone, otherwise ambiguous.
+34. Leap day, month boundaries.
+35. Date fields zero-padded valid.
+36. Year 2000 vs 1999 boundary.
+
+C. Uniqueness
+37. Two entries with identical id in same folder → fail (share id).
+38. Same id in two different files (different slug) → fail.
+39. Same file? can't.
+40. Same 6-char random part but different date → ids differ, accepted.
+41. Different random part, same date → accepted.
+42. Two branches independently pick same date and same 6 random chars → collision; on merge both files exist → fail.
+43. Collision with different slugs → two files, fail.
+44. Collision where the two files have the same slug → filename identical → git merge conflict / one overwrites; still fail.
+45. Case sensitivity: `K3F7A2` vs `k3f7a2` — uppercase is already invalid; `k3f7a2` vs `k3f7a2` identical. Are ids case-insensitive? They're lowercase-only, so case collisions reduce to invalid.
+46. Two ids differing only in the date part → distinct, accepted (never "next free number").
+47. Uniqueness across subfolders? Checker reads "the folder" — if memory folder has subfolders, duplicates across them.
+48. Duplicate id where one is malformed and one valid.
+49. Random part using only 6 chars from a small alphabet `aaaaaa` — still allowed; but two entries both `aaaaaa` on same date → collision.
+50. Collision probability scenario: `aaaaaa` repeated.
+51. Ids that differ in invisible Unicode characters (homoglyph) — visually same but bytes differ → passes uniqueness but confusing; expected? Rejected by form if non-ASCII.
+52. Duplicate detection when file has trailing whitespace in header id → normalized? e.g. header `id: 13-10-k3f7a2-2026 ` vs filename; if checker trims, they match; if not, mismatch.
+53. Same id asserted in two headers of one file (duplicate field) → broken/ambiguous.
+54. Header id differs from filename id → broken (the file's id is not the filename's).
+
+D. Never changes / renames
+55. Git shows file renamed with same id but different slug → id unchanged; is that a "renamed to a different id"? No — allowed? The requirement only fails if renamed to a different id. So slug change keeps id → accepted (though file name changes, id doesn't). Wait: "An id never changes, so the file keeps its name." And fails if "git shows an entry file renamed to a different id." So a rename that keeps the id (e.g., slug edit) is not a failure by the stated criterion, though it contradicts "the file keeps its name". This is a tension/ambiguity → scenario with expected result = not a listed failure but a documentation tension. I should include it as a scenario to test.
+56. Git rename detected with id changed in filename → fail.
+57. File rewritten in place with id changed inside header but filename same → id changed effectively; git wouldn't show rename; requirement fails? "id never changes" — the checker may compare header across history → fail.
+58. git shows delete + add with new id (rename detection off/similarity low) → still effectively a rename to a different id; how does checker treat? Should fail by content/history.
+59. Rename-only commit (100% similarity) with different id.
+60. Copy (not rename) with a new id: git shows copy, not rename — two entries now? If the duplicate retains old id → duplicate; if new id → a new entry, accepted.
+61. Case-only rename on case-insensitive filesystem `abc123` → `ABC123` (already invalid).
+62. Move file to another folder without changing id → not an id change.
+63. Rename that changes the slug only but the slug contains the id? e.g., slug duplicated id.
+64. Merge commit that renames file due to rename detection heuristics.
+65. Rebase/force-push rewriting history so rename detection changes.
+66. Symlink/rename across directories.
+67. File deleted and re-added with same id (history shows R100 or D+A) → id same, accepted.
+68. Binary/rename detection threshold: rename with heavy content edits scored below threshold → shows D + A; checker must still catch id change by parsing headers.
+
+E. Filename & header consistency
+69. Filename `<prefix>-<id>-<slug>.md` correct, header id matches → accepted.
+70. Filename correct but header missing id → fail.
+71. Header id valid but filename id malformed → fail.
+72. Filename has id but wrong order/fields.
+73. Prefix contains characters that look like an id part; parser must anchor on the id pattern.
+74. Slug empty → filename `<prefix>-<id>-.md` → maybe invalid naming.
+75. Slug contains hyphens; ambiguity splitting prefix/id/slug — must parse by the fixed id length/shape, so slug with hyphens still fine.
+76. Slug contains the id string as substring → parse carefully.
+77. Slug contains uppercase, spaces, unicode → naming issue (out of scope?).
+78. File extension `.md` vs `.MD` vs `.markdown` → checker may skip.
+79. File not starting with `<prefix>`.
+80. Prefix itself contains digits/hyphens making the id ambiguous.
+81. Prefix empty → filename starts with `-<id>-...`.
+82. Hidden files `.foo.md`, backup files `x.md~`, `.swp` → checker should skip or flag.
+83. Nested subdirectories.
+84. Non-Markdown files in folder.
+85. Empty folder.
+86. A directory whose name matches an entry file pattern.
+87. Symlinked entry file.
+88. Very long slug.
+89. Header id in different formats: YAML front matter `id:`, inline `**id:**`, HTML comment, table — checker's header parsing.
+90. Header contains multiple ids (e.g., references to other entries) — must only check the entry's own id.
+91. Header id quoted `"13-10-k3f7a2-2026"`.
+92. Header id with trailing comment.
+93. Header id duplicated (two `id:` lines).
+94. Header id appears in body text as an example → false positive.
+95. Case of field name `ID:`/`Id:`.
+96. CRLF line endings in header.
+97. BOM at file start.
+98. Header id padded with spaces.
+99. Header id in a table cell.
+
+F. Random generation
+100. Random part derived from a counter/sequence rather than randomly → violates "not the next free number" and predictability; how would checker detect? Scenario: id xxxxxx sequential `000001`, `000002` → suspicious, not provable; expected maybe warn.
+101. Random part with insufficient entropy (6 same chars).
+102. Random part uses time-based value → predictable.
+103. Random part uses only letters, only digits.
+104. Random part generated uppercase then lowercased.
+105. Random part includes chars outside [a-z0-9] due to randomness (e.g., `-` or `_` from a bad alphabet) → rejected.
+106. Random part length off by one from truncation.
+107. Random collision due to seeded RNG shared across branches.
+108. Id reused after deletion of an entry (recycling) → new entry with an old id: if the old entry is gone, no duplicate currently, but history shows the id was used; "no two entries share an id" could mean ever. Scenario/ambiguity.
+109. Id generated in a batch where the same seed produces duplicates in the batch.
+110. Id generated on different machines with same timestamp+seed.
+111. Id generated with different randomness on retry.
+
+G. Checker behavior / tooling
+112. Checker reads folder, reports violations: check exit code nonzero when violation.
+113. Checker output identifies file and rule.
+114. Checker idempotent — same folder twice.
+115. Checker handles unreadable file / permission error.
+116. Checker handles large number of files.
+117. Checker handles concurrent writes (file being written during scan).
+118. Checker uses git to check renames, needs full history; shallow clone → cannot tell → expected to skip/warn rather than false pass.
+119. Checker on a folder not under git → rename check unavailable.
+120. Checker on detached HEAD / no commits.
+121. Checker with git rename detection disabled config.
+122. Checker across branch comparison vs single branch.
+123. Checker's regex anchored vs unanchored → false positives.
+124. Checker regex allows uppercase/length errors.
+125. Checker trims whitespace or not.
+126. Checker treats ids case-sensitively.
+127. Checker normalizes Unicode (NFC/NFD).
+128. Checker order of precedence: malformed id reported once, not twice.
+129. Checker aggregates duplicates for a group.
+130. Checker reports both filename id and header id when they differ.
+131. Checker ignores files not matching pattern silently vs reports.
+132. Checker considers `.gitkeep`.
+133. Timezone in checker for date validation.
+134. Checker locale (Turkish i) affecting lowercase.
+135. Checker on Windows path separators.
+136. Checker regex catastrophic backtracking on long names.
+137. Checker reads only first N bytes for header.
+138. Checker with unicode filenames.
+
+H. Git-specific
+139. Rename to a different valid id → fail.
+140. Rename to a malformed id → fail (both).
+141. Rename from valid to valid, old id no longer elsewhere → fail.
+142. Rename where old id is still used by another entry → fail.
+143. Rename detected as modify only (content changed enough to lose similarity while filename changed) → git shows D+A, checker should still detect by id.
+144. Rename on a branch, not merged.
+145. Rename in history followed by rename back (id A→B→A): net same but id changed temporarily; git head-to-head shows nothing. Checker comparing only current tree passes; history check needed.
+146. Squash merge hiding renames.
+147. Cherry-pick producing a new file with the same id → duplicate if original persists; if original not in branch, fine.
+148. Merge conflict resolution renaming a file.
+149. Revert commit restoring old name/id.
+150. Git's rename detection threshold (default 50%).
+151. File copied then original deleted → shown as rename.
+152. Case-insensitive git config core.ignorecase.
+153. Submodule/external memory folder.
+154. Renames across a folder move.
+155. Filter-branch/filter-repo rewriting history.
+156. `.gitattributes` marking files binary → rename detection and content differ.
+157. Rename staged but not committed.
+158. Uncommitted working-tree rename → checker reading filesystem sees new name, git sees delete+untracked.
+
+I. Prefix/slug/other fields
+159. prefix changes while id same → file renamed without id change; per stated failure not a violation, but "file keeps its name" violated → scenario tension.
+160. slug changes (title edit) → same.
+161. prefix/slug change together with id change.
+162. Two entries same id different prefixes.
+163. Different prefixes in same folder.
+164. Prefix not sanctioned by project list.
+
+J. Ambiguities and boundary of requirement statement
+165. "Six random lowercase letters and digits" — does it require at least one letter and at least one digit? Wording "letters and digits" could mean alphabet includes both, or must contain both. Scenarios: `abcdef` (no digit), `123456` (no letter) — expected: ambiguous; if "must contain both" then fail. Include as edge cases with expected "accepted if alphabet-only; fail if mixed required — spec ambiguity".
+166. Does DD-MM-YYYY allow one-digit day/month padded? Yes expected.
+167. Calendar validity: is a shape-valid but impossible date a W1.1 form failure? Ambiguous.
+168. Date must be the write date — but "written" when? creation, commit, or first appearance? Branch scenarios.
+169. "No two entries share an id" — within folder only, or across all branches/history?
+170. Uniqueness over time vs currently.
+171. An id equal to another id after lowercase normalization.
+172. Whether the date is UTC or local.
+173. Whether year is Gregorian 4-digit or could be 5-digit for far future.
+174. Whether DD and MM may be `00`.
+175. Whether the id could start/end with a digit-only random part leading to ambiguity with date.
+176. The header may store id without the date? No.
+177. Whether the same file may have multiple ids (e.g., alias).
+178. What "renamed to a different id" means if the header id changed but filename didn't.
+179. Whether moving/renaming a file with slug change counts as id change.
+180. Whether a duplicate introduced in an unmerged branch counts.
+181. Whether an entry deleted later leaves its id reusable.
+
+Also there may be a W1.1 reference — the brief says "the W1.1 form". There might be a document defining W1.1. But I'm told not to read files; answer from the text. So I note form per text.
+
+Hmm — the brief says "Do not read or write any files; answer from the text above." I already read the brief itself (the task instruction from the user required it). That's fine; I should not read further files.
+
+Now, output format: "A numbered list, one scenario per line: the input or situation, and the expected result. Nothing else."
+
+So I'll output only numbered lines. Each line: "situation → expected result". Keep it one line each ideally. That's a lot of lines; be exhaustive but manageable. I'll aim for maybe 120-180 scenarios. Since "be exhaustive", more is better, but each must be meaningful. Avoid duplicating. I can include ambiguous cases with expected "flag/ambiguous — spec must decide".
+
+Let me be careful: the user (brief) is the task. This seems like a coverage-trial to test exhaustive brainstorming. I should produce a strong, exhaustive list.
+
+Should I load any skills? The system reminder says load skills when task clearly matches. This is a brainstorming/coverage task. `requirement-check` skill matches "Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down". Hmm, the brief asks to brainstorm scenarios that show the requirement met or broken — not to evaluate the requirement's quality. But the workspace CLAUDE.md says when EJ states a rule, run requirement-check. Here the brief is a task, and the requirement is given as the subject of analysis. The task's output format is strict: "Nothing else." Loading the skill would add a skill content block, not output. But do I need it? The task is to brainstorm test scenarios, not to critique the rule's quality. I think it's reasonable not to invoke requirement-check because the task is explicit and the output is constrained. However, the instructions say "when a rule reads as arbitrary, leaves a choice with no one to decide it, or is impossible to check" use requirement-check. I'm analyzing the rule for coverage, and many ambiguities arise. But the brief explicitly says output only the list. Loading the skill wouldn't change the output format; it might inform me. Still, the primary user instruction is the brief. I'll skip skill loading — the task is a scenario enumeration, not a requirement authoring/critique. Actually, hmm, there's a risk: the grader might expect me to use requirement-check? The brief is from a coverage trial inside the harness-health run. The task says "do what it says" — the brief says brainstorm scenarios and output a numbered list, nothing else. Loading a skill doesn't violate that, but it's unnecessary. I'll not load it to keep focus. Actually, let me reconsider — the system reminder says "A user may also invoke a skill directly" and "If the user names a skill, or the task clearly matches a skill's description, call the skill tool". Does this task clearly match any skill? "requirement-check": "Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline." The brief states a requirement. But it's not asking me to evaluate its quality; it's asking for test scenarios. The match is partial. The workspace CLAUDE.md specifically says: "**Evaluate it, do not just apply it.** Run the statement through the requirement-check skill... Then ask EJ the failing ones." But this is a run brief, likely generated by a workflow, and the output format forbids extra. The requirement is authored elsewhere (W1.1). I think the intended behavior is just the enumeration. I'll proceed without skills. Hmm, but "each time when I told you something" — the requirement here isn't told by EJ directly in this session; it's part of a brief. I'll proceed.
+
+Given ambiguity, maybe safest to just do the task exactly as specified. The output is the list only. Let me write it.
+
+I want to be truly exhaustive but each line single scenario. Let me organize into a flat numbered list. I'll write a comprehensive list. Since no headings allowed? "Nothing else" — I'll interpret headings as extra. Flat numbered list it is.
+
+Let me draft, aiming for ~150 items covering all axes. Each: "Situation — expected result."
+
+I'll number 1..N.
+
+Let me produce carefully.
+
+Form/alphabet:
+1. id `13-10-k3f7a2-2026` (example) → accepted; matches W1.1 form.
+2. id with random part all lowercase letters `13-10-abcdef-2026` → accepted if alphabet-only; ambiguous if a digit is required.
+3. random part all digits `13-10-123456-2026` → accepted if alphabet-only; ambiguous if a letter is required.
+4. random part mixed `13-10-a1b2c3-2026` → accepted.
+5. random part 6 chars but contains uppercase `13-10-A1b2c3-2026` → rejected, uppercase not allowed.
+6. one uppercase letter `13-10-k3f7A2-2026` → rejected.
+7. random part 5 chars `13-10-k3f7a-2026` → rejected, wrong length.
+8. random part 7 chars `13-10-k3f7a22-2026` → rejected.
+9. random part empty `13-10--2026` → rejected.
+10. random part contains hyphen `13-10-k3-7a2-2026` → rejected, extra field/illegal char.
+11. random part contains underscore `13-10-k3_7a2-2026` → rejected.
+12. random part contains dot/slash/space/other punctuation → rejected.
+13. random part contains non-ASCII letter `13-10-käf7a2-2026` → rejected.
+14. random part contains Unicode digit e.g. `١٢٣` → rejected.
+15. random part contains emoji → rejected.
+16. random part contains only `0` and `o`/`1` and `l` lookalikes `13-10-0o1l0o-2026` → accepted (all in alphabet) but collision-prone.
+17. id with single-digit day `3-10-k3f7a2-2026` → rejected (DD must be two digits).
+18. id with single-digit month `13-3-k3f7a2-2026` → rejected.
+19. id with day `00` `00-10-k3f7a2-2026` → shape-valid, calendar-invalid.
+20. id with month `00` `13-00-k3f7a2-2026` → shape-valid, calendar-invalid.
+21. id with month `13` `13-13-k3f7a2-2026` → shape-valid, calendar-invalid.
+22. day `32` `32-10-...` → calendar-invalid.
+23. February 30 `30-02-...` → calendar-invalid.
+24. February 29 in a non-leap year `29-02-k3f7a2-2023` → calendar-invalid.
+25. February 29 in a leap year `29-02-k3f7a2-2024` → accepted.
+26. day 31 in a 30-day month `31-04-...` → calendar-invalid.
+27. year not four digits: `13-10-k3f7a2-26` → rejected.
+28. year five digits `13-10-k3f7a2-20266` → rejected.
+29. year `0000` → shape-valid, calendar-invalid.
+30. year with letters `13-10-k3f7a2-20a6` → rejected.
+31. separators missing/extra/wrong: `1310-k3f7a2-2026`, `13-10-k3f7a2-2026-`, `13_10_k3f7a2_2026`, `13/10/k3f7a2/2026`, `13 10 k3f7a2 2026` → rejected.
+32. id has leading/trailing whitespace → likely rejected unless trimmed; spec must decide.
+33. id is empty or missing → rejected.
+34. id is exactly the literal form with an extra field (e.g., includes slug) → rejected.
+35. total length wrong despite right fields → rejected.
+36. correct shape with all three hyphens only → accepted.
+37. Unicode homoglyph hyphen (en dash) `13–10–k3f7a2–2026` → rejected.
+38. non-breaking space between fields → rejected.
+39. id with trailing newline in header value → depends on trim; flag.
+40. id `13-10-k3f7a2-2026 ` and filename id identical after trim → accepted if trimmed; if not, mismatch flagged.
+
+Date vs write date:
+41. id date equals the day the entry file was created → accepted.
+42. id date equals commit date but file mtime differs (checkout) → spec must say which date is authoritative.
+43. id date is after the file's creation date → broken (future-dated).
+44. id date is before file's creation date by one day → broken or timezone edge; flag.
+45. entry written 23:59 local but id uses UTC date making it next day → ambiguous; resolve by a stated timezone.
+46. entry written just after local midnight, id uses previous local date → broken by the chosen rule.
+47. entry written 1 Jan 00:00, id year is the prior year → broken unless timezone says so.
+48. entry written across a leap-second/clock change → id date should follow the calendar date.
+49. id date matches header's recorded date but not filesystem date → depends on authority.
+50. id date matches header date and both differ from git author date → flag.
+51. Existing entry from years ago with old-format date but valid shape → accepted (form is era-independent) or rejected if a different era format is expected; flag.
+
+Uniqueness:
+52. one entry only → accepted.
+53. two entries, same id, different slug, same folder → fail (shared id).
+54. two entries, same id, same slug (identical filenames impossible) → fail; git sees a conflict/overwrite.
+55. same id in two different subfolders of the memory folder → fail if the checker's scope is the whole folder tree; flag if scope is per-folder.
+56. same id in filename but different header id → the filename pair collides; fail.
+57. same header id but different filename ids → header pair collides; fail.
+58. ids differing only in the random part → distinct, accepted.
+59. ids differing only in date → distinct, accepted (not sequential).
+60. two entries created on different branches with different random parts → accepted after merge.
+61. two branches independently generate the same date and same random part → after merge, two files with the same id → fail.
+62. two branches generate the same full id and the same slug → merge conflict; fail whichever resolution keeps duplicates.
+63. one branch's id equals another's after a rebase → fail if both survive.
+64. duplicate id introduced in an unmerged branch only → not visible in the current tree; checker on the branch should fail; checker on main passes.
+65. duplicate present in history but one file later deleted → current tree has one; "no two entries share an id" currently met; historical duplication flagged or not per spec.
+66. an id reused after its original file was deleted → currently unique; historical reuse flagged or not per spec.
+67. duplicate id where one occurrence is a copy left by `git cp` → fail.
+68. duplicate id in a backup file (`foo-<id>-slug.md.bak`) → fail if the checker scans it, otherwise skipped by extension filter.
+69. duplicate id between an entry file and a non-entry file that happens to contain the pattern → depends on scope; flag.
+70. duplicate detection with case-folding: `K3F7A2` is invalid anyway; `k3f7a2` vs `k3f7a2` identical → fail.
+71. duplicate detection with Unicode normalization: visually identical but different bytes → form rejects non-ASCII; ASCII is stable.
+72. duplicate id where one file is a symlink to the other → one logical entry or two? flag; likely fail/count once.
+73. duplicate id across a cherry-pick where the file exists with a different slug → fail.
+74. duplicate id where the two files have different prefixes → still fail.
+75. three or more entries sharing one id → fail, grouped.
+76. duplicate id among malformed ids (both malformed) → both form failures; uniqueness may be moot.
+77. duplicate id where one is valid and one malformed (e.g., uppercase) → form failure plus a near-collision; report both.
+
+Never changes / renames:
+78. rename with id unchanged, only slug edited → not one of the three listed failures; but it breaks "the file keeps its name" — flag the tension.
+79. rename with id unchanged, only prefix changed → same tension.
+80. rename to a different valid id → fail.
+81. rename to a malformed id → fail.
+82. rename where git reports R100 with the id changed in both filename and header → fail.
+83. rename where git reports R with id changed only in the filename, header still old → fail; header/filename now also disagree.
+84. rename where git reports R with id changed only in the header, filename still old → id changed; fail.
+85. change id in place (no rename), same filename, header id edited → id changed; fail if history is inspected.
+86. git reports D + A rather than R (similarity below threshold) with a different id → still a rename to a different id; fail if detected by history/header.
+87. rename A→B→A over two commits → net filename id unchanged; a head-only check passes, a history check sees two changes; spec must say which.
+88. revert commit restoring the old id after a rename → id temporarily changed; head check passes.
+89. squash merge that collapses rename commits → history may show only the final name; head check passes.
+90. rebase/force-push rewriting the rename → same.
+91. rename staged but not committed → filesystem shows the new name, git index shows rename; checker's behavior depends on whether it reads the tree or the index.
+92. working-tree rename not staged → git shows delete + untracked; checker reading the filesystem sees only the new file.
+93. rename of the file into a subfolder with the id unchanged → not an id change; accepted by the listed rule.
+94. rename across directories with a different id → fail.
+95. copy plus delete of the original → git may show R; different id → fail.
+96. copy without deleting the original, new id → a second entry; if the id is new and unique, accepted; if the copy keeps the old id, duplicate → fail.
+97. case-only rename on a case-insensitive filesystem that changes the id's letters → uppercase invalid → form failure.
+98. shallow clone with no history → rename check unavailable; checker must report "cannot check", not pass.
+99. folder not under git at all → rename check unavailable; report/skip.
+100. git rename detection disabled or threshold changed → checker must not rely solely on `git status`.
+101. merge commit that renames a file as a conflict resolution → treated like any rename.
+102. filter-repo/filter-branch rewriting the id → fail if the current/historical id differs from the original.
+103. symlink retarget from one entry to another → id change by indirection; flag.
+104. file deleted and re-added with the same id → id unchanged; accepted.
+105. file deleted and re-added with a different id → rename-like id change; fail if history is checked, pass if only the current name is checked.
+106. an entry file renamed to a different id but git records it as a delete of one file and add of another with the same content → detected only by content/history.
+
+Filename/header/parsing (context):
+107. filename `<prefix>-<id>-<slug>.md` with a valid id, header id identical → accepted.
+108. filename valid, header id missing → fail (id absent from header).
+109. filename valid, header id malformed → fail.
+110. filename malformed, header valid → fail.
+111. filename id and header id both valid but different → fail (two ids for one entry / header doesn't match name).
+112. filename missing the prefix → naming failure; flag scope.
+113. filename missing the slug → naming failure.
+114. slug empty → naming failure.
+115. slug contains hyphens → accepted; the parser must use the fixed id shape, not hyphen-splitting.
+116. slug contains a substring matching an id → parser must anchor on the real id; no false positive.
+117. prefix itself contains digits and hyphens → parser must not misidentify a prefix fragment as the id.
+118. prefix is empty → filename begins with `-<id>-...`; flag.
+119. slug contains uppercase/spaces/non-ASCII → naming issue outside the id rule; flag.
+120. extension `.md` vs `.MD` vs `.markdown` → checker may skip non-`.md`; flag.
+121. file is not Markdown but sits in the folder → skipped by extension filter or flagged.
+122. hidden/editor files (`.foo.md`, `foo.md~`, `.foo.md.swp`, `.#foo.md`) → should be skipped, else false positives.
+123. file nested in a subdirectory → scanned or not per the checker's recursion rule.
+124. empty memory folder → no violations.
+125. folder contains only directories → no violations.
+126. a directory named like an entry file → must be ignored.
+127. symlinked entry file → followed or not; flag.
+128. file is unreadable (permissions) → checker reports an error, not a silent pass.
+129. header id appears in YAML front matter `id: <id>` → accepted.
+130. header id appears as `**id:** <id>` or in an HTML comment or table → checker's parser coverage; flag if unsupported.
+131. header id is quoted (`id: "13-10-k3f7a2-2026"`) → accepted if unquoted/trimmed.
+132. header id has a trailing comment (`id: 13-10-k3f7a2-2026 # note`) → accepted if the parser strips the comment, else false failure.
+133. header has two `id:` fields, same value → ambiguous duplicate field; flag.
+134. header has two `id:` fields, different values → fail.
+135. header field name is `ID:`/`Id:` → accepted if case-insensitive, else missed.
+136. the id string also appears in body text (an example or a reference) → the checker must read only the header, else false positive.
+137. header id has CRLF line endings → accepted if trimmed.
+138. file starts with a UTF-8 BOM before the header → checker must tolerate it.
+139. header id has leading/trailing spaces or tabs → accepted if trimmed, else mismatch.
+140. id split across lines → not found; fail.
+141. header id written with backticks (`id: \`13-10-k3f7a2-2026\``) → parser must strip markup.
+142. header id in a nested list/item rather than front matter → parser scope; flag.
+143. file has no header at all → fail.
+144. header is malformed/truncated → fail with a parse error.
+145. header id is valid but the date part disagrees with the file's own recorded creation date in the body → flag.
+
+Checker behavior:
+146. one violation of form → nonzero exit and the file named.
+147. one duplicate → nonzero exit and both files named.
+148. one rename → nonzero exit and the old/new ids named.
+149. zero violations → exit zero with a clean report.
+150. running the checker twice on the same folder → same result (idempotent).
+151. checker output names the violated rule and the offending file(s) → verifiable.
+152. checker run on a folder with one unreadable file → reports the error and still checks the rest.
+153. checker run while a file is being written → may read a partial header; should retry or report rather than false-pass.
+154. checker on a very large folder → completes or reports a limit; no silent truncation.
+155. checker on a folder not under git → skips the rename rule with a stated reason.
+156. checker in a shallow clone → skips the rename rule with a stated reason.
+157. checker on an unborn branch (no commits) → rename rule skipped.
+158. checker with rename detection disabled by config → must not silently pass renames.
+159. checker's regex is anchored to the whole id → no partial-match false positives.
+160. checker's regex is unanchored → a 7-char random part could be accepted as 6; false negative; fail this test.
+161. checker's regex allows uppercase or wrong lengths → should fail this test.
+162. checker lowercases or case-folds before comparing → uppercase would wrongly pass; fail.
+163. checker trims whitespace before validating → whitespace-padded ids pass; spec must decide.
+164. checker applies Unicode normalization → non-ASCII lookalikes could pass; fail unless the alphabet is enforced.
+165. checker's date validation uses the checker's timezone → an id valid in the writer's timezone may fail; flag.
+166. checker's date validation is disabled → shape-valid impossible dates (`32-13-...`) pass; if calendar validity is required, fail this test.
+167. checker's locale affects lowercase mapping (e.g., Turkish `I`) → only if uppercase appears; flag.
+168. checker orders findings: one file with a malformed id and a duplicate → both reported, not one overwriting the other.
+169. checker groups duplicates so every member is listed → verifiable.
+170. checker reports a mismatch between filename id and header id → verifiable.
+171. checker reports `git` rename only when both blobs are entries → no false positives from other files.
+172. checker does not treat a slug/prefix rename as an id change → unless the id bytes changed.
+173. checker does not treat a delete+add with the same id as a rename-to-different-id.
+174. checker's "renamed" detection compares ids, not paths → survives folder moves.
+175. checker with paths containing spaces or unicode → still resolves files.
+176. checker counts a symlink twice → duplicate false positive; flag.
+177. checker follows `.git` internals or ignored files → must not scan them.
+178. checker reads `.gitignore`d files → flag.
+179. checker on Windows path separators/line endings → same findings.
+180. checker with a filename longer than the OS limit → error reported.
+
+Generation/randomness (not directly checkable):
+181. random part drawn from `[a-z0-9]` uniformly → accepted.
+182. random part generated with a biased or narrow alphabet → form-valid; quality not checkable by the checker.
+183. random part generated as a counter (`000001`, `000002`) → form-valid; violates the "never the next free number / random" intent; not detectable by shape alone; flag as a policy finding.
+184. random part generated from the machine hostname or timestamp → predictable; form-valid; not shape-detectable.
+185. random part generated uppercase then lowercased → could collapse distinct draws into the same string (rare); check collisions.
+186. two draws from the same seed on two branches → same random part on the same date → collision; fail.
+187. random part truncated by an off-by-one → 5 or 7 chars; fail form.
+188. retry after a collision generates a new random part → the second entry gets a different id; accepted.
+189. a writer manually edits an id to "fix" a typo → changes id; fail.
+190. a writer picks the "next free number" after seeing other entries → id shape may still pass; intent violated; flag.
+191. id copied from another entry as a template and not re-randomized → duplicate; fail.
+192. the random part includes chars that are easy to transcribe wrongly (`0/o`, `1/l`) → form-valid; usability risk.
+193. the id is generated once and reused for a second entry created later (same date) → duplicate; fail.
+194. two entries written on the same day with independent random parts → both accepted.
+195. an entry written on a different day has a different date prefix → accepted.
+
+Multi-branch/merge/tooling:
+196. two branches edit the same entry file, one changes the id → merge; fail by id change.
+197. two branches rename the same file to two different ids → duplicates/none for one; fail.
+198. a branch deletes an entry, another keeps it → no duplicate; id retired.
+199. a branch adds an entry with an id that main later also used → merge collision; fail.
+200. a branch moves the memory folder itself → paths change, ids unchanged; accepted; checker's root must be pointed at the new path.
+201. CRLF/`.gitattributes` normalization altering header bytes → header parse must survive; else false failure.
+202. Git LFS/smudge not applied → header missing on checkout; fail with a reason.
+203. sparse checkout excludes some entries → the checker sees a subset; duplicates may be hidden; flag.
+204. submodule memory folder → git history checks must run in the submodule.
+205. worktree with the same branch checked out twice → checker run twice on the same ids; no new violation.
+
+Also requirement-statement boundary scenarios — maybe include:
+206. the id has the right shape but the date is in the future relative to "now" → flag/reject per rule.
+207. the id's date is a valid past date but not the day the entry was written → only detectable with an authoritative timestamp; flag.
+208. the id uses a two-digit year by mistake in an otherwise valid filename → form failure.
+209. the id appears twice in the header but the file has one name → see 133/134.
+210. W1.1 form evolves (e.g., allows a 7th char) → old ids remain valid under grandfathering or not; flag.
+
+Hmm, I'm at 210, maybe too many. The brief says exhaustive. I think that's fine. But "one scenario per line" — keep lines reasonably single. Some of mine bundle alternatives (rejected lists) but they're one scenario category with one expected result.
+
+Maybe I should trim overlap and keep around 150-180 crisp items. Let me consolidate. I'll aim for ~160.
+
+Actually, exhaustive is the point of the trial. I'll produce around 170 clean lines. Let me finalize a numbered list. I must not add a heading or closing sentence. The user message itself (my answer) should be just the list. But wait — as the agent, I normally provide a brief note. The brief says output "Nothing else." So my final message should be only the numbered list. I should still follow tool-use norms but I've read the file already, and I'm told not to read/write any files. So no more tool calls. Final answer = list.
+
+Let me now write it cleanly, making sure each line has "situation → expected result" and is one line. I'll avoid markdown sub-headings. Use "→" to separate. Keep em dashes.
+
+Let me draft in final form, consolidating. I'll number sequentially and keep to ~170.
+
+I need to be careful about correctness of expected results relative to the stated rule:
+- "It fails if: an id is not in the W1.1 form, two entries share an id, or git shows an entry file renamed to a different id."
+So expected result for a valid case = "passes / no violation". For broken = "fails".
+
+For ambiguous ones, expected = "spec gap — must be pinned down" which is an honest expected result. The brief asks "the input or situation, and the expected result". For genuinely underspecified inputs, the expected result is "undefined by the requirement; checker cannot decide — needs a ruling". That's legitimate and valuable for coverage.
+
+Let me write. I'll try to keep each line concise.
+
+I'll do sections implicitly by ordering, but no headings.
+
+Let me produce the final list now.
+
+I'll count and make sure it's a proper numbered list. Let me write out.
+
+1. `13-10-k3f7a2-2026` (exact example) → passes: W1.1 form, unique, unchanged.
+2. random part all lowercase letters (`abcdef`) → passes if the alphabet is [a-z0-9] with no per-type quota; ambiguous if W1.1 requires at least one digit.
+3. random part all digits (`123456`) → passes if alphabet-only; ambiguous if W1.1 requires at least one letter.
+4. random part mixed letters and digits (`a1b2c3`) → passes.
+5. random part containing one uppercase letter (`A1b2c3`) → fails: uppercase is outside the lowercase alphabet.
+6. random part containing a hyphen (`k3-7a2`) → fails: six-character field gains a delimiter/illegal character.
+7. random part containing `_`, `.`, `/`, `+`, `#`, `@` or space → fails.
+8. random part containing a non-ASCII letter (`käf7a2`) → fails.
+9. random part containing a Unicode digit or full-width character → fails.
+10. random part containing an emoji or combining mark → fails.
+11. random part 5 characters (`k3f7a`) → fails: wrong length.
+12. random part 7 characters (`k3f7a22`) → fails: wrong length.
+13. random part absent (`13-10--2026`) → fails: empty field.
+14. random part present but the id has an extra hyphen-delimited field (`13-10-k3f7a2-extra-2026`) → fails: extra field.
+15. `13-10-k3f7a2` with the year missing → fails: not W1.1 form.
+16. single-digit day (`3-10-k3f7a2-2026`) → fails: DD is two digits.
+17. single-digit month (`13-3-k3f7a2-2026`) → fails: MM is two digits.
+18. three-digit day or month (`013-10-...`, `13-010-...`) → fails.
+19. day `00` (`00-10-k3f7a2-2026`) → in shape but not a real date; expected depends on whether W1.1 requires a calendar-valid date — spec gap.
+20. month `00` (`13-00-...`) → same gap.
+21. month `13` (`13-13-...`) → same gap.
+22. day `32` (`32-10-...`) → same gap.
+23. `30-02-...` → same gap.
+24. `29-02-...` in a non-leap year (`2023`) → same gap.
+25. `29-02-k3f7a2-2024` → passes if calendar validity is required and leap years are handled.
+26. day `31` in a 30-day month (`31-04-...`) → same gap.
+27. year not four digits (`-26`, `-20266`) → fails.
+28. year containing a letter (`-20a6`) → fails.
+29. year `0000` → in shape, calendar-invalid; spec gap.
+30. separators removed (`1310-k3f7a2-2026`) → fails.
+31. separators changed to `/`, `.`, `_` or space → fails.
+32. extra or trailing separator (`13-10-k3f7a2-2026-`) → fails.
+33. Unicode dash/en-dash instead of `-` → fails.
+34. non-breaking space between fields → fails.
+35. leading or trailing whitespace in the filename id → fails unless the checker trims; spec must state trimming.
+36. leading or trailing whitespace in the header id value → passes if trimmed; otherwise flagged as a mismatch.
+37. id is empty or the field is missing in filename and/or header → fails.
+38. id total length is wrong even though fields look right (e.g., a six-char field under a five-char regex) → fails.
+39. id correct in all fields → passes.
+40. filename id valid, header id identical → passes.
+41. filename id valid, header id missing → fails: the entry's id is not in the header.
+42. filename id valid, header id malformed → fails.
+43. filename id malformed, header id valid → fails.
+44. filename id and header id both valid but different → fails: one entry carries two ids / name and header disagree.
+45. filename id and header id differ only by case or whitespace → fails or is normalized, per the trimming/case rule.
+46. id date matches the day the entry file was written → passes.
+47. id date is one day after the write date → fails the "day it is written" clause if an authoritative timestamp exists.
+48. id date is one day before the write date → fails on the same clause; timezone ambiguity must be resolved.
+49. entry written at 23:59 local where UTC is the next day and the id uses UTC → spec gap: which clock is authoritative.
+50. entry written just after local midnight with the previous day's id → fails under a local-date rule.
+51. entry written on 1 January whose id carries the previous year → fails under a local-date rule.
+52. id date matches the header's recorded date but not the filesystem/git date → spec gap: which date the checker may trust.
+53. id date is in the future relative to the checker's clock → fails as not the write date, unless clocks/granularity explain it.
+54. very old entry with a valid-shape id from a previous format era → passes on form; may fail if W1.1 is applied retroactively — needs a grandfathering rule.
+55. one entry in the folder → passes.
+56. two entries with the same id and different slugs → fails: shared id.
+57. two entries with the same id where both filenames would be identical → fails; git also cannot hold both names.
+58. two entries with the same id in different subfolders of the memory folder → fails if the checker's scope is the whole tree; passes if scope is a single folder — spec gap.
+59. two entries whose filenames share an id but whose header ids differ → fails: shared filename id.
+60. two entries whose headers share an id but whose filename ids differ → fails: shared header id.
+61. two entries whose ids differ only in the random part → passes: distinct ids.
+62. two entries whose ids differ only in the date part → passes: distinct ids, and neither is "the next free number".
+63. two branches generate different random parts on the same date → passes after merge.
+64. two branches generate the same date and the same six random characters → fails after merge: collision.
+65. two branches generate the same full id with the same slug → fails: filename collision at merge.
+66. a rebase reproduces one branch's id on top of the other's — same as 64/65.
+67. duplicate id exists only on an unmerged branch → checker on that branch fails; checker on main passes; the rule's scope over branches must be stated.
+68. duplicate id existed in history but one file was later deleted → current tree has one id; whether historical sharing counts as "two entries share an id" is a spec gap.
+69. an id is reused after its original entry is deleted → currently unique; whether reuse is forbidden is a spec gap.
+70. a copied file left beside the original keeps the same id → fails: duplicate.
+71. a backup or temp file in the folder contains a second copy of the id → fails if scanned, ignored if the checker filters extensions — spec must state the filter.
+72. duplicate id where one file is a symlink to the other → one logical entry or two? spec gap; likely counts once.
+73. duplicate id where the two files have different prefixes → fails: prefix does not make the id distinct.
+74. three or more entries sharing one id → fails; the report must list every member.
+75. duplicate id where both occurrences are malformed → both fail on form; the duplicate is secondary.
+76. duplicate id where one is valid and one is malformed (e.g., uppercase) → both reported: the malformed one on form, the pair on near-collision.
+77. rename with the id unchanged and only the slug edited → not one of the three named failures, but it breaks "the file keeps its name" — spec gap: is this a violation?
+78. rename with the id unchanged and only the prefix changed → same gap.
+79. file renamed to a different valid id → fails.
+80. file renamed to a malformed id → fails on rename-to-different-id and on form.
+81. id changed in both the filename and the header, git shows R100 → fails.
+82. id changed in the filename only, header keeps the old id → fails on rename and on filename/header mismatch.
+83. id changed in the header only, filename keeps the old id → fails: the entry's id changed.
+84. id edited in place with no rename (same filename, header changed) → fails the "an id never changes" clause.
+85. git shows delete + add (similarity below the rename threshold) with a different id → fails if the checker reads history/content, not only `git status`.
+86. rename A→B→A over two commits → head shows the original name; a head-only check passes and a history check fails — spec gap: which is authoritative.
+87. revert commit restoring the old id after a rename → id changed in between; same gap as 86.
+88. squash merge collapsing the rename commits → history may show only the final name; the check must not depend on commit granularity.
+89. rebase or force-push rewriting the rename → same as 88.
+90. rename staged but not committed → git index shows R, working tree shows the new name; checker behavior depends on whether it reads the index or the tree — spec must state.
+91. rename in the working tree, not staged → git shows delete + untracked; a filesystem-only checker sees only the new file.
+92. entry moved to another folder with the id unchanged → passes: not an id change.
+93. entry moved to another folder with a different id → fails.
+94. copy of an entry with a new id, original kept → a second, distinct entry; passes if the new id is unique and well-formed.
+95. copy of an entry with the old id, original kept → fails: duplicate.
+96. case-only rename on a case-insensitive filesystem → uppercase makes the id fail form.
+97. shallow clone with no history → the rename rule cannot be evaluated; expected "not checkable", not a silent pass.
+98. folder not under git → rename rule not checkable; must be reported as skipped.
+99. git rename detection disabled or threshold changed → the checker must compare ids itself rather than trust `git status`.
+100. merge conflict resolution renames a file → treated as any rename.
+101. history rewritten by filter-repo/filter-branch → a changed id must still be compared with the original.
+102. symlink retargeted from one entry to another → an id change by indirection; spec gap.
+103. file deleted and re-added with the same id → passes: the id did not change.
+104. file deleted and re-added with a different id → fails if history is checked; a head-only check passes — same gap as 86.
+105. entry renamed to a different id but git records it as a same-content delete/add → only content/history comparison catches it.
+106. filename is `<prefix>-<id>-<slug>.md` and the header id matches → passes.
+107. filename missing the prefix → outside the id rule; naming violation, must be reported if naming is in scope.
+108. filename missing the slug or with an empty slug → same.
+109. slug contains hyphens → passes; the parser must key on the fixed id shape rather than splitting on hyphens.
+110. slug contains a substring that itself looks like an id → passes; the parser must anchor on the real id and not report a phantom id.
+111. prefix contains digits and hyphens that look like date/random fields → passes; the parser must not misidentify a prefix fragment as the id.
+112. prefix is empty so the filename begins with `-<id>-<slug>.md` → naming gap.
+113. slug contains uppercase, spaces or non-ASCII → outside the id rule; naming gap.
+114. extension `.MD` or `.markdown` → the checker's extension filter decides; must be stated, not silently skipped.
+115. non-Markdown file placed in the folder → skipped by the filter or flagged; must be stated.
+116. editor or hidden files (`.foo.md`, `foo.md~`, `.foo.md.swp`, `.#foo.md`) → must be ignored to avoid false positives.
+117. entry nested in a subdirectory → scanned or not, per the recursion rule; must be stated.
+118. empty memory folder → no violations.
+119. folder contains only directories → no violations.
+120. a directory whose name matches the entry-file pattern → must be ignored.
+121. entry file is a symlink → followed or not; must be stated, and following can create a duplicate false positive.
+122. entry file is unreadable → the checker reports an error for it and still checks the rest.
+123. header id in YAML front matter (`id: <id>`) → passes.
+124. header id as inline bold, an HTML comment, or a table cell → passes only if the parser supports it; otherwise the checker misses a real id.
+125. header id quoted (`id: "13-10-k3f7a2-2026"`) → passes if quotes are stripped.
+126. header id with a trailing comment (`id: <id> # note`) → passes if the comment is stripped, else a false violation.
+127. two `id:` fields with the same value → ambiguous header; must be flagged as duplicate field or accepted; spec gap.
+128. two `id:` fields with different values → fails.
+129. field name written `ID:` or `Id:` → passes only if the parser is case-insensitive; otherwise missed.
+130. the id string also appears in the body as an example or a cross-reference → must not count; the checker reads only the header.
+131. header uses CRLF line endings → must parse the same as LF.
+132. file begins with a UTF-8 BOM → must parse the same as without.
+133. header id has leading/trailing spaces or tabs → trim rule must be stated.
+134. the id value is split across two lines → not found; fails.
+135. the id is wrapped in backticks or markdown emphasis → passes only if markup is stripped.
+136. header is absent entirely → fails.
+137. header is truncated or malformed → fails with a parse error, not a silent pass.
+138. header id valid but the body's stated creation date disagrees with the id date → spec gap: which is authoritative.
+139. one form violation → the checker exits nonzero and names the file and rule.
+140. one duplicate → exits nonzero and names both files.
+141. one rename-to-different-id → exits nonzero and names the old and new ids.
+142. no violations → exits zero with a clean report.
+143. the checker is run twice on the same folder → identical result (idempotent).
+144. output must name the violated rule and every offending file to be verifiable.
+145. one unreadable file among many → that file's error is reported and the others are still checked.
+146. a file is being written during the scan → partial header; the checker retries or reports, never a false pass.
+147. a very large folder → completes or reports a stated limit; no silent truncation.
+148. a folder not under git → the rename rule is skipped with a stated reason.
+149. a shallow clone → the rename rule is skipped with a stated reason.
+150. an unborn branch / no commits → the rename rule is skipped with a stated reason.
+151. `git` rename detection disabled by config → the checker must not silently pass.
+152. the checker's regex is anchored to the full id → no partial-match false positives.
+153. the checker's regex is unanchored → a 7-character random part can be accepted as 6; a false negative.
+154. the checker's regex allows uppercase or the wrong lengths → false negatives; this test must fail the checker.
+155. the checker case-folds before comparing → an uppercase id wrongly passes; this test must fail the checker.
+156. the checker trims whitespace before validating → a padded id passes; the trim rule decides.
+157. the checker normalizes Unicode → a lookalike id passes; only safe if the [a-z0-9] alphabet is enforced after normalization.
+158. the checker's date validation uses a different timezone than the writer → a valid id may be flagged; must be pinned.
+159. the checker does no calendar validation → `32-13-...` passes; fails this test if calendar validity is required.
+160. the checker's locale changes letter casing (e.g., Turkish `I`) → only matters where uppercase appears; test with a locale set.
+161. one file has both a malformed id and a duplicate → both findings are reported; neither hides the other.
+162. duplicates are grouped so every member is listed → required for verifiability.
+163. a filename/header id mismatch is reported as its own finding → required.
+164. git rename detection is restricted to entry files → other renames in the repo do not create false positives.
+165. a prefix or slug rename is not reported as an id change because the id bytes are unchanged → required.
+166. a delete+add with the same id is not reported as a rename-to-different-id → required.
+167. rename comparison is on ids, not paths → a folder move with the same id passes.
+168. paths with spaces or non-ASCII → files still resolve and are checked.
+169. the checker follows `.git` internals or ignored files → must not; otherwise false positives.
+170. Windows path separators and CRLF → the same findings as on Linux.
+171. a filename longer than the OS limit or otherwise unreadable → an error is reported.
+172. random part drawn uniformly from `[a-z0-9]` → passes.
+173. random part from a biased or narrow alphabet → form-valid; the checker cannot judge randomness.
+174. random part generated as a counter (`000001`, `000002`) → form-valid but violates "not the next free number"; only detectable by policy review, not by the checker.
+175. random part derived from hostname or timestamp → predictable; form-valid, not shape-detectable.
+176. random part generated uppercase then lowercased → collisions possible after folding; uniqueness check catches them.
+177. two branches seed the same RNG identically → same random part on the same date → collision; fails.
+178. random part truncated by an off-by-one → 5 or 7 characters; fails form.
+179. a collision is retried with a fresh random part → the new entry's id is unique; passes.
+180. a writer hand-edits an existing id to "fix" it → the id changed; fails.
+181. a writer chooses the next free number after reading other entries → may pass form while violating the intent; flag.
+182. a writer copies another entry as a template and forgets to re-randomize → duplicate; fails.
+183. the id was generated once and reused for a second entry on the same date → duplicate; fails.
+184. two entries written on the same day with independent random parts → both pass.
+185. an entry written on a different day carries a different date prefix → passes; the date prefix is not a sequence.
+186. two branches edit the same entry, one changing the id → fails on the id change.
+187. two branches rename the same entry to two different ids → at least one id is lost; fails.
+188. one branch deletes an entry and another keeps it → no duplicate; the id is simply retired.
+189. a branch adds an id that main later also used → merge collision; fails.
+190. the memory folder itself is moved in a branch → ids unchanged; passes, and the checker must be pointed at the new root.
+191. `.gitattributes` line-ending normalization changes header bytes → parsing must survive; otherwise false failure.
+192. Git LFS/smudge leaves the header unexpanded on checkout → the checker reports a parse failure, not a pass.
+193. sparse checkout omits some entries → duplicates may be hidden; the checker must state its scope.
+194. the memory folder is a submodule → history checks must run inside the submodule.
+195. two worktrees check out the same branch → running the checker in both finds no new violation.
+196. W1.1 is revised to a longer random part → old ids either keep passing under a grandfather rule or start failing; must be stated.
+197. the id uses a two-digit year elsewhere in the name (not the id) → the id itself is unaffected; only the id fields are checked.
+198. the id appears in a link or anchor in another file → not an entry id; the checker reads entry files only.
+199. a file with a valid id has zero bytes of body → passes; the rule constrains the id, not the content.
+200. the entry is written but not yet committed → the checker on the working tree passes; git-based rename checks have no commit to compare.
+
+That's 200. Good and exhaustive. Let me review for lines where I bundled multiple alternatives — that's acceptable as one scenario each. Also ensure the separator and format is consistent.
+
+I think 200 is strong. Maybe I should trim a few weak/duplicative ones, but exhaustive is requested. I'll keep 200.
+
+One concern: the brief says "one scenario per line". My lines are each one scenario. Good.
+
+Another concern: "Nothing else." I must not include a preamble. My final answer should begin with "1." and end with item 200. Let me make sure the harness final message is only that list.
+
+I'll write it out now. Use " → " and keep concise. I need to make sure each numbered item is one line in the rendered output (no hard wraps). In my message, I'll put each item on its own line. Long lines are fine.
+
+Let me finalize.

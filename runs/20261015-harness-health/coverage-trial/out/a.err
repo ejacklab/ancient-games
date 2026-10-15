@@ -1,0 +1,137 @@
+dsh: reasoning:
+Let me read the brief file.
+dsh: reasoning:
+The brief says: list test cases for the requirement. Output: a numbered list, one test case per line: the input or situation, and the expected result. Nothing else. Do not read or write any files; answer from the text above.
+
+Wait — the instruction says "Do not read or write any files; answer from the text above." But the outer user asked me to read the brief and do what it says. Reading the brief was necessary. Now I should just answer from the text.
+
+Hmm, but there's a tension: AGENTS.md says discuss first etc. But this is a simple task. The brief says output a numbered list, nothing else. But there may be a harness-health coverage-trial context. Let me check whether there's a state file or something. The brief explicitly says do not read or write files and answer from text above. So I should just produce the list.
+
+Let me think carefully about test cases for the requirement.
+
+Requirement: `id` is `DD-MM-xxxxxx-YYYY`: day, month, year entry written, six random lowercase letters and digits. Example `13-10-k3f7a2-2026`. Writers on different branches pick ids without coordinating, so id is never "next free number". No two entries share an id. Id never changes, so file keeps its name.
+
+Fails if: id not in W1.1 form, two entries share an id, or git shows an entry file renamed to a different id.
+
+Context: each entry is one Markdown file in a project memory folder, named `<prefix>-<id>-<slug>.md`, with id also in file header. A checker tool reads the folder and reports violations.
+
+So test cases: inputs/situations and expected results (violation or no violation). Cover:
+- valid id form: `13-10-k3f7a2-2026`
+- valid with digits in random part, lowercase letters
+- date components: day DD (01-31), month MM (01-12), year YYYY (4 digits)
+- random part: exactly 6 chars, lowercase a-z and 0-9, e.g. all digits, all letters, mixed
+- invalid: uppercase letters in random part
+- invalid: fewer than 6 chars
+- invalid: more than 6
+- invalid: hyphen inside random part
+- invalid: special chars
+- invalid: uppercase
+- invalid: day single digit / month single digit
+- invalid: year two digits
+- invalid: separators wrong (slashes, dots)
+- invalid: empty
+- duplicate ids across two files
+- duplicate id within header vs filename mismatch
+- filename must contain id
+- header id must match filename id
+- git rename detection: file renamed to different id → violation
+- git shows rename but same id (slug change) → maybe no violation? The requirement says "an id never changes, so the file keeps its name" — but the failure condition is "git shows an entry file renamed to a different id." A slug rename within the same id would not be a different id. Hmm, "the file keeps its name" implies renaming to a different slug would also be a change but failure condition specifically says renamed to a different id. Test: rename slug only, same id → no violation per stated failure condition? That's ambiguous; maybe include as a case with expected result based on the stated failure condition.
+
+Also: two entries share id but in different branches/not merged? Checker reads folder, only sees one. Requirement: no two entries share an id — checker reads the folder. Test: two files in the folder with same id → violation. Cross-branch duplicates aren't visible to checker.
+
+Also: entry written on a different date than id date? The id encodes the day/month/year the entry is written. Is a mismatch a failure? Not listed in failure conditions. Could include a case: id date differs from file's git creation date → not a violation under the stated checks? Hmm, the failure list is exhaustive-ish ("It fails if: ..."). We should base expected results on those three. But "in the W1.1 form" might include semantic date validity (e.g., day 32, month 13, Feb 30). That's part of the form arguably. Test: `32-13-abcdef-2026` → violation (not a valid DD-MM).
+
+Also "six random lowercase letters and digits" — need at least checking character set. Could test random part containing `_` or `-`.
+
+Also file naming: `<prefix>-<id>-<slug>.md`. Prefix unknown. Test: file whose name lacks the id → violation? The failure conditions only mention id form, duplicate, rename. Hmm. A file name not containing a well-formed id means the entry's id isn't in W1.1 form? Or missing. I'd include: file with no id in filename / header missing id → violation.
+
+Header: id also in file header. Test: id in filename valid but header has different id → violation (id not consistent / not in form). Test: header id valid matches filename → pass.
+
+Let me produce a clean numbered list, one test case per line, input/situation and expected result. "Nothing else." So no preamble? Probably just the list. The brief says output "A numbered list, one test case per line: the input or situation, and the expected result. Nothing else."
+
+I should be careful: the harness-health coverage-trial may be evaluating whether I comply with "do not read files" — but I had to read the brief. That's the outer instruction. Fine.
+
+Now, should I be exhaustive but not invent too much? Let's create maybe 20-25 cases grouped implicitly. One per line.
+
+Let me write them:
+
+1. A file named `<prefix>-13-10-k3f7a2-2026-<slug>.md` whose header id is `13-10-k3f7a2-2026` — checker reports no violation.
+2. Id with 6 uppercase letters (`13-10-K3F7A2-2026`) — violation: not W1.1 form.
+3. Id with random part shorter than 6 (`13-10-k3f7a-2026`) — violation.
+4. Id with random part longer than 6 (`13-10-k3f7a2b-2026`) — violation.
+5. Id random part containing a hyphen/underscore/other punctuation (`13-10-k3-7a2-2026`, `13-10_k3f7a2-2026`) — violation.
+6. Id random part all digits (`13-10-012345-2026`) — no violation (digits allowed).
+7. Id random part all letters (`13-10-abcdef-2026`) — no violation.
+8. Single-digit day (`3-10-k3f7a2-2026`) — violation.
+9. Single-digit month (`13-1-k3f7a2-2026`) — violation.
+10. Two-digit year (`13-10-k3f7a2-26`) — violation.
+11. Wrong separator (`13/10/k3f7a2/2026`, `13.10.k3f7a2.2026`) — violation.
+12. Impossible date (`32-13-k3f7a2-2026`, `31-02-k3f7a2-2026`) — violation? The form says day, month, year. Hmm—is "W1.1 form" just the character pattern or a real calendar date? Requirement: "the day, month and year the entry is written" means it should be the actual date. So an impossible date can't be when the entry was written. I'll mark as violation, but maybe note ambiguity? The brief says nothing else, so just state expected. Actually maybe I should separate: "Id encodes a date that cannot exist (e.g. 31-02) — violation (not a day/month/year that can be written)."
+13. Id with extra/missing segments (`13-10-2026`, `13-10-k3f7a2-2026-extra`) — violation.
+14. Two files in the same folder carrying the same id `13-10-k3f7a2-2026` — violation: duplicate id.
+15. Duplicate id where one occurrence is in the filename and the other only in a header — violation.
+16. Id in file header differs from id in filename — violation.
+17. File whose name has no id segment / header has no id — violation (missing id).
+18. Git shows the file renamed from `<prefix>-13-10-k3f7a2-2026-<slug>.md` to `<prefix>-14-10-b7c2d1-2026-<slug>.md` — violation: id changed on rename.
+19. Git shows only the slug renamed, id unchanged (`...-13-10-k3f7a2-2026-old.md` → `...-13-10-k3f7a2-2026-new.md`) — no violation: the id is unchanged. (per the stated failure condition "renamed to a different id")
+20. Git status shows a modification to an existing file with no rename — no violation.
+21. A new file added on a branch with an id that does not continue any sequence (`13-10-k3f7a2-2026` while the folder's newest id is `09-10-aaaaaa-2026`) — no violation: ids are not "next free number".
+22. Two writers on separate branches independently pick the same id, then both branches merge into one folder — after merge, checker sees two files with the same id — violation: duplicate. Hmm but "report" is per folder. This tests non-coordination. Include.
+23. Entry written 2026-11-03 but id dated 13-10 — ? Not one of the three failures. Might be out of scope. I'd skip or include as no violation? The requirement states id is the date written, so a mismatch would be a defect but the checker's stated failures don't include it. Since the brief asks test cases for the requirement including its failure conditions, a date-mismatch case could be included with expected "no violation, since the stated failure conditions do not cover it" — but that may be over-reach. Maybe better to include it explicitly as a gap: "Id's date does not match the date the entry was written — not one of the three stated failures; expected result undefined by the requirement." Hmm "Nothing else" and "expected result" — I can say "no violation from this checker (not one of the three defined failures)". That surfaces a real ambiguity, good testing.
+
+Also test that the prefix and slug don't affect the checker: file `<prefix>-13-10-k3f7a2-2026-<slug>.md` with arbitrary prefix/slug — no violation. And slug containing an id-like string? e.g., slug `13-10-k3f7a2-2026` duplicates. Maybe too edge.
+
+Also test filename with a valid id but a second id-like token.
+
+Also test the checker reads multiple files and reports each violation separately.
+
+Let me keep it focused, maybe ~20 lines. The instruction says "one test case per line: the input or situation, and the expected result."
+
+Should I include a line for "id is never 'the next free number'"? That's a design property, not directly testable except case 21.
+
+Also test the format's random part allows mixture: case 1 already mixed. Maybe test `13-10-a1b2c3-2026` no violation.
+
+Also lowercase letters only — test uppercase in prefix? irrelevant.
+
+I think the answer should be just the numbered list. Let me finalize with clear expected results. I'll add short parenthetical reason? "Nothing else" — keep to input → expected result. I'll keep reasons minimal or none. Actually reasons help but the brief says just input and expected result. I'll phrase expected result precisely (violation/no violation and which failure).
+
+Let me write ~22 cases.
+
+One nuance: "It fails if: an id is not in the W1.1 form" — so all malformed ids → violation.
+
+Test cases:
+
+1. Valid mixed id `13-10-k3f7a2-2026` in both filename and header → no violation.
+2. Random part all digits `13-10-012345-2026` → no violation.
+3. Random part all lowercase letters `13-10-abcdef-2026` → no violation.
+4. Random part 5 chars `13-10-k3f7a-2026` → violation: not W1.1 form.
+5. Random part 7 chars `13-10-k3f7a2b-2026` → violation.
+6. Uppercase in random part `13-10-K3F7A2-2026` → violation.
+7. Non-alphanumeric in random part `13-10-k3f7_2-2026` → violation.
+8. Day not zero-padded `3-10-k3f7a2-2026` → violation.
+9. Month not zero-padded `13-1-k3f7a2-2026` → violation.
+10. Two-digit year `13-10-k3f7a2-26` → violation.
+11. Four-digit year ok `01-01-aaaa11-2027`? wait year 2027 fine. Actually test `01-01-z9y8x7-2030` → no violation. Hmm maybe redundant. Instead test separators: `13/10/k3f7a2/2026` → violation.
+12. Impossible calendar date `31-02-k3f7a2-2026` → violation (not the date the entry was written).
+13. `00-10-k3f7a2-2026` (day 00) → violation.
+14. `13-13-k3f7a2-2026` (month 13) → violation.
+15. Extra segment `13-10-k3f7a2-2026-1` → violation.
+16. Missing segment `13-10-2026` → violation.
+17. Empty id → violation.
+18. Two files in the folder with identical id → violation: duplicate.
+19. Header id different from filename id → violation (one of the two ids isn't the entry's; inconsistency).
+20. Filename or header missing the id entirely → violation.
+21. Git rename to a different id → violation.
+22. Git rename changing only the slug, same id → no violation.
+23. Git modification, no rename → no violation.
+24. New id not following the folder's previous id numerically → no violation (ids are never "next free number").
+25. Two branches independently choose the same id and are merged into the folder → violation: duplicate.
+26. Id's date differs from the entry's writing date → not covered by the three stated failures; expected no violation from this checker.
+
+That's 26. Fine. Make them one per line. I'll present without extra text? The brief says "Nothing else." So I'll output the numbered list only. But as an assistant here, maybe a minimal lead-in is fine; safest is to output just the list.
+
+Wait — should I be concerned this is a "coverage trial" testing whether the harness discovers that the brief says don't read files and I read the brief? The user explicitly told me to read it. Fine.
+
+Let me also consider the "one line per test case" format: "the input or situation, and the expected result." I'll use "→".
+
+I'll output now.
