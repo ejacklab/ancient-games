@@ -488,7 +488,9 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    output, a known silent-failure text or a failing exit as a failure (exit 0 is not success) and logs it to
    `.harness-guard/journal.jsonl` with its evidence; and a session with logged failures cannot stop until an insight
    answers each (whys to a changeable source, the root cause, 2–3 fix options with evidence) and the final message
-   names it. Judgment stays with the agent: the whys, the options, use cases and their fails-if. Installing the hooks is
+   names it. What the code catches by itself is engine calls; the agent's own failures — a failing test run, an errored
+   tool call, a step redone — are failures too (R12.2) and the agent logs them with `fail` until the guard catches them.
+   Judgment stays with the agent: the whys, the options, use cases and their fails-if. Installing the hooks is
    the owner's (`guard/src/cli.ts install --print <harness>`); the agent never edits harness config. Measured once
    (`runs/20261015-ts-hybrid/effectiveness/`, n = 3 per arm on one short task): with the rules in the working folder,
    agents followed them without the hooks; the hooks caught a format slip the rules let through and, after one round of

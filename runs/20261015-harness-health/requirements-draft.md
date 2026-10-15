@@ -38,7 +38,10 @@ reason written into the design.
 **R12.1 Failure handling (MUST — a safety bound).** An evaluator reports fail — never pass — when the result is
 missing, empty, of the wrong form, or when the evaluator itself errors or times out. Exit 0 is not success.
 
-**R12.2 Failure log (MUST).** Every failure is logged when it happens, as one record: what was checked, the input,
+**R12.2 Failure log (MUST).** A failure is anything that went wrong while the work was done, whoever caused it: a
+check that returned fail (a test run, a linter, a gate), a tool call that errored, an engine result that fails R12.1,
+work that had to be undone or redone, and a correction from the project owner. Every failure is logged when it happens,
+as one record: what was checked, the input,
 the expected and the actual result, the engine and harness that produced it, the reason it is a failure, and the path
 to the evidence (the data) in the run folder. Anyone may declare a failure — an evaluator, a retry, the project owner
 or another agent — but a record without a reason and evidence is not accepted. A failure is logged even when a retry
@@ -71,7 +74,8 @@ returning failures while the work still passes, under a comparison the project o
 
 Fails if: an evaluator crash or an empty result is read as pass; a judge rejects a result that breaks no stated
 condition only because it differs from the expected method or output; a wrong result that passed every condition
-leads to no new condition; a failure a retry later passed, or one found outside an evaluator, has no record; a task
+leads to no new condition; a failure a retry later passed, or one found outside an evaluator, has no record; the agent's own failing test run,
+errored tool call or redone step has no record; a task
 with failure records ends without an insight file, or with one not raised to the project owner; a failure record has
 no reason or no evidence; an insight offers fewer than two fix options, or applies a fix the owner did not choose; a why stops at the agent forgetting or the model being wrong; a
 check-type fix is trusted without a planted repeat failing it; a model the harness uses changes and no review
