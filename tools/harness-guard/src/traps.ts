@@ -3,10 +3,15 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { EngineCall, EngineSpec, Finding, LintContext, ResultInput, Trap } from "./types.ts";
+import type { EngineCall, EngineSpec, Finding, LintContext, ResultInput, Segment, Trap } from "./types.ts";
 
 const DATA_DIR = path.join(import.meta.dirname, "..", "data");
 const SPECIAL_PATHS = new Set(["/dev/null", "/dev/stdin", "/dev/stdout", "/dev/stderr"]);
+const HELP_WORDS = new Set(["--help", "-h", "--version", "-V"]);
+const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+const DURATION = /^\d+(?:\.\d+)?(?:h\d+)?[smhd]?$/;
+const TIMEOUT_VALUE_OPTIONS = new Set(["-s", "--signal", "-k", "--kill-after"]);
+const SIMPLE_WRAPPERS = new Set(["nohup", "time", "exec", "command"]);
 
 type Entry = Record<string, unknown>;
 
@@ -159,7 +164,42 @@ export function catalogueProblems(file?: string): string[] {
   return problems;
 }
 
-// ---- engine-call recognition --------------------------------------------------------------------------------------
+// ---- segments and the command word --------------------------------------------------------------------------------
+
+interface Word {
+  text: string; // the word as written, quotes kept
+  start: number;
+}
+
+// Quote-aware words with their offsets, so a stripped command can start where a wrapper ended.
+function words(text: string): Word[] {
+  const found: Word[] = [];
+  let start = -1;
+  let quote: string | null = null;
+  const close = (end: number) => {
+    if (start >= 0) found.push({ text: text.slice(start, end), start });
+    start = -1;
+  };
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]!;
+    if (quote !== null) {
+      if (char === quote) quote = null;
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      if (start < 0) start = i;
+      continue;
+    }
+    if (/\s/.test(char)) {
+      close(i);
+      continue;
+    }
+    if (start < 0) start = i;
+  }
+  close(text.length);
+  return found;
+}
 
 function unquote(value: string): string {
   const text = value.trim();
@@ -169,6 +209,224 @@ function unquote(value: string): string {
   }
   return text;
 }
+
+function hasHelpWord(text: string): boolean {
+  return words(text).some((word) => HELP_WORDS.has(unquote(word.text)));
+}
+
+// The heredoc a line opens: "<<WORD", "<<'WORD'", "<<"WORD"" or "<<-WORD" at a word boundary.
+function heredocIn(line: string): { word: string; tabs: boolean } | null {
+  const found = line.match(/(?:^|\s)<<(-?)(?:'([^']*)'|"([^"]*)"|([A-Za-z_][A-Za-z0-9_]*))/);
+  if (found === null) return null;
+  const word = found[2] ?? found[3] ?? found[4] ?? "";
+  return word === "" ? null : { word, tabs: found[1] === "-" };
+}
+
+// Heredoc bodies carry data, not commands: the opening line stays, the body and its delimiter go.
+function dropHeredocBodies(command: string): string {
+  const kept: string[] = [];
+  let open: { word: string; tabs: boolean } | null = null;
+  for (const line of command.split("\n")) {
+    if (open !== null) {
+      const body = open.tabs ? line.replace(/^\t+/, "") : line;
+      if (body.trimEnd() === open.word) open = null;
+      continue;
+    }
+    kept.push(line);
+    open = heredocIn(line);
+  }
+  return kept.join("\n");
+}
+
+type Token = { kind: "text"; text: string } | { kind: "sep"; sep: string };
+
+// Simple commands, keeping their own redirections. A "&" of a redirection (2>&1, >&2, &>file) is not a separator.
+function tokenize(command: string): Token[] {
+  const tokens: Token[] = [];
+  let current = "";
+  let quote: string | null = null;
+  const flush = () => {
+    tokens.push({ kind: "text", text: current });
+    current = "";
+  };
+  const separate = (sep: string) => {
+    flush();
+    tokens.push({ kind: "sep", sep });
+  };
+  for (let i = 0; i < command.length; i++) {
+    const char = command[i]!;
+    if (quote !== null) {
+      current += char;
+      if (char === quote) quote = null;
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      current += char;
+      continue;
+    }
+    if (char === "\n" || char === ";" || char === "(" || char === ")") {
+      separate(char);
+      continue;
+    }
+    if (char === "|") {
+      if (command[i + 1] === "|") {
+        separate("||");
+        i++;
+      } else separate("|");
+      continue;
+    }
+    if (char === "&") {
+      const next = command[i + 1];
+      const previous = current[current.length - 1];
+      if (next === "&") {
+        separate("&&");
+        i++;
+        continue;
+      }
+      if (next !== ">" && previous !== ">" && previous !== "&") {
+        separate("&");
+        continue;
+      }
+    }
+    current += char;
+  }
+  flush();
+  return tokens;
+}
+
+export function segments(command: string): Segment[] {
+  const tokens = tokenize(dropHeredocBodies(command));
+  // A separator next to a command, skipping the empty text between two separators.
+  const separator = (index: number, step: number): string | null => {
+    for (let i = index + step; i >= 0 && i < tokens.length; i += step) {
+      const token = tokens[i]!;
+      if (token.kind === "text" && token.text.trim() === "") continue;
+      return token.kind === "sep" ? token.sep : null;
+    }
+    return null;
+  };
+  const parts: Segment[] = [];
+  // Commands inside a "( … )" group share the group's background status.
+  const groups: number[][] = [];
+  for (const [index, token] of tokens.entries()) {
+    if (token.kind === "sep") {
+      if (token.sep === "(") groups.push([]);
+      if (token.sep === ")") {
+        const group = groups.pop();
+        if (group !== undefined && separator(index + 1, 1) === "&") {
+          for (const member of group) parts[member]!.background = true;
+        }
+      }
+      continue;
+    }
+    const text = token.text.trim();
+    const before = separator(index, -1);
+    const after = separator(index, 1);
+    if (text === "") continue;
+    const position = parts.length;
+    parts.push({ text, background: after === "&", piped: before === "|" });
+    // A command inside nested groups is inside each of them.
+    for (const group of groups) group.push(position);
+  }
+  return parts;
+}
+
+// A wrapper word that leads a segment: its name, with any path and quotes removed.
+function wrapperName(text: string): string {
+  return path.basename(unquote(text));
+}
+
+// The index after "timeout" with its options and duration.
+function afterTimeout(list: Word[], index: number): number {
+  let i = index + 1;
+  while (i < list.length) {
+    const word = unquote(list[i]!.text);
+    if (!word.startsWith("-")) break;
+    i++;
+    if (word === "--") return i; // the options end here: no duration follows
+    if (!word.includes("=") && TIMEOUT_VALUE_OPTIONS.has(word) && i < list.length) i++;
+  }
+  if (i < list.length && DURATION.test(unquote(list[i]!.text))) i++;
+  return i;
+}
+
+// The index after "env" with its options and assignments.
+function afterEnv(list: Word[], index: number): number {
+  let i = index + 1;
+  while (i < list.length) {
+    const word = unquote(list[i]!.text);
+    if (word === "-i" || word.startsWith("-u=")) {
+      i++;
+      continue;
+    }
+    if (word === "-u") {
+      i += 2;
+      continue;
+    }
+    if (ASSIGNMENT.test(word)) {
+      i++;
+      continue;
+    }
+    break;
+  }
+  return i;
+}
+
+// The index after the first standalone "--" of a runlog.py wrapper.
+function afterRunlog(list: Word[], index: number): number {
+  for (let i = index; i < list.length; i++) {
+    if (unquote(list[i]!.text) === "--") return i + 1;
+  }
+  return list.length;
+}
+
+// Leading wrappers are not the command word: strip them, and return the rest as written.
+function stripWrappers(text: string): string {
+  const list = words(text);
+  let i = 0;
+  while (i < list.length) {
+    const raw = list[i]!.text;
+    const name = wrapperName(raw);
+    if (raw === "--") {
+      i++;
+      continue;
+    }
+    if (ASSIGNMENT.test(raw) || SIMPLE_WRAPPERS.has(name)) {
+      i++;
+      continue;
+    }
+    if (name.endsWith("runlog.py")) {
+      const after = afterRunlog(list, i);
+      if (after > i) {
+        i = after;
+        continue;
+      }
+      break;
+    }
+    if (name === "python" || name === "python3") {
+      const next = list[i + 1];
+      if (next !== undefined && wrapperName(next.text).endsWith("runlog.py")) {
+        i = afterRunlog(list, i + 1);
+        continue;
+      }
+      break;
+    }
+    if (name === "timeout") {
+      i = afterTimeout(list, i);
+      continue;
+    }
+    if (name === "env") {
+      i = afterEnv(list, i);
+      continue;
+    }
+    break;
+  }
+  const command = list[i];
+  return command === undefined ? text : text.slice(command.start).trim();
+}
+
+// ---- engine-call recognition --------------------------------------------------------------------------------------
 
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -220,28 +478,25 @@ function tokens(command: string): string[] {
   return found;
 }
 
-// True when the command ends with a shell "&" outside quotes.
-function endsBackground(command: string): boolean {
-  const bare = command.replace(/"[^"]*"|'[^']*'/g, " ");
-  const trimmed = bare.trimEnd();
-  return trimmed.endsWith("&") && !trimmed.endsWith("&&");
-}
-
 export function recognizeEngineCall(command: string, engines?: EngineSpec[]): EngineCall | null {
   const specs = engines ?? loadEngines();
-  for (const spec of specs) {
-    if (!validRegex(spec.command) || !matches(spec.command, command)) continue;
-    const fromFlag = outputFromFlags(command, spec.output_flags);
-    const fromRedirect = outputFromRedirect(command);
-    const outputFile = fromFlag ?? fromRedirect;
-    const isWrapper = spec.status_from_out_dir === true;
-    return {
-      engine: spec.name,
-      outputFile,
-      stdoutIsAnswer: spec.stdout_is_answer === true && fromRedirect === null,
-      statusFile: isWrapper && outputFile !== null ? path.join(outputFile, "status.json") : null,
-      background: endsBackground(command),
-    };
+  for (const part of segments(command)) {
+    // A help or version word means the segment starts no session.
+    if (hasHelpWord(part.text)) continue;
+    const text = stripWrappers(part.text);
+    for (const spec of specs) {
+      if (!matches(spec.command, text)) continue;
+      const fromFlag = outputFromFlags(text, spec.output_flags);
+      const fromRedirect = outputFromRedirect(text);
+      const outputFile = fromFlag ?? fromRedirect;
+      return {
+        engine: spec.name,
+        outputFile,
+        stdoutIsAnswer: spec.stdout_is_answer === true && fromRedirect === null,
+        statusFile: spec.status_from_out_dir === true && outputFile !== null ? path.join(outputFile, "status.json") : null,
+        background: part.background,
+      };
+    }
   }
   return null;
 }
@@ -258,27 +513,36 @@ function hasPathOutsideRepo(command: string, repoRoot: string): boolean {
   return false;
 }
 
-function trapHits(command: string, trap: Trap, ctx: LintContext): boolean {
+// A trap's regex is anchored to the command word; another process's line carries wrappers, so read it unanchored.
+function unanchored(source: string): string {
+  return source.replace(/^\^/, "");
+}
+
+function trapHits(part: Segment, trap: Trap, ctx: LintContext): boolean {
   const commandRegex = trap.command;
   if (typeof commandRegex !== "string" || !validRegex(commandRegex)) return false;
-  if (!matches(commandRegex, command)) return false;
-  if (trap.unless !== undefined && matches(trap.unless, command)) return false;
+  if (hasHelpWord(part.text)) return false;
+  const text = stripWrappers(part.text);
+  if (!matches(commandRegex, text)) return false;
+  if (trap.unless !== undefined && matches(trap.unless, text)) return false;
+  if (trap.unless_piped === true && part.piped) return false;
 
   // background and concurrent are alternatives: one of them is enough; every other condition must hold.
   const alternatives: boolean[] = [];
-  if (trap.background === true) alternatives.push(ctx.background === true || endsBackground(command));
-  if (trap.concurrent === true) alternatives.push(ctx.running.some((line) => matches(commandRegex, line)));
+  if (trap.background === true) alternatives.push(ctx.background === true || part.background);
+  if (trap.concurrent === true) alternatives.push(ctx.running.some((line) => matches(unanchored(commandRegex), line)));
   if (alternatives.length > 0 && !alternatives.some(Boolean)) return false;
 
-  if (trap.paths_outside_repo === true && !hasPathOutsideRepo(command, ctx.repoRoot)) return false;
+  if (trap.paths_outside_repo === true && !hasPathOutsideRepo(text, ctx.repoRoot)) return false;
   return true;
 }
 
 export function lintCommand(command: string, ctx: LintContext, traps: Trap[] = loadTraps()): Finding[] {
+  const parts = segments(command);
   const findings: Finding[] = [];
   for (const trap of traps) {
     if (trap.status !== "approved" || trap.applies !== "command") continue;
-    if (!trapHits(command, trap, ctx)) continue;
+    if (!parts.some((part) => trapHits(part, trap, ctx))) continue;
     findings.push({ rule: `trap:${trap.id}`, severity: "fail", message: trap.why, fix: trap.fix, ref: trap.source });
   }
   return findings;
@@ -343,7 +607,12 @@ export function checkResult(input: ResultInput, traps: Trap[] = loadTraps()): Fi
     }
   }
 
-  const answerEmpty = outputFile !== null ? fileMissing || fileEmpty : call.statusFile === null && call.stdoutIsAnswer && !/\S/.test(stdout);
+  // A wrapper writes a folder, so its own status file says whether the answer is empty.
+  const answerEmpty = call.statusFile !== null
+    ? false
+    : outputFile === null
+      ? call.stdoutIsAnswer && !/\S/.test(stdout)
+      : fileMissing || fileEmpty;
   for (const trap of traps) {
     if (trap.status !== "approved" || trap.applies !== "result") continue;
     if (trap.engine !== "any" && trap.engine !== call.engine) continue;
