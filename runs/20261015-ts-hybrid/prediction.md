@@ -82,3 +82,10 @@ everything the same except TASK.md, which no longer mentions RULES.md (the file 
   record 0 of 3; (c) valid insight 0 of 3; (d) raised 0 of 3. The agents report the empty output in prose.
 - **Prediction — arm B (+ hooks):** (a) 3 of 3 (PreToolUse denies the bare command); (b) 3 of 3 (PostToolUse logs);
   (c) 3 of 3 and (d) 3 of 3 (Stop blocks until done), with more time than arm A.
+
+## Addendum — E4 round 3 (arm B only, after round 3 code), written before it runs
+
+Round 2's arm B took 203 / 72 / 839 s; agents searched for where to write the insight (one ran `find /`). Round 3 adds
+C23 (the context line says the failure is already logged) and C24 (the Stop block names where to write). Prediction:
+arm B 3/3 on (a)–(d) as before, fewer Stop blocks per run (≤ 2) and fewer duplicate records, and each run under the
+slowest round-2 time; no `find /`.
