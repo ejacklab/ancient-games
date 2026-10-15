@@ -326,3 +326,33 @@ Sources: `runs/20261015-ts-hybrid/nodes/review-1.result.md` (R# = its row), the 
 - **C24 (E4 round 2) The Stop block names where to write.** The block reason for open failures says: write the
   insight to `.harness-guard/insights/<name>.md` (or `runs/<run>/insight.md` in a project with run folders), with the
   heading and parts listed — so the agent does not search for the location.
+
+## Round 4 — the agent's own failures (R12.2: a failure is anything that went wrong, whoever caused it)
+
+Facts this round rests on (verified once, Claude Code 2.1.300, `runs/20261015-ts-hybrid/evidence/n1b/`): a Bash call
+that exits non-zero fires **PostToolUseFailure** with `error` = `"Exit code N\n<output>"`; a `grep` with no match fires
+PostToolUse (Claude Code classes it as no error); a failed **Edit** fired no hook at all.
+
+- **D1 Test runs that fail are failures.** A Bash segment whose command word (after the wrappers of M1) is a test runner
+  — `pytest`, `python`/`python3 -m pytest`, `bun test`, `npm test`, `npm run test`, `yarn test`, `pnpm test`,
+  `npx jest`, `npx vitest`, `go test`, `cargo test` — is a **test run**. It is a failure when PostToolUseFailure fires
+  for it, or when PostToolUse fires and its stdout matches `\b[1-9]\d* (failed|errors?)\b` (a pipe can hide the exit).
+  Record: `check: "R12.2-test-failed"`, `input: "<runner> run"`, `expected: "all tests pass"`, `actual`: the count of
+  failed tests when the text gives one (`"3 failed"`), else `"exit <N>"` — never the output text. Evidence: the counts,
+  the exit and the runner name.
+- **D2 Other Bash calls that error are failures.** PostToolUseFailure for a Bash call that is neither an engine call
+  (M1/M5 handle those) nor a test run: `check: "R12.2-command-error"`, `input: "<command word> call"`, `expected:
+  "exit 0"`, `actual: "exit <N>"`. Skipped when `is_interrupt` is true (a person stopped it).
+- **D3 Unknown paths are not checked.** An output path or a `cd` target that holds `$`, a backtick or a glob character
+  (`*`, `?`, `[`) cannot be known from the text: the engine result check is skipped (no record) — never a
+  `missing-output` failure. (Found live: `> $R/answer.txt` was logged as missing.)
+- **D4 One context line per failure kind.** The PostToolUse / PostToolUseFailure context line names each new id and
+  says it is already logged (as C23), and for D1/D2 adds: "your own failures count — answer them in the insight; one
+  section may answer several ids with one cause".
+- **D5 Not observable:** errors of non-Bash tools (Edit, Write, Read) fire no hook in 2.1.300; the agent logs them
+  with `fail`. No code for them this round.
+
+Fails-if: a failing `pytest` run (exit 1) has no record; `pytest -q | tail -3` showing "2 failed" with exit 0 has no
+record; a passing test run has a record; `false` has no record; an interrupted call has a record; a `grep` with no match
+(PostToolUse) has a record; a record holds test output text; `codex exec x -o $OUT/r.md </dev/null` with no such file
+logs `missing-output`.
