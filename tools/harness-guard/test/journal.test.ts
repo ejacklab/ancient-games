@@ -209,7 +209,7 @@ describe("validateFailure and appendFailure", () => {
     expectRejected({ ...failure(), kind: "touched" });
   });
 
-  test.each([null, undefined, 7, "failure", [], {}])("validation: non-record input %j reports problems without crashing", (record: unknown) => {
+  test.each([[null], [undefined], [7], ["failure"], [[]], [{}]])("validation: non-record input %j reports problems without crashing", (record: unknown) => {
     expectRejected(record);
   });
 
