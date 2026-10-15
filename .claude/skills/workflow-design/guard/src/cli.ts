@@ -30,11 +30,11 @@ const USAGE = [
   "  lint <command…>                 lint one command against the traps",
   "  result --engine E --out FILE [--exit N] [--stderr-file F]",
   "  fail --check --input --expected --actual --reason --evidence [--found-by --engine --harness --session]",
-  "  insight [--session S]           list open failures and invalid sections",
+  "  insight [--session S] [--json]  list open failures and invalid sections",
   "  register <file>                 validate a register and report its coverage",
   "  install --print <harness>       print the hook settings for a harness",
-  "  doctor [--health PATH]          report where the guard is installed",
-  "  rates [--session S]             success and failure counts per check and engine",
+  "  doctor [--health PATH] [--json] report where the guard is installed",
+  "  rates [--session S] [--json]    success and failure counts per check and engine",
   "  path new [--session S] [--out F]  print or write a success-path skeleton",
   "  path check <file>               check a success-path file",
   "  path parents <category>         list the path files of a category",
@@ -183,27 +183,38 @@ function fail(args: string[]): number {
 // Open failures and the sections that failed their checks: ids, rule ids and paths only.
 function insight(args: string[]): number {
   const session = flagValue(args, "--session");
+  const json = args.includes("--json");
   const root = guardRoot(process.cwd());
   const open = openFailures(root, session);
   const openIds = new Set(open.map((record) => record.id));
+  const invalid: { id: string; file: string; rules: string[] }[] = [];
+  const unreadable: string[] = [];
 
   for (const relative of findInsightFiles(root)) {
     let sections;
     try {
       sections = parseInsight(fs.readFileSync(path.join(root, relative), "utf8"));
     } catch {
-      out(`warn ${relative}: cannot be read or parsed`);
+      unreadable.push(relative);
+      if (!json) out(`warn ${relative}: cannot be read or parsed`);
       continue;
     }
     for (const section of sections) {
       const rules = checkSection(section).filter((finding) => finding.severity === "fail").map((finding) => finding.rule);
       if (rules.length === 0) continue;
       for (const id of section.ids) {
-        if (openIds.has(id)) out(`fail ${id}: ${relative}: ${rules.join(", ")}`);
+        if (!openIds.has(id)) continue;
+        invalid.push({ id, file: relative, rules });
+        if (!json) out(`fail ${id}: ${relative}: ${rules.join(", ")}`);
       }
     }
   }
 
+  if (json) {
+    // Round 7 (J3): the same facts as the text form, for harness_health.py.
+    out(JSON.stringify({ open: open.map((record) => ({ id: record.id, check: record.check })), invalid, unreadable }));
+    return open.length === 0 ? OK : FINDINGS;
+  }
   for (const record of open) {
     out(`open ${record.id}: ${record.check}: no valid insight section answers it`);
   }
@@ -246,14 +257,15 @@ function install(args: string[]): number {
 
 function doctorCommand(args: string[]): number {
   const report = doctor({ home: os.homedir(), projectRoot: guardRoot(process.cwd()), healthScript: flagValue(args, "--health") });
-  out(doctorMarkdown(report));
+  out(args.includes("--json") ? JSON.stringify(report) : doctorMarkdown(report)); // Round 7 (J1)
   return OK;
 }
 
 // ---- rates (round 5, S2) ---------------------------------------------------------------------------------------
 
 function ratesCommand(args: string[]): number {
-  out(ratesMarkdown(rates(guardRoot(process.cwd()), flagValue(args, "--session"))));
+  const rows = rates(guardRoot(process.cwd()), flagValue(args, "--session"));
+  out(args.includes("--json") ? JSON.stringify({ rows }) : ratesMarkdown(rows)); // Round 7 (J2)
   return OK;
 }
 
