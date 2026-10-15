@@ -29,14 +29,15 @@ Data files, YAML, in `data/`: `traps.yaml` and `engines.yaml` (shapes in `src/ty
 
 **Segments (added in round 2, after the replay of 3,677 past commands found 31 false denies in 37 — the lint read
 the whole Bash string).** `recognizeEngineCall` and `lintCommand` work on **segments**, never on the raw string:
-- `segments(command: string): Segment[]` (exported; `Segment = { text: string; background: boolean }`):
+- `segments(command: string): Segment[]` (exported; `Segment = { text: string; background: boolean; piped: boolean }`):
   1. Heredoc bodies are removed first: after a line holding `<<WORD`, `<<'WORD'`, `<<"WORD"` or `<<-WORD`, every
      line up to and including the line that is exactly `WORD` (leading tabs allowed for `<<-`) is dropped.
   2. The rest is split into simple commands at newlines, `;`, `&&`, `||`, `|`, a single `&`, `(` and `)` — **outside
      single and double quotes only**. A `&` that is part of a redirection (`2>&1`, `>&2`, `&>file`) is not a separator.
   3. Each simple command is trimmed; empty ones are dropped. Its text keeps its own redirections (`</dev/null`,
      `> out.md`), so `unless` and output redirects are read from the segment.
-  4. `background` is true when the separator right after the segment is a single `&`, or the segment is inside a
+  4. `piped` is true when the separator right before the segment is `|` (its stdin comes from a pipe).
+  5. `background` is true when the separator right after the segment is a single `&`, or the segment is inside a
      `( … )` group whose `)` is followed by a single `&`.
 - **The command word.** Before matching, leading wrappers are stripped from a segment's text: `NAME=value`
   assignments, `timeout` with its options and duration, `env` with `-u NAME`, `-i` and `NAME=value` words, `nohup`,
@@ -59,11 +60,12 @@ Exports:
   - `stdoutIsAnswer`: from the spec, but `false` when `outputFile` came from a redirect (the answer went to the file).
   - `statusFile`: for specs with `status_from_out_dir: true` (a wrapper such as `four_experts.py run --out DIR`),
     `DIR/status.json`; else `null`. For such a wrapper `outputFile` is the folder `DIR` itself.
-  - `background`: true when the command ends with `&` (outside quotes). (A caller that knows more passes
-    `LintContext.background` to `lintCommand`; recognition reads the command only.)
+  - `background`: the matching segment's `background`. (A caller that knows more passes `LintContext.background` to
+    `lintCommand`.)
 - `lintCommand(command: string, ctx: LintContext, traps?: Trap[]): Finding[]` — command traps only, **approved**
   entries only (a `proposed` entry never produces a finding). A trap hits on a segment when its `command` regex matches the
   segment's stripped text **and** its `unless` regex (if any) does not match the segment's text **and** each extra condition it sets holds:
+  - `unless_piped: true` → no hit when the segment's `piped` is true (its stdin is already fed);
   - `background: true` → `ctx.background` or the segment's `background`;
   - `concurrent: true` → `ctx.running` (command lines of other running processes) holds a line matching the trap's
     `command` regex;

@@ -19,6 +19,7 @@ export interface Trap {
   engine: string; // an EngineSpec name, or "any"
   command?: string; // regex source (command traps)
   unless?: string; // regex source: no hit when it matches
+  unless_piped?: boolean; // no hit when the segment's stdin comes from a pipe
   background?: boolean;
   concurrent?: boolean;
   paths_outside_repo?: boolean;
@@ -50,6 +51,12 @@ export interface EngineCall {
   stdoutIsAnswer: boolean;
   statusFile: string | null;
   background: boolean;
+}
+
+export interface Segment {
+  text: string;
+  background: boolean;
+  piped: boolean;
 }
 
 export interface LintContext {
