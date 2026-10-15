@@ -83,49 +83,33 @@ follows; a scaffolding item names no weakness it compensates for, or no observab
 item that shows no contribution under the owner's comparison is not put up for withdrawal; the review uses a
 comparison the owner did not set; a fix names no observable that would show it is no longer needed.
 
-**R12.7 Success log (MUST).** Every checked result is recorded, not only failures: a success is one line — the time,
-the session, what was checked (an engine call, a test run, a gate), the engine or runner, and `ok`. A failure keeps its
-full record (R12.2). With both, the failures of a check can be read against how often it ran.
+**R12.7 Learn from success (MUST; proposed).** A failure matters more than a success, but a great success matters too.
+Every checked result is recorded — a success as one line (the time, the session, what was checked, the engine or
+runner, `ok`), a failure as its full record (R12.2) — so a check's failures can be read against how often it ran. When
+a task succeeds, the agent records its **path**: the category and objective, the steps in order with the engine, model
+and check of each, the decisions that mattered and why, and the measures of the result (time, failures, retries,
+checks passed). A **great success** — one that beats the comparison it was measured against (its prediction, the
+previous run of the same work, a first pass where the check failed before, or the project owner calls it great) — also
+gets an insight in the same file as the failure insights: the cause that made it work, and one to three options to
+make it repeatable, each with evidence. For a similar task — the agent proposes the match by category and objective,
+and the project owner may overrule — the design **borrows that path, does not copy it**: it starts from the path as its
+parent, changes at least one thing (a step, its order, an engine, a check, a brief), and writes before the run what it
+changed, the measure it aims to improve and the parent's value on it. Every child tries to avoid the failures recorded
+in its parent's insights and to be 2% better than its parent — an aim to keep trying for, reported after the run, never a
+reason to block or discard the work. A child that improves on its parent's value without repeating those failures
+becomes a parent for the next similar task; every path stays recorded, so the paths grow like a population and are
+selected by results.
 
-**R12.8 Insight from a great success (MUST).** A failure matters more than a success, but a great success matters too.
-A great success is a result that beats the comparison it was measured against: better than its prediction, better than
-the previous run of the same work (faster, fewer failures, fewer retries), a first pass of a check that failed before,
-or one the project owner calls great. The agent that ran the task names each great success with the evidence of its
-comparison and writes an insight for it in the same file as the failure insights: whys down to the cause that made it
-work (an instruction, a check, a tool, a config), and one to three options to make it repeatable — a rule, a check or a
-tool — each with its evidence. The project owner may add a great success the agent did not name.
+Fails if: a check's successes are not recorded; a successful task leaves no path, or a path lacks its steps, engines,
+checks or measures; a great success has no insight, names no comparison or evidence, or its insight gives no cause or
+nothing to repeat; a design for a similar task neither names a parent path nor says why none applies; a design copies
+its parent unchanged; the change, the measure or the parent's value is not written before the run; a child that repeats
+a recorded failure is counted as better; the report does not say how far the child got against the 2% aim; a child's
+result overwrites its parent's path.
 
-Fails if: a check's successes are not recorded, so its failure rate cannot be read; a great success has no insight; a
-"great success" names no comparison, or a comparison with no evidence; a success insight says only that it worked and
-gives no cause; a success insight proposes nothing to keep or repeat.
-
-**R12.9 The path to a success (MUST; proposed).** When a task succeeds, the agent records its **path**: the task's
-category and objective, the steps in order — for each, what was done, the engine and model, the check that judged it —
-the decisions that mattered and why, and the measures of the result (time, failures, retries, checks passed). The
-insight of a great success (R12.8) is this path plus the cause that made it work. Each path is kept; none overwrites
-another.
-
-**R12.10 Evolve from a success, do not copy it (SHOULD; proposed).** When a new task is similar to one with a recorded
-path — the agent proposes the match by category and objective, and the project owner may overrule — the design starts
-from that path as its **parent** and changes at least one thing in it (a step, its order, an engine, a check, a brief),
-writing before the run what it changed and what it expects the change to do. Every child **tries** to avoid
-failure and to be 2% better than its parent — an aim to keep trying for, not a gate: before the run the design
-names the measure it aims to improve (for example time, cost, retries or checks passed) and the parent's value on it,
-and after the run it reports how far it got. A child is **better** when it improves on that value and repeats none of
-the failures recorded in its parent's insights; reaching 2% or not is reported, never a reason to block or discard
-the work. The result is compared with the parent's on the same measures: a better child becomes a parent for the next similar task; a worse one is a failure
-with its insight (R12.3); both stay recorded, so the set of paths grows like a population and is selected by results.
-
-Fails if: a successful task leaves no path; a path lacks its steps, engines, checks or measures; a design for a similar
-task neither names a parent path nor says why none applies; a design names a parent and changes nothing in it; the
-change, the measure it aims at or the parent's value on it is not written before the run; a child that repeats a failure
-recorded in its parent's insights is counted as better; the report does not say how far the child got against the 2%
-aim; the child is not compared with its parent; a child's result overwrites its
-parent's path.
-
-Open — the project owner decides: where success paths are kept (proposed: the run folder, with one line per path in
+Open — the project owner decides (R12.7): where success paths are kept (proposed: the run folder, with one line per path in
 `docs/TASK_TYPES_LEDGER.md`); how much a child may change at once (proposed: one change per run, so its effect can be
-read); how R12.10 relates to the method's 20% challenger rule (`docs/TASK_TYPES.md`). Also: whether R12.5's review also runs on a schedule; whether R12.6 binds this
+read); how R12.7 relates to the method's 20% challenger rule (`docs/TASK_TYPES.md`). Also: whether R12.5's review also runs on a schedule; whether R12.6 binds this
 requirement itself or only the fixes added under it.
 
 ## R13 — use cases and requirements
