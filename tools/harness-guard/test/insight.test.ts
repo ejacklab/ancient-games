@@ -400,6 +400,51 @@ describe("section checks", () => {
   });
 });
 
+describe("M3 option kinds and sources", () => {
+  test("check: an option with unknown kind policy and evidence fails R12.3-option-kind", () => {
+    const findings = checkSection(insightSection({ options: [option({ kind: "policy", evidence: "x" }), option()] }));
+    expectFailure(findings, "R12.3-option-kind");
+    expect(findings).not.toContainEqual(expect.objectContaining({ rule: "R12.3-options-count" }));
+    expect(findings).not.toContainEqual(expect.objectContaining({ rule: "R12.3-option-evidence" }));
+  });
+
+  test("check: a parsed [policy] option with evidence fails R12.3-option-kind", () => {
+    const options = "1. [policy] name the check as a step — evidence: x\n2. [check] report the rule id — evidence: y";
+    const sections = parseInsight(document(first, [body({ options })]));
+    expect(sections).toHaveLength(1);
+    expectFailure(checkSection(sections[0]), "R12.3-option-kind");
+  });
+
+  test.each(["person", "luck"])("check: made-up source %s fails R12.3-source", (source) => {
+    const sections = parseInsight(document(first, [body({ source })]));
+    expect(sections).toHaveLength(1);
+    expectFailure(checkSection(sections[0]), "R12.3-source");
+  });
+
+  test.each(["rule", "check", "tool", "config-advice"])("check: parsed option kind %s is accepted", (kind) => {
+    const options = `1. [${kind}] name the check as a step — evidence: x\n2. [${kind}] report the rule id — evidence: y`;
+    const sections = parseInsight(document(first, [body({ options })]));
+    expect(sections).toHaveLength(1);
+    expect(sections[0].options.map((each: InsightOption) => each.kind)).toEqual([kind, kind]);
+    expect(checkSection(sections[0])).toEqual([]);
+  });
+
+  test.each(["instruction", "check", "tool", "config"])("check: parsed source %s is accepted", (source) => {
+    const sections = parseInsight(document(first, [body({ source })]));
+    expect(sections).toHaveLength(1);
+    expect(sections[0].source).toBe(source);
+    expect(checkSection(sections[0])).toEqual([]);
+  });
+
+  test("open: a failure answered only by a [policy] option section stays open", () => {
+    const root = gitRoot();
+    const options = "1. [policy] name the check as a step — evidence: x\n2. [check] report the rule id — evidence: y";
+    writeJournal([failure()]);
+    writeFile(path.join("runs", "20260101", "insight-policy.md"), document(first, [body({ options })]));
+    expect(openFailures(root, null).map((record: FailureRecord) => record.id)).toEqual([first]);
+  });
+});
+
 describe("answered failures", () => {
   test("answered: a valid section answers its failure and gives the relative path", () => {
     const root = gitRoot();
