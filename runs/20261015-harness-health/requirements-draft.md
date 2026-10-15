@@ -33,7 +33,7 @@ fail the result on its own, and takes less time than the prompt it judges. The f
 passes, and its expected duration is written in the design. A judge with no such first check is allowed only with a
 reason written into the design.
 
-## R12 — failures and model changes both update the harness (replaces R10 and the earlier R12; proposed)
+## R12 — failures, great successes and model changes all update the harness (replaces R10 and the earlier R12; proposed)
 
 **R12.1 Failure handling (MUST — a safety bound).** An evaluator reports fail — never pass — when the result is
 missing, empty, of the wrong form, or when the evaluator itself errors or times out. Exit 0 is not success.
@@ -82,6 +82,22 @@ check-type fix is trusted without a planted repeat failing it; a model the harne
 follows; a scaffolding item names no weakness it compensates for, or no observable that shows it still occurs; an
 item that shows no contribution under the owner's comparison is not put up for withdrawal; the review uses a
 comparison the owner did not set; a fix names no observable that would show it is no longer needed.
+
+**R12.7 Success log (MUST).** Every checked result is recorded, not only failures: a success is one line — the time,
+the session, what was checked (an engine call, a test run, a gate), the engine or runner, and `ok`. A failure keeps its
+full record (R12.2). With both, the failures of a check can be read against how often it ran.
+
+**R12.8 Insight from a great success (MUST).** A failure matters more than a success, but a great success matters too.
+A great success is a result that beats the comparison it was measured against: better than its prediction, better than
+the previous run of the same work (faster, fewer failures, fewer retries), a first pass of a check that failed before,
+or one the project owner calls great. The agent that ran the task names each great success with the evidence of its
+comparison and writes an insight for it in the same file as the failure insights: whys down to the cause that made it
+work (an instruction, a check, a tool, a config), and one to three options to make it repeatable — a rule, a check or a
+tool — each with its evidence. The project owner may add a great success the agent did not name.
+
+Fails if: a check's successes are not recorded, so its failure rate cannot be read; a great success has no insight; a
+"great success" names no comparison, or a comparison with no evidence; a success insight says only that it worked and
+gives no cause; a success insight proposes nothing to keep or repeat.
 
 Open — the project owner decides: whether R12.5's review also runs on a schedule; whether R12.6 binds this
 requirement itself or only the fixes added under it.
