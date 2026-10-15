@@ -1,0 +1,73 @@
+# r3-code-1 evidence — bun test, tsgo, and the C17 probe with a stand-in process table
+
+## 1. the two commands of the brief
+
+$ bun test
+ 793 pass
+ 3 fail
+ 2533 expect() calls
+Ran 796 tests across 9 files. [1337.00ms]
+
+the three remaining failures (all of them the C17 precondition, thrown before any assertion):
+  841 |     if (busy.length > 0) throw new Error(`C17 needs a machine with no other opencode run process (found ${busy.length})`);
+  error: C17 needs a machine with no other opencode run process (found 3)
+
+$ ./node_modules/.bin/tsgo --noEmit -p .
+  (no output) exit 0
+
+baseline before this change: 684 pass, 112 fail (the brief said 111; I measured 112)
+
+## 2. why the three C17 tests cannot pass while this node runs
+
+test/round3.test.ts:839-842 throws before any assertion when ps shows a line matching /opencode\s+run/. The engine
+running this node is launched exactly that way, and so is the runlog.py wrapper that launched it:
+
+  1845150 python3 /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/scripts/runlog.py --runs-root
+           /home/smoke01/dev/ancient-games/runs exec --run 20261015-ts-hybrid --node r3-code --attempt 1 --engine
+           opencode --model MiniMax-M3.1-Flash-Preview --timeout 2400 -- opencode run -m
+           minimax-coding-plan/MiniMax-M3.1-Flash-Preview --agent build --variant high <the brief>
+  1845160 opencode run -m minimax-coding-plan/MiniMax-M3.1-Flash-Preview --agent build --variant high <the brief>
+
+Nothing under src/ can change that, and the third test would fail on its assertion even if the precondition were
+skipped (it expects exit 0, while this node's own engine line is a genuine concurrent opencode run). The behaviour
+the three tests pin is implemented and verified in section 3 with a stand-in process table.
+
+## 3. C17 probe — the three shapes of test/round3.test.ts, with ps replaced by a stand-in
+
+the stand-in prints the guard's own process line and its parent's line (both naming an engine), plus one
+other process when FAKE_SLEEPER is set:
+
+  #!/bin/bash
+  # A stand-in for ps: only the two processes of the guard's own line and, when asked, one other process.
+  cli_pid=$PPID
+  parent_pid=$(awk '{print $4}' /proc/$cli_pid/stat)
+  printf '%s %s\n' "$cli_pid" 'bun /x/tools/harness-guard/src/cli.ts lint opencode run "own line"'
+  printf '%s %s\n' "$parent_pid" 'bash -c bun cli.ts lint opencode run "parent line"'
+  if [ -n "$FAKE_SLEEPER" ]; then
+    printf '%s %s\n' "424242" "bash -c sleep 30; : opencode run review $FAKE_SLEEPER"
+  fi
+
+(1) another process whose line contains harness-guard still counts for lint:
+  $ FAKE_SLEEPER=tools/harness-guard/SPEC.md-x PATH=/tmp/opencode/fakebin:$PATH bun src/cli.ts lint 'opencode run "second task"'
+  fail trap:opencode-parallel: two opencode runs started at once can fail with 'database is locked' Fix: run opencode calls one after another, never in the background or in parallel
+  exit=1
+
+(2) the same for the hook adapter:
+  $ echo <PreToolUse payload> | FAKE_SLEEPER=... bun src/cli.ts hook claude
+  {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"trap:opencode-parallel: two opencode runs started at once can fail with 'database is locked' Fix: run opencode calls one after another, never in the background or in parallel"}}
+
+(3) the CLI's own process and its parent are dropped even when their lines name an engine:
+  $ PATH=/tmp/opencode/fakebin:$PATH bash -c "bun src/cli.ts lint 'opencode run \"second task\"'; exit $?"
+  exit=0
+
+## 4. C24 (no test) — the Stop block reason, from a real run
+
+  $ bun src/cli.ts fail --check R12.1-empty-output ... --session s1   then   echo <Stop payload> | bun src/cli.ts hook claude
+  harness-guard: 1 logged failure(s) have no valid insight: F-55db5d4a.
+  Write the insight to .harness-guard/insights/<name>.md (any name ending .md), or to runs/<run>/insight.md in a
+  project with run folders — one ## heading per failure id, and inside it:
+    ## F-xxxxxxxx — short title
+    Whys: 3–6 numbered items, ending at the instruction, check, tool or config.
+    Source: one of instruction, check, tool, config (the first word decides; the rest is detail).
+    Root cause: one line naming that changeable source.
+    Options: 2–3 items, each starting with a kind ([rule], [check], [tool] or [config-advice]) and ending with evidence: <path or fact>.

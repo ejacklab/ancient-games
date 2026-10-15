@@ -1,0 +1,73 @@
+m4-code attempt 1 — evidence
+bun 1.4.3 / 2026-10-15T08:43:01Z
+
+=== 1. bun test test/register.test.ts (M4 acceptance tests, frozen) ===
+bun test v1.4.3 (c6da4a4d3)
+
+ 92 pass
+ 0 fail
+ 144 expect() calls
+Ran 92 tests across 1 file. [25.00ms]
+
+=== 2. bun test (all files) ===
+bun test v1.4.3 (c6da4a4d3)
+
+test/cli.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../src/install.ts' from '/home/smoke01/dev/ancient-games-ts-hybrid/tools/harness-guard/test/cli.test.ts'
+-------------------------------
+
+
+test/hooks.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../src/hooks.ts' from '/home/smoke01/dev/ancient-games-ts-hybrid/tools/harness-guard/test/hooks.test.ts'
+-------------------------------
+
+
+ 443 pass
+ 2 fail
+ 2 errors
+ 1242 expect() calls
+Ran 445 tests across 6 files. [-2.03s]
+
+=== 3. ./node_modules/.bin/tsgo --noEmit -p . ===
+test/cli.test.ts(7,32): error TS2307: Cannot find module '../src/install.ts' or its corresponding type declarations.
+test/hooks.test.ts(6,28): error TS2307: Cannot find module '../src/hooks.ts' or its corresponding type declarations.
+exit=2
+
+=== 4. scope check: the two typecheck/test errors are M5 modules that do not exist, not this module ===
+$ ls src/
+insight.ts
+journal.ts
+plugins
+register.ts
+traps.ts
+types.ts
+
+$ grep -n 'hooks\|install\|cli' src/register.ts   (no matches = register.ts does not touch M5)
+77:type Verdict = "accepted" | "declined" | null;
+85:  return verdict === "accepted" || verdict === "declined" ? verdict : null;
+88:// A use case is accepted when the owner asked for it and no decision declined it, or when the agent's own
+92:  if (verdict === "declined") return false;
+145:        fix: "add decision: { by: <who>, verdict: accepted | declined }",
+173:        fix: "add decision: { by: <who>, verdict: accepted | declined }",
+grep exit=0
+
+$ grep -rn 'install.ts\|hooks.ts' test/cli.test.ts test/hooks.test.ts | head -4
+test/cli.test.ts:7:import { installSnippet } from "../src/install.ts";
+test/hooks.test.ts:6:import { handleHook } from "../src/hooks.ts";
+
+=== 5. planted wrong inputs (my own probe, no files kept): malformed shapes must not crash ===
+a.yaml | units: (none) | validate: clean | coverage: {"total":0,"covered":0,"percent":0,"findings":["R11.1-not-frozen:fail","R11.1-below-target:warn"]}
+b.yaml | units: (none) | validate: clean | coverage: {"total":0,"covered":0,"percent":0,"findings":["R11.1-not-frozen:fail","R11.1-below-target:warn"]}
+c.yaml | units: (none) | validate: R13.1-no-decision | coverage: {"total":0,"covered":0,"percent":0,"findings":["R11.1-not-frozen:fail","R11.1-below-target:warn"]}
+d.yaml | units: UC1/m1 | validate: R13.2-missing | coverage: {"total":1,"covered":0,"percent":0,"findings":["R11.1-not-frozen:fail","R11.1-basic-uncovered:fail","R11.1-below-target:warn"]}
+e.yaml | units: UC1/f1,UC1/m1 | validate: R13.2-missing | coverage: {"total":2,"covered":1,"percent":50,"findings":["R11.1-not-frozen:fail","R11.1-basic-uncovered:fail","R11.1-below-target:warn"]}
+f.yaml | units: (none) | validate: clean | coverage: {"total":0,"covered":0,"percent":0,"findings":["R11.1-frozen-mismatch:fail","R11.1-below-target:warn"]}
+g.yaml | units: RQ1/f1 | validate: clean | coverage: {"total":1,"covered":0,"percent":0,"findings":["R11.1-not-frozen:fail","R11.1-basic-uncovered:fail","R11.1-below-target:warn"]}
+h.yaml | units: (none) | validate: R13-unknown-ref,R13-unknown-ref | coverage: {"total":0,"covered":0,"percent":0,"findings":["R11.1-not-frozen:fail","R11.1-below-target:warn"]}
+i.yaml | units: UC1/f1,UC1/f2,UC1/m1 | validate: clean | coverage: {"total":3,"covered":0,"percent":0,"findings":["R11.1-not-frozen:fail","R11.1-basic-uncovered:fail","R11.1-basic-uncovered:fail","R11.1-basic-uncovered:fail","R11.1-below-target:warn"]}

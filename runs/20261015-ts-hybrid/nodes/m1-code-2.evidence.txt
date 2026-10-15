@@ -1,0 +1,100 @@
+=== m1-code attempt 2 evidence ===
+collected: 2026-10-15T08:35:47Z
+
+$ cd tools/harness-guard && bun test test/traps.test.ts
+bun test v1.4.3 (c6da4a4d3)
+
+ 189 pass
+ 0 fail
+ 494 expect() calls
+Ran 189 tests across 1 file. [112.00ms]
+
+$ cd tools/harness-guard && bun test
+bun test v1.4.3 (c6da4a4d3)
+
+test/insight.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../src/insight.ts' from '/home/smoke01/dev/ancient-games-ts-hybrid/tools/harness-guard/test/insight.test.ts'
+-------------------------------
+
+
+test/register.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../src/register.ts' from '/home/smoke01/dev/ancient-games-ts-hybrid/tools/harness-guard/test/register.test.ts'
+-------------------------------
+
+
+ 279 pass
+ 2 fail
+ 2 errors
+ 952 expect() calls
+Ran 281 tests across 4 files. [142.00ms]
+exit=1
+
+$ cd tools/harness-guard && ./node_modules/.bin/tsgo --noEmit -p .
+test/insight.test.ts(5,86): error TS2307: Cannot find module '../src/insight.ts' or its corresponding type declarations.
+test/register.test.ts(6,93): error TS2307: Cannot find module '../src/register.ts' or its corresponding type declarations.
+exit=2
+
+$ git status --porcelain (repository)
+ M tools/harness-guard/src/traps.ts
+?? runs/20261015-ts-hybrid/briefs/
+?? runs/20261015-ts-hybrid/make_brief.py
+?? runs/20261015-ts-hybrid/nodes/
+?? tools/harness-guard/test/register.test.ts
+
+$ bun /tmp/opencode/probe.ts (planted false-deny shapes from the round-2 feedback)
+ok   lint "codex exec --help" -> - (want -)
+ok   lint "pgrep -f \"codex exec\"" -> - (want -)
+ok   lint "grep -n 'codex exec task' commands.txt" -> - (want -)
+ok   lint "echo \"codex exec -- run\"" -> - (want -)
+ok   lint "cat <<'PROMPT'\nopencode run task &\nPROMPT" -> - (want -)
+ok   lint "python3 /fixture/tools/runlog.py --runs-root /fixture/runs exec worker -- opencode run 'task'" -> - (want -)
+ok   lint "opencode run task & " -> trap:opencode-parallel (want trap:opencode-parallel)
+ok   lint "timeout 60 codex exec task" -> trap:codex-stdin (want trap:codex-stdin)
+ok   lint "env -u HOME codex exec task" -> trap:codex-stdin (want trap:codex-stdin)
+ok   lint "timeout 60 codex exec task </dev/null" -> - (want -)
+ok   lint "python3 /fixture/tools/runlog.py --runs-root /fixture/runs exec worker -- codex exec task" -> trap:codex-stdin (want trap:codex-stdin)
+ok   lint "python3 /fixture/tools/runlog.py --runs-root /fixture/runs exec worker -- codex exec task </dev/null" -> - (want -)
+FAIL lint "opencode run task &> run.log" -> - (want trap:opencode-parallel)
+ok   lint "opencode run task 2> err.log" -> - (want -)
+ok   lint "opencode run task >| out.md" -> - (want -)
+ok   rec  "codex exec --help" -> null (want null)
+ok   rec  "agy -p 'task'" -> agy (want agy)
+ok   rec  "(opencode run task) &" -> opencode (want opencode)
+ok   rec  "timeout 30 /fixture/bin/opencode run task" -> opencode (want opencode)
+ok   rec  "printf a | agy -p 'task'" -> agy (want agy)
+ok   rec  "cat <<E\ngrep codex exec\nE\ncodex exec task </dev/null" -> codex (want codex)
+[{"text":"printf before","background":false,"piped":false},{"text":"codex a","background":true,"piped":false},{"text":"opencode run b","background":true,"piped":false},{"text":"printf c","background":true,"piped":false},{"text":"printf after","background":false,"piped":false}]
+[{"text":"codex exec task <<EOF","background":false,"piped":false}]
+1 PROBE FAILURES
+
+$ bun /tmp/opencode/probe2.ts (wrapper and redirection edge shapes)
+"timeout 60 -- codex exec task"
+  rec=codex lint=trap:codex-stdin
+"timeout --preserve-status 30 codex exec task"
+  rec=codex lint=trap:codex-stdin
+"timeout 1h30m codex exec task"
+  rec=codex lint=trap:codex-stdin
+"env codex exec task"
+  rec=codex lint=trap:codex-stdin
+"env -- codex exec task"
+  rec=codex lint=trap:codex-stdin
+"JOB=one env -u PATH nohup /fixture/bin/codex exec task"
+  rec=codex lint=trap:codex-stdin
+"nohup time opencode run task &"
+  rec=opencode lint=trap:opencode-parallel
+"python3 /fixture/tools/runlog.py --runs-root /fixture/runs opencode run task"
+  rec=null lint=-
+"runlog.py --tag=x -- opencode run task"
+  rec=opencode lint=-
+"codex exec task </dev/null 2>&1"
+  rec=codex lint=-
+"opencode run task | tee out.md"
+  rec=opencode lint=-
+"cat /fixture/outside.md | opencode run task"
+  rec=opencode lint=-
