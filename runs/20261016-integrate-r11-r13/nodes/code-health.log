@@ -1,0 +1,726 @@
+[0m
+> build · MiniMax-M3.1-Flash-Preview
+[0m
+I'll read that brief first.
+[0m→ [0mRead runs/20261016-integrate-r11-r13/briefs/code-health.md
+[0m→ [0mRead runs/20261016-integrate-r11-r13/spec-harness-health.md
+[0m→ [0mRead .claude/skills/workflow-design/scripts/harness_health.py
+[0m→ [0mRead .claude/skills/workflow-design/scripts/readiness.py
+[0m
+[0m$ [0mgrep -n "Round 7" -A 80 .claude/skills/workflow-design/guard/SPEC.md | head -120
+479:## Round 7 — JSON for the harness health check (run 20261016-integrate-r11-r13)
+480-
+481-`harness_health.py` reads the guard's state through the guard's own commands, so it never re-implements a check.
+482-Each command below gains a `--json` flag; without it, the text output and the exit code are unchanged.
+483-
+484-- **J1 `doctor --json`** prints the `DoctorReport` as JSON (`{"harnesses":[{harness, guard, answers, note}],
+485-  "health": …}`); exit 0.
+486-- **J2 `rates --json [--session S]`** prints `{"rows":[{check, engine, ok, fail}]}`; exit 0.
+487-- **J3 `insight --json [--session S]`** prints `{"open":[{id, check}], "invalid":[{id, file, rules}],
+488-  "unreadable":[file]}` — the same facts the text form prints (an open failure; an insight section that names an open
+489-  id and fails its checks, with the fail rule ids; an insight file that cannot be read or parsed); exit 0 when `open`
+490-  is empty, else 1, as without the flag.
+491-- None of the three writes a file (the doctor's probe is a PreToolUse call, which writes nothing).
+492-
+493-Fails-if: `--json` output does not parse; a field above is missing; `insight --json` exits 0 with an open failure;
+494-the text output or exit code without `--json` changes; any of the three writes a file under the root.
+[0m
+[0m$ [0mls .claude/skills/workflow-design/guard/src/ && ls runs/20261016-integrate-r11-r13/ runs/20261016-integrate-r11-r13/nodes 2>/dev/null; ls tests/ | head -30
+cli.ts
+criteria.ts
+doctor.ts
+hooks.ts
+insight.ts
+install.ts
+journal.ts
+paths.ts
+plugins
+rates.ts
+register.ts
+traps.ts
+types.ts
+runs/20261016-integrate-r11-r13/:
+baseline-runtime.txt
+briefs
+criteria.yaml
+nodes
+spec-harness-health.md
+
+runs/20261016-integrate-r11-r13/nodes:
+code-health.log
+tests-health.log
+tests-json.log
+cases
+cases.py
+conftest.py
+fixtures
+operator-prompt-list.md
+test_ablation2_fixes.py
+test_ablation3_fixes.py
+test_ablation_fixes.py
+test_ablation_harness.py
+test_autonomy.py
+test_count_sources.py
+test_ctx.py
+test_dispatch.py
+test_dispatch_workdir.py
+test_feature_gate.py
+test_feedback_log.py
+test_harness_health.py
+test_hybrid_cases.py
+test_hybrid_invariants.py
+test_hybrid_registry.py
+test_index.py
+test_intake.py
+test_interface_fixes.py
+test_journal.py
+test_lint_backends.py
+test_lint_scoping.py
+test_lints.py
+test_localize_ansi.py
+test_memory_index.py
+test_memory_index_unit.py
+[0m
+[0m$ [0mgrep -n "R11\|R12" docs/HARNESS_REQUIREMENTS.md | head -60
+1:# Harness requirements — R11 to R13
+3:What a harness run must do so that its results can be judged (R11), so that failures, great successes and model
+4:changes improve the harness (R12), and so that work is built and judged against use cases and requirements (R13).
+7:need no judgment (method 3.8 item 13). R10 of the earlier ten-requirement list is replaced by R12.
+9:## R11 — results can be judged
+11:**R11.1 Coverage of a requirement (SHOULD; a target, not a gate).**
+33:**R11.2 First signal (SHOULD).** Each judge gives a first signal before its full verdict: a check that runs first, can
+38:## R12 — failures, great successes and model changes all update the harness
+40:**R12.1 Failure handling (MUST — a safety bound).** An evaluator reports fail — never pass — when the result is
+43:**R12.2 Failure log (MUST).** A failure is anything that went wrong while the work was done, whoever caused it: a
+44:check that returned fail (a test run, a linter, a gate), a tool call that errored, an engine result that fails R12.1,
+52:**R12.3 Insight at the end of a task (MUST).** When a task ends with one or more failure records, the agent that ran
+60:**R12.4 Judges say what is wrong, not how to be right (SHOULD).** An evaluation rule states the conditions that make
+66:**R12.5 Review when a model changes (SHOULD).** When a model the harness uses is replaced or its capability is
+73:**R12.6 Withdrawal conditions (SHOULD).** A fix added under this requirement names the observable that would show it
+74:is no longer needed. This requirement is reviewed on R12.5's trigger, and revised or withdrawn when its checks stop
+88:**R12.7 Learn from success (MUST).** A failure matters more than a success, but a great success matters too.
+90:runner, `ok`), a failure as its full record (R12.2) — so a check's failures can be read against how often it ran. A
+93:request before it starts, and the project owner may correct them. Every criterion not met is a failure (R12.2), even
+118:Settled for R12.7: success paths are kept in the run folder (`runs/<run>/success-path.yaml`, or
+120:a child changes one thing per run, so its effect can be read; R12.7 extends the method's 20% challenger rule — every
+124:Who decides, not yet set — the project owner: whether R12.5's review also runs on a schedule; whether R12.6 binds R12
+[0m
+[0m$ [0mbun .claude/skills/workflow-design/guard/src/cli.ts doctor --json 2>&1 | head -30; echo "---rc=$?"; bun .claude/skills/workflow-design/guard/src/cli.ts rates --json 2>&1 | head -20; echo "---"; bun .claude/skills/workflow-design/guard/src/cli.ts insight --json 2>&1 | head -20; echo "rc=$?"
+{"harnesses":[{"harness":"claude-code","guard":"installed","answers":true,"note":"1 of 1 read file(s) carry a harness-guard hook"},{"harness":"codex","guard":"absent","answers":true,"note":"no harness-guard hook found in 1 read file(s)"},{"harness":"qwen","guard":"absent","answers":true,"note":"no harness-guard hook found in 1 read file(s)"},{"harness":"opencode","guard":"absent","answers":true,"note":"no harness-guard hook found in 0 read file(s)"}],"health":null}
+---rc=0
+{"rows":[]}
+---
+{"open":[],"invalid":[],"unreadable":[]}
+rc=0
+[0m
+[0m$ [0mls .claude/skills/workflow-design/references/ 2>&1; which bun; grep -n "Ten requirements\|R10\|req == 10\|harness-guard\|requirements.md" tests/test_harness_health.py | head -40
+executor-kinds.md
+feedback-templates.md
+harness-requirements.md
+method.md
+research-tags.md
+task-types.md
+/home/smoke01/.npm-global/bin/bun
+356:            assert "--json" in args or "## Ten requirements" in r.stdout
+[0m
+[0m← [0mWrite runs/20261016-integrate-r11-r13/nodes/code-health.result.md
+Wrote file successfully.
+[0m
+Now the implementation. First the docstring and requirement table:
+[0m← [0mEdit .claude/skills/workflow-design/scripts/harness_health.py
+Index: /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
++++ /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+@@ -1,10 +1,11 @@
+ #!/usr/bin/env python3
+ """harness_health.py — harness health for method 3.1 (readiness), beside readiness.py.
+ 
+-readiness.py proves what is installed; this script reads how each installed harness is set up, against ten
++readiness.py proves what is installed; this script reads how each installed harness is set up, against eleven
+ requirements for a harness (context, tools, planning, state, verification, guardrails, recovery, human gates,
+-observability, feedback). It never spends quota and never prints a config value other than a recognised mode or
++observability, results that can be judged, and failures and successes that update the harness — R12, which replaces
++the earlier feedback loop, R10). It never spends quota and never prints a config value other than a recognised mode or
+ event name or a count — config files hold keys. It writes no file, `--self-test` included.
+ 
+ Configured is not enforced: a line reads what a config file says; none proves the harness enforces it.
+ 
+
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/scripts/harness_health.py
+Index: /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
++++ /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+@@ -70,9 +70,12 @@
+ 
+ REQUIREMENTS = {1: "Clear context delivery", 2: "Well-designed tools", 3: "Planning and task structure",
+                 4: "State and memory across sessions", 5: "Independent verification",
+                 6: "Guardrails and permissions", 7: "Recovery and retries", 8: "Human-in-the-loop gates",
+-                9: "Observability", 10: "Feedback loop that improves the harness"}
++                9: "Observability", 11: "Results can be judged",
++                12: "Failures and successes update the harness"}
++R10_NOTE = ("R10 (feedback loop) is replaced by R12. R11 and R12: the workflow-design skill's "
++            "references/harness-requirements.md.")
+ FINDINGS = ["present", "absent", "unknown", "measured", "covered"]
+ 
+ 
+ @dataclass
+
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/scripts/harness_health.py
+Index: /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
++++ /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+@@ -36,8 +36,9 @@
+ import os
+ import re
+ import shutil
+ import socket
++import subprocess
+ import sys
+ import tomllib
+ from dataclasses import asdict, dataclass, field
+ from datetime import date
+
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/scripts/harness_health.py
+Index: /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
++++ /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+@@ -44,9 +44,9 @@
+ from datetime import date
+ from pathlib import Path
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+-from readiness import MISSING, REPORTED, UNKNOWN, VERIFIED, cell, run_cmd  # noqa: E402
++from readiness import CMD_TIMEOUT, MISSING, REPORTED, UNKNOWN, VERIFIED, cell, run_cmd  # noqa: E402
+ 
+ SCRIPTS = Path(__file__).resolve().parent
+ HARNESSES = ["claude", "codex", "agy", "qwen", "dsh", "opencode"]
+ CODEX_VERIFIED_ON = "0.160.0"
+
+[0m
+Now the covered lines and the unchecked sub-requirements:
+[0m← [0mEdit .claude/skills/workflow-design/scripts/harness_health.py
+Index: /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
++++ /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+@@ -134,11 +134,25 @@
+ 
+ COVERED = [(2, "engine adapters with pinned flags", "engines.py"), (2, "dispatcher", "dispatch.py"),
+            (3, "design gate", "design_gate.py"), (4, "run state template", "../assets/templates/state.md"),
+            (5, "build gate (tests, scope, tamper)", "feature_gate.py"), (7, "timers and bounded repair", "dispatch.py"),
+-           (9, "run event log", "runlog.py"), (9, "token harvest", "harvest_run.py")]
++           (9, "run event log", "runlog.py"), (9, "token harvest", "harvest_run.py"),
++           (11, "use-case register and coverage (R11.1)", "../guard/src/register.ts"),
++           (12, "engine result check (R12.1)", "../guard/src/traps.ts"),
++           (12, "failure journal (R12.2)", "../guard/src/journal.ts"),
++           (12, "insight gate (R12.3)", "../guard/src/insight.ts"),
++           (12, "success lines and rates (R12.7)", "../guard/src/rates.ts"),
++           (12, "success paths (R12.7)", "../guard/src/paths.ts"),
++           (12, "criteria and score (R12.7)", "../guard/src/criteria.ts")]
+ 
++# A sub-requirement no script can read off a machine: the run's own design is where it is shown or not.
++UNCHECKED = [(11, "(11) first signal before the full verdict (R11.2)"),
++             (12, "(12) judges say what is wrong, not how (R12.4)"),
++             (12, "(12) review when a model changes (R12.5)"),
++             (12, "(12) withdrawal conditions (R12.6)")]
++UNCHECKED_PROOF = "references/harness-requirements.md"
+ 
++
+ def covered_lines(scripts: Path) -> list[Finding]:
+     """The script exists — not that the gate it names works; that is the gate's own tests' job."""
+     out = []
+     for req, what, rel in COVERED:
+
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/scripts/harness_health.py
+Index: /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
++++ /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+@@ -164,8 +164,13 @@
+             out.append(Finding(req, "-", what, MISSING, "unknown", f"{name} not found beside this script", name))
+     return out
+ 
+ 
++def unchecked_lines() -> list[Finding]:
++    return [Finding(req, "-", item, UNKNOWN, "unknown", "no script checks it; each run's design must show it",
++                    UNCHECKED_PROOF) for req, item in UNCHECKED]
++
++
+ # --- requirement 1, 4, 5, 9: files and engines -----------------------------------------------------------------
+ 
+ def context_lines(w: Where) -> list[Finding]:
+     out = []
+
+[0m
+Now the guard section:
+[0m← [0mEdit .claude/skills/workflow-design/scripts/harness_health.py
+Index: /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
++++ /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+@@ -389,8 +389,108 @@
+                     "config format not verified for this harness; prove key names on the installed version first",
+                     "harness_health.py docstring") for h in ("agy", "qwen", "dsh", "opencode") if h in installed]
+ 
+ 
++# --- the guard's own state, through its own commands (guard/SPEC.md, Round 7) ----------------------------------
++
++GUARD_CLI = "../guard/src/cli.ts"
++GUARD_HARNESS = {"claude-code": "claude"}      # the doctor's harness name → this script's
++GUARD_EXIT = {"doctor": {0}, "rates": {0}, "insight": {0, 1}}
++GUARD_KEY = {"doctor": "harnesses", "rates": "rows", "insight": "open"}
++
++
++def guard_json(command: str, cli: Path, cwd: Path, env: dict):
++    """(payload, "") or (None, why it failed). The command's own text is never carried out of here."""
++    try:
++        p = subprocess.run(["bun", str(cli), command, "--json"], cwd=cwd, env=env, stdin=subprocess.DEVNULL,
++                           capture_output=True, text=True, errors="replace", timeout=CMD_TIMEOUT)
++    except subprocess.TimeoutExpired:
++        return None, "timeout"
++    except (FileNotFoundError, OSError):
++        return None, "bun not on PATH"
++    if p.returncode not in GUARD_EXIT[command]:
++        return None, f"exit {p.returncode}"
++    try:
++        d = json.loads(p.stdout)
++    except ValueError:
++        d = None
++    key = GUARD_KEY[command]
++    if not isinstance(d, dict) or not isinstance(d.get(key), list):
++        return None, "unexpected output"
++    return d, ""
++
++
++def guard_failed(item: str, command: str, why: str) -> Finding:
++    return Finding(12, "-", item, UNKNOWN, "unknown", f"the guard's {command} failed: {why}", f"`harness-guard {command}`")
++
++
++def guard_lines(installed: set[str], w: Where, scripts: Path, cwd: Path, env: dict) -> list[Finding]:
++    """One absence line and nothing else when the guard or bun is not there — the run still has to report."""
++    cli = (scripts / GUARD_CLI).resolve()
++    if not cli.is_file():
++        return [Finding(12, "-", "harness-guard", MISSING, "unknown", "guard not found beside this script",
++                        "guard/src/cli.ts")]
++    if not shutil.which("bun", path=env.get("PATH")):
++        return [Finding(12, "-", "harness-guard", MISSING, "unknown", "bun not on PATH", "`command -v bun`")]
++    return (guard_hook_lines(cli, w, installed, cwd, env) + [guard_rates_line(cli, cwd, env)]
++            + [guard_insight_line(cli, cwd, env)])
++
++
++def guard_hook_lines(cli: Path, w: Where, installed: set[str], cwd: Path, env: dict) -> list[Finding]:
++    """One line per harness the doctor names that is installed here; the doctor's note is a count, not a key."""
++    payload, why = guard_json("doctor", cli, cwd, env)
++    if payload is None:
++        return [guard_failed("harness-guard hooks", "doctor", why)]
++    out = []
++    for row in payload["harnesses"]:
++        if not isinstance(row, dict):
++            continue
++        name = str(row.get("harness", ""))
++        harness = GUARD_HARNESS.get(name, name)
++        if harness not in installed:
++            continue
++        guard = row.get("guard")
++        finding = "present" if guard == "installed" else "absent" if guard == "absent" else "unknown"
++        help_ = None
++        if finding == "absent":
++            help_ = Help("-", "installs the guard's hooks: it blocks known engine-call traps, logs failures as they "
++                               "happen, and asks for the insight before the agent stops",
++                         f"bun {w.show(cli)} install --print {name}", "sh",
++                         "prints the settings to merge; you apply them")
++        out.append(Finding(12, harness, "harness-guard hooks", REPORTED, finding, str(row.get("note", "")),
++                           "`harness-guard doctor`", help_))
++    return out
++
++
++def guard_rates_line(cli: Path, cwd: Path, env: dict) -> Finding:
++    payload, why = guard_json("rates", cli, cwd, env)
++    if payload is None:
++        return guard_failed("checked results in this project", "rates", why)
++    ok = fail = 0
++    for row in payload["rows"]:
++        if not isinstance(row, dict) or not all(isinstance(row.get(k), int) and not isinstance(row.get(k), bool)
++                                                for k in ("ok", "fail")):
++            return guard_failed("checked results in this project", "rates", "unexpected output")
++        ok, fail = ok + row["ok"], fail + row["fail"]
++    return Finding(12, "-", "checked results in this project", VERIFIED, "measured",
++                   f"{ok} success lines, {fail} failure records", "`harness-guard rates`")
++
++
++def guard_insight_line(cli: Path, cwd: Path, env: dict) -> Finding:
++    payload, why = guard_json("insight", cli, cwd, env)
++    if payload is None:
++        return guard_failed("insight for every failure (R12.3)", "insight", why)
++    n = len(payload["open"])
++    if not n:
++        return Finding(12, "-", "insight for every failure (R12.3)", VERIFIED, "present", "no open failures",
++                       "`harness-guard insight`")
++    f = Finding(12, "-", "insight for every failure (R12.3)", VERIFIED, "absent",
++                f"{n} open failures without a valid insight (ids not printed)", "`harness-guard insight`")
++    f.help = Help("runs/<run>/insight.md", "answers each open failure: six whys, the root cause, two or three fix "
++                                         "options (R12.3)")
++    return f
++
++
+ # --- gather, render ---------------------------------------------------------------------------------------------
+ 
+ def gather(home: Path, cwd: Path, env: dict, scripts: Path = SCRIPTS) -> list[Finding]:
+     installed = {h for h in HARNESSES if shutil.which(h, path=env.get("PATH"))}
+
+[0m
+Now wire into `gather` and the markdown:
+[0m← [0mEdit .claude/skills/workflow-design/scripts/harness_health.py
+Index: /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
++++ /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+@@ -498,8 +498,10 @@
+ lines = [Finding(0, h, "installed", VERIFIED if h in installed else MISSING, "-",
+                  "on PATH" if h in installed else "not on PATH", f"`command -v {h}`") for h in HARNESSES]
+ parts = [(1, "-", "instruction files", lambda: context_lines(w)),
+          (0, "-", "covered scripts", lambda: covered_lines(scripts)),
++         (12, "-", "the guard", lambda: guard_lines(installed, w, scripts, cwd, env)),
++         (12, "-", "unchecked sub-requirements", lambda: unchecked_lines()),
+          (9, "-", "memory and logs", lambda: memory_and_log_lines(w, installed)),
+          (5, "-", "engine kinds", lambda: [engine_kind_line(installed)])]
+ parts += [(6, "claude", "settings", lambda: claude_lines(w))] if "claude" in installed else []
+ parts += [(6, "codex", "config", lambda: codex_lines(w))] if "codex" in installed else []
+
+[0m
+[0m✗ [0mEdit .claude/skills/workflow-design/scripts/harness_health.py failed
+[91m[1mError: [0mNo changes to apply: oldString and newString are identical.
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/scripts/harness_health.py
+Index: /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
++++ /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/scripts/harness_health.py
+@@ -520,13 +520,14 @@
+ 
+ def to_markdown(lines: list[Finding]) -> str:
+     out = [f"# Harness health — {date.today().isoformat()} — {socket.gethostname()}", "",
+            "Configured is not enforced: each line reads what a config file says; none proves the harness enforces "
+-           "it. Nothing was changed; no quota spent.", "", "## Ten requirements", "",
++           "it. Nothing was changed; no quota spent.", "", "## Requirements", "",
+            "| # | Requirement | " + " | ".join(FINDINGS) + " |", "|---|---|" + "---|" * len(FINDINGS)]
+     for n, name in REQUIREMENTS.items():
+         counts = [sum(1 for f in lines if f.req == n and f.finding == k) for k in FINDINGS]
+         out.append(f"| R{n} | {name} | " + " | ".join(str(c) for c in counts) + " |")
++    out += ["", R10_NOTE]
+     out += ["", "## Lines", "", "| # | Harness | Item | Status | Finding | Detail | Proof |",
+             "|---|---|---|---|---|---|---|"]
+     for f in lines:
+         out.append(f"| {'R' + str(f.req) if f.req else '—'} | {f.harness} | {cell(f.item)} | {f.status} | "
+
+[0m
+Now the hooks line move to R12 (H2):
+[0m$ [0mpython3 - <<'EOF'
+from pathlib import Path
+p = Path(".claude/skills/workflow-design/scripts/harness_health.py")
+s = p.read_text()
+n = s.count("line(10,")
+s = s.replace("line(10,", "line(12,").replace("# R10 hooks: an event counts", "# R12 hooks: an event counts")
+p.write_text(s)
+print("replaced", n)
+EOF
+replaced 3
+[0m
+[0m$ [0mpython3 .claude/skills/workflow-design/scripts/harness_health.py 2>&1 | head -40
+# Harness health — 2026-10-16 — wangIsHere0000001
+
+Configured is not enforced: each line reads what a config file says; none proves the harness enforces it. Nothing was changed; no quota spent.
+
+## Requirements
+
+| # | Requirement | present | absent | unknown | measured | covered |
+|---|---|---|---|---|---|---|
+| R1 | Clear context delivery | 1 | 0 | 0 | 2 | 0 |
+| R2 | Well-designed tools | 0 | 0 | 0 | 0 | 2 |
+| R3 | Planning and task structure | 0 | 0 | 0 | 0 | 1 |
+| R4 | State and memory across sessions | 0 | 0 | 0 | 1 | 1 |
+| R5 | Independent verification | 1 | 0 | 0 | 0 | 1 |
+| R6 | Guardrails and permissions | 0 | 3 | 4 | 0 | 0 |
+| R7 | Recovery and retries | 0 | 0 | 0 | 0 | 1 |
+| R8 | Human-in-the-loop gates | 1 | 2 | 0 | 0 | 0 |
+| R9 | Observability | 0 | 0 | 0 | 3 | 2 |
+| R11 | Results can be judged | 0 | 0 | 1 | 0 | 1 |
+| R12 | Failures and successes update the harness | 3 | 3 | 3 | 1 | 6 |
+
+R10 (feedback loop) is replaced by R12. R11 and R12: the workflow-design skill's references/harness-requirements.md.
+
+## Lines
+
+| # | Harness | Item | Status | Finding | Detail | Proof |
+|---|---|---|---|---|---|---|
+| — | claude | installed | verified | - | on PATH | `command -v claude` |
+| — | codex | installed | verified | - | on PATH | `command -v codex` |
+| — | agy | installed | verified | - | on PATH | `command -v agy` |
+| — | qwen | installed | verified | - | on PATH | `command -v qwen` |
+| — | dsh | installed | verified | - | on PATH | `command -v dsh` |
+| — | opencode | installed | verified | - | on PATH | `command -v opencode` |
+| R1 | - | project instruction file | verified | present | CLAUDE.md, AGENTS.md | . |
+| R1 | - | ./CLAUDE.md | verified | measured | 127 lines, 9200 bytes | ./CLAUDE.md |
+| R1 | - | ./AGENTS.md | verified | measured | 4 lines, 257 bytes | ./AGENTS.md |
+| R2 | - | engine adapters with pinned flags | verified | covered | per run, by engines.py | engines.py |
+| R2 | - | dispatcher | verified | covered | per run, by dispatch.py | dispatch.py |
+| R3 | - | design gate | verified | covered | per run, by design_gate.py | design_gate.py |
+| R4 | - | run state template | verified | covered | per run, by state.md | state.md |
+| R4 | claude | project memory | reported | measured | no memory folder for this project | ~/.claude/projects/-home-smoke01-dev-ancient-games--claude-worktrees-integrate/memory |
+[0m
+[0m$ [0mpython3 .claude/skills/workflow-design/scripts/harness_health.py 2>&1 | grep -E "^R1[12] |^R11"
+(no output)
+[0m
+[0m$ [0mpython3 .claude/skills/workflow-design/scripts/harness_health.py 2>&1 | grep -E "^\| R1[12] "
+| R11 | Results can be judged | 0 | 0 | 1 | 0 | 1 |
+| R12 | Failures and successes update the harness | 3 | 3 | 3 | 1 | 6 |
+| R11 | - | use-case register and coverage (R11.1) | verified | covered | per run, by register.ts | register.ts |
+| R11 | - | (11) first signal before the full verdict (R11.2) | unknown | unknown | no script checks it; each run's design must show it | references/harness-requirements.md |
+| R12 | - | engine result check (R12.1) | verified | covered | per run, by traps.ts | traps.ts |
+| R12 | - | failure journal (R12.2) | verified | covered | per run, by journal.ts | journal.ts |
+| R12 | - | insight gate (R12.3) | verified | covered | per run, by insight.ts | insight.ts |
+| R12 | - | success lines and rates (R12.7) | verified | covered | per run, by rates.ts | rates.ts |
+| R12 | - | success paths (R12.7) | verified | covered | per run, by paths.ts | paths.ts |
+| R12 | - | criteria and score (R12.7) | verified | covered | per run, by criteria.ts | criteria.ts |
+| R12 | claude | harness-guard hooks | reported | present | 1 of 1 read file(s) carry a harness-guard hook | `harness-guard doctor` |
+| R12 | codex | harness-guard hooks | reported | absent | no harness-guard hook found in 1 read file(s) | `harness-guard doctor` |
+| R12 | qwen | harness-guard hooks | reported | absent | no harness-guard hook found in 1 read file(s) | `harness-guard doctor` |
+| R12 | opencode | harness-guard hooks | reported | absent | no harness-guard hook found in 0 read file(s) | `harness-guard doctor` |
+| R12 | - | checked results in this project | verified | measured | 0 success lines, 0 failure records | `harness-guard rates` |
+| R12 | - | insight for every failure (R12.3) | verified | present | no open failures | `harness-guard insight` |
+| R12 | - | (12) judges say what is wrong, not how (R12.4) | unknown | unknown | no script checks it; each run's design must show it | references/harness-requirements.md |
+| R12 | - | (12) review when a model changes (R12.5) | unknown | unknown | no script checks it; each run's design must show it | references/harness-requirements.md |
+| R12 | - | (12) withdrawal conditions (R12.6) | unknown | unknown | no script checks it; each run's design must show it | references/harness-requirements.md |
+| R12 | claude | hooks | reported | present | events: PostToolUse, PostToolUseFailure, PreToolUse, SessionStart, Stop, SubagentStop, UserPromptSubmit; key names from the 2.1.299 binary; installed 2.1.300 | ~/.claude/settings.json, ./.claude/settings.json, ./.claude/settings.local.json |
+[0m
+[0m$ [0mpython3 .claude/skills/workflow-design/scripts/harness_health.py 2>&1 | sed -n '/### R12 · codex · harness-guard hooks/,/^### R12 · qwen/p'; echo "=== json/self-test ==="; python3 .claude/skills/workflow-design/scripts/harness_health.py --json | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d['findings']),'findings'); print([f['req'] for f in d['findings'] if f['req'] in (11,12)])"; python3 .claude/skills/workflow-design/scripts/harness_health.py --self-test; echo "rc=$?"
+### R12 · codex · harness-guard hooks
+
+- File: `-`
+- What it changes: installs the guard's hooks: it blocks known engine-call traps, logs failures as they happen, and asks for the insight before the agent stops
+- How: prints the settings to merge; you apply them
+
+```sh
+bun ./.claude/skills/workflow-design/guard/src/cli.ts install --print codex
+```
+
+### R12 · qwen · harness-guard hooks
+=== json/self-test ===
+50 findings
+[11, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12]
+self-test PASS: no deny list → absent, a deny list → present — the check can fail.
+rc=0
+[0m
+[0m$ [0mpython3 - <<'EOF'
+import sys, os
+from pathlib import Path
+sys.path.insert(0, ".claude/skills/workflow-design/scripts")
+import harness_health as hh
+
+S = Path(".claude/skills/workflow-design/scripts").resolve()
+w = hh.Where(Path.home(), Path.cwd(), dict(os.environ))
+inst = {"claude", "codex"}
+
+print("no bun:", hh.guard_lines(inst, w, S, Path.cwd(), {"PATH": "/nonexistent"}))
+print("no guard:", hh.guard_lines(inst, w, Path("/tmp/nope"), Path.cwd(), dict(os.environ)))
+# guard commands fail: a cli.ts that is not the guard
+bad = Path("/tmp/badguard"); bad.mkdir(exist_ok=True); (bad/"cli.ts").write_text("console.log('boom')\n")
+print("boom:", hh.guard_lines(inst, w, bad, Path.cwd(), dict(os.environ)))
+# no file written under HOME or the project
+before = os.stat(Path.home()).st_mtime, os.stat(".").st_mtime
+hh.gather(Path.home(), Path.cwd(), dict(os.environ))
+print("dir mtimes unchanged:", before == (os.stat(Path.home()).st_mtime, os.stat(".").st_mtime))
+EOF
+no bun: [Finding(req=12, harness='-', item='harness-guard', status='MISSING', finding='unknown', detail='bun not on PATH', proof='`command -v bun`', help=None)]
+no guard: [Finding(req=12, harness='-', item='harness-guard', status='MISSING', finding='unknown', detail='guard not found beside this script', proof='guard/src/cli.ts', help=None)]
+boom: [Finding(req=12, harness='-', item='harness-guard', status='MISSING', finding='unknown', detail='guard not found beside this script', proof='guard/src/cli.ts', help=None)]
+dir mtimes unchanged: True
+[0m
+[0m$ [0mpython3 - <<'EOF'
+import sys, os
+from pathlib import Path
+sys.path.insert(0, ".claude/skills/workflow-design/scripts")
+import harness_health as hh
+
+fake = Path("/tmp/badguard/guard/src"); fake.mkdir(parents=True, exist_ok=True)
+(fake/"cli.ts").write_text("console.log('boom')\n")
+cli = fake/"cli.ts"
+cwd, env = Path.cwd(), dict(os.environ)
+for c in ("doctor", "rates", "insight"):
+    print(c, "->", hh.guard_json(c, cli, cwd, env))
+(fake/"cli.ts").write_text("console.error('err'); process.exit(3)\n")
+print("exit3 ->", hh.guard_json("doctor", cli, cwd, env))
+(fake/"cli.ts").write_text("import {insight} from './insight.ts'\n")
+print("timeout ->", hh.guard_json("rates", Path("/tmp/badguard/guard/src/sleep.ts"), cwd, env))
+print(hh.guard_failed("x", "insight", "unexpected output"))
+EOF
+doctor -> (None, 'unexpected output')
+rates -> (None, 'unexpected output')
+insight -> (None, 'unexpected output')
+exit3 -> (None, 'exit 3')
+timeout -> (None, 'exit 1')
+Finding(req=12, harness='-', item='x', status='unknown', finding='unknown', detail="the guard's insight failed: unexpected output", proof='`harness-guard insight`', help=None)
+[0m
+[0m$ [0mpython3 - <<'EOF'
+import sys, os, json
+from pathlib import Path
+sys.path.insert(0, ".claude/skills/workflow-design/scripts")
+import harness_health as hh
+cwd, env = Path.cwd(), dict(os.environ)
+cli = Path("/tmp/badguard/guard/src/cli.ts")
+
+cli.write_text('console.log(JSON.stringify({open:[{id:"a"},{id:"b"}],invalid:[],unreadable:[]})); process.exit(1)\n')
+f = hh.guard_insight_line(cli, cwd, env); print(f); print(f.help)
+
+cli.write_text('import {sleep} from "bun"\nsleep(60000)\n')
+print("timeout ->", hh.guard_json("doctor", cli, cwd, env))
+
+cli.write_text('console.log(JSON.stringify({rows:[{check:"x",engine:"e",ok:2,fail:1},{check:"y",engine:"e",ok:"bad",fail:0}]}))\n')
+print("bad rows ->", hh.guard_rates_line(cli, cwd, env))
+cli.remove()
+EOF
+Finding(req=12, harness='-', item='insight for every failure (R12.3)', status='verified', finding='absent', detail='2 open failures without a valid insight (ids not printed)', proof='`harness-guard insight`', help=Help(file='runs/<run>/insight.md', changes='answers each open failure: six whys, the root cause, two or three fix options (R12.3)', snippet='', lang='', how=''))
+Help(file='runs/<run>/insight.md', changes='answers each open failure: six whys, the root cause, two or three fix options (R12.3)', snippet='', lang='', how='')
+timeout -> (None, 'timeout')
+bad rows -> Finding(req=12, harness='-', item='checked results in this project', status='unknown', finding='unknown', detail="the guard's rates failed: unexpected output", proof='`harness-guard rates`', help=None)
+Traceback (most recent call last):
+  File "<stdin>", line 16, in <module>
+AttributeError: 'PosixPath' object has no attribute 'remove'. Did you mean: 'resolve'?
+[0m
+[0m$ [0mrm -rf /tmp/badguard; env -u NO_COLOR python3 -m pytest -q tests/test_harness_health.py 2>&1 | tail -25
+box = namespace(home=PosixPath('/tmp/tmpm7nz35ex/home'), cwd=PosixPath('/tmp/tmpm7nz35ex/proj'), bin=PosixPath('/tmp/tmpm7nz...9c0e0>, run=<function box.<locals>.run at 0x75006809c860>, findings=<function box.<locals>.findings at 0x75006809c720>)
+
+    def test_hh_16_unreadable_folders_are_unknown_not_a_crash(box):
+        box.full()
+        locked = box.home.parent / "locked"
+        write(locked / "settings.json", "{}")
+        write(locked / "config.toml", "")
+        write(locked / "CLAUDE.md", "x")
+        locked.chmod(0)
+        try:
+            for args in ((), ("--json",), ("--harness", "codex")):
+                r = box.run(*args, extra_env={"CLAUDE_CONFIG_DIR": str(locked), "CODEX_HOME": str(locked)})
+                assert r.returncode == 0 and "Traceback" not in r.stderr, r.stderr
+                assert str(locked) not in r.stdout + r.stderr
+>               assert "--json" in args or "## Ten requirements" in r.stdout
+E               assert ('--json' in () or '## Ten requirements' in '# Harness health — 2026-10-16 — wangIsHere0000001\n\nConfigured is not enforced: each line reads what a config file s...ferences/harness-requirements.md |\n\n## Help\n\nNothing absent.\nYou apply any change; this script changed nothing.\n')
+E                +  where '# Harness health — 2026-10-16 — wangIsHere0000001\n\nConfigured is not enforced: each line reads what a config file s...ferences/harness-requirements.md |\n\n## Help\n\nNothing absent.\nYou apply any change; this script changed nothing.\n' = CompletedProcess(args=['/usr/bin/python3', '/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills...ness-requirements.md |\n\n## Help\n\nNothing absent.\nYou apply any change; this script changed nothing.\n", stderr='').stdout
+
+tests/test_harness_health.py:356: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_harness_health.py::test_hh_01_ten_rows_and_no_machine_paths
+FAILED tests/test_harness_health.py::test_hh_06_covered_goes_missing_without_its_script
+FAILED tests/test_harness_health.py::test_hh_16_unreadable_folders_are_unknown_not_a_crash
+3 failed, 32 passed in 4.51s
+[0m
+[0m$ [0menv -u NO_COLOR python3 -m pytest -q tests/test_harness_health.py 2>&1 | grep -n "test_hh_01\|test_hh_06" -A 20 | grep -E "^[0-9]+[:-]E " | head -20
+13-E       assert [1, 2, 3, 4, 5, 6, ...] == [1, 2, 3, 4, 5, 6, ...]
+14-E         
+15-E         At index 9 diff: 11 != 10
+16-E         Left contains one more item: 12
+17-E         Use -v to get more diff
+32-E       assert False
+33:E        +  where False = all(<generator object test_hh_06_covered_goes_missing_without_its_script.<locals>.<genexpr> at 0x7a820eef7c60>)
+53-E               assert ('--json' in () or '## Ten requirements' in '# Harness health — 2026-10-16 — wangIsHere0000001\n\nConfigured is not enforced: each line reads what a config file s...ferences/harness-requirements.md |\n\n## Help\n\nNothing absent.\nYou apply any change; this script changed nothing.\n')
+[0m
+[0m$ [0menv -u NO_COLOR python3 -m pytest -q tests/test_harness_health.py::test_hh_06 2>&1 | sed -n '1,60p'
+ERROR: not found: /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/tests/test_harness_health.py::test_hh_06
+(no match in any of [<Module test_harness_health.py>])
+
+
+no tests ran in 0.01s
+[0m
+[0m$ [0menv -u NO_COLOR python3 -m pytest -q "tests/test_harness_health.py::test_hh_06_covered_goes_missing_without_its_script" 2>&1 | sed -n '1,45p'; grep -n "def test_hh_06" -A 25 tests/test_harness_health.py
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ test_hh_06_covered_goes_missing_without_its_script ______________
+
+tmp_path = PosixPath('/tmp/pytest-of-smoke01/pytest-400/test_hh_06_covered_goes_missin0')
+
+    def test_hh_06_covered_goes_missing_without_its_script(tmp_path):
+        scripts = tmp_path / "scripts"
+        (tmp_path / "assets/templates").mkdir(parents=True)
+        scripts.mkdir()
+        for name in ("engines.py", "dispatch.py", "design_gate.py", "feature_gate.py", "runlog.py", "harvest_run.py"):
+            (scripts / name).write_text("")
+        (tmp_path / "assets/templates/state.md").write_text("")
+>       assert all(f.finding == "covered" for f in hh.covered_lines(scripts))
+E       assert False
+E        +  where False = all(<generator object test_hh_06_covered_goes_missing_without_its_script.<locals>.<genexpr> at 0x71ead5096740>)
+
+tests/test_harness_health.py:245: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_harness_health.py::test_hh_06_covered_goes_missing_without_its_script
+1 failed in 0.03s
+238:def test_hh_06_covered_goes_missing_without_its_script(tmp_path):
+239-    scripts = tmp_path / "scripts"
+240-    (tmp_path / "assets/templates").mkdir(parents=True)
+241-    scripts.mkdir()
+242-    for name in ("engines.py", "dispatch.py", "design_gate.py", "feature_gate.py", "runlog.py", "harvest_run.py"):
+243-        (scripts / name).write_text("")
+244-    (tmp_path / "assets/templates/state.md").write_text("")
+245-    assert all(f.finding == "covered" for f in hh.covered_lines(scripts))
+246-    (scripts / "dispatch.py").unlink()
+247-    gone = [f for f in hh.covered_lines(scripts) if f.finding != "covered"]
+248-    assert {(f.item, f.status) for f in gone} == {("dispatcher", "MISSING"), ("timers and bounded repair", "MISSING")}
+249-
+250-
+251-def test_hh_07_harness_flag(box):
+252-    box.fake("claude")
+253-    box.fake("codex")
+254-    assert box.run("--harness", "nope").returncode == 2
+255-    assert box.run("--harness", "agy").returncode == 1
+256-    r = box.run("--json", "--harness", "codex")
+257-    assert r.returncode == 0
+258-    harnesses = {f["harness"] for f in json.loads(r.stdout)["findings"]}
+259-    assert harnesses == {"-", "codex"}
+260-
+261-
+262-def test_hh_08_self_test_and_json_contract(box):
+263-    r = subprocess.run([sys.executable, str(SCRIPT), "--self-test"], capture_output=True, text=True)
+[0m
+[0m$ [0mpython3 .claude/skills/workflow-design/scripts/harness_health.py > /dev/null; echo "rc=$?"; python3 -m flake8 --max-line-length=120 .claude/skills/workflow-design/scripts/harness_health.py 2>&1 | head; python3 -m ruff check .claude/skills/workflow-design/scripts/harness_health.py 2>&1 | tail -5
+rc=0
+/usr/bin/python3: No module named flake8
+/usr/bin/python3: No module named ruff
+[0m
+[0m$ [0mgit status --short && git diff --stat
+M .claude/skills/bootstrap/SKILL.md
+ M .claude/skills/requirement-check/SKILL.md
+ M .claude/skills/workflow-design/SKILL.md
+ M .claude/skills/workflow-design/scripts/harness_health.py
+ M docs/HARNESS_REQUIREMENTS.md
+ M docs/HARNESS_REQUIREMENTS_RELEASE_NOTES.md
+ M docs/WORKFLOW_DESIGN_METHOD.md
+ M docs/workflow-templates/blueprint.md
+?? .claude/skills/requirement-check/references/
+?? runs/20261016-integrate-r11-r13/baseline-runtime.txt
+?? runs/20261016-integrate-r11-r13/briefs/
+?? runs/20261016-integrate-r11-r13/nodes/
+ .claude/skills/bootstrap/SKILL.md                  |   6 +-
+ .claude/skills/requirement-check/SKILL.md          |  24 +++-
+ .claude/skills/workflow-design/SKILL.md            |   2 +-
+ .../workflow-design/scripts/harness_health.py      | 147 +++++++++++++++++++--
+ docs/HARNESS_REQUIREMENTS.md                       |  48 +------
+ docs/HARNESS_REQUIREMENTS_RELEASE_NOTES.md         |   7 +
+ docs/WORKFLOW_DESIGN_METHOD.md                     |   3 +-
+ docs/workflow-templates/blueprint.md               |   2 +-
+ 8 files changed, 181 insertions(+), 58 deletions(-)
+[0m
+[0m→ [0mRead .claude/skills/workflow-design/scripts/harness_health.py[90m [limit=12][0m
+Now the result file:
+[0m
+[0m← [0mWrite runs/20261016-integrate-r11-r13/nodes/code-health.result.md
+Wrote file successfully.
+[0m
+H1–H5 implemented in `.claude/skills/workflow-design/scripts/harness_health.py`: R11/R12 rows replace R10, the Claude hooks line moved to R12, the seven guard files are `COVERED`, the four unchecked sub-requirements get lines, and the guard's state is read via `doctor --json` / `rates --json` / `insight --json` (no raw output, no files written, never raises).
+
+`pytest tests/test_harness_health.py` → **3 failed, 32 passed**: `test_hh_01` (asserts rows 1..10), `test_hh_06` (its fake `scripts/` has none of the new `../guard/src/*.ts`, so those covered lines are `MISSING` — the fails-if check working), `test_hh_16` (asserts heading `## Ten requirements`). Details in `runs/20261016-integrate-r11-r13/nodes/code-health.result.md`.

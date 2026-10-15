@@ -1,0 +1,3077 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games/.claude/worktrees/integrate
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a14090-0961-7723-9208-2cf3b1ff575d
+--------
+user
+Read runs/20261016-integrate-r11-r13/briefs/tests-json.md and do what it says.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the repository instructions and the task brief, then carry out the requested work.
+exec
+/bin/bash -lc 'cat CLAUDE.md' in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `.claude/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **source · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+
+exec
+/bin/bash -lc 'cat runs/20261016-integrate-r11-r13/briefs/tests-json.md' in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate
+ succeeded in 0ms:
+# Brief — tests-json
+
+You are working in a git worktree; the current folder is the repository root. Work only inside it. Other workers are
+writing other files in this worktree at the same time: touch only the files your Limits allow.
+
+## Task
+
+Write acceptance tests for the guard's **Round 7** (`--json` on `doctor`, `rates`, `insight`) in
+`.claude/skills/workflow-design/guard/test/round7-json.test.ts`, from `.claude/skills/workflow-design/guard/SPEC.md`
+Round 7 alone. Do not read or change `src/cli.ts`.
+
+## Context
+
+- SPEC.md Round 7 in full, and the parts it refers to (M5 doctor, Round 5 S2 rates, M3 insight, the journal record).
+- How the existing CLI tests run the CLI in a temporary root: `test/cli.test.ts` (read it for the helper pattern).
+- bun 1.4.3, TypeScript, no npm dependencies. bun pitfall: in `test.each` tables wrap each element in its own array.
+
+## Standard
+
+- Every Round 7 Fails-if line has a test with a planted root (journal records, insight files): JSON parses and has
+  each field; `insight --json` exits 1 with an open failure and 0 without; text output and exit code unchanged without
+  `--json`; no file under the root changes (hash the tree before and after).
+- `cd .claude/skills/workflow-design/guard && bun test test/round7-json.test.ts` and `./node_modules/.bin/tsgo --noEmit -p .`
+  — report counts and any type error in your file.
+
+## Limits
+
+- May change: `.claude/skills/workflow-design/guard/test/round7-json.test.ts` only; plus your result file. Nothing
+  else. Do not commit. No other AI engine. Foreground commands only.
+
+## Result
+
+Write `runs/20261016-integrate-r11-r13/nodes/tests-json.result.md` first as `status: partial`, update it at the end:
+`status: done|partial|fail`, one sentence; files; commands and last lines; CONTRADICTS (with the SPEC line) or none.
+
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/coding-discipline/SKILL.md' in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate
+ succeeded in 0ms:
+---
+name: coding-discipline
+description: Baseline engineering discipline for any hands-on task in a repository. Use when writing, editing, refactoring, debugging or reviewing code, when running builds, tests or linters, when adding a dependency, or when preparing a git commit.
+---
+
+# Coding discipline
+
+Baseline rules for working in a repository. They apply regardless of language,
+framework or project.
+
+## Before changing anything
+
+- Read the actual file first. Never write or edit from an assumption about its contents.
+- Read a neighbouring example of the same kind of thing — a sibling module, an existing
+  test, an existing endpoint — and match it. The repository's own conventions outrank
+  your preferences on naming, formatting, typing, file layout and error style.
+- Confirm a dependency is already in use in the project, via its manifest, existing
+  imports or neighbouring code, before reaching for it. Do not add a new dependency to
+  solve something the existing ones already cover.
+
+## Keep the change minimal
+
+- Do the task that was asked. Not the adjacent task, not the cleanup you noticed on the
+  way past, not the refactor that would leave this nicer than you found it.
+- No speculative abstraction. Three similar lines beat a helper with one caller.
+- No error handling, fallbacks or validation for conditions that cannot occur. Validate
+  at boundaries only: user input, external APIs, data arriving from outside the process.
+- Comments explain *why*, and only where the code cannot carry it. No comment that
+  narrates what the next line does, and never a comment addressed to the reader about
+  the changes you are making.
+- Existing code you did not expect to find is someone's in-progress work. Leave it alone
+  unless the task requires otherwise, and stop to ask if it conflicts with what you were
+  asked to do.
+
+## Verify instead of assuming
+
+- Find the project's real check commands from its README, Makefile or package manifest.
+  Never assume `npm test`, `pytest` or `make build` is correct for this repo.
+- Run them after the change. A change you did not run is a change you did not finish.
+- Report what actually happened. If a check failed, show the failure. If you could not
+  run a check, say so and say why. Never describe unverified work as working, and never
+  skip, suppress or weaken a failing check to produce a clean result.
+
+## Git
+
+- Before committing, run `git status`, `git diff HEAD` and `git log -n 3` — to separate
+  your change from what was already in the working tree, and to match the repository's
+  commit message style.
+- Stage only the paths that belong to this change. No `git add -A` while unrelated
+  modifications are present.
+- Draft the commit message yourself, weighted toward why rather than what.
+- Never push, force-push, amend a published commit, delete a branch, or rewrite history
+  unless explicitly asked to in this conversation. Prior approval does not carry over to
+  a later commit.
+- Do not revert work that is not yours. Revert your own change only if it caused a
+  failure or you are asked to.
+- For history questions, `git log` and `git blame` are authoritative. Run the command
+  rather than reasoning from memory of the codebase.
+
+## When blocked or unsure
+
+- Ask one focused question when only the user can decide, and keep it to a single round.
+- Otherwise choose the safe default, do the work, and state which default you chose so
+  it can be corrected.
+- Investigate before working around an obstacle: read the error, check your assumption,
+  address the root cause. Do not bypass a guard, a lock or a failing check just to make
+  the obstacle go away.
+- Clean up scratch files you created. Leave the working tree containing only the change
+  you were asked for.
+
+exec
+/bin/bash -lc "rg --files -g AGENTS.md -g CLAUDE.md .claude runs/20261016-integrate-r11-r13; cat .claude/skills/workflow-design/guard/test/cli.test.ts; rg -n 'Round 7|M5|M3|S2|journal record' .claude/skills/workflow-design/guard/SPEC.md" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate
+ succeeded in 0ms:
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { installSnippet } from "../src/install.ts";
+import { appendFailure, readJournal, writeEvidence } from "../src/journal.ts";
+import type { FailureRecord, Register } from "../src/types.ts";
+
+const secret = "SECRET-PLANT-7f3a9c";
+const cli = path.resolve(import.meta.dir, "../src/cli.ts");
+const first = "F-1a2b3c4d";
+let folder: string;
+
+beforeEach(() => {
+  folder = fs.mkdtempSync(path.join(os.tmpdir(), "hg-"));
+});
+
+afterEach(() => {
+  fs.rmSync(folder, { recursive: true, force: true });
+});
+
+function writeFile(name: string, text: string): string {
+  const file = path.join(folder, name);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, text);
+  return file;
+}
+
+function runCli(args: string[], input = "", cwd = folder) {
+  const result = spawnSync(process.execPath, [cli, ...args], { cwd, input, encoding: "utf8", timeout: 10000 });
+  expect(result.error).toBeUndefined();
+  expect(result.signal).toBeNull();
+  return { exitCode: result.status, stdout: result.stdout, stderr: result.stderr };
+}
+
+function printed(result: ReturnType<typeof runCli>): string {
+  return `${result.stdout}\n${result.stderr}`;
+}
+
+function snapshot(): Record<string, string> {
+  const files: Record<string, string> = {};
+  for (const name of fs.readdirSync(folder, { recursive: true, encoding: "utf8" })) {
+    const file = path.join(folder, name);
+    files[name] = fs.statSync(file).isDirectory() ? "directory" : fs.readFileSync(file).toString("base64");
+  }
+  return files;
+}
+
+function expectNoSecret(result: ReturnType<typeof runCli>): void {
+  expect(printed(result)).not.toContain(secret);
+  const state = path.join(folder, ".harness-guard");
+  if (fs.existsSync(state)) {
+    for (const name of fs.readdirSync(state, { recursive: true, encoding: "utf8" })) {
+      const file = path.join(state, name);
+      expect(name).not.toContain(secret);
+      if (fs.statSync(file).isFile()) expect(fs.readFileSync(file, "utf8")).not.toContain(secret);
+    }
+  }
+}
+
+function seedFailure(id = first, session = "session-a"): FailureRecord {
+  return appendFailure(folder, {
+    kind: "failure", id, time: "2026-10-15T08:00:00.000Z", session, found_by: "guard",
+    check: "R12.1-empty-output", input: "codex answer.md", expected: "non-empty output", actual: "empty output",
+    engine: "codex", harness: "claude-code", reason: "output is empty",
+    evidence: writeEvidence(folder, id, { stdoutLength: 0, rules: ["R12.1-empty-output"] }),
+  });
+}
+
+function writeInsight(id = first, invalid = false): string {
+  const name = "runs/test/insight.md";
+  writeFile(name, [
+    `## ${id}`, "Whys:", "1. Output was empty.", "2. It was not checked.",
+    ...(invalid ? [] : ["3. The instruction omitted a check."]),
+    "Source: instruction", "Root cause: the instruction omitted the check", "Options:",
+    "1. [rule] add the check; evidence: runs/test/rule.md",
+    "2. [check] validate the answer; evidence: runs/test/result.md", "",
+  ].join("\n"));
+  return name;
+}
+
+function register(): Register {
+  return {
+    register: 1,
+    frozen: createHash("sha256").update(JSON.stringify([["UC1/f1", "work is lost"], ["UC1/m1", "work reopens"]])).digest("hex"),
+    use_cases: [{ id: "UC1", origin: "user", purpose: "preserve work", fails_if: ["work is lost"], min_acceptance: ["work reopens"] }],
+    coverage: [{ unit: "UC1/f1", covered_by: ["test/save.test.ts"] }, { unit: "UC1/m1", covered_by: ["test/open.test.ts"] }],
+  };
+}
+
+function failureArgs(): string[] {
+  return ["--check", "R12.1-empty-output", "--input", "codex answer.md", "--expected", "non-empty output",
+    "--actual", "empty output", "--reason", "output is empty", "--evidence", "proof.json", "--found-by", "worker",
+    "--engine", "codex", "--harness", "claude-code", "--session", "session-cli"];
+}
+
+describe("installSnippet", () => {
+  test.each(["claude-code", "codex", "qwen"] as const)("install: %s has every required event and matcher", (harness) => {
+    const guardDir = path.join(folder, "harness-guard");
+    const snippet: string = installSnippet(harness, guardDir);
+    const firstLine = snippet.split("\n")[0]!;
+    expect(firstLine).toContain(".harness-guard/");
+    expect(firstLine).toContain(".gitignore");
+    expect(firstLine).toMatch(/[\w./-]+\.(?:json|jsonc|toml)\b/);
+    const start = snippet.indexOf("{");
+    expect(start).toBeGreaterThanOrEqual(0);
+    const settings = JSON.parse(snippet.slice(start, snippet.lastIndexOf("}") + 1));
+    const events = ["PreToolUse", "PostToolUse", "PostToolUseFailure", "Stop", "SubagentStop", "SessionStart"];
+    for (const event of events) {
+      const entries = settings.hooks[event];
+      expect(Array.isArray(entries)).toBe(true);
+      expect(entries.length).toBeGreaterThan(0);
+      const hooks = entries.flatMap((entry: { hooks: unknown[] }) => entry.hooks);
+      expect(hooks).toContainEqual({ type: "command", command: `bun ${guardDir}/src/cli.ts hook claude` });
+      for (const hook of hooks) expect(hook).toEqual({ type: "command", command: `bun ${guardDir}/src/cli.ts hook claude` });
+    }
+    expect(settings.hooks.PreToolUse).toContainEqual(expect.objectContaining({ matcher: "Bash" }));
+    expect(settings.hooks.PostToolUse).toContainEqual(expect.objectContaining({ matcher: "Bash|Write|Edit|MultiEdit" }));
+    expect(settings.hooks.PostToolUseFailure).toContainEqual(expect.objectContaining({ matcher: "Bash" }));
+    if (harness === "codex" || harness === "qwen") {
+      expect(snippet).toMatch(/reported/i);
+      expect(snippet).toMatch(/not verified|unverified/i);
+    }
+  });
+
+  test("install: opencode advice places its adapter in a plugins folder", () => {
+    const snippet = installSnippet("opencode", path.join(folder, "harness-guard"));
+    expect(snippet).toContain("src/plugins/opencode.ts");
+    expect(snippet).toMatch(/plugins\//);
+  });
+
+  test.each(["claude-code", "codex", "qwen", "opencode"] as const)("install: %s snippet generation never changes a file", (harness) => {
+    writeFile(".claude/settings.json", '{"token":"keep this value"}');
+    const before = snapshot();
+    const previousCwd = process.cwd();
+    try {
+      process.chdir(folder);
+      installSnippet(harness, path.join(folder, "harness-guard"));
+    } finally { process.chdir(previousCwd); }
+    expect(snapshot()).toEqual(before);
+  });
+
+  test("install: existing config secrets are never read into the advice", () => {
+    writeFile(".claude/settings.json", JSON.stringify({ env: { token: secret } }));
+    const printed: string[] = [];
+    const spies = [
+      spyOn(console, "log").mockImplementation((...args) => { printed.push(JSON.stringify(args)); }),
+      spyOn(console, "warn").mockImplementation((...args) => { printed.push(JSON.stringify(args)); }),
+      spyOn(console, "error").mockImplementation((...args) => { printed.push(JSON.stringify(args)); }),
+      spyOn(process.stdout, "write").mockImplementation((chunk) => { printed.push(String(chunk)); return true; }),
+      spyOn(process.stderr, "write").mockImplementation((chunk) => { printed.push(String(chunk)); return true; }),
+    ];
+    const previousCwd = process.cwd();
+    try {
+      process.chdir(folder);
+      for (const harness of ["claude-code", "codex", "qwen", "opencode"] as const) {
+        expect(installSnippet(harness, path.join(folder, "harness-guard"))).not.toContain(secret);
+      }
+    } finally {
+      process.chdir(previousCwd);
+      for (const spy of spies) spy.mockRestore();
+    }
+    expect(printed.join("\n")).not.toContain(secret);
+    expect(readJournal(folder).records).toEqual([]);
+  });
+});
+
+describe("CLI usage and lint", () => {
+  test.each([[], ["unknown-command"], ["hook"], ["hook", "unknown"], ["lint"], ["register"], ["result"], ["install"], ["install", "--print", "unknown"]].map((args) => ({ args })))(
+    "usage: incomplete or unknown command %j exits two",
+    ({ args }: { args: string[] }) => {
+      const result = runCli(args);
+      expect(result.exitCode).toBe(2);
+      expect(printed(result).trim().length).toBeGreaterThan(0);
+    },
+  );
+
+  test("lint: a catalogued command trap exits one with its rule", () => {
+    const result = runCli(["lint", "codex", "exec", "task"]);
+    expect(result.exitCode).toBe(1);
+    expect(printed(result)).toContain("trap:codex-stdin");
+  });
+
+  test("lint: a clean command exits zero", () => {
+    expect(runCli(["lint", "codex exec task </dev/null"]).exitCode).toBe(0);
+  });
+
+  test("lint: command text never leaks through printed findings or state", () => {
+    const result = runCli(["lint", `codex exec '${secret}'`]);
+    expect(result.exitCode).toBe(1);
+    expect(printed(result)).toContain("trap:codex-stdin");
+    expectNoSecret(result);
+  });
+});
+
+describe("CLI hook", () => {
+  test("hook: stdin trap payload produces protocol denial JSON with exit zero", () => {
+    const result = runCli(["hook", "claude"], JSON.stringify({ hook_event_name: "PreToolUse", session_id: "session-cli",
+      tool_name: "Bash", tool_input: { command: "codex exec task" } }));
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(JSON.parse(result.stdout).hookSpecificOutput).toMatchObject({
+      hookEventName: "PreToolUse", permissionDecision: "deny",
+      permissionDecisionReason: expect.stringContaining("trap:codex-stdin"),
+    });
+  });
+
+  test("hook: a clean input produces no output", () => {
+    const result = runCli(["hook", "claude"], JSON.stringify({ hook_event_name: "PreToolUse", session_id: "session-cli",
+      tool_name: "Bash", tool_input: { command: "echo clean" } }));
+    expect(result).toEqual({ exitCode: 0, stdout: "", stderr: "" });
+  });
+
+  test("hook: an empty engine result writes a failure and evidence under the git root", () => {
+    execFileSync("git", ["init", "--quiet", folder], { cwd: folder });
+    const nested = path.join(folder, "nested");
+    fs.mkdirSync(nested);
+    writeFile("nested/answer.md", "");
+    const result = runCli(["hook", "claude"], JSON.stringify({ hook_event_name: "PostToolUse", session_id: "session-cli",
+      tool_name: "Bash", tool_input: { command: "codex exec task -o answer.md </dev/null" },
+      tool_response: { stdout: "", stderr: "", interrupted: false } }), nested);
+    expect(result.exitCode).toBe(0);
+    const records = readJournal(folder).records.filter((r): r is FailureRecord => r.kind === "failure");
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ session: "session-cli", check: "R12.1-empty-output", found_by: "guard" });
+    expect(fs.existsSync(path.resolve(folder, records[0]!.evidence))).toBe(true);
+    expect(JSON.parse(result.stdout).hookSpecificOutput.additionalContext).toContain(records[0]!.id);
+    expect(fs.existsSync(path.join(nested, ".harness-guard"))).toBe(false);
+  });
+
+  test("hook: a secret in the prompt or tool error stays out of all guard output", () => {
+    const result = runCli(["hook", "claude"], JSON.stringify({ hook_event_name: "PostToolUseFailure", session_id: "session-cli",
+      tool_name: "Bash", tool_input: { command: `dsh headless '${secret}'` },
+      error: secret, exit_code: 7, tool_response: { stdout: secret, error: secret, exit_code: 7 } }));
+    expect(result.exitCode).toBe(0);
+    expectNoSecret(result);
+    expect(readJournal(folder).records.filter((r) => r.kind === "failure")).toHaveLength(1);
+  });
+
+  test("hook: a handler error propagates stderr and exit one without freezing", () => {
+    writeFile(".harness-guard", "blocks directory creation");
+    const result = runCli(["hook", "claude"], JSON.stringify({ hook_event_name: "PostToolUse", session_id: "session-cli",
+      tool_name: "Bash", tool_input: { command: "dsh headless task" }, tool_response: { stdout: "", stderr: "" } }));
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.trim().length).toBeGreaterThan(0);
+    expect(result.stderr.trim().split(/\r?\n/)).toHaveLength(1);
+  });
+});
+
+describe("CLI result", () => {
+  test("result: an empty output exits one and names its finding", () => {
+    writeFile("answer.md", " \n");
+    const result = runCli(["result", "--engine", "codex", "--out", "answer.md"]);
+    expect(result.exitCode).toBe(1);
+    expect(printed(result)).toContain("R12.1-empty-output");
+  });
+
+  test("result: a missing output exits one", () => {
+    const result = runCli(["result", "--engine", "codex", "--out", "missing.md"]);
+    expect(result.exitCode).toBe(1);
+    expect(printed(result)).toContain("R12.1-missing-output");
+  });
+
+  test("result: a good output and zero exit produce no failure", () => {
+    writeFile("answer.md", "answer");
+    expect(runCli(["result", "--engine", "codex", "--out", "answer.md", "--exit", "0"]).exitCode).toBe(0);
+    expect(readJournal(folder).records.filter((r) => r.kind === "failure")).toEqual([]);
+  });
+
+  test.each([["7", "R12.1-exit"], ["124", "R12.1-timeout"]])("result: exit %s is reported as %s", (exit: string, rule: string) => {
+    writeFile("answer.md", "answer");
+    const result = runCli(["result", "--engine", "codex", "--out", "answer.md", "--exit", exit]);
+    expect(result.exitCode).toBe(1);
+    expect(printed(result)).toContain(rule);
+  });
+
+  test("result: stderr-file feeds result traps without leaking the file's content", () => {
+    writeFile("answer.md", secret);
+    writeFile("stderr.txt", `soft-denied ${secret}`);
+    const result = runCli(["result", "--engine", "agy", "--out", "answer.md", "--exit", "0", "--stderr-file", "stderr.txt"]);
+    expect(result.exitCode).toBe(1);
+    expect(printed(result)).toContain("trap:agy-soft-deny");
+    expectNoSecret(result);
+  });
+});
+
+describe("CLI fail", () => {
+  test("fail: complete flags append a validated agent record", () => {
+    writeFile("proof.json", "{}");
+    const result = runCli(["fail", ...failureArgs()]);
+    expect(result.exitCode).toBe(0);
+    const records = readJournal(folder).records.filter((r): r is FailureRecord => r.kind === "failure");
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      check: "R12.1-empty-output", input: "codex answer.md", expected: "non-empty output", actual: "empty output",
+      reason: "output is empty", evidence: "proof.json", found_by: "worker", engine: "codex", harness: "claude-code", session: "session-cli",
+    });
+    expect(records[0]!.id).toMatch(/^F-[0-9a-f]{8}$/);
+  });
+
+  test.each(["--reason", "--evidence"])("fail: missing %s is usage error rather than a default", (flag: string) => {
+    writeFile("proof.json", "{}");
+    const args = failureArgs();
+    args.splice(args.indexOf(flag), 2);
+    const result = runCli(["fail", ...args]);
+    expect(result.exitCode).toBe(2);
+    expect(printed(result)).toContain(flag.slice(2));
+    expect(readJournal(folder).records).toEqual([]);
+  });
+
+  test("fail: existing evidence content is not echoed into output or the journal", () => {
+    writeFile("proof.json", JSON.stringify({ prompt: secret }));
+    const result = runCli(["fail", ...failureArgs()]);
+    expect(result.exitCode).toBe(0);
+    expectNoSecret(result);
+  });
+});
+
+describe("CLI insight", () => {
+  test("insight: an open failure exits one and lists its id", () => {
+    seedFailure();
+    const result = runCli(["insight"]);
+    expect(result.exitCode).toBe(1);
+    expect(printed(result)).toContain(first);
+  });
+
+  test("insight: an invalid section is listed and does not close its failure", () => {
+    seedFailure();
+    writeInsight(first, true);
+    const result = runCli(["insight"]);
+    expect(result.exitCode).toBe(1);
+    expect(printed(result)).toContain(first);
+    expect(printed(result)).toContain("R12.3-whys-count");
+  });
+
+  test("insight: a valid section closes the failure", () => {
+    seedFailure();
+    writeInsight();
+    expect(runCli(["insight"]).exitCode).toBe(0);
+  });
+
+  test("insight: session filtering excludes other sessions' open failures", () => {
+    seedFailure(first, "session-b");
+    const result = runCli(["insight", "--session", "session-a"]);
+    expect(result.exitCode).toBe(0);
+    expect(printed(result)).not.toContain(first);
+    expect(runCli(["insight", "--session", "session-b"]).exitCode).toBe(1);
+  });
+
+  test("insight: no failures is success", () => {
+    expect(runCli(["insight"]).exitCode).toBe(0);
+  });
+
+  test("insight: raw text in an invalid section is not printed", () => {
+    seedFailure();
+    writeFile("runs/test/insight.md", `## ${first}\nWhys:\n1. ${secret}\nSource: instruction\nRoot cause: ${secret}\n`);
+    const result = runCli(["insight"]);
+    expect(result.exitCode).toBe(1);
+    expectNoSecret(result);
+  });
+});
+
+describe("CLI register", () => {
+  test("register: validation failure exits one with the rule id", () => {
+    const r = register();
+    r.use_cases![0]!.origin = "ai";
+    writeFile("cases.register.yaml", JSON.stringify(r));
+    const result = runCli(["register", "cases.register.yaml"]);
+    expect(result.exitCode).toBe(1);
+    expect(printed(result)).toContain("R13.1-no-decision");
+  });
+
+  test("register: a coverage failure exits one", () => {
+    const r = register();
+    delete r.frozen;
+    writeFile("cases.register.yaml", JSON.stringify(r));
+    const result = runCli(["register", "cases.register.yaml"]);
+    expect(result.exitCode).toBe(1);
+    expect(printed(result)).toContain("R11.1-not-frozen");
+  });
+
+  test("register: a valid fully covered register exits zero", () => {
+    writeFile("cases.register.yaml", JSON.stringify(register()));
+    expect(runCli(["register", "cases.register.yaml"]).exitCode).toBe(0);
+  });
+
+  test("register: warnings alone exit zero", () => {
+    const r = register();
+    r.coverage![1] = { unit: "UC1/m1", skippable: { reason: "owner deferred it" } };
+    writeFile("cases.register.yaml", JSON.stringify(r));
+    const result = runCli(["register", "cases.register.yaml"]);
+    expect(result.exitCode).toBe(0);
+    expect(printed(result)).toContain("R11.1-below-target");
+  });
+
+  test("register: raw fields are not echoed in validation output", () => {
+    const r = register();
+    r.use_cases![0]!.purpose = secret;
+    r.use_cases![0]!.fails_if = [secret];
+    r.coverage = [];
+    writeFile("cases.register.yaml", JSON.stringify(r));
+    const result = runCli(["register", "cases.register.yaml"]);
+    expect(result.exitCode).toBe(1);
+    expectNoSecret(result);
+  });
+});
+
+describe("CLI install", () => {
+  test.each(["claude-code", "codex", "qwen", "opencode"] as const)("install: --print %s only prints and never writes a file", (harness) => {
+    writeFile(".claude/settings.json", JSON.stringify({ token: secret }));
+    const before = snapshot();
+    const result = runCli(["install", "--print", harness]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim().length).toBeGreaterThan(0);
+    expect(result.stdout).toContain(harness === "opencode" ? "src/plugins/opencode.ts" : "src/cli.ts hook claude");
+    expectNoSecret(result);
+    expect(snapshot()).toEqual(before);
+  });
+});
+115:- The journal stores the strings it is given. The "no raw content" rule of Common binds the guard's **own** writers (M5
+134:## M3 — `src/insight.ts`: insight gate (R12.3)
+137:or `.harness-guard/insights/*.md` under the root. M3's functions take `root` as given (the caller has already applied
+200:## M5 — `src/hooks.ts`, `src/plugins/opencode.ts`, `src/install.ts`, `src/doctor.ts`, `src/cli.ts`
+346:  (M1/M5 handle those) nor a test run: `check: "R12.2-command-error"`, `input: "<command word> call"`, `expected:
+377:**S2 Rates (cli.ts, new `src/rates.ts`).** `rates(root, session | null): { check: string; engine: string; ok: number;
+479:## Round 7 — JSON for the harness health check (run 20261016-integrate-r11-r13)
+
+codex
+I’m applying the coding-discipline skill and will limit edits to the test and result files named in the brief. I’ll write the tests from the spec without reading `src/cli.ts`.
+exec
+/bin/bash -lc "cat /home/smoke01/.agents/skills/meaningful-names/SKILL.md; cat .claude/skills/workflow-design/guard/package.json; cat .claude/skills/workflow-design/guard/tsconfig.json; sed -n '1,165p' .claude/skills/workflow-design/guard/SPEC.md; sed -n '200,260p' .claude/skills/workflow-design/guard/SPEC.md; sed -n '360,405p' .claude/skills/workflow-design/guard/SPEC.md; sed -n '470,560p' .claude/skills/workflow-design/guard/SPEC.md; if test -f .claude/skills/workflow-design/guard/test/round7-json.test.ts; then cat .claude/skills/workflow-design/guard/test/round7-json.test.ts; fi; if test -f runs/20261016-integrate-r11-r13/nodes/tests-json.result.md; then cat runs/20261016-integrate-r11-r13/nodes/tests-json.result.md; fi" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate
+ succeeded in 0ms:
+---
+name: meaningful-names
+description: The clean-code standard for naming functions, variables, classes and concepts, and for naming the one thing a name must do. Use when naming or renaming a function, variable, class, module, field or config key; when a name is ambiguous, vague, a pun, or does several jobs; when a function does more than one thing; or when a requirement or rule reads as arbitrary because a word means several things.
+---
+
+# Meaningful names
+
+A general standard (Clean Code, chapters 2-3), installed globally — not part of the Ancient Games framework;
+the worked failure below uses the Ancient Games as its example.
+
+Names are the interface of code. A bad name does not just look bad — it misleads the next reader, and a name that
+does several jobs produces rules nobody can later explain. This is the naming half of *Clean Code* (Robert C. Martin,
+chapters 2 and 3), compressed into something a person can apply in thirty seconds.
+
+## The one principle everything else follows
+
+**A name must reveal what the thing is, or what the function does — including the object it acts on.**
+
+`run_verification` fails twice: "run" carries nothing, and "verification" does not say *what* is verified.
+`verify_node_result` says both. This is the single rule to remember.
+
+## Names — the rules (Clean Code, chapter 2)
+
+| rule | what it rejects |
+|---|---|
+| **Intention-revealing** | `d`, `n`, `tmp2` — a name must say what it *is* or *does*, not what it looks like |
+| **Avoid disinformation** | `AccountList` for something that is not a list; a name that means something else in another context |
+| **Meaningful distinctions** | `a1`/`a2` for source/destination; `CustomerData`/`CustomerInfo`/`Customer` — spell out the difference |
+| **Pronounceable** | `genymdhms`, `mnger` — you must be able to say it in conversation |
+| **Searchable** | `WORK_DAYS_PER_WEEK` over `5` — a single letter or number cannot be found |
+| **No encodings** | Hungarian (`tblStudent`), member prefixes (`m_name`) — the type system carries this now |
+| **Class = noun, method = verb** | a class is a thing (`Customer`), a method is an action (`save()`, `isEven()`, `hasElement()`) |
+| **Pick one word per concept** | `fetch`/`retrieve`/`get` for the same idea — choose one and use it everywhere |
+| **Don't pun** | the same word for two different ideas (`add` for both a sum and an insert) — one word, one meaning |
+| **No mental mapping** | the reader must not translate your name into the one they already know |
+| **Solution/problem domain** | use the CS term (`queue`, `hash`) when one exists; otherwise the problem's own word (`account`, `policy`) |
+| **Context, not gratuitous context** | add just enough prefix to disambiguate; `GSDAccountAddress` is too much |
+
+## Functions — the rules (Clean Code, chapter 3)
+
+- **Do one thing.** A function that does two things should be two functions — a name cannot describe a function that
+  does two jobs, and neither can a reader trust it.
+- **The name describes what it does.** If you need the word "and", or a sentence, to name it, it does too much.
+- **One level of abstraction per function.** A function should not mix "save the file" with "loop over bytes".
+- **Few arguments.** Zero or one is ideal; three needs a strong reason. More than three usually means a missed object.
+- **Verbs, with an object.** `deletePage`, `setPoint`, `verify_node_result` — the object goes in the name, so nobody
+  has to ask "verify *what*?".
+
+## The tie to requirements
+
+A function name is a small requirement statement, and the same checklist applies. Ask of a name what you would ask of
+a rule (`requirement-check`):
+
+1. **Source** — is it my name, or the domain's name? Say so.
+2. **One thing** — does the name claim one action, or does it smuggle in a second ("and")?
+3. **Unit** — does the number or noun name what it counts? `attempts` or `hours`? A `queue` or a `set`?
+4. **Weak words** — `handle`, `process`, `manage`, `do`, `run`, `data`, `info` — these mean nothing until something
+   follows. Replace, or add the object.
+5. **One word, one job** — the *naming* form of "unit": if `check` means five things, split it.
+
+## A worked failure, from the Ancient Games project
+
+The word `check` did five jobs in one codebase: a node's success test (the `check` field), validating a plan
+(`check_plan`), running the test (`run_check`), probing the environment (`check_binary`, `check_blueprint`,
+`check_machine`), and comparing plan to design. That is a pun in Clean Code's sense — one word, five meanings — and it
+produced rules that read as arbitrary.
+
+The split:
+
+| was | now | one job |
+|---|---|---|
+| `check` field | `check` (kept) | a node's success test |
+| `check_plan` | `validate_plan` | is the document well-formed |
+| `run_check` | `verify_node_result` | does this node's work meet its test |
+| `Check`, `check_binary`, … | `Probe`, `probe_binary`, … | inspect the environment |
+| `compare_design` | `compare_plan_to_design` | plan against design |
+
+## Limits and source
+
+The rules are Robert C. Martin's *Clean Code*, chapters 2 ("Meaningful Names") and 3 ("Functions"). The rule **names**
+above were verified against a public study guide of the book (HTTP 200); the book itself was not read in the session
+that wrote this skill, so exact wording is RECALLED and the rule names are VERIFIED-secondhand. The worked example
+and the "name the object" phrasing are the Ancient Games project's own, 2026-10-05.
+
+Complements `requirement-check` (a rule is a statement; a name is a one-word statement) and `coding-discipline` (the
+broader hands-on baseline). If the three overlap, the more specific one wins.
+{
+  "name": "harness-guard",
+  "private": true,
+  "type": "module",
+  "bin": { "harness-guard": "src/cli.ts" },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsgo --noEmit -p ."
+  }
+}
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "types": ["bun"]
+  },
+  "include": ["src", "test"]
+}
+# harness-guard — specification
+
+The code half of the harness-health hybrid: checks that need no judgment, run at fixed points (harness hooks, a
+plugin, a CLI the method's steps call), so an agent cannot skip them once the guard is installed. The judgment half —
+writing use cases, fails-if conditions, six whys, fix options — stays with the agent; the guard checks that it was done
+and has the required shape.
+
+Runtime: **bun ≥ 1.4, TypeScript, no npm dependencies** (`bun:test` for tests, `Bun.YAML.parse` for YAML,
+`node:fs`, `node:path`, `node:os`, `node:crypto`, `node:child_process` only). Generic: no project name, no absolute path, no
+user name in code or data. Never prints a secret: the journal and the outputs hold lengths, counts, ids, trap ids and
+paths — never raw stdout, stderr, prompts or config values.
+
+Types shared by every module are in `src/types.ts` (fixed; do not change them — if a type is wrong, say so in your
+result instead). Each module below lists its exports and its behaviour; each **Fails-if** line is a behaviour the
+tests must pin down with a planted input.
+
+## Common
+
+- `Finding = { rule: string; severity: "fail" | "warn"; message: string; fix?: string; ref?: string }`.
+  `rule` is a stable id (e.g. `R12.1-empty-output`, `trap:codex-stdin`). `fail` means the guarded thing is wrong;
+  `warn` means report only.
+- `guardRoot(cwd)` (in `journal.ts`): the git top-level of `cwd` (`git rev-parse --show-toplevel`, run with a 5 s
+  timeout); if git fails, `cwd` itself.
+- All guard state lives under `<root>/.harness-guard/` (the package's install advice tells the owner to gitignore it).
+
+## M1 — `src/traps.ts`: trap catalogue, engine-call recognition, result check (R12.1)
+
+Data files, YAML, in `data/`: `traps.yaml` and `engines.yaml` (shapes in `src/types.ts`: `Trap`, `EngineSpec`).
+
+**Segments (added in round 2, after the replay of 3,677 past commands found 31 false denies in 37 — the lint read
+the whole Bash string).** `recognizeEngineCall` and `lintCommand` work on **segments**, never on the raw string:
+- `segments(command: string): Segment[]` (exported; `Segment = { text: string; background: boolean; piped: boolean }`):
+  1. Heredoc bodies are removed first: after a line holding `<<WORD`, `<<'WORD'`, `<<"WORD"` or `<<-WORD`, every
+     line up to and including the line that is exactly `WORD` (leading tabs allowed for `<<-`) is dropped.
+  2. The rest is split into simple commands at newlines, `;`, `&&`, `||`, `|`, a single `&`, `(` and `)` — **outside
+     single and double quotes only**. A `&` that is part of a redirection (`2>&1`, `>&2`, `&>file`) is not a separator.
+  3. Each simple command is trimmed; empty ones are dropped. Its text keeps its own redirections (`</dev/null`,
+     `> out.md`), so `unless` and output redirects are read from the segment.
+  4. `piped` is true when the separator right before the segment is `|` (its stdin comes from a pipe).
+  5. `background` is true when the separator right after the segment is a single `&`, or the segment is inside a
+     `( … )` group whose `)` is followed by a single `&`.
+- **The command word.** Before matching, leading wrappers are stripped from a segment's text: `NAME=value`
+  assignments, `timeout` with its options and duration, `env` with `-u NAME`, `-i` and `NAME=value` words, `nohup`,
+  `time`, `exec`, `command`, and a `runlog.py … --` wrapper (everything up to and including the first standalone
+  `--` when the command word ends in `runlog.py`, with or without `python3` before it). What remains starts at the
+  command word, and **the `command` regexes in `data/` are anchored to it (`^`)**.
+- A segment holding a standalone `--help`, `-h`, `--version` or `-V` word starts no session: it is never an engine
+  call and never a command-trap hit.
+- `paths_outside_repo` reads path tokens of the **matching segment only**.
+- `concurrent` still reads `ctx.running` (whole command lines of other processes) with the trap's regex **unanchored**.
+
+Exports:
+- `loadTraps(path?: string): Trap[]` and `loadEngines(path?: string): EngineSpec[]` — default to the package's
+  `data/` files. A malformed entry is skipped and reported by `catalogueProblems(path?)`: `string[]`.
+- `recognizeEngineCall(command: string, engines?: EngineSpec[]): EngineCall | null`
+  - Matches the first segment (in order) whose stripped text matches an `EngineSpec`'s `command` regex; `null` if none.
+    Output flags, redirects and `background` are read from that segment.
+  - `outputFile`: the value after any of the spec's `output_flags` (`-o FILE`, `-o=FILE`, `--out FILE`), else the
+    target of a stdout redirect `> FILE` or `>> FILE` (not `2>`); quotes stripped; `null` if none.
+  - `stdoutIsAnswer`: from the spec, but `false` when `outputFile` came from a redirect (the answer went to the file).
+  - `statusFile`: for specs with `status_from_out_dir: true` (a wrapper such as `four_experts.py run --out DIR`),
+    `DIR/status.json`; else `null`. For such a wrapper `outputFile` is the folder `DIR` itself.
+  - `background`: the matching segment's `background`. (A caller that knows more passes `LintContext.background` to
+    `lintCommand`.)
+- `lintCommand(command: string, ctx: LintContext, traps?: Trap[]): Finding[]` — command traps only, **approved**
+  entries only (a `proposed` entry never produces a finding). A trap hits on a segment when its `command` regex matches the
+  segment's stripped text **and** its `unless` regex (if any) does not match the segment's text **and** each extra condition it sets holds:
+  - `unless_piped: true` → no hit when the segment's `piped` is true (its stdin is already fed);
+  - `background: true` → `ctx.background` or the segment's `background`;
+  - `concurrent: true` → `ctx.running` (command lines of other running processes) holds a line matching the trap's
+    `command` regex;
+  - `paths_outside_repo: true` → some absolute path token in the command (a word starting with `/`, quotes stripped,
+    ignoring `/dev/null`, `/dev/stdin`, `/dev/stdout`, `/dev/stderr`, `/tmp/…` is **not** ignored) resolves outside
+    `ctx.repoRoot`.
+  - When a trap sets more than one of `background` / `concurrent`, either one is enough (they are alternatives); every
+    other condition must hold.
+  - Each hit → `{ rule: "trap:<id>", severity: "fail", message: why, fix, ref: source }`.
+- `checkResult(input: ResultInput): Finding[]` — after an engine call:
+  - `exitCode` not null and not 0 → `R12.1-exit` (fail); 124 → `R12.1-timeout` (fail) instead.
+  - `interrupted` true → `R12.1-interrupted` (fail).
+  - When `call.statusFile` is set, the status file is the output check (the wrapper's `outputFile` is a folder):
+    skip the two output-file checks below.
+  - `call.outputFile` set and the file does not exist → `R12.1-missing-output` (fail); exists but has no
+    non-whitespace content → `R12.1-empty-output` (fail).
+  - no `outputFile`, `call.stdoutIsAnswer` true, and stdout has no non-whitespace content → `R12.1-empty-output`.
+  - each approved **result** trap for `call.engine` (or `engine: any`) whose `stderr` regex matches stderr, or whose
+    `output_empty: true` holds → `trap:<id>` (fail).
+  - each spec `silent_failures` entry (`{ text, status }`) found in stderr → `R12.1-silent-<status>` (fail).
+  - `call.statusFile` set: the file is missing → `R12.1-missing-status` (fail); for each entry whose `ok` is false →
+    `R12.1-wrapped-fail` (fail) naming the entry key (not its content).
+  - A clean call returns `[]`.
+  - Paths are resolved against `input.cwd`.
+
+Fails-if: a `codex exec` command without a stdin redirect passes the lint; `codex exec --help`, `pgrep -f "codex exec"`,
+a `grep` pattern or `echo` text naming an engine, or a heredoc body naming one, is flagged or recognised; a codex call
+after `timeout 60`, `env -u X` or `runlog.py … --` is not recognised; an absolute path that belongs to another command
+on the same line makes an `opencode run` hit; a proposed **result** trap produces a finding; one with `</dev/null` is flagged; a
+`proposed` trap produces a finding; an `opencode run` naming a path outside the repo passes; a second `opencode run`
+while one runs passes; an empty output file, a missing output file, a non-zero exit, or an "auto-denied" stderr from agy
+passes `checkResult`; a clean call produces a finding; a malformed catalogue entry crashes the loader.
+
+## M2 — `src/journal.ts`: failure journal (R12.2)
+
+Journal: `<root>/.harness-guard/journal.jsonl`, one JSON object per line, append-only. Evidence written by the guard:
+`<root>/.harness-guard/evidence/<id>.json`.
+
+Exports:
+- `guardRoot(cwd: string): string` (see Common).
+- `newFailureId(): string` → `F-` + 8 lowercase hex characters (random).
+- `validateFailure(rec: unknown, root: string): string[]` — problems; empty when valid. Required: `kind: "failure"`,
+  `id` in the `F-xxxxxxxx` form, `time` (ISO 8601), `session` (non-empty string; `"none"` allowed), `found_by`
+  (non-empty), `check`, `input`, `expected`, `actual` (non-empty strings), `engine` (non-empty; `"none"` allowed),
+  `harness` (non-empty), **`reason` (non-empty after trim)**, **`evidence` (a path that exists, relative to `root` or
+  absolute)**. Unknown extra fields are allowed.
+- The journal stores the strings it is given. The "no raw content" rule of Common binds the guard's **own** writers (M5
+  builds its records from fixed phrases, ids, lengths and paths); a record an agent or the owner writes through the CLI
+  holds what they wrote. `writeEvidence` and `appendRecord` are the guard's own writers: they drop raw-content keys
+  (`stdout`, `stderr`, `prompt`, `command`, `config` and the like) before writing.
+- `appendFailure(root: string, rec: FailureRecord): FailureRecord` — validates (throws `JournalError` listing the
+  problems if invalid), creates folders as needed, appends one line. Returns the record.
+- `appendRecord(root: string, rec: TouchedRecord | GuardErrorRecord): void` — for the other kinds (no evidence check).
+- `writeEvidence(root: string, id: string, facts: Record<string, unknown>): string` — writes the evidence JSON and
+  returns its path **relative to root**.
+- `readJournal(root: string): { records: JournalRecord[]; badLines: number }` — a missing journal is empty; a line that
+  is not valid JSON is counted in `badLines` and skipped, never thrown.
+- `failuresFor(root: string, session: string | null): FailureRecord[]` — all failures, or only one session's.
+- CLI helper `recordFailureFromArgs(root, args)` used by `cli.ts fail` (flags: `--check --input --expected --actual
+  --reason --evidence --found-by --engine --harness --session`); missing `--reason` or `--evidence` is an error, not a
+  default.
+
+Fails-if: a record with no reason, an empty reason, no evidence, or an evidence path that does not exist is accepted; a
+bad line crashes `readJournal`; two appends lose a line; a guard-found record has no evidence file.
+
+## M3 — `src/insight.ts`: insight gate (R12.3)
+
+An insight file is Markdown at `runs/**/insight*.md` (`**` matches zero or more folders, so `runs/insight.md` counts)
+or `.harness-guard/insights/*.md` under the root. M3's functions take `root` as given (the caller has already applied
+`guardRoot`). It answers
+failures by sections: a `##` heading that contains one or more failure ids (`## F-1a2b3c4d` or
+`## F-1a2b3c4d, F-5e6f7a8b — short title`). Inside a section, these labelled parts (label at the start of a line,
+case-insensitive):
+- `Whys:` then a numbered list (`1.` …) of **3 to 6** items.
+- `Source:` one of `instruction`, `check`, `tool`, `config` (the changeable source the whys end at).
+- `Root cause:` non-empty text on the same line or the next non-empty line.
+- `Options:` then a numbered list of **2 or 3** items; each item starts with a kind in brackets — `[rule]`,
+  `[check]`, `[tool]` or `[config-advice]` (any other bracketed kind, e.g. `[policy]`, is `R12.3-option-kind`) — and
+  contains `evidence:` followed by non-empty text.
+
+Exports:
+- `findInsightFiles(root: string): string[]` — relative paths, sorted.
+- `parseInsight(text: string): InsightSection[]`.
+- `checkSection(s: InsightSection): Finding[]` — `R12.3-whys-count`, `R12.3-source`, `R12.3-root-cause`,
+  `R12.3-options-count`, `R12.3-option-kind`, `R12.3-option-evidence` (all fail); plus the heuristic
+  `R12.3-why-ends-at-person` (**warn**) when the last why reads as "forgot", "careless", "I missed" or "the model was
+  wrong" — a heuristic, labelled as one in its message.
+- `answered(root: string): Map<string, string>` — failure id → the relative path of the first insight file holding a
+  section for it **with no fail findings**.
+- `openFailures(root: string, session: string | null): FailureRecord[]` — failures (that session's, or all) with no
+  entry in `answered`.
+
+Fails-if: a failure with no section, a section with 2 whys or 7, no source or an unknown one, no root cause, 1 option
+or 4, an option with no kind or no evidence counts as answered; a valid section is not; a section answering two ids
+does not answer both.
+
+## M4 — `src/register.ts`: use-case register and coverage (R13, R11.1)
+## M5 — `src/hooks.ts`, `src/plugins/opencode.ts`, `src/install.ts`, `src/doctor.ts`, `src/cli.ts`
+
+**`handleHook(payload: unknown, env: HookEnv): HookResult`** — the Claude-protocol handler (Claude Code; the same
+payload names are reported for Codex, Qwen and the dsh bridge). `HookEnv` supplies `cwd`, `running` (process command
+lines) and `now`, so the handler is testable without a harness. Dispatch on `hook_event_name`:
+- **PreToolUse**, `tool_name: "Bash"`: `lintCommand(tool_input.command, …)`. Any fail finding → stdout JSON
+  `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"<rule>:
+  <message> Fix: <fix>"}}` (all hits joined), exit 0. No hit → no output, exit 0.
+- **PostToolUse**, `tool_name: "Bash"`: if `recognizeEngineCall` matches, `checkResult` with `tool_response.stdout`,
+  `tool_response.stderr`, `tool_response.interrupted`, `exitCode: null`. Each fail finding → one failure record
+  (`found_by: "guard"`, `session: session_id`, `harness: "claude-code"`, `check: <rule>`, `input`: the engine and the
+  output path — never the command's prompt text, `expected`/`actual`: short fixed phrases, `reason`: the finding
+  message, `evidence`: `writeEvidence` with lengths, exit, rule ids). Then stdout JSON `{"hookSpecificOutput":
+  {"hookEventName":"PostToolUse","additionalContext":"harness-guard logged <n> failure(s): <ids> — <rules>. Log it in
+  your report; an insight is required before you stop."}}`. No finding → no output.
+  `tool_name` `Write`, `Edit` or `MultiEdit` with `tool_input.file_path` a register file → a `touched` record.
+- **PostToolUseFailure**, `tool_name: "Bash"`: same as PostToolUse, with `exitCode` from a numeric `exit_code` /
+  `exitCode` field if present, else 1 (the tool failed), stderr from `error` if a string.
+- **Stop** (and **SubagentStop**): `open = openFailures(root, session_id)`.
+  - `open` non-empty → stdout JSON `{"decision":"block","reason":"…"}` naming each open id and the insight format
+    (heading with the id; Whys 3–6; Source; Root cause; Options 2–3 with kind and evidence). Blocks **every** time
+    while open, whatever `stop_hook_active` says (R12.3 is MUST; the harness's own block cap is the loop guard).
+  - else, if this session has failures and `last_assistant_message` does not contain the relative path of an insight
+    file that answers them → block with reason "raise the insight: name <path> in your final message" (R12.3 raise).
+  - else, each register file in this session's `touched` records → `validateRegister` + `coverage`; fail findings →
+    block with them listed; warn findings → no block.
+  - else no output, exit 0.
+- **SessionStart**: open failures of **other** sessions in this root → `additionalContext` listing them (raise), else
+  nothing.
+- Anything else, or a payload that is not an object → no output, exit 0.
+- An exception inside the handler → `HookResult` with exit 1, a one-line stderr message, and a best-effort
+  `guard_error` record. (Fail-open: a guard bug must not freeze the agent, and it is recorded.)
+
+`HookResult = { exitCode: number; stdout: string; stderr: string }`.
+
+**`src/plugins/opencode.ts`** — default export `HarnessGuardPlugin: (ctx: { directory: string }) =>
+Promise<{ "tool.execute.before": (input: { tool: string }, output: { args: { command?: string } }) => Promise<void> }>`;
+the hook, for `input.tool === "bash"`, runs `lintCommand` on `output.args.command` with `repoRoot: guardRoot(ctx.directory)`
+and `running: []` and **throws** an `Error` with the finding text on any fail finding. (Blocking by
+throwing is *reported* by opencode's docs, not verified here.)
+
+**`src/install.ts`** — `installSnippet(harness: "claude-code" | "codex" | "qwen" | "opencode", guardDir: string):
+string`. Prints only; never writes a file. Claude Code / Codex / Qwen: the settings JSON for PreToolUse (Bash),
+PostToolUse (Bash|Write|Edit|MultiEdit), PostToolUseFailure (Bash), Stop, SubagentStop, SessionStart, each
+`{"type":"command","command":"bun <guardDir>/src/cli.ts hook claude"}`, with a first line saying which file it goes in
+and that `.harness-guard/` belongs in `.gitignore`. opencode: the line that places `src/plugins/opencode.ts` in a
+plugins folder. Codex and Qwen snippets say their payload match is reported, not verified.
+
+**`src/doctor.ts`** — `doctor(opts: DoctorOptions): DoctorReport`, with
+`DoctorOptions = { home: string; projectRoot: string; healthScript?: string | null; run?: (argv: string[]) => { code:
+number; stdout: string } }` (tests pass a temporary `home` and `projectRoot`, and a fake `run`). Files read, per harness:
+claude-code — `<home>/.claude/settings.json`, `<projectRoot>/.claude/settings.json`, `<projectRoot>/.claude/settings.local.json`;
+codex — `<home>/.codex/hooks.json`, `<home>/.codex/config.toml`; qwen — `<home>/.qwen/settings.json`; opencode — the
+files in `<home>/.config/opencode/plugin(s)/` and `<projectRoot>/.opencode/plugin(s)/`. `guard` is `installed` when a
+read file's hook command (or, for opencode, a plugin file) contains `harness-guard`; `absent` when every file is missing
+or readable without it; `unknown` when a file exists but cannot be read or parsed. `answers` is computed once
+(`handleHook` on a planted `codex exec` PreToolUse payload must deny) and reported on every row. `health`: when
+`healthScript` is given, `run(["python3", healthScript, "--json"])`; `ok` is exit 0 with JSON that parses;
+`summary` is `"<n> findings"` from the JSON's `findings` array length, or the error kind — never the script's text.
+Then: `doctor(opts): DoctorReport`: per harness, `guard: "installed" | "absent" | "unknown"` from the
+key names of its settings (a hook command containing `harness-guard`; values never printed), and `answers: true|false`
+logs `missing-output`.
+- **D6 Raise once.** When a Stop finds every pending failure of the session answered and the final message names the
+  insight file(s), it writes a `raised` record (`{kind: "raised", time, session, ids}`) for those failures; a later Stop
+  asks to name only failures not yet raised. (Found live: the guard asked this session to repeat the insight path at
+  every stop.)
+
+## Round 5 — learn from success (R12.7)
+
+Types: `SuccessRecord`, `PathStep`, `SuccessPath`, `PathReport` in `src/types.ts` (fixed).
+
+**S1 Success lines (hooks.ts, journal.ts).** PostToolUse for Bash writes one `success` record when (a) a recognised
+engine call's result check (M1) finds nothing — `check: "engine-call"`, `engine: <engine>` — or (b) a test run (D1)
+neither fails nor shows a failure summary — `check: "test-run"`, `engine: <runner label>`. Background calls (C1) and
+calls with unknowable paths (D3) write nothing. No context line is printed for a success. `appendRecord` accepts a
+`SuccessRecord`. Fails-if: a passing engine call or a green test run writes no success line; a failing one writes a
+success line; a success line holds command or output text.
+
+**S2 Rates (cli.ts, new `src/rates.ts`).** `rates(root, session | null): { check: string; engine: string; ok: number;
+fail: number }[]` counts `success` records and `failure` records per (check, engine). A failure's `check` maps to
+`engine-call` when it starts with `R12.1-` or `trap:` and its `engine` is not "none", to `test-run` when it is
+`R12.2-test-failed`, else to its own `check`. CLI `rates [--session S]` prints a Markdown table, exit 0. Fails-if: a
+count is wrong; a row's text holds command or output text.
+
+**S3 Path files (new `src/paths.ts`).** A path file is YAML matching `SuccessPath`, found at `runs/**/success-path*.yaml`
+or `.harness-guard/paths/*.yaml` under the root.
+- `findPathFiles(root): string[]` (relative, sorted); `loadPath(file): SuccessPath` (throws `PathError` on YAML that
+  does not parse or lacks `path: 1`).
+- `checkPath(root, file): PathReport`:
+  - `R12.7-path-missing` (fail) for a missing or empty `session`, `category`, `objective`, `steps` (≥ 1, each with a
+    non-empty `did`), or `measures` (≥ 1 numeric entry).
+  - With a `parent`: the parent file must exist and load (`R12.7-parent-missing`); `change` must be non-empty
+    (`R12.7-copied` — a child that names no change copies its parent); `aim` must name a `measure` present in both the
+    child's and the parent's `measures`, and `aim.parent_value` must equal the parent's value on it
+    (`R12.7-aim-missing`, `R12.7-aim-mismatch`).
+  - `gainPercent` = (parent − child) / parent × 100 when `lower_is_better`, else (child − parent) / parent × 100,
+    rounded to one decimal; null with no parent or aim, or a parent value of 0.
+  - `repeatedFailures` = the child's `failures` that also appear in the parent's `failures`.
+  - `better` = `gainPercent > 0` and no repeated failure; null when `gainPercent` is null. **The 2% aim is reported,
+    never a finding**: `R12.7-aim-report` is a **warn** finding whose message says the gain against the 2% aim
+    ("gain 3.1% against a 2% aim", "gain −4.0% against a 2% aim").
+  - With `great`: `comparison` and `evidence` non-empty, and `evidence` names a path that exists
+    (`R12.7-great-evidence`, fail).
+- `skeleton(root, session, out?): string` — a YAML path skeleton with `session`, `measures` filled from the journal
+  (`failures`: this session's failure records, `successes`: its success records) and `failures` (their check ids);
+  the other fields as empty placeholders the agent fills. Never writes outside the root.
+- `parents(root, category): { file: string; measures: Record<string, number>; better: boolean | null }[]` — the path
+
+**K3 CLI and paths.** `criteria new [--session S] [--request TEXT] [--from-register FILE] [--out F]` (prints or writes;
+never outside the root); `criteria score <file>` prints `score: <met>/<total> (<percent>%)` and the unmarked ids,
+exit 1 on a fail finding or unmarked ids. `paths.ts skeleton` fills `measures.score` with the percent of this
+session's criteria files (the mean when there are several; absent when none is scored).
+Fails-if: a met:false item leaves no failure record after Stop; the reminder is given twice in a session; a session that
+already touched a criteria file gets the reminder; late criteria leave no record; criteria written first leave a late
+record; the path skeleton has no score when a scored criteria file exists.
+
+## Round 7 — JSON for the harness health check (run 20261016-integrate-r11-r13)
+
+`harness_health.py` reads the guard's state through the guard's own commands, so it never re-implements a check.
+Each command below gains a `--json` flag; without it, the text output and the exit code are unchanged.
+
+- **J1 `doctor --json`** prints the `DoctorReport` as JSON (`{"harnesses":[{harness, guard, answers, note}],
+  "health": …}`); exit 0.
+- **J2 `rates --json [--session S]`** prints `{"rows":[{check, engine, ok, fail}]}`; exit 0.
+- **J3 `insight --json [--session S]`** prints `{"open":[{id, check}], "invalid":[{id, file, rules}],
+  "unreadable":[file]}` — the same facts the text form prints (an open failure; an insight section that names an open
+  id and fails its checks, with the fail rule ids; an insight file that cannot be read or parsed); exit 0 when `open`
+  is empty, else 1, as without the flag.
+- None of the three writes a file (the doctor's probe is a PreToolUse call, which writes nothing).
+
+Fails-if: `--json` output does not parse; a field above is missing; `insight --json` exits 0 with an open failure;
+the text output or exit code without `--json` changes; any of the three writes a file under the root.
+
+exec
+/bin/bash -lc "cat /home/smoke01/.agents/skills/requirement-check/SKILL.md; sed -n '255,285p' .claude/skills/workflow-design/guard/SPEC.md; cat .claude/skills/workflow-design/guard/src/types.ts; rg -n 'doctor|rates|unreadable|invalid' .claude/skills/workflow-design/guard/test/doctor.test.ts .claude/skills/workflow-design/guard/test/round*.test.ts" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate
+ succeeded in 0ms:
+---
+name: requirement-check
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, leaves a choice with no one to decide it, or is impossible to check.
+---
+
+# Requirement check
+
+A general standard (RFC 2119 / 8174), installed globally — not part of the Ancient Games framework. The
+worked failure in `meaningful-names` cites the Ancient Games as one example.
+
+A short gate between **hearing a rule** and **acting on it**. It exists because rules get written down that nobody
+can trace, that count two different things at once, or that nothing can ever fail — and the cost lands months later,
+when nobody can say whether the rule still means anything.
+
+Run it when someone states a rule, and run it on yourself before writing a normative line into any document.
+
+## The eight questions
+
+Ask them of **one statement**. Say which it passes and which it fails, then **ask the person about the failures** —
+do not fill the gaps yourself.
+
+1. **Who decides.** Find every choice the statement leaves open, and name who decides each one: the user, the agent,
+   the tool by a stated rule, a config value, a checker. Write the decider into the requirement. *"Must not read a
+   single line and conclude"* leaves open how many lines are enough — who determines that? Answering it completes the
+   requirement. This asks who decides **inside** the rule, not who asked for it; where the rule came from is
+   **Basis**. *(EJ, 2026-10-14.)*
+2. **One thing.** It is about **one action or one event**: one thing that happens, and what must be true when it
+   does. A condition or a record that belongs to that event is part of it, not a second statement. If it names two
+   events (a role is defined, a process starts), it is **two** — split them, and check each one on its own. An "and",
+   an "or", a "/" or a second number is only a hint to look; it is not the verdict. *(EJ, 2026-10-12.)*
+3. **Unit.** Every number says what it counts. Attempts or hours? Roles, or processes running at once? Bytes or
+   files?
+4. **Can it fail.** Name one concrete input that would make it fail. `TBD`, `—`, `0` and empty must be among the
+   failing inputs. If you cannot name one, it is not checkable — it is a wish.
+5. **Weak words.** *like, about, appropriate, as needed, logical, fast, enough, reasonable, only has to, TBD.* Replace
+   each with a value, **or mark the value open**. Never invent the number.
+6. **Level.** Is it **MUST** (a gate that stops work), **SHOULD** (a default that may be overridden with a stated
+   reason), or **guidance**? A safety bound earns MUST. **A method does not** — see the RFC note below.
+7. **Basis.** Measured, quoted from a source, or a guess? A guess is fine **if it is labelled** — `n=0`, with when it
+   will be looked at again. In the document the basis is at most a short label and a path to the evidence, never the
+   conversation it came from.
+8. **Links.** Does it claim a relation to another rule — *"half of"*, *"pairs with"*, *"the same as"*, *"the runtime
+   part"*? The person probably did not say that. **A link is its own claim and needs its own basis.**
+
+## Four rules for the agent
+
+- **Check the line you write, not only the reply you heard.** When the person answers your question briefly ("yes",
+  "flag them", "use git"), the requirement is **your question plus their answer**. Write that whole rule — what, when,
+  who, what happens next — run the eight questions on the written line, and only then put it in the document. A
+  pasted short reply fails *one thing*, *weak words* and *can it fail* on its own. *(EJ, 2026-10-12, after "flag
+  them" was written into a design alone and later misread.)*
+- **Never fill a gap with your own value.** A missing unit, threshold or test goes back as a question. Inventing it
+  is exactly how a rule becomes unattributable later, and the invention is indistinguishable from the original by
+  the time anyone notices.
+- **Never add structure that was not given.** No halves, no numbered reasons, no ordered pairs, no named phases,
+  unless the person said so. Write the operative sentence, and stop. If a relationship between two rules is
+  wanted, that is a separate claim with its own evidence.
+- **No conversation in a requirement.** A requirements document states what must be true, who decides each open
+  choice, and what makes it fail. It holds no quotes of the person, no "X said", no dates, no `Source:` line and no
+  mark of who proposed what. That history goes in the run folder (`runs/<id>/`), never in the product document. The
+  eight questions are asked of the line; their answers change the line, they are not printed beside it. *(EJ,
+  2026-10-14, after conversation was put into requirements again and again.)*
+
+## Two verified facts, worth quoting
+
+- **RFC 2119 §6, "Guidance in the use of these Imperatives":** imperatives *"must be used with care and sparingly…
+  they MUST only be used where it is actually required… they must not be used to try to impose a particular method."*
+  Most design rules are method. Method does not earn MUST.
+- **RFC 8174 (updates 2119):** the key words *"have the meanings specified herein only when they are in all
+  capitals."* Lowercase *must* and *should* carry no defined requirement meaning. If nothing marks which lines are
+  requirements, a reader cannot tell rules from explanation.
+
+## How to answer
+
+Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
+one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+
+Do not report a rule as complete when you chose its missing value. Say which values you left open.
+
+## A worked failure
+
+> *"At most 5 subagent roles per run and at most 3 running at once."*
+
+Four of the eight fail: **Basis** — nobody could say where it came from; **One thing** — a count of roles *and* a count of
+concurrent processes; **Unit** — two different units, one word ("subagent") used for both; **Level** — a method
+preference written as a cap. The sentence would not parse, and it took four days to find out why. The checklist
+catches it in thirty seconds.
+
+The same checklist, run on *"No single call runs longer than the ceiling: 8 hours"*, passes *one thing*,
+*unit* and *can it fail* — it counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail. *Who
+decides* still asks who stops a call that reaches the ceiling.
+
+## Limits
+
+The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
+feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
+and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
+paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
+quotes are checked. Treat the rest as a good working list, not as a citation.
+
+Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.
+or readable without it; `unknown` when a file exists but cannot be read or parsed. `answers` is computed once
+(`handleHook` on a planted `codex exec` PreToolUse payload must deny) and reported on every row. `health`: when
+`healthScript` is given, `run(["python3", healthScript, "--json"])`; `ok` is exit 0 with JSON that parses;
+`summary` is `"<n> findings"` from the JSON's `findings` array length, or the error kind — never the script's text.
+Then: `doctor(opts): DoctorReport`: per harness, `guard: "installed" | "absent" | "unknown"` from the
+key names of its settings (a hook command containing `harness-guard`; values never printed), and `answers: true|false`
+from calling `handleHook` in-process on a planted PreToolUse trap payload (it must deny); plus, when a
+`harness_health.py` path is given and runs, its JSON summary counts. Markdown output.
+
+**`src/cli.ts`** — `bun src/cli.ts <command>`: `hook claude` (stdin → `handleHook` → stdout/stderr/exit), `lint
+<command…>`, `result --engine E --out FILE [--exit N] [--stderr-file F]`, `fail <flags>`, `insight [--session S]`
+(lists open failures and invalid sections; exit 1 if any open), `register <file>` (validate + coverage; exit 1 on a fail
+finding), `install --print <harness>`, `doctor [--health PATH]`. Exit codes: 0 ok, 1 findings, 2 usage.
+
+Fails-if: a catalogued trap command is allowed; a clean command is denied; an empty engine output writes no record or
+writes one without evidence; a good call writes a record; Stop lets a session with an unanswered failure end, or blocks
+a session with none; Stop lets the agent end without naming the insight; a touched register with a fail finding passes
+Stop; `install --print` writes a file; a handler exception freezes the agent (exit 2) or crashes without output.
+
+## Round 3 — changes from the review and the measurements (these override earlier lines where they differ)
+
+Sources: `runs/20261015-ts-hybrid/nodes/review-1.result.md` (R# = its row), the E1/E2/E4 measurements
+(`effectiveness/`). Each item is a behaviour the tests must pin with the input given.
+
+- **C1 (R1) Background calls are not checked on return.** PostToolUse / PostToolUseFailure skip the result check — no
+  record, no output — when the recognised call's segment is `background`, or `tool_input.run_in_background` is true,
+  or `tool_response.backgroundTaskId` is present. (Its result is not known yet.)
+- **C2 (R2) Output flags and `>` are read outside quotes only.** `recognizeEngineCall` reads output flags and
+  redirects from the segment's unquoted words; a `>` or `-o` inside a quoted prompt is prompt text. The failure record's
+  `input` is `"<engine> call"` plus, when an output file was found, its **basename** — never other command text.
+- **C3 (R5) The working folder of a call.** The hook resolves paths against `payload.cwd` when it is a string, else
+// Shared types for harness-guard (SPEC.md). Fixed: modules import these and do not redefine them.
+
+export type Severity = "fail" | "warn";
+
+export interface Finding {
+  rule: string;
+  severity: Severity;
+  message: string;
+  fix?: string;
+  ref?: string;
+}
+
+// ---- M1: catalogue, recognition, result -------------------------------------------------------------------------
+
+export interface Trap {
+  id: string;
+  status: "approved" | "proposed";
+  applies: "command" | "result";
+  engine: string; // an EngineSpec name, or "any"
+  command?: string; // regex source (command traps)
+  unless?: string; // regex source: no hit when it matches
+  unless_piped?: boolean; // no hit when the segment's stdin comes from a pipe
+  background?: boolean;
+  concurrent?: boolean;
+  paths_outside_repo?: boolean;
+  stderr?: string; // regex source (result traps)
+  output_empty?: boolean; // result traps
+  why: string;
+  fix: string;
+  source: string; // where the trap was recorded (a note name or a run path), generic text
+  withdraw_when?: string; // R12.6: the observable that would show the trap is no longer needed
+}
+
+export interface SilentFailure {
+  text: string;
+  status: string;
+}
+
+export interface EngineSpec {
+  name: string;
+  command: string; // regex source that recognises a call
+  output_flags?: string[]; // e.g. ["-o", "--out"]
+  stdout_is_answer?: boolean;
+  status_from_out_dir?: boolean; // wrapper writes <out>/status.json
+  silent_failures?: SilentFailure[];
+}
+
+export interface EngineCall {
+  engine: string;
+  outputFile: string | null;
+  stdoutIsAnswer: boolean;
+  statusFile: string | null;
+  background: boolean;
+}
+
+export interface Segment {
+  text: string;
+  background: boolean;
+  piped: boolean;
+}
+
+export interface LintContext {
+  repoRoot: string;
+  running: string[]; // command lines of other running processes
+  background?: boolean;
+}
+
+export interface ResultInput {
+  call: EngineCall;
+  cwd: string;
+  exitCode: number | null;
+  stdout: string;
+  stderr: string;
+  interrupted: boolean;
+}
+
+// ---- M2: journal ------------------------------------------------------------------------------------------------
+
+export interface FailureRecord {
+  kind: "failure";
+  id: string; // F-xxxxxxxx
+  time: string; // ISO 8601
+  session: string;
+  found_by: string;
+  check: string;
+  input: string;
+  expected: string;
+  actual: string;
+  engine: string;
+  harness: string;
+  reason: string;
+  evidence: string; // path, relative to the guard root or absolute
+}
+
+export interface TouchedRecord {
+  kind: "touched";
+  time: string;
+  session: string;
+  path: string; // relative to the guard root
+}
+
+export interface GuardErrorRecord {
+  kind: "guard_error";
+  time: string;
+  session: string;
+  message: string;
+}
+
+// Round 4, D6: the failures a final message has already raised, so a later stop need not name them again.
+export interface RaisedRecord {
+  kind: "raised";
+  time: string;
+  session: string;
+  ids: string[];
+}
+
+// Round 5 (R12.7): a checked result that passed — one line, no evidence.
+export interface SuccessRecord {
+  kind: "success";
+  time: string;
+  session: string;
+  check: string; // "engine-call" | "test-run"
+  engine: string; // engine name, or the test runner label
+}
+
+export type JournalRecord = FailureRecord | TouchedRecord | GuardErrorRecord | RaisedRecord | SuccessRecord;
+
+// Round 5 (R12.7): the path of a successful task, a YAML file.
+export interface PathStep {
+  did: string;
+  engine?: string;
+  model?: string;
+  check?: string;
+}
+
+export interface SuccessPath {
+  path: 1;
+  session: string;
+  category: string;
+  objective: string;
+  steps: PathStep[];
+  decisions?: string[];
+  measures: Record<string, number>; // e.g. seconds, failures, retries, checks_passed, successes
+  failures?: string[]; // the check ids of this session's failure records
+  parent?: string; // relative path of the parent's path file
+  change?: string; // what this child changed from its parent
+  aim?: { measure: string; parent_value: number; lower_is_better: boolean };
+  great?: { comparison: string; evidence: string };
+}
+
+// Round 6 (R12.7 score): the criteria a task is scored against, a YAML file written before the work.
+export interface Criterion {
+  id: string; // e.g. C1, or a register unit id such as UC1/f1
+  text: string;
+  met?: boolean | null; // null or absent until the agent marks it
+  evidence?: string; // a path or a fact; required once met is set
+}
+
+export interface CriteriaFile {
+  criteria: 1;
+  session: string;
+  request: string; // the request in a few words (never a secret)
+  items: Criterion[];
+}
+
+export interface Score {
+  met: number;
+  total: number;
+  percent: number | null; // one decimal; null when total is 0
+  unmarked: string[]; // ids with no met value
+}
+
+export interface PathReport {
+  file: string;
+  findings: Finding[];
+  better: boolean | null; // null when there is no parent or no aim
+  gainPercent: number | null; // signed: positive means improved on the aim's measure
+  repeatedFailures: string[];
+}
+
+// ---- M3: insight ------------------------------------------------------------------------------------------------
+
+export interface InsightOption {
+  kind: string; // rule | check | tool | config-advice, or what was written
+  text: string;
+  evidence: string; // "" when missing
+}
+
+export interface InsightSection {
+  ids: string[];
+  whys: string[];
+  source: string | null;
+  rootCause: string | null;
+  options: InsightOption[];
+}
+
+// ---- M4: register -----------------------------------------------------------------------------------------------
+
+export interface Decision {
+  by?: string;
+  verdict?: "accepted" | "declined";
+  at?: string;
+}
+
+export interface UseCase {
+  id: string;
+  origin: "user" | "ai";
+  decision?: Decision;
+  purpose?: string;
+  fails_if?: string[];
+  min_acceptance?: string[];
+  safety?: boolean;
+}
+
+export interface Requirement {
+  id: string;
+  origin: "user" | "ai";
+  decision?: Decision;
+  purpose?: string;
+  serves?: string[];
+  fails_if?: string[];
+  targets?: Record<string, string>;
+}
+
+export interface Conflict {
+  use_case: string;
+  requirement: string;
+  result?: string;
+  shown_to_owner?: boolean;
+  resolution?: string;
+}
+
+export interface CoverageEntry {
+  unit: string;
+  covered_by?: string[];
+  skippable?: { reason?: string };
+}
+
+export interface Register {
+  register: 1;
+  frozen?: string;
+  use_cases?: UseCase[];
+  requirements?: Requirement[];
+  conflicts?: Conflict[];
+  coverage?: CoverageEntry[];
+}
+
+export interface Unit {
+  id: string; // UC1/f1, UC1/m2, RQ1/f1
+  text: string;
+  safety: boolean;
+}
+
+export interface CoverageReport {
+  total: number;
+  covered: number;
+  percent: number;
+  target: 80;
+  findings: Finding[];
+}
+
+// ---- M5: hooks --------------------------------------------------------------------------------------------------
+
+export interface HookEnv {
+  cwd: string;
+  running: string[];
+  now: () => Date;
+}
+
+export interface HookResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}
+
+export interface DoctorHarness {
+  harness: string;
+  guard: "installed" | "absent" | "unknown";
+  answers: boolean | null;
+  note: string;
+}
+
+export interface DoctorReport {
+  harnesses: DoctorHarness[];
+  health: { ok: boolean; summary: string } | null;
+}
+.claude/skills/workflow-design/guard/test/round5-paths.test.ts:286:      { kind: "guard_error", time: "2026-10-15T08:00:00Z", session: "session-a", message: "unreadable file" },
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:143:  const invalid: [string, string | Criterion[], string][] = [
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:144:    ["unreadable YAML", "criteria: [", ""],
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:155:  for (const [label, input, rule] of invalid) test(`invalid ${label} blocks once without item text`, () => {
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:171:  test("a changed invalid file state gets a new single block", () => {
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:188:  test("another session's touched invalid file does not block", () => {
+.claude/skills/workflow-design/guard/test/round5-insight.test.ts:62:const invalidGreatBodies: [string, string, string][] = [
+.claude/skills/workflow-design/guard/test/round5-insight.test.ts:77:  ["one invalid item among valid options", `Comparison: fewer retries\nCause: early validation\nOptions:\n${greatOptions(2)}\n3. [tool] retain replay`, "R12.7-great-options"],
+.claude/skills/workflow-design/guard/test/round5-insight.test.ts:99:  test.each(invalidGreatBodies)("rejects %s and does not count its path as answered", (_name, body, rule) => {
+.claude/skills/workflow-design/guard/test/round5-insight.test.ts:102:    writeFixture("runs/task/insight-invalid.md", text);
+.claude/skills/workflow-design/guard/test/round5-insight.test.ts:205:  test("an invalid section does not hide a later valid answer for the same path", () => {
+.claude/skills/workflow-design/guard/test/round5-insight.test.ts:206:    writeFixture("runs/task/insight-a-invalid.md", greatSection("Options:"));
+.claude/skills/workflow-design/guard/test/round3.test.ts:9:import { doctor } from "../src/doctor.ts";
+.claude/skills/workflow-design/guard/test/round3.test.ts:753:describe("C14 (R18) doctor health with unexpected JSON", () => {
+.claude/skills/workflow-design/guard/test/round3.test.ts:762:      expect(() => { report = doctor({ home, projectRoot, healthScript: "x.py", run: () => ({ code: 0, stdout }) }); }).not.toThrow();
+.claude/skills/workflow-design/guard/test/round3.test.ts:772:    const report = doctor({ home, projectRoot, healthScript: "x.py", run: () => ({ code: 0, stdout: '{"findings":[1,2]}' }) });
+.claude/skills/workflow-design/guard/test/round3.test.ts:805:describe("C16 (R7) doctor opencode reads a plugin file's text", () => {
+.claude/skills/workflow-design/guard/test/round3.test.ts:815:    const report = doctor({ home: path.join(folder, "home"), projectRoot: path.join(folder, "project") });
+.claude/skills/workflow-design/guard/test/round3.test.ts:822:    const report = doctor({ home: path.join(folder, "home"), projectRoot: path.join(folder, "project") });
+.claude/skills/workflow-design/guard/test/round3.test.ts:829:    const report = doctor({ home: path.join(folder, "home"), projectRoot: path.join(folder, "project") });
+.claude/skills/workflow-design/guard/test/round4.test.ts:345:      "1. The commands used an invalid fixture.", "2. The fixture had not been checked.",
+.claude/skills/workflow-design/guard/test/doctor.test.ts:5:import { doctor } from "../src/doctor.ts";
+.claude/skills/workflow-design/guard/test/doctor.test.ts:85:describe("doctor settings", () => {
+.claude/skills/workflow-design/guard/test/doctor.test.ts:86:  test("doctor: missing files are absent, and the planted trap answers on every harness", () => {
+.claude/skills/workflow-design/guard/test/doctor.test.ts:88:    const report: DoctorReport = doctor({ home, projectRoot, run: (argv: string[]) => {
+.claude/skills/workflow-design/guard/test/doctor.test.ts:97:  test.each(settings)("doctor: %s is installed from a guard command in %s", (harness: string, name: string) => {
+.claude/skills/workflow-design/guard/test/doctor.test.ts:99:    const report = doctor({ home, projectRoot });
+.claude/skills/workflow-design/guard/test/doctor.test.ts:104:  test.each(settings)("doctor: %s is absent when %s has no guard", (harness: string, name: string) => {
+.claude/skills/workflow-design/guard/test/doctor.test.ts:106:    expect(row(doctor({ home, projectRoot }), harness)).toMatchObject({ guard: "absent", answers: true });
+.claude/skills/workflow-design/guard/test/doctor.test.ts:110:    "doctor: %s reports an unparseable %s as unknown",
+.claude/skills/workflow-design/guard/test/doctor.test.ts:113:      expect(row(doctor({ home, projectRoot }), harness)).toMatchObject({ guard: "unknown", answers: true });
+.claude/skills/workflow-design/guard/test/doctor.test.ts:117:  test.each(settings)("doctor: %s reports an unreadable %s as unknown", (harness: string, name: string) => {
+.claude/skills/workflow-design/guard/test/doctor.test.ts:125:    try { report = doctor({ home, projectRoot }); } finally { spy.mockRestore(); }
+.claude/skills/workflow-design/guard/test/doctor.test.ts:130:    "doctor: %s does not mistake a non-hook value in %s for installation",
+.claude/skills/workflow-design/guard/test/doctor.test.ts:133:      const report = expectNoSecret(() => doctor({ home, projectRoot }));
+.claude/skills/workflow-design/guard/test/doctor.test.ts:139:describe("doctor health", () => {
+.claude/skills/workflow-design/guard/test/doctor.test.ts:140:  test.each([0, 2])("doctor: exit zero with JSON reports %s findings without raw settings or script text", (count: number) => {
+.claude/skills/workflow-design/guard/test/doctor.test.ts:144:    const report = expectNoSecret(() => doctor({ home, projectRoot, healthScript, run: (argv: string[]) => {
+.claude/skills/workflow-design/guard/test/doctor.test.ts:156:  ])("doctor: health exit %s with output %j reports an error kind without script text", (code: number, stdout: string) => {
+.claude/skills/workflow-design/guard/test/doctor.test.ts:158:    const report = expectNoSecret(() => doctor({ home, projectRoot, healthScript, run: () => ({ code, stdout }) }));
+.claude/skills/workflow-design/guard/test/doctor.test.ts:165:  test("doctor: a null health script does not run a process", () => {
+.claude/skills/workflow-design/guard/test/doctor.test.ts:167:    const report = doctor({ home, projectRoot, healthScript: null, run: (argv: string[]) => {
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:9:import { rates } from "../src/rates.ts";
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:191:describe("S2 rates", () => {
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:211:    const sorted = (rows: ReturnType<typeof rates>) => [...rows].sort((a, b) => `${a.check}/${a.engine}`.localeCompare(`${b.check}/${b.engine}`));
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:212:    expect(sorted(rates(root, session))).toEqual(sorted(expected));
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:213:    expect(sorted(rates(root, null))).toEqual(sorted([
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:216:    expect(rates(root, "absent")).toEqual([]);
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:219:  test("an empty journal has no rates", () => expect(rates(root, null)).toEqual([]));
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:221:  test("Fails-if: rates rows contain raw command, prompt or output text", () => {
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:227:    const rows = rates(root, null);
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:232:  test.each([[false], [true]])("CLI rates prints a Markdown table, exit 0; session filter %s", (filtered: boolean) => {
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:237:    const result = spawnSync(process.execPath, [cli, "rates", ...(filtered ? ["--session", session] : [])], {
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:311:    write(insight, `## ${record.id}\nWhys:\n1. fixture was invalid\n2. validation was absent\n3. check omitted validation\nSource: check\nRoot cause: missing validation\nOptions:\n1. [check] validate evidence: fixture\n2. [tool] validate evidence: fixture\n`);
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:321:  test.each([[false], [true]])("a great path with no valid great section asks once (invalid section: %s)", (invalid: boolean) => {
+.claude/skills/workflow-design/guard/test/round5-hooks.test.ts:325:    if (invalid) write("runs/insight.md", `## great: ${file}\nComparison: fewer retries\nOptions:\n1. [check] validate evidence: comparison.txt\n`);
+
+exec
+/bin/bash -lc "mkdir -p runs/20261016-integrate-r11-r13/nodes
+cat > runs/20261016-integrate-r11-r13/nodes/tests-json.result.md <<'EOF'
+status: partial
+Acceptance tests for SPEC Round 7 are being written from the contract without reading src/cli.ts.
+
+files: .claude/skills/workflow-design/guard/test/round7-json.test.ts; runs/20261016-integrate-r11-r13/nodes/tests-json.result.md
+commands and last lines: not run yet.
+CONTRADICTS: none.
+EOF" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate
+ succeeded in 0ms:
+codex
+The brief and Round 7 pass the requirement check: the source, scope, fields, failure cases, and check commands are explicit; I found no gap that needs your input. I’m also applying meaningful-names to the test helpers.
+
+I’ll cover populated and empty JSON reports, session filtering, valid and invalid insights, unreadable files, text behavior, and tree hashes to detect writes.
+exec
+/bin/bash -lc "cat > .claude/skills/workflow-design/guard/test/round7-json.test.ts <<'EOF'
+import { afterEach, beforeEach, describe, expect, test } from \"bun:test\";
+import { spawnSync } from \"node:child_process\";
+import { createHash } from \"node:crypto\";
+import * as fs from \"node:fs\";
+import * as os from \"node:os\";
+import * as path from \"node:path\";
+import type { FailureRecord, JournalRecord } from \"../src/types.ts\";
+
+const cli = path.resolve(import.meta.dir, \"../src/cli.ts\");
+const openId = \"F-1a2b3c4d\";
+const answeredId = \"F-5e6f7a8b\";
+const otherId = \"F-abcdef01\";
+const time = \"2026-10-16T08:00:00.000Z\";
+let root: string;
+let home: string;
+
+beforeEach(() => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), \"guard-round7-\"));
+  home = path.join(root, \"home\");
+  fs.mkdirSync(home);
+  writeFile(\"keep.txt\", \"existing project content\\n\");
+});
+
+afterEach(() => {
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+function writeFile(name: string, content: string): void {
+  const file = path.join(root, name);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, content);
+}
+
+function hashTree(): string {
+  const hash = createHash(\"sha256\");
+  for (const name of fs.readdirSync(root, { recursive: true, encoding: \"utf8\" }).sort()) {
+    const file = path.join(root, name);
+    const stat = fs.lstatSync(file);
+    hash.update(JSON.stringify([name, stat.mode, stat.size, stat.mtimeMs]));
+    if (stat.isFile()) {
+      try {
+        hash.update(fs.readFileSync(file));
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code "'!== "EACCES") throw error;
+        hash.update("unreadable:EACCES");
+      }
+    }
+  }
+  return hash.digest("hex");
+}
+
+function runCli(args: string[]) {
+  const before = hashTree();
+  const result = spawnSync(process.execPath, [cli, ...args], {
+    cwd: root, encoding: "utf8", timeout: 10000,
+    env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+  });
+  expect(result.error).toBeUndefined();
+  expect(result.signal).toBeNull();
+  expect(hashTree()).toBe(before);
+  return { exitCode: result.status, stdout: result.stdout, stderr: result.stderr };
+}
+
+function failure(id = openId, session = "session-a", check = "R12.1-empty-output", engine = "codex"): FailureRecord {
+  writeFile(`.harness-guard/evidence/${id}.json`, '"'{\"stdoutLength\":0}\\n');
+  return {
+    kind: \"failure\", id, time, session, found_by: \"guard\", check, engine, harness: \"claude-code\",
+    input: "'`${engine} call`, expected: "non-empty output", actual: "empty output", reason: "output is empty",
+    evidence: `.harness-guard/evidence/${id}.json`,
+  };
+}
+
+function writeJournal(records: JournalRecord[]): void {
+  writeFile(".harness-guard/journal.jsonl", records.map((record) => JSON.stringify(record)).join("'"\\n\") + \"\\n\");
+}
+
+function writeInsight(id: string, valid = true, name = \"runs/task/insight.md\"): void {
+  writeFile(name, [
+    "'`## ${id}`, "Whys:", "1. Output was empty.", "2. It was not checked.",
+    ...(valid ? ["3. The instruction omitted a check."] : []),
+    "Source: instruction", "Root cause: the instruction omitted the check", "Options:",
+    "1. [rule] add the check; evidence: runs/task/rule.md",
+    "2. [check] validate the answer; evidence: runs/task/result.md", "",
+  ].join("'"\\n\"));
+}
+
+function jsonOutput(args: string[], exitCode = 0) {
+  const result = runCli(args);
+  expect(result.exitCode).toBe(exitCode);
+  expect(result.stderr).toBe(\"\");
+  // Parsing all stdout rejects a Markdown preamble, trailing text, or several JSON documents.
+  return JSON.parse(result.stdout);
+}
+
+describe(\"Round 7 J1 doctor JSON\", () => {
+  test(\"prints every DoctorReport field and each harness, with a read-only answering probe\", () => {
+    writeJournal([failure()]);
+    writeInsight(openId, false);
+    writeFile(\".claude/settings.json\", JSON.stringify({ hooks: { PreToolUse: [{ matcher: \"Bash\", hooks: [
+      { type: \"command\", command: \"bun harness-guard/src/cli.ts hook claude\" },
+    ] }] } }));
+    const report = jsonOutput([\"doctor\", \"--json\"]);
+    expect(report.health).toBeNull();
+    expect(Array.isArray(report.harnesses)).toBe(true);
+    expect(report.harnesses.map((row: { harness: string }) => row.harness).sort()).toEqual([
+      \"claude-code\", \"codex\", \"opencode\", \"qwen\",
+    ]);
+    for (const row of report.harnesses) {
+      expect(row).toMatchObject({
+        harness: expect.any(String), guard: row.harness === \"claude-code\" ? \"installed\" : \"absent\",
+        answers: true, note: expect.any(String),
+      });
+    }
+  });
+});
+
+describe(\"Round 7 J2 rates JSON\", () => {
+  beforeEach(() => {
+    writeJournal([
+      { kind: \"success\", time, session: \"session-a\", check: \"engine-call\", engine: \"codex\" },
+      { kind: \"success\", time, session: \"session-a\", check: \"engine-call\", engine: \"codex\" },
+      failure(), failure(answeredId, \"session-a\", \"trap:codex-stdin\"),
+      { kind: \"success\", time, session: \"session-a\", check: \"test-run\", engine: \"bun\" },
+      failure(otherId, \"session-b\", \"R12.2-test-failed\", \"bun\"),
+    ]);
+    writeInsight(answeredId);
+  });
+
+  test.each([[false], [true]])(\"prints all row fields and counts; session filter %s\", (filtered: boolean) => {
+    const report = jsonOutput([\"rates\", \"--json\", ...(filtered ? [\"--session\", \"session-a\"] : [])]);
+    expect(Array.isArray(report.rows)).toBe(true);
+    expect(report.rows).toHaveLength(2);
+    expect(report.rows).toEqual(expect.arrayContaining([
+      { check: \"engine-call\", engine: \"codex\", ok: 2, fail: 2 },
+      { check: \"test-run\", engine: \"bun\", ok: 1, fail: filtered ? 0 : 1 },
+    ]));
+  });
+
+  test(\"an absent session still returns the rows field as an empty array\", () => {
+    expect(jsonOutput([\"rates\", \"--session\", \"missing\", \"--json\"])).toEqual({ rows: [] });
+  });
+});
+
+describe(\"Round 7 J3 insight JSON\", () => {
+  test(\"open failures exit one and invalid sections expose id, file and fail rule ids\", () => {
+    writeJournal([failure(), failure(answeredId), failure(otherId, \"session-b\")]);
+    writeInsight(openId, false, \"runs/task/insight-invalid.md\");
+    writeInsight(answeredId);
+    const report = jsonOutput([\"insight\", \"--json\", \"--session\", \"session-a\"], 1);
+    expect(report).toEqual({
+      open: [{ id: openId, check: \"R12.1-empty-output\" }],
+      invalid: [{ id: openId, file: \"runs/task/insight-invalid.md\", rules: [\"R12.3-whys-count\"] }],
+      unreadable: [],
+    });
+    expect(jsonOutput([\"insight\", \"--json\"], 1).open).toEqual(expect.arrayContaining([
+      { id: openId, check: \"R12.1-empty-output\" }, { id: otherId, check: \"R12.1-empty-output\" },
+    ]));
+  });
+
+  test(\"valid answers close failures and exit zero with every field present\", () => {
+    writeJournal([failure()]);
+    writeInsight(openId);
+    expect(jsonOutput([\"insight\", \"--json\"])).toEqual({ open: [], invalid: [], unreadable: [] });
+  });
+
+  test(\"session filtering can produce no open failures while another session remains open\", () => {
+    writeJournal([failure(openId, \"session-b\")]);
+    expect(jsonOutput([\"insight\", \"--session\", \"session-a\", \"--json\"])).toEqual({
+      open: [], invalid: [], unreadable: [],
+    });
+    expect(jsonOutput([\"insight\", \"--json\", \"--session\", \"session-b\"], 1).open).toEqual([
+      { id: openId, check: \"R12.1-empty-output\" },
+    ]);
+  });
+
+  test(\"unreadable insight files are reported by relative path without closing the failure\", () => {
+    writeJournal([failure()]);
+    const name = \"runs/task/insight-unreadable.md\";
+    writeInsight(openId, true, name);
+    fs.chmodSync(path.join(root, name), 0);
+    try {
+      expect(jsonOutput([\"insight\", \"--json\"], 1)).toEqual({
+        open: [{ id: openId, check: \"R12.1-empty-output\" }], invalid: [], unreadable: [name],
+      });
+    } finally {
+      fs.chmodSync(path.join(root, name), 0o600);
+    }
+  });
+});
+
+describe(\"Round 7 preserves text output and exit codes without --json\", () => {
+  test.each([[\"doctor\"], [\"rates\"], [\"insight\"]])(\"%s keeps its text form across JSON calls without writing\", (command: string) => {
+    writeJournal([
+      failure(),
+      { kind: \"success\", time, session: \"session-a\", check: \"engine-call\", engine: \"codex\" },
+    ]);
+    writeInsight(openId, false);
+    const before = runCli([command]);
+    expect(before.exitCode).toBe(command === \"insight\" ? 1 : 0);
+    expect(before.stdout.trim().length).toBeGreaterThan(0);
+    expect(() => JSON.parse(before.stdout)).toThrow();
+    if (command === \"doctor\") {
+      for (const harness of [\"claude-code\", \"codex\", \"qwen\", \"opencode\"]) expect(before.stdout).toContain(harness);
+      expect(before.stdout).toContain(\"|\");
+    } else if (command === \"rates\") {
+      expect(before.stdout).toContain(\"|\");
+      for (const field of [\"check\", \"engine\", \"ok\", \"fail\", \"engine-call\", \"codex\"]) expect(before.stdout).toContain(field);
+    } else {
+      expect(before.stdout + before.stderr).toContain(openId);
+      expect(before.stdout + before.stderr).toContain(\"R12.3-whys-count\");
+    }
+    jsonOutput([command, \"--json\"], command === \"insight\" ? 1 : 0);
+    expect(runCli([command])).toEqual(before);
+  });
+
+  test(\"answered insight text still exits zero\", () => {
+    writeJournal([failure()]);
+    writeInsight(openId);
+    const before = runCli([\"insight\"]);
+    expect(before.exitCode).toBe(0);
+    jsonOutput([\"insight\", \"--json\"]);
+    expect(runCli([\"insight\"])).toEqual(before);
+  });
+});
+
+// Every invocation above hashes all root entries before/after, including existing journal and insight files.
+// Empty roots additionally detect a command creating its state directory on first use.
+describe(\"Round 7 read-only commands on roots without guard state\", () => {
+  test.each([[\"doctor\"], [\"rates\"], [\"insight\"]])(\"%s creates no files even on first use\", (command: string) => {
+    const report = jsonOutput([command, \"--json\"]);
+    if (command === \"rates\") expect(report).toEqual({ rows: [] });
+    if (command === \"insight\") expect(report).toEqual({ open: [], invalid: [], unreadable: [] });
+    runCli([command]);
+    expect(fs.existsSync(path.join(root, \".harness-guard\"))).toBe(false);
+  });
+});
+EOF
+bun test test/round7-json.test.ts" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ exited 1 in 0ms:
+/bin/bash: line 1: .claude/skills/workflow-design/guard/test/round7-json.test.ts: No such file or directory
+bun test v1.4.3 (c6da4a4d3)
+The following filters did not match any test files in --cwd="/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard":
+ test/round7-json.test.ts
+42 files were searched [1.00ms]
+
+note: Tests need ".test", "_test_", ".spec" or "_spec_" in the filename (ex: "MyApp.test.ts")
+note: To treat the "test/round7-json.test.ts" filter as a path, run "bun test ./test/round7-json.test.ts"
+
+
+exec
+/bin/bash -lc "cat > test/round7-json.test.ts <<'EOF'
+import { afterEach, beforeEach, describe, expect, test } from \"bun:test\";
+import { spawnSync } from \"node:child_process\";
+import { createHash } from \"node:crypto\";
+import * as fs from \"node:fs\";
+import * as os from \"node:os\";
+import * as path from \"node:path\";
+import type { FailureRecord, JournalRecord } from \"../src/types.ts\";
+
+const cli = path.resolve(import.meta.dir, \"../src/cli.ts\");
+const openId = \"F-1a2b3c4d\";
+const answeredId = \"F-5e6f7a8b\";
+const otherId = \"F-abcdef01\";
+const time = \"2026-10-16T08:00:00.000Z\";
+let root: string;
+let home: string;
+
+beforeEach(() => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), \"guard-round7-\"));
+  home = path.join(root, \"home\");
+  fs.mkdirSync(home);
+  writeFile(\"keep.txt\", \"existing project content\\n\");
+});
+afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+function writeFile(name: string, content: string): void {
+  const file = path.join(root, name);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, content);
+}
+
+function hashTree(): string {
+  const hash = createHash(\"sha256\");
+  for (const name of fs.readdirSync(root, { recursive: true, encoding: \"utf8\" }).sort()) {
+    const file = path.join(root, name);
+    const stat = fs.lstatSync(file);
+    hash.update(JSON.stringify([name, stat.mode, stat.size, stat.mtimeMs]));
+    if (stat.isFile()) {
+      try { hash.update(fs.readFileSync(file)); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code "'!== "EACCES") throw error;
+        hash.update("unreadable:EACCES");
+      }
+    }
+  }
+  return hash.digest("hex");
+}
+
+function runCli(args: string[]) {
+  const before = hashTree();
+  const result = spawnSync(process.execPath, [cli, ...args], {
+    cwd: root, encoding: "utf8", timeout: 10000,
+    env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+  });
+  expect(result.error).toBeUndefined();
+  expect(result.signal).toBeNull();
+  expect(hashTree()).toBe(before);
+  return { exitCode: result.status, stdout: result.stdout, stderr: result.stderr };
+}
+
+function failure(id = openId, session = "session-a", check = "R12.1-empty-output", engine = "codex"): FailureRecord {
+  writeFile(`.harness-guard/evidence/${id}.json`, '"'{\"stdoutLength\":0}\\n');
+  return {
+    kind: \"failure\", id, time, session, found_by: \"guard\", check, engine, harness: \"claude-code\",
+    input: "'`${engine} call`, expected: "non-empty output", actual: "empty output", reason: "output is empty",
+    evidence: `.harness-guard/evidence/${id}.json`,
+  };
+}
+function writeJournal(records: JournalRecord[]): void {
+  writeFile(".harness-guard/journal.jsonl", records.map((record) => JSON.stringify(record)).join("'"\\n\") + \"\\n\");
+}
+function writeInsight(id: string, valid = true, name = \"runs/task/insight.md\"): void {
+  writeFile(name, [
+    "'`## ${id}`, "Whys:", "1. Output was empty.", "2. It was not checked.",
+    ...(valid ? ["3. The instruction omitted a check."] : []),
+    "Source: instruction", "Root cause: the instruction omitted the check", "Options:",
+    "1. [rule] add the check; evidence: runs/task/rule.md",
+    "2. [check] validate the answer; evidence: runs/task/result.md", "",
+  ].join("'"\\n\"));
+}
+function jsonOutput(args: string[], exitCode = 0) {
+  const result = runCli(args);
+  expect(result.exitCode).toBe(exitCode);
+  expect(result.stderr).toBe(\"\");
+  // Parse all stdout to reject text preambles, trailing text and multiple documents.
+  return JSON.parse(result.stdout);
+}
+
+describe(\"Round 7 J1 doctor JSON\", () => {
+  test(\"prints every DoctorReport field and harness with a read-only answering probe\", () => {
+    writeJournal([failure()]);
+    writeInsight(openId, false);
+    writeFile(\".claude/settings.json\", JSON.stringify({ hooks: { PreToolUse: [{ matcher: \"Bash\", hooks: [
+      { type: \"command\", command: \"bun harness-guard/src/cli.ts hook claude\" },
+    ] }] } }));
+    const report = jsonOutput([\"doctor\", \"--json\"]);
+    expect(report.health).toBeNull();
+    expect(Array.isArray(report.harnesses)).toBe(true);
+    expect(report.harnesses.map((row: { harness: string }) => row.harness).sort()).toEqual([
+      \"claude-code\", \"codex\", \"opencode\", \"qwen\",
+    ]);
+    for (const row of report.harnesses) {
+      expect(row).toMatchObject({
+        harness: expect.any(String), guard: row.harness === \"claude-code\" ? \"installed\" : \"absent\",
+        answers: true, note: expect.any(String),
+      });
+    }
+  });
+});
+
+describe(\"Round 7 J2 rates JSON\", () => {
+  beforeEach(() => {
+    writeJournal([
+      { kind: \"success\", time, session: \"session-a\", check: \"engine-call\", engine: \"codex\" },
+      { kind: \"success\", time, session: \"session-a\", check: \"engine-call\", engine: \"codex\" },
+      failure(), failure(answeredId, \"session-a\", \"trap:codex-stdin\"),
+      { kind: \"success\", time, session: \"session-a\", check: \"test-run\", engine: \"bun\" },
+      failure(otherId, \"session-b\", \"R12.2-test-failed\", \"bun\"),
+    ]);
+    writeInsight(answeredId);
+  });
+  test.each([[false], [true]])(\"prints row fields and counts; session filter %s\", (filtered: boolean) => {
+    const report = jsonOutput([\"rates\", \"--json\", ...(filtered ? [\"--session\", \"session-a\"] : [])]);
+    expect(Array.isArray(report.rows)).toBe(true);
+    expect(report.rows).toHaveLength(2);
+    expect(report.rows).toEqual(expect.arrayContaining([
+      { check: \"engine-call\", engine: \"codex\", ok: 2, fail: 2 },
+      { check: \"test-run\", engine: \"bun\", ok: 1, fail: filtered ? 0 : 1 },
+    ]));
+  });
+  test(\"an absent session returns the rows field as an empty array\", () => {
+    expect(jsonOutput([\"rates\", \"--session\", \"missing\", \"--json\"])).toEqual({ rows: [] });
+  });
+});
+
+describe(\"Round 7 J3 insight JSON\", () => {
+  test(\"open failures exit one; invalid sections expose id, file and fail rules\", () => {
+    writeJournal([failure(), failure(answeredId), failure(otherId, \"session-b\")]);
+    writeInsight(openId, false, \"runs/task/insight-invalid.md\");
+    writeInsight(answeredId);
+    expect(jsonOutput([\"insight\", \"--json\", \"--session\", \"session-a\"], 1)).toEqual({
+      open: [{ id: openId, check: \"R12.1-empty-output\" }],
+      invalid: [{ id: openId, file: \"runs/task/insight-invalid.md\", rules: [\"R12.3-whys-count\"] }],
+      unreadable: [],
+    });
+    expect(jsonOutput([\"insight\", \"--json\"], 1).open).toEqual(expect.arrayContaining([
+      { id: openId, check: \"R12.1-empty-output\" }, { id: otherId, check: \"R12.1-empty-output\" },
+    ]));
+  });
+  test(\"valid answers close failures and exit zero with every field present\", () => {
+    writeJournal([failure()]);
+    writeInsight(openId);
+    expect(jsonOutput([\"insight\", \"--json\"])).toEqual({ open: [], invalid: [], unreadable: [] });
+  });
+  test(\"session filtering excludes another session's open failures\", () => {
+    writeJournal([failure(openId, \"session-b\")]);
+    expect(jsonOutput([\"insight\", \"--session\", \"session-a\", \"--json\"])).toEqual({
+      open: [], invalid: [], unreadable: [],
+    });
+    expect(jsonOutput([\"insight\", \"--json\", \"--session\", \"session-b\"], 1).open).toEqual([
+      { id: openId, check: \"R12.1-empty-output\" },
+    ]);
+  });
+  test(\"unreadable files are reported by relative path without closing the failure\", () => {
+    writeJournal([failure()]);
+    const name = \"runs/task/insight-unreadable.md\";
+    writeInsight(openId, true, name);
+    fs.chmodSync(path.join(root, name), 0);
+    try {
+      expect(jsonOutput([\"insight\", \"--json\"], 1)).toEqual({
+        open: [{ id: openId, check: \"R12.1-empty-output\" }], invalid: [], unreadable: [name],
+      });
+    } finally { fs.chmodSync(path.join(root, name), 0o600); }
+  });
+});
+
+describe(\"Round 7 preserves text output and exit codes without --json\", () => {
+  test.each([[\"doctor\"], [\"rates\"], [\"insight\"]])(\"%s preserves text across JSON calls without writing\", (command: string) => {
+    writeJournal([
+      failure(), { kind: \"success\", time, session: \"session-a\", check: \"engine-call\", engine: \"codex\" },
+    ]);
+    writeInsight(openId, false);
+    const before = runCli([command]);
+    expect(before.exitCode).toBe(command === \"insight\" ? 1 : 0);
+    expect(before.stdout.trim().length).toBeGreaterThan(0);
+    expect(() => JSON.parse(before.stdout)).toThrow();
+    if (command === \"doctor\") {
+      for (const harness of [\"claude-code\", \"codex\", \"qwen\", \"opencode\"]) expect(before.stdout).toContain(harness);
+      expect(before.stdout).toContain(\"|\");
+    } else if (command === \"rates\") {
+      expect(before.stdout).toContain(\"|\");
+      for (const field of [\"check\", \"engine\", \"ok\", \"fail\", \"engine-call\", \"codex\"]) expect(before.stdout).toContain(field);
+    } else {
+      expect(before.stdout + before.stderr).toContain(openId);
+      expect(before.stdout + before.stderr).toContain(\"R12.3-whys-count\");
+    }
+    jsonOutput([command, \"--json\"], command === \"insight\" ? 1 : 0);
+    expect(runCli([command])).toEqual(before);
+  });
+  test(\"answered insight text still exits zero\", () => {
+    writeJournal([failure()]);
+    writeInsight(openId);
+    const before = runCli([\"insight\"]);
+    expect(before.exitCode).toBe(0);
+    jsonOutput([\"insight\", \"--json\"]);
+    expect(runCli([\"insight\"])).toEqual(before);
+  });
+});
+
+// runCli hashes every entry before/after; empty guard state also detects first-use writes.
+describe(\"Round 7 read-only commands on roots without guard state\", () => {
+  test.each([[\"doctor\"], [\"rates\"], [\"insight\"]])(\"%s creates no files on first use\", (command: string) => {
+    const report = jsonOutput([command, \"--json\"]);
+    if (command === \"rates\") expect(report).toEqual({ rows: [] });
+    if (command === \"insight\") expect(report).toEqual({ open: [], invalid: [], unreadable: [] });
+    runCli([command]);
+    expect(fs.existsSync(path.join(root, \".harness-guard\"))).toBe(false);
+  });
+});
+EOF
+bun test test/round7-json.test.ts" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ exited 1 in 185ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/round7-json.test.ts:
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "948cef64a75ced0c9e4b04a9f0436c812ff44e03329a701c8db05a71760d52d5"
+Received: "2890759fdd62b47ae17089eccbfedb629fd75a9c7c62673b29b77a28241da19c"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:81:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:95:20)
+(fail) Round 7 J1 doctor JSON > prints every DoctorReport field and harness with a read-only answering probe [19.92ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "f976868f6f0234a34cbd84667d24172b4c016737842dd0460e3585b66ad2fcd0"
+Received: "9efd9e28501ede55417d9ca5120fabea214eef0af17244f98a6174bc47cc1025"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:81:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:122:20)
+(fail) Round 7 J2 rates JSON > prints row fields and counts; session filter %s [16.23ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "ebef34bcfd7162d0b1b264d3d2d64f9790d4576ae26f078decdeddb5ad27562e"
+Received: "d67f3991c7a0352280ae40c69481e5c4f1a2dcbb1306c66cf1d96a2d9fb2ada0"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:81:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:122:20)
+(fail) Round 7 J2 rates JSON > prints row fields and counts; session filter %s [16.23ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "5c030e3170c1fbbc2af6ba14f72b3247e41da0ad19c70eb4b80cfadf1ca4e553"
+Received: "5d6bdefc5eeff54f29195a393a524355f15b0fc684ad1789bc3e48a58033cd3b"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:81:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:131:12)
+(fail) Round 7 J2 rates JSON > an absent session returns the rows field as an empty array [16.89ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "c01319e32bca010ce721ff418172eb144e833469dbf2f8a80f5bd1d8bd5be44c"
+Received: "9d750857be972708c258ed9eb5cda495677285d7a76b924a6afe7c2d5afe5755"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:81:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:140:12)
+(fail) Round 7 J3 insight JSON > open failures exit one; invalid sections expose id, file and fail rules [16.90ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "5a58acf389f934638f2d190bc825af11f1c1568b6e9404aea420d64b34a9c7e4"
+Received: "b33f0fdb3157119d920c519953941fbddfb24dee301feea12cad9e4d468fc759"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:81:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:152:12)
+(fail) Round 7 J3 insight JSON > valid answers close failures and exit zero with every field present [16.20ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "1dfde2b2642630c73b68008267678dd88d493103861e607945c16ec821450a24"
+Received: "8266471dc536289d8cbdaa2ed4ce0a24bde87fb9dbc411fb98ca8ac0bd4945e7"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:81:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:156:12)
+(fail) Round 7 J3 insight JSON > session filtering excludes another session's open failures [15.65ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "43e42a31b787029c7119ff2471e4af2fa58d3e1dbfbd1b7e56d05965e7836ddc"
+Received: "edd57105287f9bf64cfc56c2ee09c5414e33e63e0729f86921f7373b5623727b"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:81:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:169:14)
+(fail) Round 7 J3 insight JSON > unreadable files are reported by relative path without closing the failure [15.97ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "f200a1ee6426cc38f623764189a2e521d66f1c7d8f44d81ff2a06b0621de1e88"
+Received: "2c66b098bb68071bd9cc27092f6b918b5e8598c7a811b9decb8629f82c38856a"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:182:20)
+(fail) Round 7 preserves text output and exit codes without --json > doctor preserves text across JSON calls without writing [18.60ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "d3208e636ae69f51f2e9d12fedc1e5a0c12c0d7fd02ef4819666d5c07f2197d7"
+Received: "1106df8267069d9914ac6bf4c035fe5e116520849a45f78fc5e190c1c0c86911"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:182:20)
+(fail) Round 7 preserves text output and exit codes without --json > rates preserves text across JSON calls without writing [15.94ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "6c16cca7bcb8a716a36eea7729c6a6d4e2fe1acd055c8c5efd2b7b738c5802e3"
+Received: "1e38ac473d1b7b510d21d8282bb827ec1dbdbaf34b1e8282a9d9505b7989712c"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:182:20)
+(fail) Round 7 preserves text output and exit codes without --json > insight preserves text across JSON calls without writing [16.74ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "dca60de2a18a6bee9f6910ed4d7324874c1d37e7cde2bd5a926c3b7604d7354d"
+Received: "470fc723d464b0e956c17eeff6adaf03ed6ec2f4c640cda853e2a58e56622d7c"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:202:20)
+(fail) Round 7 preserves text output and exit codes without --json > answered insight text still exits zero [16.69ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "ae0d80ab8b1d7028a9c1d9a2d7afd0614ccb8bdec2a4ebf3cb401bd9b3d6229b"
+Received: "e9acc214d0bf02aad187411e081e97dbd1896e2f42e894ad3c51231dcf16c407"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:81:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:212:20)
+(fail) Round 7 read-only commands on roots without guard state > doctor creates no files on first use [18.17ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "ed1f6ad6adf783863807760d0ee4b452e45f71090505bd3257803dd033b13d2c"
+Received: "f3ed911bb7d1aeb664a25a073958e48465f3ddfed16768e6ebe3244a4a865eb1"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:81:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:212:20)
+(fail) Round 7 read-only commands on roots without guard state > rates creates no files on first use [15.81ms]
+51 |     cwd: root, encoding: "utf8", timeout: 10000,
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "2d670b12dc7716c01045dae176f3c33a36236bdc56f81c2f3ad2d1bb0a451320"
+Received: "e52ffab727a44406a9a62b670e647a0c1c29b6d66a59954497d72300c1707b1e"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:56:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:81:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:212:20)
+(fail) Round 7 read-only commands on roots without guard state > insight creates no files on first use [15.52ms]
+
+ 0 pass
+ 15 fail
+ 45 expect() calls
+Ran 15 tests across 1 file. [259.00ms]
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+p='test/round7-json.test.ts'
+s=open(p).read().replace('expect(hashTree()).toBe(before);','if (hashTree() "'!== before) console.error(fs.readdirSync(root, { recursive: true }));'"\\n  expect(hashTree()).toBe(before);')
+open(p,'w').write(s)
+PY
+bun test test/round7-json.test.ts -t 'prints every DoctorReport'" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ exited 1 in 0ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/round7-json.test.ts:
+[
+  "home", ".harness-guard", "runs", "keep.txt", ".claude", "home/.bun", ".harness-guard/evidence",
+  ".harness-guard/journal.jsonl", "runs/task", ".claude/settings.json", "home/.bun/install",
+  ".harness-guard/evidence/F-1a2b3c4d.json", "runs/task/insight.md", "home/.bun/install/cache",
+  "home/.bun/install/cache/@t@", "home/.bun/install/cache/@t@/32ae350d3388e529.pile",
+  "home/.bun/install/cache/@t@/ba1a768f1a20ad31.pile", "home/.bun/install/cache/@t@/389214b2dba78f65.pile",
+  "home/.bun/install/cache/@t@/85c2798605465710.pile", "home/.bun/install/cache/@t@/c219a95fb3e7c98a.pile",
+  "home/.bun/install/cache/@t@/99dfe494e2ad911a.pile", "home/.bun/install/cache/@t@/89d5cb23ddcf4448.pile",
+  "home/.bun/install/cache/@t@/b3b0b3fe7b8f7dde.pile", "home/.bun/install/cache/@t@/867d146555e1b1e8.pile"
+]
+52 |     env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config") },
+53 |   });
+54 |   expect(result.error).toBeUndefined();
+55 |   expect(result.signal).toBeNull();
+56 |   if (hashTree() !== before) console.error(fs.readdirSync(root, { recursive: true }));
+57 |   expect(hashTree()).toBe(before);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "2a9752391e1301079b4b78c9e63791fa764628f3db9932b0348a4a99b1b0940f"
+Received: "d66b827297611ca1dac7722cb4ddc4dff461a494525874f44be90a1cfbcd83e2"
+
+      at runCli (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:57:22)
+      at jsonOutput (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:82:18)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:96:20)
+(fail) Round 7 J1 doctor JSON > prints every DoctorReport field and harness with a read-only answering probe [21.12ms]
+
+ 0 pass
+ 14 filtered out
+ 1 fail
+ 3 expect() calls
+Ran 1 test across 1 file. [29.00ms]
+
+exec
+/bin/bash -lc './node_modules/.bin/tsgo --noEmit -p .' in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ succeeded in 22ms:
+exec
+/bin/bash -lc "python3 - <<'PY'
+p='test/round7-json.test.ts'
+s=open(p).read().replace('env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, \".config\") },','// Bun\\'s own transpiler cache must not become a write inside the planted home.\\n    env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, \".config\"), BUN_RUNTIME_TRANSPILER_CACHE_PATH: \"0\" },').replace('  if (hashTree() "'!== before) console.error(fs.readdirSync(root, { recursive: true }));'"\\n','')
+open(p,'w').write(s)
+PY
+bun test test/round7-json.test.ts" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ exited 1 in 205ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/round7-json.test.ts:
+91 |     writeJournal([failure()]);
+92 |     writeInsight(openId, false);
+93 |     writeFile(".claude/settings.json", JSON.stringify({ hooks: { PreToolUse: [{ matcher: "Bash", hooks: [
+94 |       { type: "command", command: "bun harness-guard/src/cli.ts hook claude" },
+95 |     ] }] } }));
+96 |     const report = jsonOutput(["doctor", "--json"]);
+                        ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:96:20)
+(fail) Round 7 J1 doctor JSON > prints every DoctorReport field and harness with a read-only answering probe [19.31ms]
+118 |       failure(otherId, "session-b", "R12.2-test-failed", "bun"),
+119 |     ]);
+120 |     writeInsight(answeredId);
+121 |   });
+122 |   test.each([[false], [true]])("prints row fields and counts; session filter %s", (filtered: boolean) => {
+123 |     const report = jsonOutput(["rates", "--json", ...(filtered ? ["--session", "session-a"] : [])]);
+                         ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:123:20)
+(fail) Round 7 J2 rates JSON > prints row fields and counts; session filter %s [16.66ms]
+118 |       failure(otherId, "session-b", "R12.2-test-failed", "bun"),
+119 |     ]);
+120 |     writeInsight(answeredId);
+121 |   });
+122 |   test.each([[false], [true]])("prints row fields and counts; session filter %s", (filtered: boolean) => {
+123 |     const report = jsonOutput(["rates", "--json", ...(filtered ? ["--session", "session-a"] : [])]);
+                         ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:123:20)
+(fail) Round 7 J2 rates JSON > prints row fields and counts; session filter %s [16.44ms]
+127 |       { check: "engine-call", engine: "codex", ok: 2, fail: 2 },
+128 |       { check: "test-run", engine: "bun", ok: 1, fail: filtered ? 0 : 1 },
+129 |     ]));
+130 |   });
+131 |   test("an absent session returns the rows field as an empty array", () => {
+132 |     expect(jsonOutput(["rates", "--session", "missing", "--json"])).toEqual({ rows: [] });
+                 ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:132:12)
+(fail) Round 7 J2 rates JSON > an absent session returns the rows field as an empty array [15.34ms]
+136 | describe("Round 7 J3 insight JSON", () => {
+137 |   test("open failures exit one; invalid sections expose id, file and fail rules", () => {
+138 |     writeJournal([failure(), failure(answeredId), failure(otherId, "session-b")]);
+139 |     writeInsight(openId, false, "runs/task/insight-invalid.md");
+140 |     writeInsight(answeredId);
+141 |     expect(jsonOutput(["insight", "--json", "--session", "session-a"], 1)).toEqual({
+                 ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:141:12)
+(fail) Round 7 J3 insight JSON > open failures exit one; invalid sections expose id, file and fail rules [16.21ms]
+148 |     ]));
+149 |   });
+150 |   test("valid answers close failures and exit zero with every field present", () => {
+151 |     writeJournal([failure()]);
+152 |     writeInsight(openId);
+153 |     expect(jsonOutput(["insight", "--json"])).toEqual({ open: [], invalid: [], unreadable: [] });
+                 ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:153:12)
+(fail) Round 7 J3 insight JSON > valid answers close failures and exit zero with every field present [15.86ms]
+152 |     writeInsight(openId);
+153 |     expect(jsonOutput(["insight", "--json"])).toEqual({ open: [], invalid: [], unreadable: [] });
+154 |   });
+155 |   test("session filtering excludes another session's open failures", () => {
+156 |     writeJournal([failure(openId, "session-b")]);
+157 |     expect(jsonOutput(["insight", "--session", "session-a", "--json"])).toEqual({
+                 ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:157:12)
+(fail) Round 7 J3 insight JSON > session filtering excludes another session's open failures [15.62ms]
+165 |     writeJournal([failure()]);
+166 |     const name = "runs/task/insight-unreadable.md";
+167 |     writeInsight(openId, true, name);
+168 |     fs.chmodSync(path.join(root, name), 0);
+169 |     try {
+170 |       expect(jsonOutput(["insight", "--json"], 1)).toEqual({
+                   ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:170:14)
+(fail) Round 7 J3 insight JSON > unreadable files are reported by relative path without closing the failure [15.78ms]
+180 |       failure(), { kind: "success", time, session: "session-a", check: "engine-call", engine: "codex" },
+181 |     ]);
+182 |     writeInsight(openId, false);
+183 |     const before = runCli([command]);
+184 |     expect(before.exitCode).toBe(command === "insight" ? 1 : 0);
+185 |     expect(before.stdout.trim().length).toBeGreaterThan(0);
+                                              ^
+error: expect(received).toBeGreaterThan(expected)
+
+Expected: > 0
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:185:41)
+(fail) Round 7 preserves text output and exit codes without --json > doctor preserves text across JSON calls without writing [18.25ms]
+180 |       failure(), { kind: "success", time, session: "session-a", check: "engine-call", engine: "codex" },
+181 |     ]);
+182 |     writeInsight(openId, false);
+183 |     const before = runCli([command]);
+184 |     expect(before.exitCode).toBe(command === "insight" ? 1 : 0);
+185 |     expect(before.stdout.trim().length).toBeGreaterThan(0);
+                                              ^
+error: expect(received).toBeGreaterThan(expected)
+
+Expected: > 0
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:185:41)
+(fail) Round 7 preserves text output and exit codes without --json > rates preserves text across JSON calls without writing [15.88ms]
+180 |       failure(), { kind: "success", time, session: "session-a", check: "engine-call", engine: "codex" },
+181 |     ]);
+182 |     writeInsight(openId, false);
+183 |     const before = runCli([command]);
+184 |     expect(before.exitCode).toBe(command === "insight" ? 1 : 0);
+185 |     expect(before.stdout.trim().length).toBeGreaterThan(0);
+                                              ^
+error: expect(received).toBeGreaterThan(expected)
+
+Expected: > 0
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:185:41)
+(fail) Round 7 preserves text output and exit codes without --json > insight preserves text across JSON calls without writing [15.78ms]
+200 |   test("answered insight text still exits zero", () => {
+201 |     writeJournal([failure()]);
+202 |     writeInsight(openId);
+203 |     const before = runCli(["insight"]);
+204 |     expect(before.exitCode).toBe(0);
+205 |     jsonOutput(["insight", "--json"]);
+          ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:205:5)
+(fail) Round 7 preserves text output and exit codes without --json > answered insight text still exits zero [31.48ms]
+208 | });
+209 | 
+210 | // runCli hashes every entry before/after; empty guard state also detects first-use writes.
+211 | describe("Round 7 read-only commands on roots without guard state", () => {
+212 |   test.each([["doctor"], ["rates"], ["insight"]])("%s creates no files on first use", (command: string) => {
+213 |     const report = jsonOutput([command, "--json"]);
+                         ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:213:20)
+(fail) Round 7 read-only commands on roots without guard state > doctor creates no files on first use [17.55ms]
+208 | });
+209 | 
+210 | // runCli hashes every entry before/after; empty guard state also detects first-use writes.
+211 | describe("Round 7 read-only commands on roots without guard state", () => {
+212 |   test.each([["doctor"], ["rates"], ["insight"]])("%s creates no files on first use", (command: string) => {
+213 |     const report = jsonOutput([command, "--json"]);
+                         ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:213:20)
+(fail) Round 7 read-only commands on roots without guard state > rates creates no files on first use [14.92ms]
+208 | });
+209 | 
+210 | // runCli hashes every entry before/after; empty guard state also detects first-use writes.
+211 | describe("Round 7 read-only commands on roots without guard state", () => {
+212 |   test.each([["doctor"], ["rates"], ["insight"]])("%s creates no files on first use", (command: string) => {
+213 |     const report = jsonOutput([command, "--json"]);
+                         ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:213:20)
+(fail) Round 7 read-only commands on roots without guard state > insight creates no files on first use [14.95ms]
+
+ 0 pass
+ 15 fail
+ 79 expect() calls
+Ran 15 tests across 1 file. [268.00ms]
+
+codex
+The tree hashes caught Bun creating a transpiler cache inside the temporary home. I disabled that cache for test subprocesses, so the hashes now measure command writes. The tests currently receive empty CLI stdout; I’m checking whether that comes from the subprocess helper or the CLI. Type checking has passed.
+exec
+/bin/bash -lc "bun src/cli.ts doctor --json; bun -e 'import {spawnSync} from \"node:child_process\"; console.log(spawnSync(process.execPath,[\"src/cli.ts\",\"doctor\",\"--json\"],{encoding:\"utf8\"}));'" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ succeeded in 0ms:
+{"harnesses":[{"harness":"claude-code","guard":"installed","answers":true,"note":"1 of 1 read file(s) carry a harness-guard hook"},{"harness":"codex","guard":"absent","answers":true,"note":"no harness-guard hook found in 1 read file(s)"},{"harness":"qwen","guard":"absent","answers":true,"note":"no harness-guard hook found in 1 read file(s)"},{"harness":"opencode","guard":"absent","answers":true,"note":"no harness-guard hook found in 0 read file(s)"}],"health":null}
+{
+  signal: null,
+  status: 0,
+  output: [ null, "", "" ],
+  pid: 19,
+  stdout: "",
+  stderr: "",
+}
+
+exec
+/bin/bash -lc "bun -e 'const r = Bun.spawnSync([process.execPath,\"src/cli.ts\",\"doctor\",\"--json\"],{stdout:\"pipe\",stderr:\"pipe\"}); console.log({exitCode:r.exitCode,stdout:r.stdout.toString(),stderr:r.stderr.toString()});'" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ succeeded in 0ms:
+{
+  exitCode: 0,
+  stdout: "",
+  stderr: "",
+}
+
+exec
+/bin/bash -lc "bun -e 'import {spawnSync} from \"node:child_process\"; console.log(spawnSync(process.execPath,[\"-e\",\"console.log(123)\"],{encoding:\"utf8\"})); console.log(spawnSync(process.execPath,[\"src/cli.ts\",\"doctor\",\"--json\"],{stdio:\"inherit\"}));'" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ succeeded in 0ms:
+{
+  signal: null,
+  status: 0,
+  output: [ null, "123\n", "" ],
+  pid: 8,
+  stdout: "123\n",
+  stderr: "",
+}
+{"harnesses":[{"harness":"claude-code","guard":"installed","answers":true,"note":"1 of 1 read file(s) carry a harness-guard hook"},{"harness":"codex","guard":"absent","answers":true,"note":"no harness-guard hook found in 1 read file(s)"},{"harness":"qwen","guard":"absent","answers":true,"note":"no harness-guard hook found in 1 read file(s)"},{"harness":"opencode","guard":"absent","answers":true,"note":"no harness-guard hook found in 0 read file(s)"}],"health":null}
+{
+  signal: null,
+  status: 0,
+  output: [ null, null, null ],
+  pid: 12,
+  stdout: null,
+  stderr: null,
+}
+
+exec
+/bin/bash -lc "bun -e 'import {spawnSync} from \"node:child_process\"; import * as fs from \"node:fs\"; const folder=fs.mkdtempSync(\"/tmp/round7-capture-\"); const file=folder+\"/stdout\"; const fd=fs.openSync(file,\"w\"); try {const r=spawnSync(process.execPath,[\"src/cli.ts\",\"doctor\",\"--json\"],{stdio:[\"ignore\",fd,\"pipe\"],encoding:\"utf8\"}); console.log(r.status,fs.readFileSync(file,\"utf8\"));} finally {fs.closeSync(fd);fs.rmSync(folder,{recursive:true});}'" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ succeeded in 0ms:
+0 {"harnesses":[{"harness":"claude-code","guard":"installed","answers":true,"note":"1 of 1 read file(s) carry a harness-guard hook"},{"harness":"codex","guard":"absent","answers":true,"note":"no harness-guard hook found in 1 read file(s)"},{"harness":"qwen","guard":"absent","answers":true,"note":"no harness-guard hook found in 1 read file(s)"},{"harness":"opencode","guard":"absent","answers":true,"note":"no harness-guard hook found in 0 read file(s)"}],"health":null}
+
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+p='test/round7-json.test.ts'
+s=open(p).read()
+a=s.index('  const before = hashTree();',s.index('function runCli'))
+b=s.index('\\n}\\n\\nfunction failure',a)
+s=s[:a]+'''  const before = hashTree();
+  // File descriptors capture stdout synchronously even when the CLI exits immediately.
+  const capture = fs.mkdtempSync(path.join(os.tmpdir(), \"guard-round7-output-\"));
+  const stdout = fs.openSync(path.join(capture, \"stdout\"), \"w+\");
+  const stderr = fs.openSync(path.join(capture, \"stderr\"), \"w+\");
+  try {
+    const result = spawnSync(process.execPath, [cli, ...args], {
+      cwd: root, encoding: \"utf8\", timeout: 10000, stdio: [\"ignore\", stdout, stderr],
+      // Exclude Bun's transpiler cache writes from the planted project home.
+      env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, \".config\"), BUN_RUNTIME_TRANSPILER_CACHE_PATH: \"0\" },
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.signal).toBeNull();
+    expect(hashTree()).toBe(before);
+    return { exitCode: result.status, stdout: fs.readFileSync(stdout, \"utf8\"), stderr: fs.readFileSync(stderr, \"utf8\") };
+  } finally {
+    fs.closeSync(stdout);
+    fs.closeSync(stderr);
+    fs.rmSync(capture, { recursive: true, force: true });
+  }''' + s[b:]
+s+='''
+// Health-check consumers capture stdout through a pipe rather than a regular file.
+describe(\"Round 7 JSON through consumer stdout pipes\", () => {
+  test.each([[\"doctor\"], [\"rates\"], [\"insight\"]])(\"%s JSON parses when stdout is piped\", (command: string) => {
+    writeJournal([failure()]);
+    writeInsight(openId);
+    const before = hashTree();
+    const result = spawnSync(process.execPath, [cli, command, \"--json\"], {
+      cwd: root, encoding: \"utf8\", timeout: 10000,
+      env: { ...process.env, HOME: home, BUN_RUNTIME_TRANSPILER_CACHE_PATH: \"0\" },
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.signal).toBeNull();
+    expect(hashTree()).toBe(before);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe(\"\");
+    expect(() => JSON.parse(result.stdout)).not.toThrow();
+  });
+});
+'''
+open(p,'w').write(s)
+PY
+bun test test/round7-json.test.ts" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ exited 1 in 246ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/round7-json.test.ts:
+101 |     writeJournal([failure()]);
+102 |     writeInsight(openId, false);
+103 |     writeFile(".claude/settings.json", JSON.stringify({ hooks: { PreToolUse: [{ matcher: "Bash", hooks: [
+104 |       { type: "command", command: "bun harness-guard/src/cli.ts hook claude" },
+105 |     ] }] } }));
+106 |     const report = jsonOutput(["doctor", "--json"]);
+                         ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:106:20)
+(fail) Round 7 J1 doctor JSON > prints every DoctorReport field and harness with a read-only answering probe [19.29ms]
+128 |       failure(otherId, "session-b", "R12.2-test-failed", "bun"),
+129 |     ]);
+130 |     writeInsight(answeredId);
+131 |   });
+132 |   test.each([[false], [true]])("prints row fields and counts; session filter %s", (filtered: boolean) => {
+133 |     const report = jsonOutput(["rates", "--json", ...(filtered ? ["--session", "session-a"] : [])]);
+                         ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:133:20)
+(fail) Round 7 J2 rates JSON > prints row fields and counts; session filter %s [16.17ms]
+128 |       failure(otherId, "session-b", "R12.2-test-failed", "bun"),
+129 |     ]);
+130 |     writeInsight(answeredId);
+131 |   });
+132 |   test.each([[false], [true]])("prints row fields and counts; session filter %s", (filtered: boolean) => {
+133 |     const report = jsonOutput(["rates", "--json", ...(filtered ? ["--session", "session-a"] : [])]);
+                         ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:133:20)
+(fail) Round 7 J2 rates JSON > prints row fields and counts; session filter %s [16.24ms]
+137 |       { check: "engine-call", engine: "codex", ok: 2, fail: 2 },
+138 |       { check: "test-run", engine: "bun", ok: 1, fail: filtered ? 0 : 1 },
+139 |     ]));
+140 |   });
+141 |   test("an absent session returns the rows field as an empty array", () => {
+142 |     expect(jsonOutput(["rates", "--session", "missing", "--json"])).toEqual({ rows: [] });
+                 ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:142:12)
+(fail) Round 7 J2 rates JSON > an absent session returns the rows field as an empty array [15.57ms]
+146 | describe("Round 7 J3 insight JSON", () => {
+147 |   test("open failures exit one; invalid sections expose id, file and fail rules", () => {
+148 |     writeJournal([failure(), failure(answeredId), failure(otherId, "session-b")]);
+149 |     writeInsight(openId, false, "runs/task/insight-invalid.md");
+150 |     writeInsight(answeredId);
+151 |     expect(jsonOutput(["insight", "--json", "--session", "session-a"], 1)).toEqual({
+                 ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:151:12)
+(fail) Round 7 J3 insight JSON > open failures exit one; invalid sections expose id, file and fail rules [16.19ms]
+158 |     ]));
+159 |   });
+160 |   test("valid answers close failures and exit zero with every field present", () => {
+161 |     writeJournal([failure()]);
+162 |     writeInsight(openId);
+163 |     expect(jsonOutput(["insight", "--json"])).toEqual({ open: [], invalid: [], unreadable: [] });
+                 ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:163:12)
+(fail) Round 7 J3 insight JSON > valid answers close failures and exit zero with every field present [16.27ms]
+162 |     writeInsight(openId);
+163 |     expect(jsonOutput(["insight", "--json"])).toEqual({ open: [], invalid: [], unreadable: [] });
+164 |   });
+165 |   test("session filtering excludes another session's open failures", () => {
+166 |     writeJournal([failure(openId, "session-b")]);
+167 |     expect(jsonOutput(["insight", "--session", "session-a", "--json"])).toEqual({
+                 ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:167:12)
+(fail) Round 7 J3 insight JSON > session filtering excludes another session's open failures [15.05ms]
+175 |     writeJournal([failure()]);
+176 |     const name = "runs/task/insight-unreadable.md";
+177 |     writeInsight(openId, true, name);
+178 |     fs.chmodSync(path.join(root, name), 0);
+179 |     try {
+180 |       expect(jsonOutput(["insight", "--json"], 1)).toEqual({
+                   ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:180:14)
+(fail) Round 7 J3 insight JSON > unreadable files are reported by relative path without closing the failure [15.36ms]
+190 |       failure(), { kind: "success", time, session: "session-a", check: "engine-call", engine: "codex" },
+191 |     ]);
+192 |     writeInsight(openId, false);
+193 |     const before = runCli([command]);
+194 |     expect(before.exitCode).toBe(command === "insight" ? 1 : 0);
+195 |     expect(before.stdout.trim().length).toBeGreaterThan(0);
+                                              ^
+error: expect(received).toBeGreaterThan(expected)
+
+Expected: > 0
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:195:41)
+(fail) Round 7 preserves text output and exit codes without --json > doctor preserves text across JSON calls without writing [18.42ms]
+190 |       failure(), { kind: "success", time, session: "session-a", check: "engine-call", engine: "codex" },
+191 |     ]);
+192 |     writeInsight(openId, false);
+193 |     const before = runCli([command]);
+194 |     expect(before.exitCode).toBe(command === "insight" ? 1 : 0);
+195 |     expect(before.stdout.trim().length).toBeGreaterThan(0);
+                                              ^
+error: expect(received).toBeGreaterThan(expected)
+
+Expected: > 0
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:195:41)
+(fail) Round 7 preserves text output and exit codes without --json > rates preserves text across JSON calls without writing [15.62ms]
+190 |       failure(), { kind: "success", time, session: "session-a", check: "engine-call", engine: "codex" },
+191 |     ]);
+192 |     writeInsight(openId, false);
+193 |     const before = runCli([command]);
+194 |     expect(before.exitCode).toBe(command === "insight" ? 1 : 0);
+195 |     expect(before.stdout.trim().length).toBeGreaterThan(0);
+                                              ^
+error: expect(received).toBeGreaterThan(expected)
+
+Expected: > 0
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:195:41)
+(fail) Round 7 preserves text output and exit codes without --json > insight preserves text across JSON calls without writing [15.94ms]
+210 |   test("answered insight text still exits zero", () => {
+211 |     writeJournal([failure()]);
+212 |     writeInsight(openId);
+213 |     const before = runCli(["insight"]);
+214 |     expect(before.exitCode).toBe(0);
+215 |     jsonOutput(["insight", "--json"]);
+          ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:215:5)
+(fail) Round 7 preserves text output and exit codes without --json > answered insight text still exits zero [31.36ms]
+218 | });
+219 | 
+220 | // runCli hashes every entry before/after; empty guard state also detects first-use writes.
+221 | describe("Round 7 read-only commands on roots without guard state", () => {
+222 |   test.each([["doctor"], ["rates"], ["insight"]])("%s creates no files on first use", (command: string) => {
+223 |     const report = jsonOutput([command, "--json"]);
+                         ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:223:20)
+(fail) Round 7 read-only commands on roots without guard state > doctor creates no files on first use [19.02ms]
+218 | });
+219 | 
+220 | // runCli hashes every entry before/after; empty guard state also detects first-use writes.
+221 | describe("Round 7 read-only commands on roots without guard state", () => {
+222 |   test.each([["doctor"], ["rates"], ["insight"]])("%s creates no files on first use", (command: string) => {
+223 |     const report = jsonOutput([command, "--json"]);
+                         ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:223:20)
+(fail) Round 7 read-only commands on roots without guard state > rates creates no files on first use [15.13ms]
+218 | });
+219 | 
+220 | // runCli hashes every entry before/after; empty guard state also detects first-use writes.
+221 | describe("Round 7 read-only commands on roots without guard state", () => {
+222 |   test.each([["doctor"], ["rates"], ["insight"]])("%s creates no files on first use", (command: string) => {
+223 |     const report = jsonOutput([command, "--json"]);
+                         ^
+SyntaxError: JSON Parse error: Unexpected EOF
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:223:20)
+(fail) Round 7 read-only commands on roots without guard state > insight creates no files on first use [14.90ms]
+241 |     expect(result.error).toBeUndefined();
+242 |     expect(result.signal).toBeNull();
+243 |     expect(hashTree()).toBe(before);
+244 |     expect(result.status).toBe(0);
+245 |     expect(result.stderr).toBe("");
+246 |     expect(() => JSON.parse(result.stdout)).not.toThrow();
+                                                      ^
+error: expect(received).not.toThrow()
+
+Error name: "SyntaxError"
+Error message: "JSON Parse error: Unexpected EOF"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:246:49)
+(fail) Round 7 JSON through consumer stdout pipes > doctor JSON parses when stdout is piped [18.52ms]
+241 |     expect(result.error).toBeUndefined();
+242 |     expect(result.signal).toBeNull();
+243 |     expect(hashTree()).toBe(before);
+244 |     expect(result.status).toBe(0);
+245 |     expect(result.stderr).toBe("");
+246 |     expect(() => JSON.parse(result.stdout)).not.toThrow();
+                                                      ^
+error: expect(received).not.toThrow()
+
+Error name: "SyntaxError"
+Error message: "JSON Parse error: Unexpected EOF"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:246:49)
+(fail) Round 7 JSON through consumer stdout pipes > rates JSON parses when stdout is piped [16.61ms]
+241 |     expect(result.error).toBeUndefined();
+242 |     expect(result.signal).toBeNull();
+243 |     expect(hashTree()).toBe(before);
+244 |     expect(result.status).toBe(0);
+245 |     expect(result.stderr).toBe("");
+246 |     expect(() => JSON.parse(result.stdout)).not.toThrow();
+                                                      ^
+error: expect(received).not.toThrow()
+
+Error name: "SyntaxError"
+Error message: "JSON Parse error: Unexpected EOF"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:246:49)
+(fail) Round 7 JSON through consumer stdout pipes > insight JSON parses when stdout is piped [17.34ms]
+
+ 0 pass
+ 18 fail
+ 97 expect() calls
+Ran 18 tests across 1 file. [320.00ms]
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+p='test/round7-json.test.ts'
+s=open(p).read().replace('stdout: fs.readFileSync(stdout, \"utf8\"), stderr: fs.readFileSync(stderr, \"utf8\")','stdout: fs.readFileSync(path.join(capture, \"stdout\"), \"utf8\"), stderr: fs.readFileSync(path.join(capture, \"stderr\"), \"utf8\")')
+open(p,'w').write(s)
+PY
+bun test test/round7-json.test.ts" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ exited 1 in 434ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/round7-json.test.ts:
+241 |     expect(result.error).toBeUndefined();
+242 |     expect(result.signal).toBeNull();
+243 |     expect(hashTree()).toBe(before);
+244 |     expect(result.status).toBe(0);
+245 |     expect(result.stderr).toBe("");
+246 |     expect(() => JSON.parse(result.stdout)).not.toThrow();
+                                                      ^
+error: expect(received).not.toThrow()
+
+Error name: "SyntaxError"
+Error message: "JSON Parse error: Unexpected EOF"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:246:49)
+(fail) Round 7 JSON through consumer stdout pipes > doctor JSON parses when stdout is piped [17.66ms]
+241 |     expect(result.error).toBeUndefined();
+242 |     expect(result.signal).toBeNull();
+243 |     expect(hashTree()).toBe(before);
+244 |     expect(result.status).toBe(0);
+245 |     expect(result.stderr).toBe("");
+246 |     expect(() => JSON.parse(result.stdout)).not.toThrow();
+                                                      ^
+error: expect(received).not.toThrow()
+
+Error name: "SyntaxError"
+Error message: "JSON Parse error: Unexpected EOF"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:246:49)
+(fail) Round 7 JSON through consumer stdout pipes > rates JSON parses when stdout is piped [15.14ms]
+241 |     expect(result.error).toBeUndefined();
+242 |     expect(result.signal).toBeNull();
+243 |     expect(hashTree()).toBe(before);
+244 |     expect(result.status).toBe(0);
+245 |     expect(result.stderr).toBe("");
+246 |     expect(() => JSON.parse(result.stdout)).not.toThrow();
+                                                      ^
+error: expect(received).not.toThrow()
+
+Error name: "SyntaxError"
+Error message: "JSON Parse error: Unexpected EOF"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:246:49)
+(fail) Round 7 JSON through consumer stdout pipes > insight JSON parses when stdout is piped [16.11ms]
+
+ 15 pass
+ 3 fail
+ 189 expect() calls
+Ran 18 tests across 1 file. [501.00ms]
+
+codex
+The 15 report and text tests pass when stdout goes to a regular file, including all tree-hash checks. Three additional tests fail when stdout is piped: each command returns empty stdout, which cannot parse as JSON. I’ll retain those failures and report the observation without attributing it to CLI code I haven’t read.
+exec
+/bin/bash -lc "python3 - <<'PY'
+p='test/round7-json.test.ts'
+s=open(p).read()
+needle='\\n});\\n\\ndescribe(\"Round 7 J2 rates JSON\"'
+replacement='''
+  test(\"health reports include ok and summary when a health script is supplied\", () => {
+    writeJournal([failure()]);
+    writeInsight(openId);
+    writeFile(\"health.py\", 'print(\\'{\"findings\":[{},{}]}\\')\\\\n');
+    const report = jsonOutput([\"doctor\", \"--json\", \"--health\", path.join(root, \"health.py\")]);
+    expect(report.health).toEqual({ ok: true, summary: \"2 findings\" });
+  });
+});
+
+describe(\"Round 7 J2 rates JSON\"'''
+assert needle in s
+s=s.replace(needle,replacement,1)
+open(p,'w').write(s)
+PY
+bun test test/round7-json.test.ts" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ exited 1 in 0ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/round7-json.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+122 |     writeFile("health.py", 'print('{"findings":[{},{}]}')\n');
+                                         ^
+error: Expected ")" but found "{"
+    at /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:122:36
+
+122 |     writeFile("health.py", 'print('{"findings":[{},{}]}')\n');
+                                          ^
+error: Expected ";" but found ""findings""
+    at /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:122:37
+
+122 |     writeFile("health.py", 'print('{"findings":[{},{}]}')\n');
+                                                    ^
+error: Unexpected :
+    at /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:122:47
+-------------------------------
+
+
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file. [2.00ms]
+
+exec
+/bin/bash -lc './node_modules/.bin/tsgo --noEmit -p .' in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ exited 2 in 0ms:
+test/round7-json.test.ts(122,36): error TS1005: ',' expected.
+test/round7-json.test.ts(122,56): error TS1005: ',' expected.
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+p='test/round7-json.test.ts'
+s=open(p).read()
+lines=s.splitlines()
+lines[121]='    writeFile(\"health.py\", "'`print('"\\'{\"findings\":[{},{}]}\\')\\\\n"'`);'"'
+open(p,'w').write('\\n'.join(lines)+'\\n')
+PY
+bun test test/round7-json.test.ts" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ exited 1 in 465ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/round7-json.test.ts:
+248 |     expect(result.error).toBeUndefined();
+249 |     expect(result.signal).toBeNull();
+250 |     expect(hashTree()).toBe(before);
+251 |     expect(result.status).toBe(0);
+252 |     expect(result.stderr).toBe("");
+253 |     expect(() => JSON.parse(result.stdout)).not.toThrow();
+                                                      ^
+error: expect(received).not.toThrow()
+
+Error name: "SyntaxError"
+Error message: "JSON Parse error: Unexpected EOF"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:253:49)
+(fail) Round 7 JSON through consumer stdout pipes > doctor JSON parses when stdout is piped [18.05ms]
+248 |     expect(result.error).toBeUndefined();
+249 |     expect(result.signal).toBeNull();
+250 |     expect(hashTree()).toBe(before);
+251 |     expect(result.status).toBe(0);
+252 |     expect(result.stderr).toBe("");
+253 |     expect(() => JSON.parse(result.stdout)).not.toThrow();
+                                                      ^
+error: expect(received).not.toThrow()
+
+Error name: "SyntaxError"
+Error message: "JSON Parse error: Unexpected EOF"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:253:49)
+(fail) Round 7 JSON through consumer stdout pipes > rates JSON parses when stdout is piped [15.29ms]
+248 |     expect(result.error).toBeUndefined();
+249 |     expect(result.signal).toBeNull();
+250 |     expect(hashTree()).toBe(before);
+251 |     expect(result.status).toBe(0);
+252 |     expect(result.stderr).toBe("");
+253 |     expect(() => JSON.parse(result.stdout)).not.toThrow();
+                                                      ^
+error: expect(received).not.toThrow()
+
+Error name: "SyntaxError"
+Error message: "JSON Parse error: Unexpected EOF"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard/test/round7-json.test.ts:253:49)
+(fail) Round 7 JSON through consumer stdout pipes > insight JSON parses when stdout is piped [15.84ms]
+
+ 16 pass
+ 3 fail
+ 195 expect() calls
+Ran 19 tests across 1 file. [527.00ms]
+
+exec
+/bin/bash -lc './node_modules/.bin/tsgo --noEmit -p .' in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate/.claude/skills/workflow-design/guard
+ succeeded in 23ms:
+exec
+/bin/bash -lc "rg -n 'Fails-if: "'`--json`|J1 `doctor|J2 `rates|J3 `insight'"' .claude/skills/workflow-design/guard/SPEC.md; git diff --check -- .claude/skills/workflow-design/guard/test/round7-json.test.ts runs/20261016-integrate-r11-r13/nodes/tests-json.result.md; git status --short -- .claude/skills/workflow-design/guard/test/round7-json.test.ts runs/20261016-integrate-r11-r13/nodes/tests-json.result.md" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate
+ succeeded in 0ms:
+484:- **J1 `doctor --json`** prints the `DoctorReport` as JSON (`{"harnesses":[{harness, guard, answers, note}],
+486:- **J2 `rates --json [--session S]`** prints `{"rows":[{check, engine, ok, fail}]}`; exit 0.
+487:- **J3 `insight --json [--session S]`** prints `{"open":[{id, check}], "invalid":[{id, file, rules}],
+493:Fails-if: `--json` output does not parse; a field above is missing; `insight --json` exits 0 with an open failure;
+?? .claude/skills/workflow-design/guard/test/round7-json.test.ts
+?? runs/20261016-integrate-r11-r13/nodes/tests-json.result.md
+
+exec
+/bin/bash -lc "cat > runs/20261016-integrate-r11-r13/nodes/tests-json.result.md <<'EOF'
+status: done
+Wrote Round 7 acceptance tests from SPEC alone: 16 pass and 3 expose empty stdout through consumer pipes; type checking passes.
+
+files:
+- .claude/skills/workflow-design/guard/test/round7-json.test.ts
+- runs/20261016-integrate-r11-r13/nodes/tests-json.result.md
+
+commands and last lines:
+- "'`cd .claude/skills/workflow-design/guard && bun test test/round7-json.test.ts` — exit 1; `16 pass`, `3 fail`, `195 expect() calls`, `Ran 19 tests across 1 file. [527.00ms]`.
+- `cd .claude/skills/workflow-design/guard && ./node_modules/.bin/tsgo --noEmit -p .` — exit 0, no output; no type errors in this file or elsewhere in the project at this check.
+- `git diff --check -- .claude/skills/workflow-design/guard/test/round7-json.test.ts runs/20261016-integrate-r11-r13/nodes/tests-json.result.md` — exit 0, no output.
+
+CONTRADICTS:
+- SPEC.md:493, `Fails-if: --json output does not parse` (J1–J3 at lines 484–490): doctor, rates and insight each return empty stdout and exit 0 when captured through spawnSync'"'s stdout pipe with a valid answered failure planted. JSON.parse throws "'`Unexpected EOF` in all three pipe tests. The same commands return valid reports through regular-file stdout descriptors. This is an observed contract failure in this environment; its implementation cause was not established.
+
+Coverage: populated reports (including doctor health ok/summary and every harness field), rates counts/session filtering, open and answered failures, invalid sections and rule ids, unreadable insight paths, no-state roots, text format and exits, text equality across JSON calls, and SHA-256 tree comparisons around every CLI invocation. Text assertions pin the SPEC'"'s documented format and compare before/after JSON calls; they cannot establish byte-for-byte identity with an unavailable earlier CLI version.
+
+These checks were authored by this worker from SPEC Round 7 and the referenced contracts, not independently reviewed. No src/cli.ts content was read or changed. No source fixes, commits, other AI engines, or background commands were used. Bun's runtime transpiler cache is disabled in child processes to avoid runtime cache creation inside the planted HOME; stdout/stderr capture scratch files live outside the hashed root and are removed after each call.
+EOF" in /home/smoke01/dev/ancient-games/.claude/worktrees/integrate
+ succeeded in 0ms:
+codex
+Added 19 acceptance tests: **16 pass, 3 fail** because piped stdout is empty for all three JSON commands. Type checking passes.
+
+Recorded the failures and SPEC references in [tests-json.result.md](runs/20261016-integrate-r11-r13/nodes/tests-json.result.md). Only the two allowed files changed; `src/cli.ts` was neither read nor changed.
+tokens used
+85,318
+Added 19 acceptance tests: **16 pass, 3 fail** because piped stdout is empty for all three JSON commands. Type checking passes.
+
+Recorded the failures and SPEC references in [tests-json.result.md](runs/20261016-integrate-r11-r13/nodes/tests-json.result.md). Only the two allowed files changed; `src/cli.ts` was neither read nor changed.

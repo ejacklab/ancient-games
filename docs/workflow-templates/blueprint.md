@@ -55,7 +55,7 @@ missing (method §3.1).
 ## Headings per section
 
 - **01 Product vision** — who it is for; the problem it solves; what it will not do; how we know it works.
-- **09 Use cases** — two lists merged by the owner's decisions (`docs/HARNESS_REQUIREMENTS.md` R13): the owner's
+- **09 Use cases** — two lists merged by the owner's decisions (R13, in the `requirement-check` skill): the owner's
   basic use cases, and the agent's suggestions each with the owner's accept or decline. Each accepted use case: its
   purpose, its fails-if, its minimum acceptance criteria. Kept as a register file the guard checks
   (`guard/src/cli.ts register <file>`; the criteria for a run come from it with `criteria new --from-register`).

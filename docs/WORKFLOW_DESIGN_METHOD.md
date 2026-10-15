@@ -483,7 +483,8 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    builds until checked against a source or by running code; the researcher and explorer gather, the COO designs; the
    codebase comes first for a feature in an existing system (case C), current docs first for a new stack (case D).
 13. **Code holds what needs no judgment** — the rules it serves are `docs/HARNESS_REQUIREMENTS.md` (R11 results can
-   be judged, R12 failures and great successes improve the harness, R13 use cases and requirements); the skill's `guard/` package (bun, TypeScript, no dependencies) runs at
+   be judged, R12 failures and great successes improve the harness; R13, use cases and requirements, is kept in
+   the `requirement-check` skill); the skill's `guard/` package (bun, TypeScript, no dependencies) runs at
    fixed points, so an agent cannot skip it once it is installed: before an engine call it lints the command against a
    trap catalogue (`guard/data/traps.yaml`; only `approved` entries act); after the call it treats a missing or empty
    output, a known silent-failure text or a failing exit as a failure (exit 0 is not success) and logs it to

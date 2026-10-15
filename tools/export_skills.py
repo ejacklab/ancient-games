@@ -147,9 +147,11 @@ def main() -> int:
             continue
         copy_deref(child, wd_dst / child.name)
 
-    # Single-file skills.
+    # Single-file skills, with their references/ folder when they have one (requirement-check keeps R13 there).
     for name in SINGLE_FILE_SKILLS:
         copy_deref(SRC / name / "SKILL.md", DEST / name / "SKILL.md")
+        if (SRC / name / "references").is_dir():
+            copy_deref(SRC / name / "references", DEST / name / "references")
 
     shutil.copy2(REPO / "BOOTSTRAP_PROMPT.md", DEST / "BOOTSTRAP_PROMPT.md")
     (DEST / "README.md").write_text(README)

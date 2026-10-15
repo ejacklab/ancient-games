@@ -475,3 +475,20 @@ session's criteria files (the mean when there are several; absent when none is s
 Fails-if: a met:false item leaves no failure record after Stop; the reminder is given twice in a session; a session that
 already touched a criteria file gets the reminder; late criteria leave no record; criteria written first leave a late
 record; the path skeleton has no score when a scored criteria file exists.
+
+## Round 7 — JSON for the harness health check (run 20261016-integrate-r11-r13)
+
+`harness_health.py` reads the guard's state through the guard's own commands, so it never re-implements a check.
+Each command below gains a `--json` flag; without it, the text output and the exit code are unchanged.
+
+- **J1 `doctor --json`** prints the `DoctorReport` as JSON (`{"harnesses":[{harness, guard, answers, note}],
+  "health": …}`); exit 0.
+- **J2 `rates --json [--session S]`** prints `{"rows":[{check, engine, ok, fail}]}`; exit 0.
+- **J3 `insight --json [--session S]`** prints `{"open":[{id, check}], "invalid":[{id, file, rules}],
+  "unreadable":[file]}` — the same facts the text form prints (an open failure; an insight section that names an open
+  id and fails its checks, with the fail rule ids; an insight file that cannot be read or parsed); exit 0 when `open`
+  is empty, else 1, as without the flag.
+- None of the three writes a file (the doctor's probe is a PreToolUse call, which writes nothing).
+
+Fails-if: `--json` output does not parse; a field above is missing; `insight --json` exits 0 with an open failure;
+the text output or exit code without `--json` changes; any of the three writes a file under the root.
