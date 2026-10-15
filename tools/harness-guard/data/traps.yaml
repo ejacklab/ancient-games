@@ -1,0 +1,70 @@
+# Harness traps (SPEC.md M1). Each was recorded once as a failure; `source` names where.
+# Only `approved` entries act. A trap an insight proposes is added as `proposed` until the owner approves it.
+traps:
+  - id: codex-stdin
+    status: approved
+    applies: command
+    engine: codex
+    command: '\bcodex\b(?:\s+--?[\w-]+(?:[ =][^\s]+)?)*\s+exec\b'
+    unless: '<\s*/dev/null|<<|\|\s*codex\b'
+    why: "codex exec reads stdin when it is not redirected and hangs until its timeout in a background shell"
+    fix: "add </dev/null to the codex exec command"
+    source: "memory note: engine-calls-need-dev-null"
+    withdraw_when: "one codex exec without a stdin redirect, run from a background shell, exits on its own"
+  - id: opencode-parallel
+    status: approved
+    applies: command
+    engine: opencode
+    command: '\bopencode\s+run\b'
+    background: true
+    concurrent: true
+    why: "two opencode runs started at once can fail with 'database is locked'"
+    fix: "run opencode calls one after another, never in the background or in parallel"
+    source: "memory note: opencode-parallel-db-lock"
+    withdraw_when: "two opencode runs started together both finish without a lock error"
+  - id: opencode-outside-repo
+    status: approved
+    applies: command
+    engine: opencode
+    command: '\bopencode\s+run\b'
+    paths_outside_repo: true
+    why: "opencode headless auto-rejects files outside the repository: exit 0 and no work done"
+    fix: "copy the inputs into the repository and pass repository paths"
+    source: "memory note: opencode-parallel-db-lock (files outside the repo)"
+    withdraw_when: "an opencode run reading a file outside the repository reads it"
+  - id: agy-soft-deny
+    status: approved
+    applies: result
+    engine: agy
+    stderr: 'auto-denied|soft-denied'
+    why: "agy headless soft-denies shell and web tools: exit 0 with empty or partial output"
+    fix: "do not give agy headless work that needs shell or web; use another engine for it"
+    source: "memory note: agy-headless-traps"
+    withdraw_when: "an agy headless call that uses the shell tool returns its output"
+  - id: agy-empty
+    status: approved
+    applies: result
+    engine: agy
+    output_empty: true
+    why: "agy can exit 0 with nothing written when a tool was denied or the print timed out"
+    fix: "treat the call as failed; re-run on an engine that can do the task"
+    source: "memory note: agy-headless-traps"
+    withdraw_when: "agy reports a denied tool or timeout with a non-zero exit"
+  - id: agy-502
+    status: approved
+    applies: result
+    engine: agy
+    stderr: '\b502\b|Bad Gateway'
+    why: "agy login can fail with a transient 502"
+    fix: "retry once after a pause; if it repeats, report the engine unavailable"
+    source: "run 20261015-harness-health backtest, trap 6"
+    withdraw_when: "no 502 seen from agy across the runs of one month"
+  - id: agy-plan-mode
+    status: proposed
+    applies: command
+    engine: agy
+    command: '\bagy\b.*--mode\s+plan'
+    why: "agy plan mode stops at a plan instead of an answer"
+    fix: "for work that must produce an answer or files, do not use --mode plan"
+    source: "memory note: agy-headless-traps"
+    withdraw_when: "agy plan mode returns the requested answer"
