@@ -432,7 +432,8 @@ Types: `Criterion`, `CriteriaFile`, `Score` in `src/types.ts` (fixed).
 
 **K1 Criteria files (new `src/criteria.ts`).** A criteria file is YAML matching `CriteriaFile`, at
 `runs/**/criteria*.yaml` or `.harness-guard/criteria/*.yaml` under the root.
-- `isCriteriaFile(path): boolean` — the file name matches `criteria*.yaml` (any folder).
+- `isCriteriaFile(path): boolean` — the file name matches `criteria*.yaml` (any folder), or the file is any `.yaml`
+  directly in `.harness-guard/criteria/` (the reminder offers that folder with any name).
 - `findCriteriaFiles(root): string[]` (relative, sorted); `loadCriteria(file): CriteriaFile` (throws `CriteriaError`
   on YAML that does not parse or lacks `criteria: 1`).
 - `checkCriteria(c: CriteriaFile): Finding[]` — `R12.7-criteria-empty` (fail) for no items; `R12.7-criterion-text`
@@ -472,5 +473,5 @@ never outside the root); `criteria score <file>` prints `score: <met>/<total> (<
 exit 1 on a fail finding or unmarked ids. `paths.ts skeleton` fills `measures.score` with the percent of this
 session's criteria files (the mean when there are several; absent when none is scored).
 Fails-if: a met:false item leaves no failure record after Stop; the reminder is given twice in a session; a session that
-already touched a criteria file gets the reminder; late criteria leave no record; criteria written first leave no late
+already touched a criteria file gets the reminder; late criteria leave no record; criteria written first leave a late
 record; the path skeleton has no score when a scored criteria file exists.

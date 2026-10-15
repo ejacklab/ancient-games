@@ -81,7 +81,8 @@ method section named beside it.
    A run with logged failures ends with an insight named in the final report (`guard/src/cli.ts insight` lists what is
    open); a use-case register is checked with `guard/src/cli.ts register <file>` (method 3.8 item 13). A run that
    succeeded records its path (`guard/src/cli.ts path new`); a similar task starts from a recorded path
-   (`path parents <category>`), changes something and tries to beat it (method 3.8 item 13, R12.7).
+   (`path parents <category>`), changes something and tries to beat it (method 3.8 item 13, R12.7); the run is scored
+   on criteria written before the work (`guard/src/cli.ts criteria new`, then `criteria score`).
 
 ## Every node carries five things
 

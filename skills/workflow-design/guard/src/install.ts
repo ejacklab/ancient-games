@@ -31,6 +31,7 @@ const EVENTS: [string, string | null][] = [
   ["Stop", null],
   ["SubagentStop", null],
   ["SessionStart", null],
+  ["UserPromptSubmit", null],
 ];
 
 function settingsSnippet(harness: Exclude<Harness, "opencode">, guardDir: string): string {

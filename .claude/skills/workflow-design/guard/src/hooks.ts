@@ -3,8 +3,10 @@
 // own failures (round 4, D1 and D2), Stop blocks while a failure has no insight. Nothing here prints a prompt,
 // stdout, stderr or config value: only ids, rules, lengths and paths.
 
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { checkCriteria, isCriteriaFile, loadCriteria, score } from "./criteria.ts";
 import { appendFailure, appendRecord, failuresFor, guardRoot, newFailureId, readJournal, writeEvidence } from "./journal.ts";
 import { answered, greatAnswered, openFailures } from "./insight.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
@@ -366,7 +368,8 @@ function handlePostToolUse(payload: Record<string, unknown>, env: HookEnv, root:
 
   if (!failed && WRITE_TOOLS.has(text(payload.tool_name))) {
     const file = text(objectField(payload, "tool_input").file_path);
-    if (file === "" || !isRegisterFile(file)) return quiet();
+    // A register or a criteria file (round 6, K2) the session wrote is checked at Stop.
+    if (file === "" || !(isRegisterFile(file) || isCriteriaFile(file))) return quiet();
     const record: TouchedRecord = {
       kind: "touched",
       time: env.now().toISOString(),
@@ -442,7 +445,146 @@ function handleStop(payload: Record<string, unknown>, root: string, env: HookEnv
     const lines = failed.map(({ rule, file }) => `  ${rule} (fail) in ${file}`);
     return block(["harness-guard: the register files this session touched still have failing checks:", ...lines].join("\n"));
   }
+  const criteria = criteriaStep(root, session, raised, env);
+  if (criteria !== null) return criteria;
   return pathAsk(root, session, raised, env);
+}
+
+// ---- the score (round 6, K2) -------------------------------------------------------------------------------------
+
+// The failure checks the criteria step itself writes: they are not the work, so they never make criteria late.
+const CRITERION_CHECK = "criterion:";
+const LATE_CHECK = "R12.7-criteria-late";
+
+function byCriteriaStep(check: string): boolean {
+  return check.startsWith(CRITERION_CHECK) || check === LATE_CHECK;
+}
+
+// The criteria files this session touched, each once with the time of its first touch, as root-relative paths.
+function touchedCriteria(root: string, session: string): { file: string; first: number }[] {
+  const found: { file: string; first: number }[] = [];
+  for (const record of readJournal(root).records) {
+    if (record.kind !== "touched" || record.session !== session || !isCriteriaFile(record.path)) continue;
+    const file = path.relative(root, path.resolve(root, record.path));
+    const time = Date.parse(record.time);
+    const seen = found.find((entry) => entry.file === file);
+    if (seen === undefined) found.push({ file, first: time });
+    else if (time < seen.first) seen.first = time;
+  }
+  return found;
+}
+
+// The state of a file, so a block for it is given once per state: a short hash of its bytes, never its text.
+function fileState(file: string): string {
+  try {
+    return createHash("sha256").update(fs.readFileSync(file)).digest("hex").slice(0, 16);
+  } catch {
+    return "unreadable";
+  }
+}
+
+// One failure record the criteria step writes; its evidence is the criteria file itself.
+function criteriaFailure(root: string, session: string, env: HookEnv, file: string, check: string, expected: string, actual: string, reason: string): void {
+  appendFailure(root, {
+    kind: "failure",
+    id: newFailureId(),
+    time: env.now().toISOString(),
+    session,
+    found_by: "guard",
+    check,
+    input: path.basename(file),
+    expected,
+    actual,
+    engine: "none",
+    harness: HARNESS,
+    reason,
+    evidence: file,
+  });
+}
+
+// For each criteria file this session touched: a file that is unreadable, fails its checks or has unmarked items blocks
+// once per file state (rules and ids only, never item text); each item marked not met becomes a failure; criteria
+// first written after the work's first checked result become one late failure. New failures block like any other.
+function criteriaStep(root: string, session: string, raised: Set<string>, env: HookEnv): HookResult | null {
+  const files = touchedCriteria(root, session);
+  if (files.length === 0) return null;
+
+  const records = readJournal(root).records;
+  // What this session's journal already holds: a criterion's failure is written once per id, a late one once per file.
+  const checks = new Set<string>();
+  const lateFiles = new Set<string>();
+  for (const record of records) {
+    if (record.kind !== "failure" || record.session !== session) continue;
+    checks.add(record.check);
+    if (record.check === LATE_CHECK) lateFiles.add(record.evidence);
+  }
+  const workTimes = records
+    .filter((record) => record.session === session && (record.kind === "success" || (record.kind === "failure" && !byCriteriaStep(record.check))))
+    .map((record) => Date.parse(record.time))
+    .filter((time) => Number.isFinite(time));
+  const firstWork = workTimes.length === 0 ? null : Math.min(...workTimes);
+
+  const lines: string[] = [];
+  const states: string[] = [];
+  let wrote = false;
+
+  for (const { file, first } of files) {
+    const absolute = path.resolve(root, file);
+    // A criteria file this session touched and then deleted or renamed is not checked (as for registers, C9).
+    if (!fs.existsSync(absolute)) continue;
+
+    if (firstWork !== null && Number.isFinite(first) && first > firstWork && !lateFiles.has(file)) {
+      criteriaFailure(root, session, env, file, LATE_CHECK, "criteria written before the work", "criteria written after the work began", "the criteria were written after the work's first checked result");
+      lateFiles.add(file);
+      wrote = true;
+    }
+
+    let loaded;
+    let problems: string[];
+    try {
+      loaded = loadCriteria(absolute);
+      const result = score(loaded);
+      problems = [
+        // K1's messages name items by id or position, never by their text.
+        ...fails(checkCriteria(loaded)).map((finding) => `${finding.rule} (${finding.message})`),
+        ...(result.unmarked.length > 0 ? [`unmarked: ${result.unmarked.join(", ")}`] : []),
+      ];
+    } catch {
+      loaded = null;
+      problems = ["R12.7-criteria-unreadable"];
+    }
+
+    if (problems.length > 0) {
+      const state = `criteria-state:${file}:${fileState(absolute)}`;
+      if (!raised.has(state)) {
+        lines.push(`  ${file}: ${[...new Set(problems)].join("; ")}`);
+        states.push(state);
+      }
+    }
+
+    if (loaded === null) continue;
+    const items = Array.isArray(loaded.items) ? loaded.items : [];
+    for (const item of items) {
+      if (!isEntry(item) || item.met !== false) continue;
+      const id = typeof item.id === "string" ? item.id.trim() : "";
+      const check = `${CRITERION_CHECK}${id}`;
+      if (id === "" || checks.has(check)) continue;
+      criteriaFailure(root, session, env, file, check, "met", "not met", "a criterion of the task was not met");
+      checks.add(check);
+      wrote = true;
+    }
+  }
+
+  if (lines.length > 0) {
+    const record: RaisedRecord = { kind: "raised", time: env.now().toISOString(), session, ids: states };
+    appendRecord(root, record);
+    return block(["harness-guard: the criteria files this session touched are not scored yet — mark each criterion met: true|false with evidence:", ...lines].join("\n"));
+  }
+  if (wrote) {
+    const open = openFailures(root, session);
+    if (open.length > 0) return block(insightReason(open.map((record) => record.id)));
+  }
+  return null;
 }
 
 // ---- the path of a success (round 5, S5) ---------------------------------------------------------------------------
@@ -498,6 +640,23 @@ function handleSessionStart(payload: Record<string, unknown>, root: string): Hoo
   return context("SessionStart", `harness-guard: ${ids.length} failure(s) from other sessions in this repository are still unanswered: ${ids.join(", ")}. Raise an insight for each before you finish.`);
 }
 
+// ---- UserPromptSubmit (round 6, K2) -------------------------------------------------------------------------------
+
+// Before the work starts, the session is asked once to write the criteria it will be scored on: not when it has already
+// touched a criteria file, and not again once asked (a `raised` record with id "criteria"). The prompt is never read.
+function handleUserPromptSubmit(payload: Record<string, unknown>, root: string, env: HookEnv): HookResult {
+  const session = sessionOf(payload);
+  const records = readJournal(root).records.filter((record) => record.session === session);
+  if (records.some((record) => record.kind === "touched" && isCriteriaFile(record.path))) return quiet();
+  if (records.some((record) => record.kind === "raised" && record.ids.includes("criteria"))) return quiet();
+  const record: RaisedRecord = { kind: "raised", time: env.now().toISOString(), session, ids: ["criteria"] };
+  appendRecord(root, record);
+  return context(
+    "UserPromptSubmit",
+    `harness-guard: before you start, write the criteria this request will be scored on — \`bun ${guardDirFor(root)}/src/cli.ts criteria new --out runs/<run>/criteria.yaml\` (or .harness-guard/criteria/<name>.yaml), one item per thing the result must get right; mark each met or not met with evidence at the end.`,
+  );
+}
+
 // ---- handler -----------------------------------------------------------------------------------------------------
 
 function dispatch(payload: Record<string, unknown>, env: HookEnv): HookResult {
@@ -514,6 +673,8 @@ function dispatch(payload: Record<string, unknown>, env: HookEnv): HookResult {
       return handleStop(payload, root, env);
     case "SessionStart":
       return handleSessionStart(payload, root);
+    case "UserPromptSubmit":
+      return handleUserPromptSubmit(payload, root, env);
     default:
       return quiet();
   }

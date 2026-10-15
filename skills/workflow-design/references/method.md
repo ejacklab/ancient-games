@@ -494,7 +494,9 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    rates` reads failures against how often a check ran; a session with successes is asked once for its **path**
    (`path new`, then `path check`); a great success gets a `## great:` insight section; and a similar task borrows a
    recorded path as its parent (`path parents <category>`), changes at least one thing and tries to be 2% better —
-   reported, never a gate.
+   reported, never a gate. A result is scored as the share of its criteria met: before the work the agent writes the
+   criteria (`guard/src/cli.ts criteria new`, from a use-case register with `--from-register`), marks each met or not
+   met with evidence at the end, and every criterion not met becomes a failure (`criteria score` prints the score).
    Judgment stays with the agent: the whys, the options, use cases and their fails-if. Installing the hooks is
    the owner's (`guard/src/cli.ts install --print <harness>`); the agent never edits harness config. Measured once
    (`runs/20261015-ts-hybrid/effectiveness/`, n = 3 per arm on one short task): with the rules in the working folder,

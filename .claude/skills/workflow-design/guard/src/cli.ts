@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { CriteriaError, checkCriteria, fromRegister, loadCriteria, score, skeleton as criteriaSkeleton } from "./criteria.ts";
 import { doctor, doctorMarkdown } from "./doctor.ts";
 import { handleHook } from "./hooks.ts";
 import { HARNESSES, installSnippet } from "./install.ts";
@@ -37,6 +38,9 @@ const USAGE = [
   "  path new [--session S] [--out F]  print or write a success-path skeleton",
   "  path check <file>               check a success-path file",
   "  path parents <category>         list the path files of a category",
+  "  criteria new [--session S] [--request TEXT] [--from-register FILE] [--out F]",
+  "                                  print or write a criteria file",
+  "  criteria score <file>           score a criteria file: met/total and the unmarked ids",
 ].join("\n");
 
 class UsageError extends Error {}
@@ -310,6 +314,72 @@ function pathCommand(args: string[]): number {
   }
 }
 
+// ---- criteria (round 6, K3) ------------------------------------------------------------------------------------
+
+// The text of a new criteria file: the skeleton, or one item per unit of a register. Written only inside the root.
+function criteriaNew(args: string[]): number {
+  const root = guardRoot(process.cwd());
+  const session = flagValue(args, "--session") ?? "none";
+  const request = flagValue(args, "--request") ?? "";
+  const registerFile = flagValue(args, "--from-register");
+  const outFile = flagValue(args, "--out");
+
+  let yaml: string;
+  if (registerFile === null) {
+    yaml = criteriaSkeleton(session, request);
+  } else {
+    let loaded;
+    try {
+      loaded = loadRegister(path.resolve(process.cwd(), registerFile));
+    } catch (error) {
+      if (error instanceof RegisterError) usageError(error.message);
+      throw error;
+    }
+    yaml = Bun.YAML.stringify(fromRegister(loaded, session, request), null, 2);
+  }
+
+  if (outFile === null) {
+    out(yaml);
+    return OK;
+  }
+  const base = path.resolve(root);
+  const target = path.resolve(process.cwd(), outFile);
+  if (target !== base && !target.startsWith(base + path.sep)) usageError("criteria new: --out must be inside the root");
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, yaml.endsWith("\n") ? yaml : `${yaml}\n`, "utf8");
+  out(`criteria written to ${outFile}`);
+  return OK;
+}
+
+// Rule ids, counts and criterion ids only: the request and the criterion text never enter the output.
+function criteriaScore(args: string[]): number {
+  const file = args[0];
+  if (file === undefined || file.startsWith("--")) usageError("criteria score: needs the criteria file");
+  let loaded;
+  try {
+    loaded = loadCriteria(path.resolve(process.cwd(), file));
+  } catch (error) {
+    if (error instanceof CriteriaError) usageError(error.message);
+    throw error;
+  }
+  const findings = checkCriteria(loaded);
+  for (const finding of findings) out(`${finding.severity} ${finding.rule}: ${finding.message}`);
+  const result = score(loaded);
+  out(`score: ${result.met}/${result.total} (${result.percent === null ? "n/a" : `${result.percent}%`})`);
+  out(`unmarked: ${result.unmarked.length === 0 ? "none" : result.unmarked.join(", ")}`);
+  return findings.some((finding) => finding.severity === "fail") || result.unmarked.length > 0 ? FINDINGS : OK;
+}
+
+function criteriaCommand(args: string[]): number {
+  const sub = args[0];
+  const rest = args.slice(1);
+  switch (sub) {
+    case "new": return criteriaNew(rest);
+    case "score": return criteriaScore(rest);
+    default: return usageError(`criteria: needs new or score (got ${sub ?? "nothing"})`);
+  }
+}
+
 // ---- dispatch ---------------------------------------------------------------------------------------------------
 
 function run(args: string[]): number {
@@ -326,6 +396,7 @@ function run(args: string[]): number {
     case "doctor": return doctorCommand(rest);
     case "rates": return ratesCommand(rest);
     case "path": return pathCommand(rest);
+    case "criteria": return criteriaCommand(rest);
     case undefined: return usageError("no command given");
     case "help":
     case "--help": return usageError("help is the usage text above");

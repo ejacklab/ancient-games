@@ -4,8 +4,9 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { findCriteriaFiles, isCriteriaFile, loadCriteria, score } from "./criteria.ts";
 import { readJournal } from "./journal.ts";
-import type { FailureRecord, Finding, PathReport, SuccessPath, SuccessRecord } from "./types.ts";
+import type { FailureRecord, Finding, JournalRecord, PathReport, SuccessPath, SuccessRecord } from "./types.ts";
 
 const GUARD_DIR = ".harness-guard";
 const PATHS_DIR = path.join(GUARD_DIR, "paths");
@@ -289,6 +290,34 @@ function scalar(value: string): string {
   return plain(value) ? value : JSON.stringify(value);
 }
 
+// The score of a session (round 6, K3): the mean percent of its criteria files — those it touched, and those whose
+// `session` names it — counting only a file that loads, has items and has every item marked; null when none is scored.
+function sessionScore(root: string, session: string, records: JournalRecord[]): number | null {
+  const touched = new Set<string>();
+  for (const record of records) {
+    if (record.kind === "touched" && record.session === session && isCriteriaFile(record.path)) {
+      touched.add(path.resolve(root, record.path));
+    }
+  }
+  const files = new Set<string>([...touched, ...findCriteriaFiles(root).map((file) => path.resolve(root, file))]);
+
+  const percents: number[] = [];
+  for (const file of files) {
+    let loaded;
+    try {
+      loaded = loadCriteria(file);
+    } catch {
+      continue;
+    }
+    if (!touched.has(file) && loaded.session !== session) continue;
+    const result = score(loaded);
+    if (result.percent === null || result.unmarked.length > 0) continue;
+    percents.push(result.percent);
+  }
+  if (percents.length === 0) return null;
+  return round1(percents.reduce((sum, each) => sum + each, 0) / percents.length);
+}
+
 // The path skeleton for a session: the journal's own counts and check ids are filled in, everything the agent has to
 // write is an empty placeholder. Command text and output never reach it — ids, counts and numbers only.
 export function skeleton(root: string, session: string, out?: string): string {
@@ -300,6 +329,7 @@ export function skeleton(root: string, session: string, out?: string): string {
   for (const record of failures) if (!checks.includes(record.check)) checks.push(record.check);
 
   const checkLines = checks.map((each) => `  - ${scalar(each)}`);
+  const sessionPercent = sessionScore(root, session, records);
   const yaml = [
     "# The path of this task: what was done, in order, and what it measured.",
     "# The placeholders are empty on purpose — fill them; nothing here is read but ids, counts and numbers.",
@@ -316,6 +346,7 @@ export function skeleton(root: string, session: string, out?: string): string {
     "measures:",
     `  failures: ${failures.length}`,
     `  successes: ${successes.length}`,
+    ...(sessionPercent === null ? [] : [`  score: ${sessionPercent}`]),
     checkLines.length > 0 ? "failures:" : "failures: []",
     ...(checkLines.length > 0 ? checkLines : []),
     "# parent: runs/<run>/success-path.yaml   # an earlier path in this category",
