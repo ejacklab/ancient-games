@@ -1,4 +1,4 @@
-"""HH-01–HH-11: harness health with an isolated HOME and fake executables (run 20261015-harness-health)."""
+"""HH-01 onward: harness health with an isolated HOME and fake executables (run 20261015-harness-health)."""
 from __future__ import annotations
 
 import hashlib
@@ -80,12 +80,12 @@ def tree_hash(*roots: Path) -> dict:
             for r in roots for p in sorted(r.rglob("*"))}
 
 
-def test_hh_01_ten_rows_and_no_machine_paths(box):
+def test_hh_01_requirement_rows_and_no_machine_paths(box):
     box.full()
     r = box.run()
     assert r.returncode == 0, r.stderr
     rows = re.findall(r"^\| R(\d+) \| ([^|]+) \|", r.stdout.split("## Lines")[0], re.M)
-    assert [int(n) for n, _ in rows] == list(range(1, 11))
+    assert [int(n) for n, _ in rows] == [*range(1, 10), 11, 12]
     assert "Configured is not enforced" in r.stdout
     assert str(box.home) not in r.stdout and str(box.cwd) not in r.stdout and str(ROOT) not in r.stdout
     f = json.loads(box.run("--json").stdout)["findings"]
@@ -242,6 +242,8 @@ def test_hh_06_covered_goes_missing_without_its_script(tmp_path):
     for name in ("engines.py", "dispatch.py", "design_gate.py", "feature_gate.py", "runlog.py", "harvest_run.py"):
         (scripts / name).write_text("")
     (tmp_path / "assets/templates/state.md").write_text("")
+    for _, _, name in GUARD_COVERED:
+        write(tmp_path / "guard/src" / name, "")
     assert all(f.finding == "covered" for f in hh.covered_lines(scripts))
     (scripts / "dispatch.py").unlink()
     gone = [f for f in hh.covered_lines(scripts) if f.finding != "covered"]
@@ -311,7 +313,8 @@ def test_hh_12_odd_shapes_never_crash(box, settings, toml):
         r = box.run(*args)
         assert r.returncode == 0 and "Traceback" not in r.stderr, r.stderr
     f = box.findings()
-    assert all(x["finding"] in {"absent", "unknown", "present"} for x in f if x["req"] in (6, 8, 10))
+    assert all(x["finding"] in {"absent", "unknown", "present"} for x in f
+               if x["req"] in (6, 8, 12) and x["harness"] in ("claude", "codex"))
     assert one(f, "claude", "permission mode")["finding"] in {"present", "unknown"}
 
 
@@ -353,7 +356,7 @@ def test_hh_16_unreadable_folders_are_unknown_not_a_crash(box):
             r = box.run(*args, extra_env={"CLAUDE_CONFIG_DIR": str(locked), "CODEX_HOME": str(locked)})
             assert r.returncode == 0 and "Traceback" not in r.stderr, r.stderr
             assert str(locked) not in r.stdout + r.stderr
-            assert "--json" in args or "## Ten requirements" in r.stdout
+            assert "--json" in args or "## Requirements" in r.stdout
         f = box.findings(extra_env={"CLAUDE_CONFIG_DIR": str(locked), "CODEX_HOME": str(locked)})
         assert one(f, "claude", "settings")["finding"] == "unknown"
         assert one(f, "codex", "config")["finding"] == "unknown"
@@ -380,3 +383,267 @@ def test_hh_17_self_test_writes_nothing(monkeypatch):
     for name in ("mkdir", "makedirs", "open"):
         monkeypatch.setattr(os_, name, no_write)
     assert hh.self_test() == 0
+
+
+GUARD_COVERED = [
+    (11, "use-case register and coverage (R11.1)", "register.ts"),
+    (12, "engine result check (R12.1)", "traps.ts"),
+    (12, "failure journal (R12.2)", "journal.ts"),
+    (12, "insight gate (R12.3)", "insight.ts"),
+    (12, "success lines and rates (R12.7)", "rates.ts"),
+    (12, "success paths (R12.7)", "paths.ts"),
+    (12, "criteria and score (R12.7)", "criteria.ts"),
+]
+GUARD_ITEMS = {
+    "doctor": "harness-guard hooks",
+    "rates": "checked results in this project",
+    "insight": "insight for every failure (R12.3)",
+}
+
+
+def guard_answers():
+    return {
+        "doctor": {"harnesses": [{"harness": "claude-code", "guard": "installed", "answers": True,
+                                   "note": "planted hook state"}], "health": {"ok": True, "summary": "ok"}},
+        "rates": {"rows": []},
+        "insight": {"open": [], "invalid": [], "unreadable": []},
+    }
+
+
+def plant_guard(box, answers=None, *, command=None, output=None, exit_code=0, delay=0):
+    """An executable boundary double; reject a different invocation or execution context."""
+    answers = guard_answers() if answers is None else answers
+    program = f'''#!{sys.executable}
+import json, os, sys, time
+from pathlib import Path
+answers = {answers!r}
+assert str(Path(sys.argv[1]).resolve()) == {str((SCRIPTS / '../guard/src/cli.ts').resolve())!r}
+assert sys.argv[2:] in [[name, '--json'] for name in answers], sys.argv
+assert os.getcwd() == {str(box.cwd)!r}
+assert os.environ['HOME'] == {str(box.home)!r}
+assert os.environ['PATH'] == {box.env['PATH']!r}
+assert os.fstat(0).st_rdev == os.stat(os.devnull).st_rdev
+assert sys.stdin.read() == ''
+name = sys.argv[2]
+if name == {command!r}:
+    time.sleep({delay!r})
+    print({output!r})
+    print({SECRET!r}, file=sys.stderr)
+    sys.exit({exit_code!r})
+print(json.dumps(answers[name]))
+sys.exit(1 if name == 'insight' and answers[name]['open'] else 0)
+'''
+    path = write(box.bin / "bun", program)
+    path.chmod(0o755)
+
+
+def test_hh_18_requirement_table_and_docstring(box):
+    assert set(hh.REQUIREMENTS) == {*range(1, 10), 11, 12}
+    assert hh.REQUIREMENTS[11] == "Results can be judged"
+    assert hh.REQUIREMENTS[12] == "Failures and successes update the harness"
+    report = box.run()
+    assert report.returncode == 0, report.stderr
+    assert "## Requirements\n" in report.stdout
+    assert "## Ten requirements" not in report.stdout
+    replacement = ("R10 (feedback loop) is replaced by R12. R11 and R12: the workflow-design skill's "
+                   "references/harness-requirements.md.")
+    table, _ = report.stdout.split("## Requirements\n", 1)[1].split(replacement, 1)
+    assert re.search(r"\| R12 \|[^\n]*\n\s*$", table)
+    paragraph = hh.__doc__.split("\n\n", 1)[0]
+    assert "R11" in paragraph and "R12" in paragraph and "R10" in paragraph
+    assert re.search(r"replac", paragraph, re.I)
+
+
+def test_hh_19_claude_hooks_are_r12(box):
+    box.fake("claude")
+    for settings, finding in [({}, "absent"),
+                              ({"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "true"}]}]}},
+                               "present")]:
+        claude_settings(box, settings)
+        hooks = one(box.findings(), "claude", "hooks")
+        assert hooks["req"] == 12 and hooks["finding"] == finding
+
+
+@pytest.mark.parametrize("req,item,filename", GUARD_COVERED)
+def test_hh_20_guard_coverage_tracks_file_existence(tmp_path, req, item, filename):
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    file = write(tmp_path / "guard/src" / filename, "")
+    line = next(f for f in hh.covered_lines(scripts) if f.item == item)
+    assert (line.req, line.finding) == (req, "covered")
+    file.unlink()
+    line = next(f for f in hh.covered_lines(scripts) if f.item == item)
+    assert (line.req, line.status, line.finding) == (req, "MISSING", "unknown")
+
+
+@pytest.mark.parametrize("req,item", [
+    (11, "first signal before the full verdict (R11.2)"),
+    (12, "judges say what is wrong, not how (R12.4)"),
+    (12, "review when a model changes (R12.5)"),
+    (12, "withdrawal conditions (R12.6)"),
+])
+def test_hh_21_design_only_requirements_remain_unknown(box, req, item):
+    line = one(box.findings(), "-", item)
+    assert (line["req"], line["status"], line["finding"]) == (req, "unknown", "unknown")
+    assert line["detail"] == "no script checks it; each run's design must show it"
+    assert line["proof"] == "references/harness-requirements.md"
+
+
+@pytest.mark.parametrize("missing", ["guard", "bun"])
+def test_hh_22_missing_guard_or_bun_is_one_unknown_line(box, missing):
+    scripts = box.cwd / "scripts"
+    scripts.mkdir()
+    plant_guard(box)
+    if missing == "bun":
+        (box.bin / "bun").unlink()
+        scripts = SCRIPTS
+    lines = hh.gather(box.home, box.cwd, box.env, scripts=scripts)
+    line = next(f for f in lines if f.item == "harness-guard")
+    assert (line.req, line.harness, line.status, line.finding) == (12, "-", "MISSING", "unknown")
+    assert line.detail == ("guard not found beside this script" if missing == "guard" else "bun not on PATH")
+    assert line.proof == ("guard/src/cli.ts" if missing == "guard" else "`command -v bun`")
+    assert not any(f.item in GUARD_ITEMS.values() for f in lines)
+    if missing == "bun":
+        for args in ((), ("--json",)):
+            report = box.run(*args)
+            assert report.returncode == 0 and "Traceback" not in report.stderr
+
+
+def test_hh_23_guard_hooks_map_only_installed_harnesses_and_offer_help(box):
+    for name in ("claude", "codex", "qwen", "opencode"):
+        box.fake(name)
+    answers = guard_answers()
+    answers["doctor"]["harnesses"] = [
+        {"harness": name, "guard": state, "answers": None, "note": f"{name} planted note"}
+        for name, state in [("claude-code", "installed"), ("codex", "absent"),
+                            ("qwen", "unknown"), ("opencode", "absent"), ("agy", "installed")]
+    ]
+    plant_guard(box, answers)
+    lines = box.findings()
+    hooks = [f for f in lines if f["item"] == GUARD_ITEMS["doctor"]]
+    assert {f["harness"] for f in hooks} == {"claude", "codex", "qwen", "opencode"}
+    for harness, doctor_name, finding in [("claude", "claude-code", "present"), ("codex", "codex", "absent"),
+                                           ("qwen", "qwen", "unknown"), ("opencode", "opencode", "absent")]:
+        line = one(lines, harness, GUARD_ITEMS["doctor"])
+        assert (line["req"], line["status"], line["finding"]) == (12, "reported", finding)
+        assert line["detail"] == f"{doctor_name} planted note"
+        assert line["proof"] == "`harness-guard doctor`"
+        if finding == "absent":
+            help_ = line["help"]
+            assert help_["file"] == "-"
+            assert help_["changes"] == ("installs the guard's hooks: it blocks known engine-call traps, "
+                                        "logs failures as they happen, and asks for the insight before the agent stops")
+            assert help_["lang"] == "sh"
+            assert help_["how"] == "prints the settings to merge; you apply them"
+            assert help_["snippet"].startswith("bun ")
+            assert help_["snippet"].endswith(f" install --print {doctor_name}")
+            assert re.fullmatch(rf"bun .+cli\.ts install --print {doctor_name}", help_["snippet"])
+    (box.bin / "codex").unlink()
+    assert not any(f["harness"] == "codex" for f in box.findings() if f["item"] == GUARD_ITEMS["doctor"])
+    for args in ((), ("--json",)):
+        report = box.run(*args)
+        assert report.returncode == 0, report.stderr
+        assert all(str(p) not in report.stdout for p in (ROOT, box.home, box.cwd))
+
+
+@pytest.mark.parametrize("rows,detail", [([], "0 success lines, 0 failure records"),
+    ([{"check": "engine-call", "engine": "codex", "ok": 2, "fail": 3},
+      {"check": "test-run", "engine": "pytest", "ok": 5, "fail": 7}], "7 success lines, 10 failure records")])
+def test_hh_24_guard_rates_sum_all_rows(box, rows, detail):
+    answers = guard_answers()
+    answers["rates"]["rows"] = rows
+    plant_guard(box, answers)
+    line = one(box.findings(), "-", GUARD_ITEMS["rates"])
+    assert (line["req"], line["status"], line["finding"], line["detail"], line["proof"]) == (
+        12, "verified", "measured", detail, "`harness-guard rates`")
+
+
+@pytest.mark.parametrize("count,exit_code", [(0, 0), (0, 1), (1, 1), (2, 1), (1, 0)])
+def test_hh_25_open_failures_are_absent_with_insight_help(box, count, exit_code):
+    answers = guard_answers()
+    answers["insight"]["open"] = [{"id": f"{SECRET}-{i}", "check": SECRET} for i in range(count)]
+    plant_guard(box, answers, command="insight", output=json.dumps(answers["insight"]), exit_code=exit_code)
+    line = one(box.findings(), "-", GUARD_ITEMS["insight"])
+    assert (line["req"], line["status"], line["finding"]) == (12, "verified", "absent" if count else "present")
+    assert line["detail"] == (f"{count} open failures without a valid insight" if count else "no open failures")
+    if count:
+        assert line["help"]["file"] == "runs/<run>/insight.md"
+        assert line["help"]["changes"] == ("answers each open failure: six whys, the root cause, "
+                                             "two or three fix options (R12.3)")
+        assert not line["help"]["snippet"]
+    for args in ((), ("--json",)):
+        report = box.run(*args)
+        assert report.returncode == 0
+        assert SECRET not in report.stdout + report.stderr
+
+
+@pytest.mark.parametrize("command", list(GUARD_ITEMS))
+@pytest.mark.parametrize("failure", ["exit", "non-json", "missing-field", "wrong-type", "timeout"])
+def test_hh_26_guard_command_failures_are_isolated_and_redacted(box, command, failure):
+    import readiness
+
+    box.fake("claude")
+    if failure == "missing-field":
+        output = json.dumps({"secret": SECRET})
+    elif failure == "wrong-type":
+        output = json.dumps({"doctor": {"harnesses": [{"harness": "claude-code", "guard": 7,
+                                                     "answers": None, "note": SECRET}], "health": None},
+                             "rates": {"rows": [{"check": SECRET, "engine": "x", "ok": "x", "fail": 0}]},
+                             "insight": {"open": SECRET, "invalid": [], "unreadable": []}}[command])
+    else:
+        output = SECRET
+    plant_guard(box, command=command, output=output, exit_code=2 if failure == "exit" else 0,
+                delay=readiness.CMD_TIMEOUT + 1 if failure == "timeout" else 0)
+    for args in (("--json",),) if failure == "timeout" else (("--json",), ()):
+        report = box.run(*args)
+        assert report.returncode == 0, report.stderr
+        assert SECRET not in report.stdout + report.stderr
+        if args:
+            lines = json.loads(report.stdout)["findings"]
+            failed = [f for f in lines if f["item"] == GUARD_ITEMS[command]]
+            assert len(failed) == 1
+            assert failed[0]["finding"] == "unknown"
+            reason = "2" if failure == "exit" else "timeout" if failure == "timeout" else "unexpected output"
+            if failure == "exit":
+                assert re.fullmatch(rf"the guard's {command} failed: (?:exit )?2", failed[0]["detail"])
+            else:
+                assert failed[0]["detail"] == f"the guard's {command} failed: {reason}"
+            for other, item in GUARD_ITEMS.items():
+                if other != command:
+                    assert any(f["item"] == item and f["finding"] != "unknown" for f in lines)
+
+
+def test_hh_27_guard_reports_write_nothing(box):
+    box.fake("claude")
+    plant_guard(box)
+    claude_settings(box, {"hooks": {}})
+    before = tree_hash(box.home, box.cwd)
+    for args in ((), ("--json",)):
+        report = box.run(*args)
+        assert report.returncode == 0, report.stderr
+    assert tree_hash(box.home, box.cwd) == before
+
+
+@pytest.mark.parametrize("has_failure", [False, True], ids=["empty-project", "open-failure"])
+def test_hh_28_real_guard_is_read_only_with_empty_and_open_journal(box, has_failure):
+    real_bun = shutil.which("bun")
+    if real_bun is None:
+        pytest.skip("bun is not installed")
+    box.env["PATH"] = str(box.bin) + ":" + str(Path(real_bun).parent)
+    box.fake("claude")
+    if has_failure:
+        record = {"kind": "failure", "id": "F-7f3a9c00", "time": "2026-10-16T00:00:00Z",
+                  "session": "hh-28", "found_by": "test", "check": "R12.2-test-failed",
+                  "input": "pytest run", "expected": "all tests pass", "actual": "exit 1",
+                  "engine": "pytest", "harness": "claude-code", "reason": SECRET, "evidence": ""}
+        write(box.cwd / ".harness-guard/journal.jsonl", json.dumps(record) + "\n")
+    before = tree_hash(box.home, box.cwd)
+    for args in (("--json",), ()):
+        report = box.run(*args)
+        assert report.returncode == 0, report.stderr
+        assert SECRET not in report.stdout + report.stderr
+        if args:
+            line = one(json.loads(report.stdout)["findings"], "-", GUARD_ITEMS["insight"])
+            assert line["finding"] == ("absent" if has_failure else "present")
+            assert line["detail"] == ("1 open failures without a valid insight" if has_failure else "no open failures")
+        assert tree_hash(box.home, box.cwd) == before

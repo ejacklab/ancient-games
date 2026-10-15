@@ -1,7 +1,9 @@
-# Harness requirements — R11 to R13
+# Harness requirements — R11 and R12
 
-What a harness run must do so that its results can be judged (R11), so that failures, great successes and model
-changes improve the harness (R12), and so that work is built and judged against use cases and requirements (R13).
+What a harness run must do so that its results can be judged (R11), and so that failures, great successes and model
+changes improve the harness (R12). What the work is built and judged against — accepted use cases and requirements,
+R13 — is checked by the `requirement-check` skill and kept there
+(`.claude/skills/requirement-check/references/use-cases-and-requirements.md`); R11 and R12 cite its ids.
 Levels follow RFC 2119: MUST is a gate, SHOULD a default that may be overridden with a written reason; a number given as
 an aim (80%, 2%) is reported, never a gate. The guard in `.claude/skills/workflow-design/guard/` enforces the parts that
 need no judgment (method 3.8 item 13). R10 of the earlier ten-requirement list is replaced by R12.
@@ -11,8 +13,8 @@ need no judgment (method 3.8 item 13). R10 of the earlier ten-requirement list i
 **R11.1 Coverage of a requirement (SHOULD; a target, not a gate).**
 
 1. Before any case is generated, a fixed list of **units** is written: each accepted use case's fails-if and minimum
-   acceptance criteria (R13.2), and each accepted requirement's text and fails-if. The list is frozen before coverage
-   is counted; a change to it starts a new count.
+   acceptance criteria (R13.2, in the requirement-check skill), and each accepted requirement's text and fails-if.
+   The list is frozen before coverage is counted; a change to it starts a new count.
 2. Cases from AI generation and old use cases attach to a unit as evidence. They do not add to the count. A generated
    case that fits no unit is added as a new unit by the plan writer with a written reason, or recorded as out of scope.
 3. The plan writer marks each unit **basic** or **skippable** against the written skip criterion (below). An
@@ -123,39 +125,3 @@ design.
 
 Who decides, not yet set — the project owner: whether R12.5's review also runs on a schedule; whether R12.6 binds R12
 itself or only the fixes added under it.
-
-## R13 — use cases and requirements
-
-**R13.1 Two lists, merged into one.** The user writes the basic use cases in one list. The AI agent writes the use
-cases it suggests in a separate list. The user accepts or declines each suggestion, and the accepted list — the user's
-own cases plus the suggestions the user accepted — is the one list the work is built and judged against. Its maker is
-the user. A suggestion enters it only with the user's recorded decision.
-
-**R13.2 What an accepted use case holds.** Its purpose (why it is needed), its fails-if (what makes a result wrong) and
-its minimum acceptance criteria (the least that must be observed for a result to pass), each stated as an observable
-outcome, never as a method. A use case missing any of the three is not accepted. This applies to the user's own cases
-as well as to suggestions.
-
-**R13.3** A result that fails an accepted use case is wrong.
-
-**R13.4 Requirements (SHOULD exist).** A requirement is written where an accepted use case leaves a detail unclear,
-and where qualities pull against each other — for example how secure and how fast — in which case it states the
-target for each side, as a value or a comparison the user gives. Requirements that cut across use cases (security,
-privacy, speed) SHOULD be written.
-
-**R13.5 Who writes a requirement.** The user, or the AI agent from the vision and the accepted use cases. A suggested
-requirement binds only after the user accepts it, and an edited requirement needs a new acceptance. Each requirement
-states its purpose: the use case or vision line it serves. A requirement whose purpose cannot be named is not
-accepted, including one the user asked for.
-
-**R13.6** A result that breaks an accepted requirement is wrong, except where R13.7 applies.
-
-**R13.7 Conflict.** When an accepted use case and an accepted requirement conflict, the use case wins. The conflict is
-recorded and shown to the user, naming the use case, the requirement and the result affected; the user decides
-whether the requirement is revised or the trade-off is stated in it.
-
-Fails if: an AI suggestion is in the accepted list with no recorded decision by the user; an accepted use case lacks
-its purpose, fails-if or minimum acceptance criteria; a result that fails an accepted use case is passed; a suggested
-requirement binds before acceptance, or an edited one keeps its old acceptance; a requirement has no named purpose; two
-qualities that pull against each other have no target for either side; a conflict between a use case and a
-requirement is resolved without being recorded and shown to the user.

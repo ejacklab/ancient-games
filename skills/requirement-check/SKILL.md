@@ -1,6 +1,6 @@
 ---
 name: requirement-check
-description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, leaves a choice with no one to decide it, or is impossible to check.
+description: Evaluate a rule, requirement, threshold or algorithm against requirement-quality criteria before applying or writing it down, and ask the person which criteria it fails. Use when someone states a rule, requirement, constraint, threshold, algorithm or design guideline; when writing or editing a normative line in a document, plan or config; or when a rule reads as arbitrary, leaves a choice with no one to decide it, or is impossible to check. Also checks use cases and the requirements written from them (R13: two lists merged by the user's decisions; purpose, fails-if and minimum acceptance; a requirement's purpose and acceptance; use case wins a conflict) — use when writing, suggesting, accepting or judging work against use cases.
 ---
 
 # Requirement check
@@ -90,12 +90,37 @@ The same checklist, run on *"No single call runs longer than the ceiling: 8 hour
 *unit* and *can it fail* — it counts one thing, uses a unit, and some input (a 40-hour plan) makes it fail. *Who
 decides* still asks who stops a call that reaches the ceiling.
 
+## Use cases and requirements (R13)
+
+The eight questions check one statement. R13 checks the **list** a piece of work is built and judged against: the
+accepted use cases, and the requirements written where they leave a detail unclear. The rule itself, R13.1–R13.7 with
+its fails-if, is `references/use-cases-and-requirements.md` — one copy; read it before writing or accepting a list.
+
+Check, in this order:
+
+1. **Whose list.** The user's own cases and the agent's suggestions are two lists; a suggestion is in the accepted list
+   only with the user's recorded decision (R13.1).
+2. **Each use case** holds its purpose, its fails-if and its minimum acceptance, each an observable outcome, never a
+   method (R13.2). Run *can it fail* and *weak words* on the fails-if and the minimum acceptance.
+3. **Each requirement** names the use case or vision line it serves, and binds only once the user has accepted it — an
+   edit needs a new acceptance (R13.5). Two qualities that pull against each other each get a target the user gives
+   (R13.4). Then run the eight questions on it.
+4. **A conflict** between an accepted use case and an accepted requirement: the use case wins, and the conflict is
+   recorded and shown to the user (R13.7).
+
+The part that needs no judgment — recorded decisions, the three fields, a purpose, a conflict shown, and coverage
+(R11.1) — is checked by the workflow-design skill's guard: `bun <workflow-design>/guard/src/cli.ts register <file>`.
+Whether a purpose is the real one, or a fails-if observable, stays a reading.
+
 ## Limits
 
 The quality characteristics behind these questions (necessary, appropriate, unambiguous, complete, singular,
 feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
-and the INCOSE *Guide to Writing Requirements* — which were **not read** when this skill was written: they are
-paywalled or blocked, and the list is recalled rather than verified. The two RFC points above **were** read, and the
-quotes are checked. Treat the rest as a good working list, not as a citation.
+and the INCOSE *Guide to Writing Requirements* — and the standard and the guide are still **not read**: paywalled or
+blocked (HTTP 403, checked 2026-10-16). The nine names are confirmed only at second hand: a 2024 paper (Lubos et al.,
+arXiv 2408.10886, Table I) lists the same nine as the characteristics of ISO/IEC/IEEE 29148:2018; an older summary
+gives a different list, probably the 2011 edition. No INCOSE rule number is verified. The two RFC points above
+**were** read, and the quotes are checked. Treat the rest as a good working list, not as a citation; the sources and
+their labels are in `runs/20261016-integrate-r11-r13/research/findings.md` in the Ancient Games project.
 
 Origin: `docs/research/20261005-requirement-statements/FINDINGS.md` in the Ancient Games project, 2026-10-05.

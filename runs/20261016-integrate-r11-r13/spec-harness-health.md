@@ -73,3 +73,16 @@ covered guard line stays `covered` when its file is gone; the run crashes or exi
 missing, or when a guard command fails; a guard command's raw output appears in the report; a file changes under
 HOME or the project during a run (the real guard included, when bun is installed); an `absent` hooks line has no
 help; open failures are counted as `present`.
+
+## Corrections (after the first build; these override the lines above)
+
+- H4: the item names carry no requirement-number prefix — `first signal before the full verdict (R11.2)`, `judges say
+  what is wrong, not how (R12.4)`, `review when a model changes (R12.5)`, `withdrawal conditions (R12.6)`; the
+  `(11)`/`(12)` in the list above was the line's requirement number.
+- H5: the open-failure detail is exactly `<n> open failures without a valid insight`; "(ids not printed)" was an
+  instruction, not text.
+- H5: a `doctor` row whose `harness` or `note` is not a string, or whose `guard` is not installed/absent/unknown, makes
+  the doctor's output unexpected (one `unknown` line), so no field of a malformed row reaches the report.
+- H5: the guard runs with `BUN_RUNTIME_TRANSPILER_CACHE_PATH=0` added to the environment — bun otherwise writes a
+  cache under HOME, and this script writes no file.
+- H1: "first paragraph" of the docstring is its opening line, which names R1–R9, R11 and R12 and that R12 replaces R10.

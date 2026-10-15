@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""harness_health.py — harness health for method 3.1 (readiness), beside readiness.py.
+"""harness_health.py — harness health for method 3.1 (readiness), beside readiness.py: R1–R9, R11 and R12 (R12
+replaces R10).
 
-readiness.py proves what is installed; this script reads how each installed harness is set up, against ten
+readiness.py proves what is installed; this script reads how each installed harness is set up, against eleven
 requirements for a harness (context, tools, planning, state, verification, guardrails, recovery, human gates,
-observability, feedback). It never spends quota and never prints a config value other than a recognised mode or
+observability, results that can be judged, and failures and successes that update the harness — R12, which replaces
+the earlier feedback loop, R10). It never spends quota and never prints a config value other than a recognised mode or
 event name or a count — config files hold keys. It writes no file, `--self-test` included.
 
 Configured is not enforced: a line reads what a config file says; none proves the harness enforces it.
@@ -36,6 +38,7 @@ import os
 import re
 import shutil
 import socket
+import subprocess
 import sys
 import tomllib
 from dataclasses import asdict, dataclass, field
@@ -43,7 +46,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from readiness import MISSING, REPORTED, UNKNOWN, VERIFIED, cell, run_cmd  # noqa: E402
+from readiness import CMD_TIMEOUT, MISSING, REPORTED, UNKNOWN, VERIFIED, cell, run_cmd  # noqa: E402
 
 SCRIPTS = Path(__file__).resolve().parent
 HARNESSES = ["claude", "codex", "agy", "qwen", "dsh", "opencode"]
@@ -70,7 +73,10 @@ JSON_HOW = "merge into the file: keep its other keys, and add list items to a li
 REQUIREMENTS = {1: "Clear context delivery", 2: "Well-designed tools", 3: "Planning and task structure",
                 4: "State and memory across sessions", 5: "Independent verification",
                 6: "Guardrails and permissions", 7: "Recovery and retries", 8: "Human-in-the-loop gates",
-                9: "Observability", 10: "Feedback loop that improves the harness"}
+                9: "Observability", 11: "Results can be judged",
+                12: "Failures and successes update the harness"}
+R10_NOTE = ("R10 (feedback loop) is replaced by R12. R11 and R12: the workflow-design skill's "
+            "references/harness-requirements.md.")
 FINDINGS = ["present", "absent", "unknown", "measured", "covered"]
 
 
@@ -130,7 +136,21 @@ def load_json(p: Path) -> tuple[dict | None, str]:
 COVERED = [(2, "engine adapters with pinned flags", "engines.py"), (2, "dispatcher", "dispatch.py"),
            (3, "design gate", "design_gate.py"), (4, "run state template", "../assets/templates/state.md"),
            (5, "build gate (tests, scope, tamper)", "feature_gate.py"), (7, "timers and bounded repair", "dispatch.py"),
-           (9, "run event log", "runlog.py"), (9, "token harvest", "harvest_run.py")]
+           (9, "run event log", "runlog.py"), (9, "token harvest", "harvest_run.py"),
+           (11, "use-case register and coverage (R11.1)", "../guard/src/register.ts"),
+           (12, "engine result check (R12.1)", "../guard/src/traps.ts"),
+           (12, "failure journal (R12.2)", "../guard/src/journal.ts"),
+           (12, "insight gate (R12.3)", "../guard/src/insight.ts"),
+           (12, "success lines and rates (R12.7)", "../guard/src/rates.ts"),
+           (12, "success paths (R12.7)", "../guard/src/paths.ts"),
+           (12, "criteria and score (R12.7)", "../guard/src/criteria.ts")]
+
+# A sub-requirement no script can read off a machine: the run's own design is where it is shown or not.
+UNCHECKED = [(11, "first signal before the full verdict (R11.2)"),
+             (12, "judges say what is wrong, not how (R12.4)"),
+             (12, "review when a model changes (R12.5)"),
+             (12, "withdrawal conditions (R12.6)")]
+UNCHECKED_PROOF = "references/harness-requirements.md"
 
 
 def covered_lines(scripts: Path) -> list[Finding]:
@@ -144,6 +164,11 @@ def covered_lines(scripts: Path) -> list[Finding]:
         else:
             out.append(Finding(req, "-", what, MISSING, "unknown", f"{name} not found beside this script", name))
     return out
+
+
+def unchecked_lines() -> list[Finding]:
+    return [Finding(req, "-", item, UNKNOWN, "unknown", "no script checks it; each run's design must show it",
+                    UNCHECKED_PROOF) for req, item in UNCHECKED]
 
 
 # --- requirement 1, 4, 5, 9: files and engines -----------------------------------------------------------------
@@ -293,7 +318,7 @@ def claude_lines(w: Where, read=load_json) -> list[Finding]:
     else:
         lines.append(line(8, "bypass-mode prompt", "unknown", f"skipDangerousModePermissionPrompt not true/false ({scope})"))
 
-    # R10 hooks: an event counts when it holds at least one hook with a command; names shown only if recognised
+    # R12 hooks: an event counts when it holds at least one hook with a command; names shown only if recognised
     def runnable(h):
         need = CLAUDE_HOOK_HANDLERS.get(h.get("type")) if isinstance(h, dict) else None
         return bool(need) and all(isinstance(h.get(k), str) and h[k].strip() for k in need)
@@ -309,14 +334,14 @@ def claude_lines(w: Where, read=load_json) -> list[Finding]:
     named = sorted(e for e in events if e in CLAUDE_HOOK_EVENTS)
     others = len(events) - len(named)
     if disabled is True and named:
-        lines.append(line(10, "hooks", "absent", f"disableAllHooks true ({scope}): no hook runs", Help(
+        lines.append(line(12, "hooks", "absent", f"disableAllHooks true ({scope}): no hook runs", Help(
             where, "lets the configured hooks run again", json.dumps({"disableAllHooks": False}, indent=2), "json",
             JSON_HOW)))
     elif named:
-        lines.append(line(10, "hooks", "present",
+        lines.append(line(12, "hooks", "present",
                           f"events: {', '.join(named)}" + (f"; {others} unrecognised (not shown)" if others else "")))
     else:
-        lines.append(line(10, "hooks", "absent", "no runnable hook for a recognised event" +
+        lines.append(line(12, "hooks", "absent", "no runnable hook for a recognised event" +
                           (f"; {others} unrecognised (not shown)" if others else "") +
                           ("; disableAllHooks true" if disabled is True else ""), Help(
             project_file, "a hook is how a recorded mistake becomes a check that runs every time (e.g. a "
@@ -366,6 +391,110 @@ def unverified_lines(installed: set[str]) -> list[Finding]:
                     "harness_health.py docstring") for h in ("agy", "qwen", "dsh", "opencode") if h in installed]
 
 
+# --- the guard's own state, through its own commands (guard/SPEC.md, Round 7) ----------------------------------
+
+GUARD_CLI = "../guard/src/cli.ts"
+GUARD_HARNESS = {"claude-code": "claude"}      # the doctor's harness name → this script's
+GUARD_EXIT = {"doctor": {0}, "rates": {0}, "insight": {0, 1}}
+GUARD_KEY = {"doctor": "harnesses", "rates": "rows", "insight": "open"}
+GUARD_STATES = {"installed", "absent", "unknown"}
+GUARD_ENV = {"BUN_RUNTIME_TRANSPILER_CACHE_PATH": "0"}   # bun otherwise writes its cache under HOME: this script writes nothing
+
+
+def guard_json(command: str, cli: Path, cwd: Path, env: dict):
+    """(payload, "") or (None, why it failed). The command's own text is never carried out of here."""
+    try:
+        p = subprocess.run(["bun", str(cli), command, "--json"], cwd=cwd, env={**env, **GUARD_ENV}, stdin=subprocess.DEVNULL,
+                           capture_output=True, text=True, errors="replace", timeout=CMD_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return None, "timeout"
+    except (FileNotFoundError, OSError):
+        return None, "bun not on PATH"
+    if p.returncode not in GUARD_EXIT[command]:
+        return None, f"exit {p.returncode}"
+    try:
+        d = json.loads(p.stdout)
+    except ValueError:
+        d = None
+    key = GUARD_KEY[command]
+    if not isinstance(d, dict) or not isinstance(d.get(key), list):
+        return None, "unexpected output"
+    return d, ""
+
+
+def guard_failed(item: str, command: str, why: str) -> Finding:
+    return Finding(12, "-", item, UNKNOWN, "unknown", f"the guard's {command} failed: {why}", f"`harness-guard {command}`")
+
+
+def guard_lines(installed: set[str], w: Where, scripts: Path, cwd: Path, env: dict) -> list[Finding]:
+    """One absence line and nothing else when the guard or bun is not there — the run still has to report."""
+    cli = (scripts / GUARD_CLI).resolve()
+    if not cli.is_file():
+        return [Finding(12, "-", "harness-guard", MISSING, "unknown", "guard not found beside this script",
+                        "guard/src/cli.ts")]
+    if not shutil.which("bun", path=env.get("PATH")):
+        return [Finding(12, "-", "harness-guard", MISSING, "unknown", "bun not on PATH", "`command -v bun`")]
+    return (guard_hook_lines(cli, w, installed, cwd, env) + [guard_rates_line(cli, cwd, env)]
+            + [guard_insight_line(cli, cwd, env)])
+
+
+def guard_hook_lines(cli: Path, w: Where, installed: set[str], cwd: Path, env: dict) -> list[Finding]:
+    """One line per harness the doctor names that is installed here; the doctor's note is a count, not a key."""
+    payload, why = guard_json("doctor", cli, cwd, env)
+    if payload is None:
+        return [guard_failed("harness-guard hooks", "doctor", why)]
+    rows = payload["harnesses"]
+    if not all(isinstance(r, dict) and isinstance(r.get("harness"), str) and r.get("guard") in GUARD_STATES
+               and isinstance(r.get("note"), str) for r in rows):
+        return [guard_failed("harness-guard hooks", "doctor", "unexpected output")]
+    out = []
+    for row in rows:
+        name = row["harness"]
+        harness = GUARD_HARNESS.get(name, name)
+        if harness not in installed:
+            continue
+        guard = row["guard"]
+        finding = "present" if guard == "installed" else "absent" if guard == "absent" else "unknown"
+        help_ = None
+        if finding == "absent":
+            help_ = Help("-", "installs the guard's hooks: it blocks known engine-call traps, logs failures as they "
+                               "happen, and asks for the insight before the agent stops",
+                         f"bun {w.show(cli)} install --print {name}", "sh",
+                         "prints the settings to merge; you apply them")
+        out.append(Finding(12, harness, "harness-guard hooks", REPORTED, finding, row["note"],
+                           "`harness-guard doctor`", help_))
+    return out
+
+
+def guard_rates_line(cli: Path, cwd: Path, env: dict) -> Finding:
+    payload, why = guard_json("rates", cli, cwd, env)
+    if payload is None:
+        return guard_failed("checked results in this project", "rates", why)
+    ok = fail = 0
+    for row in payload["rows"]:
+        if not isinstance(row, dict) or not all(isinstance(row.get(k), int) and not isinstance(row.get(k), bool)
+                                                for k in ("ok", "fail")):
+            return guard_failed("checked results in this project", "rates", "unexpected output")
+        ok, fail = ok + row["ok"], fail + row["fail"]
+    return Finding(12, "-", "checked results in this project", VERIFIED, "measured",
+                   f"{ok} success lines, {fail} failure records", "`harness-guard rates`")
+
+
+def guard_insight_line(cli: Path, cwd: Path, env: dict) -> Finding:
+    payload, why = guard_json("insight", cli, cwd, env)
+    if payload is None:
+        return guard_failed("insight for every failure (R12.3)", "insight", why)
+    n = len(payload["open"])
+    if not n:
+        return Finding(12, "-", "insight for every failure (R12.3)", VERIFIED, "present", "no open failures",
+                       "`harness-guard insight`")
+    f = Finding(12, "-", "insight for every failure (R12.3)", VERIFIED, "absent",
+                f"{n} open failures without a valid insight", "`harness-guard insight`")
+    f.help = Help("runs/<run>/insight.md", "answers each open failure: six whys, the root cause, two or three fix "
+                                         "options (R12.3)")
+    return f
+
+
 # --- gather, render ---------------------------------------------------------------------------------------------
 
 def gather(home: Path, cwd: Path, env: dict, scripts: Path = SCRIPTS) -> list[Finding]:
@@ -375,6 +504,8 @@ def gather(home: Path, cwd: Path, env: dict, scripts: Path = SCRIPTS) -> list[Fi
                      "on PATH" if h in installed else "not on PATH", f"`command -v {h}`") for h in HARNESSES]
     parts = [(1, "-", "instruction files", lambda: context_lines(w)),
              (0, "-", "covered scripts", lambda: covered_lines(scripts)),
+             (12, "-", "the guard", lambda: guard_lines(installed, w, scripts, cwd, env)),
+             (12, "-", "unchecked sub-requirements", lambda: unchecked_lines()),
              (9, "-", "memory and logs", lambda: memory_and_log_lines(w, installed)),
              (5, "-", "engine kinds", lambda: [engine_kind_line(installed)])]
     parts += [(6, "claude", "settings", lambda: claude_lines(w))] if "claude" in installed else []
@@ -395,11 +526,12 @@ def select(lines: list[Finding], harnesses: list[str]) -> list[Finding]:
 def to_markdown(lines: list[Finding]) -> str:
     out = [f"# Harness health — {date.today().isoformat()} — {socket.gethostname()}", "",
            "Configured is not enforced: each line reads what a config file says; none proves the harness enforces "
-           "it. Nothing was changed; no quota spent.", "", "## Ten requirements", "",
+           "it. Nothing was changed; no quota spent.", "", "## Requirements", "",
            "| # | Requirement | " + " | ".join(FINDINGS) + " |", "|---|---|" + "---|" * len(FINDINGS)]
     for n, name in REQUIREMENTS.items():
         counts = [sum(1 for f in lines if f.req == n and f.finding == k) for k in FINDINGS]
         out.append(f"| R{n} | {name} | " + " | ".join(str(c) for c in counts) + " |")
+    out += ["", R10_NOTE]
     out += ["", "## Lines", "", "| # | Harness | Item | Status | Finding | Detail | Proof |",
             "|---|---|---|---|---|---|---|"]
     for f in lines:
