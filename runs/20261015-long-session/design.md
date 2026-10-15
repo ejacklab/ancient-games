@@ -39,3 +39,22 @@ blocks and PreToolUse denies.
 **What would show the hybrid adds nothing here:** A at 3 of 3 on (a)–(d), as in E4.
 
 Stop: one round of 9 runs; the result is reported whichever way it falls.
+
+## Round 2 — the agent's own failures (written before it runs, after round 1's results)
+
+Round 1 scored only the two planted engine failures; the agents' own failures went unlogged (4 of 9 sessions had a
+failing test run, 6 of 9 an errored tool call; no record, no insight). Round 2 changes two things and keeps the rest:
+`RULES.md` rule 1 now defines a failure as anything that went wrong, the agent's own mistakes included (template2/),
+and the guard (round-4 code: D1 failing test runs, D2 errored Bash calls, D3 no false failure on variable paths) is
+what arms B and C load.
+
+**Ground truth per run, from the transcript:** every Bash call that ended in PostToolUseFailure (an errored call) and
+every test run whose output shows failures. **Measure (f):** of those, how many have a journal record; **(g):** all
+logged failures answered by a valid insight; plus (a)–(e) as before, time and Stop blocks.
+
+**Prediction:**
+- **A — rules only:** (f) ≤ 1/3 of the own failures logged across the arm (agents treat a red test while coding as
+  normal, not as a failure to log), (g) for what is logged 2/3; the two engine failures still logged 3/3.
+- **B — rules + hooks:** (f) all errored Bash calls and failing test runs logged (3/3 runs), (g) 3/3; slower than A.
+- **C — hooks only:** (f) and (g) 3/3; slowest.
+- More records per run than round 1 (each failing test run is one), and so more insight sections.
