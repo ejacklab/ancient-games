@@ -356,3 +356,7 @@ Fails-if: a failing `pytest` run (exit 1) has no record; `pytest -q | tail -3` s
 record; a passing test run has a record; `false` has no record; an interrupted call has a record; a `grep` with no match
 (PostToolUse) has a record; a record holds test output text; `codex exec x -o $OUT/r.md </dev/null` with no such file
 logs `missing-output`.
+- **D6 Raise once.** When a Stop finds every pending failure of the session answered and the final message names the
+  insight file(s), it writes a `raised` record (`{kind: "raised", time, session, ids}`) for those failures; a later Stop
+  asks to name only failures not yet raised. (Found live: the guard asked this session to repeat the insight path at
+  every stop.)
