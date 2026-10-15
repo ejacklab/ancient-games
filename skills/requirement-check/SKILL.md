@@ -96,14 +96,14 @@ The eight questions check one statement. R13 checks the **list** a piece of work
 accepted use cases, and the requirements written where they leave a detail unclear. The rule itself, R13.1–R13.7 with
 its fails-if, is `references/use-cases-and-requirements.md` — one copy; read it before writing or accepting a list.
 
-Check, in this order:
+Check each of these against the rule:
 
 1. **Whose list.** The user's own cases and the agent's suggestions are two lists; a suggestion is in the accepted list
    only with the user's recorded decision (R13.1).
 2. **Each use case** holds its purpose, its fails-if and its minimum acceptance, each an observable outcome, never a
    method (R13.2). Run *can it fail* and *weak words* on the fails-if and the minimum acceptance.
-3. **Each requirement** names the use case or vision line it serves, and binds only once the user has accepted it — an
-   edit needs a new acceptance (R13.5). Two qualities that pull against each other each get a target the user gives
+3. **Each requirement** names the use case or vision line it serves; a suggested one binds only after the user
+   accepts it, and an edited one needs a new acceptance (R13.5). Two qualities that pull against each other each get a target the user gives
    (R13.4). Then run the eight questions on it.
 4. **A conflict** between an accepted use case and an accepted requirement: the use case wins, and the conflict is
    recorded and shown to the user (R13.7).
@@ -118,8 +118,8 @@ The quality characteristics behind these questions (necessary, appropriate, unam
 feasible, verifiable, correct, conforming) come from requirements-engineering sources — IEEE 830, ISO/IEC/IEEE 29148
 and the INCOSE *Guide to Writing Requirements* — and the standard and the guide are still **not read**: paywalled or
 blocked (HTTP 403, checked 2026-10-16). The nine names are confirmed only at second hand: a 2024 paper (Lubos et al.,
-arXiv 2408.10886, Table I) lists the same nine as the characteristics of ISO/IEC/IEEE 29148:2018; an older summary
-gives a different list, probably the 2011 edition. No INCOSE rule number is verified. The two RFC points above
+arXiv 2408.10886, Table I) lists the same nine as the characteristics of ISO/IEC/IEEE 29148:2018. No INCOSE rule
+number is verified. The two RFC points above
 **were** read, and the quotes are checked. Treat the rest as a good working list, not as a citation; the sources and
 their labels are in `runs/20261016-integrate-r11-r13/research/findings.md` in the Ancient Games project.
 

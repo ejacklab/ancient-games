@@ -613,6 +613,43 @@ def test_hh_26_guard_command_failures_are_isolated_and_redacted(box, command, fa
                     assert any(f["item"] == item and f["finding"] != "unknown" for f in lines)
 
 
+
+def _malformed(command, change):
+    payload = guard_answers()[command]
+    change(payload)
+    return payload
+
+
+# Review finding (run 20261016-integrate-r11-r13): every field of Round 7's shape is checked, not only the main list.
+MALFORMED = [
+    ("doctor", lambda d: d["harnesses"][0].update(guard=[])),
+    ("doctor", lambda d: d["harnesses"][0].update(guard={"x": SECRET})),
+    ("doctor", lambda d: d["harnesses"][0].pop("answers")),
+    ("doctor", lambda d: d.pop("health")),
+    ("doctor", lambda d: d.update(health={"ok": "yes", "summary": SECRET})),
+    ("rates", lambda d: d["rows"].append({"ok": 3, "fail": 0})),
+    ("rates", lambda d: d["rows"].append({"check": SECRET, "engine": "x", "ok": 1, "fail": True})),
+    ("insight", lambda d: (d.pop("invalid"), d.pop("unreadable"))),
+    ("insight", lambda d: d["open"].append(None)),
+    ("insight", lambda d: d["invalid"].append({"id": SECRET, "file": "f", "rules": SECRET})),
+    ("insight", lambda d: d["unreadable"].append(7)),
+]
+
+
+@pytest.mark.parametrize("command,change", MALFORMED)
+def test_hh_29_any_field_off_shape_is_one_unknown_line(box, command, change):
+    box.fake("claude")
+    plant_guard(box, command=command, output=json.dumps(_malformed(command, change)))
+    report = box.run("--json")
+    assert report.returncode == 0, report.stderr
+    assert SECRET not in report.stdout + report.stderr
+    lines = json.loads(report.stdout)["findings"]
+    failed = [f for f in lines if f["item"] == GUARD_ITEMS[command]]
+    assert [f["detail"] for f in failed] == [f"the guard's {command} failed: unexpected output"]
+    for other, item in GUARD_ITEMS.items():
+        if other != command:
+            assert any(f["item"] == item and f["finding"] != "unknown" for f in lines)
+
 def test_hh_27_guard_reports_write_nothing(box):
     box.fake("claude")
     plant_guard(box)

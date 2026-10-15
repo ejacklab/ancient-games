@@ -396,16 +396,46 @@ def unverified_lines(installed: set[str]) -> list[Finding]:
 GUARD_CLI = "../guard/src/cli.ts"
 GUARD_HARNESS = {"claude-code": "claude"}      # the doctor's harness name → this script's
 GUARD_EXIT = {"doctor": {0}, "rates": {0}, "insight": {0, 1}}
-GUARD_KEY = {"doctor": "harnesses", "rates": "rows", "insight": "open"}
 GUARD_STATES = {"installed", "absent", "unknown"}
-GUARD_ENV = {"BUN_RUNTIME_TRANSPILER_CACHE_PATH": "0"}   # bun otherwise writes its cache under HOME: this script writes nothing
+# bun otherwise writes its cache under HOME, and this script writes nothing
+GUARD_ENV = {"BUN_RUNTIME_TRANSPILER_CACHE_PATH": "0"}
+
+
+def _str(v) -> bool:
+    return isinstance(v, str)
+
+
+def _int(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _rows(v, fields: dict) -> bool:
+    """A list of objects, each with every named field passing its check."""
+    return isinstance(v, list) and all(
+        isinstance(r, dict) and all(k in r and check(r[k]) for k, check in fields.items()) for r in v)
+
+
+# Round 7's whole shape per command: a payload that misses or mistypes any field is "unexpected output".
+GUARD_SHAPE = {
+    "doctor": lambda d: _rows(d.get("harnesses"), {"harness": _str, "note": _str,
+                                                   "guard": lambda v: _str(v) and v in GUARD_STATES,
+                                                   "answers": lambda v: v is None or isinstance(v, bool)})
+    and "health" in d and (d["health"] is None or _rows([d["health"]], {"ok": lambda v: isinstance(v, bool),
+                                                                        "summary": _str})),
+    "rates": lambda d: _rows(d.get("rows"), {"check": _str, "engine": _str, "ok": _int, "fail": _int}),
+    "insight": lambda d: _rows(d.get("open"), {"id": _str, "check": _str})
+    and _rows(d.get("invalid"), {"id": _str, "file": _str,
+                                 "rules": lambda v: isinstance(v, list) and all(map(_str, v))})
+    and isinstance(d.get("unreadable"), list) and all(map(_str, d["unreadable"])),
+}
 
 
 def guard_json(command: str, cli: Path, cwd: Path, env: dict):
     """(payload, "") or (None, why it failed). The command's own text is never carried out of here."""
     try:
-        p = subprocess.run(["bun", str(cli), command, "--json"], cwd=cwd, env={**env, **GUARD_ENV}, stdin=subprocess.DEVNULL,
-                           capture_output=True, text=True, errors="replace", timeout=CMD_TIMEOUT)
+        p = subprocess.run(["bun", str(cli), command, "--json"], cwd=cwd, env={**env, **GUARD_ENV},
+                           stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace",
+                           timeout=CMD_TIMEOUT)
     except subprocess.TimeoutExpired:
         return None, "timeout"
     except (FileNotFoundError, OSError):
@@ -416,14 +446,14 @@ def guard_json(command: str, cli: Path, cwd: Path, env: dict):
         d = json.loads(p.stdout)
     except ValueError:
         d = None
-    key = GUARD_KEY[command]
-    if not isinstance(d, dict) or not isinstance(d.get(key), list):
+    if not isinstance(d, dict) or not GUARD_SHAPE[command](d):
         return None, "unexpected output"
     return d, ""
 
 
 def guard_failed(item: str, command: str, why: str) -> Finding:
-    return Finding(12, "-", item, UNKNOWN, "unknown", f"the guard's {command} failed: {why}", f"`harness-guard {command}`")
+    return Finding(12, "-", item, UNKNOWN, "unknown", f"the guard's {command} failed: {why}",
+                   f"`harness-guard {command}`")
 
 
 def guard_lines(installed: set[str], w: Where, scripts: Path, cwd: Path, env: dict) -> list[Finding]:
@@ -443,12 +473,8 @@ def guard_hook_lines(cli: Path, w: Where, installed: set[str], cwd: Path, env: d
     payload, why = guard_json("doctor", cli, cwd, env)
     if payload is None:
         return [guard_failed("harness-guard hooks", "doctor", why)]
-    rows = payload["harnesses"]
-    if not all(isinstance(r, dict) and isinstance(r.get("harness"), str) and r.get("guard") in GUARD_STATES
-               and isinstance(r.get("note"), str) for r in rows):
-        return [guard_failed("harness-guard hooks", "doctor", "unexpected output")]
     out = []
-    for row in rows:
+    for row in payload["harnesses"]:
         name = row["harness"]
         harness = GUARD_HARNESS.get(name, name)
         if harness not in installed:
@@ -472,9 +498,6 @@ def guard_rates_line(cli: Path, cwd: Path, env: dict) -> Finding:
         return guard_failed("checked results in this project", "rates", why)
     ok = fail = 0
     for row in payload["rows"]:
-        if not isinstance(row, dict) or not all(isinstance(row.get(k), int) and not isinstance(row.get(k), bool)
-                                                for k in ("ok", "fail")):
-            return guard_failed("checked results in this project", "rates", "unexpected output")
         ok, fail = ok + row["ok"], fail + row["fail"]
     return Finding(12, "-", "checked results in this project", VERIFIED, "measured",
                    f"{ok} success lines, {fail} failure records", "`harness-guard rates`")

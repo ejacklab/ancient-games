@@ -21,6 +21,12 @@ def test_skills_export_is_self_contained():
     assert r.returncode == 0, r.stderr + r.stdout
     assert "self-test: PASS" in r.stdout, r.stdout
 
+    # every `references/<file>` a bundled SKILL.md names is in the bundle (run 20261016-integrate-r11-r13 review)
+    import re
+    for skill in skills.glob("*/SKILL.md"):
+        for ref in re.findall(r"`(references/[^`\s]+\.md)`", skill.read_text()):
+            assert (skill.parent / ref).is_file(), f"{skill.parent.name}: {ref} named but not exported"
+
 
 def test_skills_export_is_current():
     """The committed skills/ must match a fresh export — drift is caught, not hand-synced."""
