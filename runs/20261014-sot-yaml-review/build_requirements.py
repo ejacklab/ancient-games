@@ -31,7 +31,8 @@ HEADER = {
         "who_decides names who settles an open choice inside the record; none means the record leaves no choice "
         "open; unassigned means the choice is open and nobody is named yet.",
         "The records are grouped by what happens to a memory: it is written, it is kept true, and it is read.",
-        "There are no fixed numbers: where a limit applies, it is a comparison that measurement decides.",
+        "There are no fixed numbers: where a limit applies, it is a comparison that measurement decides. Rd3.1a's "
+        "interim numbers hold only until the limit is measured.",
     ],
     "levels": {
         "MUST": "A gate. When it fails, what its fails_if names stops (the entry, the commit, the load or the "
@@ -58,6 +59,10 @@ HEADER = {
         "d": "this design's text, SOURCE_OF_TRUTH.md (the section named)",
     },
     "retired_ids": "K2 and K3 are not used. Other text cites K4 to K6, so the numbers stay.",
+    "kit": "These files travel together as one kit: SOURCE_OF_TRUTH.md, this file, CACHES.md and "
+           "vision-statements/; this file names them relative to its own folder. `tools/` and `docs/index-md/` are "
+           "relative to the repository root. `project-memory/`, `AGENTS.md`, `CLAUDE.md` and `runs/` are the "
+           "project's own.",
 }
 
 
@@ -183,14 +188,16 @@ CATEGORIES = [
             r("W6.2", "SHOULD", "Each agent works on its own branch or worktree, so two edits to the same lines meet as "
               "a merge conflict, not a silent overwrite.",
               "an edit to an entry is lost without a conflict, with no written reason.", "git"),
-            r("W6.3a", "MUST", "A claim is never rewritten (K4.3), so a merge conflict in an entry is only in the lines "
-              "added to it. Whoever does the merge keeps both sides: both `changed:` lines, both links. Nobody "
+            r("W6.3a", "MUST", "A claim is never rewritten (K4.3), so a merge conflict in an entry is never in its claim: "
+              "only in its header (`covers`, `status`, the links) and the lines added to it. Whoever does the merge keeps both sides: both `changed:` lines, both links, and every `covers` "
+              "path either side wrote. Nobody "
               "chooses between two claims. Two entries that each supersede the same entry are reported in the task's "
               "`state.md` and to the project owner, as in Rd5.3.",
-              "a merged entry is missing a `changed:` line or link that one side added, or two entries superseding "
+              "a merged entry is missing a `changed:` line, link or `covers` path that one side added, or two "
+              "entries superseding "
               "one go unreported.", "git; reviewer", who_decides=PO, part_of="W6.3"),
             r("W6.3b", "SHOULD", "A conflict in `INDEX.md` is resolved by regenerating it (K6.3).",
-              "as K6.3b.", "tool", part_of="W6.3"),
+              "as K6.3b.", "reviewer", part_of="W6.3"),
         ]),
     ]),
     ("Keep — memory stays true, and nothing is lost", [
@@ -214,9 +221,12 @@ CATEGORIES = [
               "reads it and checks it against the code (Rd5).", "nothing: why there is no expiry.", "none"),
             r("K4.3", "MUST", "An entry's claim is never rewritten. A changed claim is a new entry that supersedes the "
               "old one. After an entry is first committed, it only gains a `changed:` line, a new `status`, the "
-              "`superseded_by` link, and `done:` on a decision to build something (W5.3). This also keeps merge "
-              "conflicts out of claims (W6.3).",
-              "git shows an entry's claim changed after its first commit.", "git"),
+              "`superseded_by` link, and `done:` on a decision to build something (W5.3). Its `covers` may also be "
+              "corrected, for example after a file is renamed, with a `changed:` line; `source` and `depends_on` "
+              "change only by superseding the entry. A `covers` correction changes where the entry points, not what it "
+              "claims, so it is not a mismatch under Rd5.3. This also keeps merge conflicts out of claims (W6.3).",
+              "git shows an entry's claim, `source` or `depends_on` changed after its first commit, or its `covers` "
+              "changed with no `changed:` line.", "git"),
         ]),
         ("K5", "The journal becomes entries", "v: nothing lost between sessions", [
             r("K5.1", "SHOULD", "Task and project memory each keep a journal: a task's in `work/<task-id>/journal/`, "
@@ -284,12 +294,16 @@ CATEGORIES = [
         ]),
         ("Rd3", "`INDEX.md` fits every agent that reads it", "d: the size check; CACHES.md § Example numbers by case", [
             r("Rd3.1a", "MUST", "`INDEX.md` fits the strictest start-file limit among the agents that work on the "
-              "project. The check that keeps it in step with its entries (K6) also fails when it does not fit.",
-              "`INDEX.md` exceeds that strictest limit, or the K6 check passes an `INDEX.md` that exceeds it.",
-              "tool", who_decides="unassigned: which agents work on the project, and so the strictest limit",
+              "project. The check that keeps it in step with its entries (K6) also fails when it does not fit. Until "
+              "the project owner records measured limits, the tool's limit is the example in Rd3.1b: 200 lines and "
+              "24,000 bytes.",
+              "`INDEX.md` exceeds that strictest limit (until it is recorded, the interim numbers), or the K6 check "
+              "passes an `INDEX.md` that exceeds it.",
+              "tool", who_decides="project owner: which agents work on the project, and so the strictest limit",
               part_of="Rd3.1"),
             r("Rd3.1b", "guidance", "Example, from `CACHES.md`: about 24 KB and 200 lines when Claude Code, Qwen and "
-              "agy share a project.", "nothing: an example, not a limit.", "none", part_of="Rd3.1"),
+              "agy share a project. `tools/memory_index.py` holds these numbers until measured limits are "
+              "recorded (Rd3.1a).", "nothing: an example.", "none", part_of="Rd3.1"),
         ]),
         ("Rd4", "On demand", "d: When it will be used", [
             r("Rd4.1", "MUST", "Before editing a file, an agent reads the entries whose `covers` include it.",
