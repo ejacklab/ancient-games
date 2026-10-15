@@ -8,6 +8,10 @@ import { handleHook } from "./hooks.ts";
 import type { DoctorHarness, DoctorReport } from "./types.ts";
 
 const MARK = "harness-guard";
+// The command install prints names the package by its folder, not by MARK, since the package moved into the skill as
+// `guard/`: both count (the doctor and install must agree).
+const GUARD_COMMAND = /\/src\/cli\.ts\s+hook\s+claude\b/;
+const isGuard = (command: string): boolean => command.includes(MARK) || GUARD_COMMAND.test(command);
 
 // A command the catalogue denies: the probe's answer is whether the handler denies it in-process.
 const PROBE_COMMAND = "codex exec probe";
@@ -140,10 +144,10 @@ function readState(file: string, plugin = false): "installed" | "absent" | "unkn
     } catch {
       return "unknown";
     }
-    return jsonCommands(parsed).some((command) => command.includes(MARK)) ? "installed" : "absent";
+    return jsonCommands(parsed).some(isGuard) ? "installed" : "absent";
   }
   if (file.endsWith(".toml") && !structurallyComplete(raw)) return "unknown";
-  return textCommands(raw).some((command) => command.includes(MARK)) ? "installed" : "absent";
+  return textCommands(raw).some(isGuard) ? "installed" : "absent";
 }
 
 function guardState(opts: DoctorOptions, harness: string): { guard: DoctorHarness["guard"]; note: string } {
