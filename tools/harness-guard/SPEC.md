@@ -27,11 +27,33 @@ tests must pin down with a planted input.
 
 Data files, YAML, in `data/`: `traps.yaml` and `engines.yaml` (shapes in `src/types.ts`: `Trap`, `EngineSpec`).
 
+**Segments (added in round 2, after the replay of 3,677 past commands found 31 false denies in 37 — the lint read
+the whole Bash string).** `recognizeEngineCall` and `lintCommand` work on **segments**, never on the raw string:
+- `segments(command: string): Segment[]` (exported; `Segment = { text: string; background: boolean }`):
+  1. Heredoc bodies are removed first: after a line holding `<<WORD`, `<<'WORD'`, `<<"WORD"` or `<<-WORD`, every
+     line up to and including the line that is exactly `WORD` (leading tabs allowed for `<<-`) is dropped.
+  2. The rest is split into simple commands at newlines, `;`, `&&`, `||`, `|`, a single `&`, `(` and `)` — **outside
+     single and double quotes only**. A `&` that is part of a redirection (`2>&1`, `>&2`, `&>file`) is not a separator.
+  3. Each simple command is trimmed; empty ones are dropped. Its text keeps its own redirections (`</dev/null`,
+     `> out.md`), so `unless` and output redirects are read from the segment.
+  4. `background` is true when the separator right after the segment is a single `&`, or the segment is inside a
+     `( … )` group whose `)` is followed by a single `&`.
+- **The command word.** Before matching, leading wrappers are stripped from a segment's text: `NAME=value`
+  assignments, `timeout` with its options and duration, `env` with `-u NAME`, `-i` and `NAME=value` words, `nohup`,
+  `time`, `exec`, `command`, and a `runlog.py … --` wrapper (everything up to and including the first standalone
+  `--` when the command word ends in `runlog.py`, with or without `python3` before it). What remains starts at the
+  command word, and **the `command` regexes in `data/` are anchored to it (`^`)**.
+- A segment holding a standalone `--help`, `-h`, `--version` or `-V` word starts no session: it is never an engine
+  call and never a command-trap hit.
+- `paths_outside_repo` reads path tokens of the **matching segment only**.
+- `concurrent` still reads `ctx.running` (whole command lines of other processes) with the trap's regex **unanchored**.
+
 Exports:
 - `loadTraps(path?: string): Trap[]` and `loadEngines(path?: string): EngineSpec[]` — default to the package's
   `data/` files. A malformed entry is skipped and reported by `catalogueProblems(path?)`: `string[]`.
 - `recognizeEngineCall(command: string, engines?: EngineSpec[]): EngineCall | null`
-  - Matches the first `EngineSpec` whose `command` regex matches the command.
+  - Matches the first segment (in order) whose stripped text matches an `EngineSpec`'s `command` regex; `null` if none.
+    Output flags, redirects and `background` are read from that segment.
   - `outputFile`: the value after any of the spec's `output_flags` (`-o FILE`, `-o=FILE`, `--out FILE`), else the
     target of a stdout redirect `> FILE` or `>> FILE` (not `2>`); quotes stripped; `null` if none.
   - `stdoutIsAnswer`: from the spec, but `false` when `outputFile` came from a redirect (the answer went to the file).
@@ -40,9 +62,9 @@ Exports:
   - `background`: true when the command ends with `&` (outside quotes). (A caller that knows more passes
     `LintContext.background` to `lintCommand`; recognition reads the command only.)
 - `lintCommand(command: string, ctx: LintContext, traps?: Trap[]): Finding[]` — command traps only, **approved**
-  entries only (a `proposed` entry never produces a finding). A trap hits when its `command` regex matches **and** its
-  `unless` regex (if any) does not match **and** each extra condition it sets holds:
-  - `background: true` → `ctx.background` or the command ends with `&`;
+  entries only (a `proposed` entry never produces a finding). A trap hits on a segment when its `command` regex matches the
+  segment's stripped text **and** its `unless` regex (if any) does not match the segment's text **and** each extra condition it sets holds:
+  - `background: true` → `ctx.background` or the segment's `background`;
   - `concurrent: true` → `ctx.running` (command lines of other running processes) holds a line matching the trap's
     `command` regex;
   - `paths_outside_repo: true` → some absolute path token in the command (a word starting with `/`, quotes stripped,
@@ -67,7 +89,10 @@ Exports:
   - A clean call returns `[]`.
   - Paths are resolved against `input.cwd`.
 
-Fails-if: a `codex exec` command without a stdin redirect passes the lint; one with `</dev/null` is flagged; a
+Fails-if: a `codex exec` command without a stdin redirect passes the lint; `codex exec --help`, `pgrep -f "codex exec"`,
+a `grep` pattern or `echo` text naming an engine, or a heredoc body naming one, is flagged or recognised; a codex call
+after `timeout 60`, `env -u X` or `runlog.py … --` is not recognised; an absolute path that belongs to another command
+on the same line makes an `opencode run` hit; a proposed **result** trap produces a finding; one with `</dev/null` is flagged; a
 `proposed` trap produces a finding; an `opencode run` naming a path outside the repo passes; a second `opencode run`
 while one runs passes; an empty output file, a missing output file, a non-zero exit, or an "auto-denied" stderr from agy
 passes `checkResult`; a clean call produces a finding; a malformed catalogue entry crashes the loader.
