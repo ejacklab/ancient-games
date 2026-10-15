@@ -99,7 +99,27 @@ Fails if: a check's successes are not recorded, so its failure rate cannot be re
 "great success" names no comparison, or a comparison with no evidence; a success insight says only that it worked and
 gives no cause; a success insight proposes nothing to keep or repeat.
 
-Open — the project owner decides: whether R12.5's review also runs on a schedule; whether R12.6 binds this
+**R12.9 The path to a success (MUST; proposed).** When a task succeeds, the agent records its **path**: the task's
+category and objective, the steps in order — for each, what was done, the engine and model, the check that judged it —
+the decisions that mattered and why, and the measures of the result (time, failures, retries, checks passed). The
+insight of a great success (R12.8) is this path plus the cause that made it work. Each path is kept; none overwrites
+another.
+
+**R12.10 Evolve from a success, do not copy it (SHOULD; proposed).** When a new task is similar to one with a recorded
+path — the agent proposes the match by category and objective, and the project owner may overrule — the design starts
+from that path as its **parent** and changes at least one thing in it (a step, its order, an engine, a check, a brief),
+writing before the run what it changed and what it expects the change to do. After the run the result is compared with
+the parent's on the same measures: a better child becomes a parent for the next similar task; a worse one is a failure
+with its insight (R12.3); both stay recorded, so the set of paths grows like a population and is selected by results.
+
+Fails if: a successful task leaves no path; a path lacks its steps, engines, checks or measures; a design for a similar
+task neither names a parent path nor says why none applies; a design names a parent and changes nothing in it; the
+change is not written before the run; the child is not compared with its parent; a child's result overwrites its
+parent's path.
+
+Open — the project owner decides: where success paths are kept (proposed: the run folder, with one line per path in
+`docs/TASK_TYPES_LEDGER.md`); how much a child may change at once (proposed: one change per run, so its effect can be
+read); how R12.10 relates to the method's 20% challenger rule (`docs/TASK_TYPES.md`). Also: whether R12.5's review also runs on a schedule; whether R12.6 binds this
 requirement itself or only the fixes added under it.
 
 ## R13 — use cases and requirements
