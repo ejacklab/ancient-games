@@ -71,3 +71,14 @@ from the same lines); it shows the code does what the rules say, not that the ag
 
 After E1–E4 and the independent review: fix the misses that are in scope, then re-run E1–E3 (free) and E4 once if a
 hook changed. Limit: 2 enhance rounds. Stop: the limit, or a round that changes no count.
+
+## Addendum — E4 round 2, written before it runs (2026-10-15, after E4 round 1)
+
+Round 1 put the rules in front of the agent (TASK.md said "Read RULES.md and follow it"), and arm A followed them.
+That does not test the case the hybrid is for: rules that exist but are not in front of the agent. Round 2 keeps
+everything the same except TASK.md, which no longer mentions RULES.md (the file is still in the folder).
+
+- **Prediction — arm A (rules only, unread):** (a) `</dev/null` 0–1 of 3 (TASK.md's command has none); (b) failure
+  record 0 of 3; (c) valid insight 0 of 3; (d) raised 0 of 3. The agents report the empty output in prose.
+- **Prediction — arm B (+ hooks):** (a) 3 of 3 (PreToolUse denies the bare command); (b) 3 of 3 (PostToolUse logs);
+  (c) 3 of 3 and (d) 3 of 3 (Stop blocks until done), with more time than arm A.
