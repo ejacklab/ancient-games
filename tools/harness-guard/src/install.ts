@@ -44,12 +44,15 @@ function settingsSnippet(harness: Exclude<Harness, "opencode">, guardDir: string
   return [...lines, "", JSON.stringify({ hooks }, null, 2)].join("\n");
 }
 
+// opencode loads a plugin file by path, so the advice is the one-line file itself, importing the adapter by absolute
+// path (round 3, C15): a copy in a plugins folder outside the package still resolves and still blocks a trap.
 function opencodeSnippet(guardDir: string): string {
   return [
-    `# Copy ${guardDir}/src/plugins/opencode.ts into a plugins/ folder opencode loads, e.g.`,
-    `#   ${guardDir}/.opencode/plugins/harness-guard.ts`,
-    `# or into your own project's .opencode/plugin/harness-guard.ts. ${GITIGNORE}`,
+    `# Save the one line below as harness-guard.ts in a plugins folder opencode loads, e.g.`,
+    `#   ~/.config/opencode/plugins/harness-guard.ts`,
+    `# or your own project's .opencode/plugin/harness-guard.ts. ${GITIGNORE}`,
     "# opencode blocks a command by an exception from the plugin hook, as its docs report.",
+    `export { default } from "${guardDir}/src/plugins/opencode.ts";`,
   ].join("\n");
 }
 

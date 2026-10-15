@@ -12,6 +12,9 @@ const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const DURATION = /^\d+(?:\.\d+)?(?:h\d+)?[smhd]?$/;
 const TIMEOUT_VALUE_OPTIONS = new Set(["-s", "--signal", "-k", "--kill-after"]);
 const SIMPLE_WRAPPERS = new Set(["nohup", "time", "exec", "command"]);
+// Shell words that lead a segment without being the command word (round 3, C19): loop and branch keywords,
+// the negation operator and the brace group.
+const SHELL_WORDS = new Set(["do", "then", "else", "elif", "!", "{", "}", "fi", "done"]);
 
 type Entry = Record<string, unknown>;
 
@@ -214,9 +217,9 @@ function hasHelpWord(text: string): boolean {
   return words(text).some((word) => HELP_WORDS.has(unquote(word.text)));
 }
 
-// The heredoc a line opens: "<<WORD", "<<'WORD'", "<<"WORD"" or "<<-WORD" at a word boundary.
+// The heredoc a line opens: "<<WORD", "<<'WORD'", "<<"WORD"" or "<<-WORD", with or without a space before "<<" (C18).
 function heredocIn(line: string): { word: string; tabs: boolean } | null {
-  const found = line.match(/(?:^|\s)<<(-?)(?:'([^']*)'|"([^"]*)"|([A-Za-z_][A-Za-z0-9_]*))/);
+  const found = line.match(/<<(-?)(?:'([^']*)'|"([^"]*)"|([A-Za-z_][A-Za-z0-9_]*))/);
   if (found === null) return null;
   const word = found[2] ?? found[3] ?? found[4] ?? "";
   return word === "" ? null : { word, tabs: found[1] === "-" };
@@ -240,7 +243,8 @@ function dropHeredocBodies(command: string): string {
 
 type Token = { kind: "text"; text: string } | { kind: "sep"; sep: string };
 
-// Simple commands, keeping their own redirections. A "&" of a redirection (2>&1, >&2, &>file) is not a separator.
+// Simple commands, keeping their own redirections. A "&" of a redirection (2>&1, >&2, &>file) is not a separator,
+// and a backtick opens a command substitution whose command is a simple command of its own (C19).
 function tokenize(command: string): Token[] {
   const tokens: Token[] = [];
   let current = "";
@@ -263,6 +267,10 @@ function tokenize(command: string): Token[] {
     if (char === "'" || char === '"') {
       quote = char;
       current += char;
+      continue;
+    }
+    if (char === "`") {
+      separate("`");
       continue;
     }
     if (char === "\n" || char === ";" || char === "(" || char === ")") {
@@ -396,6 +404,10 @@ function stripWrappers(text: string): string {
       i++;
       continue;
     }
+    if (SHELL_WORDS.has(raw)) {
+      i++;
+      continue;
+    }
     if (name.endsWith("runlog.py")) {
       const after = afterRunlog(list, i);
       if (after > i) {
@@ -428,59 +440,97 @@ function stripWrappers(text: string): string {
 
 // ---- engine-call recognition --------------------------------------------------------------------------------------
 
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+interface ShellWord {
+  value: string; // the word as written, quotes kept
+  quoted: boolean; // the word is one quoted string
+  redirectTarget: boolean; // the word is the target of a redirect, not an argument
+  stdout: boolean; // a redirect target of stdout ("> FILE", ">> FILE", "&> FILE")
 }
 
-// The value after a flag: "-o FILE", "-o=FILE", "--out FILE", "--out=FILE".
+// A redirection operator at the start of a word: ">", ">>", "2>", "2>>", "&>", "<", "<<", ">&2".
+const REDIRECT_PREFIX = /^(?:\d*(?:>>?|<{1,2}|>&|<&)|&>>?)/;
+
+function isQuotedWord(raw: string): boolean {
+  return raw.length >= 2 && (raw.startsWith("\"") && raw.endsWith("\"") || raw.startsWith("'") && raw.endsWith("'"));
+}
+
+// The segment's words, quote-aware: a quoted word stays one word, and the target of a redirect is marked as one
+// (the shell writes it, the command does not read it — round 3, C2 and C21).
+function shellWords(text: string): ShellWord[] {
+  const found: ShellWord[] = [];
+  let targetNext = false;
+  let targetStdout = false;
+  for (const word of words(text)) {
+    const quoted = isQuotedWord(word.text);
+    const prefix = quoted ? null : REDIRECT_PREFIX.exec(word.text);
+    // The word after a bare operator is that operator's target, whatever it looks like.
+    if (targetNext && prefix === null) {
+      targetNext = false;
+      found.push({ value: word.text, quoted, redirectTarget: true, stdout: targetStdout });
+      continue;
+    }
+    targetNext = false;
+    if (prefix === null) {
+      found.push({ value: word.text, quoted, redirectTarget: false, stdout: false });
+      continue;
+    }
+    const rest = word.text.slice(prefix[0].length);
+    const stdout = /^&?>/.test(prefix[0]);
+    if (rest !== "") {
+      found.push({ value: rest, quoted: false, redirectTarget: true, stdout });
+      continue;
+    }
+    targetNext = true;
+    targetStdout = stdout;
+  }
+  return found;
+}
+
+// The value after an output flag, read from the unquoted words of the segment: "-o FILE", "-o=FILE", "--out FILE",
+// "--out=FILE". A flag inside a quoted prompt is prompt text (round 3, C2).
 function outputFromFlags(command: string, flags: string[] | undefined): string | null {
-  for (const flag of flags ?? []) {
-    const pattern = new RegExp(
-      `(?:^|\\s)${escapeRegex(flag)}(?:=+\\s*|\\s+)("[^"]*"|'[^']*'|[^\\s]+)`,
-    );
-    const found = command.match(pattern);
-    if (found) return unquote(found[1] ?? "");
+  if (flags === undefined || flags.length === 0) return null;
+  const list = shellWords(command);
+  for (const [index, word] of list.entries()) {
+    if (word.quoted || word.redirectTarget) continue;
+    for (const flag of flags) {
+      if (word.value === flag) {
+        const next = list[index + 1];
+        return next === undefined ? null : unquote(next.value);
+      }
+      if (word.value.startsWith(`${flag}=`)) return unquote(word.value.slice(flag.length + 1));
+    }
   }
   return null;
 }
 
 // The target of a stdout redirect "> FILE" or ">> FILE"; a "2>" is not one.
 function outputFromRedirect(command: string): string | null {
-  const pattern = /(^|[^0-9&])>{1,2}\s*("[^"]*"|'[^']*'|[^\s|;&]+)/g;
   let found: string | null = null;
-  for (const match of command.matchAll(pattern)) found = unquote(match[2] ?? "");
-  return found;
-}
-
-// Quote-aware tokenising: a quoted path with spaces stays one token, without its quotes.
-function tokens(command: string): string[] {
-  const found: string[] = [];
-  let current = "";
-  let quote: string | null = null;
-  for (const char of command) {
-    if (quote !== null) {
-      if (char === quote) quote = null;
-      else current += char;
-      continue;
-    }
-    if (char === '"' || char === "'") {
-      quote = char;
-      continue;
-    }
-    if (/\s/.test(char)) {
-      if (current !== "") found.push(current);
-      current = "";
-      continue;
-    }
-    current += char;
+  for (const word of shellWords(command)) {
+    if (word.redirectTarget && word.stdout) found = unquote(word.value);
   }
-  if (current !== "") found.push(current);
   return found;
 }
 
 export function recognizeEngineCall(command: string, engines?: EngineSpec[]): EngineCall | null {
+  return engineCallSite(command, process.cwd(), engines)?.call ?? null;
+}
+
+// ---- where the call happens ---------------------------------------------------------------------------------------
+
+// The call a command makes, with the folder it runs in and whether it ends the command. The hook needs all three:
+// paths resolve in the folder the command cd'd into, and a failing pipeline after the engine is not the engine's exit.
+export interface EngineCallSite {
+  call: EngineCall;
+  cwd: string; // the folder the engine segment runs in
+  endsWithEngine: boolean; // the engine segment is the last segment of the command
+}
+
+export function engineCallSite(command: string, cwd: string, engines?: EngineSpec[]): EngineCallSite | null {
   const specs = engines ?? loadEngines();
-  for (const part of segments(command)) {
+  const parts = segments(command);
+  for (const [index, part] of parts.entries()) {
     // A help or version word means the segment starts no session.
     if (hasHelpWord(part.text)) continue;
     const text = stripWrappers(part.text);
@@ -490,24 +540,49 @@ export function recognizeEngineCall(command: string, engines?: EngineSpec[]): En
       const fromRedirect = outputFromRedirect(text);
       const outputFile = fromFlag ?? fromRedirect;
       return {
-        engine: spec.name,
-        outputFile,
-        stdoutIsAnswer: spec.stdout_is_answer === true && fromRedirect === null,
-        statusFile: spec.status_from_out_dir === true && outputFile !== null ? path.join(outputFile, "status.json") : null,
-        background: part.background,
+        call: {
+          engine: spec.name,
+          outputFile,
+          stdoutIsAnswer: spec.stdout_is_answer === true && fromRedirect === null,
+          statusFile: spec.status_from_out_dir === true && outputFile !== null ? path.join(outputFile, "status.json") : null,
+          background: part.background,
+        },
+        cwd: folderBefore(parts, index, cwd),
+        endsWithEngine: index === parts.length - 1,
       };
     }
   }
   return null;
 }
 
+// The folder a `cd` before the engine segment moved the command into; a relative folder resolves against the last one.
+function folderBefore(parts: Segment[], engineIndex: number, cwd: string): string {
+  let folder = cwd;
+  for (const part of parts.slice(0, engineIndex)) {
+    const list = words(stripWrappers(part.text));
+    if (list.length < 2 || unquote(list[0]!.text) !== "cd") continue;
+    const target = unquote(list[1]!.text);
+    if (target === "" || target === "-" || target.startsWith("-")) continue;
+    folder = path.resolve(folder, target);
+  }
+  return folder;
+}
+
 // ---- command lint -------------------------------------------------------------------------------------------------
 
+// A path the command reads: an absolute path token of the segment, split on whitespace inside a quoted word too, but
+// never the target of a redirect — the shell writes that one, the engine never reads it (round 3, C21).
 function hasPathOutsideRepo(command: string, repoRoot: string): boolean {
   const root = path.resolve(repoRoot);
-  for (const token of tokens(command)) {
-    if (!token.startsWith("/") || SPECIAL_PATHS.has(token)) continue;
-    const resolved = path.resolve(token);
+  const candidates: string[] = [];
+  for (const word of shellWords(command)) {
+    if (word.redirectTarget) continue;
+    if (word.quoted) candidates.push(...unquote(word.value).split(/\s+/));
+    else candidates.push(word.value);
+  }
+  for (const candidate of candidates) {
+    if (!candidate.startsWith("/") || SPECIAL_PATHS.has(candidate)) continue;
+    const resolved = path.resolve(candidate);
     if (resolved !== root && !resolved.startsWith(root + path.sep)) return true;
   }
   return false;

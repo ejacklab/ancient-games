@@ -31,8 +31,13 @@ function isLabel(line: string): boolean {
   return WHYS_RE.test(line) || SOURCE_RE.test(line) || CAUSE_RE.test(line) || OPTIONS_RE.test(line);
 }
 
+// Under .harness-guard/insights/ every *.md counts, whatever its name (round 3, C5); under runs/** only insight*.md.
 function isInsightName(name: string): boolean {
   return name.startsWith("insight") && name.endsWith(".md");
+}
+
+function isGuardInsightName(name: string): boolean {
+  return name.endsWith(".md");
 }
 
 function readDirSafe(dir: string): fs.Dirent[] {
@@ -49,7 +54,7 @@ export function findInsightFiles(root: string): string[] {
   const found: string[] = [];
 
   for (const entry of readDirSafe(path.join(root, INSIGHT_DIR))) {
-    if (entry.isFile() && isInsightName(entry.name)) found.push(path.join(INSIGHT_DIR, entry.name));
+    if (entry.isFile() && isGuardInsightName(entry.name)) found.push(path.join(INSIGHT_DIR, entry.name));
   }
 
   const walk = (dir: string, relative: string): void => {
@@ -77,12 +82,28 @@ function labelText(line: string, labelRe: RegExp): string {
   return line.replace(labelRe, "").trim();
 }
 
+// The numbered list after a label (round 3, C6): blank lines are skipped until the first item, an indented line
+// continues the item above it, and the list ends at the next unindented line that is not an item — which includes
+// the next label and the next heading.
 function numberedItems(lines: string[], from: number): string[] {
   const items: string[] = [];
-  for (let i = from; i < lines.length; i++) {
-    const line = lines[i]!;
+  let index = from;
+  while (index < lines.length) {
+    const line = lines[index]!;
+    if (line.trim() === "") {
+      index += 1;
+      continue;
+    }
     if (!NUMBER_RE.test(line)) break;
-    items.push(line.replace(NUMBER_RE, "").trim());
+    let item = line.replace(NUMBER_RE, "").trim();
+    index += 1;
+    while (index < lines.length) {
+      const next = lines[index]!;
+      if (next.trim() === "" || !/^\s/.test(next)) break;
+      item = `${item} ${next.trim()}`;
+      index += 1;
+    }
+    items.push(item);
   }
   return items;
 }
@@ -159,6 +180,12 @@ export function parseInsight(text: string): InsightSection[] {
   return sections;
 }
 
+// The first word of the Source line decides (round 3, C7); the rest of the line is the author's detail.
+function isKnownSource(source: string): boolean {
+  const first = /^[A-Za-z-]+/.exec(source.trim());
+  return first !== null && SOURCES.includes(first[0]);
+}
+
 // ---- checks ------------------------------------------------------------------------------------------------------
 
 function fail(rule: string, message: string, fix: string): Finding {
@@ -171,7 +198,7 @@ export function checkSection(s: InsightSection): Finding[] {
   if (s.whys.length < 3 || s.whys.length > 6) {
     findings.push(fail("R12.3-whys-count", `Whys: ${s.whys.length} items, 3 to 6 needed`, "number the whys 1. to 6."));
   }
-  if (s.source === null || !SOURCES.includes(s.source)) {
+  if (s.source === null || !isKnownSource(s.source)) {
     findings.push(fail("R12.3-source", `Source: ${s.source === null ? "missing" : "unknown"}`, `Source: one of ${SOURCES.join(", ")}.`));
   }
   if (s.rootCause === null || s.rootCause.trim() === "") {

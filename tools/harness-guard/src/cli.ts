@@ -16,7 +16,6 @@ import { checkResult, lintCommand, loadEngines } from "./traps.ts";
 import type { EngineCall, Finding, HookEnv } from "./types.ts";
 
 const GUARD_DIR = path.resolve(import.meta.dirname, "..");
-const OWN_LINE = ["cli.ts hook", "harness-guard"];
 
 const OK = 0;
 const FINDINGS = 1;
@@ -65,13 +64,21 @@ function readStdin(): string {
 }
 
 // Other processes' command lines, for the concurrent traps. Read for matching only: never printed, never stored.
+// Only this process and the one that started it are dropped, by pid (round 3, C17): a text match would drop any
+// other process whose line happens to name this package.
 function runningCommands(): string[] {
+  const own = new Set<number>([process.pid, process.ppid]);
   try {
-    const lines = execFileSync("ps", ["-eo", "args="], { encoding: "utf8", timeout: 5000, stdio: ["ignore", "pipe", "ignore"] });
+    const lines = execFileSync("ps", ["-eo", "pid=,args="], { encoding: "utf8", timeout: 5000, stdio: ["ignore", "pipe", "ignore"] });
     return lines
       .split("\n")
       .map((line) => line.trim())
-      .filter((line) => line !== "" && !OWN_LINE.some((own) => line.includes(own)));
+      .filter((line) => line !== "")
+      .filter((line) => {
+        const pid = Number(line.split(/\s+/)[0]);
+        return Number.isFinite(pid) && !own.has(pid);
+      })
+      .map((line) => line.replace(/^\d+\s+/, ""));
   } catch {
     return [];
   }
@@ -89,11 +96,17 @@ function report(findings: Finding[]): number {
 function hook(args: string[]): number {
   const dialect = args[0];
   if (dialect !== "claude") usageError(`hook: the only protocol is claude (got ${dialect ?? "nothing"})`);
+  const raw = readStdin();
   let payload: unknown;
   try {
-    payload = JSON.parse(readStdin());
+    payload = JSON.parse(raw);
   } catch {
-    usageError("hook: stdin is not one JSON payload");
+    // A payload that is not one JSON object is not a usage error: the guard says so in one line and lets the call
+    // through, because a blocking exit here would freeze the agent (round 3, C11).
+    process.stderr.write(raw.trim() === ""
+      ? "harness-guard: hook: stdin was empty; nothing to check\n"
+      : "harness-guard: hook: stdin is not one JSON payload; nothing to check\n");
+    return OK;
   }
   const env: HookEnv = { cwd: process.cwd(), running: runningCommands(), now: () => new Date() };
   const result = handleHook(payload, env);

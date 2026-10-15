@@ -2,11 +2,12 @@
 // catalogued command trap, PostToolUse logs an engine call that answered nothing, Stop blocks while a failure has
 // no insight. Nothing here prints a prompt, stdout, stderr or config value: only ids, rules, lengths and paths.
 
+import * as fs from "node:fs";
 import * as path from "node:path";
 import { appendFailure, appendRecord, failuresFor, guardRoot, newFailureId, readJournal, writeEvidence } from "./journal.ts";
 import { answered, openFailures } from "./insight.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
-import { checkResult, lintCommand, recognizeEngineCall } from "./traps.ts";
+import { checkResult, engineCallSite, lintCommand } from "./traps.ts";
 import type { Finding, GuardErrorRecord, HookEnv, HookResult, TouchedRecord } from "./types.ts";
 
 const HARNESS = "claude-code";
@@ -16,13 +17,17 @@ const WRITE_TOOLS = new Set(["Write", "Edit", "MultiEdit"]);
 const QUIET: HookResult = { exitCode: 0, stdout: "", stderr: "" };
 
 const INSIGHT_FORMAT = [
-  "Write the insight before you stop, in runs/<run>/insight*.md, one section per id:",
+  "Write the insight to .harness-guard/insights/<name>.md (any name ending .md), or to runs/<run>/insight.md in a",
+  "project with run folders — one ## heading per failure id, and inside it:",
   "  ## F-xxxxxxxx — short title",
   "  Whys: 3–6 numbered items, ending at the instruction, check, tool or config.",
-  "  Source: one of instruction, check, tool, config.",
+  "  Source: one of instruction, check, tool, config (the first word decides; the rest is detail).",
   "  Root cause: one line naming that changeable source.",
   "  Options: 2–3 items, each starting with a kind ([rule], [check], [tool] or [config-advice]) and ending with evidence: <path or fact>.",
 ];
+
+// The context line says the failure is in the journal already, so the agent does not log it a second time (round 3, C23).
+const ALREADY_LOGGED = "already in the journal; do not log them again. An insight answering them is required before you stop.";
 
 // The format an unanswered failure is told to use.
 function insightReason(ids: string[]): string {
@@ -124,7 +129,7 @@ function stderrOf(payload: Record<string, unknown>): string {
 
 function recordFailure(root: string, payload: Record<string, unknown>, env: HookEnv, finding: Finding, facts: {
   engine: string;
-  outputName: string;
+  outputName: string | null;
   exitCode: number | null;
   stdoutLength: number;
   stderrLength: number;
@@ -140,6 +145,8 @@ function recordFailure(root: string, payload: Record<string, unknown>, env: Hook
     stderrLength: facts.stderrLength,
     interrupted: facts.interrupted,
   });
+  // The input names the engine and, when there was one, the output file's name: never the prompt, never a folder (C2).
+  const input = facts.outputName === null ? `${facts.engine} call` : `${facts.engine} call (${facts.outputName})`;
   appendFailure(root, {
     kind: "failure",
     id,
@@ -147,7 +154,7 @@ function recordFailure(root: string, payload: Record<string, unknown>, env: Hook
     session: sessionOf(payload),
     found_by: "guard",
     check: finding.rule,
-    input: `${facts.engine} ${facts.outputName}`,
+    input,
     expected: "an answer from the engine call",
     actual: "the call answered nothing usable",
     engine: facts.engine,
@@ -158,36 +165,53 @@ function recordFailure(root: string, payload: Record<string, unknown>, env: Hook
   return id;
 }
 
+// A call that is still running has no result to check: it was backgrounded with "&", the tool was told to run it in
+// the background, or the harness answered with a background task (round 3, C1).
+function runsInBackground(payload: Record<string, unknown>, response: Record<string, unknown>, background: boolean): boolean {
+  if (background) return true;
+  if (objectField(payload, "tool_input").run_in_background === true) return true;
+  const task = response.backgroundTaskId;
+  return task !== undefined && task !== null;
+}
+
+// The folder the call ran in: the payload's own cwd when it has one, the environment's otherwise (round 3, C3).
+function workingFolder(payload: Record<string, unknown>, env: HookEnv): string {
+  const own = payload.cwd;
+  return typeof own === "string" && own.trim() !== "" ? own : env.cwd;
+}
+
 function handlePostToolUse(payload: Record<string, unknown>, env: HookEnv, root: string, failed: boolean): HookResult {
   if (payload.tool_name === "Bash") {
     const command = text(objectField(payload, "tool_input").command);
     if (command === "") return quiet();
-    const call = recognizeEngineCall(command);
-    if (call === null) return quiet();
     const response = objectField(payload, "tool_response");
+    const site = engineCallSite(command, workingFolder(payload, env));
+    if (site === null) return quiet();
+    if (runsInBackground(payload, response, site.call.background)) return quiet();
     const stdout = stdoutOf(payload);
     const stderr = stderrOf(payload);
     const interrupted = response.interrupted === true;
-    const exitCode = exitCodeOf(payload, failed);
-    const findings = fails(checkResult({ call, cwd: env.cwd, exitCode, stdout, stderr, interrupted }));
+    // A failing segment after the engine is not the engine's exit (round 3, C4).
+    const exitCode = site.endsWithEngine ? exitCodeOf(payload, failed) : null;
+    const call = site.call;
+    const findings = fails(checkResult({ call, cwd: site.cwd, exitCode, stdout, stderr, interrupted }));
     if (findings.length === 0) return quiet();
     // The command text is never stored: the engine name and the output file's name say which call it was.
     const facts = {
       engine: call.engine,
-      outputName: call.outputFile === null ? "stdout" : path.basename(call.outputFile),
+      outputName: call.outputFile === null ? null : path.basename(call.outputFile),
       exitCode,
       stdoutLength: stdout.length,
       stderrLength: stderr.length,
       interrupted,
     };
     const ids = findings.map((finding) => recordFailure(root, payload, env, finding, facts));
-    const rules = findings.map((finding) => finding.rule);
     return {
       exitCode: 0,
       stdout: `${JSON.stringify({
         hookSpecificOutput: {
           hookEventName: "PostToolUse",
-          additionalContext: `harness-guard logged ${ids.length} failure(s): ${ids.join(", ")} — ${rules.join(", ")}. Log it in your report; an insight is required before you stop.`,
+          additionalContext: `harness-guard logged ${ids.join(", ")} — ${ALREADY_LOGGED}`,
         },
       })}\n`,
       stderr: "",
@@ -225,6 +249,8 @@ function registerFindings(root: string, session: string): { rule: string; file: 
   const found: { rule: string; file: string }[] = [];
   for (const file of touchedRegisters(root, session)) {
     if (!isRegisterFile(file)) continue;
+    // A register this session touched and then deleted or renamed is not checked (round 3, C9).
+    if (!fs.existsSync(file)) continue;
     const name = path.relative(root, file);
     let register;
     try {
@@ -248,10 +274,11 @@ function handleStop(payload: Record<string, unknown>, root: string): HookResult 
   if (open.length > 0) return block(insightReason(open.map((record) => record.id)));
 
   const sessionFailures = failuresFor(root, session);
-  if (sessionFailures.length > 0) {
+  // The raise step needs the final message to check: a payload without that string is asked, not told (round 3, C10).
+  const last = payload.last_assistant_message;
+  if (sessionFailures.length > 0 && typeof last === "string") {
     const answers = answered(root);
     const names = [...new Set(sessionFailures.map((record) => answers.get(record.id)).filter((name): name is string => name !== undefined))];
-    const last = text(payload.last_assistant_message);
     if (names.length === 0 || !names.every((name) => last.includes(name))) {
       return block(`harness-guard: raise the insight: name ${names.join(", ")} in your final message. The insight must be a section of one of these files, and it must answer every failure of this session.`);
     }

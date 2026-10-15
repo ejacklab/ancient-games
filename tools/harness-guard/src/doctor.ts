@@ -38,6 +38,8 @@ function listDir(dir: string): string[] {
 interface Files {
   // A missing file is simply not there; an unreadable or unparseable one makes the answer unknown.
   files: string[];
+  // A plugin file is read as text, not as a hook list (C16).
+  plugins?: boolean;
 }
 
 const HARNESS_FILES: Record<string, (opts: DoctorOptions) => Files> = {
@@ -56,6 +58,7 @@ const HARNESS_FILES: Record<string, (opts: DoctorOptions) => Files> = {
   }),
   qwen: (opts) => ({ files: [path.join(opts.home, ".qwen", "settings.json")] }),
   opencode: (opts) => ({
+    plugins: true,
     files: [
       ...listDir(path.join(opts.home, ".config", "opencode", "plugin")),
       ...listDir(path.join(opts.home, ".config", "opencode", "plugins")),
@@ -109,8 +112,21 @@ function structurallyComplete(source: string): boolean {
   return depth === 0;
 }
 
+// A plugin file is its own install: opencode loads it by path, so any mention of the guard in its text means the guard
+// is installed there (round 3, C16). No line of it is ever printed.
+function readPluginState(file: string): "installed" | "absent" | "unknown" | null {
+  let raw: string;
+  try {
+    raw = fs.readFileSync(file, "utf8");
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ENOENT" ? null : "unknown";
+  }
+  return raw.includes(MARK) ? "installed" : "absent";
+}
+
 // A settings file that does not parse cannot be read as a hook list: the answer is unknown, not absent.
-function readState(file: string): "installed" | "absent" | "unknown" | null {
+function readState(file: string, plugin = false): "installed" | "absent" | "unknown" | null {
+  if (plugin) return readPluginState(file);
   let raw: string;
   try {
     raw = fs.readFileSync(file, "utf8");
@@ -133,12 +149,12 @@ function readState(file: string): "installed" | "absent" | "unknown" | null {
 function guardState(opts: DoctorOptions, harness: string): { guard: DoctorHarness["guard"]; note: string } {
   const source = HARNESS_FILES[harness];
   if (source === undefined) return { guard: "unknown", note: "no files are known for this harness" };
-  const { files } = source(opts);
+  const { files, plugins } = source(opts);
   let installed = 0;
   let absent = 0;
   let unknown = 0;
   for (const file of files) {
-    const state = readState(file);
+    const state = readState(file, plugins === true);
     if (state === "installed") installed += 1;
     else if (state === "absent") absent += 1;
     else if (state === "unknown") unknown += 1;
@@ -191,9 +207,12 @@ function health(opts: DoctorOptions): DoctorReport["health"] {
   } catch {
     return { ok: false, summary: "the health script did not print parsable JSON" };
   }
-  const findings: unknown = (parsed as { findings?: unknown }).findings;
-  const count = Array.isArray(findings) ? findings.length : 0;
-  return { ok: true, summary: `${count} findings` };
+  // Only an object with a findings array is the report this reads; anything else is unexpected (round 3, C14).
+  const findings: unknown = typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+    ? (parsed as { findings?: unknown }).findings
+    : undefined;
+  if (!Array.isArray(findings)) return { ok: false, summary: "unexpected JSON" };
+  return { ok: true, summary: `${findings.length} findings` };
 }
 
 // ---- report ------------------------------------------------------------------------------------------------------

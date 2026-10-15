@@ -5,7 +5,7 @@
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { CoverageEntry, CoverageReport, Finding, Register, Requirement, Unit, UseCase } from "./types.ts";
+import type { Conflict, CoverageEntry, CoverageReport, Finding, Register, Requirement, Unit, UseCase } from "./types.ts";
 
 const TARGET = 80;
 const VISION = "vision";
@@ -38,16 +38,23 @@ function list<T>(value: T[] | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
 
-function useCaseList(r: Register): UseCase[] {
-  return list(r.use_cases);
-}
-
-function requirementList(r: Register): Requirement[] {
-  return list(r.requirements);
-}
-
-function coverageList(r: Register): CoverageEntry[] {
-  return list(r.coverage);
+// The mapping entries of a register list, with a finding for every item that is not one (round 3, C8). Validation and
+// coverage read only these, so no YAML shape can make them throw; the position is counted from zero, as written.
+function entries<T>(value: T[] | undefined, name: string, findings: Finding[]): T[] {
+  const found: T[] = [];
+  list(value).forEach((item, index) => {
+    if (!isEntry(item)) {
+      findings.push({
+        rule: "R13-malformed",
+        severity: "fail",
+        message: `${name}[${index}] is not a mapping`,
+        fix: `give ${name}[${index}] its fields as key: value pairs`,
+      });
+      return;
+    }
+    found.push(item);
+  });
+  return found;
 }
 
 // ---- loading ---------------------------------------------------------------------------------------------------
@@ -112,13 +119,14 @@ export function units(r: Register): Unit[] {
     built.push({ id, text: value, safety });
   };
 
-  for (const useCase of useCaseList(r)) {
+  // Only mapping entries make units; a list item that is not one is reported by validateRegister as R13-malformed.
+  for (const useCase of entries<UseCase>(r.use_cases, "use_cases", [])) {
     if (!accepted(useCase)) continue;
     const safety = useCase.safety === true;
     list(useCase.fails_if).forEach((item, i) => add(`${idOf(useCase)}/f${i + 1}`, item, safety));
     list(useCase.min_acceptance).forEach((item, i) => add(`${idOf(useCase)}/m${i + 1}`, item, safety));
   }
-  for (const requirement of requirementList(r)) {
+  for (const requirement of entries<Requirement>(r.requirements, "requirements", [])) {
     if (!accepted(requirement)) continue;
     list(requirement.fails_if).forEach((item, i) => add(`${idOf(requirement)}/f${i + 1}`, item, false));
   }
@@ -133,9 +141,13 @@ export function freezeHash(list: Unit[]): string {
 
 export function validateRegister(r: Register): Finding[] {
   const findings: Finding[] = [];
+  const cases = entries<UseCase>(r.use_cases, "use_cases", findings);
+  const requirements = entries<Requirement>(r.requirements, "requirements", findings);
+  const conflicts = entries<Conflict>(r.conflicts, "conflicts", findings);
+  const coverageEntries = entries<CoverageEntry>(r.coverage, "coverage", findings);
   const knownUnits = new Set(units(r).map((unit) => unit.id));
 
-  for (const useCase of useCaseList(r)) {
+  for (const useCase of cases) {
     const id = idOf(useCase);
     if (useCase.origin === "ai" && !hasDecision(useCase)) {
       findings.push({
@@ -163,7 +175,7 @@ export function validateRegister(r: Register): Finding[] {
     }
   }
 
-  for (const requirement of requirementList(r)) {
+  for (const requirement of requirements) {
     const id = idOf(requirement);
     if (requirement.origin === "ai" && !hasDecision(requirement)) {
       findings.push({
@@ -211,7 +223,7 @@ export function validateRegister(r: Register): Finding[] {
 
   const caseRefs = caseIds(r);
   const requirementRefs = requirementIds(r);
-  for (const conflict of list(r.conflicts)) {
+  for (const conflict of conflicts) {
     const entry: Record<string, unknown> = isEntry(conflict) ? conflict : {};
     const useCase: unknown = entry.use_case;
     const requirement: unknown = entry.requirement;
@@ -241,8 +253,8 @@ export function validateRegister(r: Register): Finding[] {
     }
   }
 
-  for (const entry of coverageList(r)) {
-    const unit: unknown = isEntry(entry) ? entry.unit : undefined;
+  for (const entry of coverageEntries) {
+    const unit: unknown = entry.unit;
     if (!nonEmptyString(unit) || knownUnits.has(unit)) continue;
     findings.push({
       rule: "R13-unknown-ref",
@@ -256,11 +268,11 @@ export function validateRegister(r: Register): Finding[] {
 }
 
 function caseIds(r: Register): Set<string> {
-  return new Set(useCaseList(r).map((useCase) => idOf(useCase)));
+  return new Set(entries<UseCase>(r.use_cases, "use_cases", []).map((useCase) => idOf(useCase)));
 }
 
 function requirementIds(r: Register): Set<string> {
-  return new Set(requirementList(r).map((requirement) => idOf(requirement)));
+  return new Set(entries<Requirement>(r.requirements, "requirements", []).map((requirement) => idOf(requirement)));
 }
 
 function isKnownId(id: string, r: Register): boolean {
@@ -281,10 +293,11 @@ function skipReason(entry: CoverageEntry | undefined): string {
 
 export function coverage(r: Register): CoverageReport {
   const list = units(r);
-  const entries = new Map<string, CoverageEntry>();
-  for (const entry of coverageList(r)) {
-    const unit: unknown = isEntry(entry) ? entry.unit : undefined;
-    if (nonEmptyString(unit)) entries.set(unit, entry);
+  const coverageByUnit = new Map<string, CoverageEntry>();
+  // A coverage entry that is not a mapping names no unit: it is left to validateRegister's R13-malformed finding.
+  for (const entry of entries<CoverageEntry>(r.coverage, "coverage", [])) {
+    const unit: unknown = entry.unit;
+    if (nonEmptyString(unit)) coverageByUnit.set(unit, entry);
   }
 
   const findings: Finding[] = [];
@@ -307,7 +320,7 @@ export function coverage(r: Register): CoverageReport {
 
   let covered = 0;
   for (const unit of list) {
-    const entry = entries.get(unit.id);
+    const entry = coverageByUnit.get(unit.id);
     const coveredBy = entry !== undefined && isEntry(entry) && Array.isArray(entry.covered_by) ? entry.covered_by : [];
     const isCovered = coveredBy.some(nonEmptyString);
     if (isCovered) covered += 1;

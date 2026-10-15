@@ -95,10 +95,12 @@ function scrubRecord(rec: Record<string, unknown>): Record<string, unknown> {
 
 // ---- validation -------------------------------------------------------------------------------------------------
 
+// Evidence may be a file or a folder that exists (round 3, C13).
 function evidenceExists(evidence: string, root: string): boolean {
   try {
     const file = path.isAbsolute(evidence) ? evidence : path.resolve(root, evidence);
-    return fs.statSync(file).isFile();
+    fs.statSync(file);
+    return true;
   } catch {
     return false;
   }
@@ -142,11 +144,12 @@ function appendLine(root: string, value: unknown): void {
   fs.appendFileSync(file, `${JSON.stringify(value)}\n`);
 }
 
+// An agent's own record is stored as it was given (round 3, C12): the raw-content rule binds the guard's own writers,
+// writeEvidence and appendRecord, not a record an agent or the owner wrote.
 export function appendFailure(root: string, rec: FailureRecord): FailureRecord {
   const problems = validateFailure(rec, root);
   if (problems.length > 0) throw new JournalError(`failure record rejected: ${problems.join("; ")}`);
-  const line = scrubRecord(rec as unknown as Record<string, unknown>);
-  appendLine(root, line);
+  appendLine(root, rec as unknown as Record<string, unknown>);
   return rec;
 }
 
