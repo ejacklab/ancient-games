@@ -119,7 +119,9 @@ their approval decisions. State holds progress/results with one writer at a time
 
 
 def copy_deref(src: Path, dst: Path) -> None:
-    """Copy a file/dir, dereferencing symlinks, skipping __pycache__ and .pyc."""
+    """Copy a file/dir, dereferencing symlinks, skipping __pycache__, .pyc, node_modules and guard state."""
+    if src.name in ("node_modules", ".harness-guard"):
+        return
     if src.is_symlink():
         src = src.resolve()
     if src.is_dir():
@@ -141,7 +143,7 @@ def main() -> int:
     # workflow-design: full skill
     wd_src, wd_dst = SRC / "workflow-design", DEST / "workflow-design"
     for child in wd_src.iterdir():
-        if child.name == "__pycache__":
+        if child.name in ("__pycache__", "node_modules"):
             continue
         copy_deref(child, wd_dst / child.name)
 

@@ -106,6 +106,8 @@ For the task, and later for each piece, list:
   (guardrails, approval, hooks, logs, instruction files) and, for what is absent, names the file and what to change,
   with a snippet where the fix is a setting; it reads configuration, it does not prove enforcement, and it changes
   nothing (n=0).
+  `guard/src/cli.ts doctor` reports, per harness, whether the guard's hooks are installed and whether the guard answers
+  a planted trap; it reads settings key names only and changes nothing.
   For a node run by Codex or `agy`, the proof is the canary piece in `docs/EXECUTOR_KINDS.md`, which
   also says which kind a node is assigned to and how its failure shows.
 - **Skills** that already cover part of the work.
@@ -480,6 +482,17 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    10); one with no source is marked *model knowledge*, treated like a `read` claim, and may not drive a node that
    builds until checked against a source or by running code; the researcher and explorer gather, the COO designs; the
    codebase comes first for a feature in an existing system (case C), current docs first for a new stack (case D).
+13. **Code holds what needs no judgment** — the skill's `guard/` package (bun, TypeScript, no dependencies) runs at
+   fixed points, so an agent cannot skip it once it is installed: before an engine call it lints the command against a
+   trap catalogue (`guard/data/traps.yaml`; only `approved` entries act); after the call it treats a missing or empty
+   output, a known silent-failure text or a failing exit as a failure (exit 0 is not success) and logs it to
+   `.harness-guard/journal.jsonl` with its evidence; and a session with logged failures cannot stop until an insight
+   answers each (whys to a changeable source, the root cause, 2–3 fix options with evidence) and the final message
+   names it. Judgment stays with the agent: the whys, the options, use cases and their fails-if. Installing the hooks is
+   the owner's (`guard/src/cli.ts install --print <harness>`); the agent never edits harness config. Measured once
+   (`runs/20261015-ts-hybrid/effectiveness/`, n = 3 per arm on one short task): with the rules in the working folder,
+   agents followed them without the hooks; the hooks caught a format slip the rules let through and, after one round of
+   fixes, cost no extra time. Not measured: a long session where the rules are out of reach.
 
 ## 4. State and memory
 

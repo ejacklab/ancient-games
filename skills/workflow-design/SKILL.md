@@ -38,7 +38,8 @@ method section named beside it.
 
 1. **Readiness** (method 3.1). Prove each tool by running it (`scripts/readiness.py` runs the standard inventory and
    marks each line verified/reported/unknown; `scripts/harness_health.py` adds how each harness is set up, with help
-   for what is absent), list the skills that already cover part of the work, and check the
+   for what is absent; `guard/src/cli.ts doctor` says whether the guard's hooks are installed — installing them is the
+   owner's, `install --print <harness>`), list the skills that already cover part of the work, and check the
    information. Anything missing becomes a preparation piece at the front. Template: `readiness.md`. A node run by
    Codex or `agy`: `references/executor-kinds.md` first — the canary, read-only versus write, the bundled-runtime
    trap, CLI first and provider second, and the COO's contract. Every node names its role, engine, exact model and
@@ -71,9 +72,14 @@ method section named beside it.
    five conditions of method 3.7 hold, and never without naming the unit. Running a node — executors are tools, two
    timers, no polling, pass-back, the brief's template, example and standard, the researcher and explorer roles — is
    method 3.8; `scripts/dispatch.py run PLAN` enforces it in code (`--dry-run` first; `docs/DISPATCHER_DESIGN.md`).
+   With the guard installed (`guard/`, method 3.8 item 13), every engine call made through a shell is linted before it
+   runs and its result checked after; without it, call `guard/src/cli.ts lint` and `result` yourself and log a failure
+   with `fail` (a reason and evidence are required).
 8. **The run ends at the acceptance criteria** (method 3.6). A piece that builds names the blueprint sections it
    depends on and the criteria it covers; its stop is the three-part stop of method 3.6. Anything else found goes to
    `docs/blueprint/backlog.md`, never into the current run. How nodes use project memory and its caches: method §4.
+   A run with logged failures ends with an insight named in the final report (`guard/src/cli.ts insight` lists what is
+   open); a use-case register is checked with `guard/src/cli.ts register <file>` (method 3.8 item 13).
 
 ## Every node carries five things
 
