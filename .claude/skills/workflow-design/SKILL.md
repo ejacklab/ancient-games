@@ -48,7 +48,11 @@ method section named beside it.
    `docs/blueprint/` it needs, and each needed section's status (settled, draft, incomplete, missing) decides the
    flow. A piece that builds waits for settled sections — blueprint questions are not answered by silence (method
    3.1). Why: without a fixed target every review finds more to do, and the run never ends.
-2. **Write the algorithm** (method 3.2). Steps that each name their check; a step you cannot write clearly, or
+2. **Write the algorithm** (method 3.2). First the use cases and the criteria the result will be scored on
+   (`references/harness-requirements.md` R13, R12.7): the person's basic use cases plus the agent's suggestions the
+   person accepts, each with its purpose, fails-if and minimum acceptance; requirements only where a use case leaves
+   a detail unclear or qualities pull against each other, each naming the use case it serves; a conflict goes to the
+   person, and the use case wins. Then steps that each name their check; a step you cannot write clearly, or
    whose check you cannot name, is an **unclear spot**. Then **label the pieces** by category from
    `references/task-types.md`. **A label is not a node**: a subagent hand-off must buy an objective check, a
    different kind, or context room.

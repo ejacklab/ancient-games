@@ -1,6 +1,6 @@
 # Harness requirements R11–R13 — draft
 
-Status: R11.1 complete. R11.2 proposed. R12 (R10 and R12 merged) proposed. R13 written from the project owner's answers.
+Status: ACCEPTED 2026-10-16 — the accepted text is docs/HARNESS_REQUIREMENTS.md; this draft is history.
 History and who proposed what: `state.md`, `experts-r11/compare.md`, `experts-coverage/compare.md`,
 `experts-order/compare.md`, `experts-direction/compare.md`.
 

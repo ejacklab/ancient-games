@@ -38,6 +38,7 @@ drafting; references below are relative to that folder, not to the adopting proj
 | `references/executor-kinds.md` | role versus engine, exact model/effort, readiness probe and instruction-file support |
 | `references/feedback-templates.md` | worker return fields and their meanings; retain any proposed/unsettled status |
 | `assets/templates/blueprint.md` | blueprint sections, acceptance criteria and the map to existing project documents |
+| `references/harness-requirements.md` (R11–R13) and `guard/` | how results are judged and scored, failures and great successes logged with insights, use cases before requirements; the guard that enforces the parts needing no judgment |
 | `assets/templates/workflow-design.md`, `assets/templates/state.md`, `assets/templates/readiness.md` | per-run design, progress and readiness artifacts |
 
 Also read the installed `requirement-check` and `meaningful-names` skills. If a required source is absent, report
@@ -102,7 +103,12 @@ the missing file and hold the part that depends on it; do not reconstruct its ru
    baseline still passes and its protected scope holds. Other discoveries go to the project's backlog.
    Keep execution sequential by default; refer to method §3.7 for all five conditions before permitting parallel
    work. Declaring knowledge dependencies does not require a graph database or a diagram.
-5. **One copy per rule.** Point at the installed skills with resolved locations; do not paste their bodies into the
+5. **Harness and guard.** Run `scripts/harness_health.py` and `guard/src/cli.ts doctor` for the project and put the
+   result in its readiness notes. Give the person the hook settings from `guard/src/cli.ts install --print <harness>`
+   and the line `.harness-guard/` for its `.gitignore` — installing them is the person's, never yours. In
+   `orchestration.mdc`, point at R11–R13 for use cases (09-use-cases in the blueprint), the criteria a run is scored
+   on, failure insights and success paths; do not copy their text.
+6. **One copy per rule.** Point at the installed skills with resolved locations; do not paste their bodies into the
    project. The four standing rules below are the explicit exception: reproduce them verbatim in both files.
 
 ## `orchestration.mdc` — the shape

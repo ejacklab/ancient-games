@@ -50,7 +50,8 @@ GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
 # The blueprint's own section files (docs/workflow-templates/blueprint.md); a .md that is not one of these
 # is not a section, and a mapless directory is MISSING rather than verified.
 SECTION_FILES = {"01-vision.md", "02-requirements.md", "03-domain-model.md", "04-business-logic.md",
-                 "05-architecture.md", "06-data-model.md", "07-ui-ux.md", "08-non-functional.md"}
+                 "05-architecture.md", "06-data-model.md", "07-ui-ux.md", "08-non-functional.md",
+                 "09-use-cases.md"}
 
 
 @dataclass

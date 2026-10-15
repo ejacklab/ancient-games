@@ -25,7 +25,8 @@ GROUPS = ["Tools", "Models and logins", "Skills and workflows", "Memory", "MCP",
 MCP_LABELS = {"~/.claude/settings.json", "~/.claude.json", "~/.qwen/settings.json",
               ".mcp.json (project)"}
 SECTION_FILES = ["01-vision.md", "02-requirements.md", "03-domain-model.md", "04-business-logic.md",
-                 "05-architecture.md", "06-data-model.md", "07-ui-ux.md", "08-non-functional.md"]
+                 "05-architecture.md", "06-data-model.md", "07-ui-ux.md", "08-non-functional.md",
+                 "09-use-cases.md"]
 
 
 @pytest.fixture
@@ -403,7 +404,7 @@ def test_rt_13_blueprint_workflows_and_usage_errors(sandbox):
     result = sandbox.run("--blueprint", bp)
     assert result.returncode == 0, result.stderr
     assert_row(markdown_checks(result.stdout), f"blueprint ({bp})", "verified",
-               f"8 sections, map present: {', '.join(sorted(SECTION_FILES))}", bp)
+               f"{len(SECTION_FILES)} sections, map present: {', '.join(sorted(SECTION_FILES))}", bp)
     checks = json_checks(sandbox.run("--blueprint", nope, "--json"), code=1)
     assert_row(checks, f"blueprint ({nope})", "MISSING", "directory not found", nope)
     result = sandbox.run("--workflows", wf)

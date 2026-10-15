@@ -9,6 +9,7 @@ The layout of a product's blueprint. It lives in the product's repository under 
 docs/blueprint/
   README.md              the map: one row per section, where it lives, its status
   01-vision.md
+  09-use-cases.md        use cases — read second, after the vision (numbered 09 so existing files keep their names)
   02-requirements.md
   03-domain-model.md
   04-business-logic.md
@@ -29,6 +30,7 @@ and that project's rules on who may change it still hold.
 | # | Section (short name used in readiness and state files) | Where it is | Status of the file (settled / draft / missing) | Accepted by EJ on |
 |---|---|---|---|---|
 | 1 | Product vision (`vision`) | 01-vision.md | | |
+| 9 | Use cases (`use cases`) — read after the vision | 09-use-cases.md | | |
 | 2 | Core requirements (`requirements`) | 02-requirements.md | | |
 | 3 | Domain model (`domain model`) | 03-domain-model.md | | |
 | 4 | Business logic (`business logic`) | 04-business-logic.md | | |
@@ -53,7 +55,13 @@ missing (method §3.1).
 ## Headings per section
 
 - **01 Product vision** — who it is for; the problem it solves; what it will not do; how we know it works.
-- **02 Core requirements** — one block per requirement:
+- **09 Use cases** — two lists merged by the owner's decisions (`docs/HARNESS_REQUIREMENTS.md` R13): the owner's
+  basic use cases, and the agent's suggestions each with the owner's accept or decline. Each accepted use case: its
+  purpose, its fails-if, its minimum acceptance criteria. Kept as a register file the guard checks
+  (`guard/src/cli.ts register <file>`; the criteria for a run come from it with `criteria new --from-register`).
+- **02 Core requirements** — written where a use case leaves a detail unclear or qualities pull against each other;
+  each names its purpose (the use case or vision line it serves) and binds once the owner accepts it. One block per
+  requirement:
 
   ```
   ### R1 — <name>
