@@ -1,0 +1,12 @@
+# Digest — GA: learn from the imperfections of successes, not from total failures (2026-10-15)
+Full findings: ga-findings.md (same folder). Status: open.
+
+**Answer.** No source uses EJ's exact phrase (Gaps). The closest established principle: selection needs a *spread* of fitness. With a pass/fail fitness, search becomes random: Hinton & Nowlan's "needle in a haystack", fixed by "someone tells you when you are getting close" (*quoted*, F1–F2). In LLM RL, a group that is all-wrong *or* all-right gets zero gradient, and DAPO drops prompts with accuracy 0 and 1 (*quoted*, F4–F6). Florensa et al. train only on goals solved 10–90% of the time (*quoted*, F8). The harness's borrow-change-keep-if-better loop is a (1+1)-ES (*quoted* definition F17; the mapping is *my reading*). The 1/5 success rule changes the step size based on how often children succeed (*quoted*, F19–F20). Counter-evidence: failures do help when they are relabelled as success at another goal (F7, F40 *reported*), given the answer and retried (STaR: +3.7 points on CommonsenseQA, F41 *quoted*; no real gain on GSM8K, F42), contrasted with better individuals (F48 *reported*, F49 *quoted*), scored step by step (F46 *reported*), or used alone on a model that already succeeds sometimes (F43–F45 *reported*/*unproven*).
+
+**Confidence.** 50 rows: 23 verified, 22 reported, 5 unproven, 0 unknown. Most empirical rows rest on abstracts only (tables not inspected). Selection-scheme basics (F10–F16) rest on Wikipedia; the binary pass/fail sentence (F3) has [citation needed].
+
+**Cautions.** Pure elitism risks premature convergence and deception (F11, F27, F28–F31). The fixed 1/5 constant is said to be superseded (F21, *unproven*). The harness mapping is *my reading* and was built from the brief only. No harness code was read.
+
+**Gaps.** HER's relabeling text, Goldberg & Deb 1991, Beyer & Schwefel 2002, Jastrebski & Arnold 2006 and Goldberg's trap functions were not read in the primary (PDFs could not be rendered, or the fetch failed).
+
+**Decision it triggers.** EJ: whether the path store keeps one elite path per task type or a small diverse archive, and whether to record the child-beats-parent rate (1/5-rule style) beside the 2% aim. Also whether the six-whys output should name the one step that differs from a success (near miss) or relabel what the failed run did achieve (hindsight). Each is *my reading*, not measured.
