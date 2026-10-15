@@ -106,7 +106,15 @@ export interface GuardErrorRecord {
   message: string;
 }
 
-export type JournalRecord = FailureRecord | TouchedRecord | GuardErrorRecord;
+// Round 4, D6: the failures a final message has already raised, so a later stop need not name them again.
+export interface RaisedRecord {
+  kind: "raised";
+  time: string;
+  session: string;
+  ids: string[];
+}
+
+export type JournalRecord = FailureRecord | TouchedRecord | GuardErrorRecord | RaisedRecord;
 
 // ---- M3: insight ------------------------------------------------------------------------------------------------
 

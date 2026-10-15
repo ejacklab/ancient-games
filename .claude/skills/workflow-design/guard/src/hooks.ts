@@ -9,7 +9,7 @@ import { appendFailure, appendRecord, failuresFor, guardRoot, newFailureId, read
 import { answered, openFailures } from "./insight.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
 import { checkResult, commandWord, engineCallSite, lintCommand, recognizeTestRun, segments } from "./traps.ts";
-import type { Finding, GuardErrorRecord, HookEnv, HookResult, TouchedRecord } from "./types.ts";
+import type { Finding, GuardErrorRecord, HookEnv, HookResult, TouchedRecord, RaisedRecord } from "./types.ts";
 
 const HARNESS = "claude-code";
 const NO_SESSION = "none";
@@ -391,12 +391,19 @@ function handleStop(payload: Record<string, unknown>, root: string): HookResult 
   const sessionFailures = failuresFor(root, session);
   // The raise step needs the final message to check: a payload without that string is asked, not told (round 3, C10).
   const last = payload.last_assistant_message;
-  if (sessionFailures.length > 0 && typeof last === "string") {
+  // Raise once (round 4, D6): failures a final message has already raised need not be named again at a later stop.
+  const raised = new Set(
+    readJournal(root).records.flatMap((record) => (record.kind === "raised" && record.session === session ? record.ids : [])),
+  );
+  const pending = sessionFailures.filter((record) => !raised.has(record.id));
+  if (pending.length > 0 && typeof last === "string") {
     const answers = answered(root);
-    const names = [...new Set(sessionFailures.map((record) => answers.get(record.id)).filter((name): name is string => name !== undefined))];
+    const names = [...new Set(pending.map((record) => answers.get(record.id)).filter((name): name is string => name !== undefined))];
     if (names.length === 0 || !names.every((name) => last.includes(name))) {
       return block(`harness-guard: raise the insight: name ${names.join(", ")} in your final message. The insight must be a section of one of these files, and it must answer every failure of this session.`);
     }
+    const record: RaisedRecord = { kind: "raised", time: new Date().toISOString(), session, ids: pending.map((r) => r.id) };
+    appendRecord(root, record);
   }
 
   const failed = registerFindings(root, session);

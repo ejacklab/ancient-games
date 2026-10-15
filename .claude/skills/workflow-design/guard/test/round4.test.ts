@@ -61,7 +61,8 @@ function invokeHook(payload: Record<string, unknown>): HookResult {
 function failures(): FailureRecord[] {
   const journal = readJournal(folder);
   expect(journal.badLines).toBe(0);
-  expect(journal.records.every((record) => record.kind === "failure")).toBe(true);
+  // D6 (COO): the journal may also hold "raised" records after a final message names the insight.
+  expect(journal.records.every((record) => record.kind === "failure" || record.kind === "raised")).toBe(true);
   return journal.records.filter((record): record is FailureRecord => record.kind === "failure");
 }
 
