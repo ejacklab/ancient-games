@@ -181,7 +181,8 @@ describe("insight file discovery", () => {
     writeFile(path.join(".harness-guard", "insights", "notes.md"), document(third));
     writeFile(path.join("src", "insight.ts"), "// not an insight\n");
     writeFile(path.join("runs", "20260101", "insight-log", "deep.md"), document(third));
-    expect(findInsightFiles(root)).toEqual([path.join("runs", "20260101", "insight-kept.md")]);
+    // Round 3 C5: every *.md under .harness-guard/insights/ counts, whatever its name.
+    expect(findInsightFiles(root)).toEqual([path.join(".harness-guard", "insights", "notes.md"), path.join("runs", "20260101", "insight-kept.md")].sort());
   });
 
   test("find: a root with no insight files returns an empty list without throwing", () => {

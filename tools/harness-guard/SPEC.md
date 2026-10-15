@@ -323,3 +323,6 @@ Sources: `runs/20261015-ts-hybrid/nodes/review-1.result.md` (R# = its row), the 
 - **C23 (E4) No duplicate:** the PostToolUse context line says the failure is already logged and gives its id, so the
   agent does not log it again: "harness-guard logged <ids> — already in the journal; do not log them again. An insight
   answering them is required before you stop."
+- **C24 (E4 round 2) The Stop block names where to write.** The block reason for open failures says: write the
+  insight to `.harness-guard/insights/<name>.md` (or `runs/<run>/insight.md` in a project with run folders), with the
+  heading and parts listed — so the agent does not search for the location.

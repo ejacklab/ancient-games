@@ -199,10 +199,9 @@ describe("PostToolUse", () => {
     expectEvidence(rec);
     const output = JSON.parse(result.stdout).hookSpecificOutput;
     expect(output.hookEventName).toBe("PostToolUse");
-    expect(output.additionalContext).toContain(`harness-guard logged 1 failure(s): ${rec.id}`);
-    expect(output.additionalContext).toContain(rec.check);
+    // Round 3 C23: the line says the failure is already logged, so the agent does not log it again.
+    expect(output.additionalContext).toContain(`harness-guard logged ${rec.id} — already in the journal; do not log them again.`);
     expect(output.additionalContext).toContain("insight");
-    expect(output.additionalContext).toContain("report");
   });
 
   test("post: a missing output file is a recorded failure", () => {
@@ -220,11 +219,11 @@ describe("PostToolUse", () => {
     expect(new Set(records.map((r) => r.id)).size).toBe(2);
     expect(new Set(records.map((r) => r.evidence)).size).toBe(2);
     const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
-    expect(context).toContain("logged 2 failure(s)");
+    // Round 3 C23: ids only, and the line says they are already in the journal.
+    expect(context).toContain("already in the journal; do not log them again.");
     for (const rec of records) {
       expectEvidence(rec);
       expect(context).toContain(rec.id);
-      expect(context).toContain(rec.check);
     }
   });
 

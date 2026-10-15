@@ -840,7 +840,8 @@ describe("result check", () => {
     expectFailure(checkResult(resultInput({ call: engineCall({ engine: "agy", stdoutIsAnswer: true }), stderr })), "trap:agy-soft-deny");
   });
 
-  test.each(["502", "Bad Gateway"])("result: agy %s stderr triggers its approved result trap", (stderr) => {
+  // Round 3 C22: a bare 502 is not enough; it must sit next to HTTP, status or error.
+  test.each(["HTTP 502", "Bad Gateway"])("result: agy %s stderr triggers its approved result trap", (stderr) => {
     expectFailure(checkResult(resultInput({ call: engineCall({ engine: "agy", stdoutIsAnswer: true }), stderr })), "trap:agy-502");
   });
 
