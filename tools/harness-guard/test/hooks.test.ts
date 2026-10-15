@@ -480,7 +480,7 @@ describe("SessionStart and handler errors", () => {
     expectQuiet(handleHook({ hook_event_name: "SessionStart", session_id: "session-a" }, env));
   });
 
-  test.each([null, false, 0, "payload", [], {}, { hook_event_name: "Unknown" }])(
+  test.each([[null], [false], [0], ["payload"], [[]], [{}], [{ hook_event_name: "Unknown" }]])(
     "dispatch: unsupported payload %j is a quiet success",
     (payload: unknown) => { expectQuiet(handleHook(payload, env)); },
   );
