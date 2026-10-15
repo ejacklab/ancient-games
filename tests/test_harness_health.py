@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from dataclasses import asdict
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -579,9 +580,7 @@ def test_hh_25_open_failures_are_absent_with_insight_help(box, count, exit_code)
 
 @pytest.mark.parametrize("command", list(GUARD_ITEMS))
 @pytest.mark.parametrize("failure", ["exit", "non-json", "missing-field", "wrong-type", "timeout"])
-def test_hh_26_guard_command_failures_are_isolated_and_redacted(box, command, failure):
-    import readiness
-
+def test_hh_26_guard_command_failures_are_isolated_and_redacted(box, command, failure, monkeypatch, capsys):
     box.fake("claude")
     if failure == "missing-field":
         output = json.dumps({"secret": SECRET})
@@ -592,14 +591,25 @@ def test_hh_26_guard_command_failures_are_isolated_and_redacted(box, command, fa
                              "insight": {"open": SECRET, "invalid": [], "unreadable": []}}[command])
     else:
         output = SECRET
+    # The timeout case runs in-process with a 1 s limit (the optimisation round of run 20261016-integrate-r11-r13:
+    # three 10 s waits were 30 of the file's 41 s); every other case runs the script as the person would.
+    if failure == "timeout":
+        monkeypatch.setattr(hh, "CMD_TIMEOUT", 1)
+        for name in ("PATH", "HOME"):   # the version probes read the process environment, as a real run does
+            monkeypatch.setenv(name, box.env[name])
     plant_guard(box, command=command, output=output, exit_code=2 if failure == "exit" else 0,
-                delay=readiness.CMD_TIMEOUT + 1 if failure == "timeout" else 0)
+                delay=2 if failure == "timeout" else 0)
     for args in (("--json",),) if failure == "timeout" else (("--json",), ()):
-        report = box.run(*args)
-        assert report.returncode == 0, report.stderr
-        assert SECRET not in report.stdout + report.stderr
+        if failure == "timeout":
+            lines = [asdict(f) for f in hh.gather(box.home, box.cwd, box.env)]
+            report = SimpleNamespace(stdout=json.dumps(lines), stderr=capsys.readouterr().err)
+            assert SECRET not in report.stdout + report.stderr
+        else:
+            report = box.run(*args)
+            assert report.returncode == 0, report.stderr
+            assert SECRET not in report.stdout + report.stderr
         if args:
-            lines = json.loads(report.stdout)["findings"]
+            lines = json.loads(report.stdout) if failure == "timeout" else json.loads(report.stdout)["findings"]
             failed = [f for f in lines if f["item"] == GUARD_ITEMS[command]]
             assert len(failed) == 1
             assert failed[0]["finding"] == "unknown"
