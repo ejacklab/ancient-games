@@ -1,6 +1,6 @@
 ---
 name: six-experts
-description: Ask EJ's six experts one question or decision — four researched personas, Linus Torvalds (Codex, or opencode when Codex is low), 范蠡 Fan Li (agy, or Claude for web/shell), 孫子 Sun Tzu (dsh / DeepSeek), 老子 Laozi (opencode / MiniMax); Dave (Claude Opus; experiments and data, ten rules, and he loads the project's insights by category before answering); and Dario, the plain control (Claude Sonnet, no rules, no insights) — each on its own engine; then check their citations and compare them side by side. Use when EJ says "ask the experts", "six experts", "four experts", "four seats", "ask Dave", "ask Dario", "what would Linus / 范蠡 / 孫子 / 老子 say", or wants a decision examined from several rule-based viewpoints. NOT for: plain factual lookups (one search answers those), code changes, or anything that needs the experts to act rather than advise.
+description: Ask EJ's six experts one question or decision — four researched personas, Linus Torvalds (Codex, or mcode when Codex is low), 范蠡 Fan Li (agy, or Claude for web/shell), 孫子 Sun Tzu (dsh / DeepSeek), 老子 Laozi (opencode / MiniMax); Dave (Claude Opus; experiments and data, ten rules, and he loads the project's insights by category before answering); and Dario, the plain control (Claude Sonnet, no rules, no insights) — each on its own engine; then check their citations and compare them side by side. Use when EJ says "ask the experts", "six experts", "four experts", "four seats", "ask Dave", "ask Dario", "what would Linus / 范蠡 / 孫子 / 老子 say", or wants a decision examined from several rule-based viewpoints. NOT for: plain factual lookups (one search answers those), code changes, or anything that needs the experts to act rather than advise.
 ---
 
 # Six experts
@@ -16,7 +16,7 @@ echo.
 
 | Expert | Engine | Model |
 |---|---|---|
-| Linus Torvalds | Codex (read-only) → **opencode** when Codex has 20% or less left | gpt-6.1-sol → MiniMax-M3.1-Flash-Preview |
+| Linus Torvalds | Codex (read-only) → **mcode** (lightweight) when Codex has 20% or less left | gpt-6.1-sol → MiniMax-M3.1-Flash-Preview |
 | 范蠡 Fan Li | agy → **Claude** when the task needs web or shell, or when agy fails | gemini-3.8-flash-medium → claude-opus-5-5 |
 | 孫子 Sun Tzu | dsh headless | deepseek-flash |
 | 老子 Laozi | opencode (plan mode) | MiniMax-M3.1-Flash-Preview |
@@ -45,7 +45,6 @@ python3 ~/.claude/skills/six-experts/scripts/six_experts.py run "Should we keep 
   an id that is not in the index, or cites none without "No insight applies".
 - For a Dave-against-Dario comparison, run both through the runner (not `--claude-by-caller`), so each runs on its
   own pinned model (Dave Opus, Dario Sonnet) with the same tools.
-- Two experts on opencode never start together (parallel starts can fail with "database is locked"); the second waits.
 - `--needs-web` / `--needs-shell` when the task needs either — **you decide this from the task** — then 范蠡 runs
   on Claude, because agy headless cannot use web or shell (soft-denied, exits 0 with nothing).
 - **Inside Claude Code, add `--claude-by-caller`.** The script then leaves Dave (and any 范蠡 fallback) to you: for
@@ -60,11 +59,14 @@ python3 ~/.claude/skills/six-experts/scripts/six_experts.py run "Should we keep 
 - 范蠡 falls back from agy to Claude automatically when agy returns nothing, an error, a timeout, or an answer
   without the required sections (a plan instead of the answer). `status.json` records the reason; the failed agy
   output is kept as `answers/fan-li.agy-failed.md`.
-- Linus moves from Codex to opencode in two cases. Before the run, the lower of Codex's two windows (5-hour and weekly,
-  read from the newest rate-limit snapshot in `~/.codex/sessions/`) may have 20% or less left. During the run, Codex may stop
-  on its usage limit; the failed log is then kept as `logs/linus.codex-failed.log`. `status.json` records
-  `fallback_from: codex` and the reason. On opencode Linus shares 老子's engine and model, so read their agreement as
-  one engine's, not two.
+- Linus moves from Codex to mcode (`~/.minimax-code/bin/mcode`) in two cases. Before the run, the lower of Codex's two
+  windows (5-hour and weekly, read from the newest rate-limit snapshot in `~/.codex/sessions/`) may have 20% or less
+  left. During the run, Codex may stop on its usage limit; the failed log is then kept as `logs/linus.codex-failed.log`.
+  `status.json` records `fallback_from: codex` and the reason. mcode, not opencode: 老子 is on opencode, and opencode
+  cannot run twice at once (parallel starts can fail with "database is locked"). mcode runs lightweight — no tools, so
+  it cannot write — and cannot open files, so the runner pastes the brief and its two files into
+  `briefs/linus.pasted.md` and gives it on stdin. On mcode Linus shares 老子's model (not its engine), so read their
+  agreement as one model's, not two.
 
 ## 2. Check
 

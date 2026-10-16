@@ -1,7 +1,8 @@
 """six-experts runner: the Claude command line, Dave and Dario on one model, their two briefs, what `check`
-accepts from them, and one opencode expert at a time (SKILL.md §1–2, run 20261016-six-experts D1/D2).
+accepts from them, and Linus on mcode, not a second opencode, when Codex is low (SKILL.md §1–2, run
+20261016-six-experts D1/D2).
 
-Every engine is mocked: `start` and `guard_text` are replaced, so no claude, codex, agy, dsh, opencode or bun
+Every engine is mocked: `start` and `guard_text` are replaced, so no claude, codex, agy, dsh, opencode, mcode or bun
 process is ever started."""
 import argparse
 import importlib.util
@@ -289,34 +290,16 @@ def test_check_reports_dave_and_dario_together(tmp_path):
     assert "0 failure(s)" in (out / "check.txt").read_text(encoding="utf-8")
 
 
-# --- P6: one opencode expert at a time ("database is locked", SKILL.md §1)
+# --- P6: opencode runs once (老子); Linus off Codex goes to mcode (EJ, 2026-10-16; SKILL.md §1)
 
 
-def test_two_opencode_experts_never_run_at_the_same_time(tmp_path, monkeypatch):
-    # codex_left 20.0 moves Linus to opencode, so both seats are opencode
+def test_linus_off_codex_runs_on_mcode_beside_lao_tzu_on_opencode(tmp_path, monkeypatch):
+    # codex_left 20.0 moves Linus off Codex: to mcode, so opencode still runs only 老子
     _out, calls, rc = run_seats(tmp_path, monkeypatch, "linus,lao-tzu", alive=2, codex_left=20.0)
     assert rc == 0
     seats = started(calls)
-    assert [c["engine"] for c in seats] == ["opencode"] * 2
-    first, second = seats
-    assert second["running"] == [], f"{second['sid']} started while {second['running']} was still running"
-    assert first["sid"] in [c["sid"] for c in calls if c["event"] == "end"]
-    assert second["sid"] not in first["running"]
-
-
-def test_the_waiting_expert_starts_only_after_the_first_opencode_expert_exits(tmp_path, monkeypatch, capsys):
-    _out, calls, rc = run_seats(tmp_path, monkeypatch, "linus,lao-tzu", alive=2, codex_left=20.0)
-    lines = capsys.readouterr().out.splitlines()
-    assert any(line.startswith("waiting ") and "opencode" in line for line in lines), lines
-    assert rc == 0
-
-
-def test_one_opencode_expert_is_not_queued_when_the_other_is_on_codex(tmp_path, monkeypatch):
-    _out, calls, rc = run_seats(tmp_path, monkeypatch, "linus,lao-tzu", alive=2, codex_left=None)
-    assert rc == 0
-    seats = started(calls)
-    assert [c["engine"] for c in seats] == ["codex", "opencode"]
-    assert seats[1]["running"] == ["linus"]  # different engines may overlap
+    assert [c["engine"] for c in seats] == ["mcode", "opencode"]
+    assert seats[1]["running"] == ["linus"]  # different engines overlap; nothing waits
 
 
 # COO, after the dsh review (runs/20261016-six-experts/nodes/review.result.md).

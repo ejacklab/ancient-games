@@ -8,9 +8,11 @@ the project's insights) and Dario (the plain control).
     check DIR [--sabotage]
 
 Experts and engines (EJ, 2026-10-13):
-    Linus Torvalds  codex  gpt-6.1-sol (read-only) — runs on opencode instead when Codex has 20% or less left in
+    Linus Torvalds  codex  gpt-6.1-sol (read-only) — runs on mcode instead when Codex has 20% or less left in
                            its 5-hour or weekly window (EJ, 2026-10-16; read from Codex's own session log), or when
-                           Codex stops on its usage limit
+                           Codex stops on its usage limit. mcode, not opencode: 老子 is on opencode, and opencode
+                           cannot run twice at once (EJ, 2026-10-16). mcode runs lightweight (no tools, so it cannot
+                           write), with the brief and its two files pasted in on stdin
     范蠡            agy    gemini-3.8-flash-medium — falls back to Claude Opus 5.5 when the task needs web or shell
                            (agy headless cannot), or when agy returns nothing, an error, a timeout, or an answer
                            without the required sections (e.g. a plan instead of the answer)
@@ -24,7 +26,7 @@ Experts and engines (EJ, 2026-10-13):
 Each persona gets its own list from the four-seats run (copied into DIR/seats/, because opencode cannot read files
 outside the project) and a brief that makes it decide through its numbered rules; Dario gets only the question and the
 answer's shape. Prompts go in files; every engine
-call reads stdin from /dev/null. `check` verifies each persona cited only item numbers its list has and quoted Chinese
+call reads stdin from /dev/null, except mcode, which reads its prompt file on stdin. `check` verifies each persona cited only item numbers its list has and quoted Chinese
 only as its list writes it, Dave cited real insight ids (or said none applies), and Dario wrote the five sections; `--sabotage` proves the check fails on an invented quote and a non-existent item.
 """
 from __future__ import annotations
@@ -60,13 +62,15 @@ INSIGHT_SEAT = "dave"  # loads the insights before answering
 GUARD_CLI = HERE.parent / "workflow-design" / "guard" / "src" / "cli.ts"
 INSIGHT_ID = re.compile(r"\bF-[0-9a-f]{8}\b")  # seats with no list: their brief is the question alone, and check reads their sections only
 MODELS = {"codex": "gpt-6.1-sol", "agy": "gemini-3.8-flash-medium", "dsh": "deepseek-flash (dsh headless profile)",
-          "opencode": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview", "claude": "claude-opus-5-5"}
+          "opencode": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview", "claude": "claude-opus-5-5",
+          "mcode": "minimax/MiniMax-M3.1-Flash-Preview"}
+MCODE = os.environ.get("MCODE", str(Path.home() / ".minimax-code" / "bin" / "mcode"))  # not on a non-interactive PATH
 SECTIONS = ["## Answer", "## How I decided", "## What I need to know", "## Costs and risks",
             "## How we would know I was right"]
 ITEM_START = re.compile(r"^(?:### (\d{1,2})\. |(\d{1,2})\. \*\*)", re.M)
 CJK_RUN = re.compile(r"[㐀-鿿]{4,}")
 ITEM_CITE = re.compile(r"(?<![\w#])#(\d{1,3})\b")
-CODEX_MIN_LEFT = 20  # percent; at or below it Linus runs on opencode (EJ, 2026-10-16)
+CODEX_MIN_LEFT = 20  # percent; at or below it Linus runs on mcode (EJ, 2026-10-16)
 CODEX_LIMIT_ERROR = "usage limit"  # Codex: "You've hit your usage limit ... try again at <time>"
 
 
@@ -116,6 +120,17 @@ def codex_left(home: Path | None = None, now: float | None = None) -> float | No
     return None
 
 
+def pasted_brief(brief: Path, list_path: Path, identity_path: Path) -> Path:
+    """The brief with the two files it names pasted in whole, for an engine that cannot open files (mcode lightweight)."""
+    text = brief.read_text(encoding="utf-8").rstrip() + (
+        "\n\n---\n\nYou cannot open files here, so the two files this brief names are pasted below, whole.\n")
+    for f in (list_path, identity_path):
+        text += f"\n## File: {f}\n\n{f.read_text(encoding='utf-8').rstrip()}\n"
+    out = brief.with_suffix(".pasted.md")
+    out.write_text(text, encoding="utf-8")
+    return out
+
+
 def command(engine: str, prompt: str, out_file: Path, timeout: int, web: bool, shell: bool,
             model: str | None = None) -> list[str]:
     if engine == "codex":
@@ -128,6 +143,9 @@ def command(engine: str, prompt: str, out_file: Path, timeout: int, web: bool, s
         return ["dsh", "headless", prompt]
     if engine == "opencode":
         return ["opencode", "run", "-m", MODELS["opencode"], "--agent", "plan", prompt]
+    if engine == "mcode":  # lightweight has no tools, so it cannot write; the prompt (a file) is read on stdin
+        return [MCODE, "exec", "--mode", "lightweight", "--model", MODELS["mcode"], "--timeout", f"{timeout - 60}s",
+                "--input", "-", "-o", str(out_file)]
     if engine == "claude":
         tools = ["Read", "Grep", "Glob"] + (["WebSearch", "WebFetch"] if web else []) + (["Bash"] if shell else [])
         # `--allowedTools` takes several values, so the bare form swallows the prompt that follows it (run
@@ -143,9 +161,11 @@ def start(engine: str, prompt: str, ans: Path, log: Path, timeout: int, web: boo
     if engine == "claude":
         env.pop("ANTHROPIC_API_KEY", None)  # use the subscription login, not an API key
     cmd = ["timeout", str(timeout), *command(engine, prompt, ans, timeout, web, shell, model)]
-    out = open(log if engine == "codex" else ans, "w")
-    err = open(log, "a" if engine == "codex" else "w")
-    p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=out, stderr=err, cwd=cwd, env=env)
+    writes_answer = engine in ("codex", "mcode")  # both write the final message to the answer file themselves
+    out = open(log if writes_answer else ans, "w")
+    err = open(log, "a" if writes_answer else "w")
+    stdin = open(prompt, encoding="utf-8") if engine == "mcode" else subprocess.DEVNULL
+    p = subprocess.Popen(cmd, stdin=stdin, stdout=out, stderr=err, cwd=cwd, env=env)
     return p, time.time()
 
 
@@ -239,7 +259,7 @@ def run(a) -> int:
         if sid == INSIGHT_SEAT:
             text += insight_load(out, a.insights, cwd, getattr(a, "insight_scheme", None))
         brief.write_text(text, encoding="utf-8")
-        jobs[sid] = {"expert": name, "engine": engine, "brief": brief}
+        jobs[sid] = {"expert": name, "engine": engine, "brief": brief, "list": lst, "identity": ident}
     if (a.needs_web or a.needs_shell) and "fan-li" in jobs:
         jobs["fan-li"].update(engine="claude", fallback_from="agy",
                               fallback_reason="task needs " + " and ".join(
@@ -247,12 +267,14 @@ def run(a) -> int:
     if "linus" in jobs:
         left = codex_left()
         if left is not None and left <= CODEX_MIN_LEFT:
-            jobs["linus"].update(engine="opencode", fallback_from="codex",
+            jobs["linus"].update(engine="mcode", fallback_from="codex",
                                  fallback_reason=f"codex has {left:g}% left ({CODEX_MIN_LEFT}% or less)")
     old = out / "status.json"
     status = json.loads(old.read_text(encoding="utf-8")) if only and old.exists() else {}
 
     def prompt_for(sid, engine):
+        if engine == "mcode":
+            return str(pasted_brief(jobs[sid]["brief"], jobs[sid]["list"], jobs[sid]["identity"]))
         p = f"Read {jobs[sid]['brief']} and do what it says."
         if engine == "agy":
             p += " Do not run shell commands and do not fetch URLs. Write the answer itself as your final message, not a plan."
@@ -272,7 +294,6 @@ def run(a) -> int:
                   flush=True)
 
     procs = {}
-    waiting = []  # opencode runs wait for each other: parallel starts can fail with "database is locked"
 
     def launch(sid):
         j = jobs[sid]
@@ -287,21 +308,12 @@ def run(a) -> int:
         model = SEAT_MODEL.get(sid) if engine == "claude" else None
         return {"model": model} if model else {}
 
-    def opencode_busy():
-        return any(jobs[sid]["engine"] == "opencode" for sid in procs)
-
     for sid, j in jobs.items():
         if j["engine"] == "claude" and a.claude_by_caller:
             hand_to_caller(sid)
             continue
-        if j["engine"] == "opencode" and opencode_busy():
-            waiting.append(sid)
-            print(f"waiting {sid:8} for the running opencode expert", flush=True)
-            continue
         launch(sid)
-    while procs or waiting:
-        if waiting and not opencode_busy():
-            launch(waiting.pop(0))
+    while procs:
         for sid, (p, t0, ans, log) in list(procs.items()):
             if p.poll() is None:
                 continue
@@ -339,12 +351,8 @@ def run(a) -> int:
                 shutil.move(ans, ans.with_suffix(".codex-failed.md")) if ans.exists() else None
                 shutil.move(log, log.with_suffix(".codex-failed.log"))
                 status["linus-codex"] = status.pop("linus")
-                j.update(engine="opencode", fallback_from="codex", fallback_reason="codex stopped on its usage limit")
-                if opencode_busy():  # one opencode at a time (database is locked)
-                    waiting.append(sid)
-                    print("waiting linus    for the running opencode expert (fallback)", flush=True)
-                else:
-                    launch(sid)
+                j.update(engine="mcode", fallback_from="codex", fallback_reason="codex stopped on its usage limit")
+                launch(sid)
         time.sleep(2)
     (out / "status.json").write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"\n{out}\nnext: python3 {Path(__file__)} check {out}")
