@@ -568,3 +568,9 @@ Fails-if: a deadline start with no or non-positive minutes is accepted; status s
 wait returns before the deadline; a mark is announced twice, or not at all when passed; time-up is not said after the
 deadline; another session's deadline reminds this one; a progress line's text beyond piece, state and a short note is
 printed; a malformed progress line breaks status; the ask-the-time reminder repeats in one session.
+
+**Round 10 correction (after the research, before merge):** between marks every PostToolUse / PostToolUseFailure call
+also adds one line, `harness-guard clock: <m>/<N> min (<p>%), <left> left` — every tested design shows the budget at
+every step (`runs/20261016-time-monitor/research/reminders.md` F1, F3, F6; a budget given once fails, F5, F6, F8). The
+mark block keeps its own prefix, `harness-guard time:`, so a mark is still said once. Fails-if: a call before the
+deadline adds no clock or time line.

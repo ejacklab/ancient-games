@@ -1,0 +1,21 @@
+- 2026-10-16T10:23:27+08:00 · T1 · planned · deadline validation, file shape and session claiming
+- 2026-10-16T10:23:27+08:00 · T2 · planned · status before, at and after expiry and deadline selection
+- 2026-10-16T10:23:27+08:00 · T3 · planned · CLI wait does not return before its short deadline
+- 2026-10-16T10:23:27+08:00 · T4 · planned · progress summaries, malformed lines and output privacy
+- 2026-10-16T10:23:27+08:00 · T5 · planned · mark delivery, deduplication, expiry, isolation and joined context
+- 2026-10-16T10:23:27+08:00 · T6 · planned · ask once per session and join the criteria reminder
+- 2026-10-16T10:23:27+08:00 · checks · planned · run acceptance tests and typecheck; write result
+- 2026-10-16T10:23:27+08:00 · T1 · start · inspect fixed types and write deadline acceptance cases
+- 2026-10-16T10:23:36+08:00 · T2 · start · write planted-input acceptance cases from Round 10
+- 2026-10-16T10:23:36+08:00 · T3 · start · write planted-input acceptance cases from Round 10
+- 2026-10-16T10:23:36+08:00 · T4 · start · write planted-input acceptance cases from Round 10
+- 2026-10-16T10:23:36+08:00 · T5 · start · write planted-input acceptance cases from Round 10
+- 2026-10-16T10:23:36+08:00 · T6 · start · write planted-input acceptance cases from Round 10
+- 2026-10-16T10:25:45+08:00 · T1 · done · authored CLI validation, persisted shape, marks and claiming tests
+- 2026-10-16T10:25:45+08:00 · T2 · done · authored injected-clock selection and CLI status tests
+- 2026-10-16T10:25:45+08:00 · T3 · done · authored one three-second CLI wait test; elapsed assertion passes, output fails
+- 2026-10-16T10:25:45+08:00 · T4 · done · authored progress counting, malformed-input and private-output tests
+- 2026-10-16T10:25:45+08:00 · T5 · done · authored both hook events, marks, expiry, isolation and joined-context tests
+- 2026-10-16T10:25:45+08:00 · T6 · done · authored once-per-session time ask and K2 joined-reminder tests
+- 2026-10-16T10:25:45+08:00 · checks · start · final acceptance run, typecheck and result
+- 2026-10-16T10:26:05+08:00 · checks · done · 42 tests: 33 pass, 9 implementation-output failures; typecheck exit 0; result written; stopped before 11:05 +0800

@@ -87,8 +87,10 @@ def command(engine: str, prompt: str, out_file: Path, timeout: int, web: bool, s
         return ["opencode", "run", "-m", MODELS["opencode"], "--agent", "plan", prompt]
     if engine == "claude":
         tools = ["Read", "Grep", "Glob"] + (["WebSearch", "WebFetch"] if web else []) + (["Bash"] if shell else [])
+        # `--allowedTools` takes several values, so the bare form swallows the prompt that follows it (run
+        # 20261016-time-monitor: Dave got "Input must be provided"); `=` keeps the prompt an argument.
         return ["claude", "-p", "--model", MODELS["claude"], "--output-format", "text",
-                "--allowedTools", ",".join(tools), prompt]
+                f"--allowedTools={','.join(tools)}", prompt]
     raise ValueError(engine)
 
 
@@ -109,6 +111,15 @@ def answer_ok(ans: Path) -> tuple[bool, str]:
         return False, "empty answer"
     missing = [s for s in SECTIONS if s not in text]
     return (False, f"missing sections {missing}") if missing else (True, "")
+
+
+def progress(a, piece: str, state: str, note: str) -> None:
+    """One timestamped line per expert start and end (workflow-design method 3.8 item 14; guard Round 10 T4)."""
+    if not a.progress:
+        return
+    line = f"- {dt.datetime.now().astimezone().isoformat(timespec='seconds')} · {piece} · {state} · {note}\n"
+    with open(a.progress, "a", encoding="utf-8") as f:
+        f.write(line)
 
 
 def run(a) -> int:
@@ -167,6 +178,8 @@ def run(a) -> int:
         ans, log = out / "answers" / f"{sid}.md", out / "logs" / f"{sid}.log"
         procs[sid] = (*start(j["engine"], prompt_for(sid, j["engine"]), ans, log, a.timeout, a.needs_web,
                              a.needs_shell, cwd), ans, log)
+        j["started"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")
+        progress(a, sid, "start", j["engine"])
         print(f"started {sid:8} on {j['engine']}", flush=True)
     while procs:
         for sid, (p, t0, ans, log) in list(procs.items()):
@@ -179,7 +192,10 @@ def run(a) -> int:
                 ok, why = False, f"timeout after {a.timeout} s"
             elif p.returncode != 0 and ok:
                 ok, why = False, f"exit {p.returncode}"
+            progress(a, sid, "done" if ok else "fail", f"{j['engine']} exit {p.returncode}")
             status[sid] = {"expert": j["expert"], "engine": j["engine"], "model": MODELS[j["engine"]],
+                           "started": j.get("started"),
+                           "finished": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
                            "exit": p.returncode, "seconds": round(time.time() - t0, 1), "ok": ok, "problem": why,
                            **({"fallback_from": j["fallback_from"], "fallback_reason": j["fallback_reason"]}
                               if "fallback_from" in j else {})}
@@ -195,6 +211,8 @@ def run(a) -> int:
                     continue
                 procs[sid] = (*start("claude", prompt_for(sid, "claude"), ans, log, a.timeout, a.needs_web,
                                      a.needs_shell, cwd), ans, log)
+                j["started"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")
+                progress(a, sid, "start", "claude (fallback)")
                 print("started fan-li   on claude (fallback)", flush=True)
         time.sleep(2)
     (out / "status.json").write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -274,6 +292,8 @@ def main() -> int:
     r.add_argument("--needs-web", action="store_true", help="the task needs web search: 范蠡 goes to Claude")
     r.add_argument("--needs-shell", action="store_true", help="the task needs a shell: 范蠡 goes to Claude")
     r.add_argument("--timeout", type=int, default=1800, help="seconds per engine call")
+    r.add_argument("--progress", help="append a timestamped line per expert start and end to this file "
+                                      "(e.g. runs/<run>/nodes/experts.progress.md)")
     r.add_argument("--only", help="comma-separated ids to run (e.g. dave or linus,dave); with --out, adds them to an "
                    "existing run and keeps its other answers")
     r.add_argument("--claude-by-caller", action="store_true",

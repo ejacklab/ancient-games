@@ -10,6 +10,7 @@ import { checkCriteria, isCriteriaFile, loadCriteria, score } from "./criteria.t
 import { appendFailure, appendRecord, failuresFor, guardRoot, newFailureId, readJournal, writeEvidence } from "./journal.ts";
 import { answered, greatAnswered, openFailures } from "./insight.ts";
 import { appendWarning, newWarningId, openWarnings } from "./warnings.ts";
+import { claimDeadlines, deadlineStatus, dueMark, markId, sessionDeadline } from "./deadline.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
 import { checkResult, commandWord, engineCallSite, lintCommand, recognizeTestRun, segments } from "./traps.ts";
@@ -729,14 +730,76 @@ function handleUserPromptSubmit(payload: Record<string, unknown>, root: string, 
   const prompt: PromptRecord = { kind: "prompt", time: env.now().toISOString(), session };
   appendRecord(root, prompt);
   const records = readJournal(root).records.filter((record) => record.session === session);
-  if (records.some((record) => record.kind === "touched" && isCriteriaFile(record.path))) return quiet();
-  if (records.some((record) => record.kind === "raised" && record.ids.includes("criteria"))) return quiet();
-  const record: RaisedRecord = { kind: "raised", time: env.now().toISOString(), session, ids: ["criteria"] };
-  appendRecord(root, record);
-  return context(
-    "UserPromptSubmit",
-    `harness-guard: before you start, write the criteria this request will be scored on — \`bun ${guardDirFor(root)}/src/cli.ts criteria new --out runs/<run>/criteria.yaml\` (or .harness-guard/criteria/<name>.yaml), one item per thing the result must get right; mark each met or not met with evidence at the end.`,
-  );
+  const asked = (id: string) => records.some((record) => record.kind === "raised" && record.ids.includes(id));
+  const lines: string[] = [];
+  const ids: string[] = [];
+  if (!records.some((record) => record.kind === "touched" && isCriteriaFile(record.path)) && !asked("criteria")) {
+    ids.push("criteria");
+    lines.push(`harness-guard: before you start, write the criteria this request will be scored on — \`bun ${guardDirFor(root)}/src/cli.ts criteria new --out runs/<run>/criteria.yaml\` (or .harness-guard/criteria/<name>.yaml), one item per thing the result must get right; mark each met or not met with evidence at the end.`);
+  }
+  // Round 10, T6: the time is asked at the start of a task (method 3.8 item 14), once per session.
+  if (sessionDeadline(root, session, env.now()) === null && !asked("deadline-ask")) {
+    ids.push("deadline-ask");
+    lines.push(`harness-guard: ask the owner how much time you have to try (unless they said), then record it: \`bun ${guardDirFor(root)}/src/cli.ts deadline start --minutes N --run runs/<run>\`.`);
+  }
+  if (lines.length === 0) return quiet();
+  for (const id of ids) {
+    const record: RaisedRecord = { kind: "raised", time: env.now().toISOString(), session, ids: [id] };
+    appendRecord(root, record);
+  }
+  return context("UserPromptSubmit", lines.join("\n"));
+}
+
+// ---- the time (round 10, T1 and T5) ------------------------------------------------------------------------------
+
+// The call that ran `deadline start` claims its deadline; then, for the session's deadline, a passed mark is said once
+// and time-up after every call — added to the call's own context, never replacing it.
+function withTime(payload: Record<string, unknown>, root: string, env: HookEnv, result: HookResult): HookResult {
+  const session = sessionOf(payload);
+  if (payload.tool_name === "Bash" && /\bdeadline\s+start\b/.test(text(objectField(payload, "tool_input").command))) {
+    claimDeadlines(root, session);
+  }
+  const now = env.now();
+  const status = deadlineStatus(root, session, now, false);
+  if (status === null) return result;
+  let message: string | null = null;
+  if (status.up) {
+    const raisedUp = new Set(readJournal(root).records.flatMap((r) => (r.kind === "raised" && r.session === session ? r.ids : [])));
+    const unsaid = status.deadline.marks.map((m) => markId(status.deadline, m)).filter((id) => !raisedUp.has(id));
+    if (unsaid.length > 0) appendRecord(root, { kind: "raised", time: now.toISOString(), session, ids: unsaid } as RaisedRecord);
+    const over = Math.max(0, status.usedMinutes - status.deadline.minutes);
+    message = `harness-guard time is up (${over} min over): stop trying, finish the report, and put what is open to the owner.`;
+  } else {
+    // No mark passed yet: nothing can be due, so the journal is not read (the optimisation round of this run).
+    const passed = status.deadline.marks.some((m) => status.percent >= m);
+    const raised = passed ? new Set(readJournal(root).records.flatMap((r) => (r.kind === "raised" && r.session === session ? r.ids : []))) : new Set<string>();
+    const mark = passed ? dueMark(status, raised) : null;
+    if (mark !== null) {
+      const ids = status.deadline.marks.filter((m) => m <= mark).map((m) => markId(status.deadline, m)).filter((id) => !raised.has(id));
+      const record: RaisedRecord = { kind: "raised", time: now.toISOString(), session, ids };
+      appendRecord(root, record);
+      const end = new Date(Date.parse(status.deadline.start) + status.deadline.minutes * 60_000);
+      const hhmm = `${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`;
+      const workers = deadlineStatus(root, session, now)?.workers ?? [];
+      message = [`harness-guard time: ${status.usedMinutes} of ${status.deadline.minutes} min used (${status.percent}%), ${status.leftMinutes} left — deadline ${hhmm}`,
+        ...workers.slice(0, 5).map((w) => `  ${w}`)].join("\n");
+    } else {
+      // Between marks, one short line every call: every tested design shows the budget at every step
+      // (runs/20261016-time-monitor/research/reminders.md F1, F3, F6; a budget given once fails, F5, F6, F8).
+      message = `harness-guard clock: ${status.usedMinutes}/${status.deadline.minutes} min (${status.percent}%), ${status.leftMinutes} left`;
+    }
+  }
+  if (message === null) return result;
+  let existing = "";
+  if (result.stdout.trim() !== "") {
+    try {
+      existing = String(JSON.parse(result.stdout).hookSpecificOutput?.additionalContext ?? "");
+    } catch {
+      return result;
+    }
+  }
+  const event = payload.hook_event_name === "PostToolUseFailure" ? "PostToolUseFailure" : "PostToolUse";
+  return context(event, existing === "" ? message : `${existing}\n${message}`);
 }
 
 // ---- handler -----------------------------------------------------------------------------------------------------
@@ -747,9 +810,9 @@ function dispatch(payload: Record<string, unknown>, env: HookEnv): HookResult {
     case "PreToolUse":
       return handlePreToolUse(payload, env);
     case "PostToolUse":
-      return handlePostToolUse(payload, env, root, false);
+      return withTime(payload, root, env, handlePostToolUse(payload, env, root, false));
     case "PostToolUseFailure":
-      return handlePostToolUse(payload, env, root, true);
+      return withTime(payload, root, env, handlePostToolUse(payload, env, root, true));
     case "Stop":
     case "SubagentStop":
       return handleStop(payload, root, env);

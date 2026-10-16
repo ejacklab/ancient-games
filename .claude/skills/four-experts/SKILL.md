@@ -39,6 +39,8 @@ python3 ~/.claude/skills/four-experts/scripts/four_experts.py run "Should we kee
 - **Inside Claude Code, add `--claude-by-caller`.** The script then leaves Dave (and any 范蠡 fallback) to you: for
   each `CALLER` line it prints, start a subagent with "Read <brief> and do what it says." and save its final message
   to the answer path it names. Outside Claude Code the script runs `claude -p` itself.
+- `--progress runs/<run>/nodes/experts.progress.md` appends a timestamped line as each expert starts and ends, so the
+  caller sees progress while they work; `status.json` records each expert's start and finish time.
 - `--only dave` (or any comma list of ids: `linus,fan-li,sun-tzu,lao-tzu,dave`) with `--out <existing run>` adds
   those answers to a run and keeps the others.
 - Output: `runs/<date>-four-experts-<slug>/` (or `four-experts/…` when there is no `runs/`): `question.md`,

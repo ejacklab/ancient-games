@@ -20,6 +20,9 @@ the cheap discoveries first.
 
 **Ask the time first.** With the task's details, ask the person how much time you have to try to find a
 solution (a time, or a number of rounds), unless they gave it; the answer makes the run time-boxed (method 3.8 item 14).
+Record it with `guard/src/cli.ts deadline start --minutes N --run runs/<run>` — you cannot feel time pass; the guard
+tells you after every tool call. Briefs ask for small pieces and timestamped progress lines; work with more than one
+node runs as a workflow when possible (method 3.8 item 14).
 
 From the challenge text alone — no tools, no agents — state the **objective**, what is **in scope** and what is
 **out of scope**, answer the **six whys** (stop when an answer no longer changes the design), and end with a

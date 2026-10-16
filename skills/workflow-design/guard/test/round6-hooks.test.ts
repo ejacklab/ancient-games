@@ -118,9 +118,10 @@ describe("K2 criteria reminder and touch", () => {
     expect(context.additionalContext).toContain(".harness-guard/criteria/<name>.yaml");
     expect(context.additionalContext).toContain("one item per thing the result must get right");
     expect(context.additionalContext).toContain("mark each met or not met with evidence at the end");
-    expect(prompt().stdout).toBe("");
+    // Round 10 (T6): the first prompt may also ask for the time; this test is about the criteria reminder.
+    expect(prompt().stdout).not.toContain("criteria this request");
     // Round 8: every prompt also writes a time-only prompt record; the reminder's marker is still written once.
-    expect(records().filter((r) => r.kind !== "prompt").map((r) => ({ ...r, time: "" })))
+    expect(records().filter((r) => r.kind !== "prompt" && !(r.kind === "raised" && r.ids.includes("deadline-ask"))).map((r) => ({ ...r, time: "" })))
       .toEqual([{ kind: "raised", session, time: "", ids: ["criteria"] }]);
     expect(records().filter((r) => r.kind === "prompt")).toHaveLength(2);
   });
@@ -129,8 +130,8 @@ describe("K2 criteria reminder and touch", () => {
     criteria();
     expect(touch(file, tool).stdout).toBe("");
     expect(records()).toEqual([{ kind: "touched", session, time: new Date(tick).toISOString(), path: file }]);
-    expect(prompt().stdout).toBe("");
-    expect(records().filter((r) => r.kind === "raised")).toEqual([]);
+    expect(prompt().stdout).not.toContain("criteria this request");
+    expect(records().filter((r) => r.kind === "raised" && r.ids.includes("criteria"))).toEqual([]);
   });
 
   test("another session's reminder and touches do not consume this session's reminder", () => {

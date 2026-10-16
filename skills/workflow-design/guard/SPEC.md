@@ -532,3 +532,45 @@ Module `src/warnings.ts`.
 Fails-if: a guess is written as a failure; a written meaning is written as a warning; a session stops with an open
 warning; a settlement has no reason or a multi-line one; a warning settles twice; a dismissal's reason is not listed by
 `warnings`; a warning logged as a failure has no `from`.
+
+## Round 10 — time and progress monitors (method 3.8 item 14; run 20261016-time-monitor)
+
+The agent cannot feel time pass; the guard tells it. Types in `src/types.ts`: `Deadline`, `ProgressLine`. Module
+`src/deadline.ts`.
+
+- **T1 Deadline file.** `cli.ts deadline start --minutes N [--run DIR] [--marks 50,80,100]` writes
+  `.harness-guard/deadlines/<D-xxxxxxxx>.json` = `{ id, start (ISO), minutes, run (root-relative or null), marks
+  (percent, ascending, default [50, 80, 100]), session: null }` and prints the id and the deadline's local time.
+  `minutes` is a positive number; marks are integers 1–100 and must include 100 (added if missing). Usage error (2) on
+  anything else. The PostToolUse hook of the Bash call that ran `deadline start` claims every unclaimed deadline file
+  for its session (writes `session`). Only the session's own deadlines are read by its hooks; the newest unexpired or
+  latest one is the session's deadline.
+- **T2 Status (way 1).** `cli.ts deadline status [--session S]` prints `used <m> of <N> min (<p>%), <left> left,
+  deadline <HH:MM>` (or `time is up, <m> min over`) and, when `run` is set, one line per worker (T4). Exit 0 while time
+  is left, 1 once it is up, 2 when there is no deadline.
+- **T3 Wait (way 2).** `cli.ts deadline wait [--mark P]` sleeps until the deadline (or until mark P), then prints the
+  status line and exits 0 — the command a harness runs in the background as a timer.
+- **T4 Progress.** A worker appends one line per small piece to `<run>/nodes/<node>.progress.md`:
+  `- <ISO time> · <piece id> · <planned|start|done|fail> · <short note>`. `progressSummary(file)` = `{ node, done,
+  total (distinct pieces seen), last: { time, piece, state }, ageMinutes }`; a line that does not parse is skipped and
+  counted. Status and the reminders show `<node>: <done>/<total> pieces, last <piece> <state> <age> min ago`.
+- **T5 Reminders (way 3).** PostToolUse and PostToolUseFailure, for the session's deadline: at the first call after
+  each mark is passed, add context `harness-guard time: <m> of <N> min used (<p>%), <left> left — deadline <HH:MM>`
+  plus the worker lines (at most 5), once per mark (`raised` id `deadline:<id>:<mark>`). After 100%: every call adds
+  `harness-guard time is up (<m> min over): stop trying, finish the report, and put what is open to the owner.` This
+  context is added to any other context the call produces, never replaces it.
+- **T6 Ask the time.** UserPromptSubmit, when the session has no deadline and has not been asked (`raised` id
+  `deadline-ask`): context `harness-guard: ask the owner how much time you have to try (unless they said), then record
+  it: bun <guard>/src/cli.ts deadline start --minutes N --run runs/<run>` — once per session, joined to the K2
+  criteria reminder when both apply.
+
+Fails-if: a deadline start with no or non-positive minutes is accepted; status says time is left after the deadline;
+wait returns before the deadline; a mark is announced twice, or not at all when passed; time-up is not said after the
+deadline; another session's deadline reminds this one; a progress line's text beyond piece, state and a short note is
+printed; a malformed progress line breaks status; the ask-the-time reminder repeats in one session.
+
+**Round 10 correction (after the research, before merge):** between marks every PostToolUse / PostToolUseFailure call
+also adds one line, `harness-guard clock: <m>/<N> min (<p>%), <left> left` — every tested design shows the budget at
+every step (`runs/20261016-time-monitor/research/reminders.md` F1, F3, F6; a budget given once fails, F5, F6, F8). The
+mark block keeps its own prefix, `harness-guard time:`, so a mark is still said once. Fails-if: a call before the
+deadline adds no clock or time line.

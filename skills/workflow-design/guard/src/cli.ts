@@ -13,6 +13,7 @@ import { HARNESSES, installSnippet } from "./install.ts";
 import { JournalError, guardRoot, newFailureId, recordFailureFromArgs } from "./journal.ts";
 import { checkSection, findInsightFiles, openFailures, parseInsight } from "./insight.ts";
 import { WarningError, dismiss, settleAsFailure, warnings } from "./warnings.ts";
+import { DeadlineError, deadlineEnd, deadlineStatus, parseMarks, startDeadline } from "./deadline.ts";
 import { PathError, checkPath, parents, skeleton } from "./paths.ts";
 import { rates, ratesMarkdown } from "./rates.ts";
 import { RegisterError, coverage, loadRegister, validateRegister } from "./register.ts";
@@ -34,6 +35,8 @@ const USAGE = [
   "  insight [--session S] [--json]  list open failures and invalid sections",
   "  warning <W-id> fail|dismiss --reason TEXT   settle a warning the guard could not judge",
   "  warnings [--session S]          every warning and how it was settled",
+  "  deadline start --minutes N [--run DIR] [--marks 50,80,100]   record the owner's time limit",
+  "  deadline status | wait [--mark P]   time used and left, workers' progress; wait = a background timer",
   "  register <file>                 validate a register and report its coverage",
   "  install --print <harness>       print the hook settings for a harness",
   "  doctor [--health PATH] [--json] report where the guard is installed",
@@ -179,6 +182,49 @@ function fail(args: string[]): number {
   const record = recordFailureFromArgs(guardRoot(process.cwd()), args);
   out(`${record.id} appended to .harness-guard/journal.jsonl`);
   return OK;
+}
+
+// ---- deadline (round 10) ----------------------------------------------------------------------------------------
+
+function deadlineCommand(args: string[]): number {
+  const [verb] = args;
+  const root = guardRoot(process.cwd());
+  if (verb === "start") {
+    const minutesText = flagValue(args, "--minutes");
+    const minutes = minutesText === null ? Number.NaN : Number(minutesText);
+    try {
+      const deadline = startDeadline(root, { minutes, run: flagValue(args, "--run"), marks: parseMarks(flagValue(args, "--marks")) }, new Date());
+      const end = new Date(deadlineEnd(deadline));
+      out(`${deadline.id}: ${deadline.minutes} min, deadline ${end.toTimeString().slice(0, 5)}; reminders at ${deadline.marks.join("%, ")}%`);
+      return OK;
+    } catch (error) {
+      if (error instanceof DeadlineError) usageError(`deadline start: ${error.message}`);
+      throw error;
+    }
+  }
+  if (verb === "status") {
+    const status = deadlineStatus(root, flagValue(args, "--session"), new Date());
+    if (status === null) {
+      process.stderr.write("no deadline: record one with deadline start --minutes N\n");
+      return USAGE_EXIT;
+    }
+    out([status.line, ...status.workers.map((w) => `  ${w}`)].join("\n"));
+    return status.up ? FINDINGS : OK;
+  }
+  if (verb === "wait") {
+    const markText = flagValue(args, "--mark");
+    const mark = markText === null ? 100 : Number(markText);
+    if (!Number.isFinite(mark) || mark <= 0 || mark > 100) usageError("deadline wait: --mark is a percent from 1 to 100");
+    const session = flagValue(args, "--session");
+    const status = deadlineStatus(root, session, new Date());
+    if (status === null) usageError("deadline wait: no deadline");
+    const at = Date.parse(status.deadline.start) + status.deadline.minutes * 60_000 * (mark / 100);
+    const wait = at - Date.now();
+    if (wait > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
+    out(deadlineStatus(root, session, new Date())!.line);
+    return OK;
+  }
+  return usageError("deadline: start --minutes N [--run DIR] [--marks 50,80,100] | status | wait [--mark P]");
 }
 
 // ---- warnings (round 9) -----------------------------------------------------------------------------------------
@@ -448,6 +494,7 @@ function run(args: string[]): number {
     case "fail": return fail(rest);
     case "insight": return insight(rest);
     case "warning": return warningCommand(rest);
+    case "deadline": return deadlineCommand(rest);
     case "warnings": return warningsCommand(rest);
     case "register": return register(rest);
     case "install": return install(rest);

@@ -28,6 +28,12 @@ level of detail; say which parts to copy and which are only illustrative>
 <the check, as the worker can run it: the command and the result that counts as pass; what a failing result looks
 like; the sabotage the check is known to catch. For a judged check: the fixed checklist, item by item>
 
+## Pieces and progress
+<Divide the task into small pieces, each with its own check. Before starting, append one `planned` line per piece to
+runs/<id>/nodes/<node>.progress.md, then a line when each piece starts and when it is done or fails, in this form
+(time from `date -Iseconds`): `- <ISO time> · <piece id> · <planned|start|done|fail> · <short note>`. The COO reads
+these while the work runs (`guard/src/cli.ts deadline status`).>
+
 ## Limits
 <may change: paths. must not change: paths or things. timers: inner <tool limit>, outer <timeout>. attempts left: n>
 

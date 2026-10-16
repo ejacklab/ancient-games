@@ -538,6 +538,18 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    - At the start the agent writes the deadline (start time plus the limit, or the last round) into the state file,
      checks it before every step, and stops at the last checkpoint that leaves time for the report: what was built,
      every provisional decision, every failure and insight, and what is left open.
+   - **The agent is told the time; it does not keep it.** It cannot feel time pass, so the guard keeps the limit:
+     `guard/src/cli.ts deadline start --minutes N --run runs/<run>` at the start; after that the hooks add a one-line
+     clock after every tool call and a fuller block with the workers' progress at 50%, 80% and 100%, then time-up on
+     every call (guard Round 10). `deadline status` is the check the agent can run; `deadline wait`, run in the
+     background, is a timer that returns at the deadline.
+   - **Workers report while they work.** Every brief tells the worker to divide its task into small pieces, list them
+     first, and append a timestamped line as each starts and ends (`docs/workflow-templates/node-brief.md`, "Pieces and
+     progress"); the four-experts runner writes the same lines per expert (`--progress`). The main agent sees progress
+     and duration during the run, not only the end.
+   - **Workflows when possible.** Work with more than one node runs as a workflow — a script that orchestrates the
+     agents in phases with visible progress (`.claude/workflows/`, the harness's Workflow tool where it has one) —
+     rather than as hand-dispatched calls or one long prompt.
    - Safety bounds still wait for the owner (MUST), limit or not: a push, a message sent, a deletion outside the run's
      branch and folder, a harness's config, `SPEC.md` or `DECISIONS.md`, spend beyond the limit. The run works around
      it (a branch, a draft) and lists it in the report.
@@ -546,7 +558,8 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    question before three failed trials on it or before the time given is used up; a question stays on trials past
    three failures or past the time given without going to the owner; the run stops waiting
    when pieces that do not rest on the question remain; a provisional decision has no reason or no
-   experts' run folder; a question to the experts carries no vision or no use cases; a provisional decision cites no
+   experts' run folder; a question to the experts carries no vision or no use cases; a brief asks for no small
+   pieces or no timestamped progress lines; a time-boxed run starts no deadline; a provisional decision cites no
    researched finding or measurement, or rests on recall alone; the run goes past its limit; the report leaves out a provisional decision; a safety-bound
    action is taken without the owner.
 

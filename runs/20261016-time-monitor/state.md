@@ -17,6 +17,12 @@ Start 2026-10-16 10:22:01 +0800 · **deadline 11:22:01 +0800** · background tim
 | P8 | report, commit | — |
 
 ## Provisional decisions (item 14; the owner accepts or declines at the end)
+- **D1 How often the guard adds the time:** (B) a one-line `harness-guard clock:` status after every tool call, plus the
+  fuller `harness-guard time:` block with the workers' progress at 50/80/100%, and time-up on every call after the
+  deadline. Reason: every tested design shows the budget at every step, a budget given once fails
+  (`research/reminders.md` F1, F3, F5, F6, F8); no source tested marks-only. Experts (`experts/`): Linus, 范蠡, 孫子,
+  老子 all advise B; 孫子: hold B to the measured hook cost (C6). Dave: rerun after a runner bug (F-… below).
 
 ## Log
 - 10:22 start; criteria written.
+- 10:2x research F1–F8 saved; experts 4/5 answered B; Dave's claude call empty (runner bug, fixed, rerunning); round 10 code + Codex tests 42/42 after integration; guard 1257/1257.

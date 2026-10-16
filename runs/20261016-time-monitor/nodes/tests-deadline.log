@@ -1,0 +1,2659 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a14285-38f6-7733-8bdf-ebe5403a23f9
+--------
+user
+Read runs/20261016-time-monitor/briefs/tests-deadline.md and do what it says.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the folder instructions and the deadline brief, then carry out the task.
+exec
+/bin/bash -lc 'cat CLAUDE.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `.claude/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **who decides · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+
+exec
+/bin/bash -lc 'cat runs/20261016-time-monitor/briefs/tests-deadline.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Brief — tests-deadline
+
+You work in the repository root. Another worker is writing `src/deadline.ts`, `src/hooks.ts` and `src/cli.ts` at the
+same time: do not read or change them.
+
+## Task
+Write acceptance tests for guard **Round 10** (T1–T6) in `.claude/skills/workflow-design/guard/test/round10-deadline.test.ts`,
+from `.claude/skills/workflow-design/guard/SPEC.md` Round 10 alone (and the parts it names: K2 reminder, `raised`
+records, hook payloads as in `test/round9-warnings.test.ts`). Types are fixed in `src/types.ts` (`Deadline`,
+`ProgressSummary`). Import `handleHook` from `src/hooks.ts` and the module's functions from `src/deadline.ts`:
+`startDeadline(root, { minutes, run, marks }, now): Deadline`, `deadlineStatus(root, session, now)`,
+`progressSummary(file, now): ProgressSummary`. Use an injected clock (`env.now`) for every time; never sleep in a test
+except one CLI `deadline wait` test with a deadline a few seconds long.
+
+## Pieces and progress (do this first)
+Divide the work into small pieces (one per Fails-if line is fine). Before you start, append one `planned` line per
+piece to `runs/20261016-time-monitor/nodes/tests-deadline.progress.md`, then one line when each piece starts and when it
+is done or fails, in this exact form (get the time with `date -Iseconds`):
+`- <ISO time> · <piece id> · <planned|start|done|fail> · <short note>`
+
+## Standard
+- Every Round 10 Fails-if line has a test with a planted input.
+- `cd .claude/skills/workflow-design/guard && bun test test/round10-deadline.test.ts` (failures expected until the
+  code lands) and `./node_modules/.bin/tsgo --noEmit -p .` — report counts and type errors in your file.
+
+## Limits
+May change: the test file, the progress file, and your result file only. Do not commit. No other AI engine.
+Foreground commands only. Stop by 11:05 +0800 whatever state you are in, and say so in the result.
+
+## Result
+`runs/20261016-time-monitor/nodes/tests-deadline.result.md`: `status: done|partial|fail`, one sentence; files; commands
+and last lines; CONTRADICTS (with the SPEC line) or none.
+
+exec
+/bin/bash -lc 'date -Iseconds' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+2026-10-16T10:23:17+08:00
+
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/coding-discipline/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+---
+name: coding-discipline
+description: Baseline engineering discipline for any hands-on task in a repository. Use when writing, editing, refactoring, debugging or reviewing code, when running builds, tests or linters, when adding a dependency, or when preparing a git commit.
+---
+
+# Coding discipline
+
+Baseline rules for working in a repository. They apply regardless of language,
+framework or project.
+
+## Before changing anything
+
+- Read the actual file first. Never write or edit from an assumption about its contents.
+- Read a neighbouring example of the same kind of thing — a sibling module, an existing
+  test, an existing endpoint — and match it. The repository's own conventions outrank
+  your preferences on naming, formatting, typing, file layout and error style.
+- Confirm a dependency is already in use in the project, via its manifest, existing
+  imports or neighbouring code, before reaching for it. Do not add a new dependency to
+  solve something the existing ones already cover.
+
+## Keep the change minimal
+
+- Do the task that was asked. Not the adjacent task, not the cleanup you noticed on the
+  way past, not the refactor that would leave this nicer than you found it.
+- No speculative abstraction. Three similar lines beat a helper with one caller.
+- No error handling, fallbacks or validation for conditions that cannot occur. Validate
+  at boundaries only: user input, external APIs, data arriving from outside the process.
+- Comments explain *why*, and only where the code cannot carry it. No comment that
+  narrates what the next line does, and never a comment addressed to the reader about
+  the changes you are making.
+- Existing code you did not expect to find is someone's in-progress work. Leave it alone
+  unless the task requires otherwise, and stop to ask if it conflicts with what you were
+  asked to do.
+
+## Verify instead of assuming
+
+- Find the project's real check commands from its README, Makefile or package manifest.
+  Never assume `npm test`, `pytest` or `make build` is correct for this repo.
+- Run them after the change. A change you did not run is a change you did not finish.
+- Report what actually happened. If a check failed, show the failure. If you could not
+  run a check, say so and say why. Never describe unverified work as working, and never
+  skip, suppress or weaken a failing check to produce a clean result.
+
+## Git
+
+- Before committing, run `git status`, `git diff HEAD` and `git log -n 3` — to separate
+  your change from what was already in the working tree, and to match the repository's
+  commit message style.
+- Stage only the paths that belong to this change. No `git add -A` while unrelated
+  modifications are present.
+- Draft the commit message yourself, weighted toward why rather than what.
+- Never push, force-push, amend a published commit, delete a branch, or rewrite history
+  unless explicitly asked to in this conversation. Prior approval does not carry over to
+  a later commit.
+- Do not revert work that is not yours. Revert your own change only if it caused a
+  failure or you are asked to.
+- For history questions, `git log` and `git blame` are authoritative. Run the command
+  rather than reasoning from memory of the codebase.
+
+## When blocked or unsure
+
+- Ask one focused question when only the user can decide, and keep it to a single round.
+- Otherwise choose the safe default, do the work, and state which default you chose so
+  it can be corrected.
+- Investigate before working around an obstacle: read the error, check your assumption,
+  address the root cause. Do not bypass a guard, a lock or a failing check just to make
+  the obstacle go away.
+- Clean up scratch files you created. Leave the working tree containing only the change
+  you were asked for.
+
+exec
+/bin/bash -lc 'cat .claude/skills/workflow-design/guard/SPEC.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# harness-guard — specification
+
+The code half of the harness-health hybrid: checks that need no judgment, run at fixed points (harness hooks, a
+plugin, a CLI the method's steps call), so an agent cannot skip them once the guard is installed. The judgment half —
+writing use cases, fails-if conditions, six whys, fix options — stays with the agent; the guard checks that it was done
+and has the required shape.
+
+Runtime: **bun ≥ 1.4, TypeScript, no npm dependencies** (`bun:test` for tests, `Bun.YAML.parse` for YAML,
+`node:fs`, `node:path`, `node:os`, `node:crypto`, `node:child_process` only). Generic: no project name, no absolute path, no
+user name in code or data. Never prints a secret: the journal and the outputs hold lengths, counts, ids, trap ids and
+paths — never raw stdout, stderr, prompts or config values.
+
+Types shared by every module are in `src/types.ts` (fixed; do not change them — if a type is wrong, say so in your
+result instead). Each module below lists its exports and its behaviour; each **Fails-if** line is a behaviour the
+tests must pin down with a planted input.
+
+## Common
+
+- `Finding = { rule: string; severity: "fail" | "warn"; message: string; fix?: string; ref?: string }`.
+  `rule` is a stable id (e.g. `R12.1-empty-output`, `trap:codex-stdin`). `fail` means the guarded thing is wrong;
+  `warn` means report only.
+- `guardRoot(cwd)` (in `journal.ts`): the git top-level of `cwd` (`git rev-parse --show-toplevel`, run with a 5 s
+  timeout); if git fails, `cwd` itself.
+- All guard state lives under `<root>/.harness-guard/` (the package's install advice tells the owner to gitignore it).
+
+## M1 — `src/traps.ts`: trap catalogue, engine-call recognition, result check (R12.1)
+
+Data files, YAML, in `data/`: `traps.yaml` and `engines.yaml` (shapes in `src/types.ts`: `Trap`, `EngineSpec`).
+
+**Segments (added in round 2, after the replay of 3,677 past commands found 31 false denies in 37 — the lint read
+the whole Bash string).** `recognizeEngineCall` and `lintCommand` work on **segments**, never on the raw string:
+- `segments(command: string): Segment[]` (exported; `Segment = { text: string; background: boolean; piped: boolean }`):
+  1. Heredoc bodies are removed first: after a line holding `<<WORD`, `<<'WORD'`, `<<"WORD"` or `<<-WORD`, every
+     line up to and including the line that is exactly `WORD` (leading tabs allowed for `<<-`) is dropped.
+  2. The rest is split into simple commands at newlines, `;`, `&&`, `||`, `|`, a single `&`, `(` and `)` — **outside
+     single and double quotes only**. A `&` that is part of a redirection (`2>&1`, `>&2`, `&>file`) is not a separator.
+  3. Each simple command is trimmed; empty ones are dropped. Its text keeps its own redirections (`</dev/null`,
+     `> out.md`), so `unless` and output redirects are read from the segment.
+  4. `piped` is true when the separator right before the segment is `|` (its stdin comes from a pipe).
+  5. `background` is true when the separator right after the segment is a single `&`, or the segment is inside a
+     `( … )` group whose `)` is followed by a single `&`.
+- **The command word.** Before matching, leading wrappers are stripped from a segment's text: `NAME=value`
+  assignments, `timeout` with its options and duration, `env` with `-u NAME`, `-i` and `NAME=value` words, `nohup`,
+  `time`, `exec`, `command`, and a `runlog.py … --` wrapper (everything up to and including the first standalone
+  `--` when the command word ends in `runlog.py`, with or without `python3` before it). What remains starts at the
+  command word, and **the `command` regexes in `data/` are anchored to it (`^`)**.
+- A segment holding a standalone `--help`, `-h`, `--version` or `-V` word starts no session: it is never an engine
+  call and never a command-trap hit.
+- `paths_outside_repo` reads path tokens of the **matching segment only**.
+- `concurrent` still reads `ctx.running` (whole command lines of other processes) with the trap's regex **unanchored**.
+
+Exports:
+- `loadTraps(path?: string): Trap[]` and `loadEngines(path?: string): EngineSpec[]` — default to the package's
+  `data/` files. A malformed entry is skipped and reported by `catalogueProblems(path?)`: `string[]`.
+- `recognizeEngineCall(command: string, engines?: EngineSpec[]): EngineCall | null`
+  - Matches the first segment (in order) whose stripped text matches an `EngineSpec`'s `command` regex; `null` if none.
+    Output flags, redirects and `background` are read from that segment.
+  - `outputFile`: the value after any of the spec's `output_flags` (`-o FILE`, `-o=FILE`, `--out FILE`), else the
+    target of a stdout redirect `> FILE` or `>> FILE` (not `2>`); quotes stripped; `null` if none.
+  - `stdoutIsAnswer`: from the spec, but `false` when `outputFile` came from a redirect (the answer went to the file).
+  - `statusFile`: for specs with `status_from_out_dir: true` (a wrapper such as `four_experts.py run --out DIR`),
+    `DIR/status.json`; else `null`. For such a wrapper `outputFile` is the folder `DIR` itself.
+  - `background`: the matching segment's `background`. (A caller that knows more passes `LintContext.background` to
+    `lintCommand`.)
+- `lintCommand(command: string, ctx: LintContext, traps?: Trap[]): Finding[]` — command traps only, **approved**
+  entries only (a `proposed` entry never produces a finding). A trap hits on a segment when its `command` regex matches the
+  segment's stripped text **and** its `unless` regex (if any) does not match the segment's text **and** each extra condition it sets holds:
+  - `unless_piped: true` → no hit when the segment's `piped` is true (its stdin is already fed);
+  - `background: true` → `ctx.background` or the segment's `background`;
+  - `concurrent: true` → `ctx.running` (command lines of other running processes) holds a line matching the trap's
+    `command` regex;
+  - `paths_outside_repo: true` → some absolute path token in the command (a word starting with `/`, quotes stripped,
+    ignoring `/dev/null`, `/dev/stdin`, `/dev/stdout`, `/dev/stderr`, `/tmp/…` is **not** ignored) resolves outside
+    `ctx.repoRoot`.
+  - When a trap sets more than one of `background` / `concurrent`, either one is enough (they are alternatives); every
+    other condition must hold.
+  - Each hit → `{ rule: "trap:<id>", severity: "fail", message: why, fix, ref: source }`.
+- `checkResult(input: ResultInput): Finding[]` — after an engine call:
+  - `exitCode` not null and not 0 → `R12.1-exit` (fail); 124 → `R12.1-timeout` (fail) instead.
+  - `interrupted` true → `R12.1-interrupted` (fail).
+  - When `call.statusFile` is set, the status file is the output check (the wrapper's `outputFile` is a folder):
+    skip the two output-file checks below.
+  - `call.outputFile` set and the file does not exist → `R12.1-missing-output` (fail); exists but has no
+    non-whitespace content → `R12.1-empty-output` (fail).
+  - no `outputFile`, `call.stdoutIsAnswer` true, and stdout has no non-whitespace content → `R12.1-empty-output`.
+  - each approved **result** trap for `call.engine` (or `engine: any`) whose `stderr` regex matches stderr, or whose
+    `output_empty: true` holds → `trap:<id>` (fail).
+  - each spec `silent_failures` entry (`{ text, status }`) found in stderr → `R12.1-silent-<status>` (fail).
+  - `call.statusFile` set: the file is missing → `R12.1-missing-status` (fail); for each entry whose `ok` is false →
+    `R12.1-wrapped-fail` (fail) naming the entry key (not its content).
+  - A clean call returns `[]`.
+  - Paths are resolved against `input.cwd`.
+
+Fails-if: a `codex exec` command without a stdin redirect passes the lint; `codex exec --help`, `pgrep -f "codex exec"`,
+a `grep` pattern or `echo` text naming an engine, or a heredoc body naming one, is flagged or recognised; a codex call
+after `timeout 60`, `env -u X` or `runlog.py … --` is not recognised; an absolute path that belongs to another command
+on the same line makes an `opencode run` hit; a proposed **result** trap produces a finding; one with `</dev/null` is flagged; a
+`proposed` trap produces a finding; an `opencode run` naming a path outside the repo passes; a second `opencode run`
+while one runs passes; an empty output file, a missing output file, a non-zero exit, or an "auto-denied" stderr from agy
+passes `checkResult`; a clean call produces a finding; a malformed catalogue entry crashes the loader.
+
+## M2 — `src/journal.ts`: failure journal (R12.2)
+
+Journal: `<root>/.harness-guard/journal.jsonl`, one JSON object per line, append-only. Evidence written by the guard:
+`<root>/.harness-guard/evidence/<id>.json`.
+
+Exports:
+- `guardRoot(cwd: string): string` (see Common).
+- `newFailureId(): string` → `F-` + 8 lowercase hex characters (random).
+- `validateFailure(rec: unknown, root: string): string[]` — problems; empty when valid. Required: `kind: "failure"`,
+  `id` in the `F-xxxxxxxx` form, `time` (ISO 8601), `session` (non-empty string; `"none"` allowed), `found_by`
+  (non-empty), `check`, `input`, `expected`, `actual` (non-empty strings), `engine` (non-empty; `"none"` allowed),
+  `harness` (non-empty), **`reason` (non-empty after trim)**, **`evidence` (a path that exists, relative to `root` or
+  absolute)**. Unknown extra fields are allowed.
+- The journal stores the strings it is given. The "no raw content" rule of Common binds the guard's **own** writers (M5
+  builds its records from fixed phrases, ids, lengths and paths); a record an agent or the owner writes through the CLI
+  holds what they wrote. `writeEvidence` and `appendRecord` are the guard's own writers: they drop raw-content keys
+  (`stdout`, `stderr`, `prompt`, `command`, `config` and the like) before writing.
+- `appendFailure(root: string, rec: FailureRecord): FailureRecord` — validates (throws `JournalError` listing the
+  problems if invalid), creates folders as needed, appends one line. Returns the record.
+- `appendRecord(root: string, rec: TouchedRecord | GuardErrorRecord): void` — for the other kinds (no evidence check).
+- `writeEvidence(root: string, id: string, facts: Record<string, unknown>): string` — writes the evidence JSON and
+  returns its path **relative to root**.
+- `readJournal(root: string): { records: JournalRecord[]; badLines: number }` — a missing journal is empty; a line that
+  is not valid JSON is counted in `badLines` and skipped, never thrown.
+- `failuresFor(root: string, session: string | null): FailureRecord[]` — all failures, or only one session's.
+- CLI helper `recordFailureFromArgs(root, args)` used by `cli.ts fail` (flags: `--check --input --expected --actual
+  --reason --evidence --found-by --engine --harness --session`); missing `--reason` or `--evidence` is an error, not a
+  default.
+
+Fails-if: a record with no reason, an empty reason, no evidence, or an evidence path that does not exist is accepted; a
+bad line crashes `readJournal`; two appends lose a line; a guard-found record has no evidence file.
+
+## M3 — `src/insight.ts`: insight gate (R12.3)
+
+An insight file is Markdown at `runs/**/insight*.md` (`**` matches zero or more folders, so `runs/insight.md` counts)
+or `.harness-guard/insights/*.md` under the root. M3's functions take `root` as given (the caller has already applied
+`guardRoot`). It answers
+failures by sections: a `##` heading that contains one or more failure ids (`## F-1a2b3c4d` or
+`## F-1a2b3c4d, F-5e6f7a8b — short title`). Inside a section, these labelled parts (label at the start of a line,
+case-insensitive):
+- `Whys:` then a numbered list (`1.` …) of **3 to 6** items.
+- `Source:` one of `instruction`, `check`, `tool`, `config` (the changeable source the whys end at).
+- `Root cause:` non-empty text on the same line or the next non-empty line.
+- `Options:` then a numbered list of **2 or 3** items; each item starts with a kind in brackets — `[rule]`,
+  `[check]`, `[tool]` or `[config-advice]` (any other bracketed kind, e.g. `[policy]`, is `R12.3-option-kind`) — and
+  contains `evidence:` followed by non-empty text.
+
+Exports:
+- `findInsightFiles(root: string): string[]` — relative paths, sorted.
+- `parseInsight(text: string): InsightSection[]`.
+- `checkSection(s: InsightSection): Finding[]` — `R12.3-whys-count`, `R12.3-source`, `R12.3-root-cause`,
+  `R12.3-options-count`, `R12.3-option-kind`, `R12.3-option-evidence` (all fail); plus the heuristic
+  `R12.3-why-ends-at-person` (**warn**) when the last why reads as "forgot", "careless", "I missed" or "the model was
+  wrong" — a heuristic, labelled as one in its message.
+- `answered(root: string): Map<string, string>` — failure id → the relative path of the first insight file holding a
+  section for it **with no fail findings**.
+- `openFailures(root: string, session: string | null): FailureRecord[]` — failures (that session's, or all) with no
+  entry in `answered`.
+
+Fails-if: a failure with no section, a section with 2 whys or 7, no source or an unknown one, no root cause, 1 option
+or 4, an option with no kind or no evidence counts as answered; a valid section is not; a section answering two ids
+does not answer both.
+
+## M4 — `src/register.ts`: use-case register and coverage (R13, R11.1)
+
+A register is YAML with top-level `register: 1` (shape `Register` in `src/types.ts`).
+
+Exports:
+- `loadRegister(path: string): Register` — throws `RegisterError` on YAML that does not parse or lacks `register: 1`.
+- `isRegisterFile(path: string): boolean` — the file name ends `.register.yaml` or is `register.yaml`.
+- `validateRegister(r: Register): Finding[]`:
+  - `R13.1-no-decision` (fail): a use case or requirement with `origin: ai` and no `decision`, or a decision with no
+    `by`.
+  - `R13.2-missing` (fail): an **accepted** use case missing `purpose`, `fails_if` (≥1) or `min_acceptance` (≥1).
+    A use case is accepted when `origin: user` and no decision says `declined`, or `origin: ai` with
+    `decision.verdict: accepted`.
+  - `R13.5-no-purpose` (fail): a requirement with no `purpose`, or no `serves` (≥1 id or `vision`).
+  - `R13.5-not-binding` (warn): an AI requirement not accepted — excluded from units.
+  - `R13.7-conflict-not-shown` (fail): a conflict without `shown_to_owner: true`.
+  - `R13-unknown-ref` (fail): a `serves`, conflict or coverage entry naming an id that does not exist.
+- `units(r: Register): Unit[]` — for each accepted use case: one unit per `fails_if` item (`<id>/f<n>`) and per
+  `min_acceptance` item (`<id>/m<n>`), `safety` taken from the use case; for each accepted requirement: one per
+  `fails_if` item (`<id>/f<n>`). Units whose normalised text (lower case, whitespace collapsed) repeats an earlier
+  unit's are dropped (a variant does not add to the count).
+- `freezeHash(units: Unit[]): string` — sha256 hex of the canonical JSON of `[id, text]` pairs in order.
+- `coverage(r: Register): CoverageReport` — `total`, `covered` (units with ≥1 `covered_by`), `percent` (one decimal),
+  `target: 80` (a unit counts as covered only when `covered_by` holds a non-blank entry), and findings:
+  - `R11.1-not-frozen` (fail): `frozen` missing; `R11.1-frozen-mismatch` (fail): `frozen` ≠ `freezeHash(units(r))`
+    — the units changed, so a new count must start.
+  - `R11.1-basic-uncovered` (fail): a unit with no `covered_by` and no `skippable`.
+  - `R11.1-skip-no-reason` (fail): `skippable` without a non-empty `reason`.
+  - `R11.1-safety-skipped` (fail): a safety unit marked skippable.
+  - `R11.1-below-target` (**warn**, never fail): `percent` < 80.
+
+Fails-if: an AI case with no decision passes; an accepted case missing min_acceptance passes; a requirement with no
+purpose passes; an unshown conflict passes; a variant case raises the percentage; an uncovered basic unit passes; a
+skippable safety unit passes; below 80% is a fail; a changed unit list keeps its old freeze.
+
+## M5 — `src/hooks.ts`, `src/plugins/opencode.ts`, `src/install.ts`, `src/doctor.ts`, `src/cli.ts`
+
+**`handleHook(payload: unknown, env: HookEnv): HookResult`** — the Claude-protocol handler (Claude Code; the same
+payload names are reported for Codex, Qwen and the dsh bridge). `HookEnv` supplies `cwd`, `running` (process command
+lines) and `now`, so the handler is testable without a harness. Dispatch on `hook_event_name`:
+- **PreToolUse**, `tool_name: "Bash"`: `lintCommand(tool_input.command, …)`. Any fail finding → stdout JSON
+  `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"<rule>:
+  <message> Fix: <fix>"}}` (all hits joined), exit 0. No hit → no output, exit 0.
+- **PostToolUse**, `tool_name: "Bash"`: if `recognizeEngineCall` matches, `checkResult` with `tool_response.stdout`,
+  `tool_response.stderr`, `tool_response.interrupted`, `exitCode: null`. Each fail finding → one failure record
+  (`found_by: "guard"`, `session: session_id`, `harness: "claude-code"`, `check: <rule>`, `input`: the engine and the
+  output path — never the command's prompt text, `expected`/`actual`: short fixed phrases, `reason`: the finding
+  message, `evidence`: `writeEvidence` with lengths, exit, rule ids). Then stdout JSON `{"hookSpecificOutput":
+  {"hookEventName":"PostToolUse","additionalContext":"harness-guard logged <n> failure(s): <ids> — <rules>. Log it in
+  your report; an insight is required before you stop."}}`. No finding → no output.
+  `tool_name` `Write`, `Edit` or `MultiEdit` with `tool_input.file_path` a register file → a `touched` record.
+- **PostToolUseFailure**, `tool_name: "Bash"`: same as PostToolUse, with `exitCode` from a numeric `exit_code` /
+  `exitCode` field if present, else 1 (the tool failed), stderr from `error` if a string.
+- **Stop** (and **SubagentStop**): `open = openFailures(root, session_id)`.
+  - `open` non-empty → stdout JSON `{"decision":"block","reason":"…"}` naming each open id and the insight format
+    (heading with the id; Whys 3–6; Source; Root cause; Options 2–3 with kind and evidence). Blocks **every** time
+    while open, whatever `stop_hook_active` says (R12.3 is MUST; the harness's own block cap is the loop guard).
+  - else, if this session has failures and `last_assistant_message` does not contain the relative path of an insight
+    file that answers them → block with reason "raise the insight: name <path> in your final message" (R12.3 raise).
+  - else, each register file in this session's `touched` records → `validateRegister` + `coverage`; fail findings →
+    block with them listed; warn findings → no block.
+  - else no output, exit 0.
+- **SessionStart**: open failures of **other** sessions in this root → `additionalContext` listing them (raise), else
+  nothing.
+- Anything else, or a payload that is not an object → no output, exit 0.
+- An exception inside the handler → `HookResult` with exit 1, a one-line stderr message, and a best-effort
+  `guard_error` record. (Fail-open: a guard bug must not freeze the agent, and it is recorded.)
+
+`HookResult = { exitCode: number; stdout: string; stderr: string }`.
+
+**`src/plugins/opencode.ts`** — default export `HarnessGuardPlugin: (ctx: { directory: string }) =>
+Promise<{ "tool.execute.before": (input: { tool: string }, output: { args: { command?: string } }) => Promise<void> }>`;
+the hook, for `input.tool === "bash"`, runs `lintCommand` on `output.args.command` with `repoRoot: guardRoot(ctx.directory)`
+and `running: []` and **throws** an `Error` with the finding text on any fail finding. (Blocking by
+throwing is *reported* by opencode's docs, not verified here.)
+
+**`src/install.ts`** — `installSnippet(harness: "claude-code" | "codex" | "qwen" | "opencode", guardDir: string):
+string`. Prints only; never writes a file. Claude Code / Codex / Qwen: the settings JSON for PreToolUse (Bash),
+PostToolUse (Bash|Write|Edit|MultiEdit), PostToolUseFailure (Bash), Stop, SubagentStop, SessionStart, each
+`{"type":"command","command":"bun <guardDir>/src/cli.ts hook claude"}`, with a first line saying which file it goes in
+and that `.harness-guard/` belongs in `.gitignore`. opencode: the line that places `src/plugins/opencode.ts` in a
+plugins folder. Codex and Qwen snippets say their payload match is reported, not verified.
+
+**`src/doctor.ts`** — `doctor(opts: DoctorOptions): DoctorReport`, with
+`DoctorOptions = { home: string; projectRoot: string; healthScript?: string | null; run?: (argv: string[]) => { code:
+number; stdout: string } }` (tests pass a temporary `home` and `projectRoot`, and a fake `run`). Files read, per harness:
+claude-code — `<home>/.claude/settings.json`, `<projectRoot>/.claude/settings.json`, `<projectRoot>/.claude/settings.local.json`;
+codex — `<home>/.codex/hooks.json`, `<home>/.codex/config.toml`; qwen — `<home>/.qwen/settings.json`; opencode — the
+files in `<home>/.config/opencode/plugin(s)/` and `<projectRoot>/.opencode/plugin(s)/`. `guard` is `installed` when a
+read file's hook command (or, for opencode, a plugin file) contains `harness-guard`; `absent` when every file is missing
+or readable without it; `unknown` when a file exists but cannot be read or parsed. `answers` is computed once
+(`handleHook` on a planted `codex exec` PreToolUse payload must deny) and reported on every row. `health`: when
+`healthScript` is given, `run(["python3", healthScript, "--json"])`; `ok` is exit 0 with JSON that parses;
+`summary` is `"<n> findings"` from the JSON's `findings` array length, or the error kind — never the script's text.
+Then: `doctor(opts): DoctorReport`: per harness, `guard: "installed" | "absent" | "unknown"` from the
+key names of its settings (a hook command containing `harness-guard`; values never printed), and `answers: true|false`
+from calling `handleHook` in-process on a planted PreToolUse trap payload (it must deny); plus, when a
+`harness_health.py` path is given and runs, its JSON summary counts. Markdown output.
+
+**`src/cli.ts`** — `bun src/cli.ts <command>`: `hook claude` (stdin → `handleHook` → stdout/stderr/exit), `lint
+<command…>`, `result --engine E --out FILE [--exit N] [--stderr-file F]`, `fail <flags>`, `insight [--session S]`
+(lists open failures and invalid sections; exit 1 if any open), `register <file>` (validate + coverage; exit 1 on a fail
+finding), `install --print <harness>`, `doctor [--health PATH]`. Exit codes: 0 ok, 1 findings, 2 usage.
+
+Fails-if: a catalogued trap command is allowed; a clean command is denied; an empty engine output writes no record or
+writes one without evidence; a good call writes a record; Stop lets a session with an unanswered failure end, or blocks
+a session with none; Stop lets the agent end without naming the insight; a touched register with a fail finding passes
+Stop; `install --print` writes a file; a handler exception freezes the agent (exit 2) or crashes without output.
+
+## Round 3 — changes from the review and the measurements (these override earlier lines where they differ)
+
+Sources: `runs/20261015-ts-hybrid/nodes/review-1.result.md` (R# = its row), the E1/E2/E4 measurements
+(`effectiveness/`). Each item is a behaviour the tests must pin with the input given.
+
+- **C1 (R1) Background calls are not checked on return.** PostToolUse / PostToolUseFailure skip the result check — no
+  record, no output — when the recognised call's segment is `background`, or `tool_input.run_in_background` is true,
+  or `tool_response.backgroundTaskId` is present. (Its result is not known yet.)
+- **C2 (R2) Output flags and `>` are read outside quotes only.** `recognizeEngineCall` reads output flags and
+  redirects from the segment's unquoted words; a `>` or `-o` inside a quoted prompt is prompt text. The failure record's
+  `input` is `"<engine> call"` plus, when an output file was found, its **basename** — never other command text.
+- **C3 (R5) The working folder of a call.** The hook resolves paths against `payload.cwd` when it is a string, else
+  `env.cwd`; and when segments before the engine segment hold `cd DIR` (absolute or relative), against that folder.
+  `ResultInput.cwd` is that resolved folder.
+- **C4 (R20) A failure exit belongs to the engine only when the engine segment is the last one in its pipeline.**
+  On PostToolUseFailure, when the engine segment is followed by `|` or `&&`/`||`/`;` and more segments, `exitCode` is
+  `null` (the output checks still run).
+- **C5 (R3) Insight files:** every `*.md` file under `.harness-guard/insights/` counts, whatever its name; under
+  `runs/**`, files named `insight*.md`.
+- **C6 (R4) Numbered lists:** after `Whys:` or `Options:`, blank lines are skipped until the first item; an item's
+  indented continuation lines are joined to it; the list ends at the next unindented line that is not an item, or the
+  next label, or the next heading.
+- **C7 (E4) `Source:`** passes when its first word (letters and `-`) is one of the four; the rest of the line is detail.
+- **C8 (R8) Malformed register entries:** a list item that is not a mapping is a `R13-malformed` fail finding naming
+  its list and position; validation and coverage never throw on any YAML shape.
+- **C9 (R19) A touched register that no longer exists** is skipped at Stop (no block).
+- **C10 (R21) Raise check needs the field:** when the Stop payload has no `last_assistant_message` string, the raise
+  check is skipped (the insight check still applies).
+- **C11 (R11) A hook payload that is not JSON, or empty stdin,** is a quiet exit 0 with one stderr line — never exit 2.
+- **C12 (R10) Agent records are stored as given:** `appendFailure` never redacts; only `writeEvidence` and
+  `appendRecord` drop raw-content keys.
+- **C13 (R17) Evidence may be a file or a folder** that exists.
+- **C14 (R18) doctor health:** JSON that is not an object, or has no `findings` array, is `ok: false`,
+  `summary: "unexpected JSON"` — never a throw.
+- **C15 (R6) opencode install:** `installSnippet("opencode", guardDir)` prints the **content of a one-line plugin
+  file** — `export { default } from "<guardDir>/src/plugins/opencode.ts";` — and the folder to put it in, so the
+  installed file imports by absolute path.
+- **C16 (R7) doctor opencode:** a plugin file counts as `installed` when its text contains `harness-guard` anywhere.
+- **C17 (R9) Concurrency list:** the CLI drops only the hook's own process and its parent (by pid) from `running`,
+  never by a text match.
+- **C18 (R12) Heredocs** open with `<<` with or without a space before it (`cat<<EOF`, `x>f<<EOF`).
+- **C19 (R13, E2) More segment starts:** backticks and `$(` … `)` also split segments; the shell words `do`, `then`,
+  `else`, `elif`, `!` and `{` at the start of a segment are stripped like wrappers.
+- **C20 (R14) codex stdin:** any input redirect — `< FILE`, `0<FILE`, `<<<` — satisfies the trap (`unless`).
+- **C21 (R15, E1) opencode paths:** redirect targets (`>`, `>>`, `2>`, `&>`) are not paths opencode reads and never
+  count; absolute paths **inside a quoted word** do count (a brief path in the prompt is the recorded trap 3), split
+  on whitespace within the quotes.
+- **C22 (R16) agy 502:** the trap matches `Bad Gateway` or `502` next to `HTTP`, `status` or `error` — not a bare
+  `502` in other text.
+- **C23 (E4) No duplicate:** the PostToolUse context line says the failure is already logged and gives its id, so the
+  agent does not log it again: "harness-guard logged <ids> — already in the journal; do not log them again. An insight
+  answering them is required before you stop."
+- **C24 (E4 round 2) The Stop block names where to write.** The block reason for open failures says: write the
+  insight to `.harness-guard/insights/<name>.md` (or `runs/<run>/insight.md` in a project with run folders), with the
+  heading and parts listed — so the agent does not search for the location.
+
+## Round 4 — the agent's own failures (R12.2: a failure is anything that went wrong, whoever caused it)
+
+Facts this round rests on (verified once, Claude Code 2.1.300, `runs/20261015-ts-hybrid/evidence/n1b/`): a Bash call
+that exits non-zero fires **PostToolUseFailure** with `error` = `"Exit code N\n<output>"`; a `grep` with no match fires
+PostToolUse (Claude Code classes it as no error); a failed **Edit** fired no hook at all.
+
+- **D1 Test runs that fail are failures.** A Bash segment whose command word (after the wrappers of M1) is a test runner
+  — `pytest`, `python`/`python3 -m pytest`, `bun test`, `npm test`, `npm run test`, `yarn test`, `pnpm test`,
+  `npx jest`, `npx vitest`, `go test`, `cargo test` — is a **test run**. It is a failure when PostToolUseFailure fires
+  for it, or when PostToolUse fires and its stdout matches `\b[1-9]\d* (failed|errors?)\b` (a pipe can hide the exit)
+  — stdout counts only when every segment after the test run is piped from it (`pytest | tail -3`); after `&&`, `;` or
+  `||`, other commands write to the same stdout (found in long-session round 2).
+  Record: `check: "R12.2-test-failed"`, `input: "<runner> run"`, `expected: "all tests pass"`, `actual`: the count of
+  failed tests when the text gives one (`"3 failed"`), else `"exit <N>"` — never the output text. Evidence: the counts,
+  the exit and the runner name.
+- **D2 Other Bash calls that error are failures.** PostToolUseFailure for a Bash call that is neither an engine call
+  (M1/M5 handle those) nor a test run: `check: "R12.2-command-error"`, `input: "<command word> call"`, `expected:
+  "exit 0"`, `actual: "exit <N>"`. Skipped when `is_interrupt` is true (a person stopped it).
+- **D3 Unknown paths are not checked.** An output path or a `cd` target that holds `$`, a backtick or a glob character
+  (`*`, `?`, `[`) cannot be known from the text: the engine result check is skipped (no record) — never a
+  `missing-output` failure. (Found live: `> $R/answer.txt` was logged as missing.)
+- **D4 One context line per failure kind.** The PostToolUse / PostToolUseFailure context line names each new id and
+  says it is already logged (as C23), and for D1/D2 adds: "your own failures count — answer them in the insight; one
+  section may answer several ids with one cause".
+- **D5 Not observable:** errors of non-Bash tools (Edit, Write, Read) fire no hook in 2.1.300; the agent logs them
+  with `fail`. No code for them this round.
+
+Fails-if: a failing `pytest` run (exit 1) has no record; `pytest -q | tail -3` showing "2 failed" with exit 0 has no
+record; a passing test run has a record; `false` has no record; an interrupted call has a record; a `grep` with no match
+(PostToolUse) has a record; a record holds test output text; `codex exec x -o $OUT/r.md </dev/null` with no such file
+logs `missing-output`.
+- **D6 Raise once.** When a Stop finds every pending failure of the session answered and the final message names the
+  insight file(s), it writes a `raised` record (`{kind: "raised", time, session, ids}`) for those failures; a later Stop
+  asks to name only failures not yet raised. (Found live: the guard asked this session to repeat the insight path at
+  every stop.)
+
+## Round 5 — learn from success (R12.7)
+
+Types: `SuccessRecord`, `PathStep`, `SuccessPath`, `PathReport` in `src/types.ts` (fixed).
+
+**S1 Success lines (hooks.ts, journal.ts).** PostToolUse for Bash writes one `success` record when (a) a recognised
+engine call's result check (M1) finds nothing — `check: "engine-call"`, `engine: <engine>` — or (b) a test run (D1)
+neither fails nor shows a failure summary — `check: "test-run"`, `engine: <runner label>`. Background calls (C1) and
+calls with unknowable paths (D3) write nothing. No context line is printed for a success. `appendRecord` accepts a
+`SuccessRecord`. Fails-if: a passing engine call or a green test run writes no success line; a failing one writes a
+success line; a success line holds command or output text.
+
+**S2 Rates (cli.ts, new `src/rates.ts`).** `rates(root, session | null): { check: string; engine: string; ok: number;
+fail: number }[]` counts `success` records and `failure` records per (check, engine). A failure's `check` maps to
+`engine-call` when it starts with `R12.1-` or `trap:` and its `engine` is not "none", to `test-run` when it is
+`R12.2-test-failed`, else to its own `check`. CLI `rates [--session S]` prints a Markdown table, exit 0. Fails-if: a
+count is wrong; a row's text holds command or output text.
+
+**S3 Path files (new `src/paths.ts`).** A path file is YAML matching `SuccessPath`, found at `runs/**/success-path*.yaml`
+or `.harness-guard/paths/*.yaml` under the root.
+- `findPathFiles(root): string[]` (relative, sorted); `loadPath(file): SuccessPath` (throws `PathError` on YAML that
+  does not parse or lacks `path: 1`).
+- `checkPath(root, file): PathReport`:
+  - `R12.7-path-missing` (fail) for a missing or empty `session`, `category`, `objective`, `steps` (≥ 1, each with a
+    non-empty `did`), or `measures` (≥ 1 numeric entry).
+  - With a `parent`: the parent file must exist and load (`R12.7-parent-missing`); `change` must be non-empty
+    (`R12.7-copied` — a child that names no change copies its parent); `aim` must name a `measure` present in both the
+    child's and the parent's `measures`, and `aim.parent_value` must equal the parent's value on it
+    (`R12.7-aim-missing`, `R12.7-aim-mismatch`).
+  - `gainPercent` = (parent − child) / parent × 100 when `lower_is_better`, else (child − parent) / parent × 100,
+    rounded to one decimal; null with no parent or aim, or a parent value of 0.
+  - `repeatedFailures` = the child's `failures` that also appear in the parent's `failures`.
+  - `better` = `gainPercent > 0` and no repeated failure; null when `gainPercent` is null. **The 2% aim is reported,
+    never a finding**: `R12.7-aim-report` is a **warn** finding whose message says the gain against the 2% aim
+    ("gain 3.1% against a 2% aim", "gain −4.0% against a 2% aim").
+  - With `great`: `comparison` and `evidence` non-empty, and `evidence` names a path that exists
+    (`R12.7-great-evidence`, fail).
+- `skeleton(root, session, out?): string` — a YAML path skeleton with `session`, `measures` filled from the journal
+  (`failures`: this session's failure records, `successes`: its success records) and `failures` (their check ids);
+  the other fields as empty placeholders the agent fills. Never writes outside the root.
+- `parents(root, category): { file: string; measures: Record<string, number>; better: boolean | null }[]` — the path
+  files with that category, most recent file name last.
+- CLI: `path new [--session S] [--out F]` (prints or writes the skeleton), `path check <file>` (exit 1 on a fail
+  finding), `path parents <category>`.
+Fails-if: a path missing steps or measures passes; a child naming a parent and no change passes; an aim whose parent
+value differs from the parent's file passes; a child 1% better is reported as failing (it is better, below the aim);
+a child that repeats a parent failure is `better`; a great success with no evidence passes; a missing parent file
+passes.
+
+**S4 Great-success insight sections (insight.ts).** An insight file may also hold sections headed `## great: <path
+file>` with `Comparison:` (non-empty), `Cause:` (non-empty) and `Options:` — 1 to 3 numbered items, each starting with
+`[rule]`, `[check]` or `[tool]` and holding `evidence:`. `checkGreatSection(s)` returns `R12.7-great-comparison`,
+`R12.7-great-cause`, `R12.7-great-options` (fail). `parseInsight` keeps such sections apart from failure sections
+(`InsightSection.ids` empty); `greatAnswered(root): Set<string>` = path files answered by a valid great section.
+Fails-if: a great section with no cause, no comparison, 0 or 4 options passes; a failure section is read as great.
+
+**S5 Stop asks for the path once (hooks.ts).** When the open-failure and raise checks pass and the session has at
+least one `success` record, Stop blocks **once** if no path file names this session: reason "harness-guard: record the
+path of this task — run `bun <guard>/src/cli.ts path new --session <id> --out runs/<run>/success-path.yaml` (or
+.harness-guard/paths/<name>.yaml), fill steps, decisions and measures; for a similar task, name a parent and what you
+changed". It records a `raised` record with `ids: ["path"]` when it blocks, so it asks once per session. A path file
+with `great` and no valid `## great:` section blocks the same way, once. Fails-if: a session with successes and no path
+stops with no ask; it is asked twice; a session with no successes is asked.
+
+## Round 6 — the score (R12.7: a result is the share of its criteria met)
+
+Types: `Criterion`, `CriteriaFile`, `Score` in `src/types.ts` (fixed).
+
+**K1 Criteria files (new `src/criteria.ts`).** A criteria file is YAML matching `CriteriaFile`, at
+`runs/**/criteria*.yaml` or `.harness-guard/criteria/*.yaml` under the root.
+- `isCriteriaFile(path): boolean` — the file name matches `criteria*.yaml` (any folder), or the file is any `.yaml`
+  directly in `.harness-guard/criteria/` (the reminder offers that folder with any name).
+- `findCriteriaFiles(root): string[]` (relative, sorted); `loadCriteria(file): CriteriaFile` (throws `CriteriaError`
+  on YAML that does not parse or lacks `criteria: 1`).
+- `checkCriteria(c: CriteriaFile): Finding[]` — `R12.7-criteria-empty` (fail) for no items; `R12.7-criterion-text`
+  (fail) for an item with no id or no text, or a repeated id; `R12.7-criterion-evidence` (fail) for an item whose
+  `met` is true or false and whose `evidence` is empty.
+- `score(c: CriteriaFile): Score` — `met` = items with `met: true`; `total` = all items; `percent` = met / total × 100
+  rounded to one decimal (null when total is 0); `unmarked` = ids whose `met` is not a boolean.
+- `fromRegister(r: Register, session: string, request: string): CriteriaFile` — one item per unit of `units(r)`
+  (M4), `id` = the unit id, `text` = the unit text, `met` absent.
+- `skeleton(session: string, request: string): string` — YAML text for a new file with two placeholder items the
+  agent replaces; `request` is cut to 120 characters.
+Fails-if: an item marked met with no evidence passes; a repeated id passes; a file with no items passes; 2 of 3 met
+does not score 66.7; an unmarked item counts as met or not met.
+
+**K2 Hooks (hooks.ts).**
+- **UserPromptSubmit:** when this session has no `touched` record for a criteria file and no `raised` record with id
+  `criteria`, add context (exit 0): "harness-guard: before you start, write the criteria this request will be scored
+  on — `bun <guard>/src/cli.ts criteria new --out runs/<run>/criteria.yaml` (or .harness-guard/criteria/<name>.yaml),
+  one item per thing the result must get right; mark each met or not met with evidence at the end." and write a
+  `raised` record with id `criteria` (so it is said once per session). Otherwise no output.
+- **PostToolUse Write / Edit / MultiEdit** on a criteria file writes a `touched` record (as for registers).
+- **Stop**, after the open-failure and raise checks and before the path ask: for each criteria file this session
+  touched (skip one that no longer exists):
+  - unreadable, or any fail finding of `checkCriteria`, or any `unmarked` id → block once per file state with the
+    finding rules and ids (no item text): "mark each criterion met: true|false with evidence";
+  - each item with `met: false` and no failure record whose `check` is `criterion:<id>` for this session → write one
+    failure record (`found_by: "guard"`, `check: "criterion:<id>"`, `input: "<criteria file name>"`, `expected:
+    "met"`, `actual: "not met"`, `reason: "a criterion of the task was not met"`, `evidence`: the criteria file's
+    relative path) — then the open-failure check blocks until an insight answers it;
+  - **late criteria:** if this session's first `touched` record for the file is later than its first `success` or
+    `failure` record not created by this criteria check, write one failure record `check: "R12.7-criteria-late"`
+    (once per file).
+- Install snippet (`install.ts`) adds `UserPromptSubmit` to the hook events.
+
+**K3 CLI and paths.** `criteria new [--session S] [--request TEXT] [--from-register FILE] [--out F]` (prints or writes;
+never outside the root); `criteria score <file>` prints `score: <met>/<total> (<percent>%)` and the unmarked ids,
+exit 1 on a fail finding or unmarked ids. `paths.ts skeleton` fills `measures.score` with the percent of this
+session's criteria files (the mean when there are several; absent when none is scored).
+Fails-if: a met:false item leaves no failure record after Stop; the reminder is given twice in a session; a session that
+already touched a criteria file gets the reminder; late criteria leave no record; criteria written first leave a late
+record; the path skeleton has no score when a scored criteria file exists.
+
+## Round 7 — JSON for the harness health check (run 20261016-integrate-r11-r13)
+
+`harness_health.py` reads the guard's state through the guard's own commands, so it never re-implements a check.
+Each command below gains a `--json` flag; without it, the text output and the exit code are unchanged.
+
+- **J1 `doctor --json`** prints the `DoctorReport` as JSON (`{"harnesses":[{harness, guard, answers, note}],
+  "health": …}`); exit 0.
+- **J2 `rates --json [--session S]`** prints `{"rows":[{check, engine, ok, fail}]}`; exit 0.
+- **J3 `insight --json [--session S]`** prints `{"open":[{id, check}], "invalid":[{id, file, rules}],
+  "unreadable":[file]}` — the same facts the text form prints (an open failure; an insight section that names an open
+  id and fails its checks, with the fail rule ids; an insight file that cannot be read or parsed); exit 0 when `open`
+  is empty, else 1, as without the flag.
+- None of the three writes a file (the doctor's probe is a PreToolUse call, which writes nothing).
+
+Fails-if: `--json` output does not parse; a field above is missing; `insight --json` exits 0 with an open failure;
+the text output or exit code without `--json` changes; any of the three writes a file under the root.
+
+## Round 8 — false alarms are filtered by the check that would raise them (run 20261016-integrate-r11-r13)
+
+A false alarm is a check misfiring, so the check's own rule drops it before anything is logged; an agent never
+dismisses a logged failure.
+
+- **F1 The guard's own query exits.** D2's command error is not written when the call's last segment is the guard's
+  `cli.ts insight`, `criteria`, `register` or `path` and the exit is 1 — the CLI's "findings" exit, an answer. Exit 2
+  (usage), any other guard command, and any call whose last segment is not the guard stay command errors.
+- **F2 Criteria are read against their own request.** UserPromptSubmit writes a `prompt` record (`kind`, `time`,
+  `session` — never the prompt's text) on every prompt, before the K2 reminder logic. K2's late-criteria check compares
+  a criteria file's first touch with the first success or failure after the **last prompt before that touch**; a
+  session with no prompt records reads from its start, as before.
+
+Fails-if: a guard query's exit 1 is logged as a command error; a guard exit 2, a non-query guard command, or another
+command after the guard is not; criteria written before a request's own work are marked late because an earlier
+request's work came first; criteria written after the request's own work began are not marked late; a prompt record
+holds any field beyond kind, time and session.
+
+## Round 9 — fail on a written meaning, warn on a guess (R12.2; run 20261016-integrate-r11-r13)
+
+Types: `WarningRecord` (the failure fields, id `W-xxxxxxxx`), `DismissedRecord`, `FailureRecord.from` in `src/types.ts`.
+Module `src/warnings.ts`.
+
+- **W1 What stays a failure.** A meaning is written down: a recognised test run's summary or exit (D1), an engine
+  result that fails M1 (R12.1), a criterion marked not met (K2), a record written with `fail`.
+- **W2 What becomes a warning.** D2's command error (a non-zero exit of a command whose codes the guard does not know)
+  and K2's late criteria (a timing pattern). Same facts and evidence as the failure would have had; PostToolUse
+  context: "harness-guard warning W-…: … log it as a failure or dismiss it with a one-line reason".
+- **W3 Settling.** `cli.ts warning <W-id> fail --reason "<one line>"` writes a failure record with the warning's facts,
+  `found_by: "agent"`, the reason, and `from: <W-id>` (then R12.3 applies). `cli.ts warning <W-id> dismiss --reason
+  "<one line>"` writes a dismissed record. The reason is required, one line; a warning settles once; an unknown id is
+  refused (exit 1); a malformed command is a usage error (exit 2). `cli.ts warnings [--session S]` lists every warning
+  with its state (open / failure F-… / dismissed: reason); exit 1 while one is open.
+- **W4 Stop.** After open failures, open warnings of this session block every stop, naming each id and both commands.
+- **W5 Filter (Round 8 F1).** A guard query's exit 1 is neither a failure nor a warning.
+
+Fails-if: a guess is written as a failure; a written meaning is written as a warning; a session stops with an open
+warning; a settlement has no reason or a multi-line one; a warning settles twice; a dismissal's reason is not listed by
+`warnings`; a warning logged as a failure has no `from`.
+
+## Round 10 — time and progress monitors (method 3.8 item 14; run 20261016-time-monitor)
+
+The agent cannot feel time pass; the guard tells it. Types in `src/types.ts`: `Deadline`, `ProgressLine`. Module
+`src/deadline.ts`.
+
+- **T1 Deadline file.** `cli.ts deadline start --minutes N [--run DIR] [--marks 50,80,100]` writes
+  `.harness-guard/deadlines/<D-xxxxxxxx>.json` = `{ id, start (ISO), minutes, run (root-relative or null), marks
+  (percent, ascending, default [50, 80, 100]), session: null }` and prints the id and the deadline's local time.
+  `minutes` is a positive number; marks are integers 1–100 and must include 100 (added if missing). Usage error (2) on
+  anything else. The PostToolUse hook of the Bash call that ran `deadline start` claims every unclaimed deadline file
+  for its session (writes `session`). Only the session's own deadlines are read by its hooks; the newest unexpired or
+  latest one is the session's deadline.
+- **T2 Status (way 1).** `cli.ts deadline status [--session S]` prints `used <m> of <N> min (<p>%), <left> left,
+  deadline <HH:MM>` (or `time is up, <m> min over`) and, when `run` is set, one line per worker (T4). Exit 0 while time
+  is left, 1 once it is up, 2 when there is no deadline.
+- **T3 Wait (way 2).** `cli.ts deadline wait [--mark P]` sleeps until the deadline (or until mark P), then prints the
+  status line and exits 0 — the command a harness runs in the background as a timer.
+- **T4 Progress.** A worker appends one line per small piece to `<run>/nodes/<node>.progress.md`:
+  `- <ISO time> · <piece id> · <planned|start|done|fail> · <short note>`. `progressSummary(file)` = `{ node, done,
+  total (distinct pieces seen), last: { time, piece, state }, ageMinutes }`; a line that does not parse is skipped and
+  counted. Status and the reminders show `<node>: <done>/<total> pieces, last <piece> <state> <age> min ago`.
+- **T5 Reminders (way 3).** PostToolUse and PostToolUseFailure, for the session's deadline: at the first call after
+  each mark is passed, add context `harness-guard time: <m> of <N> min used (<p>%), <left> left — deadline <HH:MM>`
+  plus the worker lines (at most 5), once per mark (`raised` id `deadline:<id>:<mark>`). After 100%: every call adds
+  `harness-guard time is up (<m> min over): stop trying, finish the report, and put what is open to the owner.` This
+  context is added to any other context the call produces, never replaces it.
+- **T6 Ask the time.** UserPromptSubmit, when the session has no deadline and has not been asked (`raised` id
+  `deadline-ask`): context `harness-guard: ask the owner how much time you have to try (unless they said), then record
+  it: bun <guard>/src/cli.ts deadline start --minutes N --run runs/<run>` — once per session, joined to the K2
+  criteria reminder when both apply.
+
+Fails-if: a deadline start with no or non-positive minutes is accepted; status says time is left after the deadline;
+wait returns before the deadline; a mark is announced twice, or not at all when passed; time-up is not said after the
+deadline; another session's deadline reminds this one; a progress line's text beyond piece, state and a short note is
+printed; a malformed progress line breaks status; the ask-the-time reminder repeats in one session.
+
+exec
+/bin/bash -lc 'cat .claude/skills/workflow-design/guard/test/round9-warnings.test.ts && cat .claude/skills/work-design/guard/src/types.ts' in /home/smoke01/dev/ancient-games
+ exited 1 in 0ms:
+// Written by the COO for Round 9: the guard fails only where a meaning is written down; where it can only guess it
+// warns, and the agent settles each warning — logged as a failure, or dismissed with a recorded one-line reason.
+import { expect, test } from "bun:test";
+import { execSync, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { handleHook } from "../src/hooks.ts";
+import { readJournal } from "../src/journal.ts";
+import { dismiss, openWarnings, settleAsFailure, warnings } from "../src/warnings.ts";
+
+const CLI = path.resolve(import.meta.dirname, "../src/cli.ts");
+
+function box() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "hg-"));
+  execSync("git init -q", { cwd: root });
+  let clock = 1_000_000;
+  const env = { cwd: root, running: [], now: () => new Date((clock += 1000)) };
+  const post = (payload: Record<string, unknown>) => handleHook({ session_id: "s", cwd: root, ...payload }, env);
+  const kinds = (kind: string) => readJournal(root).records.filter((r) => r.kind === kind);
+  const stop = (message = "done") => post({ hook_event_name: "Stop", stop_hook_active: false, last_assistant_message: message });
+  const cli = (...args: string[]) => spawnSync(process.execPath, [CLI, ...args], {
+    cwd: root, encoding: "utf8", env: { ...process.env, BUN_RUNTIME_TRANSPILER_CACHE_PATH: "0" } });
+  return { root, post, kinds, stop, cli };
+}
+
+function failedCall(post: (p: Record<string, unknown>) => unknown, command: string, exitCode: number) {
+  post({ hook_event_name: "PostToolUseFailure", tool_name: "Bash", tool_input: { command }, exit_code: exitCode, error: "x" });
+}
+
+const warningId = (b: ReturnType<typeof box>) => {
+  const [w] = b.kinds("warning");
+  if (w === undefined || w.kind !== "warning") throw new Error("no warning");
+  return w.id;
+};
+
+test.each([["grep needle absent.txt", 1], ["git diff --quiet", 1], ["make", 2]])(
+  "a command whose exit codes the guard does not know is a warning, not a failure: %s exit %d",
+  (command: string, exitCode: number) => {
+    const b = box();
+    failedCall(b.post, command, exitCode);
+    expect(b.kinds("failure")).toHaveLength(0);
+    expect(b.kinds("warning")).toHaveLength(1);
+  },
+);
+
+test("a written meaning is still a failure: a test run that failed", () => {
+  const b = box();
+  failedCall(b.post, "pytest -q", 1);
+  expect(b.kinds("failure")).toHaveLength(1);
+  expect(b.kinds("warning")).toHaveLength(0);
+});
+
+test("a written meaning is still a failure: an engine call with no output file (R12.1)", () => {
+  const b = box();
+  b.post({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "codex exec x -o missing.md </dev/null" },
+    tool_response: { stdout: "", stderr: "", interrupted: false } });
+  expect(b.kinds("failure").length).toBeGreaterThan(0);
+  expect(b.kinds("warning")).toHaveLength(0);
+});
+
+test("an open warning blocks every stop until it is settled; a dismissal ends it and keeps the reason", () => {
+  const b = box();
+  failedCall(b.post, "grep x y", 1);
+  const id = warningId(b);
+  for (let i = 0; i < 2; i++) {
+    const out = JSON.parse(b.stop().stdout);
+    expect(out.decision).toBe("block");
+    expect(out.reason).toContain(id);
+  }
+  dismiss(b.root, id, "grep found no match, which was the expected answer", new Date());
+  expect(b.stop().stdout).toBe("");
+  expect(warnings(b.root, "s")).toEqual([expect.objectContaining({ settled: { state: "dismissed", reason: "grep found no match, which was the expected answer" } })]);
+});
+
+test("a warning logged as a failure becomes an open failure that needs an insight, and cites the warning", () => {
+  const b = box();
+  failedCall(b.post, "make", 2);
+  const id = warningId(b);
+  const failure = settleAsFailure(b.root, id, "the build broke on my edit", new Date(), () => "F-0000abcd");
+  expect(failure).toMatchObject({ kind: "failure", from: id, found_by: "agent", reason: "the build broke on my edit", check: "R12.2-command-error" });
+  expect(openWarnings(b.root, "s")).toEqual([]);
+  const out = JSON.parse(b.stop().stdout);
+  expect(out.decision).toBe("block");
+  expect(out.reason).toContain("F-0000abcd");
+});
+
+test.each([[""], ["   "], ["two\nlines"]])("a settlement needs a one-line reason: %j", (reason: string) => {
+  const b = box();
+  failedCall(b.post, "make", 2);
+  const id = warningId(b);
+  expect(() => dismiss(b.root, id, reason, new Date())).toThrow();
+  expect(() => settleAsFailure(b.root, id, reason, new Date(), () => "F-0000abcd")).toThrow();
+  expect(openWarnings(b.root, "s")).toHaveLength(1);
+});
+
+test("a warning is settled once; an unknown id is refused", () => {
+  const b = box();
+  failedCall(b.post, "make", 2);
+  const id = warningId(b);
+  dismiss(b.root, id, "expected", new Date());
+  expect(() => dismiss(b.root, id, "again", new Date())).toThrow();
+  expect(() => settleAsFailure(b.root, id, "late", new Date(), () => "F-0000abcd")).toThrow();
+  expect(() => dismiss(b.root, "W-00000000", "none", new Date())).toThrow();
+});
+
+test("CLI: warning dismiss and warning fail settle; warnings lists each with its state; exit 1 while one is open", () => {
+  const b = box();
+  failedCall(b.post, "make", 2);
+  failedCall(b.post, "grep x y", 1);
+  const ids = b.kinds("warning").map((w) => (w.kind === "warning" ? w.id : ""));
+  expect(b.cli("warnings").status).toBe(1);
+  expect(b.cli("warning", ids[1]!, "dismiss", "--reason", "no match was the answer").status).toBe(0);
+  const logged = b.cli("warning", ids[0]!, "fail", "--reason", "the build broke");
+  expect(logged.status).toBe(0);
+  expect(logged.stdout).toMatch(/logged as F-[0-9a-f]{8}/);
+  const list = b.cli("warnings");
+  expect(list.status).toBe(0);
+  expect(list.stdout).toContain("dismissed: no match was the answer");
+  expect(list.stdout).toMatch(new RegExp(`${ids[0]} .*failure F-[0-9a-f]{8}`));
+  expect(b.cli("warning", ids[1]!, "dismiss", "--reason", "again").status).toBe(1);
+});
+
+test.each([[["warning"]], [["warning", "W-1"]], [["warning", "W-0000abcd", "maybe", "--reason", "x"]], [["warning", "W-0000abcd", "dismiss"]]])(
+  "CLI: a malformed warning command is a usage error: %j",
+  (args: string[]) => {
+    expect(box().cli(...args).status).toBe(2);
+  },
+);
+
+test("late criteria are a warning, not a failure", () => {
+  const b = box();
+  b.post({ hook_event_name: "UserPromptSubmit", prompt: "r" });
+  b.post({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "pytest -q" },
+    tool_response: { stdout: "3 passed in 0.01s\n", stderr: "", interrupted: false } });
+  const file = path.join(b.root, ".harness-guard", "criteria", "c.yaml");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, "criteria: 1\nsession: s\nrequest: r\nitems:\n  - id: C1\n    text: t\n    met: true\n    evidence: e\n");
+  b.post({ hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: file }, tool_response: {} });
+  const out = JSON.parse(b.stop().stdout);
+  expect(out.decision).toBe("block");
+  expect(b.kinds("failure")).toHaveLength(0);
+  expect(b.kinds("warning")).toHaveLength(1);
+});
+cat: .claude/skills/work-design/guard/src/types.ts: No such file or directory
+
+codex
+I’m using the coding-discipline skill. The brief sets an 11:05 +0800 stop time and reserves three implementation files for another worker; I’ll leave those unread and unchanged. I’ll record the test pieces first, then write tests from the specification and fixed types.
+exec
+/bin/bash -lc 'ls runs/20261016-time-monitor/nodes && ls .claude/skills/workflow-design/guard/test/round10-deadline.test.ts; cat .claude/skills/workflow-design/guard/src/types.ts; cat .claude/skills/workflow-design/guard/package.json; cat .claude/skills/workflow-design/guard/tsconfig.json' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+tests-deadline.log
+ls: cannot access '.claude/skills/workflow-design/guard/test/round10-deadline.test.ts': No such file or directory
+// Shared types for harness-guard (SPEC.md). Fixed: modules import these and do not redefine them.
+
+export type Severity = "fail" | "warn";
+
+export interface Finding {
+  rule: string;
+  severity: Severity;
+  message: string;
+  fix?: string;
+  ref?: string;
+}
+
+// ---- M1: catalogue, recognition, result -------------------------------------------------------------------------
+
+export interface Trap {
+  id: string;
+  status: "approved" | "proposed";
+  applies: "command" | "result";
+  engine: string; // an EngineSpec name, or "any"
+  command?: string; // regex source (command traps)
+  unless?: string; // regex source: no hit when it matches
+  unless_piped?: boolean; // no hit when the segment's stdin comes from a pipe
+  background?: boolean;
+  concurrent?: boolean;
+  paths_outside_repo?: boolean;
+  stderr?: string; // regex source (result traps)
+  output_empty?: boolean; // result traps
+  why: string;
+  fix: string;
+  source: string; // where the trap was recorded (a note name or a run path), generic text
+  withdraw_when?: string; // R12.6: the observable that would show the trap is no longer needed
+}
+
+export interface SilentFailure {
+  text: string;
+  status: string;
+}
+
+export interface EngineSpec {
+  name: string;
+  command: string; // regex source that recognises a call
+  output_flags?: string[]; // e.g. ["-o", "--out"]
+  stdout_is_answer?: boolean;
+  status_from_out_dir?: boolean; // wrapper writes <out>/status.json
+  silent_failures?: SilentFailure[];
+}
+
+export interface EngineCall {
+  engine: string;
+  outputFile: string | null;
+  stdoutIsAnswer: boolean;
+  statusFile: string | null;
+  background: boolean;
+}
+
+export interface Segment {
+  text: string;
+  background: boolean;
+  piped: boolean;
+}
+
+export interface LintContext {
+  repoRoot: string;
+  running: string[]; // command lines of other running processes
+  background?: boolean;
+}
+
+export interface ResultInput {
+  call: EngineCall;
+  cwd: string;
+  exitCode: number | null;
+  stdout: string;
+  stderr: string;
+  interrupted: boolean;
+}
+
+// ---- M2: journal ------------------------------------------------------------------------------------------------
+
+export interface FailureRecord {
+  kind: "failure";
+  id: string; // F-xxxxxxxx
+  time: string; // ISO 8601
+  session: string;
+  found_by: string;
+  check: string;
+  input: string;
+  expected: string;
+  actual: string;
+  engine: string;
+  harness: string;
+  reason: string;
+  evidence: string; // path, relative to the guard root or absolute
+  from?: string; // Round 9: the warning (W-xxxxxxxx) this failure was logged from, when it was one
+}
+
+// Round 9: what the guard saw but cannot judge — a guess, not a verdict. The same fields as a failure, so the agent can
+// log it as one; it is settled by a failure record whose `from` is its id, or by a dismissed record.
+export interface WarningRecord {
+  kind: "warning";
+  id: string; // W-xxxxxxxx
+  time: string;
+  session: string;
+  check: string;
+  input: string;
+  expected: string;
+  actual: string;
+  engine: string;
+  harness: string;
+  reason: string; // why the guard warned
+  evidence: string;
+}
+
+// Round 9: the agent's one-line reason that a warning was not a failure; the project owner may overrule it.
+export interface DismissedRecord {
+  kind: "dismissed";
+  time: string;
+  session: string;
+  id: string; // the warning's id
+  reason: string;
+}
+
+export interface TouchedRecord {
+  kind: "touched";
+  time: string;
+  session: string;
+  path: string; // relative to the guard root
+}
+
+export interface GuardErrorRecord {
+  kind: "guard_error";
+  time: string;
+  session: string;
+  message: string;
+}
+
+// Round 4, D6: the failures a final message has already raised, so a later stop need not name them again.
+export interface RaisedRecord {
+  kind: "raised";
+  time: string;
+  session: string;
+  ids: string[];
+}
+
+// Round 5 (R12.7): a checked result that passed — one line, no evidence.
+export interface SuccessRecord {
+  kind: "success";
+  time: string;
+  session: string;
+  check: string; // "engine-call" | "test-run"
+  engine: string; // engine name, or the test runner label
+}
+
+// Round 8: a request from the person arrived — its time only, never its text. It marks where a task starts, so the
+// late-criteria check reads the work of this request, not of the whole session.
+export interface PromptRecord {
+  kind: "prompt";
+  time: string;
+  session: string;
+}
+
+export type JournalRecord = FailureRecord | TouchedRecord | GuardErrorRecord | RaisedRecord | SuccessRecord | PromptRecord
+  | WarningRecord | DismissedRecord;
+
+// Round 5 (R12.7): the path of a successful task, a YAML file.
+export interface PathStep {
+  did: string;
+  engine?: string;
+  model?: string;
+  check?: string;
+}
+
+export interface SuccessPath {
+  path: 1;
+  session: string;
+  category: string;
+  objective: string;
+  steps: PathStep[];
+  decisions?: string[];
+  measures: Record<string, number>; // e.g. seconds, failures, retries, checks_passed, successes
+  failures?: string[]; // the check ids of this session's failure records
+  parent?: string; // relative path of the parent's path file
+  change?: string; // what this child changed from its parent
+  aim?: { measure: string; parent_value: number; lower_is_better: boolean };
+  great?: { comparison: string; evidence: string };
+}
+
+// Round 6 (R12.7 score): the criteria a task is scored against, a YAML file written before the work.
+export interface Criterion {
+  id: string; // e.g. C1, or a register unit id such as UC1/f1
+  text: string;
+  met?: boolean | null; // null or absent until the agent marks it
+  evidence?: string; // a path or a fact; required once met is set
+}
+
+export interface CriteriaFile {
+  criteria: 1;
+  session: string;
+  request: string; // the request in a few words (never a secret)
+  items: Criterion[];
+}
+
+export interface Score {
+  met: number;
+  total: number;
+  percent: number | null; // one decimal; null when total is 0
+  unmarked: string[]; // ids with no met value
+}
+
+export interface PathReport {
+  file: string;
+  findings: Finding[];
+  better: boolean | null; // null when there is no parent or no aim
+  gainPercent: number | null; // signed: positive means improved on the aim's measure
+  repeatedFailures: string[];
+}
+
+// ---- M3: insight ------------------------------------------------------------------------------------------------
+
+export interface InsightOption {
+  kind: string; // rule | check | tool | config-advice, or what was written
+  text: string;
+  evidence: string; // "" when missing
+}
+
+export interface InsightSection {
+  ids: string[];
+  whys: string[];
+  source: string | null;
+  rootCause: string | null;
+  options: InsightOption[];
+}
+
+// ---- M4: register -----------------------------------------------------------------------------------------------
+
+export interface Decision {
+  by?: string;
+  verdict?: "accepted" | "declined";
+  at?: string;
+}
+
+export interface UseCase {
+  id: string;
+  origin: "user" | "ai";
+  decision?: Decision;
+  purpose?: string;
+  fails_if?: string[];
+  min_acceptance?: string[];
+  safety?: boolean;
+}
+
+export interface Requirement {
+  id: string;
+  origin: "user" | "ai";
+  decision?: Decision;
+  purpose?: string;
+  serves?: string[];
+  fails_if?: string[];
+  targets?: Record<string, string>;
+}
+
+export interface Conflict {
+  use_case: string;
+  requirement: string;
+  result?: string;
+  shown_to_owner?: boolean;
+  resolution?: string;
+}
+
+export interface CoverageEntry {
+  unit: string;
+  covered_by?: string[];
+  skippable?: { reason?: string };
+}
+
+export interface Register {
+  register: 1;
+  frozen?: string;
+  use_cases?: UseCase[];
+  requirements?: Requirement[];
+  conflicts?: Conflict[];
+  coverage?: CoverageEntry[];
+}
+
+export interface Unit {
+  id: string; // UC1/f1, UC1/m2, RQ1/f1
+  text: string;
+  safety: boolean;
+}
+
+export interface CoverageReport {
+  total: number;
+  covered: number;
+  percent: number;
+  target: 80;
+  findings: Finding[];
+}
+
+// ---- M5: hooks --------------------------------------------------------------------------------------------------
+
+export interface HookEnv {
+  cwd: string;
+  running: string[];
+  now: () => Date;
+}
+
+export interface HookResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}
+
+export interface DoctorHarness {
+  harness: string;
+  guard: "installed" | "absent" | "unknown";
+  answers: boolean | null;
+  note: string;
+}
+
+export interface DoctorReport {
+  harnesses: DoctorHarness[];
+  health: { ok: boolean; summary: string } | null;
+}
+
+// Round 10 (T1): a time limit the owner gave, as the guard keeps it.
+export interface Deadline {
+  id: string; // D-xxxxxxxx
+  start: string; // ISO 8601
+  minutes: number;
+  run: string | null; // root-relative run folder, for the workers' progress files
+  marks: number[]; // percent, ascending, ends with 100
+  session: string | null; // claimed by the hook of the call that started it
+}
+
+// Round 10 (T4): one worker's progress file, summarised.
+export interface ProgressSummary {
+  node: string;
+  done: number;
+  total: number;
+  last: { time: string; piece: string; state: string } | null;
+  ageMinutes: number | null;
+  badLines: number;
+}
+{
+  "name": "harness-guard",
+  "private": true,
+  "type": "module",
+  "bin": { "harness-guard": "src/cli.ts" },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsgo --noEmit -p ."
+  }
+}
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "types": ["bun"]
+  },
+  "include": ["src", "test"]
+}
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+import subprocess
+p=Path('runs/20261016-time-monitor/nodes/tests-deadline.progress.md')
+t=subprocess.check_output(['date','-Iseconds'],text=True).strip()
+pieces={
+'T1':'deadline validation, file shape and session claiming',
+'T2':'status before, at and after expiry and deadline selection',
+'T3':'CLI wait does not return before its short deadline',
+'T4':'progress summaries, malformed lines and output privacy',
+'T5':'mark delivery, deduplication, expiry, isolation and joined context',
+'T6':'ask once per session and join the criteria reminder',
+'checks':'run acceptance tests and typecheck; write result'
+}
+with p.open('a') as f:
+ for key,note in pieces.items(): f.write(f'- {t} · {key} · planned · {note}\\n')
+ f.write(f'- {t} · T1 · start · inspect fixed types and write deadline acceptance cases\\n')
+PY" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+exec
+/bin/bash -lc "rg --files -g AGENTS.md -g CLAUDE.md .claude runs/20261016-time-monitor; rg -n 'deadlineStatus|progressSummary|Round 10|additionalContext|hookSpecificOutput|raised' .claude/skills/workflow-design/guard/test/round6* .claude/skills/workflow-design/guard/test/round8* .claude/skills/workflow-design/guard/src/journal.ts" in /home/smoke01/dev/ancient-games
+ succeeded in 15ms:
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:114:    const context = JSON.parse(result.stdout).hookSpecificOutput;
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:116:    expect(context.additionalContext).toContain("before you start, write the criteria this request will be scored on");
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:117:    expect(context.additionalContext).toContain("criteria new --out runs/<run>/criteria.yaml");
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:118:    expect(context.additionalContext).toContain(".harness-guard/criteria/<name>.yaml");
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:119:    expect(context.additionalContext).toContain("one item per thing the result must get right");
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:120:    expect(context.additionalContext).toContain("mark each met or not met with evidence at the end");
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:124:      .toEqual([{ kind: "raised", session, time: "", ids: ["criteria"] }]);
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:133:    expect(records().filter((r) => r.kind === "raised")).toEqual([]);
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:223:    expect(records().some((r) => r.kind === "raised" && r.ids.includes(failure!.id))).toBe(true);
+.claude/skills/workflow-design/guard/test/round6-hooks.test.ts:243:    expect(records().some((r) => r.kind === "raised" && r.ids.includes("path"))).toBe(false);
+
+exec
+/bin/bash -lc "sed -n '95,145p' .claude/skills/workflow-design/guard/test/round6-hooks.test.ts; sed -n '1,100p' .claude/skills/workflow-design/guard/src/journal.ts" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+    tool_response: { stdout: `1 passed ${secret}`, stderr: secret },
+    ...(passing ? {} : { exit_code: 1, error: `exit 1 ${secret}` }) }, selectedSession);
+}
+
+function answer(ids: string[]): string {
+  const insight = "runs/task/insight.md";
+  write(insight, `## ${ids.join(", ")}\nWhys:\n1. input was unchecked\n2. check was absent\n3. instruction omitted the check\nSource: instruction\nRoot cause: missing check\nOptions:\n1. [check] add validation evidence: fixture\n2. [tool] validate input evidence: fixture\n`);
+  return insight;
+}
+
+function pathSkeleton(selectedSession = session): SuccessPath {
+  const text = skeleton(root, selectedSession);
+  privateOutput(text);
+  return Bun.YAML.parse(text) as SuccessPath;
+}
+
+describe("K2 criteria reminder and touch", () => {
+  test("Fails-if: reminder repeats; first prompt gives the specified context and one marker", () => {
+    const result = prompt();
+    const context = JSON.parse(result.stdout).hookSpecificOutput;
+    expect(context.hookEventName).toBe("UserPromptSubmit");
+    expect(context.additionalContext).toContain("before you start, write the criteria this request will be scored on");
+    expect(context.additionalContext).toContain("criteria new --out runs/<run>/criteria.yaml");
+    expect(context.additionalContext).toContain(".harness-guard/criteria/<name>.yaml");
+    expect(context.additionalContext).toContain("one item per thing the result must get right");
+    expect(context.additionalContext).toContain("mark each met or not met with evidence at the end");
+    expect(prompt().stdout).toBe("");
+    // Round 8: every prompt also writes a time-only prompt record; the reminder's marker is still written once.
+    expect(records().filter((r) => r.kind !== "prompt").map((r) => ({ ...r, time: "" })))
+      .toEqual([{ kind: "raised", session, time: "", ids: ["criteria"] }]);
+    expect(records().filter((r) => r.kind === "prompt")).toHaveLength(2);
+  });
+
+  test.each([["Write"], ["Edit"], ["MultiEdit"]])("Fails-if: touched criteria still gets reminder (%s)", (tool: string) => {
+    criteria();
+    expect(touch(file, tool).stdout).toBe("");
+    expect(records()).toEqual([{ kind: "touched", session, time: new Date(tick).toISOString(), path: file }]);
+    expect(prompt().stdout).toBe("");
+    expect(records().filter((r) => r.kind === "raised")).toEqual([]);
+  });
+
+  test("another session's reminder and touches do not consume this session's reminder", () => {
+    prompt("other");
+    criteria(undefined, file, "other");
+    touch(file, "Write", "other");
+    expect(prompt().stdout).not.toBe("");
+    expect(prompt().stdout).toBe("");
+  });
+
+  test("a non-criteria touch does not suppress the reminder", () => {
+    touch("notes.md");
+// M2: failure journal (SPEC.md M2). Journal: <root>/.harness-guard/journal.jsonl, one JSON object per line.
+// The journal holds lengths, counts, ids, rule ids and paths. Raw stdout, stderr, prompts and config values
+// never reach a line or an evidence file: they are dropped on write.
+
+import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import type { FailureRecord, JournalRecord } from "./types.ts";
+
+const GUARD_DIR = ".harness-guard";
+const ID_RE = /^F-[0-9a-f]{8}$/;
+const ISO_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
+// Facts and record fields that would carry raw content out of a command.
+const RAW_KEYS = new Set([
+  "argv", "args", "body", "command", "config", "content", "env", "input", "output", "prompt", "raw", "response", "secret", "stderr", "stdout", "token", "text",
+]);
+
+const REASON_FIELDS = ["check", "input", "expected", "actual", "engine", "harness", "found_by", "session", "reason"];
+
+// ---- errors -----------------------------------------------------------------------------------------------------
+
+export class JournalError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "JournalError";
+  }
+}
+
+// ---- paths ------------------------------------------------------------------------------------------------------
+
+export function guardRoot(cwd: string): string {
+  try {
+    const out = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      cwd,
+      timeout: 5000,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return out === "" ? cwd : out;
+  } catch {
+    return cwd;
+  }
+}
+
+function journalFile(root: string): string {
+  return path.join(root, GUARD_DIR, "journal.jsonl");
+}
+
+function isEntry(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// ---- raw-content filter ------------------------------------------------------------------------------------------
+
+const MAX_FACT_STRING = 200; // evidence holds lengths, counts, ids and paths: a longer string is raw content
+
+function redactRawText(text: string): string {
+  // A line that starts with a raw-content label carries the content itself: keep the label, drop the tail.
+  return text
+    .split("\n")
+    .map((line) => (/^\s*(stdout|stderr|output|prompt|config|response|body|secret|token|raw)\s*:/i.test(line) ? line.replace(/(\s*:).*$/, "$1 [redacted]") : line))
+    .join("\n");
+}
+
+function scrub(value: unknown, depth = 0, seen: Set<unknown> = new Set()): unknown {
+  if (typeof value === "string") return value.length > MAX_FACT_STRING ? `[${value.length} chars]` : redactRawText(value);
+  if (value === null || typeof value !== "object") return value;
+  if (depth > 8 || seen.has(value)) return undefined;
+  seen.add(value);
+  if (Array.isArray(value)) return value.map((item) => scrub(item, depth + 1, seen)).filter((item) => item !== undefined);
+  const out: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (RAW_KEYS.has(key.toLowerCase())) continue;
+    const scrubbed = scrub(item, depth + 1, seen);
+    if (scrubbed !== undefined) out[key] = scrubbed;
+  }
+  return out;
+}
+
+// A record's own fields are kept as written; only fields that name raw content are replaced by their length.
+function scrubRecord(rec: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(rec)) {
+    const lower = key.toLowerCase();
+    if (RAW_KEYS.has(lower) && !REASON_FIELDS.includes(lower)) {
+      out[key] = typeof value === "string" ? `[${value.length} chars]` : "[redacted]";
+      continue;
+    }
+    out[key] = typeof value === "string" ? redactRawText(value) : scrub(value);
+  }
+  return out;
+}
+
+// ---- validation -------------------------------------------------------------------------------------------------
+
+// Evidence may be a file or a folder that exists (round 3, C13).
+function evidenceExists(evidence: string, root: string): boolean {
+  try {
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+import subprocess
+t=subprocess.check_output(['date','-Iseconds'],text=True).strip()
+p=Path('runs/20261016-time-monitor/nodes/tests-deadline.progress.md')
+with p.open('a') as f:
+ for key in ['T2','T3','T4','T5','T6']: f.write(f'- {t} · {key} · start · write planted-input acceptance cases from Round 10\\n')
+PY" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+codex
+Round 10 specifies the CLI output but leaves `deadlineStatus`’s return shape undefined. I’ll test the CLI’s displayed values and use comparisons to test the function’s clock and session behavior. The tests will also check that timer context preserves existing hook context and excludes raw progress text.
+exec
+/bin/bash -lc "cat > .claude/skills/workflow-design/guard/test/round10-deadline.test.ts <<'EOF'
+// Acceptance checks written from SPEC.md Round 10, independently of the implementation.
+import { afterEach, expect, test } from \"bun:test\";
+import { execFileSync, spawnSync } from \"node:child_process\";
+import fs from \"node:fs\";
+import os from \"node:os\";
+import path from \"node:path\";
+import { startDeadline, deadlineStatus, progressSummary } from \"../src/deadline.ts\";
+import { handleHook } from \"../src/hooks.ts\";
+import { readJournal } from \"../src/journal.ts\";
+import type { Deadline, HookResult, ProgressSummary } from \"../src/types.ts\";
+
+const CLI = path.resolve(import.meta.dirname, \"../src/cli.ts\");
+const EPOCH = Date.parse(\"2026-10-16T02:00:00.000Z\");
+const roots: string[] = [];
+afterEach(() => {
+  for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
+});
+
+function box() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), \"hg-deadline-\"));
+  roots.push(root);
+  execFileSync(\"git\", [\"init\", \"-q\"], { cwd: root });
+  let tick = EPOCH;
+  const env = { cwd: root, running: [], now: () => new Date(tick) };
+  const at = (minutes: number) => { tick = EPOCH + minutes * 60_000; };
+  const write = (file: string, text: string) => {
+    const absolute = path.join(root, file);
+    fs.mkdirSync(path.dirname(absolute), { recursive: true });
+    fs.writeFileSync(absolute, text);
+    return absolute;
+  };
+  const post = (payload: Record<string, unknown> = {}, session = \"s\") => handleHook({
+    session_id: session, cwd: root, hook_event_name: \"PostToolUse\", tool_name: \"Bash\",
+    tool_input: { command: \"true\" }, tool_response: { stdout: \"\", stderr: \"\", interrupted: false }, ...payload,
+  }, env);
+  const prompt = (session = \"s\") => post({ hook_event_name: \"UserPromptSubmit\", prompt: \"work\" }, session);
+  const cli = (...args: string[]) => spawnSync(process.execPath, [CLI, ...args], {
+    cwd: root, encoding: \"utf8\", timeout: 10_000,
+    env: { ...process.env, BUN_RUNTIME_TRANSPILER_CACHE_PATH: \"0\" },
+  });
+  const save = (deadline: Deadline) => write("'`.harness-guard/deadlines/${deadline.id}.json`, JSON.stringify(deadline));
+  const plant = (overrides: Partial<Deadline> = {}) => {
+    const deadline: Deadline = {
+      id: "D-00000001", start: env.now().toISOString(), minutes: 10,
+      run: null, marks: [50, 80, 100], session: "s", ...overrides,
+    };
+    save(deadline);
+    return deadline;
+  };
+  const raised = (id: string, session = "s") => readJournal(root).records.filter(
+    (r) => r.kind === "raised" && r.session === session && r.ids.includes(id),
+  );
+  return { root, env, at, write, post, prompt, cli, save, plant, raised };
+}
+
+type Box = ReturnType<typeof box>;
+function context(result: HookResult): string {
+  expect(result.exitCode).toBe(0);
+  return result.stdout === "" ? "" : JSON.parse(result.stdout).hookSpecificOutput?.additionalContext ?? "";
+}
+function claim(b: Box, session = "s") {
+  return b.post({ tool_input: { command: `bun ${CLI} deadline start --minutes 10` } }, session);
+}
+function line(minutes: number, piece: string, state: string, note = "small piece"): string {
+  return `- ${new Date(EPOCH + minutes * 60_000).toISOString()} · ${piece} · ${state} · ${note}'"\\n"'`;
+}
+function progress(b: Box, node = "worker", text = line(0, "A", "planned") + line(1, "A", "done")) {
+  return b.write(`runs/task/nodes/${node}.progress.md`, text);
+}
+
+test.each([[], ["--minutes", "0"], ["--minutes", "-1"], ["--minutes", "nope"], ["--minutes", "Infinity"]])(
+  "T1 Fails-if: CLI accepts missing or invalid minutes: %j", (args: string[]) => {
+    const b = box();
+    expect(b.cli("deadline", "start", ...args).status).toBe(2);
+    const directory = path.join(b.root, ".harness-guard/deadlines");
+    expect(fs.existsSync(directory) ? fs.readdirSync(directory) : []).toEqual([]);
+  },
+);
+
+test.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])("T1: module refuses invalid minutes %s", (minutes) => {
+  const b = box();
+  expect(() => startDeadline(b.root, { minutes }, b.env.now())).toThrow();
+});
+
+test.each(["0,100", "50.5,100", "101,100", "x,100"])("T1: CLI rejects invalid marks %s", (marks) => {
+  expect(box().cli("deadline", "start", "--minutes", "10", "--marks", marks).status).toBe(2);
+});
+
+test("T1: module persists an unclaimed deadline with defaults and the injected start time", () => {
+  const b = box();
+  const deadline: Deadline = startDeadline(b.root, { minutes: 10 }, b.env.now());
+  expect(deadline).toEqual({ id: expect.stringMatching(/''^D-[0-9a-f]{8}$/), start: b.env.now().toISOString(),
+    minutes: 10, run: null, marks: [50, 80, 100], session: null });
+  expect(JSON.parse(fs.readFileSync(path.join(b.root, `.harness-guard/deadlines/${deadline.id}.json`), "utf8")))
+    .toEqual(deadline);
+});
+
+test("T1: marks ascend, 100 is added, and run is root-relative", () => {
+  const b = box();
+  const deadline = startDeadline(b.root, { minutes: 2.5, run: path.join(b.root, "runs/task"), marks: [80, 25] }, b.env.now());
+  expect(deadline).toMatchObject({ minutes: 2.5, run: "runs/task", marks: [25, 80, 100], session: null });
+});
+
+test("T1: CLI start prints its id and local deadline time and writes the requested settings", () => {
+  const b = box();
+  const result = b.cli("deadline", "start", "--minutes", "10", "--run", "runs/task", "--marks", "80,50");
+  expect(result.status).toBe(0);
+  const [file] = fs.readdirSync(path.join(b.root, ".harness-guard/deadlines"));
+  const deadline: Deadline = JSON.parse(fs.readFileSync(path.join(b.root, ".harness-guard/deadlines", file!), "utf8"));
+  expect(deadline).toMatchObject({ minutes: 10, run: "runs/task", marks: [50, 80, 100], session: null });
+  expect(result.stdout).toContain(deadline.id);
+  const end = new Date(Date.parse(deadline.start) + deadline.minutes * 60_000);
+  expect(result.stdout).toContain(`${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`);
+});
+
+test("T1: the start Bash hook claims every unclaimed file for its session, leaving owned files alone", () => {
+  const b = box();
+  const first = b.plant({ session: null });
+  const second = b.plant({ id: "D-00000002", session: null });
+  const owned = b.plant({ id: "D-00000003", session: "other" });
+  claim(b);
+  for (const deadline of [first, second, owned]) {
+    const stored = JSON.parse(fs.readFileSync(path.join(b.root, `.harness-guard/deadlines/${deadline.id}.json`), "utf8"));
+    expect(stored.session).toBe(deadline === owned ? "other" : "s");
+  }
+});
+
+test("T2: deadlineStatus uses the supplied time and ignores another session'"'s deadline\", () => {
+  const b = box();
+  b.plant();
+  const before = deadlineStatus(b.root, \"s\", b.env.now());
+  expect(before).not.toBeNull();
+  expect(before).not.toBeUndefined();
+  b.plant({ id: \"D-00000002\", session: \"other\", minutes: 100 });
+  expect(deadlineStatus(b.root, \"s\", b.env.now())).toEqual(before);
+  b.at(11);
+  expect(deadlineStatus(b.root, \"s\", b.env.now())).not.toEqual(before);
+});
+
+test(\"T2: newest unexpired deadline wins even when a newer deadline has expired; latest wins when all expired\", () => {
+  const b = box();
+  const active = b.plant({ start: new Date(EPOCH - 60_000).toISOString(), minutes: 20 });
+  const expectedActive = deadlineStatus(b.root, \"s\", b.env.now());
+  const expired = b.plant({ id: \"D-00000002\", minutes: 0.5 });
+  b.at(1);
+  b.save({ ...active, session: \"other\" });
+  const expectedLatest = deadlineStatus(b.root, \"s\", b.env.now());
+  b.save(active);
+  b.at(0);
+  fs.unlinkSync(path.join(b.root, "'`.harness-guard/deadlines/${expired.id}.json`));
+  expect(deadlineStatus(b.root, "s", b.env.now())).toEqual(expectedActive);
+  b.save(expired);
+  b.at(1);
+  const activeAloneRoot = box();
+  activeAloneRoot.save(active);
+  expect(deadlineStatus(b.root, "s", b.env.now())).toEqual(deadlineStatus(activeAloneRoot.root, "s", b.env.now()));
+  b.save({ ...active, session: "other" });
+  expect(deadlineStatus(b.root, "s", b.env.now())).toEqual(expectedLatest);
+  b.save(active);
+  b.at(30);
+  const latestAlone = box();
+  latestAlone.save(expired);
+  expect(deadlineStatus(b.root, "s", b.env.now())).toEqual(deadlineStatus(latestAlone.root, "s", b.env.now()));
+});
+
+test("T2: CLI status has exit 2 when no deadline belongs to the selected session", () => {
+  const b = box();
+  expect(b.cli("deadline", "status", "--session", "s").status).toBe(2);
+  b.plant({ session: "other" });
+  expect(b.cli("deadline", "status", "--session", "s").status).toBe(2);
+});
+
+test("T2 Fails-if: CLI status says time remains after expiry; live status shows used, percent, left and local deadline", () => {
+  const b = box();
+  // These wide intervals make real-clock CLI execution deterministic without sleeping.
+  b.plant({ start: "2000-01-01T00:00:00.000Z" });
+  const expired = b.cli("deadline", "status", "--session", "s");
+  expect(expired.status).toBe(1);
+  expect(expired.stdout).toMatch(/time is up, .* min over/);
+  b.plant({ start: "2099-01-01T00:00:00.000Z", minutes: 100 });
+  const live = b.cli("deadline", "status", "--session", "s");
+  expect(live.status).toBe(0);
+  expect(live.stdout).toMatch(/used .* of 100 min '"\\(.*%\\), .* left, deadline \\d{2}:\\d{2}/);
+});
+
+test(\"T3 Fails-if: CLI wait returns before the deadline\", () => {
+  const b = box();
+  const env = { now: () => new Date() };
+  const started = env.now();
+  const deadline = b.plant({ start: started.toISOString(), minutes: 0.05 });
+  const result = b.cli(\"deadline\", \"wait\");
+  expect(result.error).toBeUndefined();
+  expect(result.status).toBe(0);
+  expect(env.now().getTime()).toBeGreaterThanOrEqual(Date.parse(deadline.start) + deadline.minutes * 60_000);
+  expect(result.stdout).toMatch(/time is up|used .* of 0\\.05 min/);
+}, 10_000);
+
+test(\"T4: progress counts distinct pieces by their latest state and derives age from the injected clock\", () => {
+  const b = box();
+  const file = progress(b, \"worker\", line(0, \"A\", \"planned\") + line(0, \"B\", \"planned\") + line(0, \"C\", \"planned\")
+    + line(1, \"A\", \"start\") + line(2, \"A\", \"done\") + line(3, \"B\", \"fail\"));
+  b.at(5);
+  const summary: ProgressSummary = progressSummary(file, b.env.now());
+  expect(summary).toEqual({ node: \"worker\", done: 1, total: 3,
+    last: { time: new Date(EPOCH + 3 * 60_000).toISOString(), piece: \"B\", state: \"fail\" }, ageMinutes: 2, badLines: 0 });
+});
+
+test(\"T4: repeated done events do not inflate the count, and a restarted piece is no longer done\", () => {
+  const b = box();
+  const file = progress(b, \"worker\", line(0, \"A\", \"done\") + line(1, \"A\", \"done\") + line(2, \"B\", \"done\") + line(3, \"A\", \"start\"));
+  b.at(4);
+  expect(progressSummary(file, b.env.now())).toMatchObject({ done: 1, total: 2, last: { piece: \"A\", state: \"start\" } });
+});
+
+test(\"T4 Fails-if: malformed progress breaks parsing or is not counted\", () => {
+  const b = box();
+  const file = progress(b, \"worker\", \"not a progress line\\n\" + line(0, \"A\", \"planned\")
+    + \"- not-a-date · X · done · bad date\\n\" + line(1, \"X\", \"unknown\") + line(2, \"A\", \"done\"));
+  b.at(4);
+  expect(progressSummary(file, b.env.now())).toEqual({ node: \"worker\", done: 1, total: 1, badLines: 3,
+    last: { time: new Date(EPOCH + 2 * 60_000).toISOString(), piece: \"A\", state: \"done\" }, ageMinutes: 2 });
+});
+
+test(\"T4: an empty progress file has no last event or age\", () => {
+  const b = box();
+  expect(progressSummary(progress(b, \"empty\", \"\"), b.env.now())).toEqual({ node: \"empty\", done: 0, total: 0,
+    last: null, ageMinutes: null, badLines: 0 });
+});
+
+test(\"T4 Fails-if: status crashes on malformed progress or prints raw progress text\", () => {
+  const b = box();
+  const secret = \"RAW_STDOUT_MUST_STAY_PRIVATE\";
+  progress(b, \"worker\", "'`stdout: ${secret}'"\\n"'` + line(1, "A", "done", "piece complete") + `prompt: ${secret}'"\\n"'`);
+  b.plant({ run: "runs/task", start: "2000-01-01T00:00:00.000Z" });
+  const result = b.cli("deadline", "status", "--session", "s");
+  expect(result.status).toBe(1);
+  expect(result.stdout).toMatch(/worker: 1'"\\/1 pieces, last A done .* min ago/);
+  expect(result.stdout + result.stderr).not.toContain(secret);
+  expect(result.stdout).not.toContain(\"stdout:\");
+});
+
+for (const event of [\"PostToolUse\", \"PostToolUseFailure\"]) {
+  test("'`T5 Fails-if: ${event} misses a passed mark or announces it twice`, () => {
+    const b = box();
+    const deadline = b.plant();
+    const payload = event === "PostToolUseFailure"
+      ? { hook_event_name: event, tool_input: { command: "grep needle absent" }, exit_code: 1, error: "exit 1" }
+      : { hook_event_name: event };
+    b.at(4.9);
+    expect(context(b.post(payload))).not.toContain("harness-guard time:");
+    for (const [minutes, mark] of [[5.1, 50], [8.1, 80]] as const) {
+      b.at(minutes);
+      const text = context(b.post(payload));
+      expect(text).toContain("harness-guard time:");
+      expect(text).toMatch(/of 10 min used '"\\(.*%\\), .* left — deadline \\d{2}:\\d{2}/);
+      expect(b.raised("'`deadline:${deadline.id}:${mark}`)).toHaveLength(1);
+      expect(context(b.post(payload))).not.toContain("harness-guard time:");
+      expect(b.raised(`deadline:${deadline.id}:${mark}`)).toHaveLength(1);
+    }
+  });
+
+  test(`T5 Fails-if: ${event} fails to say time is up on every call after expiry`, () => {
+    const b = box();
+    const deadline = b.plant();
+    b.at(11);
+    for (let i = 0; i < 2; i++) {
+      const text = context(b.post({ hook_event_name: event, ...(event === "PostToolUseFailure" ? { exit_code: 1, error: "exit 1" } : {}) }));
+      expect(text).toMatch(/harness-guard time is up '"\\(.* min over\\): stop trying, finish the report, and put what is open to the owner\\./);
+    }
+    expect(b.raised("'`deadline:${deadline.id}:100`)).toHaveLength(1);
+  });
+}
+
+test("T5: crossing multiple marks between calls records each mark exactly once", () => {
+  const b = box();
+  const deadline = b.plant();
+  b.at(9);
+  expect(context(b.post())).toContain("harness-guard time:");
+  for (const mark of [50, 80]) expect(b.raised(`deadline:${deadline.id}:${mark}`)).toHaveLength(1);
+  expect(context(b.post())).not.toContain("harness-guard time:");
+});
+
+test("T5 Fails-if: an expired deadline from another session reminds this one", () => {
+  const b = box();
+  const deadline = b.plant({ session: "other" });
+  b.at(11);
+  expect(context(b.post())).not.toContain("harness-guard time");
+  expect(b.raised(`deadline:${deadline.id}:100`)).toEqual([]);
+  expect(context(b.post({}, "other"))).toContain("harness-guard time is up");
+});
+
+test("T5: reminders show no more than five workers and never echo raw progress text", () => {
+  const b = box();
+  const secret = "[REDACTED_SECRET]";
+  for (let i = 0; i < 7; i++) progress(b, `worker-${i}`, `${secret}'"\\n"'` + line(1, "A", "done", "finished piece"));
+  b.plant({ run: "runs/task" });
+  b.at(6);
+  const text = context(b.post());
+  expect(text.match(/worker-'"\\d: 1\\/1 pieces, last A done 5(?:\\.0)? min ago/g)).toHaveLength(5);
+  expect(text).not.toContain(secret);
+});
+
+test(\"T5: timer context joins the warning context produced by the same hook\", () => {
+  const b = box();
+  b.plant();
+  b.at(6);
+  const text = context(b.post({ hook_event_name: \"PostToolUseFailure\", tool_input: { command: \"grep needle absent\" },
+    exit_code: 1, error: \"exit 1\" }));
+  expect(text).toMatch(/harness-guard warning W-[0-9a-f]{8}/);
+  expect(text).toContain(\"harness-guard time:\");
+});
+
+test(\"T6 Fails-if: ask-the-time repeats; the first ask joins the K2 criteria reminder\", () => {
+  const b = box();
+  const first = context(b.prompt());
+  expect(first).toContain(\"harness-guard: ask the owner how much time you have to try (unless they said), then record it:\");
+  expect(first).toContain(\"deadline start --minutes N --run runs/<run>\");
+  expect(first).toContain(\"before you start, write the criteria this request will be scored on\");
+  expect(b.raised(\"deadline-ask\")).toHaveLength(1);
+  expect(b.raised(\"criteria\")).toHaveLength(1);
+  expect(context(b.prompt())).not.toContain(\"ask the owner how much time\");
+  expect(b.raised(\"deadline-ask\")).toHaveLength(1);
+  expect(context(b.prompt(\"other\"))).toContain(\"ask the owner how much time\");
+  expect(b.raised(\"deadline-ask\", \"other\")).toHaveLength(1);
+});
+
+test(\"T6: owning a deadline suppresses the time ask, while another session's deadline does not\", () => {
+  const b = box();
+  b.plant();
+  expect(context(b.prompt())).not.toContain(\"ask the owner how much time\");
+  expect(b.raised(\"deadline-ask\")).toEqual([]);
+  expect(context(b.prompt(\"other\"))).toContain(\"ask the owner how much time\");
+});
+EOF
+bun test test/round10-deadline.test.ts" in /home/smoke01/dev/ancient-games
+ exited 1 in 0ms:
+bun test v1.4.3 (c6da4a4d3)
+The following filters did not match any test files in --cwd="/home/smoke01/dev/ancient-games":
+ test/round10-deadline.test.ts
+15513 files were searched [14.00ms]
+
+note: Tests need ".test", "_test_", ".spec" or "_spec_" in the filename (ex: "MyApp.test.ts")
+note: To treat the "test/round10-deadline.test.ts" filter as a path, run "bun test ./test/round10-deadline.test.ts"
+
+
+exec
+/bin/bash -lc 'date -Iseconds' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+2026-10-16T10:24:37+08:00
+
+exec
+/bin/bash -lc 'bun test test/round10-deadline.test.ts' in /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard
+exec
+/bin/bash -lc './node_modules/.bin/tsgo --noEmit -p .' in /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard
+ exited 2 in 72ms:
+test/round10-deadline.test.ts(72,62): error TS2345: Argument of type '(args: string[]) => void' is not assignable to parameter of type '(...args: string[]) => void | Promise<unknown>'.
+  Types of parameters 'args' and 'args' are incompatible.
+    Type 'string' is not assignable to type 'string[]'.
+
+ exited 1 in 382ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/round10-deadline.test.ts:
+69 | }
+70 | 
+71 | test.each([[], ["--minutes", "0"], ["--minutes", "-1"], ["--minutes", "nope"], ["--minutes", "Infinity"]])(
+72 |   "T1 Fails-if: CLI accepts missing or invalid minutes: %j", (args: string[]) => {
+73 |     const b = box();
+74 |     expect(b.cli("deadline", "start", ...args).status).toBe(2);
+                                              ^
+TypeError: Spread syntax requires ...iterable[Symbol.iterator] to be a function
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:74:42)
+(fail) T1 Fails-if: CLI accepts missing or invalid minutes: %j [13.10ms]
+102 | });
+103 | 
+104 | test("T1: CLI start prints its id and local deadline time and writes the requested settings", () => {
+105 |   const b = box();
+106 |   const result = b.cli("deadline", "start", "--minutes", "10", "--run", "runs/task", "--marks", "80,50");
+107 |   expect(result.status).toBe(0);
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: 0
+Received: 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:107:25)
+(fail) T1: CLI start prints its id and local deadline time and writes the requested settings [19.16ms]
+173 | test("T2 Fails-if: CLI status says time remains after expiry; live status shows used, percent, left and local deadline", () => {
+174 |   const b = box();
+175 |   // These wide intervals make real-clock CLI execution deterministic without sleeping.
+176 |   b.plant({ start: "2000-01-01T00:00:00.000Z" });
+177 |   const expired = b.cli("deadline", "status", "--session", "s");
+178 |   expect(expired.status).toBe(1);
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:178:26)
+(fail) T2 Fails-if: CLI status says time remains after expiry; live status shows used, percent, left and local deadline [20.29ms]
+188 |   const env = { now: () => new Date() };
+189 |   const started = env.now();
+190 |   const deadline = b.plant({ start: started.toISOString(), minutes: 0.05 });
+191 |   const result = b.cli("deadline", "wait");
+192 |   expect(result.error).toBeUndefined();
+193 |   expect(result.status).toBe(0);
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: 0
+Received: 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:193:25)
+(fail) T3 Fails-if: CLI wait returns before the deadline [20.24ms]
+231 |   const b = box();
+232 |   const secret = "RAW_STDOUT_MUST_STAY_PRIVATE";
+233 |   progress(b, "worker", `stdout: ${secret}\n` + line(1, "A", "done", "piece complete") + `prompt: ${secret}\n`);
+234 |   b.plant({ run: "runs/task", start: "2000-01-01T00:00:00.000Z" });
+235 |   const result = b.cli("deadline", "status", "--session", "s");
+236 |   expect(result.status).toBe(1);
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:236:25)
+(fail) T4 Fails-if: status crashes on malformed progress or prints raw progress text [20.02ms]
+250 |     expect(context(b.post(payload))).not.toContain("harness-guard time:");
+251 |     for (const [minutes, mark] of [[5.1, 50], [8.1, 80]] as const) {
+252 |       b.at(minutes);
+253 |       const text = context(b.post(payload));
+254 |       expect(text).toContain("harness-guard time:");
+255 |       expect(text).toMatch(/of 10 min used \(.*%\), .* left — deadline \d{2}:\d{2}/);
+                         ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /of 10 min used \(.*%\), .* left \u2014 deadline \d{2}:\d{2}/
+Received: "harness-guard time: used 5 of 10 min (51%), 5 left, deadline 02:10"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:255:20)
+(fail) T5 Fails-if: PostToolUse misses a passed mark or announces it twice [6.43ms]
+263 |     const b = box();
+264 |     const deadline = b.plant();
+265 |     b.at(11);
+266 |     for (let i = 0; i < 2; i++) {
+267 |       const text = context(b.post({ hook_event_name: event, ...(event === "PostToolUseFailure" ? { exit_code: 1, error: "exit 1" } : {}) }));
+268 |       expect(text).toMatch(/harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./);
+                         ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./
+Received: "harness-guard time is up (1 min over (deadline 02:10)): stop trying, finish the report, and put what is open to the owner."
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:268:20)
+(fail) T5 Fails-if: PostToolUse fails to say time is up on every call after expiry [4.44ms]
+250 |     expect(context(b.post(payload))).not.toContain("harness-guard time:");
+251 |     for (const [minutes, mark] of [[5.1, 50], [8.1, 80]] as const) {
+252 |       b.at(minutes);
+253 |       const text = context(b.post(payload));
+254 |       expect(text).toContain("harness-guard time:");
+255 |       expect(text).toMatch(/of 10 min used \(.*%\), .* left — deadline \d{2}:\d{2}/);
+                         ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /of 10 min used \(.*%\), .* left \u2014 deadline \d{2}:\d{2}/
+Received: "harness-guard warning W-da763d8e: a command exited non-zero, and the guard cannot tell whether that was a mistake. Decide before you stop: log it as a failure or dismiss it with a one-line reason (`cli.ts warning W-da763d8e fail|dismiss --reason \"…\"`).\nharness-guard time: used 5 of 10 min (51%), 5 left, deadline 02:10"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:255:20)
+(fail) T5 Fails-if: PostToolUseFailure misses a passed mark or announces it twice [6.25ms]
+263 |     const b = box();
+264 |     const deadline = b.plant();
+265 |     b.at(11);
+266 |     for (let i = 0; i < 2; i++) {
+267 |       const text = context(b.post({ hook_event_name: event, ...(event === "PostToolUseFailure" ? { exit_code: 1, error: "exit 1" } : {}) }));
+268 |       expect(text).toMatch(/harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./);
+                         ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./
+Received: "harness-guard warning W-f9c891dd: a command exited non-zero, and the guard cannot tell whether that was a mistake. Decide before you stop: log it as a failure or dismiss it with a one-line reason (`cli.ts warning W-f9c891dd fail|dismiss --reason \"…\"`).\nharness-guard time is up (1 min over (deadline 02:10)): stop trying, finish the report, and put what is open to the owner."
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:268:20)
+(fail) T5 Fails-if: PostToolUseFailure fails to say time is up on every call after expiry [4.28ms]
+
+ 28 pass
+ 9 fail
+ 89 expect() calls
+Ran 37 tests across 1 file. [437.00ms]
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('.claude/skills/workflow-design/guard/test/round10-deadline.test.ts')
+s=p.read_text().replace('test.each([[], [\"--minutes\", \"0\"], [\"--minutes\", \"-1\"], [\"--minutes\", \"nope\"], [\"--minutes\", \"Infinity\"]])(', 'test.each([[], [\"--minutes\", \"0\"], [\"--minutes\", \"-1\"], [\"--minutes\", \"nope\"], [\"--minutes\", \"Infinity\"]].map((args) => [args]))(')
+start=s.index('test(\"T2: newest unexpired deadline')
+end=s.index('\\ntest(\"T2: CLI status',start)
+s=s[:start]+'''test(\"T2: newest unexpired deadline wins; the latest wins when all have expired\", () => {
+  const b = box();
+  const old = b.plant({ start: new Date(EPOCH - 60_000).toISOString(), minutes: 20 });
+  const newer = b.plant({ id: \"D-00000002\", minutes: 10 });
+  const onlyNewer = box();
+  onlyNewer.save(newer);
+  expect(deadlineStatus(b.root, \"s\", b.env.now())).toEqual(deadlineStatus(onlyNewer.root, \"s\", b.env.now()));
+  // At minute 11, the older long deadline is still active and the newer one is expired.
+  b.at(11);
+  const onlyOld = box();
+  onlyOld.save(old);
+  expect(deadlineStatus(b.root, \"s\", b.env.now())).toEqual(deadlineStatus(onlyOld.root, \"s\", b.env.now()));
+  b.at(30);
+  expect(deadlineStatus(b.root, \"s\", b.env.now())).toEqual(deadlineStatus(onlyNewer.root, \"s\", b.env.now()));
+});
+''' +s[end:]
+p.write_text(s)
+PY" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+codex
+The first run reached the implementation: 28 tests passed and 9 failed. I fixed one test-table error in my tests. The remaining failures currently involve CLI deadline commands and reminder wording that differs from the SPEC. I’ll check the coverage and rerun both required commands.
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('.claude/skills/workflow-design/guard/test/round10-deadline.test.ts')
+s=p.read_text().replace('line(1, \"A\", \"done\", \"piece complete\")', 'line(1, \"A\", \"done\", "'`piece complete; stdout: ${secret}`)'"')
+s=s.replace('line(1, \"A\", \"done\", \"finished piece\")', 'line(1, \"A\", \"done\", "'`finished piece; prompt: ${secret}`)'"')
+needle='test(\"T2: deadlineStatus uses the supplied time'
+i=s.index(needle)
+s=s[:i]+'''test(\"T1: an unrelated Bash call does not claim unclaimed deadlines\", () => {
+  const b = box();
+  const deadline = b.plant({ session: null });
+  b.post();
+  const stored = JSON.parse(fs.readFileSync(path.join(b.root, "'`.harness-guard/deadlines/${deadline.id}.json`), "utf8"));
+  expect(stored.session).toBeNull();
+});
+
+'"'''+s[i:]
+needle='test(\"T5: crossing multiple marks'
+i=s.index(needle)
+s=s[:i]+'''test(\"T5: the injected clock reaches time-up exactly at the deadline\", () => {
+  const b = box();
+  b.plant();
+  b.at(10);
+  expect(context(b.post())).toContain(\"harness-guard time is up\");
+});
+
+'''+s[i:]
+p.write_text(s)
+PY" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+exec
+/bin/bash -lc 'bun test test/round10-deadline.test.ts' in /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard
+exec
+/bin/bash -lc './node_modules/.bin/tsgo --noEmit -p .' in /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard
+ succeeded in 85ms:
+ exited 1 in 3439ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/round10-deadline.test.ts:
+106 |   const result = b.cli("deadline", "start", "--minutes", "10", "--run", "runs/task", "--marks", "80,50");
+107 |   expect(result.status).toBe(0);
+108 |   const [file] = fs.readdirSync(path.join(b.root, ".harness-guard/deadlines"));
+109 |   const deadline: Deadline = JSON.parse(fs.readFileSync(path.join(b.root, ".harness-guard/deadlines", file!), "utf8"));
+110 |   expect(deadline).toMatchObject({ minutes: 10, run: "runs/task", marks: [50, 80, 100], session: null });
+111 |   expect(result.stdout).toContain(deadline.id);
+                              ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "D-a43e3351"
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:111:25)
+(fail) T1: CLI start prints its id and local deadline time and writes the requested settings [25.33ms]
+172 |   const b = box();
+173 |   // These wide intervals make real-clock CLI execution deterministic without sleeping.
+174 |   b.plant({ start: "2000-01-01T00:00:00.000Z" });
+175 |   const expired = b.cli("deadline", "status", "--session", "s");
+176 |   expect(expired.status).toBe(1);
+177 |   expect(expired.stdout).toMatch(/time is up, .* min over/);
+                               ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /time is up, .* min over/
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:177:26)
+(fail) T2 Fails-if: CLI status says time remains after expiry; live status shows used, percent, left and local deadline [29.12ms]
+188 |   const deadline = b.plant({ start: started.toISOString(), minutes: 0.05 });
+189 |   const result = b.cli("deadline", "wait");
+190 |   expect(result.error).toBeUndefined();
+191 |   expect(result.status).toBe(0);
+192 |   expect(env.now().getTime()).toBeGreaterThanOrEqual(Date.parse(deadline.start) + deadline.minutes * 60_000);
+193 |   expect(result.stdout).toMatch(/time is up|used .* of 0\.05 min/);
+                              ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /time is up|used .* of 0\.05 min/
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:193:25)
+(fail) T3 Fails-if: CLI wait returns before the deadline [3007.77ms]
+230 |   const secret = "RAW_STDOUT_MUST_STAY_PRIVATE";
+231 |   progress(b, "worker", `stdout: ${secret}\n` + line(1, "A", "done", `piece complete; stdout: ${secret}`) + `prompt: ${secret}\n`);
+232 |   b.plant({ run: "runs/task", start: "2000-01-01T00:00:00.000Z" });
+233 |   const result = b.cli("deadline", "status", "--session", "s");
+234 |   expect(result.status).toBe(1);
+235 |   expect(result.stdout).toMatch(/worker: 1\/1 pieces, last A done .* min ago/);
+                              ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /worker: 1\/1 pieces, last A done .* min ago/
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:235:25)
+(fail) T4 Fails-if: status crashes on malformed progress or prints raw progress text [24.51ms]
+248 |     expect(context(b.post(payload))).not.toContain("harness-guard time:");
+249 |     for (const [minutes, mark] of [[5.1, 50], [8.1, 80]] as const) {
+250 |       b.at(minutes);
+251 |       const text = context(b.post(payload));
+252 |       expect(text).toContain("harness-guard time:");
+253 |       expect(text).toMatch(/of 10 min used \(.*%\), .* left — deadline \d{2}:\d{2}/);
+                         ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /of 10 min used \(.*%\), .* left \u2014 deadline \d{2}:\d{2}/
+Received: "harness-guard time: used 5 of 10 min (51%), 5 left, deadline 02:10"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:253:20)
+(fail) T5 Fails-if: PostToolUse misses a passed mark or announces it twice [6.54ms]
+261 |     const b = box();
+262 |     const deadline = b.plant();
+263 |     b.at(11);
+264 |     for (let i = 0; i < 2; i++) {
+265 |       const text = context(b.post({ hook_event_name: event, ...(event === "PostToolUseFailure" ? { exit_code: 1, error: "exit 1" } : {}) }));
+266 |       expect(text).toMatch(/harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./);
+                         ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./
+Received: "harness-guard time is up (1 min over (deadline 02:10)): stop trying, finish the report, and put what is open to the owner."
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:266:20)
+(fail) T5 Fails-if: PostToolUse fails to say time is up on every call after expiry [4.69ms]
+248 |     expect(context(b.post(payload))).not.toContain("harness-guard time:");
+249 |     for (const [minutes, mark] of [[5.1, 50], [8.1, 80]] as const) {
+250 |       b.at(minutes);
+251 |       const text = context(b.post(payload));
+252 |       expect(text).toContain("harness-guard time:");
+253 |       expect(text).toMatch(/of 10 min used \(.*%\), .* left — deadline \d{2}:\d{2}/);
+                         ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /of 10 min used \(.*%\), .* left \u2014 deadline \d{2}:\d{2}/
+Received: "harness-guard warning W-ca2539eb: a command exited non-zero, and the guard cannot tell whether that was a mistake. Decide before you stop: log it as a failure or dismiss it with a one-line reason (`cli.ts warning W-ca2539eb fail|dismiss --reason \"…\"`).\nharness-guard time: used 5 of 10 min (51%), 5 left, deadline 02:10"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:253:20)
+(fail) T5 Fails-if: PostToolUseFailure misses a passed mark or announces it twice [6.52ms]
+261 |     const b = box();
+262 |     const deadline = b.plant();
+263 |     b.at(11);
+264 |     for (let i = 0; i < 2; i++) {
+265 |       const text = context(b.post({ hook_event_name: event, ...(event === "PostToolUseFailure" ? { exit_code: 1, error: "exit 1" } : {}) }));
+266 |       expect(text).toMatch(/harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./);
+                         ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./
+Received: "harness-guard warning W-dcf7cea3: a command exited non-zero, and the guard cannot tell whether that was a mistake. Decide before you stop: log it as a failure or dismiss it with a one-line reason (`cli.ts warning W-dcf7cea3 fail|dismiss --reason \"…\"`).\nharness-guard time is up (1 min over (deadline 02:10)): stop trying, finish the report, and put what is open to the owner."
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:266:20)
+(fail) T5 Fails-if: PostToolUseFailure fails to say time is up on every call after expiry [4.71ms]
+
+ 31 pass
+ 8 fail
+ 99 expect() calls
+Ran 39 tests across 1 file. [3.51s]
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('.claude/skills/workflow-design/guard/test/round10-deadline.test.ts')
+s=p.read_text()
+s=s.replace('test(\"T2 Fails-if: CLI status says time remains after expiry; live status shows used, percent, left and local deadline\", () => {', 'test(\"T2 Fails-if: CLI status says time remains after expiry\", () => {')
+s=s.replace('  // These wide intervals make real-clock CLI execution deterministic without sleeping.\\n', '')
+s=s.replace('  b.plant({ start: \"2099-01-01T00:00:00.000Z\", minutes: 100 });', '''});
+
+test(\"T2: live CLI status shows used, percent, left and local deadline\", () => {
+  const b = box();
+  // A wide interval keeps this CLI test independent of execution time without sleeping.
+  b.plant({ start: \"2000-01-01T00:00:00.000Z\", minutes: 100_000_000 });''')
+s=s.replace('of 100 min \\\\(.*%\\\\)', 'of 100000000 min \\\\(.*%\\\\)')
+s=s.replace('      expect(text).toMatch(/of 10 min used \\\\(.*%\\\\), .* left — deadline \\\\d{2}:\\\\d{2}/);\\n', '')
+s=s.replace('      expect(text).toMatch(/harness-guard time is up \\\\(.* min over\\\\): stop trying, finish the report, and put what is open to the owner\\\\./);', '''      expect(text).toContain(\"harness-guard time is up\");
+      expect(text).toContain(\"stop trying, finish the report, and put what is open to the owner.\");''')
+i=s.index('test(\"T5: the injected clock')
+s=s[:i]+'''test(\"T5: mark reminder follows the specified time context format\", () => {
+  const b = box();
+  b.plant();
+  b.at(6);
+  expect(context(b.post())).toMatch(/harness-guard time: .* of 10 min used \\\\(.*%\\\\), .* left — deadline \\\\d{2}:\\\\d{2}/);
+});
+
+test(\"T5: expired reminder follows the specified time-up format\", () => {
+  const b = box();
+  b.plant();
+  b.at(11);
+  expect(context(b.post())).toMatch(/harness-guard time is up \\\\(.* min over\\\\): stop trying, finish the report, and put what is open to the owner\\\\./);
+});
+
+'''+s[i:]
+p.write_text(s)
+PY" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+exec
+/bin/bash -lc 'bun test test/round10-deadline.test.ts' in /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard
+exec
+/bin/bash -lc './node_modules/.bin/tsgo --noEmit -p .' in /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard
+ succeeded in 91ms:
+ exited 1 in 3433ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/round10-deadline.test.ts:
+106 |   const result = b.cli("deadline", "start", "--minutes", "10", "--run", "runs/task", "--marks", "80,50");
+107 |   expect(result.status).toBe(0);
+108 |   const [file] = fs.readdirSync(path.join(b.root, ".harness-guard/deadlines"));
+109 |   const deadline: Deadline = JSON.parse(fs.readFileSync(path.join(b.root, ".harness-guard/deadlines", file!), "utf8"));
+110 |   expect(deadline).toMatchObject({ minutes: 10, run: "runs/task", marks: [50, 80, 100], session: null });
+111 |   expect(result.stdout).toContain(deadline.id);
+                              ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "D-9e6eef82"
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:111:25)
+(fail) T1: CLI start prints its id and local deadline time and writes the requested settings [24.72ms]
+171 | test("T2 Fails-if: CLI status says time remains after expiry", () => {
+172 |   const b = box();
+173 |   b.plant({ start: "2000-01-01T00:00:00.000Z" });
+174 |   const expired = b.cli("deadline", "status", "--session", "s");
+175 |   expect(expired.status).toBe(1);
+176 |   expect(expired.stdout).toMatch(/time is up, .* min over/);
+                               ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /time is up, .* min over/
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:176:26)
+(fail) T2 Fails-if: CLI status says time remains after expiry [23.77ms]
+180 |   const b = box();
+181 |   // A wide interval keeps this CLI test independent of execution time without sleeping.
+182 |   b.plant({ start: "2000-01-01T00:00:00.000Z", minutes: 100_000_000 });
+183 |   const live = b.cli("deadline", "status", "--session", "s");
+184 |   expect(live.status).toBe(0);
+185 |   expect(live.stdout).toMatch(/used .* of 100000000 min \(.*%\), .* left, deadline \d{2}:\d{2}/);
+                            ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /used .* of 100000000 min \(.*%\), .* left, deadline \d{2}:\d{2}/
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:185:23)
+(fail) T2: live CLI status shows used, percent, left and local deadline [23.52ms]
+192 |   const deadline = b.plant({ start: started.toISOString(), minutes: 0.05 });
+193 |   const result = b.cli("deadline", "wait");
+194 |   expect(result.error).toBeUndefined();
+195 |   expect(result.status).toBe(0);
+196 |   expect(env.now().getTime()).toBeGreaterThanOrEqual(Date.parse(deadline.start) + deadline.minutes * 60_000);
+197 |   expect(result.stdout).toMatch(/time is up|used .* of 0\.05 min/);
+                              ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /time is up|used .* of 0\.05 min/
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:197:25)
+(fail) T3 Fails-if: CLI wait returns before the deadline [3006.78ms]
+234 |   const secret = "RAW_STDOUT_MUST_STAY_PRIVATE";
+235 |   progress(b, "worker", `stdout: ${secret}\n` + line(1, "A", "done", `piece complete; stdout: ${secret}`) + `prompt: ${secret}\n`);
+236 |   b.plant({ run: "runs/task", start: "2000-01-01T00:00:00.000Z" });
+237 |   const result = b.cli("deadline", "status", "--session", "s");
+238 |   expect(result.status).toBe(1);
+239 |   expect(result.stdout).toMatch(/worker: 1\/1 pieces, last A done .* min ago/);
+                              ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /worker: 1\/1 pieces, last A done .* min ago/
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:239:25)
+(fail) T4 Fails-if: status crashes on malformed progress or prints raw progress text [23.42ms]
+267 |     for (let i = 0; i < 2; i++) {
+268 |       const text = context(b.post({ hook_event_name: event, ...(event === "PostToolUseFailure" ? { exit_code: 1, error: "exit 1" } : {}) }));
+269 |       expect(text).toContain("harness-guard time is up");
+270 |       expect(text).toContain("stop trying, finish the report, and put what is open to the owner.");
+271 |     }
+272 |     expect(b.raised(`deadline:${deadline.id}:100`)).toHaveLength(1);
+                                                          ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:272:53)
+(fail) T5 Fails-if: PostToolUse fails to say time is up on every call after expiry [5.04ms]
+267 |     for (let i = 0; i < 2; i++) {
+268 |       const text = context(b.post({ hook_event_name: event, ...(event === "PostToolUseFailure" ? { exit_code: 1, error: "exit 1" } : {}) }));
+269 |       expect(text).toContain("harness-guard time is up");
+270 |       expect(text).toContain("stop trying, finish the report, and put what is open to the owner.");
+271 |     }
+272 |     expect(b.raised(`deadline:${deadline.id}:100`)).toHaveLength(1);
+                                                          ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:272:53)
+(fail) T5 Fails-if: PostToolUseFailure fails to say time is up on every call after expiry [5.25ms]
+275 | 
+276 | test("T5: mark reminder follows the specified time context format", () => {
+277 |   const b = box();
+278 |   b.plant();
+279 |   b.at(6);
+280 |   expect(context(b.post())).toMatch(/harness-guard time: .* of 10 min used \(.*%\), .* left — deadline \d{2}:\d{2}/);
+                                  ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /harness-guard time: .* of 10 min used \(.*%\), .* left \u2014 deadline \d{2}:\d{2}/
+Received: "harness-guard time: used 6 of 10 min (60%), 4 left, deadline 02:10"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:280:29)
+(fail) T5: mark reminder follows the specified time context format [4.14ms]
+282 | 
+283 | test("T5: expired reminder follows the specified time-up format", () => {
+284 |   const b = box();
+285 |   b.plant();
+286 |   b.at(11);
+287 |   expect(context(b.post())).toMatch(/harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./);
+                                  ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./
+Received: "harness-guard time is up (1 min over (deadline 02:10)): stop trying, finish the report, and put what is open to the owner."
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:287:29)
+(fail) T5: expired reminder follows the specified time-up format [3.95ms]
+
+ 33 pass
+ 9 fail
+ 133 expect() calls
+Ran 42 tests across 1 file. [3.50s]
+
+codex
+The suite now has 42 tests: 33 pass and 9 fail; typechecking passes. The failures show empty CLI output, missing `raised` records for the 100% mark, and two reminder-format differences. The three-second wait reaches its deadline but fails the output assertion. I’ll record these findings and stop before 11:05.
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+import subprocess
+t=subprocess.check_output(['date','-Iseconds'],text=True).strip()
+p=Path('runs/20261016-time-monitor/nodes/tests-deadline.progress.md')
+with p.open('a') as f:
+ for piece,note in [
+ ('T1','authored CLI validation, persisted shape, marks and claiming tests'),
+ ('T2','authored injected-clock selection and CLI status tests'),
+ ('T3','authored one three-second CLI wait test; elapsed assertion passes, output fails'),
+ ('T4','authored progress counting, malformed-input and private-output tests'),
+ ('T5','authored both hook events, marks, expiry, isolation and joined-context tests'),
+ ('T6','authored once-per-session time ask and K2 joined-reminder tests')]:
+  f.write(f'- {t} · {piece} · done · {note}\\n')
+ f.write(f'- {t} · checks · start · final acceptance run, typecheck and result\\n')
+PY" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+exec
+/bin/bash -lc 'bun test test/round10-deadline.test.ts' in /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard
+exec
+/bin/bash -lc './node_modules/.bin/tsgo --noEmit -p .' in /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard
+exec
+/bin/bash -lc "git status --short -- .claude/skills/workflow-design/guard/test/round10-deadline.test.ts runs/20261016-time-monitor/nodes/tests-deadline.progress.md runs/20261016-time-monitor/nodes/tests-deadline.result.md; rg -n '"'^'"\\- \\*\\*T[1-6]|"'^Fails-if: a deadline|Types in'"' .claude/skills/workflow-design/guard/SPEC.md" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+?? .claude/skills/workflow-design/guard/test/round10-deadline.test.ts
+?? runs/20261016-time-monitor/nodes/tests-deadline.progress.md
+538:The agent cannot feel time pass; the guard tells it. Types in `src/types.ts`: `Deadline`, `ProgressLine`. Module
+541:- **T1 Deadline file.** `cli.ts deadline start --minutes N [--run DIR] [--marks 50,80,100]` writes
+548:- **T2 Status (way 1).** `cli.ts deadline status [--session S]` prints `used <m> of <N> min (<p>%), <left> left,
+551:- **T3 Wait (way 2).** `cli.ts deadline wait [--mark P]` sleeps until the deadline (or until mark P), then prints the
+553:- **T4 Progress.** A worker appends one line per small piece to `<run>/nodes/<node>.progress.md`:
+557:- **T5 Reminders (way 3).** PostToolUse and PostToolUseFailure, for the session's deadline: at the first call after
+562:- **T6 Ask the time.** UserPromptSubmit, when the session has no deadline and has not been asked (`raised` id
+567:Fails-if: a deadline start with no or non-positive minutes is accepted; status says time is left after the deadline;
+
+ succeeded in 130ms:
+ exited 1 in 3584ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/round10-deadline.test.ts:
+106 |   const result = b.cli("deadline", "start", "--minutes", "10", "--run", "runs/task", "--marks", "80,50");
+107 |   expect(result.status).toBe(0);
+108 |   const [file] = fs.readdirSync(path.join(b.root, ".harness-guard/deadlines"));
+109 |   const deadline: Deadline = JSON.parse(fs.readFileSync(path.join(b.root, ".harness-guard/deadlines", file!), "utf8"));
+110 |   expect(deadline).toMatchObject({ minutes: 10, run: "runs/task", marks: [50, 80, 100], session: null });
+111 |   expect(result.stdout).toContain(deadline.id);
+                              ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "D-0499df96"
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:111:25)
+(fail) T1: CLI start prints its id and local deadline time and writes the requested settings [27.35ms]
+171 | test("T2 Fails-if: CLI status says time remains after expiry", () => {
+172 |   const b = box();
+173 |   b.plant({ start: "2000-01-01T00:00:00.000Z" });
+174 |   const expired = b.cli("deadline", "status", "--session", "s");
+175 |   expect(expired.status).toBe(1);
+176 |   expect(expired.stdout).toMatch(/time is up, .* min over/);
+                               ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /time is up, .* min over/
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:176:26)
+(fail) T2 Fails-if: CLI status says time remains after expiry [26.50ms]
+180 |   const b = box();
+181 |   // A wide interval keeps this CLI test independent of execution time without sleeping.
+182 |   b.plant({ start: "2000-01-01T00:00:00.000Z", minutes: 100_000_000 });
+183 |   const live = b.cli("deadline", "status", "--session", "s");
+184 |   expect(live.status).toBe(0);
+185 |   expect(live.stdout).toMatch(/used .* of 100000000 min \(.*%\), .* left, deadline \d{2}:\d{2}/);
+                            ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /used .* of 100000000 min \(.*%\), .* left, deadline \d{2}:\d{2}/
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:185:23)
+(fail) T2: live CLI status shows used, percent, left and local deadline [27.44ms]
+192 |   const deadline = b.plant({ start: started.toISOString(), minutes: 0.05 });
+193 |   const result = b.cli("deadline", "wait");
+194 |   expect(result.error).toBeUndefined();
+195 |   expect(result.status).toBe(0);
+196 |   expect(env.now().getTime()).toBeGreaterThanOrEqual(Date.parse(deadline.start) + deadline.minutes * 60_000);
+197 |   expect(result.stdout).toMatch(/time is up|used .* of 0\.05 min/);
+                              ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /time is up|used .* of 0\.05 min/
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:197:25)
+(fail) T3 Fails-if: CLI wait returns before the deadline [3007.93ms]
+234 |   const secret = "RAW_STDOUT_MUST_STAY_PRIVATE";
+235 |   progress(b, "worker", `stdout: ${secret}\n` + line(1, "A", "done", `piece complete; stdout: ${secret}`) + `prompt: ${secret}\n`);
+236 |   b.plant({ run: "runs/task", start: "2000-01-01T00:00:00.000Z" });
+237 |   const result = b.cli("deadline", "status", "--session", "s");
+238 |   expect(result.status).toBe(1);
+239 |   expect(result.stdout).toMatch(/worker: 1\/1 pieces, last A done .* min ago/);
+                              ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /worker: 1\/1 pieces, last A done .* min ago/
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:239:25)
+(fail) T4 Fails-if: status crashes on malformed progress or prints raw progress text [33.33ms]
+267 |     for (let i = 0; i < 2; i++) {
+268 |       const text = context(b.post({ hook_event_name: event, ...(event === "PostToolUseFailure" ? { exit_code: 1, error: "exit 1" } : {}) }));
+269 |       expect(text).toContain("harness-guard time is up");
+270 |       expect(text).toContain("stop trying, finish the report, and put what is open to the owner.");
+271 |     }
+272 |     expect(b.raised(`deadline:${deadline.id}:100`)).toHaveLength(1);
+                                                          ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:272:53)
+(fail) T5 Fails-if: PostToolUse fails to say time is up on every call after expiry [8.32ms]
+267 |     for (let i = 0; i < 2; i++) {
+268 |       const text = context(b.post({ hook_event_name: event, ...(event === "PostToolUseFailure" ? { exit_code: 1, error: "exit 1" } : {}) }));
+269 |       expect(text).toContain("harness-guard time is up");
+270 |       expect(text).toContain("stop trying, finish the report, and put what is open to the owner.");
+271 |     }
+272 |     expect(b.raised(`deadline:${deadline.id}:100`)).toHaveLength(1);
+                                                          ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:272:53)
+(fail) T5 Fails-if: PostToolUseFailure fails to say time is up on every call after expiry [8.31ms]
+275 | 
+276 | test("T5: mark reminder follows the specified time context format", () => {
+277 |   const b = box();
+278 |   b.plant();
+279 |   b.at(6);
+280 |   expect(context(b.post())).toMatch(/harness-guard time: .* of 10 min used \(.*%\), .* left — deadline \d{2}:\d{2}/);
+                                  ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /harness-guard time: .* of 10 min used \(.*%\), .* left \u2014 deadline \d{2}:\d{2}/
+Received: "harness-guard time: used 6 of 10 min (60%), 4 left, deadline 02:10"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:280:29)
+(fail) T5: mark reminder follows the specified time context format [6.01ms]
+282 | 
+283 | test("T5: expired reminder follows the specified time-up format", () => {
+284 |   const b = box();
+285 |   b.plant();
+286 |   b.at(11);
+287 |   expect(context(b.post())).toMatch(/harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./);
+                                  ^
+error: expect(received).toMatch(expected)
+
+Expected substring or pattern: /harness-guard time is up \(.* min over\): stop trying, finish the report, and put what is open to the owner\./
+Received: "harness-guard time is up (1 min over (deadline 02:10)): stop trying, finish the report, and put what is open to the owner."
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:287:29)
+(fail) T5: expired reminder follows the specified time-up format [7.69ms]
+
+ 33 pass
+ 9 fail
+ 133 expect() calls
+Ran 42 tests across 1 file. [3.62s]
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+import subprocess
+stamp=subprocess.check_output(['date','-Iseconds'],text=True).strip()
+result=Path('runs/20261016-time-monitor/nodes/tests-deadline.result.md')
+result.write_text(f'''status: done
+Wrote 42 Round 10 acceptance tests covering every Fails-if clause; the final run has 33 passes and 9 failures against the concurrent implementation, with no type errors.
+
+Stopped at {stamp}, before the 11:05 +0800 limit; no commit, other AI engine, or background command was used.
+
+Files:
+- "'`.claude/skills/workflow-design/guard/test/round10-deadline.test.ts`
+- `runs/20261016-time-monitor/nodes/tests-deadline.progress.md`
+- `runs/20261016-time-monitor/nodes/tests-deadline.result.md`
+
+Commands and last lines (from `.claude/skills/workflow-design/guard`):
+
+```text
+$ bun test test/round10-deadline.test.ts
+ 33 pass
+ 9 fail
+ 133 expect() calls
+Ran 42 tests across 1 file. [3.62s]
+exit: 1
+
+$ ./node_modules/.bin/tsgo --noEmit -p .
+(no output)
+exit: 0
+```
+
+Type errors: none in the final check. An initial test.each argument-shape error in my test was corrected before the final run. An initial test command issued from the repository root matched no files; the required command was subsequently run from the guard directory.
+
+CONTRADICTS — observed output versus SPEC (implementation files were neither read nor changed):
+- SPEC.md:543, T1: “prints the id and the deadline'"'s local time.” CLI start exits 0 and persists the settings, but captured stdout is empty (1 failing test).
+- SPEC.md:548–550, T2: status “prints” the specified status line. Expired status exits 1 and live status exits 0, but both have empty stdout (2 failing tests).
+- SPEC.md:551–552, T3: wait “then prints the status line and exits 0.” The three-second wait reaches the deadline and exits 0, but stdout is empty (1 failing test); early return was not observed.
+- SPEC.md:556, T4: “Status and the reminders show” worker summary lines. Status with malformed lines and a valid planted worker event exits 1 without throwing, but stdout is empty, so no worker line is displayed (1 failing test).
+- SPEC.md:557–560, T5: “once per mark ("'`raised` id `deadline:<id>:<mark>`)”. Neither hook event writes the expected 100% raised marker after two post-expiry calls, although both calls do say time is up (2 failing tests).
+- SPEC.md:558–559, T5: expected mark context is `harness-guard time: <m> of <N> min used (<p>%), <left> left — deadline <HH:MM>`. Observed: `harness-guard time: used 6 of 10 min (60%), 4 left, deadline 02:10` (1 failing test).
+- SPEC.md:560–561, T5: expected expiry prefix is `harness-guard time is up (<m> min over):`. Observed: `harness-guard time is up (1 min over (deadline 02:10)):` (1 failing test).
+
+Coverage: T1 invalid/missing minutes and marks, storage, default marks, sorting, root-relative run and session claiming; T2 selection, session isolation and status exits/output; T3 elapsed wait; T4 distinct pieces, latest state, malformed lines, empty files and raw-content exclusion; T5 passed marks, deduplication, both hook events, 100% boundary, repeated expiry, session isolation, five-worker cap and joined warning context; T6 once-per-session asks, deadline suppression and joined K2 reminder.
+
+These checks were authored by this worker from the SPEC and the permitted examples/types; they do not establish broader guard compatibility. All hook/module times are injected, and the only real-time wait is the one three-second CLI test. The report reflects the final foreground run above; another worker may still be changing the implementation.
+'"''')
+progress=Path('runs/20261016-time-monitor/nodes/tests-deadline.progress.md')
+with progress.open('a') as f:
+ f.write(f'- {stamp} · checks · done · 42 tests: 33 pass, 9 implementation-output failures; typecheck exit 0; result written; stopped before 11:05 +0800\\n')
+print(stamp)
+print(result)
+PY
+" in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+2026-10-16T10:26:05+08:00
+runs/20261016-time-monitor/nodes/tests-deadline.result.md
+
+codex
+Wrote 42 acceptance tests: **33 pass, 9 fail** against the concurrent implementation. Typechecking passes.
+
+Failures and SPEC references are recorded in the [result file](/home/smoke01/dev/ancient-games/runs/20261016-time-monitor/nodes/tests-deadline.result.md).
+
+Stopped at 10:26 +0800, before the deadline. No commit; reserved implementation files were neither read nor changed.
+tokens used
+62,267
+Wrote 42 acceptance tests: **33 pass, 9 fail** against the concurrent implementation. Typechecking passes.
+
+Failures and SPEC references are recorded in the [result file](/home/smoke01/dev/ancient-games/runs/20261016-time-monitor/nodes/tests-deadline.result.md).
+
+Stopped at 10:26 +0800, before the deadline. No commit; reserved implementation files were neither read nor changed.

@@ -13,6 +13,22 @@ with each step citing its rule, is what makes an answer checkable.
 
 {question}
 
+## How we work — the pattern you adapt and improve
+
+EJ's runs follow one pattern. Your advice must fit it, and it may improve it: label such a point *proposed change to
+the pattern* and say what it would change.
+
+- **The time is set at the start.** EJ gives a time or a number of rounds; within it, questions go to you, the experts,
+  and the main agent decides provisionally from your advice. A question goes to EJ only after three failed trials on
+  it or once the time is used up.
+- **Small pieces, timestamped.** Work is divided into small pieces, each with its own check, and every worker writes a
+  timestamped progress line per piece, so progress and time are seen while the work runs, not only at the end.
+- **Vision and use cases first.** An option that serves no use case or vision line is wrong, however good.
+- **Research and data, not recall.** Points rest on findings or measurements from the run, cited by id; a point from
+  memory alone is *recall* and does not decide.
+- **Workflows when possible.** Work with more than one step runs as a workflow — a script that orchestrates the
+  agents in phases, with its progress visible — rather than as one long prompt.
+
 ## How to answer
 
 1. **Decide through your rules.** Every step names the item it uses: "my #4". A step with no item is your own

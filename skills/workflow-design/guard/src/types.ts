@@ -320,3 +320,23 @@ export interface DoctorReport {
   harnesses: DoctorHarness[];
   health: { ok: boolean; summary: string } | null;
 }
+
+// Round 10 (T1): a time limit the owner gave, as the guard keeps it.
+export interface Deadline {
+  id: string; // D-xxxxxxxx
+  start: string; // ISO 8601
+  minutes: number;
+  run: string | null; // root-relative run folder, for the workers' progress files
+  marks: number[]; // percent, ascending, ends with 100
+  session: string | null; // claimed by the hook of the call that started it
+}
+
+// Round 10 (T4): one worker's progress file, summarised.
+export interface ProgressSummary {
+  node: string;
+  done: number;
+  total: number;
+  last: { time: string; piece: string; state: string } | null;
+  ageMinutes: number | null;
+  badLines: number;
+}
