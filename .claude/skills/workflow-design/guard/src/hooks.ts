@@ -610,12 +610,13 @@ function criteriaStep(root: string, session: string, raised: Set<string>, env: H
   if (files.length === 0) return null;
 
   const records = readJournal(root).records;
-  // What this session's journal already holds: a criterion's failure is written once per id, a late one once per file.
+  // What this session's journal already holds: a criterion's failure is written once per id and file (its evidence is
+  // the file: one session's C4 in one file never hides its C4 in another), a late one once per file.
   const checks = new Set<string>();
   const lateFiles = new Set<string>();
   for (const record of records) {
     if ((record.kind !== "failure" && record.kind !== "warning") || record.session !== session) continue;
-    if (record.kind === "failure") checks.add(record.check);
+    if (record.kind === "failure") checks.add(`${record.check} ${record.evidence}`);
     if (record.check === LATE_CHECK) lateFiles.add(record.evidence);
   }
   const workTimes = records
@@ -693,9 +694,9 @@ function criteriaStep(root: string, session: string, raised: Set<string>, env: H
       if (!isEntry(item) || item.met !== false) continue;
       const id = typeof item.id === "string" ? item.id.trim() : "";
       const check = `${CRITERION_CHECK}${id}`;
-      if (id === "" || checks.has(check)) continue;
+      if (id === "" || checks.has(`${check} ${file}`)) continue;
       criteriaFailure(root, session, env, file, check, "met", "not met", "a criterion of the task was not met");
-      checks.add(check);
+      checks.add(`${check} ${file}`);
       wrote = true;
     }
   }

@@ -225,6 +225,19 @@ describe("K2 Stop criteria validation", () => {
     expect(failures("criterion:C1")).toHaveLength(1);
   });
 
+  test("the same unmet id in two criteria files of one session gets a failure for each file", () => {
+    const second = "runs/task/criteria-2.yaml";
+    criteria([{ id: "C1", text: secret, met: false, evidence: "checked" }]);
+    touch();
+    stop();
+    const [first] = failures("criterion:C1");
+    stop(`see ${answer([first!.id])}`); // the first file's failure is answered, as it was in the session that found this
+    criteria([{ id: "C1", text: secret, met: false, evidence: "checked" }], second);
+    touch(second);
+    stop();
+    expect(failures("criterion:C1").map((r) => r.evidence).sort()).toEqual([file, second].sort());
+  });
+
   test("each unmet id gets one failure even with repeated touch records", () => {
     criteria(["C1", "C2"].map((id) => ({ id, text: secret, met: false, evidence: "checked" })));
     touch(); touch(); stop(); stop();
