@@ -42,3 +42,18 @@ Options:
 1. [rule] After changing a function's signature, grep the tests for the name (`start`, `fake_start`) and run those before anything else. evidence: one grep finds `tests/test_six_experts_codex_quota.py`.
 2. [tool] Pass optional parameters by keyword and only when set (`**seat_model(...)`), so existing callers and fakes keep their shape — done. evidence: 31/31 after the change.
 3. [check] The runner's tests include one that calls `start` through a strict 8-argument fake, so a widened signature fails there first. evidence: the quota tests did exactly that, by accident.
+
+## F-8ac06aae — the second of two background subshells never started
+
+Whys:
+1. Why was a failure logged? The background command ran two `( … ) &` subshells and `wait`; only the first (Dave with 6 categories) ran — the second left no log file and no run folder, and the final `cat` of its progress file exited 1.
+2. Why did the second leave nothing? Its redirect to `dave-4plus2.log` never happened, so the subshell never began — not established why (the same command shape ran the first one).
+3. Why use two `&` subshells at all? To run both Dave variants at once; the guard denies `&` only for opencode, so it was allowed.
+4. Why was it not caught until the end? The command reported only at its end, and its exit came from a `cat` of a file the missing run should have made.
+Source: instruction — the main agent's choice of two `&` subshells inside one background Bash call instead of two separate background calls.
+Category: own-work
+Root cause: a fragile command shape (parallel subshells inside one backgrounded call) whose partial start was visible only through a missing file; the exact cause of the non-start was not established.
+Options:
+1. [rule] Run each engine call as its own background Bash call, never as `&` subshells inside one. evidence: the rerun as its own call started at once.
+2. [check] The runner writes its progress file's first line before anything else, and the caller checks every expected progress file exists a minute after start. evidence: `progress-4plus2.md` was missing from the start.
+3. [tool] A guard trap that warns on `( … ) &` holding an engine runner, as it already denies `&` for opencode. evidence: `guard/data/traps.yaml` has the opencode-parallel trap.

@@ -613,3 +613,10 @@ Module `src/insight-index.ts`; categories are data in `data/insight-categories.y
 Fails-if: a section is missing from the index or listed twice; the index prints any whys, root-cause or option text;
 `show` prints a section that does not match, or misses one that does; a category rule with no matching section breaks
 the index.
+
+**Round 11, flags (Linus's scheme, run 20261016-six-experts):** a rule with `flag: true` is a flag, not a category:
+every matching flag is listed in a `flags` field (index column `flags`), and flags stack on any category; categories
+stay first-match. Flag rules may also test `engines: true` (the journal names an engine other than `none` for one of
+the section's ids) and `rootCause` (regexes over the Root cause line, never printed). `insight show --flag F` adds the
+flagged sections; `insight index|show --categories FILE` reads another scheme for a comparison. Fails-if: a flag
+replaces the category; a flag's root-cause text is printed; `--flag` misses a flagged section.

@@ -16,6 +16,7 @@ export interface IndexEntry {
   source: string; // the Source line's first word, or "-"
   optionKinds: string[];
   category: string; // the category id, or "-" when no rule places it
+  flags: string[]; // every flag rule that matches; flags stack on any category (Linus's scheme)
 }
 
 // A category is placed by the first rule that matches; categories are data (data/insight-categories.yaml).
@@ -26,6 +27,30 @@ export interface CategoryRule {
   checks?: string[]; // regexes over the failure's check
   kinds?: ("failure" | "great")[];
   titles?: string[]; // case-insensitive regexes over the section's heading (used to place it, never printed)
+  flag?: boolean; // a flag, not a category: every matching flag is added; categories stay first-match
+  engines?: boolean; // matches when the journal names an engine (not "none") for one of the section's ids
+  rootCause?: string[]; // case-insensitive regexes over the Root cause line (never printed)
+}
+
+// What a rule may look at besides the index fields: the heading, the root cause and the journal's engines.
+interface Evidence {
+  title: string;
+  rootCause: string;
+  engines: string[];
+}
+
+function ruleMatches(rule: CategoryRule, entry: Omit<IndexEntry, "category" | "flags">, ev: Evidence): boolean {
+  if (rule.kinds !== undefined && !rule.kinds.includes(entry.kind)) return false;
+  if (rule.sources !== undefined && !rule.sources.includes(entry.source)) return false;
+  if (rule.checks !== undefined && !entry.checks.some((check) => rule.checks!.some((re) => matches(re, check)))) return false;
+  if (rule.titles !== undefined && !rule.titles.some((re) => matches(re, ev.title, "i"))) return false;
+  if (rule.engines === true && !ev.engines.some((engine) => engine !== "" && engine !== "none")) return false;
+  if (rule.rootCause !== undefined && !rule.rootCause.some((re) => matches(re, ev.rootCause, "i"))) return false;
+  return true;
+}
+
+export function flagsOf(entry: Omit<IndexEntry, "category" | "flags">, rules: CategoryRule[], ev: Evidence): string[] {
+  return [...new Set(rules.filter((rule) => rule.flag === true && ruleMatches(rule, entry, ev)).map((rule) => rule.id))];
 }
 
 // The same heading rule as insight.ts, so the index and the sections it names never fall out of step (review #2).
@@ -48,21 +73,16 @@ function matches(re: string, text: string, flags = ""): boolean {
   }
 }
 
-export function categorize(entry: Omit<IndexEntry, "category">, rules: CategoryRule[], title = "", own: string | null = null): string {
+export function categorize(entry: Omit<IndexEntry, "category" | "flags">, rules: CategoryRule[], title = "", own: string | null = null,
+  ev: Evidence = { title, rootCause: "", engines: [] }): string {
+  const categories = rules.filter((rule) => rule.flag !== true);
   // The writer's own `Category:` line wins when it names a known category.
-  if (own !== null && rules.some((rule) => rule.id === own)) return own;
-  for (const rule of rules) {
-    if (rule.titles !== undefined && !rule.titles.some((re) => matches(re, title, "i"))) continue;
-    if (rule.kinds !== undefined && !rule.kinds.includes(entry.kind)) continue;
-    if (rule.sources !== undefined && !rule.sources.includes(entry.source)) continue;
-    if (rule.checks !== undefined && !entry.checks.some((check) => rule.checks!.some((re) => matches(re, check)))) continue;
-    return rule.id;
-  }
+  if (own !== null && categories.some((rule) => rule.id === own)) return own;
+  for (const rule of categories) if (ruleMatches(rule, entry, { ...ev, title })) return rule.id;
   return "-";
 }
 
-export function loadCategories(guardDir: string): CategoryRule[] {
-  const file = path.join(guardDir, "data", "insight-categories.yaml");
+export function loadCategories(guardDir: string, file = path.join(guardDir, "data", "insight-categories.yaml")): CategoryRule[] {
   try {
     const parsed = Bun.YAML.parse(fs.readFileSync(file, "utf8")) as { categories?: CategoryRule[] };
     return Array.isArray(parsed?.categories) ? parsed.categories : [];
@@ -73,7 +93,12 @@ export function loadCategories(guardDir: string): CategoryRule[] {
 
 export function insightIndex(root: string, rules: CategoryRule[]): IndexEntry[] {
   const checkOf = new Map<string, string>();
-  for (const record of readJournal(root).records) if (record.kind === "failure") checkOf.set(record.id, record.check);
+  const engineOf = new Map<string, string>();
+  for (const record of readJournal(root).records) {
+    if (record.kind !== "failure") continue;
+    checkOf.set(record.id, record.check);
+    engineOf.set(record.id, record.engine);
+  }
   const entries: IndexEntry[] = [];
   for (const file of findInsightFiles(root)) {
     // The project's insights: runs/<run>/insight*.md and the guard's own folder — not files nested deeper inside a
@@ -92,7 +117,7 @@ export function insightIndex(root: string, rules: CategoryRule[]): IndexEntry[] 
     sections.forEach((section, i) => {
       const head = heads[i] ?? { title: "", own: null };
       const kind = isGreatSection(section) ? "great" : "failure";
-      const base: Omit<IndexEntry, "category"> = {
+      const base: Omit<IndexEntry, "category" | "flags"> = {
         file,
         ids: section.ids,
         kind,
@@ -100,7 +125,8 @@ export function insightIndex(root: string, rules: CategoryRule[]): IndexEntry[] 
         source: firstWord(section.source),
         optionKinds: section.options.map((option) => (OPTION_KINDS.has(option.kind) ? option.kind : "-")),
       };
-      entries.push({ ...base, category: categorize(base, rules, head.title, head.own) });
+      const ev: Evidence = { title: head.title, rootCause: section.rootCause ?? "", engines: section.ids.map((id) => engineOf.get(id) ?? "") };
+      entries.push({ ...base, category: categorize(base, rules, head.title, head.own, ev), flags: flagsOf(base, rules, ev) });
     });
   }
   return entries;
@@ -126,16 +152,16 @@ function headings(text: string): { title: string; own: string | null }[] {
 }
 
 export function indexMarkdown(entries: IndexEntry[]): string {
-  const lines = ["| file | ids | kind | check | source | options | category |", "|---|---|---|---|---|---|---|"];
+  const lines = ["| file | ids | kind | check | source | options | category | flags |", "|---|---|---|---|---|---|---|---|"];
   for (const e of entries) {
-    lines.push(`| ${e.file} | ${e.ids.join(", ") || "-"} | ${e.kind} | ${e.checks.join(", ") || "-"} | ${e.source} | ${e.optionKinds.join(", ") || "-"} | ${e.category} |`);
+    lines.push(`| ${e.file} | ${e.ids.join(", ") || "-"} | ${e.kind} | ${e.checks.join(", ") || "-"} | ${e.source} | ${e.optionKinds.join(", ") || "-"} | ${e.category} | ${e.flags.join(", ") || "-"} |`);
   }
   return lines.join("\n");
 }
 
 // The whole text of each section that matches: by category, or by `<file>#<id>`. For an expert that loads insights.
-export function showSections(root: string, entries: IndexEntry[], want: { categories: string[]; refs: string[] }): string {
-  const chosen = entries.filter((e) => want.categories.includes(e.category)
+export function showSections(root: string, entries: IndexEntry[], want: { categories: string[]; refs: string[]; flags?: string[] }): string {
+  const chosen = entries.filter((e) => want.categories.includes(e.category) || (want.flags ?? []).some((f) => e.flags.includes(f))
     || want.refs.some((ref) => { const [file, id] = ref.split("#"); return e.file === file && (id === undefined || e.ids.includes(id)); }));
   const out: string[] = [];
   const byFile = new Map<string, IndexEntry[]>();

@@ -167,13 +167,14 @@ def guard_text(args: list[str], cwd: Path) -> str:
     return p.stdout if p.returncode == 0 else ""
 
 
-def insight_load(out: Path, categories: str | None, cwd: Path) -> str:
+def insight_load(out: Path, categories: str | None, cwd: Path, scheme: str | None = None) -> str:
     """Dave's insights (run 20261016-six-experts, D1): the index, then the named categories' sections, copied into the
     run folder so every engine can read them; the brief section that tells him to load and cite them."""
-    index = guard_text(["index"], cwd)
+    extra = ["--categories", scheme] if scheme else []  # another category scheme, for a comparison
+    index = guard_text(["index", *extra], cwd)
     (out / "seats" / "dave-insight-index.md").write_text(index or "(the guard gave no index)\n", encoding="utf-8")
     cats = [c.strip() for c in (categories or "").split(",") if c.strip()]
-    sections = guard_text(["show", *[x for c in cats for x in ("--category", c)]], cwd) if cats else ""
+    sections = guard_text(["show", *extra, *[x for c in cats for x in ("--category", c)]], cwd) if cats else ""
     (out / "seats" / "dave-insights.md").write_text(sections or "(no category named: choose from the index)\n",
                                                    encoding="utf-8")
     named = ", ".join(cats) if cats else "none — choose from the index"
@@ -236,7 +237,7 @@ def run(a) -> int:
         text = brief_t.format(name=name, list_path=lst, identity_path=ident, n_items=n_items(lst),
                               question=question.strip())
         if sid == INSIGHT_SEAT:
-            text += insight_load(out, a.insights, cwd)
+            text += insight_load(out, a.insights, cwd, getattr(a, "insight_scheme", None))
         brief.write_text(text, encoding="utf-8")
         jobs[sid] = {"expert": name, "engine": engine, "brief": brief}
     if (a.needs_web or a.needs_shell) and "fan-li" in jobs:
@@ -441,6 +442,8 @@ def main() -> int:
     r.add_argument("--timeout", type=int, default=1800, help="seconds per engine call")
     r.add_argument("--insights", help="the insight categories Dave loads, comma-separated (e.g. spec,own-work); "
                                       "with none named he chooses from the index")
+    r.add_argument("--insight-scheme", help="a categories file other than guard/data/insight-categories.yaml, for a "
+                                           "comparison of category schemes")
     r.add_argument("--progress", help="append a timestamped line per expert start and end to this file "
                                       "(e.g. runs/<run>/nodes/experts.progress.md)")
     r.add_argument("--only", help="comma-separated ids to run (e.g. dave or linus,dave); with --out, adds them to an "

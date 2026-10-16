@@ -118,6 +118,7 @@ test("P1 Fails-if: a section is missing from the index or listed twice — every
     source: "instruction",
     optionKinds: ["rule", "check"],
     category: expect.any(String),
+    flags: expect.any(Array), // Linus's scheme added flags (COO)
   });
   const second = entries.find((e) => e.ids.includes("F-2b3c4d5e"))!;
   expect(second.checks).toEqual(["R12.2-command-error"]);
@@ -297,7 +298,7 @@ test("P6 I1: insight index --json gives one object per section, with the file, i
   expect(parsed.sections.map((entry) => entry.file)).toContain("runs/x/insight.md");
   for (const entry of parsed.sections) {
     expect(Object.keys(entry).sort())
-      .toEqual(["category", "checks", "file", "ids", "kind", "optionKinds", "source"]);
+      .toEqual(["category", "checks", "file", "flags", "ids", "kind", "optionKinds", "source"]);
   }
   expect(parsed.sections.find((entry) => entry.ids.includes("F-2b3c4d5e"))!.checks).toEqual(["R12.2-command-error"]);
 });
@@ -307,7 +308,7 @@ test("P6 I1: the markdown table has one header row and one row per section, with
   const result = b.cli("insight", "index");
   expect(result.status).toBe(0);
   const lines = result.stdout.trim().split("\n");
-  expect(lines[0]).toBe("| file | ids | kind | check | source | options | category |");
+  expect(lines[0]).toBe("| file | ids | kind | check | source | options | category | flags |");
   expect(lines).toHaveLength(5); // a header, a separator and one row per section
   expect(lines.some((line) => line.includes("R12.2-command-error"))).toBe(true);
   expect(lines.some((line) => line.includes("F-2b3c4d5e"))).toBe(true);
@@ -371,4 +372,30 @@ test("the index reads runs/<run>/insight*.md and .harness-guard/insights/, not i
   b.journal([]);
   const ids = rows(b).flatMap((e) => e.ids).sort();
   expect(ids).toEqual(["F-7a8b9c0d", "F-9c0d1e2f"]);
+});
+
+// COO, Linus's scheme (run 20261016-six-experts): flags stack on any category; categories stay first-match.
+test("flags: an engine flag from the journal's engine, an unconfirmed flag from the root cause; both stack", () => {
+  const b = box();
+  b.write("runs/x/insight.md",
+    `## F-a1b2c3d4 — an engine call returned nothing\n\n${sectionBody().replace(/Source: instruction/, "Source: tool").replace(/Root cause: .*/, "Root cause: not confirmed — the evidence is from an earlier run")}\n\n`
+    + `## F-b2c3d4e5 — a spec line\n\n${sectionBody()}\n`);
+  b.journal([b.failure({ id: "F-a1b2c3d4", check: "R12.1-missing-output", engine: "codex" }),
+    b.failure({ id: "F-b2c3d4e5", check: "R12.2-command-error", engine: "none" })]);
+  const rules: CategoryRule[] = [
+    { id: "tool", name: "t", sources: ["tool"] },
+    { id: "instruction", name: "i", sources: ["instruction"] },
+    { id: "engine", name: "an AI engine or its quota", flag: true, engines: true },
+    { id: "unconfirmed", name: "cause not proven", flag: true, rootCause: ["not confirmed", "unconfirmed", "not established"] },
+  ];
+  const entries = rows(b, rules);
+  const first = entries.find((e) => e.ids[0] === "F-a1b2c3d4")!;
+  const second = entries.find((e) => e.ids[0] === "F-b2c3d4e5")!;
+  expect(first.category).toBe("tool");
+  expect(first.flags.sort()).toEqual(["engine", "unconfirmed"]);
+  expect(second.category).toBe("instruction");
+  expect(second.flags).toEqual([]);
+  expect(indexMarkdown(entries)).toContain("engine, unconfirmed");
+  expect(indexMarkdown(entries)).not.toContain("earlier run");
+  expect(showSections(b.root, entries, { categories: [], refs: [], flags: ["engine"] })).toContain("F-a1b2c3d4");
 });

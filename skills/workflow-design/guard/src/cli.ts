@@ -287,19 +287,24 @@ function insight(args: string[]): number {
   // Round 11: `insight index` lists what was learned (no author text); `insight show` prints chosen sections whole.
   if (args[0] === "index" || args[0] === "show") {
     const root = guardRoot(process.cwd());
-    const entries = insightIndex(root, loadCategories(path.resolve(import.meta.dirname, "..")));
+    const categoriesFile = flagValue(args, "--categories");  // another scheme, for a comparison (default: data/insight-categories.yaml)
+    const guardDir = path.resolve(import.meta.dirname, "..");
+    const entries = insightIndex(root, categoriesFile === null ? loadCategories(guardDir) : loadCategories(guardDir, path.resolve(categoriesFile)));
     if (args[0] === "index") {
       out(args.includes("--json") ? JSON.stringify({ sections: entries }) : indexMarkdown(entries));
       return OK;
     }
     const categories: string[] = [];
+    const flags: string[] = [];
     const refs: string[] = [];
     for (let i = 1; i < args.length; i++) {
       if (args[i] === "--category") categories.push(args[++i] ?? usageError("--category needs a value"));
+      else if (args[i] === "--flag") flags.push(args[++i] ?? usageError("--flag needs a value"));
+      else if (args[i] === "--categories") i++;
       else refs.push(args[i]!);
     }
-    if (categories.length === 0 && refs.length === 0) usageError("insight show: --category C or <file>#<id>");
-    out(showSections(root, entries, { categories, refs }) || "no matching insight sections");
+    if (categories.length === 0 && flags.length === 0 && refs.length === 0) usageError("insight show: --category C, --flag F or <file>#<id>");
+    out(showSections(root, entries, { categories, refs, flags }) || "no matching insight sections");
     return OK;
   }
   const session = flagValue(args, "--session");
