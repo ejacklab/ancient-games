@@ -543,7 +543,7 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
      state file holds the last round and the agent checks it before each round); after that the hooks add a one-line
      clock after every tool call and a fuller block with the workers' progress at 50%, 80% and 100%, then time-up on
      every call (guard Round 10). `deadline status` is the check the agent can run; `deadline wait`, run in the
-     background, is a timer that returns at the deadline.
+     background, is a timer that returns at the deadline; `deadline end` stops the clock when the task finishes early.
    - **Workers report while they work.** Every brief tells the worker to divide its task into small pieces, list them
      first, and append a timestamped line as each starts and ends (`docs/workflow-templates/node-brief.md`, "Pieces and
      progress"); the four-experts runner writes the same lines per expert (`--progress`). The main agent sees progress

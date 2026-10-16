@@ -581,3 +581,7 @@ only when its id matches `D-xxxxxxxx` and its file name, its marks are 1–100 a
 (`--minutes` too large is a usage error); the 100% block with the workers is said once when the deadline is first seen
 passed, then time-up alone; the overrun is computed from the exact end; `install --print` watches every tool after a
 call (PostToolUse and PostToolUseFailure have no matcher) — an installed harness needs the new settings.
+
+**Round 10, `deadline end`:** `cli.ts deadline end [--session S]` writes `ended` (ISO) into the session's current
+deadline; an ended deadline is no deadline (no clock, no time-up); exit 2 when there is none. Fails-if: the clock or
+time-up continues after `deadline end`.

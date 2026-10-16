@@ -13,7 +13,7 @@ import { HARNESSES, installSnippet } from "./install.ts";
 import { JournalError, guardRoot, newFailureId, recordFailureFromArgs } from "./journal.ts";
 import { checkSection, findInsightFiles, openFailures, parseInsight } from "./insight.ts";
 import { WarningError, dismiss, settleAsFailure, warnings } from "./warnings.ts";
-import { DeadlineError, deadlineEnd, deadlineStatus, parseMarks, startDeadline } from "./deadline.ts";
+import { DeadlineError, deadlineEnd, deadlineStatus, endDeadline, parseMarks, startDeadline } from "./deadline.ts";
 import { PathError, checkPath, parents, skeleton } from "./paths.ts";
 import { rates, ratesMarkdown } from "./rates.ts";
 import { RegisterError, coverage, loadRegister, validateRegister } from "./register.ts";
@@ -36,7 +36,7 @@ const USAGE = [
   "  warning <W-id> fail|dismiss --reason TEXT   settle a warning the guard could not judge",
   "  warnings [--session S]          every warning and how it was settled",
   "  deadline start --minutes N [--run DIR] [--marks 50,80,100]   record the owner's time limit",
-  "  deadline status | wait [--mark P]   time used and left, workers' progress; wait = a background timer",
+  "  deadline status | wait [--mark P] | end   time used and left, workers' progress; wait = a background timer; end = the task is done",
   "  register <file>                 validate a register and report its coverage",
   "  install --print <harness>       print the hook settings for a harness",
   "  doctor [--health PATH] [--json] report where the guard is installed",
@@ -224,7 +224,16 @@ function deadlineCommand(args: string[]): number {
     out(deadlineStatus(root, session, new Date())!.line);
     return OK;
   }
-  return usageError("deadline: start --minutes N [--run DIR] [--marks 50,80,100] | status | wait [--mark P]");
+  if (verb === "end") {
+    const ended = endDeadline(root, flagValue(args, "--session"), new Date());
+    if (ended === null) {
+      process.stderr.write("no deadline to end\n");
+      return USAGE_EXIT;
+    }
+    out(`${ended.id} ended`);
+    return OK;
+  }
+  return usageError("deadline: start --minutes N [--run DIR] [--marks 50,80,100] | status | wait [--mark P] | end");
 }
 
 // ---- warnings (round 9) -----------------------------------------------------------------------------------------

@@ -51,7 +51,8 @@ function isDeadline(value: unknown): value is Deadline {
     && typeof d.minutes === "number" && d.minutes > 0
     && Number.isFinite(new Date(Date.parse(d.start) + d.minutes * 60_000).getTime())
     && Array.isArray(d.marks) && d.marks.every((m) => Number.isInteger(m) && (m as number) >= 1 && (m as number) <= 100)
-    && (d.session === null || typeof d.session === "string") && (d.run === null || typeof d.run === "string");
+    && (d.session === null || typeof d.session === "string") && (d.run === null || typeof d.run === "string")
+    && (d.ended === undefined || typeof d.ended === "string");
 }
 
 export function readDeadlines(root: string): Deadline[] {
@@ -87,9 +88,9 @@ export function claimDeadlines(root: string, session: string): number {
 
 const endOf = (d: Deadline): number => Date.parse(d.start) + d.minutes * 60_000;
 
-// The session's deadline: the newest one still running, else the latest one.
+// The session's deadline: the newest one still running, else the latest one; an ended one is not counted.
 export function sessionDeadline(root: string, session: string | null, now: Date): Deadline | null {
-  const own = readDeadlines(root).filter((d) => session === null || d.session === session);
+  const own = readDeadlines(root).filter((d) => (session === null || d.session === session) && d.ended === undefined);
   if (own.length === 0) return null;
   const byStart = own.sort((a, b) => Date.parse(b.start) - Date.parse(a.start));
   return byStart.find((d) => endOf(d) > now.getTime()) ?? byStart[0]!;
@@ -179,6 +180,15 @@ export function dueMark(status: DeadlineStatus, announced: Set<string>): number 
 
 export function markId(deadline: Deadline, mark: number): string {
   return `deadline:${deadline.id}:${mark}`;
+}
+
+// The task finished: its deadline stops, so the clock does not run into the next task.
+export function endDeadline(root: string, session: string | null, now: Date): Deadline | null {
+  const deadline = sessionDeadline(root, session, now);
+  if (deadline === null) return null;
+  const ended = { ...deadline, ended: now.toISOString() };
+  fs.writeFileSync(fileOf(root, deadline.id), `${JSON.stringify(ended, null, 2)}\n`);
+  return ended;
 }
 
 export function deadlineEnd(deadline: Deadline): number {

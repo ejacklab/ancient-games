@@ -21,8 +21,13 @@ Start 2026-10-16 10:22:01 +0800 · **deadline 11:22:01 +0800** · background tim
   fuller `harness-guard time:` block with the workers' progress at 50/80/100%, and time-up on every call after the
   deadline. Reason: every tested design shows the budget at every step, a budget given once fails
   (`research/reminders.md` F1, F3, F5, F6, F8); no source tested marks-only. Experts (`experts/`): Linus, 范蠡, 孫子,
-  老子 all advise B; 孫子: hold B to the measured hook cost (C6). Dave: rerun after a runner bug (F-… below).
+  老子 all advise B; 孫子: hold B to the measured hook cost (C6). Dave (rerun after F-173e0190): B, "treat it as the
+  starting setting… test (A) later as a separate arm".
+- **D2 Which tools carry the clock:** every tool after a call (install `--print` without a matcher), not only Bash and
+  writes. Reason: the review showed Read/Grep/web calls would never see the clock (finding 3); one hook run measured
+  0.02 s. Applying it to the installed settings is the owner's (harness config).
 
 ## Log
 - 10:22 start; criteria written.
 - 10:2x research F1–F8 saved; experts 4/5 answered B; Dave's claude call empty (runner bug, fixed, rerunning); round 10 code + Codex tests 42/42 after integration; guard 1257/1257.
+- 10:3x review: 10 findings, all fixed or answered (review-answers.md, 6105656); deadline end added; guard 1264/1264, Python 1083; report written.

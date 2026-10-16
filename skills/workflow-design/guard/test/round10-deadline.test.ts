@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { startDeadline, deadlineStatus, progressSummary } from "../src/deadline.ts";
+import { startDeadline, deadlineStatus, progressSummary, endDeadline } from "../src/deadline.ts";
 import { handleHook } from "../src/hooks.ts";
 import { readJournal } from "../src/journal.ts";
 import type { Deadline, HookResult, ProgressSummary } from "../src/types.ts";
@@ -417,4 +417,18 @@ test("review 7: a fractional budget at its exact end is 0 min over", () => {
   b.plant({ minutes: 2.5 });
   b.at(2.5);
   expect(context(b.post({ hook_event_name: "PostToolUse" }))).toContain("time is up (0 min over)");
+});
+
+// COO: a task that finishes early ends its deadline, so the clock does not run into the next task.
+test("deadline end stops the clock and the time-up line", () => {
+  const b = box();
+  b.plant();
+  b.at(2);
+  expect(context(b.post({ hook_event_name: "PostToolUse" }))).toContain("harness-guard clock:");
+  endDeadline(b.root, "s", new Date(EPOCH + 2 * 60_000));
+  b.at(3);
+  expect(context(b.post({ hook_event_name: "PostToolUse" }))).toBe("");
+  b.at(20);
+  expect(context(b.post({ hook_event_name: "PostToolUse" }))).toBe("");
+  expect(deadlineStatus(b.root, "s", new Date(EPOCH + 20 * 60_000))).toBeNull();
 });
