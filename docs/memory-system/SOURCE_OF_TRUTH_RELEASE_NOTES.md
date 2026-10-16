@@ -4,6 +4,16 @@ The history of `SOURCE_OF_TRUTH.md`: what changed, when, and who decided. The de
 so an agent reading it carries no history it does not need (EJ, 2026-10-14). Newest first. The notes up to
 2026-10-13 are the design's former status block and inline attributions, moved here unchanged.
 
+## 2026-10-16
+
+- **W3.6: when a procedure is a script, and who decides.** A procedure lives as a script with an external check;
+  where a step cannot be a command with a checkable result (a person's action, or a choice that depends on judging
+  what was seen) it is a page in `docs/` that names that step and calls scripts for the rest. The agent writing the
+  procedure decides by trying the script first; the project owner decides if it is contested. Its `fails_if` adds a
+  page that names no unscriptable step. `who_decides` was `unassigned`. Wording: Dave's, from one round of the four
+  experts and Dave (`runs/20261016-w36-procedure-script/experts/compare.md`; all five agreed "not always" and on who
+  decides); EJ: *"Yes apply them"*.
+
 ## 2026-10-15
 
 Leftovers of the review, fixed in run `runs/20261015-sot-leftovers/` (EJ: *"fix the item 10 leftovers with a proper

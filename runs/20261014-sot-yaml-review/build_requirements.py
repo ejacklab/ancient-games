@@ -137,11 +137,16 @@ CATEGORIES = [
             r("W3.5b", "SHOULD", "User memory and agent memory live in the home folder.",
               "they live elsewhere, with no written reason.", "reviewer", part_of="W3.5"),
             r("W3.6", "SHOULD", "No copy of the project's existing documents (requirements, architecture in `docs/`) "
-              "or of its procedures: an entry links to them. A procedure lives in the repo as a script, or as a page "
-              "in `docs/` where it cannot be a script, and `AGENTS.md` names each script, one line each. A script is "
-              "project work, not memory.",
-              "an entry copies a document or a procedure's steps, with no written reason.", "reviewer",
-              who_decides="unassigned: whether a procedure can be a script"),
+              "or of its procedures: an entry links to them. A procedure lives in the repo as a script with an "
+              "external check; where a step cannot be a command with a checkable result — a person's action, or a "
+              "choice that depends on judging what was seen — it is a page in `docs/` that names that step and calls "
+              "scripts for the rest. The agent writing the procedure decides by trying the script first; the project "
+              "owner decides if it is contested. `AGENTS.md` names each script, one line each. A script is project "
+              "work, not memory.",
+              "an entry copies a document or a procedure's steps, or a procedure page names no step a script cannot "
+              "do, with no written reason.", "reviewer",
+              who_decides="the agent writing the procedure, by trying the script first; the project owner if "
+                          "contested"),
         ]),
         ("W4", "Who writes, and the change log", "v: no owners, every change logged", [
             r("W4.1a", "guidance", "Anyone, agent or person, may create or change any entry, and `AGENTS.md` too. "

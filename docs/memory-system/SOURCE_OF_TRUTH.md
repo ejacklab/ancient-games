@@ -32,9 +32,12 @@ It holds what the code cannot tell you, as typed entries:
   **fact** is a truth or outside constraint the code must respect.
 - **What was learned, written after.** A **lesson** comes from a failure or a human correction. An **observation**
   records what was seen. A **hypothesis** is a guess, labelled as one.
-- **Not a kind: procedures.** How to run or fix something lives in the repo as a script, or as a page in `docs/` where
-  it cannot be a script. `AGENTS.md` names the project's scripts, one line each. An entry links to a procedure and
-  never repeats its steps. What was learned while running one is a lesson (W3.6).
+- **Not a kind: procedures.** How to run or fix something lives in the repo as a script with an external check. Where
+  a step cannot be a command with a checkable result (a person's action, or a choice that depends on judging what was
+  seen), it is a page in `docs/` that names that step and calls scripts for the rest. The agent writing the procedure
+  decides by trying the script first; the project owner decides if it is contested. `AGENTS.md` names the project's
+  scripts, one line each. An entry links to a procedure and never repeats its steps. What was learned while running
+  one is a lesson (W3.6).
 
 The order of work is: change the decision or fact first, then the code. Changing a claim means superseding its entry
 with a new one (K1.1). Work that has to go the other way is a matter for the project's workflow, not for memory. A
