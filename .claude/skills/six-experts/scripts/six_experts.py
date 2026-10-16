@@ -271,10 +271,14 @@ def run(a) -> int:
         j = jobs[sid]
         ans, log = out / "answers" / f"{sid}.md", out / "logs" / f"{sid}.log"
         procs[sid] = (*start(j["engine"], prompt_for(sid, j["engine"]), ans, log, a.timeout, a.needs_web,
-                             a.needs_shell, cwd, SEAT_MODEL.get(sid) if j["engine"] == "claude" else None), ans, log)
+                             a.needs_shell, cwd, **seat_model(sid, j["engine"])), ans, log)
         j["started"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")
         progress(a, sid, "start", j["engine"])
         print(f"started {sid:8} on {j['engine']}", flush=True)
+
+    def seat_model(sid, engine):  # only a Claude seat with its own model passes one; other calls keep their shape
+        model = SEAT_MODEL.get(sid) if engine == "claude" else None
+        return {"model": model} if model else {}
 
     def opencode_busy():
         return any(jobs[sid]["engine"] == "opencode" for sid in procs)

@@ -13,6 +13,7 @@ import { HARNESSES, installSnippet } from "./install.ts";
 import { JournalError, guardRoot, newFailureId, recordFailureFromArgs } from "./journal.ts";
 import { checkSection, findInsightFiles, openFailures, parseInsight } from "./insight.ts";
 import { WarningError, dismiss, settleAsFailure, warnings } from "./warnings.ts";
+import { indexMarkdown, insightIndex, loadCategories, showSections } from "./insight-index.ts";
 import { DeadlineError, deadlineEnd, deadlineStatus, endDeadline, parseMarks, startDeadline } from "./deadline.ts";
 import { PathError, checkPath, parents, skeleton } from "./paths.ts";
 import { rates, ratesMarkdown } from "./rates.ts";
@@ -33,6 +34,8 @@ const USAGE = [
   "  result --engine E --out FILE [--exit N] [--stderr-file F]",
   "  fail --check --input --expected --actual --reason --evidence [--found-by --engine --harness --session]",
   "  insight [--session S] [--json]  list open failures and invalid sections",
+  "  insight index [--json]          every insight section: ids, check, source, option kinds, category (no text)",
+  "  insight show --category C | <file>#<id>   the chosen sections, whole (for an expert that loads them)",
   "  warning <W-id> fail|dismiss --reason TEXT   settle a warning the guard could not judge",
   "  warnings [--session S]          every warning and how it was settled",
   "  deadline start --minutes N [--run DIR] [--marks 50,80,100]   record the owner's time limit",
@@ -281,6 +284,24 @@ function warningsCommand(args: string[]): number {
 
 // Open failures and the sections that failed their checks: ids, rule ids and paths only.
 function insight(args: string[]): number {
+  // Round 11: `insight index` lists what was learned (no author text); `insight show` prints chosen sections whole.
+  if (args[0] === "index" || args[0] === "show") {
+    const root = guardRoot(process.cwd());
+    const entries = insightIndex(root, loadCategories(path.resolve(import.meta.dirname, "..")));
+    if (args[0] === "index") {
+      out(args.includes("--json") ? JSON.stringify({ sections: entries }) : indexMarkdown(entries));
+      return OK;
+    }
+    const categories: string[] = [];
+    const refs: string[] = [];
+    for (let i = 1; i < args.length; i++) {
+      if (args[i] === "--category") categories.push(args[++i] ?? usageError("--category needs a value"));
+      else refs.push(args[i]!);
+    }
+    if (categories.length === 0 && refs.length === 0) usageError("insight show: --category C or <file>#<id>");
+    out(showSections(root, entries, { categories, refs }) || "no matching insight sections");
+    return OK;
+  }
   const session = flagValue(args, "--session");
   const json = args.includes("--json");
   const root = guardRoot(process.cwd());

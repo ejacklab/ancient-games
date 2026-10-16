@@ -123,3 +123,412 @@ tsc
 tsgo
 tsserver
 [0m
+[0m→ [0mRead .claude/skills/workflow-design/guard/test/round10-deadline.test.ts[90m [limit=80][0m
+[0m→ [0mRead .claude/skills/workflow-design/guard/src/insight.ts
+[0m
+[0m$ [0mgrep -n "journal.jsonl" test/*.test.ts | head -20
+test/insight.test.ts:108:  writeFile(path.join(".harness-guard", "journal.jsonl"), `${lines}\n`);
+test/journal.test.ts:58:  const file = path.join(folder, ".harness-guard", "journal.jsonl");
+test/journal.test.ts:309:    writeFile(".harness-guard/journal.jsonl", "");
+test/journal.test.ts:343:    writeFile(".harness-guard/journal.jsonl", text);
+test/journal.test.ts:350:    writeFile(".harness-guard/journal.jsonl", JSON.stringify(record) + '\n{"kind":');
+test/journal.test.ts:374:    writeFile(".harness-guard/journal.jsonl", records.map((record: JournalRecord) => JSON.stringify(record)).join("\n") + "\n{broken\n");
+test/round5-hooks.test.ts:88:  write(".harness-guard/journal.jsonl", entries.map((entry) => JSON.stringify(entry)).join("\n") + "\n");
+test/round5-paths.test.ts:85:  return writeFile(".harness-guard/journal.jsonl", records.map((record) => JSON.stringify(record)).join("\n") + "\n");
+test/round7-json.test.ts:80:  writeFile(".harness-guard/journal.jsonl", records.map((record) => JSON.stringify(record)).join("\n") + "\n");
+test/round8-false-alarms.test.ts:85:  const text = fs.readFileSync(path.join(root, ".harness-guard", "journal.jsonl"), "utf8");
+[0m
+[0m→ [0mRead .claude/skills/workflow-design/guard/src/cli.ts[90m [offset=280, limit=40][0m
+[0m→ [0mRead .claude/skills/workflow-design/guard/test/insight.test.ts[90m [limit=140][0m
+[0m
+[0m$ [0mgrep -n "function guardRoot" -A 20 src/*.ts; grep -n "export function readJournal" -A 15 src/journal.ts; grep -n "interface FailureRecord" -A 20 src/types.ts
+src/journal.ts:33:export function guardRoot(cwd: string): string {
+src/journal.ts-34-  try {
+src/journal.ts-35-    const out = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+src/journal.ts-36-      cwd,
+src/journal.ts-37-      timeout: 5000,
+src/journal.ts-38-      encoding: "utf8",
+src/journal.ts-39-      stdio: ["ignore", "pipe", "ignore"],
+src/journal.ts-40-    }).trim();
+src/journal.ts-41-    return out === "" ? cwd : out;
+src/journal.ts-42-  } catch {
+src/journal.ts-43-    return cwd;
+src/journal.ts-44-  }
+src/journal.ts-45-}
+src/journal.ts-46-
+src/journal.ts-47-function journalFile(root: string): string {
+src/journal.ts-48-  return path.join(root, GUARD_DIR, "journal.jsonl");
+src/journal.ts-49-}
+src/journal.ts-50-
+src/journal.ts-51-function isEntry(value: unknown): value is Record<string, unknown> {
+src/journal.ts-52-  return typeof value === "object" && value !== null && !Array.isArray(value);
+src/journal.ts-53-}
+168:export function readJournal(root: string): { records: JournalRecord[]; badLines: number } {
+169-  const records: JournalRecord[] = [];
+170-  let badLines = 0;
+171-  let text: string;
+172-  try {
+173-    text = fs.readFileSync(journalFile(root), "utf8");
+174-  } catch {
+175-    return { records, badLines };
+176-  }
+177-  for (const line of text.split("\n")) {
+178-    if (line.trim() === "") continue;
+179-    let value: unknown;
+180-    try {
+181-      value = JSON.parse(line);
+182-    } catch {
+183-      badLines += 1;
+79:export interface FailureRecord {
+80-  kind: "failure";
+81-  id: string; // F-xxxxxxxx
+82-  time: string; // ISO 8601
+83-  session: string;
+84-  found_by: string;
+85-  check: string;
+86-  input: string;
+87-  expected: string;
+88-  actual: string;
+89-  engine: string;
+90-  harness: string;
+91-  reason: string;
+92-  evidence: string; // path, relative to the guard root or absolute
+93-  from?: string; // Round 9: the warning (W-xxxxxxxx) this failure was logged from, when it was one
+94-}
+95-
+96-// Round 9: what the guard saw but cannot judge — a guess, not a verdict. The same fields as a failure, so the agent can
+97-// log it as one; it is settled by a failure record whose `from` is its id, or by a dismissed record.
+98-export interface WarningRecord {
+99-  kind: "warning";
+[0m
+[0m$ [0mdate -Iseconds
+2026-10-16T14:40:10+08:00
+[0m
+[0m$ [0mprintf '%s\n' \
+"- 2026-10-16T14:40:10+08:00 · P1-index-complete · planned · every insight section appears exactly once in the index" \
+"- 2026-10-16T14:40:10+08:00 · P2-no-author-text · planned · the index prints no why, root cause or option text (planted secret)" \
+"- 2026-10-16T14:40:30+08:00 · P3-show-category · planned · show --category prints only the matching sections" \
+"- 2026-10-16T14:40:30+08:00 · P4-show-refs-usage · planned · show <file>#<id>, usage error 2, no-match message" \
+"- 2026-10-16T14:40:30+08:00 · P5-categories · planned · first matching rule, own Category: line wins, empty rule does not break the index" \
+"- 2026-10-16T14:40:30+08:00 · P6-cli-json · planned · insight index --json and the markdown row through the CLI in a temporary git root" \
+>> runs/20261016-six-experts/nodes/tests-index.progress.md && tail -8 runs/20261016-six-experts/nodes/tests-index.progress.md
+- 2026-10-16T14:40:10+08:00 · P1-index-complete · planned · every insight section appears exactly once in the index
+- 2026-10-16T14:40:10+08:00 · P2-no-author-text · planned · the index prints no why, root cause or option text (planted secret)
+- 2026-10-16T14:40:30+08:00 · P3-show-category · planned · show --category prints only the matching sections
+- 2026-10-16T14:40:30+08:00 · P4-show-refs-usage · planned · show <file>#<id>, usage error 2, no-match message
+- 2026-10-16T14:40:30+08:00 · P5-categories · planned · first matching rule, own Category: line wins, empty rule does not break the index
+- 2026-10-16T14:40:30+08:00 · P6-cli-json · planned · insight index --json and the markdown row through the CLI in a temporary git root
+[0m
+Now the test file.
+[0m← [0mWrite .claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+Wrote file successfully.
+[0m
+[0m$ [0mbun test test/round11-insight-index.test.ts 2>&1 | tail -60
+^
+error: expect(received).toEqual(expected)
+
+- [
+-   "F-1a2b3c4d",
+- ]
++ []
+
+- Expected  - 3
++ Received  + 1
+
+      at <anonymous> (/home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts:167:45)
+(fail) P3 Fails-if: show prints a section that does not match, or misses one that does — --category prints only the matching [4.78ms]
+211 | 
+212 | test("P4 I2: show with neither --category nor a ref is a usage error (2) and prints nothing", () => {
+213 |   const b = planted();
+214 |   const result = b.cli("insight", "show");
+215 |   expect(result.status).toBe(2);
+216 |   expect(result.stdout).toContain("--category");
+                              ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "--category"
+Received: ""
+
+      at <anonymous> (/home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts:216:25)
+(fail) P4 I2: show with neither --category nor a ref is a usage error (2) and prints nothing [20.85ms]
+238 |   ];
+239 |   const entries = rows(b, rules);
+240 |   const byId = new Map(entries.map((entry) => [entry.ids[0], entry.category]));
+241 |   expect(byId.get("F-1a2b3c4d")).toBe("test"); // both conditions hold: the first rule wins
+242 |   expect(byId.get("F-2b3c4d5e")).toBe("-"); // no rule matches
+243 |   expect(byId.get("F-3c4d5e6f")).toBe("instruction"); // the first rule's checks do not match, the second does
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: "instruction"
+Received: "test"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts:243:34)
+(fail) P5 I3: a section takes the first rule whose every given condition matches [3.48ms]
+299 |   const b = planted();
+300 |   const result = b.cli("insight", "index");
+301 |   expect(result.status).toBe(0);
+302 |   const lines = result.stdout.trim().split("\n");
+303 |   expect(lines[0]).toBe("| file | ids | kind | check | source | options | category |");
+304 |   expect(lines).toHaveLength(4);
+                      ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 4
+Received length: 5
+
+      at <anonymous> (/home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts:304:17)
+(fail) P6 I1: the markdown table has one header row and one row per section, with the journal's check [20.19ms]
+
+ 10 pass
+ 4 fail
+ 53 expect() calls
+Ran 14 tests across 1 file. [216.00ms]
+[0m
+[0m$ [0mgrep -n "function usageError" -A 10 src/cli.ts; grep -n "function out" -A 5 src/cli.ts
+58:function usageError(problem: string): never {
+59-  process.stderr.write(`${problem}\n${USAGE}\n`);
+60-  process.exit(USAGE_EXIT);
+61-}
+62-
+63-function out(text: string): void {
+64-  process.stdout.write(text.endsWith("\n") ? text : `${text}\n`);
+65-}
+66-
+67-function flagValue(args: string[], flag: string): string | null {
+68-  const at = args.indexOf(flag);
+63:function out(text: string): void {
+64-  process.stdout.write(text.endsWith("\n") ? text : `${text}\n`);
+65-}
+66-
+67-function flagValue(args: string[], flag: string): string | null {
+68-  const at = args.indexOf(flag);
+[0m
+[0m$ [0mcd /tmp/opencode && rm -rf r11probe && mkdir r11probe && cd r11probe && git init -q . && mkdir -p runs/x .harness-guard/insights && printf '## F-1a2b3c4d\n\nWhys:\n1. a\n2. b\n3. c\n\nSource: instruction\n\nRoot cause: x\n\nOptions:\n1. [rule] o — evidence: e\n2. [check] o — evidence: e\n' > runs/x/insight.md && printf '## great: runs/x/a.md\n\nComparison: c\n\nCause: x\n\nOptions:\n1. [check] o — evidence: e\n' > .harness-guard/insights/notes.md && printf '{"kind":"failure","id":"F-1a2b3c4d","time":"2026-10-16T02:00:00Z","session":"s","found_by":"guard","check":"R12.1-exit","input":"i","expected":"e","actual":"a","engine":"codex","harness":"claude-code","reason":"r","evidence":"e"}\n' > .harness-guard/journal.jsonl && bun /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/src/cli.ts insight index | cat -A | head
+| file | ids | kind | check | source | options | category |$
+|---|---|---|---|---|---|---|$
+| .harness-guard/insights/notes.md | - | great | - | - | check | - |$
+| runs/x/insight.md | F-1a2b3c4d | failure | R12.1-exit | instruction | rule, check | own-work |$
+[0m
+[0m$ [0mcd /tmp/opencode/r11probe && printf '## F-2b3c4d5e\n\nWhys:\n1. a\n2. b\n3. c\n\nSource: instruction\n\nRoot cause: x\n\nOptions:\n1. [rule] o — evidence: e\n2. [check] o — evidence: e\n\n## great: runs/x/a.md\n\nComparison: printed first\n\nCause: gate first\n\nOptions:\n1. [check] keep — evidence: runs/x/evidence-3.md\n' > .harness-guard/insights/notes.md && printf '{"kind":"failure","id":"F-2b3c4d5e","time":"2026-10-16T02:00:00Z","session":"s","found_by":"guard","check":"R12.2-command-error","input":"i","expected":"e","actual":"a","engine":"codex","harness":"claude-code","reason":"r","evidence":"e"}\n' >> .harness-guard/journal.jsonl && bun /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/src/cli.ts insight index
+| file | ids | kind | check | source | options | category |
+|---|---|---|---|---|---|---|
+| .harness-guard/insights/notes.md | F-2b3c4d5e | failure | R12.2-command-error | instruction | rule, check | own-work |
+| .harness-guard/insights/notes.md | - | great | - | - | check | - |
+| runs/x/insight.md | F-1a2b3c4d | failure | R12.1-exit | instruction | rule, check | own-work |
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+Index: /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
++++ /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+@@ -299,8 +299,9 @@
+ const b = planted();
+ const result = b.cli("insight", "index");
+ expect(result.status).toBe(0);
+ const lines = result.stdout.trim().split("\n");
++console.error("DEBUG", JSON.stringify(result.stdout), result.status, JSON.stringify(result.stderr));
+ expect(lines[0]).toBe("| file | ids | kind | check | source | options | category |");
+ expect(lines).toHaveLength(4);
+ expect(lines.some((line) => line.includes("R12.2-command-error"))).toBe(true);
+ expect(lines.some((line) => line.includes("F-2b3c4d5e"))).toBe(true);
+
+[0m
+[0m$ [0mbun test test/round11-insight-index.test.ts 2>&1 | grep -A3 DEBUG | head -20
+DEBUG "| file | ids | kind | check | source | options | category |\n|---|---|---|---|---|---|---|\n| .harness-guard/insights/notes.md | F-2b3c4d5e | failure | R12.2-command-error | instruction | rule, check | own-work |\n| .harness-guard/insights/notes.md | - | great | - | - | check | - |\n| runs/x/insight.md | F-1a2b3c4d | failure | R12.1-exit | instruction | rule, check | own-work |\n" 0 ""
+300 |   const result = b.cli("insight", "index");
+301 |   expect(result.status).toBe(0);
+302 |   const lines = result.stdout.trim().split("\n");
+303 |   console.error("DEBUG", JSON.stringify(result.stdout), result.status, JSON.stringify(result.stderr));
+304 |   expect(lines[0]).toBe("| file | ids | kind | check | source | options | category |");
+305 |   expect(lines).toHaveLength(4);
+                      ^
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+Index: /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
++++ /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+@@ -299,9 +299,8 @@
+ const b = planted();
+ const result = b.cli("insight", "index");
+ expect(result.status).toBe(0);
+ const lines = result.stdout.trim().split("\n");
+-console.error("DEBUG", JSON.stringify(result.stdout), result.status, JSON.stringify(result.stderr));
+ expect(lines[0]).toBe("| file | ids | kind | check | source | options | category |");
+ expect(lines).toHaveLength(4);
+ expect(lines.some((line) => line.includes("R12.2-command-error"))).toBe(true);
+ expect(lines.some((line) => line.includes("F-2b3c4d5e"))).toBe(true);
+
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+Index: /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
++++ /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+@@ -157,9 +157,9 @@
+ const rules: CategoryRule[] = [
+   { id: "tool", name: "an engine behaved other than expected", sources: ["tool"] },
+   { id: "spec", name: "a spec was unclear", sources: ["instruction"], titles: ["spec", "brief"] },
+ ];
+-b.write("runs/x/insight.md", failureFile("F-1a2b3c4d", "R12.1-exit", "instruction")
++b.write("runs/x/insight.md", failureFile("F-1a2b3c4d — a spec question", "R12.1-exit", "instruction")
+   + `\n## F-4d5e6f70\n\n${sectionBody().replace(/Source: instruction/, "Source: tool")}\n`);
+ const entries = rows(b, rules);
+ const tool = entries.filter((entry) => entry.category === "tool");
+ const spec = entries.filter((entry) => entry.category === "spec");
+
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+Index: /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
++++ /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+@@ -212,9 +212,10 @@
+ test("P4 I2: show with neither --category nor a ref is a usage error (2) and prints nothing", () => {
+   const b = planted();
+   const result = b.cli("insight", "show");
+   expect(result.status).toBe(2);
+-  expect(result.stdout).toContain("--category");
++  expect(result.stderr).toContain("--category"); // the usage error goes to stderr
++  expect(result.stdout).toBe("");
+ });
+ 
+ test("P4 I2: show that matches nothing says so", () => {
+   const b = planted();
+
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+Index: /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
++++ /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+@@ -231,9 +231,9 @@
+ b.write("runs/x/insight.md",
+   `## F-1a2b3c4d — a bun test read wrongly\n\n${sectionBody()}\n\n`
+   + `## F-2b3c4d5e — a quota setting\n\n${sectionBody().replace(/Source: instruction/, "Source: config")}\n\n`
+   + `## F-3c4d5e6f\n\n${sectionBody().replace(/Source: instruction/, "Source: instruction")}\n`);
+-b.journal([b.failure({ id: "F-1a2b3c4d", check: "R11.9-index" }), b.failure({ id: "F-3c4d5e6f", check: "R11.9-index" })]);
++b.journal([b.failure({ id: "F-1a2b3c4d", check: "R11.9-index" }), b.failure({ id: "F-3c4d5e6f", check: "R12.1-exit" })]);
+ const rules: CategoryRule[] = [
+   { id: "test", name: "a test failed or was read wrongly", sources: ["instruction"], checks: ["^R11\\."] },
+   { id: "instruction", name: "anything from an instruction", sources: ["instruction"] },
+ ];
+
+[0m
+[0m$ [0mbun test test/round11-insight-index.test.ts 2>&1 | tail -40
+bun test v1.4.3 (c6da4a4d3)
+
+test/round11-insight-index.test.ts:
+300 |   const b = planted();
+301 |   const result = b.cli("insight", "index");
+302 |   expect(result.status).toBe(0);
+303 |   const lines = result.stdout.trim().split("\n");
+304 |   expect(lines[0]).toBe("| file | ids | kind | check | source | options | category |");
+305 |   expect(lines).toHaveLength(4);
+                      ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 4
+Received length: 5
+
+      at <anonymous> (/home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts:305:17)
+(fail) P6 I1: the markdown table has one header row and one row per section, with the journal's check [20.78ms]
+
+ 13 pass
+ 1 fail
+ 64 expect() calls
+Ran 14 tests across 1 file. [257.00ms]
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+Index: /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
++++ /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+@@ -300,8 +300,9 @@
+ const b = planted();
+ const result = b.cli("insight", "index");
+ expect(result.status).toBe(0);
+ const lines = result.stdout.trim().split("\n");
++console.error("DEBUG", JSON.stringify(lines), JSON.stringify(result.stderr), result.status);
+ expect(lines[0]).toBe("| file | ids | kind | check | source | options | category |");
+ expect(lines).toHaveLength(4);
+ expect(lines.some((line) => line.includes("R12.2-command-error"))).toBe(true);
+ expect(lines.some((line) => line.includes("F-2b3c4d5e"))).toBe(true);
+
+[0m
+[0m$ [0mbun test test/round11-insight-index.test.ts 2>&1 | grep "DEBUG" | head -5
+DEBUG ["| file | ids | kind | check | source | options | category |","|---|---|---|---|---|---|---|","| .harness-guard/insights/notes.md | F-2b3c4d5e | failure | R12.2-command-error | instruction | rule, check | own-work |","| .harness-guard/insights/notes.md | - | great | - | - | check | - |","| runs/x/insight.md | F-1a2b3c4d | failure | R12.1-exit | instruction | rule, check | own-work |"] "" 0
+304 |   console.error("DEBUG", JSON.stringify(lines), JSON.stringify(result.stderr), result.status);
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard && python3 - <<'EOF'
+import re
+p='test/round11-insight-index.test.ts'
+s=open(p).read()
+s=s.replace('  console.error("DEBUG", JSON.stringify(lines), JSON.stringify(result.stderr), result.status);\n','')
+s=s.replace('  expect(lines).toHaveLength(4);','  expect(lines).toHaveLength(5); // a header, a separator and one row per section')
+open(p,'w').write(s)
+EOF
+bun test test/round11-insight-index.test.ts 2>&1 | tail -6
+bun test v1.4.3 (c6da4a4d3)
+
+ 14 pass
+ 0 fail
+ 67 expect() calls
+Ran 14 tests across 1 file. [249.00ms]
+[0m
+[0m$ [0m./node_modules/.bin/tsgo --noEmit -p . 2>&1 | tail -20
+(no output)
+[0m
+[0m$ [0mbun test 2>&1 | tail -8
+at requireNoOtherOpencode (/home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round3.test.ts:848:121)
+      at <anonymous> (/home/smoke01/dev/ancient-games-six/.claude/skills/workflow-design/guard/test/round3.test.ts:892:5)
+(fail) C17 (R9) the CLI drops only its own process and its parent from running > C17: the CLI's own process and its parent are dropped even when their lines name an engine [5.91ms]
+
+ 1275 pass
+ 3 fail
+ 6558 expect() calls
+Ran 1278 tests across 24 files. [6.90s]
+[0m
+[0m$ [0mbun test 2>&1 | grep "^(fail)"
+(fail) C17 (R9) the CLI drops only its own process and its parent from running > C17: another process whose line contains harness-guard still counts for lint (R9 input) [6.50ms]
+(fail) C17 (R9) the CLI drops only its own process and its parent from running > C17: another process whose line contains harness-guard still counts for the hook [6.41ms]
+(fail) C17 (R9) the CLI drops only its own process and its parent from running > C17: the CLI's own process and its parent are dropped even when their lines name an engine [6.26ms]
+[0m
+[0m$ [0mgit stash list >/dev/null; bun test test/round3.test.ts 2>&1 | tail -5
+159 pass
+ 3 fail
+ 391 expect() calls
+Ran 162 tests across 1 file. [247.00ms]
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games-six && date -Iseconds && printf '%s\n' \
+"- 2026-10-16T14:40:10+08:00 · P1-index-complete · start · tests for missing/duplicate sections and the I1 row fields" \
+"- 2026-10-16T14:40:10+08:00 · P2-no-author-text · start · planted secret in whys, source, root cause and option text" \
+"- 2026-10-16T14:40:30+08:00 · P3-show-category · start · one category, two categories, great section" \
+"- 2026-10-16T14:40:30+08:00 · P4-show-refs-usage · start · file#id, usage error 2 on stderr, no-match message" \
+"- 2026-10-16T14:40:30+08:00 · P5-categories · start · first match, own Category: line, never-matching rule, shipped data file" \
+"- 2026-10-16T14:40:30+08:00 · P6-cli-json · start · --json keys, markdown rows, empty root" \
+"- 2026-10-16T14:56:00+08:00 · P1-index-complete · done · 2 tests pass" \
+"- 2026-10-16T14:56:00+08:00 · P2-no-author-text · done · 1 test pass" \
+"- 2026-10-16T14:56:00+08:00 · P3-show-category · done · 2 tests pass" \
+"- 2026-10-16T14:56:00+08:00 · P4-show-refs-usage · done · 3 tests pass" \
+"- 2026-10-16T14:56:00+08:00 · P5-categories · done · 3 tests pass" \
+"- 2026-10-16T14:56:00+08:00 · P6-cli-json · done · 3 tests pass; bun test 14/14 pass, tsgo clean" \
+"- 2026-10-16T14:56:00+08:00 · full-suite · done · 1275 pass, 3 fail — the same 3 C17 failures in test/round3.test.ts, present without this file" \
+>> runs/20261016-six-experts/nodes/tests-index.progress.md
+2026-10-16T14:42:51+08:00
+[0m
+[0m← [0mWrite runs/20261016-six-experts/nodes/tests-index.result.md
+Wrote file successfully.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games-six && rm -rf /tmp/opencode/r11probe && git status --short | grep -E "round11|nodes/tests-index"
+M runs/20261016-six-experts/nodes/tests-index.log
+?? .claude/skills/workflow-design/guard/test/round11-insight-index.test.ts
+?? runs/20261016-six-experts/nodes/tests-index.progress.md
+?? runs/20261016-six-experts/nodes/tests-index.result.md
+[0m
+Done — Round 11 acceptance tests written.
+
+- `guard/test/round11-insight-index.test.ts` (new): 14 tests, one per Fails-if line plus I2 refs/usage/no-match, I3 first-match and `Category:` override, own-`Category`-wins, never-matching rule, shipped categories file, `--json` keys, markdown rows, empty root. Planted temp git root per test, secret in whys/source/root cause/option.
+- `bun test test/round11-insight-index.test.ts`: 14 pass, 0 fail. `tsgo --noEmit -p .`: clean. Full suite 1275 pass / 3 fail — the 3 are pre-existing C17 failures in `test/round3.test.ts` (fail alone too).
+- Progress and result files written under `runs/20261016-six-experts/nodes/`. CONTRADICTS: none.

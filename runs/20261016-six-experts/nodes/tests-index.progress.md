@@ -1,0 +1,19 @@
+- 2026-10-16T14:40:10+08:00 · P1-index-complete · planned · every insight section appears exactly once in the index
+- 2026-10-16T14:40:10+08:00 · P2-no-author-text · planned · the index prints no why, root cause or option text (planted secret)
+- 2026-10-16T14:40:30+08:00 · P3-show-category · planned · show --category prints only the matching sections
+- 2026-10-16T14:40:30+08:00 · P4-show-refs-usage · planned · show <file>#<id>, usage error 2, no-match message
+- 2026-10-16T14:40:30+08:00 · P5-categories · planned · first matching rule, own Category: line wins, empty rule does not break the index
+- 2026-10-16T14:40:30+08:00 · P6-cli-json · planned · insight index --json and the markdown row through the CLI in a temporary git root
+- 2026-10-16T14:40:10+08:00 · P1-index-complete · start · tests for missing/duplicate sections and the I1 row fields
+- 2026-10-16T14:40:10+08:00 · P2-no-author-text · start · planted secret in whys, source, root cause and option text
+- 2026-10-16T14:40:30+08:00 · P3-show-category · start · one category, two categories, great section
+- 2026-10-16T14:40:30+08:00 · P4-show-refs-usage · start · file#id, usage error 2 on stderr, no-match message
+- 2026-10-16T14:40:30+08:00 · P5-categories · start · first match, own Category: line, never-matching rule, shipped data file
+- 2026-10-16T14:40:30+08:00 · P6-cli-json · start · --json keys, markdown rows, empty root
+- 2026-10-16T14:56:00+08:00 · P1-index-complete · done · 2 tests pass
+- 2026-10-16T14:56:00+08:00 · P2-no-author-text · done · 1 test pass
+- 2026-10-16T14:56:00+08:00 · P3-show-category · done · 2 tests pass
+- 2026-10-16T14:56:00+08:00 · P4-show-refs-usage · done · 3 tests pass
+- 2026-10-16T14:56:00+08:00 · P5-categories · done · 3 tests pass
+- 2026-10-16T14:56:00+08:00 · P6-cli-json · done · 3 tests pass; bun test 14/14 pass, tsgo clean
+- 2026-10-16T14:56:00+08:00 · full-suite · done · 1275 pass, 3 fail — the same 3 C17 failures in test/round3.test.ts, present without this file
