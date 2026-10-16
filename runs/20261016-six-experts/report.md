@@ -1,8 +1,8 @@
 # Report — run 20261016-six-experts (plan B; time-boxed: 4 hours or 6 rounds, whichever first)
 
-**All 6 rounds done in about 55 minutes; nothing asked of the owner during the run.** Branch `feat/six-experts`
-(worktree `../ancient-games-six`); the merge waits for the plan A session, which asked me to hold it until its
-uncommitted mcode change to the old `four_experts.py` is committed.
+**All 6 rounds done in about 60 minutes; nothing asked of the owner during the run. Merged to master as `c14b7fe`; not
+pushed.** The plan A session first asked me to hold the merge for its mcode change to the old `four_experts.py`, then
+released it: the mcode try-out failed, and that change is kept as a patch in its run for you to decide.
 
 ## What was built
 - **six-experts** (was four-experts): Linus, 范蠡, 孫子, 老子, **Dave** and **Dario**.
@@ -59,12 +59,14 @@ Dario goes against your 2026-10-13 removal of the plain control ("don't want the
 request today is newer, so it wins; my memory is updated.
 
 ## Waiting for you or the other session
-- **The merge** waits for the plan A session's mcode commit, which I then carry into `six_experts.py`.
-- **The skill links:** `~/.claude/skills/four-experts` and `~/.agents/skills/four-experts` move to `six-experts` at
-  merge.
+- **Done at merge:** the dangling `~/.claude/skills/four-experts` and `~/.agents/skills/four-experts` links were
+  replaced by `six-experts` links.
 - **Push:** not done.
+- **Yours from the plan A session:** whether Linus's mcode fallback lands
+  (`runs/20261016-four-experts-what-counts-as-change/trial-mcode/linus-mcode.patch`). Until then the runner's opencode
+  wait keeps Linus from colliding with 老子.
 
-## Failures and insights (`.harness-guard/insights/20261016-six-experts.md`, moving into this folder at merge)
+## Failures and insights (`insight.md` in this folder)
 - **F-5c21dd69:** my type error, caught by the type check.
 - **F-7f938bdf:** my question sent opencode experts to a file outside the repo.
 - **F-b696193d:** I changed `start()`'s signature and broke the other session's quota tests.

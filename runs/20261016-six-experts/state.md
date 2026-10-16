@@ -43,3 +43,4 @@ Start 2026-10-16 14:19 +0800 · **deadline 18:19 +0800** · 6 rounds.
 - 14:3x round 1 done (4 experts; Linus and 老子 rerun after F-7f938bdf); round 2 done in the tree.
 - 14:5x plan A's session asked to wait before merging: uncommitted mcode fallback for Linus in four_experts.py and its tests; merge waits for its commit message, then carries the change into six_experts.py.
 - 15:1x round 6 trial: all six answered, check PASS; compare.md written; open: the index includes nested experiment insight files.
+- 15:20 merged c14b7fe (plan A's session released its hold: its mcode change did not land, patch kept in its run); ~/.claude/skills and ~/.agents/skills four-experts links replaced by six-experts; master Python 1116, guard 1283/1283; criteria 9/9; deadline ended.
