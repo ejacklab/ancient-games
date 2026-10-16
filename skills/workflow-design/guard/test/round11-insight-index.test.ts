@@ -361,3 +361,14 @@ test("review 3: a malformed regex in a category rule matches nothing instead of 
   expect(() => rows(b, rules)).not.toThrow();
   expect(rows(b, rules).some((e) => e.category === "broken")).toBe(false);
 });
+
+// COO, after the trial: insights written by test agents inside an experiment's own folders are not the project's.
+test("the index reads runs/<run>/insight*.md and .harness-guard/insights/, not insight files nested deeper", () => {
+  const b = box();
+  b.write("runs/x/insight.md", `## F-7a8b9c0d — top\n\n${sectionBody()}\n`);
+  b.write("runs/x/e4/runs2/B3/insight.md", `## F-8b9c0d1e — nested\n\n${sectionBody()}\n`);
+  b.write(".harness-guard/insights/g.md", `## F-9c0d1e2f — guard dir\n\n${sectionBody()}\n`);
+  b.journal([]);
+  const ids = rows(b).flatMap((e) => e.ids).sort();
+  expect(ids).toEqual(["F-7a8b9c0d", "F-9c0d1e2f"]);
+});

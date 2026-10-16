@@ -76,6 +76,10 @@ export function insightIndex(root: string, rules: CategoryRule[]): IndexEntry[] 
   for (const record of readJournal(root).records) if (record.kind === "failure") checkOf.set(record.id, record.check);
   const entries: IndexEntry[] = [];
   for (const file of findInsightFiles(root)) {
+    // The project's insights: runs/<run>/insight*.md and the guard's own folder — not files nested deeper inside a
+    // run, which an experiment's test agents wrote (plan A Part C step 9: "runs/*/insight.md and .harness-guard/insights/").
+    const parts = file.split(path.sep);
+    if (parts[0] === "runs" && parts.length !== 3) continue;
     let sections: InsightSection[];
     let heads: { title: string; own: string | null }[];
     try {

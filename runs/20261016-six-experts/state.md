@@ -8,10 +8,10 @@ Start 2026-10-16 14:19 +0800 · **deadline 18:19 +0800** · 6 rounds.
 |---|---|---|
 | 1 | research + experts decide Q1, Q2 | done: research/context-windows.md (R1–R16), experts-q1q2(-opencode)/, D1, D2 |
 | 2 | insight index + categories | done in the tree: guard Round 11 (insight index/show), 6 categories, Category: override |
-| 3 | Dave loads insights; Dario | — |
+| 3 | Dave loads insights; Dario | done (08ac07c) |
 | 4 | rename to six-experts | moved first (renaming after editing would do the work twice): done in the tree, not committed |
-| 5 | tests, mutants, review | — |
-| 6 | trial, all six, n=1 | — |
+| 5 | tests, mutants, review | done: 15+25 tests, 7/7 mutants, dsh review 8 findings fixed (ff83d32, cac39ff) |
+| 6 | trial, all six, n=1 | done: trial/compare.md (Dave 216 s vs Dario 70 s; not judged) |
 
 ## Provisional decisions (item 14; the owner accepts or declines at the end)
 - **D1 the 6 categories and the pick.** config · tool · test · guard-check · spec · own-work — the Source kinds, with
@@ -41,3 +41,5 @@ Start 2026-10-16 14:19 +0800 · **deadline 18:19 +0800** · 6 rounds.
 - 14:2x round 4 done early: git mv four-experts → six-experts, four_experts.py → six_experts.py, the quota test → test_six_experts_codex_quota.py (8/8); live references moved (run-folder names kept); engines.yaml accepts both script names; SIX_EXPERTS_SEATS falls back to FOUR_EXPERTS_SEATS.
 - 14:2x Dario added (plain seat, brief-plain.md, check reads sections only); the runner now waits for a running opencode expert before starting another (the 'database is locked' trap; Linus is on opencode while Codex has 0%).
 - 14:3x round 1 done (4 experts; Linus and 老子 rerun after F-7f938bdf); round 2 done in the tree.
+- 14:5x plan A's session asked to wait before merging: uncommitted mcode fallback for Linus in four_experts.py and its tests; merge waits for its commit message, then carries the change into six_experts.py.
+- 15:1x round 6 trial: all six answered, check PASS; compare.md written; open: the index includes nested experiment insight files.

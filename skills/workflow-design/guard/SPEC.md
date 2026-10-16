@@ -590,7 +590,7 @@ time-up continues after `deadline end`.
 
 Module `src/insight-index.ts`; categories are data in `data/insight-categories.yaml`.
 
-- **I1 `cli.ts insight index [--json]`.** One row per insight section in the files `findInsightFiles` finds (M3):
+- **I1 `cli.ts insight index [--json]`.** One row per insight section in `runs/<run>/insight*.md` and `.harness-guard/insights/` (the files `findInsightFiles` finds, M3, except those nested deeper inside a run — an experiment's test agents wrote them):
 
   | field | type | value |
   |---|---|---|
