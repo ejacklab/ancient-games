@@ -44,3 +44,4 @@ Start 2026-10-16 14:19 +0800 · **deadline 18:19 +0800** · 6 rounds.
 - 14:5x plan A's session asked to wait before merging: uncommitted mcode fallback for Linus in four_experts.py and its tests; merge waits for its commit message, then carries the change into six_experts.py.
 - 15:1x round 6 trial: all six answered, check PASS; compare.md written; open: the index includes nested experiment insight files.
 - 15:20 merged c14b7fe (plan A's session released its hold: its mcode change did not land, patch kept in its run); ~/.claude/skills and ~/.agents/skills four-experts links replaced by six-experts; master Python 1116, guard 1283/1283; criteria 9/9; deadline ended.
+- 2026-10-16 EJ, after the merge: "change dave to Using Opus 5.5" — D2 replaced for Dave: Dave on claude-opus-5-5, Dario stays on claude-sonnet-5-5 (Linus's one-variable point now applies: Dave vs Dario differs in model too; a Dario-on-Opus arm would separate them).

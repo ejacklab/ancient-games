@@ -16,10 +16,10 @@ Experts and engines (EJ, 2026-10-13):
                            without the required sections (e.g. a plan instead of the answer)
     孫子            dsh    deepseek-flash (dsh headless)
     老子            opencode  minimax-coding-plan/MiniMax-M3.1-Flash-Preview (plan mode)
-    Dave            claude Sonnet 5.5 — EJ's ten rules (assets/seats/; experiments, data, nature-inspired), and since
+    Dave            claude Opus 5.5 — EJ's ten rules (assets/seats/; experiments, data, nature-inspired), and since
                     2026-10-16 the project's insights: the guard's insight index and the named categories' sections
-    Dario           claude Sonnet 5.5 — the plain control (EJ, 2026-10-16): no rules, no identity, no insights; the
-                    same model and tools as Dave, so Dave against Dario measures what the rules and insights add
+    Dario           claude Sonnet 5.5 — the plain control (EJ, 2026-10-16): no rules, no identity, no insights, the
+                    same tools as Dave; since Dave moved to Opus, Dave against Dario also differs in model
 
 Each persona gets its own list from the four-seats run (copied into DIR/seats/, because opencode cannot read files
 outside the project) and a brief that makes it decide through its numbered rules; Dario gets only the question and the
@@ -53,8 +53,9 @@ EXPERTS = [  # id, name, engine
     ("dario", "Dario", "claude"),  # the plain control, EJ 2026-10-16: no rules, no identity, no insights; same engine as Dave
 ]
 PLAIN = {"dario"}
-# Dave and Dario on the same model, so their comparison isolates the rules and insights (run 20261016-six-experts, D2).
-SEAT_MODEL = {"dave": "claude-sonnet-5-5", "dario": "claude-sonnet-5-5"}
+# Dave on Opus 5.5 (EJ, 2026-10-16, replacing the experts' advice in run 20261016-six-experts, D2), Dario on Sonnet 5.5;
+# Dave against Dario therefore differs in model as well as in rules and insights.
+SEAT_MODEL = {"dave": "claude-opus-5-5", "dario": "claude-sonnet-5-5"}
 INSIGHT_SEAT = "dave"  # loads the insights before answering
 GUARD_CLI = HERE.parent / "workflow-design" / "guard" / "src" / "cli.ts"
 INSIGHT_ID = re.compile(r"\bF-[0-9a-f]{8}\b")  # seats with no list: their brief is the question alone, and check reads their sections only

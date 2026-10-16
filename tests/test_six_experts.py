@@ -123,20 +123,20 @@ def test_claude_without_a_model_falls_back_to_the_default():
     assert cmd[cmd.index("--model") + 1] == fe.MODELS["claude"]
 
 
-# --- P2: Dave and Dario on one model (SKILL.md table, decision D2)
+# --- P2: Dave on Opus, Dario on Sonnet (SKILL.md table; EJ 2026-10-16, replacing decision D2)
 
 
-def test_dave_and_dario_are_assigned_the_same_model():
-    assert fe.SEAT_MODEL["dave"] == fe.SEAT_MODEL["dario"] == "claude-sonnet-5-5"
+def test_dave_is_on_opus_and_dario_on_sonnet():
+    assert fe.SEAT_MODEL == {"dave": "claude-opus-5-5", "dario": "claude-sonnet-5-5"}
 
 
-def test_dave_and_dario_both_run_on_claude_sonnet(tmp_path, monkeypatch):
+def test_dave_and_dario_run_on_their_pinned_models(tmp_path, monkeypatch):
     out, calls, rc = run_seats(tmp_path, monkeypatch, "dave,dario")
     assert rc == 0
     models = {c["sid"]: c["model"] for c in started(calls)}
-    assert models == {"dave": "claude-sonnet-5-5", "dario": "claude-sonnet-5-5"}
+    assert models == {"dave": "claude-opus-5-5", "dario": "claude-sonnet-5-5"}
     status = json.loads((out / "status.json").read_text(encoding="utf-8"))
-    assert [status[s]["model"] for s in ("dave", "dario")] == ["claude-sonnet-5-5"] * 2
+    assert [status[s]["model"] for s in ("dave", "dario")] == ["claude-opus-5-5", "claude-sonnet-5-5"]
     assert [status[s]["engine"] for s in ("dave", "dario")] == ["claude"] * 2
 
 
@@ -336,6 +336,6 @@ def test_caller_mode_names_dave_and_darios_model(tmp_path, monkeypatch, capsys):
     fe.run(SimpleNamespace(question=None, question_file=str(q), out=str(out), needs_web=False, needs_shell=False,
                            timeout=60, only="dave,dario", claude_by_caller=True, insights=None, progress=None))
     printed = capsys.readouterr().out
-    assert printed.count("on claude-sonnet-5-5") == 2
+    assert printed.count("on claude-opus-5-5") == 1 and printed.count("on claude-sonnet-5-5") == 1
     status = __import__("json").loads((out / "status.json").read_text(encoding="utf-8"))
-    assert status["dave"]["model"] == status["dario"]["model"] == "claude-sonnet-5-5"
+    assert (status["dave"]["model"], status["dario"]["model"]) == ("claude-opus-5-5", "claude-sonnet-5-5")

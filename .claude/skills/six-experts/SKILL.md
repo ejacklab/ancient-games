@@ -1,6 +1,6 @@
 ---
 name: six-experts
-description: Ask EJ's six experts one question or decision — four researched personas, Linus Torvalds (Codex, or opencode when Codex is low), 范蠡 Fan Li (agy, or Claude for web/shell), 孫子 Sun Tzu (dsh / DeepSeek), 老子 Laozi (opencode / MiniMax); Dave (Claude Sonnet; experiments and data, ten rules, and he loads the project's insights by category before answering); and Dario, the plain control (the same Claude model, no rules, no insights) — each on its own engine; then check their citations and compare them side by side. Use when EJ says "ask the experts", "six experts", "four experts", "four seats", "ask Dave", "ask Dario", "what would Linus / 范蠡 / 孫子 / 老子 say", or wants a decision examined from several rule-based viewpoints. NOT for: plain factual lookups (one search answers those), code changes, or anything that needs the experts to act rather than advise.
+description: Ask EJ's six experts one question or decision — four researched personas, Linus Torvalds (Codex, or opencode when Codex is low), 范蠡 Fan Li (agy, or Claude for web/shell), 孫子 Sun Tzu (dsh / DeepSeek), 老子 Laozi (opencode / MiniMax); Dave (Claude Opus; experiments and data, ten rules, and he loads the project's insights by category before answering); and Dario, the plain control (Claude Sonnet, no rules, no insights) — each on its own engine; then check their citations and compare them side by side. Use when EJ says "ask the experts", "six experts", "four experts", "four seats", "ask Dave", "ask Dario", "what would Linus / 范蠡 / 孫子 / 老子 say", or wants a decision examined from several rule-based viewpoints. NOT for: plain factual lookups (one search answers those), code changes, or anything that needs the experts to act rather than advise.
 ---
 
 # Six experts
@@ -9,9 +9,9 @@ Four experts, each built from a researched list of a real person's own mindsets,
 (18–20 numbered items with their words and a source, run `20261013-four-seats` in `~/dev/ancient-games`), and
 **Dave**: ten numbered rules written from EJ's description — he loves experiments, is data-driven, and borrows solutions
 from nature — and, since 2026-10-16, **the project's insights**: before answering he reads the insight index and the
-sections of the categories the question names, and cites the ones he used. **Dario, the plain control**: the same
-Claude model as Dave, with no rules, no identity and no insights, so Dave against Dario measures what the rules and
-insights add. Each persona answers on a different engine, so their agreement is closer to six views than one model's
+sections of the categories the question names, and cites the ones he used. **Dario, the plain control**: Claude Sonnet
+5.5, with no rules, no identity and no insights. Dave runs on Opus 5.5 (EJ, 2026-10-16), so Dave against Dario
+differs in model as well as in rules and insights; to separate the two, run Dario on Opus as a third arm. Each persona answers on a different engine, so their agreement is closer to six views than one model's
 echo.
 
 | Expert | Engine | Model |
@@ -20,11 +20,12 @@ echo.
 | 范蠡 Fan Li | agy → **Claude** when the task needs web or shell, or when agy fails | gemini-3.8-flash-medium → claude-opus-5-5 |
 | 孫子 Sun Tzu | dsh headless | deepseek-flash |
 | 老子 Laozi | opencode (plan mode) | MiniMax-M3.1-Flash-Preview |
-| **Dave** — rules + insights | Claude | claude-sonnet-5-5 |
+| **Dave** — rules + insights | Claude | claude-opus-5-5 |
 | **Dario — the plain control** | Claude | claude-sonnet-5-5 |
 
 Mapping, fallback and Dave: EJ, 2026-10-13. Dario and Dave's insights: EJ, 2026-10-16 (run
-`runs/20261016-six-experts/`; Dave and Dario on Sonnet 5.5 by the experts' advice there, decision D2). Dario is the
+`runs/20261016-six-experts/`). Dave's model: Opus 5.5 by EJ's choice the same day, over the experts' advice for
+Sonnet (D2 there); Dario stays on Sonnet. Dario is the
 persona-free baseline the record lacked until then. Why the briefs are built this way (rules applied as instructions, item numbers cited, no invented
 facts): `runs/20261013-seats-roleplay/synthesis.md` in the same repo.
 
@@ -42,8 +43,8 @@ python3 ~/.claude/skills/six-experts/scripts/six_experts.py run "Should we keep 
   own-work; `guard/src/cli.ts insight index` shows them). With none named he chooses from the index. The runner copies
   the index and the sections into the run's `seats/`, so every engine can read them; `check` fails Dave when he cites
   an id that is not in the index, or cites none without "No insight applies".
-- For a Dave-against-Dario comparison, run both through the runner (not `--claude-by-caller`), so both use the same
-  model and tools.
+- For a Dave-against-Dario comparison, run both through the runner (not `--claude-by-caller`), so each runs on its
+  own pinned model (Dave Opus, Dario Sonnet) with the same tools.
 - Two experts on opencode never start together (parallel starts can fail with "database is locked"); the second waits.
 - `--needs-web` / `--needs-shell` when the task needs either — **you decide this from the task** — then 范蠡 runs
   on Claude, because agy headless cannot use web or shell (soft-denied, exits 0 with nothing).
