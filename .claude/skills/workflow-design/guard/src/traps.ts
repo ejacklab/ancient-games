@@ -558,6 +558,25 @@ export function recognizeTestRun(command: string): string | null {
   return null;
 }
 
+// Round 12, E2: the paths a test run names — each word of each test-run segment, a pytest `::<node>` suffix dropped,
+// resolved in the folder the segment runs in. Flags and words that are no file resolve too; the caller matches.
+export function testRunFiles(command: string, cwd: string): string[] {
+  const parts = segments(command);
+  const found: string[] = [];
+  for (const [index, part] of parts.entries()) {
+    if (hasHelpWord(part.text)) continue;
+    const text = stripWrappers(part.text);
+    if (!TEST_RUNNERS.some((entry) => entry.pattern.test(text))) continue;
+    const folder = folderBefore(parts, index, cwd);
+    for (const word of words(text)) {
+      const value = unquote(word.text).replace(/::.*$/, "");
+      if (value === "" || value.startsWith("-")) continue;
+      found.push(path.resolve(folder, value));
+    }
+  }
+  return found;
+}
+
 // ---- paths the text cannot name (round 4, D3) --------------------------------------------------------------------
 
 // A path the shell decides, not the text: a variable, a command substitution or a glob.

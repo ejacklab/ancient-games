@@ -91,6 +91,7 @@ export interface FailureRecord {
   reason: string;
   evidence: string; // path, relative to the guard root or absolute
   from?: string; // Round 9: the warning (W-xxxxxxxx) this failure was logged from, when it was one
+  declared?: string[]; // Round 12, E4: the red declarations (E-xxxxxxxx) a passing run consumed
 }
 
 // Round 9: what the guard saw but cannot judge — a guess, not a verdict. The same fields as a failure, so the agent can
@@ -158,8 +159,28 @@ export interface PromptRecord {
   session: string;
 }
 
+// Round 12, E1: the agent's word, before a test run, that the next run naming `file` must fail (a planned red step).
+export interface ExpectFailRecord {
+  kind: "expect-fail";
+  id: string; // E-xxxxxxxx
+  time: string;
+  session: string;
+  file: string; // relative to the guard root
+}
+
+// Round 12, E3: a declared red run that failed — the planned step, not a failure. Counts only.
+export interface RedRecord {
+  kind: "red";
+  time: string;
+  session: string;
+  runner: string;
+  declared: string[]; // the declarations it consumed
+  failed: number | null; // the failed count when the run's text gave one
+  exit: number | null;
+}
+
 export type JournalRecord = FailureRecord | TouchedRecord | GuardErrorRecord | RaisedRecord | SuccessRecord | PromptRecord
-  | WarningRecord | DismissedRecord;
+  | WarningRecord | DismissedRecord | ExpectFailRecord | RedRecord;
 
 // Round 5 (R12.7): the path of a successful task, a YAML file.
 export interface PathStep {

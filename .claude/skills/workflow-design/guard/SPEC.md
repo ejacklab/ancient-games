@@ -617,3 +617,34 @@ the index.
 
 **Round 11, flags and title rules — removed** (EJ: four categories, "we don't need the +2"): the flag rules, the
 `titles` rule field and the per-section `Category:` override were tried in run 20261016-six-experts and taken out.
+
+## Round 12 — a planned red run (R12.2; F-15cf1278 option 1, chosen 2026-10-17)
+
+A test written before the change is run once to show it fails on the old code. That failure is planned, and the agent
+says so before the run; without a declaration every failing run is a failure, as D1 says.
+
+Module `src/expect.ts`; records `ExpectFailRecord` and `RedRecord` in `src/types.ts`.
+
+- **E1 `cli.ts expect-fail --tests <file> [--session S]`.** Appends `{kind: "expect-fail", id: "E-xxxxxxxx", time,
+  session, file}`; `file` is root-relative and must be an existing file inside the root (usage error, exit 2,
+  otherwise). The session is `--session`, else `$CLAUDE_CODE_SESSION_ID`, else `"none"`. Prints the id, the file and
+  the session. One file per declaration; it stays open until a run consumes it.
+- **E2 Which run it covers.** A test run (D1) covers its session's open declarations whose file it names: a word of a
+  test-run segment, with a pytest `::<node>` suffix dropped, that resolves to the file in the folder the segment runs
+  in (after the `cd`s before it, as M5 resolves an engine's folder). A run that names none is judged by D1 and S1 as
+  before; a run that writes no record (interrupted, backgrounded, a failure its stdout cannot show) consumes nothing.
+- **E3 Red as declared.** A covered run that fails (D1) writes `{kind: "red", time, session, runner, declared: [ids],
+  failed, exit}` — counts only — instead of a failure, and its context line says so. The declarations are consumed, so
+  the next run of the file is judged by D1 and S1.
+- **E4 Green where red was declared.** A covered run that passes (S1) writes a failure instead of a success line:
+  `check: "R12.2-red-passed"`, `input: "<runner> run"`, `expected: "the declared red run fails"`, `actual: "no test
+  failed"`, `declared: [ids]`. It needs an insight like any failure. The declarations are consumed.
+
+Not established: that a red run failed for the reason the agent planned. The record keeps the counts, not which tests
+failed or why.
+
+Fails-if: a failing run naming a declared file has a failure record, or no `red` record; a failing run with no
+declaration, with another session's declaration, or with another file's declaration has no failure record; a
+declaration made after a failing run removes its failure; a covered run that passes has no `R12.2-red-passed`
+failure, or writes a success line; one declaration covers two runs; a `red` record holds output text; `expect-fail`
+accepts a missing file or a file outside the root.

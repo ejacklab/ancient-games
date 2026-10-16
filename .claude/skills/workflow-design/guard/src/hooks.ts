@@ -13,8 +13,9 @@ import { appendWarning, newWarningId, openWarnings } from "./warnings.ts";
 import { claimDeadlines, deadlineStatus, dueMark, markId, sessionDeadline } from "./deadline.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
-import { checkResult, commandWord, engineCallSite, lintCommand, recognizeTestRun, segments } from "./traps.ts";
-import type { Finding, GuardErrorRecord, HookEnv, HookResult, PromptRecord, TouchedRecord, RaisedRecord, SuccessRecord } from "./types.ts";
+import { checkResult, commandWord, engineCallSite, lintCommand, recognizeTestRun, segments, testRunFiles } from "./traps.ts";
+import { coveringDeclarations } from "./expect.ts";
+import type { Finding, GuardErrorRecord, HookEnv, HookResult, PromptRecord, TouchedRecord, RaisedRecord, RedRecord, SuccessRecord } from "./types.ts";
 
 const HARNESS = "claude-code";
 const NO_SESSION = "none";
@@ -158,6 +159,7 @@ interface FailureSpec {
   actual: string;
   facts: Record<string, unknown>;
   guess?: boolean; // Round 9: the guard cannot judge it, so it is a warning, not a failure
+  declared?: string[]; // Round 12, E4: the red declarations a passing run consumed
 }
 
 function recordFailure(root: string, payload: Record<string, unknown>, env: HookEnv, spec: FailureSpec): string {
@@ -179,6 +181,7 @@ function recordFailure(root: string, payload: Record<string, unknown>, env: Hook
     harness: HARNESS,
     reason: spec.finding.message,
     evidence,
+    ...(spec.declared === undefined ? {} : { declared: spec.declared }),
   });
   return id;
 }
@@ -372,6 +375,38 @@ function logged(ids: string[], own: boolean): HookResult {
   return context("PostToolUse", `harness-guard logged ${ids.join(", ")} — ${tail}`);
 }
 
+// Round 12, E3: the declared red run failed as planned — a red record with its counts, not a failure.
+function redAsDeclared(root: string, payload: Record<string, unknown>, env: HookEnv, own: FailureSpec, declared: string[]): HookResult {
+  const record: RedRecord = {
+    kind: "red",
+    time: env.now().toISOString(),
+    session: sessionOf(payload),
+    runner: String(own.facts.runner),
+    declared,
+    failed: typeof own.facts.failedCount === "number" ? own.facts.failedCount : null,
+    exit: typeof own.facts.exitCode === "number" ? own.facts.exitCode : null,
+  };
+  appendRecord(root, record);
+  return context("PostToolUse", `harness-guard: the declared red run (${declared.join(", ")}) failed as planned — recorded as the red step, not a failure. The next run of this file is judged as usual.`);
+}
+
+// Round 12, E4: a run declared red that passed — the test does not fail on the code it was written against.
+function redPassedSpec(runner: string, declared: string[]): FailureSpec {
+  return {
+    finding: {
+      rule: "R12.2-red-passed",
+      severity: "fail",
+      message: `the ${runner} run was declared red (${declared.join(", ")}) and no test failed`,
+      fix: "check that the new tests test the change: each should fail before it",
+    },
+    input: `${runner} run`,
+    expected: "the declared red run fails",
+    actual: "no test failed",
+    facts: { runner, declared },
+    declared,
+  };
+}
+
 function handlePostToolUse(payload: Record<string, unknown>, env: HookEnv, root: string, failed: boolean): HookResult {
   if (payload.tool_name === "Bash") {
     const command = text(objectField(payload, "tool_input").command);
@@ -383,9 +418,16 @@ function handlePostToolUse(payload: Record<string, unknown>, env: HookEnv, root:
     if (site === null) {
       const own = ownFailureSpec(payload, command, failed);
       if (own !== null && own.guess === true) return warned(recordWarning(root, payload, env, own));
+      // A test run the agent declared red before it ran (round 12, E2).
+      const declared = recognizeTestRun(command) === null ? []
+        : coveringDeclarations(root, sessionOf(payload), testRunFiles(command, workingFolder(payload, env)));
+      if (own !== null && declared.length > 0) return redAsDeclared(root, payload, env, own, declared);
       if (own !== null) return logged([recordFailure(root, payload, env, own)], true);
-      // A green test run is a success line (round 5, S1).
+      // A green test run is a success line (round 5, S1) — unless it was declared red (round 12, E4).
       const runner = failed ? null : greenTestRun(payload, response, command);
+      if (runner !== null && declared.length > 0) {
+        return logged([recordFailure(root, payload, env, redPassedSpec(runner, declared))], true);
+      }
       if (runner !== null) recordSuccess(root, payload, env, "test-run", runner);
       return quiet();
     }
