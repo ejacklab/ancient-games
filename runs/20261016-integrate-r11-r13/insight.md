@@ -196,3 +196,17 @@ Options:
 1. [check] D2 treats exit 1 from the guard's own `insight`, `criteria score`, `register` and `path check` as an answer, not an error (exit 2, usage, stays an error); a test plants each. evidence: `cli.ts` line 2 documents 1 as findings; this record's evidence shows stdout empty, stderr 193 bytes — the findings text.
 2. [rule] A gate query (`insight`, `criteria score`) runs in its own Bash call, never last in a chain. evidence: this record and F-969500fa share the chain shape.
 3. [tool] The query commands take `--json` and always exit 0 when they answered (as `harness_health.py` already reads `insight --json` with 0 or 1 both as answers). evidence: `harness_health.py` GUARD_EXIT.
+
+## F-86553997 — a type error in my round 8 change, recorded as an "echo call"
+
+Whys:
+1. Why was a failure logged? `tsgo --noEmit` exited 2 after my first round 8 edit: `PromptRecord` was not accepted by `appendRecord`.
+2. Why? I added a record kind to `JournalRecord` in `types.ts` but not to `appendRecord`'s own parameter type in `journal.ts`, which lists the writable kinds separately.
+3. Why did I miss the second list? I edited the types and the hook, then ran the check, without searching for every place that lists record kinds.
+4. Why is the record named "echo call"? The guard names the last segment of the chain (`… && tsgo … && echo tsgo-ok`); `&&` stopped at tsgo, so the command that failed was not the one named.
+Source: tool — `journal.ts` keeps a second, separate list of the record kinds it writes; and check — `failingCommandWord` names the last segment even when `&&` stopped earlier.
+Root cause: the writable record kinds are listed twice (the `JournalRecord` union and `appendRecord`'s parameter), so a new kind needs two edits.
+Options:
+1. [tool] `appendRecord` takes `Exclude<JournalRecord, FailureRecord>`, so a new record kind needs one edit. evidence: `journal.ts:156` lists four kinds by hand; `types.ts` `JournalRecord` is the union.
+2. [check] When a call failed and its segments are joined by `&&`, the guard names the first segment that could have failed rather than the last — or records `input: "chain of N"` — so the record points at the real command (extends F-785afc27's tool_use_id proposal). evidence: this record says "echo call" for a tsgo failure.
+3. [rule] Before running the type check after adding a type, grep for every list of its siblings (`RaisedRecord | SuccessRecord`). evidence: the grep finds both lists in one call.
