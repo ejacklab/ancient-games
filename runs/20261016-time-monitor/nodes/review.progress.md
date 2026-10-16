@@ -1,0 +1,20 @@
+- 2026-10-16T10:34:23+08:00 · T1 · planned · SPEC and deadline parsing, arithmetic, CLI
+- 2026-10-16T10:34:23+08:00 · T2 · planned · deadline state, reminders and session isolation
+- 2026-10-16T10:34:23+08:00 · T3 · planned · withTime and UserPromptSubmit integration
+- 2026-10-16T10:34:23+08:00 · T4 · planned · Round 10 tests and failure sensitivity
+- 2026-10-16T10:34:23+08:00 · T5 · planned · four-experts runner and prompts
+- 2026-10-16T10:34:23+08:00 · T6 · planned · method 3.8 item 14 and related documentation
+- 2026-10-16T10:34:23+08:00 · T1 · start · Read SPEC, deadline implementation and CLI
+- 2026-10-16T10:35:07+08:00 · T1 · done · CLI validation and time arithmetic inspected; finite minute overflow reproduced
+- 2026-10-16T10:35:07+08:00 · T2 · start · Check progress summaries, mark delivery, ownership and deadline-file validation
+- 2026-10-16T10:35:07+08:00 · T3 · start · Check hook routing and installed event matchers
+- 2026-10-16T10:35:07+08:00 · T4 · start · Full bun suite: 1211 pass / 47 fail; investigate empty captured child output
+- 2026-10-16T10:35:46+08:00 · T2 · done · Reproduced false ownership, coalesced marks and missing final worker block; progress parsing checked
+- 2026-10-16T10:35:46+08:00 · T3 · done · Hook handlers preserve context; installation excludes Read and other tools from time reminders
+- 2026-10-16T10:35:46+08:00 · T5 · start · Review runner progress errors and caller-managed expert lifecycle
+- 2026-10-16T10:35:46+08:00 · T6 · start · Compare method promises and round-count limits with guard interfaces
+- 2026-10-16T10:36:27+08:00 · T5 · done · Mocked engine startup reproduced progress-parent crash and missing caller-managed progress; no engine invoked
+- 2026-10-16T10:36:27+08:00 · T6 · done · Found every-call/100-percent/round-limit documentation mismatches; checked node-brief format
+- 2026-10-16T10:36:53+08:00 · T4 · done · Typecheck passes; full suite 1211/47 and Round 10 rerun captured; weak final-wait assertion identified
+- 2026-10-16T10:36:53+08:00 · report · planned · Write numbered findings, reproductions, limits and clean areas
+- 2026-10-16T10:36:53+08:00 · report · start · Assemble review.result.md without changing implementation

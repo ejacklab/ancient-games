@@ -756,7 +756,11 @@ function handleUserPromptSubmit(payload: Record<string, unknown>, root: string, 
 // and time-up after every call — added to the call's own context, never replacing it.
 function withTime(payload: Record<string, unknown>, root: string, env: HookEnv, result: HookResult): HookResult {
   const session = sessionOf(payload);
-  if (payload.tool_name === "Bash" && /\bdeadline\s+start\b/.test(text(objectField(payload, "tool_input").command))) {
+  // Only a call that ran this guard's `deadline start` and succeeded claims (review finding 2): a command that merely
+  // mentions the words, or failed, does not.
+  const ran = text(objectField(payload, "tool_input").command);
+  if (payload.tool_name === "Bash" && payload.hook_event_name === "PostToolUse"
+    && segments(ran).some((part) => /\/src\/cli\.ts\s+deadline\s+start\b/.test(part.text))) {
     claimDeadlines(root, session);
   }
   const now = env.now();
@@ -766,9 +770,18 @@ function withTime(payload: Record<string, unknown>, root: string, env: HookEnv, 
   if (status.up) {
     const raisedUp = new Set(readJournal(root).records.flatMap((r) => (r.kind === "raised" && r.session === session ? r.ids : [])));
     const unsaid = status.deadline.marks.map((m) => markId(status.deadline, m)).filter((id) => !raisedUp.has(id));
-    if (unsaid.length > 0) appendRecord(root, { kind: "raised", time: now.toISOString(), session, ids: unsaid } as RaisedRecord);
-    const over = Math.max(0, status.usedMinutes - status.deadline.minutes);
-    message = `harness-guard time is up (${over} min over): stop trying, finish the report, and put what is open to the owner.`;
+    // The overrun from the exact end, rounded once, as deadline status does (review finding 7).
+    const over = Math.max(0, Math.round((now.getTime() - (Date.parse(status.deadline.start) + status.deadline.minutes * 60_000)) / 60_000));
+    const upLine = `harness-guard time is up (${over} min over): stop trying, finish the report, and put what is open to the owner.`;
+    if (unsaid.length > 0) {
+      // The 100% block, with the workers, is said once when the deadline is first seen passed (review finding 4).
+      appendRecord(root, { kind: "raised", time: now.toISOString(), session, ids: unsaid } as RaisedRecord);
+      const workers = deadlineStatus(root, session, now)?.workers ?? [];
+      message = [`harness-guard time: ${status.deadline.minutes} of ${status.deadline.minutes} min used (100%), 0 left`,
+        ...workers.slice(0, 5).map((w) => `  ${w}`), upLine].join("\n");
+    } else {
+      message = upLine;
+    }
   } else {
     // No mark passed yet: nothing can be due, so the journal is not read (the optimisation round of this run).
     const passed = status.deadline.marks.some((m) => status.percent >= m);

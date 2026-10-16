@@ -31,6 +31,8 @@ export function parseMarks(text: string | null): number[] {
 
 export function startDeadline(root: string, opts: { minutes: number; run?: string | null; marks?: number[] }, now: Date): Deadline {
   if (!Number.isFinite(opts.minutes) || opts.minutes <= 0) throw new DeadlineError("--minutes: a positive number");
+  // A duration whose end is not a representable time would never expire (review finding 6).
+  if (!Number.isFinite(new Date(now.getTime() + opts.minutes * 60_000).getTime())) throw new DeadlineError("--minutes: too large to be a time");
   const marks = opts.marks === undefined ? [...DEFAULT_MARKS] : [...new Set([...opts.marks, 100])].sort((a, b) => a - b);
   if (marks.some((mark) => !Number.isInteger(mark) || mark < 1 || mark > 100)) throw new DeadlineError("marks: integers from 1 to 100");
   const run = opts.run === undefined || opts.run === null || opts.run === "" ? null : path.relative(root, path.resolve(root, opts.run));
@@ -40,11 +42,15 @@ export function startDeadline(root: string, opts: { minutes: number; run?: strin
   return deadline;
 }
 
+const ID = /^D-[0-9a-f]{8}$/;
+
 function isDeadline(value: unknown): value is Deadline {
   if (typeof value !== "object" || value === null) return false;
   const d = value as Record<string, unknown>;
-  return typeof d.id === "string" && typeof d.start === "string" && Number.isFinite(Date.parse(d.start))
-    && typeof d.minutes === "number" && d.minutes > 0 && Array.isArray(d.marks)
+  return typeof d.id === "string" && ID.test(d.id) && typeof d.start === "string" && Number.isFinite(Date.parse(d.start))
+    && typeof d.minutes === "number" && d.minutes > 0
+    && Number.isFinite(new Date(Date.parse(d.start) + d.minutes * 60_000).getTime())
+    && Array.isArray(d.marks) && d.marks.every((m) => Number.isInteger(m) && (m as number) >= 1 && (m as number) <= 100)
     && (d.session === null || typeof d.session === "string") && (d.run === null || typeof d.run === "string");
 }
 
@@ -59,7 +65,8 @@ export function readDeadlines(root: string): Deadline[] {
   for (const name of names) {
     try {
       const parsed: unknown = JSON.parse(fs.readFileSync(path.join(folder(root), name), "utf8"));
-      if (isDeadline(parsed)) found.push(parsed);
+      // The id names the file it came from, so a claim can only write that file (review finding 5).
+      if (isDeadline(parsed) && name === `${parsed.id}.json`) found.push(parsed);
     } catch {
       // an unreadable deadline file is no deadline
     }

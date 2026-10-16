@@ -538,8 +538,9 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    - At the start the agent writes the deadline (start time plus the limit, or the last round) into the state file,
      checks it before every step, and stops at the last checkpoint that leaves time for the report: what was built,
      every provisional decision, every failure and insight, and what is left open.
-   - **The agent is told the time; it does not keep it.** It cannot feel time pass, so the guard keeps the limit:
-     `guard/src/cli.ts deadline start --minutes N --run runs/<run>` at the start; after that the hooks add a one-line
+   - **The agent is told the time; it does not keep it.** It cannot feel time pass, so the guard keeps a time limit:
+     `guard/src/cli.ts deadline start --minutes N --run runs/<run>` at the start (a limit in rounds has no clock: the
+     state file holds the last round and the agent checks it before each round); after that the hooks add a one-line
      clock after every tool call and a fuller block with the workers' progress at 50%, 80% and 100%, then time-up on
      every call (guard Round 10). `deadline status` is the check the agent can run; `deadline wait`, run in the
      background, is a timer that returns at the deadline.
@@ -559,7 +560,7 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    three failures or past the time given without going to the owner; the run stops waiting
    when pieces that do not rest on the question remain; a provisional decision has no reason or no
    experts' run folder; a question to the experts carries no vision or no use cases; a brief asks for no small
-   pieces or no timestamped progress lines; a time-boxed run starts no deadline; a provisional decision cites no
+   pieces or no timestamped progress lines; a run limited by time starts no deadline; a provisional decision cites no
    researched finding or measurement, or rests on recall alone; the run goes past its limit; the report leaves out a provisional decision; a safety-bound
    action is taken without the owner.
 

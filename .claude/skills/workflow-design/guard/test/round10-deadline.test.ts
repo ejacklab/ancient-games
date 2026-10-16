@@ -195,7 +195,8 @@ test("T3 Fails-if: CLI wait returns before the deadline", () => {
   expect(result.error).toBeUndefined();
   expect(result.status).toBe(0);
   expect(env.now().getTime()).toBeGreaterThanOrEqual(Date.parse(deadline.start) + deadline.minutes * 60_000);
-  expect(result.stdout).toMatch(/time is up|used .* of 0\.05 min/);
+  // COO, review finding 10: the default wait ends at the deadline, so its status says the time is up.
+  expect(result.stdout).toMatch(/time is up/);
 }, 10_000);
 
 test("T4: progress counts distinct pieces by their latest state and derives age from the injected clock", () => {
@@ -365,4 +366,55 @@ test("between marks, every call adds a one-line clock", () => {
   expect(first).toMatch(/^harness-guard clock: 2\/10 min \(20%\), 8 left$/);
   b.at(3);
   expect(context(b.post({ hook_event_name: "PostToolUse" }))).toMatch(/^harness-guard clock: 3\/10 min/);
+});
+
+// COO, after the Codex review of round 10 (runs/20261016-time-monitor/nodes/review.result.md).
+test("review 2: a command that only mentions deadline start, or failed, claims nothing", () => {
+  const b = box();
+  b.plant({ session: null });
+  b.post({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: 'echo "deadline start"' },
+    tool_response: { stdout: "", stderr: "", interrupted: false } }, "other");
+  b.post({ hook_event_name: "PostToolUseFailure", tool_name: "Bash", tool_input: { command: "bun x/src/cli.ts deadline start --minutes 5" },
+    exit_code: 2, error: "x" }, "other");
+  expect(JSON.parse(fs.readFileSync(path.join(b.root, ".harness-guard/deadlines/D-00000001.json"), "utf8")).session).toBeNull();
+  b.post({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "bun x/src/cli.ts deadline start --minutes 5" },
+    tool_response: { stdout: "", stderr: "", interrupted: false } }, "s");
+  expect(JSON.parse(fs.readFileSync(path.join(b.root, ".harness-guard/deadlines/D-00000001.json"), "utf8")).session).toBe("s");
+});
+
+test("review 4: the 100% block carries the workers once, then time-up alone", () => {
+  const b = box();
+  b.plant({ run: "runs/task" });
+  b.write("runs/task/nodes/w.progress.md", "- 2026-01-01T00:00:00Z · P1 · done · ok\n");
+  b.at(10);
+  const first = context(b.post({ hook_event_name: "PostToolUse" }));
+  expect(first).toContain("(100%)");
+  expect(first).toContain("w: 1/1 pieces");
+  expect(first).toContain("harness-guard time is up (0 min over)");
+  const second = context(b.post({ hook_event_name: "PostToolUse" }));
+  expect(second).not.toContain("w: 1/1 pieces");
+  expect(second).toContain("harness-guard time is up");
+});
+
+test("review 5: a deadline file whose id is not D-xxxxxxxx, or not its file name, is no deadline", () => {
+  const b = box();
+  b.write(".harness-guard/deadlines/bad.json", JSON.stringify({ id: "../unexpected", start: new Date(0).toISOString(), minutes: 5, run: null, marks: [100], session: null }));
+  b.write(".harness-guard/deadlines/D-00000002.json", JSON.stringify({ id: "D-00000003", start: new Date(0).toISOString(), minutes: 5, run: null, marks: [100], session: "s" }));
+  b.post({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "bun x/src/cli.ts deadline start --minutes 5" },
+    tool_response: { stdout: "", stderr: "", interrupted: false } });
+  expect(fs.existsSync(path.join(b.root, ".harness-guard/unexpected.json"))).toBe(false);
+  expect(deadlineStatus(b.root, "s", new Date(0))).toBeNull();
+});
+
+test("review 6: minutes too large to be a time are refused", () => {
+  const b = box();
+  expect(() => startDeadline(b.root, { minutes: 1e308 }, new Date())).toThrow();
+  expect(b.cli("deadline", "start", "--minutes", "1e308").status).toBe(2);
+});
+
+test("review 7: a fractional budget at its exact end is 0 min over", () => {
+  const b = box();
+  b.plant({ minutes: 2.5 });
+  b.at(2.5);
+  expect(context(b.post({ hook_event_name: "PostToolUse" }))).toContain("time is up (0 min over)");
 });

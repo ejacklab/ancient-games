@@ -574,3 +574,10 @@ also adds one line, `harness-guard clock: <m>/<N> min (<p>%), <left> left` — e
 every step (`runs/20261016-time-monitor/research/reminders.md` F1, F3, F6; a budget given once fails, F5, F6, F8). The
 mark block keeps its own prefix, `harness-guard time:`, so a mark is still said once. Fails-if: a call before the
 deadline adds no clock or time line.
+
+**Round 10, after the review** (`runs/20261016-time-monitor/nodes/review.result.md`): only a succeeded PostToolUse whose
+command runs this guard's `cli.ts deadline start` claims (not a mention, not a failed call); a deadline file counts
+only when its id matches `D-xxxxxxxx` and its file name, its marks are 1–100 and its end is a representable time
+(`--minutes` too large is a usage error); the 100% block with the workers is said once when the deadline is first seen
+passed, then time-up alone; the overrun is computed from the exact end; `install --print` watches every tool after a
+call (PostToolUse and PostToolUseFailure have no matcher) — an installed harness needs the new settings.

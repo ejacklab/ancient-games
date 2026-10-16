@@ -118,8 +118,11 @@ def progress(a, piece: str, state: str, note: str) -> None:
     if not a.progress:
         return
     line = f"- {dt.datetime.now().astimezone().isoformat(timespec='seconds')} · {piece} · {state} · {note}\n"
-    with open(a.progress, "a", encoding="utf-8") as f:
-        f.write(line)
+    try:
+        with open(a.progress, "a", encoding="utf-8") as f:
+            f.write(line)
+    except OSError as e:  # a progress line is a report, never a reason to drop the experts it reports on
+        print(f"warning: progress line not written ({type(e).__name__})", file=sys.stderr)
 
 
 def run(a) -> int:
@@ -134,6 +137,8 @@ def run(a) -> int:
         print(f"warning: {out} is outside {cwd}; opencode cannot read it", file=sys.stderr)
     for d in ("seats", "briefs", "answers", "logs"):
         (out / d).mkdir(parents=True, exist_ok=True)
+    if a.progress:  # made before any expert starts (review finding 1)
+        Path(a.progress).parent.mkdir(parents=True, exist_ok=True)
     (out / "question.md").write_text(question.strip() + "\n", encoding="utf-8")
     brief_t = (HERE / "assets" / "brief.md").read_text(encoding="utf-8")
     only = set(a.only.split(",")) if a.only else None
@@ -169,6 +174,10 @@ def run(a) -> int:
                        **({k: jobs[sid][k] for k in ("fallback_from", "fallback_reason") if k in jobs[sid]})}
         print(f"CALLER  {sid:8} run a Claude subagent: 'Read {jobs[sid]['brief']} and do what it says.' "
               f"and save its final message to {out / 'answers' / (sid + '.md')}", flush=True)
+        progress(a, sid, "start", "handed to the caller")
+        if a.progress:  # the caller writes the end line, since this script never sees the subagent finish
+            print(f"        when it ends, append: - <date -Iseconds> · {sid} · done|fail · caller  to {a.progress}",
+                  flush=True)
 
     procs = {}
     for sid, j in jobs.items():
