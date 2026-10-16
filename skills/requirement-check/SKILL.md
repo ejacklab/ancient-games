@@ -74,6 +74,9 @@ do not fill the gaps yourself.
 
 Evaluate first, in a table or a short list — **pass / FAIL per question**. Then ask the failing ones as questions,
 one line each, with the options if you can see them. Two or three real questions beat eight formalities.
+In a time-boxed run — the person gave a time or a number of rounds and is not asked until it ends — the failing
+ones go to the experts instead, and the agent fills them provisionally from their advice, marked as such (the
+workflow-design method, 3.8 item 14).
 
 Do not report a rule as complete when you chose its missing value. Say which values you left open.
 

@@ -77,7 +77,10 @@ resting a conclusion on it.
 ## Check   (`check` result; engines and any fallback from status.json)
 ```
 
-Label each line *quoted* (from an answer), *my reading*, or *not measured*. **EJ decides; the experts advise.**
+Label each line *quoted* (from an answer), *my reading*, or *not measured*. **EJ decides; the experts advise.** In a
+time-boxed run (EJ gave a time or a number of rounds) the main agent decides from their advice instead, marks the
+decision provisional with this run folder, and EJ accepts or declines it at the end (workflow-design method 3.8
+item 14).
 Do not pick a winner by vote count — five engines answering one brief still share the brief.
 
 ## Used by workflow-design (method 3.3 and 3.5)

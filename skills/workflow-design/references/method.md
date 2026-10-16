@@ -234,11 +234,12 @@ For each spot record:
 
 | | |
 |---|---|
-| Kind | missing **information** → a research piece · a **decision** → ask EJ · **unknown** → a bounded explore loop |
+| Kind | missing **information** → a research piece · a **decision** → ask EJ (in a time-boxed run, the experts: 3.8 item 14) · **unknown** → a bounded explore loop |
 | Blocks | which steps cannot start until it is resolved; everything else can start |
 | Depends on | another spot whose answer might remove or change this one |
 
-Questions for EJ go out as one batch, each with a provisional assumption so it can be answered in a few words.
+Questions for EJ go out as one batch, each with a provisional assumption so it can be answered in a few words — except
+in a time-boxed run, where they go to the experts and the main agent decides provisionally (3.8 item 14).
 In a prompt file a provisional assumption stands unless EJ corrects it; a workflow design's questions are answered
 before the designed workflow runs. Blueprint questions are the exception in both: they are not answered by silence,
 and they hold back only the pieces that build on them (3.1). Where spots are resolved separately, one
@@ -507,6 +508,27 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    (`runs/20261015-ts-hybrid/effectiveness/`, n = 3 per arm on one short task): with the rules in the working folder,
    agents followed them without the hooks; the hooks caught a format slip the rules let through and, after one round of
    fixes, cost no extra time. Not measured: a long session where the rules are out of reach.
+14. **A time-boxed run asks the experts, not the owner** (SHOULD; n=0). When the project owner gives a task a limit —
+   a time, or a number of rounds (a round is one pass from the criteria to the score and the path, R12.7; each round
+   after the first borrows the previous round's path) — the run does not stop to ask the owner before the limit:
+   - Every question that would go to the owner — an unclear spot of kind *decision* (3.3), a suggested use case or
+     requirement to accept (R13.1, R13.5), a blueprint question, a choice between options — goes to the experts
+     (the `four-experts` skill: the experts 3.3 or 3.5 names for that step, or all five where no step names them).
+     The main agent decides from their advice and writes the decision into the state file as **provisional**: the
+     question, the choice, the reason, and the experts' run folder.
+   - A provisional decision binds for the rest of the run. When the run ends, the owner accepts or declines each one;
+     work resting on a declined one is marked to redo, never deleted.
+   - The limit is the owner's go-ahead for the engine calls the run needs inside it, the experts' included.
+   - At the start the agent writes the deadline (start time plus the limit, or the last round) into the state file,
+     checks it before every step, and stops at the last checkpoint that leaves time for the report: what was built,
+     every provisional decision, every failure and insight, and what is left open.
+   - Safety bounds still wait for the owner (MUST), limit or not: a push, a message sent, a deletion outside the run's
+     branch and folder, a harness's config, `SPEC.md` or `DECISIONS.md`, spend beyond the limit. The run works around
+     it (a branch, a draft) and lists it in the report.
+
+   Fails if: a time-boxed run stops to ask the owner before its limit; a provisional decision has no reason or no
+   experts' run folder; the run goes past its limit; the report leaves out a provisional decision; a safety-bound
+   action is taken without the owner.
 
 ## 4. State and memory
 

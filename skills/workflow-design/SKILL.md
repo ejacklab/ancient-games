@@ -57,7 +57,9 @@ method section named beside it.
    `references/task-types.md`. **A label is not a node**: a subagent hand-off must buy an objective check, a
    different kind, or context room.
 3. **List every unclear spot before resolving any** (method 3.3): its kind (information · decision · unknown), what
-   it blocks, what it depends on. Questions go to the person as one batch, each with a provisional assumption.
+   it blocks, what it depends on. Questions go to the person as one batch, each with a provisional assumption —
+   unless the person gave a time or a number of rounds: then they go to the experts and you decide provisionally
+   (method 3.8 item 14).
    In a workflow design, **ask the experts once the list is written**: the `four-experts` skill with
    `--only linus,sun-tzu,lao-tzu,dave` and its `unclear-spots` question. Their answers are advice: a raised spot is
    added and marked, a "drop it" goes to EJ as a question, never silently.
@@ -128,7 +130,9 @@ Before adding or changing any rule in these documents, run it through the **`req
 - A blueprint piece writes into the product's `docs/blueprint/`, following `assets/templates/blueprint.md`.
 - Put a run's files in one folder (in the Ancient Games repo: `runs/<YYYYMMDD-slug>/`).
 - Give the person the questions batch and the cost estimate before anything is run. Designing is cheap; running
-  agents is not, so a run needs their go-ahead.
+  agents is not, so a run needs their go-ahead. A time or a number of rounds the person gives **is** that go-ahead:
+  the run then asks the experts instead of the person, decides provisionally, and stops at the limit with a report
+  (method 3.8 item 14); only the safety bounds still wait for the person.
 
 ## Running the method as a script
 
