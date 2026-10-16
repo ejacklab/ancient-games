@@ -54,8 +54,9 @@ The tool `tools/memory_index.py` checks the id form and conflict markers (merged
 6. **No secret scanner exists** for W3.2's `check: secret scanner`. Build one, or accept reviewer only.
 7. **Ledger row** for run `20261014-memory-index-cleanup` in `docs/TASK_TYPES_LEDGER.md`, once the other session's
    uncommitted edits there are committed.
-8. **Cleanup:** remove branch `fix/index-id-and-markers` and worktree `../ancient-games-index-clean` (merged), on EJ's
-   word.
+8. ~~Cleanup~~ — done 2026-10-16 (EJ: *"yes remove the merged branches"*): branches `fix/index-id-and-markers` and
+   `fix/index-drop-runbooks` deleted, worktrees `../ancient-games-index-clean` and `../ancient-games-index-r` removed;
+   both checked merged into master and clean first.
 9. **Not done by EJ's choice:** the agent test, YAML against Markdown (all five experts asked for it). Whether agents
    follow the YAML better stays *not measured*.
 10. ~~Left from the 2026-10-15 review~~ — done 2026-10-15, run `runs/20261015-sot-leftovers/`. Was: **Left from the 2026-10-15 review** (`runs/20261015-sot-final-review/experts/compare.md`): W6.3b says `check: tool`
