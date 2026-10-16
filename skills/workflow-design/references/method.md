@@ -508,9 +508,12 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    (`runs/20261015-ts-hybrid/effectiveness/`, n = 3 per arm on one short task): with the rules in the working folder,
    agents followed them without the hooks; the hooks caught a format slip the rules let through and, after one round of
    fixes, cost no extra time. Not measured: a long session where the rules are out of reach.
-14. **A time-boxed run asks the experts, not the owner** (SHOULD; n=0). When the project owner gives a task a limit —
+14. **A time-boxed run asks the experts, not the owner** (SHOULD; n=0). **The time is asked at the start:** when a task
+   starts, the agent asks the owner, with the task's details, how much time it has to try to find a solution — a time,
+   or a number of rounds — unless the owner already gave it. When the project owner gives a task a limit —
    a time, or a number of rounds (a round is one pass from the criteria to the score and the path, R12.7; each round
-   after the first borrows the previous round's path) — the run does not stop to ask the owner before the limit:
+   after the first borrows the previous round's path) — the run settles its own questions before the limit, and asks
+   the owner only about one it could not settle:
    - Every question that would go to the owner — an unclear spot of kind *decision* (3.3), a suggested use case or
      requirement to accept (R13.1, R13.5), a blueprint question, a choice between options — goes to the experts
      (the `four-experts` skill: the experts 3.3 or 3.5 names for that step, or all five where no step names them).
@@ -526,6 +529,11 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
      decide alone.
    - A provisional decision binds for the rest of the run. When the run ends, the owner accepts or declines each one;
      work resting on a declined one is marked to redo, never deleted.
+   - **Asking the owner: after three trials, within the time given.** A trial is one provisional choice tried and
+     checked; one that fails its check is a failed trial (logged, R12.2), and the next trial takes the experts' next
+     option. A question goes to the owner, for a discussion, only after three failed trials on it, or once the time the
+     owner gave is used up, whichever comes first — with the trials, their checks and the experts' folders. While it waits, the run goes on
+     with every piece that does not rest on it.
    - The limit is the owner's go-ahead for the engine calls the run needs inside it, the experts' included.
    - At the start the agent writes the deadline (start time plus the limit, or the last round) into the state file,
      checks it before every step, and stops at the last checkpoint that leaves time for the report: what was built,
@@ -534,7 +542,10 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
      branch and folder, a harness's config, `SPEC.md` or `DECISIONS.md`, spend beyond the limit. The run works around
      it (a branch, a draft) and lists it in the report.
 
-   Fails if: a time-boxed run stops to ask the owner before its limit; a provisional decision has no reason or no
+   Fails if: a task starts with its trial time neither given nor asked; a time-boxed run asks the owner about a
+   question before three failed trials on it or before the time given is used up; a question stays on trials past
+   three failures or past the time given without going to the owner; the run stops waiting
+   when pieces that do not rest on the question remain; a provisional decision has no reason or no
    experts' run folder; a question to the experts carries no vision or no use cases; a provisional decision cites no
    researched finding or measurement, or rests on recall alone; the run goes past its limit; the report leaves out a provisional decision; a safety-bound
    action is taken without the owner.

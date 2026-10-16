@@ -18,6 +18,9 @@ the cheap discoveries first.
 
 ## First: understand the challenge (method 3.0)
 
+**Ask the time first.** With the task's details, ask the person how much time you have to try to find a
+solution (a time, or a number of rounds), unless they gave it; the answer makes the run time-boxed (method 3.8 item 14).
+
 From the challenge text alone — no tools, no agents — state the **objective**, what is **in scope** and what is
 **out of scope**, answer the **six whys** (stop when an answer no longer changes the design), and end with a
 **provisional category** from `references/task-types.md`. The table of whys, what each feeds, and what an
@@ -58,8 +61,9 @@ method section named beside it.
    different kind, or context room.
 3. **List every unclear spot before resolving any** (method 3.3): its kind (information · decision · unknown), what
    it blocks, what it depends on. Questions go to the person as one batch, each with a provisional assumption —
-   unless the person gave a time or a number of rounds: then they go to the experts and you decide provisionally
-   (method 3.8 item 14).
+   unless the person gave a time or a number of rounds: then they go to the experts and you decide provisionally,
+   and only a question three failed trials or the time given could not settle goes to the person (method 3.8 item
+   14).
    In a workflow design, **ask the experts once the list is written**: the `four-experts` skill with
    `--only linus,sun-tzu,lao-tzu,dave` and its `unclear-spots` question. Their answers are advice: a raised spot is
    added and marked, a "drop it" goes to EJ as a question, never silently.
@@ -131,8 +135,9 @@ Before adding or changing any rule in these documents, run it through the **`req
 - Put a run's files in one folder (in the Ancient Games repo: `runs/<YYYYMMDD-slug>/`).
 - Give the person the questions batch and the cost estimate before anything is run. Designing is cheap; running
   agents is not, so a run needs their go-ahead. A time or a number of rounds the person gives **is** that go-ahead:
-  the run then asks the experts instead of the person, decides provisionally, and stops at the limit with a report
-  (method 3.8 item 14); only the safety bounds still wait for the person.
+  the run then asks the experts instead of the person, decides provisionally, asks the person only about a question
+  three failed trials or the time given could not settle, and stops at the limit with a report (method 3.8 item 14); the
+  safety bounds still wait for the person.
 
 ## Running the method as a script
 
