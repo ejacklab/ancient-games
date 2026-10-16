@@ -114,7 +114,10 @@ describe("K2 criteria reminder and touch", () => {
     expect(context.additionalContext).toContain("one item per thing the result must get right");
     expect(context.additionalContext).toContain("mark each met or not met with evidence at the end");
     expect(prompt().stdout).toBe("");
-    expect(records()).toEqual([{ kind: "raised", session, time: new Date(tick - 1000).toISOString(), ids: ["criteria"] }]);
+    // Round 8: every prompt also writes a time-only prompt record; the reminder's marker is still written once.
+    expect(records().filter((r) => r.kind !== "prompt").map((r) => ({ ...r, time: "" })))
+      .toEqual([{ kind: "raised", session, time: "", ids: ["criteria"] }]);
+    expect(records().filter((r) => r.kind === "prompt")).toHaveLength(2);
   });
 
   test.each([["Write"], ["Edit"], ["MultiEdit"]])("Fails-if: touched criteria still gets reminder (%s)", (tool: string) => {

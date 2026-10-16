@@ -492,3 +492,21 @@ Each command below gains a `--json` flag; without it, the text output and the ex
 
 Fails-if: `--json` output does not parse; a field above is missing; `insight --json` exits 0 with an open failure;
 the text output or exit code without `--json` changes; any of the three writes a file under the root.
+
+## Round 8 — false alarms are filtered by the check that would raise them (run 20261016-integrate-r11-r13)
+
+A false alarm is a check misfiring, so the check's own rule drops it before anything is logged; an agent never
+dismisses a logged failure.
+
+- **F1 The guard's own query exits.** D2's command error is not written when the call's last segment is the guard's
+  `cli.ts insight`, `criteria`, `register` or `path` and the exit is 1 — the CLI's "findings" exit, an answer. Exit 2
+  (usage), any other guard command, and any call whose last segment is not the guard stay command errors.
+- **F2 Criteria are read against their own request.** UserPromptSubmit writes a `prompt` record (`kind`, `time`,
+  `session` — never the prompt's text) on every prompt, before the K2 reminder logic. K2's late-criteria check compares
+  a criteria file's first touch with the first success or failure after the **last prompt before that touch**; a
+  session with no prompt records reads from its start, as before.
+
+Fails-if: a guard query's exit 1 is logged as a command error; a guard exit 2, a non-query guard command, or another
+command after the guard is not; criteria written before a request's own work are marked late because an earlier
+request's work came first; criteria written after the request's own work began are not marked late; a prompt record
+holds any field beyond kind, time and session.

@@ -123,7 +123,15 @@ export interface SuccessRecord {
   engine: string; // engine name, or the test runner label
 }
 
-export type JournalRecord = FailureRecord | TouchedRecord | GuardErrorRecord | RaisedRecord | SuccessRecord;
+// Round 8: a request from the person arrived — its time only, never its text. It marks where a task starts, so the
+// late-criteria check reads the work of this request, not of the whole session.
+export interface PromptRecord {
+  kind: "prompt";
+  time: string;
+  session: string;
+}
+
+export type JournalRecord = FailureRecord | TouchedRecord | GuardErrorRecord | RaisedRecord | SuccessRecord | PromptRecord;
 
 // Round 5 (R12.7): the path of a successful task, a YAML file.
 export interface PathStep {

@@ -12,7 +12,7 @@ import { answered, greatAnswered, openFailures } from "./insight.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
 import { checkResult, commandWord, engineCallSite, lintCommand, recognizeTestRun, segments } from "./traps.ts";
-import type { Finding, GuardErrorRecord, HookEnv, HookResult, TouchedRecord, RaisedRecord, SuccessRecord } from "./types.ts";
+import type { Finding, GuardErrorRecord, HookEnv, HookResult, PromptRecord, TouchedRecord, RaisedRecord, SuccessRecord } from "./types.ts";
 
 const HARNESS = "claude-code";
 const NO_SESSION = "none";
@@ -228,6 +228,16 @@ function failingCommandWord(command: string): string | null {
   return null;
 }
 
+// The guard's own query commands exit 1 to say "findings" — an answer, not an error (Round 8; cli.ts: 0 ok, 1
+// findings, 2 usage). Only the last segment's exit is the call's, so only it is read.
+const GUARD_QUERY = /\/src\/cli\.ts\s+(insight|criteria|register|path)\b/;
+
+function guardQueryAnswered(command: string, exitCode: number | null): boolean {
+  const parts = segments(command);
+  const last = parts[parts.length - 1];
+  return exitCode === 1 && last !== undefined && GUARD_QUERY.test(last.text);
+}
+
 // The agent's own failure, when this event is one: a test run that failed (D1) or another Bash call that errored (D2).
 // An engine call is not one — M5 has already checked it — and a person stopping a call is not a failure (D2, which D1
 // follows: an interrupted run was not the agent's mistake either).
@@ -276,6 +286,7 @@ function ownFailureSpec(payload: Record<string, unknown>, command: string, faile
   const exitCode = exitCodeOf(payload, true);
   // An exit of zero is not an error, wherever the event came from — the same rule M1's result check follows.
   if (exitCode === 0) return null;
+  if (guardQueryAnswered(command, exitCode)) return null;
   return {
     finding: {
       rule: "R12.2-command-error",
@@ -522,7 +533,17 @@ function criteriaStep(root: string, session: string, raised: Set<string>, env: H
     .filter((record) => record.session === session && (record.kind === "success" || (record.kind === "failure" && !byCriteriaStep(record.check))))
     .map((record) => Date.parse(record.time))
     .filter((time) => Number.isFinite(time));
-  const firstWork = workTimes.length === 0 ? null : Math.min(...workTimes);
+  const promptTimes = records
+    .filter((record) => record.session === session && record.kind === "prompt")
+    .map((record) => Date.parse(record.time))
+    .filter((time) => Number.isFinite(time));
+  // Round 8: the work a criteria file must precede is the work of its own request — what came after the last prompt
+  // before the file was first touched. A session with no prompt records reads from its start, as before.
+  const firstWorkOf = (touched: number): number | null => {
+    const start = Math.max(-Infinity, ...promptTimes.filter((time) => time <= touched));
+    const after = workTimes.filter((time) => time > start);
+    return after.length === 0 ? null : Math.min(...after);
+  };
 
   const lines: string[] = [];
   const states: string[] = [];
@@ -533,7 +554,8 @@ function criteriaStep(root: string, session: string, raised: Set<string>, env: H
     // A criteria file this session touched and then deleted or renamed is not checked (as for registers, C9).
     if (!fs.existsSync(absolute)) continue;
 
-    if (firstWork !== null && Number.isFinite(first) && first > firstWork && !lateFiles.has(file)) {
+    const firstWork = Number.isFinite(first) ? firstWorkOf(first) : null;
+    if (firstWork !== null && first > firstWork && !lateFiles.has(file)) {
       criteriaFailure(root, session, env, file, LATE_CHECK, "criteria written before the work", "criteria written after the work began", "the criteria were written after the work's first checked result");
       lateFiles.add(file);
       wrote = true;
@@ -646,6 +668,8 @@ function handleSessionStart(payload: Record<string, unknown>, root: string): Hoo
 // touched a criteria file, and not again once asked (a `raised` record with id "criteria"). The prompt is never read.
 function handleUserPromptSubmit(payload: Record<string, unknown>, root: string, env: HookEnv): HookResult {
   const session = sessionOf(payload);
+  const prompt: PromptRecord = { kind: "prompt", time: env.now().toISOString(), session };
+  appendRecord(root, prompt);
   const records = readJournal(root).records.filter((record) => record.session === session);
   if (records.some((record) => record.kind === "touched" && isCriteriaFile(record.path))) return quiet();
   if (records.some((record) => record.kind === "raised" && record.ids.includes("criteria"))) return quiet();
