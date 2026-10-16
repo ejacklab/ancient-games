@@ -16,7 +16,6 @@ export interface IndexEntry {
   source: string; // the Source line's first word, or "-"
   optionKinds: string[];
   category: string; // the category id, or "-" when no rule places it
-  flags: string[]; // every flag rule that matches; flags stack on any category (Linus's scheme)
 }
 
 // A category is placed by the first rule that matches; categories are data (data/insight-categories.yaml).
@@ -26,34 +25,8 @@ export interface CategoryRule {
   sources?: string[]; // a Source first word
   checks?: string[]; // regexes over the failure's check
   kinds?: ("failure" | "great")[];
-  titles?: string[]; // case-insensitive regexes over the section's heading (used to place it, never printed)
-  flag?: boolean; // a flag, not a category: every matching flag is added; categories stay first-match
-  engines?: boolean; // matches when the journal names an engine (not "none") for one of the section's ids
-  rootCause?: string[]; // case-insensitive regexes over the Root cause line (never printed)
 }
 
-// What a rule may look at besides the index fields: the heading, the root cause and the journal's engines.
-interface Evidence {
-  title: string;
-  rootCause: string;
-  engines: string[];
-}
-
-function ruleMatches(rule: CategoryRule, entry: Omit<IndexEntry, "category" | "flags">, ev: Evidence): boolean {
-  if (rule.kinds !== undefined && !rule.kinds.includes(entry.kind)) return false;
-  if (rule.sources !== undefined && !rule.sources.includes(entry.source)) return false;
-  if (rule.checks !== undefined && !entry.checks.some((check) => rule.checks!.some((re) => matches(re, check)))) return false;
-  if (rule.titles !== undefined && !rule.titles.some((re) => matches(re, ev.title, "i"))) return false;
-  if (rule.engines === true && !ev.engines.some((engine) => engine !== "" && engine !== "none")) return false;
-  if (rule.rootCause !== undefined && !rule.rootCause.some((re) => matches(re, ev.rootCause, "i"))) return false;
-  return true;
-}
-
-export function flagsOf(entry: Omit<IndexEntry, "category" | "flags">, rules: CategoryRule[], ev: Evidence): string[] {
-  return [...new Set(rules.filter((rule) => rule.flag === true && ruleMatches(rule, entry, ev)).map((rule) => rule.id))];
-}
-
-// The same heading rule as insight.ts, so the index and the sections it names never fall out of step (review #2).
 const HEADING_RE = /^##(?!#)\s*(.*)$/;
 // Only known option kinds are printed; anything else in the brackets is the author's text (review #1).
 const OPTION_KINDS = new Set(["rule", "check", "tool", "config-advice"]);
@@ -73,12 +46,13 @@ function matches(re: string, text: string, flags = ""): boolean {
   }
 }
 
-export function categorize(entry: Omit<IndexEntry, "category" | "flags">, rules: CategoryRule[], title = "", own: string | null = null,
-  ev: Evidence = { title, rootCause: "", engines: [] }): string {
-  const categories = rules.filter((rule) => rule.flag !== true);
-  // The writer's own `Category:` line wins when it names a known category.
-  if (own !== null && categories.some((rule) => rule.id === own)) return own;
-  for (const rule of categories) if (ruleMatches(rule, entry, { ...ev, title })) return rule.id;
+export function categorize(entry: Omit<IndexEntry, "category">, rules: CategoryRule[]): string {
+  for (const rule of rules) {
+    if (rule.kinds !== undefined && !rule.kinds.includes(entry.kind)) continue;
+    if (rule.sources !== undefined && !rule.sources.includes(entry.source)) continue;
+    if (rule.checks !== undefined && !entry.checks.some((check) => rule.checks!.some((re) => matches(re, check)))) continue;
+    return rule.id;
+  }
   return "-";
 }
 
@@ -93,12 +67,7 @@ export function loadCategories(guardDir: string, file = path.join(guardDir, "dat
 
 export function insightIndex(root: string, rules: CategoryRule[]): IndexEntry[] {
   const checkOf = new Map<string, string>();
-  const engineOf = new Map<string, string>();
-  for (const record of readJournal(root).records) {
-    if (record.kind !== "failure") continue;
-    checkOf.set(record.id, record.check);
-    engineOf.set(record.id, record.engine);
-  }
+  for (const record of readJournal(root).records) if (record.kind === "failure") checkOf.set(record.id, record.check);
   const entries: IndexEntry[] = [];
   for (const file of findInsightFiles(root)) {
     // The project's insights: runs/<run>/insight*.md and the guard's own folder — not files nested deeper inside a
@@ -106,18 +75,14 @@ export function insightIndex(root: string, rules: CategoryRule[]): IndexEntry[] 
     const parts = file.split(path.sep);
     if (parts[0] === "runs" && parts.length !== 3) continue;
     let sections: InsightSection[];
-    let heads: { title: string; own: string | null }[];
     try {
-      const text = fs.readFileSync(path.join(root, file), "utf8");
-      sections = parseInsight(text);
-      heads = headings(text);
+      sections = parseInsight(fs.readFileSync(path.join(root, file), "utf8"));
     } catch {
       continue;
     }
-    sections.forEach((section, i) => {
-      const head = heads[i] ?? { title: "", own: null };
+    for (const section of sections) {
       const kind = isGreatSection(section) ? "great" : "failure";
-      const base: Omit<IndexEntry, "category" | "flags"> = {
+      const base: Omit<IndexEntry, "category"> = {
         file,
         ids: section.ids,
         kind,
@@ -125,43 +90,23 @@ export function insightIndex(root: string, rules: CategoryRule[]): IndexEntry[] 
         source: firstWord(section.source),
         optionKinds: section.options.map((option) => (OPTION_KINDS.has(option.kind) ? option.kind : "-")),
       };
-      const ev: Evidence = { title: head.title, rootCause: section.rootCause ?? "", engines: section.ids.map((id) => engineOf.get(id) ?? "") };
-      entries.push({ ...base, category: categorize(base, rules, head.title, head.own, ev), flags: flagsOf(base, rules, ev) });
-    });
+      entries.push({ ...base, category: categorize(base, rules) });
+    }
   }
   return entries;
 }
 
-// Each section's heading and its own `Category:` line, in file order — the same order parseInsight returns (a
-// heading opens a section only when it has a failure id or starts with "great:").
-function headings(text: string): { title: string; own: string | null }[] {
-  const out: { title: string; own: string | null }[] = [];
-  let current: { title: string; own: string | null } | null = null;
-  for (const line of text.split(/\r?\n/)) {
-    const heading = HEADING_RE.exec(line);
-    if (heading) {
-      const title = heading[1]!.trim();
-      current = (title.match(ID_RE) ?? []).length > 0 || /^great\s*:/i.test(title) ? { title, own: null } : null;
-      if (current !== null) out.push(current);
-      continue;
-    }
-    const own = /^Category:\s*([a-z-]+)/i.exec(line);
-    if (current !== null && own !== null) current.own = own[1]!.toLowerCase();
-  }
-  return out;
-}
-
 export function indexMarkdown(entries: IndexEntry[]): string {
-  const lines = ["| file | ids | kind | check | source | options | category | flags |", "|---|---|---|---|---|---|---|---|"];
+  const lines = ["| file | ids | kind | check | source | options | category |", "|---|---|---|---|---|---|---|"];
   for (const e of entries) {
-    lines.push(`| ${e.file} | ${e.ids.join(", ") || "-"} | ${e.kind} | ${e.checks.join(", ") || "-"} | ${e.source} | ${e.optionKinds.join(", ") || "-"} | ${e.category} | ${e.flags.join(", ") || "-"} |`);
+    lines.push(`| ${e.file} | ${e.ids.join(", ") || "-"} | ${e.kind} | ${e.checks.join(", ") || "-"} | ${e.source} | ${e.optionKinds.join(", ") || "-"} | ${e.category} |`);
   }
   return lines.join("\n");
 }
 
 // The whole text of each section that matches: by category, or by `<file>#<id>`. For an expert that loads insights.
-export function showSections(root: string, entries: IndexEntry[], want: { categories: string[]; refs: string[]; flags?: string[] }): string {
-  const chosen = entries.filter((e) => want.categories.includes(e.category) || (want.flags ?? []).some((f) => e.flags.includes(f))
+export function showSections(root: string, entries: IndexEntry[], want: { categories: string[]; refs: string[] }): string {
+  const chosen = entries.filter((e) => want.categories.includes(e.category)
     || want.refs.some((ref) => { const [file, id] = ref.split("#"); return e.file === file && (id === undefined || e.ids.includes(id)); }));
   const out: string[] = [];
   const byFile = new Map<string, IndexEntry[]>();

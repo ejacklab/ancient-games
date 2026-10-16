@@ -440,7 +440,7 @@ def main() -> int:
     r.add_argument("--needs-web", action="store_true", help="the task needs web search: 范蠡 goes to Claude")
     r.add_argument("--needs-shell", action="store_true", help="the task needs a shell: 范蠡 goes to Claude")
     r.add_argument("--timeout", type=int, default=1800, help="seconds per engine call")
-    r.add_argument("--insights", help="the insight categories Dave loads, comma-separated (e.g. spec,own-work); "
+    r.add_argument("--insights", help="the insight categories Dave loads, comma-separated (e.g. instruction,check); "
                                       "with none named he chooses from the index")
     r.add_argument("--insight-scheme", help="a categories file other than guard/data/insight-categories.yaml, for a "
                                            "comparison of category schemes")

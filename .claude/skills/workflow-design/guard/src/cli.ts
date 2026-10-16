@@ -295,16 +295,14 @@ function insight(args: string[]): number {
       return OK;
     }
     const categories: string[] = [];
-    const flags: string[] = [];
     const refs: string[] = [];
     for (let i = 1; i < args.length; i++) {
       if (args[i] === "--category") categories.push(args[++i] ?? usageError("--category needs a value"));
-      else if (args[i] === "--flag") flags.push(args[++i] ?? usageError("--flag needs a value"));
       else if (args[i] === "--categories") i++;
       else refs.push(args[i]!);
     }
-    if (categories.length === 0 && flags.length === 0 && refs.length === 0) usageError("insight show: --category C, --flag F or <file>#<id>");
-    out(showSections(root, entries, { categories, refs, flags }) || "no matching insight sections");
+    if (categories.length === 0 && refs.length === 0) usageError("insight show: --category C or <file>#<id>");
+    out(showSections(root, entries, { categories, refs }) || "no matching insight sections");
     return OK;
   }
   const session = flagValue(args, "--session");

@@ -21,7 +21,6 @@ Whys:
 3. Why did my question name that path? I pointed at the plan where it lives instead of copying it into the run folder.
 4. Why was the known trap not applied? My memory says opencode rejects files outside the repo ("copy inputs in"), but nothing checks a question file's paths before the runner starts.
 Source: check — nothing checks that the paths a question names are inside the repo before an opencode expert reads it.
-Category: spec
 Root cause: an input outside the repo, in a question to an engine that silently rejects such paths, with no pre-flight check.
 Options:
 1. [check] six_experts.py run refuses (or copies in) any path in the question file that lies outside the working directory, before starting opencode experts. evidence: both failures read `~/.claude/plans/…`; the rerun with `runs/…/plan.md` did not.
@@ -36,7 +35,6 @@ Whys:
 3. Why did that reach the tests? The quota tests replace `start` with an 8-argument fake; I had run them before the change (8/8) and not after.
 4. Why not after? I ran only the new runner tests and the guard suite after the Dave/Dario edit, not every test that patches `start`.
 Source: instruction — the main agent's habit of running only the tests it just wrote after changing a shared function's signature.
-Category: own-work
 Root cause: a shared function's signature changed without running every test that replaces it.
 Options:
 1. [rule] After changing a function's signature, grep the tests for the name (`start`, `fake_start`) and run those before anything else. evidence: one grep finds `tests/test_six_experts_codex_quota.py`.
@@ -51,7 +49,6 @@ Whys:
 3. Why use two `&` subshells at all? To run both Dave variants at once; the guard denies `&` only for opencode, so it was allowed.
 4. Why was it not caught until the end? The command reported only at its end, and its exit came from a `cat` of a file the missing run should have made.
 Source: instruction — the main agent's choice of two `&` subshells inside one background Bash call instead of two separate background calls.
-Category: own-work
 Root cause: a fragile command shape (parallel subshells inside one backgrounded call) whose partial start was visible only through a missing file; the exact cause of the non-start was not established.
 Options:
 1. [rule] Run each engine call as its own background Bash call, never as `&` subshells inside one. evidence: the rerun as its own call started at once.

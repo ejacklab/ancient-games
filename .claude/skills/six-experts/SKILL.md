@@ -39,8 +39,8 @@ python3 ~/.claude/skills/six-experts/scripts/six_experts.py run "Should we keep 
 
 - `--question-file F` for a long question. Put the facts the experts need **in the question**; they are told not to
   invent missing ones and will list them as questions instead.
-- `--insights spec,own-work` names the insight categories Dave loads (config · tool · test · guard-check · spec ·
-  own-work; `guard/src/cli.ts insight index` shows them). With none named he chooses from the index. The runner copies
+- `--insights instruction,check` names the insight categories Dave loads — the four Source kinds: instruction ·
+  check · tool · config (`guard/src/cli.ts insight index` shows them). With none named he chooses from the index. The runner copies
   the index and the sections into the run's `seats/`, so every engine can read them; `check` fails Dave when he cites
   an id that is not in the index, or cites none without "No insight applies".
 - For a Dave-against-Dario comparison, run both through the runner (not `--claude-by-caller`), so each runs on its

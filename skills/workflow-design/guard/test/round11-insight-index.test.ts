@@ -118,7 +118,6 @@ test("P1 Fails-if: a section is missing from the index or listed twice — every
     source: "instruction",
     optionKinds: ["rule", "check"],
     category: expect.any(String),
-    flags: expect.any(Array), // Linus's scheme added flags (COO)
   });
   const second = entries.find((e) => e.ids.includes("F-2b3c4d5e"))!;
   expect(second.checks).toEqual(["R12.2-command-error"]);
@@ -157,7 +156,7 @@ test("P3 Fails-if: show prints a section that does not match, or misses one that
   // A rule set of its own so the planted file shapes are placed exactly where the test says.
   const rules: CategoryRule[] = [
     { id: "tool", name: "an engine behaved other than expected", sources: ["tool"] },
-    { id: "spec", name: "a spec was unclear", sources: ["instruction"], titles: ["spec", "brief"] },
+    { id: "spec", name: "a spec was unclear", sources: ["instruction"] },
   ];
   b.write("runs/x/insight.md", failureFile("F-1a2b3c4d — a spec question", "R12.1-exit", "instruction")
     + `\n## F-4d5e6f70\n\n${sectionBody().replace(/Source: instruction/, "Source: tool")}\n`);
@@ -165,7 +164,8 @@ test("P3 Fails-if: show prints a section that does not match, or misses one that
   const tool = entries.filter((entry) => entry.category === "tool");
   const spec = entries.filter((entry) => entry.category === "spec");
   expect(tool.map((entry) => entry.ids[0])).toEqual(["F-4d5e6f70"]);
-  expect(spec.map((entry) => entry.ids[0])).toEqual(["F-1a2b3c4d"]);
+  expect(spec.map((entry) => entry.ids[0])).toContain("F-1a2b3c4d");
+  expect(spec.some((entry) => entry.ids.includes("F-4d5e6f70"))).toBe(false);
 
   const printed = showSections(b.root, entries, { categories: ["tool"], refs: [] });
   expect(printed).toContain("<!-- ");
@@ -179,7 +179,7 @@ test("P3 Fails-if: show prints a section that does not match, or misses one that
   expect(viaCli.stdout).not.toContain("F-1a2b3c4d");
 
   // Two categories at once: both sides, each exactly once.
-  const both = b.cli("insight", "show", "--category", "tool", "--category", "spec");
+  const both = b.cli("insight", "show", "--category", "tool", "--category", "instruction"); // the shipped four
   expect(both.stdout.match(/F-4d5e6f70/g)).toHaveLength(1);
   expect(both.stdout.match(/F-1a2b3c4d/g)).toHaveLength(1);
 });
@@ -247,25 +247,10 @@ test("P5 I3: a section takes the first rule whose every given condition matches"
   expect(rows(b, config).find((entry) => entry.ids[0] === "F-2b3c4d5e")!.category).toBe("config");
 });
 
-test("P5 I3: a section's own Category: line overrides every rule", () => {
-  const b = box();
-  b.write("runs/x/insight.md", `## F-1a2b3c4d — a quota setting\n\n${sectionBody()}\nCategory: spec\n\n`
-    + `## F-2b3c4d5e — a quota setting\n\n${sectionBody().replace(/Source: instruction/, "Source: config")}\n`
-    + "Category: no-such-category\n");
-  b.journal([b.failure({ id: "F-1a2b3c4d", check: "R12.1-exit" }), b.failure({ id: "F-2b3c4d5e", check: "R12.1-exit" })]);
-  const rules: CategoryRule[] = [
-    { id: "config", name: "the environment", sources: ["config"] },
-    { id: "spec", name: "a spec was unclear", sources: ["instruction"] },
-  ];
-  const entries = rows(b, rules);
-  expect(entries.find((entry) => entry.ids[0] === "F-1a2b3c4d")!.category).toBe("spec"); // the config rule would not win
-  expect(entries.find((entry) => entry.ids[0] === "F-2b3c4d5e")!.category).toBe("config"); // an unknown id falls back
-});
-
 test("P5 Fails-if: a category rule with no matching section breaks the index — every section is still listed", () => {
   const b = planted();
   const rules: CategoryRule[] = [
-    { id: "never", name: "matches nothing", sources: ["nothing-like-this"], titles: ["no such title"], kinds: ["great"] },
+    { id: "never", name: "matches nothing", sources: ["nothing-like-this"], kinds: ["great"] },
     { id: "spec", name: "a spec was unclear", sources: ["instruction"] },
   ];
   const entries = rows(b, rules);
@@ -276,7 +261,7 @@ test("P5 Fails-if: a category rule with no matching section breaks the index —
   // The shipped data file is read and every id it names is usable.
   const shipped = loadCategories(GUARD_DIR);
   expect(shipped.length).toBeGreaterThan(0);
-  expect(shipped.map((rule) => rule.id)).toContain("spec");
+  expect(shipped.map((rule) => rule.id).sort()).toEqual(["check", "config", "instruction", "tool"]);
   // Review #8: every shipped category places at least one planted section of its own kind.
   b.write("runs/y/insight.md", ["config", "tool", "check", "instruction"].map((source, n) =>
     `## F-${String(n).padStart(8, "9")} — a ${source === "check" ? "test suite" : source === "instruction" ? "spec" : source} case\n\n`
@@ -298,7 +283,7 @@ test("P6 I1: insight index --json gives one object per section, with the file, i
   expect(parsed.sections.map((entry) => entry.file)).toContain("runs/x/insight.md");
   for (const entry of parsed.sections) {
     expect(Object.keys(entry).sort())
-      .toEqual(["category", "checks", "file", "flags", "ids", "kind", "optionKinds", "source"]);
+      .toEqual(["category", "checks", "file", "ids", "kind", "optionKinds", "source"]);
   }
   expect(parsed.sections.find((entry) => entry.ids.includes("F-2b3c4d5e"))!.checks).toEqual(["R12.2-command-error"]);
 });
@@ -308,7 +293,7 @@ test("P6 I1: the markdown table has one header row and one row per section, with
   const result = b.cli("insight", "index");
   expect(result.status).toBe(0);
   const lines = result.stdout.trim().split("\n");
-  expect(lines[0]).toBe("| file | ids | kind | check | source | options | category | flags |");
+  expect(lines[0]).toBe("| file | ids | kind | check | source | options | category |");
   expect(lines).toHaveLength(5); // a header, a separator and one row per section
   expect(lines.some((line) => line.includes("R12.2-command-error"))).toBe(true);
   expect(lines.some((line) => line.includes("F-2b3c4d5e"))).toBe(true);
@@ -323,18 +308,6 @@ test("P6 I1: an empty root indexes to no rows and show says nothing matched", ()
   expect(b.cli("insight", "index").stdout.trim().split("\n")).toHaveLength(2);
   expect(b.cli("insight", "show", "--category", "spec").stdout.trim()).toBe("no matching insight sections");
 });
-// COO, after mutant IM1 survived: the override must beat a rule that would place the section elsewhere.
-test("I3: a config section marked `Category: spec` is spec, not config", () => {
-  const b = box();
-  b.write("runs/x/insight.md", `## F-3c4d5e6f — a quota setting\n\n${sectionBody().replace(/Source: instruction/, "Source: config")}\nCategory: spec\n`);
-  b.journal([b.failure({ id: "F-3c4d5e6f", check: "R12.1-exit" })]);
-  const rules: CategoryRule[] = [
-    { id: "config", name: "the environment", sources: ["config"] },
-    { id: "spec", name: "a spec was unclear", sources: ["instruction"] },
-  ];
-  expect(rows(b, rules).find((entry) => entry.ids[0] === "F-3c4d5e6f")!.category).toBe("spec");
-});
-
 // COO, after the dsh review (runs/20261016-six-experts/nodes/review.result.md).
 test("review 1: an option label that is not a known kind never reaches the index", () => {
   const b = box();
@@ -345,20 +318,22 @@ test("review 1: an option label that is not a known kind never reaches the index
   expect(indexMarkdown(entries)).not.toContain(SECRET);
 });
 
-test("review 2: a heading with no space after ## keeps its override and is shown", () => {
+test("review 2: a heading with no space after ## is indexed in its Source category and shown", () => {
   const b = box();
-  b.write("runs/x/insight.md", `##F-5e6f7081 — a quota setting\n\n${sectionBody().replace(/Source: instruction/, "Source: config")}\nCategory: spec\n\n`
+  b.write("runs/x/insight.md", `##F-5e6f7081 — a quota setting\n\n${sectionBody().replace(/Source: instruction/, "Source: config")}\n\n`
     + `## F-6f708192 — another\n\n${sectionBody().replace(/Source: instruction/, "Source: tool")}\n`);
   b.journal([b.failure({ id: "F-5e6f7081", check: "R12.1-exit" }), b.failure({ id: "F-6f708192", check: "R12.1-exit" })]);
   const entries = rows(b);
-  expect(entries.find((e) => e.ids[0] === "F-5e6f7081")!.category).toBe("spec");
+  expect(entries.find((e) => e.ids[0] === "F-5e6f7081")!.category).toBe("config");
   expect(entries.find((e) => e.ids[0] === "F-6f708192")!.category).toBe("tool");
-  expect(showSections(b.root, entries, { categories: ["spec"], refs: [] })).toContain("F-5e6f7081");
+  const shown = showSections(b.root, entries, { categories: ["config"], refs: [] });
+  expect(shown).toContain("F-5e6f7081");
+  expect(shown).not.toContain("F-6f708192");
 });
 
 test("review 3: a malformed regex in a category rule matches nothing instead of breaking the index", () => {
   const b = planted();
-  const rules: CategoryRule[] = [{ id: "broken", name: "x", titles: ["([unclosed"] }, { id: "spec", name: "s", sources: ["instruction"] }];
+  const rules: CategoryRule[] = [{ id: "broken", name: "x", checks: ["([unclosed"] }, { id: "spec", name: "s", sources: ["instruction"] }];
   expect(() => rows(b, rules)).not.toThrow();
   expect(rows(b, rules).some((e) => e.category === "broken")).toBe(false);
 });
@@ -372,30 +347,4 @@ test("the index reads runs/<run>/insight*.md and .harness-guard/insights/, not i
   b.journal([]);
   const ids = rows(b).flatMap((e) => e.ids).sort();
   expect(ids).toEqual(["F-7a8b9c0d", "F-9c0d1e2f"]);
-});
-
-// COO, Linus's scheme (run 20261016-six-experts): flags stack on any category; categories stay first-match.
-test("flags: an engine flag from the journal's engine, an unconfirmed flag from the root cause; both stack", () => {
-  const b = box();
-  b.write("runs/x/insight.md",
-    `## F-a1b2c3d4 — an engine call returned nothing\n\n${sectionBody().replace(/Source: instruction/, "Source: tool").replace(/Root cause: .*/, "Root cause: not confirmed — the evidence is from an earlier run")}\n\n`
-    + `## F-b2c3d4e5 — a spec line\n\n${sectionBody()}\n`);
-  b.journal([b.failure({ id: "F-a1b2c3d4", check: "R12.1-missing-output", engine: "codex" }),
-    b.failure({ id: "F-b2c3d4e5", check: "R12.2-command-error", engine: "none" })]);
-  const rules: CategoryRule[] = [
-    { id: "tool", name: "t", sources: ["tool"] },
-    { id: "instruction", name: "i", sources: ["instruction"] },
-    { id: "engine", name: "an AI engine or its quota", flag: true, engines: true },
-    { id: "unconfirmed", name: "cause not proven", flag: true, rootCause: ["not confirmed", "unconfirmed", "not established"] },
-  ];
-  const entries = rows(b, rules);
-  const first = entries.find((e) => e.ids[0] === "F-a1b2c3d4")!;
-  const second = entries.find((e) => e.ids[0] === "F-b2c3d4e5")!;
-  expect(first.category).toBe("tool");
-  expect(first.flags.sort()).toEqual(["engine", "unconfirmed"]);
-  expect(second.category).toBe("instruction");
-  expect(second.flags).toEqual([]);
-  expect(indexMarkdown(entries)).toContain("engine, unconfirmed");
-  expect(indexMarkdown(entries)).not.toContain("earlier run");
-  expect(showSections(b.root, entries, { categories: [], refs: [], flags: ["engine"] })).toContain("F-a1b2c3d4");
 });
