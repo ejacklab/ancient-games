@@ -185,6 +185,11 @@ function words(text: string): Word[] {
   };
   for (let i = 0; i < text.length; i++) {
     const char = text[i]!;
+    if (char === "\\" && quote !== "'" && i + 1 < text.length) {
+      if (start < 0) start = i;
+      i++;
+      continue;
+    }
     if (quote !== null) {
       if (char === quote) quote = null;
       continue;
@@ -259,6 +264,12 @@ function tokenize(command: string): Token[] {
   };
   for (let i = 0; i < command.length; i++) {
     const char = command[i]!;
+    // A backslash keeps the next character, outside quotes and inside double quotes (round 13: `"kind: \""`).
+    if (char === "\\" && quote !== "'" && i + 1 < command.length) {
+      current += char + command[i + 1]!;
+      i++;
+      continue;
+    }
     if (quote !== null) {
       current += char;
       if (char === quote) quote = null;
@@ -577,6 +588,110 @@ export function testRunFiles(command: string, cwd: string): string[] {
   return found;
 }
 
+// ---- reads of files that are not there (round 13) ----------------------------------------------------------------
+
+export interface MissingRead {
+  reader: string;
+  path: string; // as the command writes it
+}
+
+const READERS = new Set(["cat", "head", "grep", "sed"]);
+// N1: the short flags whose value is the rest of the word or the next word, and the long ones that take a value.
+const VALUE_LETTERS: Record<string, string> = { cat: "", head: "nc", grep: "efmABCdD", sed: "efl" };
+const LONG_VALUES = new Set(["--regexp", "--file", "--max-count", "--after-context", "--before-context", "--context",
+  "--directories", "--devices", "--include", "--exclude", "--exclude-dir", "--expression", "--line-length", "--lines",
+  "--bytes"]);
+const PROGRAM_FLAGS = new Set(["e", "f", "--regexp", "--file", "--expression"]);
+
+// N1: the words of a read that name files — not flags, their values, redirects, or grep's pattern and sed's script.
+function fileOperands(reader: string, text: string): string[] {
+  const values = VALUE_LETTERS[reader] ?? "";
+  const operands: string[] = [];
+  let programGiven = false;
+  let skipNext = false;
+  let flagsEnded = false;
+  for (const word of shellWords(text).slice(1)) {
+    if (word.redirectTarget) continue;
+    const value = unquote(word.value);
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
+    if (!flagsEnded && value === "--") {
+      flagsEnded = true;
+      continue;
+    }
+    if (!flagsEnded && !word.quoted && value.startsWith("--")) {
+      const name = value.split("=")[0]!;
+      if (PROGRAM_FLAGS.has(name)) programGiven = true;
+      if (!value.includes("=") && LONG_VALUES.has(name)) skipNext = true;
+      continue;
+    }
+    if (!flagsEnded && !word.quoted && value.startsWith("-") && value.length > 1) {
+      const letters = value.slice(1);
+      if (/^\d+$/.test(letters)) continue; // head -5
+      for (const [index, letter] of [...letters].entries()) {
+        if ((reader === "grep" || reader === "sed") && PROGRAM_FLAGS.has(letter)) programGiven = true;
+        if (values.includes(letter)) {
+          if (index === letters.length - 1) skipNext = true;
+          break;
+        }
+      }
+      continue;
+    }
+    operands.push(value);
+  }
+  if ((reader === "grep" || reader === "sed") && !programGiven) operands.shift();
+  return operands.filter((operand) => operand !== "-");
+}
+
+// Commands that cannot make a file: an earlier one that names the read's folder is no sign the file was made (N3).
+const READ_ONLY = new Set(["ls", "cat", "head", "tail", "grep", "wc", "echo", "printf", "cd", "test", "[", "stat", "pwd", "true"]);
+
+// N3: a read whose stderr goes to /dev/null and whose exit cannot end the command (`;`, a newline or `|` follows) can
+// neither print an error nor fail the command — a probe.
+function probe(text: string, after: string): boolean {
+  const silent = /(?:^|\s)(?:2>\s*\/dev\/null|&>\s*\/dev\/null)(?:\s|$)/.test(text) || /2>&1/.test(text) && />\s*\/dev\/null/.test(text);
+  return silent && /^\s*(?:;|\n|\|(?!\|))/.test(after);
+}
+
+// N2–N3: the files a command reads that do not exist now, in the folder each read runs in. A file an earlier segment
+// names may be made or tested there, a folder an earlier writing command names may be filled there, a read followed
+// by `||` handles its own error, and a probe cannot fail; none is reported.
+export function missingReads(command: string, cwd: string, exists: (file: string) => boolean = fs.existsSync): MissingRead[] {
+  const parts = segments(command);
+  const found: MissingRead[] = [];
+  const home = process.env.HOME ?? "";
+  let cursor = 0;
+  for (const [index, part] of parts.entries()) {
+    const at = command.indexOf(part.text, cursor);
+    const end = at < 0 ? cursor : at + part.text.length;
+    cursor = end;
+    if (hasHelpWord(part.text)) continue;
+    const text = stripWrappers(part.text);
+    const reader = wrapperName(words(text)[0]?.text ?? "");
+    if (!READERS.has(reader)) continue;
+    const after = command.slice(end);
+    if (/^\s*\|\|/.test(after) || probe(part.text, after)) continue;
+    if (unknownCdBefore(command, Math.max(at, 0)) || /\(\s*cd\s/.test(command.slice(0, Math.max(at, 0)))) continue;
+    const folder = folderBefore(parts, index, cwd);
+    const before = parts.slice(0, index).map((segment) => ({ text: segment.text, word: wrapperName(words(stripWrappers(segment.text))[0]?.text ?? "") }));
+    // An earlier read of the same file proves nothing about it; a command that makes or tests it does.
+    const earlier = before.filter((segment) => !READERS.has(segment.word)).map((segment) => segment.text).join("\n");
+    const writers = before.filter((segment) => !READ_ONLY.has(segment.word)).map((segment) => segment.text).join("\n");
+    for (const operand of fileOperands(reader, text)) {
+      if (unknowablePath(operand) || (operand.startsWith("~") && !operand.startsWith("~/"))) continue;
+      const resolved = path.resolve(folder, operand.startsWith("~/") ? path.join(home, operand.slice(2)) : operand);
+      if (exists(resolved)) continue;
+      if (earlier.includes(operand) || earlier.includes(path.basename(operand))) continue;
+      const parent = path.dirname(operand);
+      if (parent !== "." && writers.includes(parent)) continue;
+      found.push({ reader, path: operand });
+    }
+  }
+  return found;
+}
+
 // ---- paths the text cannot name (round 4, D3) --------------------------------------------------------------------
 
 // A path the shell decides, not the text: a variable, a command substitution or a glob.
@@ -625,6 +740,10 @@ function coarsePieces(command: string): { text: string; start: number }[] {
   };
   for (let i = 0; i < command.length; i++) {
     const char = command[i]!;
+    if (char === "\\" && quote !== "'" && i + 1 < command.length) {
+      i++;
+      continue;
+    }
     if (quote !== null) {
       if (char === quote) quote = null;
       continue;
@@ -715,9 +834,16 @@ function folderBefore(parts: Segment[], engineIndex: number, cwd: string): strin
     if (list.length < 2 || unquote(list[0]!.text) !== "cd") continue;
     const target = unquote(list[1]!.text);
     if (target === "" || target === "-" || target.startsWith("-")) continue;
-    folder = path.resolve(folder, target);
+    folder = path.resolve(folder, expandHome(list[1]!.text, target));
   }
   return folder;
+}
+
+// An unquoted `~` or `~/…` is the home folder, as the shell expands it (round 13: `cd ~/dev/x` resolved as `./~/dev/x`).
+function expandHome(raw: string, value: string): string {
+  if (raw !== value) return value; // quoted: the shell does not expand it
+  if (value === "~") return process.env.HOME ?? value;
+  return value.startsWith("~/") ? path.join(process.env.HOME ?? "~", value.slice(2)) : value;
 }
 
 // ---- command lint -------------------------------------------------------------------------------------------------

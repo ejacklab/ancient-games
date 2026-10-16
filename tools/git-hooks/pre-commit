@@ -1,0 +1,31 @@
+#!/bin/sh
+# pre-commit — a commit that changes what skills/ is built from carries the fresh export (EJ's pick, 2026-10-17;
+# insight F-5182be9b, F-1d185ee3: the export test failed twice because skills/ was not regenerated and committed).
+#
+# The export is built from the index — what this commit holds — never from unstaged edits in the working tree,
+# which may be another session's unfinished work. Then the working tree's skills/ is made to match, so the export
+# test (git status clean on skills/) passes after the commit.
+#
+# Install in a clone:  ln -s ../../tools/git-hooks/pre-commit .git/hooks/pre-commit
+set -e
+
+git diff --cached --name-only | grep -qE '^(\.claude/skills/|docs/|tools/export_skills\.py$)' || exit 0
+
+top=$(git rev-parse --show-toplevel)
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+git checkout-index -a --prefix="$tmp/"
+if ! python3 "$tmp/tools/export_skills.py" >/dev/null; then
+  echo "pre-commit: tools/export_skills.py failed on the staged files; the commit is stopped so skills/ cannot fall behind" >&2
+  exit 1
+fi
+# A hook gets GIT_INDEX_FILE relative to the working tree; with --work-tree elsewhere it must be made absolute.
+gitdir=$(git rev-parse --absolute-git-dir)
+index=${GIT_INDEX_FILE:-$gitdir/index}
+case $index in /*) ;; *) index="$top/$index" ;; esac
+GIT_INDEX_FILE="$index" git --git-dir="$gitdir" --work-tree="$tmp" add -A -- skills/
+
+# The working tree follows the index: changed files are written, files the export no longer makes are removed.
+git diff --cached --name-only --diff-filter=D -- skills/ | (cd "$top" && xargs -r rm -f --)
+git checkout -- skills/

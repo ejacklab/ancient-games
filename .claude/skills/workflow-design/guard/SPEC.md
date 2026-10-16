@@ -648,3 +648,42 @@ declaration, with another session's declaration, or with another file's declarat
 declaration made after a failing run removes its failure; a covered run that passes has no `R12.2-red-passed`
 failure, or writes a success line; one declaration covers two runs; a `red` record holds output text; `expect-fail`
 accepts a missing file or a file outside the root.
+
+## Round 13 — a read of a file that is not there (R12.2; F-4981093a option 2, chosen 2026-10-17)
+
+Twice a command read a file before the step that would show whether it existed had been read (F-e82a6f58: a listing
+and a read of a guessed file in one command; F-4981093a: a status read and a read of an answer file never written).
+The guard holds such a command before it runs.
+
+- **N1 A read.** A Bash segment whose command word (after M1's wrappers) is `cat`, `head`, `grep` or `sed`. Its file
+  operands are its words except flags, a flag's value (`head -n`/`-c`; `grep -e -f -m -A -B -C -d -D`; `sed -e -f -l`,
+  and their long forms), redirects and their targets, and — for `grep` and `sed` with no `-e`/`-f` — the first operand
+  (the pattern or the script). `-` (stdin) is not a file.
+- **N2 Missing.** An operand with no `$`, backtick or glob character (D3), `~/` expanded, resolved in the folder the
+  segment runs in (after its `cd`s; not checked after a `cd` whose target is unknowable), that does not exist when
+  PreToolUse fires.
+- **N3 Not held.** The read is not held when:
+  - an earlier segment that is not itself a read names the operand or its file name (it may write or test it:
+    `[ -f f ] &&`, `-o f && head f`) — an earlier read of the same file proves nothing;
+  - an earlier segment whose command can make files (any command but `ls cat head tail grep wc echo printf cd test [
+    stat pwd true`) names the operand's folder (`build.py structure && head structure/a.md`);
+  - it is followed by `||` (the error is handled), or it is a probe: stderr goes to `/dev/null` and `;`, a newline or
+    `|` follows, so its exit cannot end the command. `2>/dev/null` alone does not exempt it: F-4981093a's last read had
+    it, ended the command, and failed it;
+  - a `cd` inside `( … )` comes before it (the folder it runs in is not followed through subshells);
+  - it is inside a heredoc body (not a segment, C18).
+  A backslash escapes the next character outside quotes and inside double quotes, so `"kind: \""` stays one word.
+- **N4 Held.** PreToolUse denies the command with `read-missing: <reader> reads <path>, which does not exist yet` and
+  the fix: read the step's status first and its outputs in a later call; to probe a file, guard the read. No journal
+  record: nothing ran, so nothing failed.
+
+Measured before trusting it: the 1,841 successful Bash commands of seven past sessions, replayed each in its own
+folder, give 183 holds, all but one explained by files and folders gone since (removed worktrees, a renamed skill,
+deleted temp and untracked files, a stale folder); one cannot be checked. Of 32 failed commands it holds F-4981093a's.
+
+Fails-if: F-e82a6f58's command or F-4981093a's command (planted as written, in folders laid out as they were) runs; a
+read of an existing file, a read whose file an earlier non-read segment names, a read followed by `||`, a probe, a
+read of a folder an earlier writer names, a `cat > f <<EOF` write, a word inside a heredoc body, a grep pattern or sed
+script, a pattern holding an escaped quote, a path holding `$`, a read after a subshell `cd`, or a reader with no file
+operand is held; `head -n 5 missing`, `sed -n 1p missing`, `cd sub && cat missing` (missing in `sub`), `cat missing
+2>/dev/null` ending the command, or `ls dir/ && head dir/missing` runs.

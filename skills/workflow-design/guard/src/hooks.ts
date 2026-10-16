@@ -13,7 +13,7 @@ import { appendWarning, newWarningId, openWarnings } from "./warnings.ts";
 import { claimDeadlines, deadlineStatus, dueMark, markId, sessionDeadline } from "./deadline.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
-import { checkResult, commandWord, engineCallSite, lintCommand, recognizeTestRun, segments, testRunFiles } from "./traps.ts";
+import { checkResult, commandWord, engineCallSite, lintCommand, missingReads, recognizeTestRun, segments, testRunFiles } from "./traps.ts";
 import { coveringDeclarations } from "./expect.ts";
 import type { Finding, GuardErrorRecord, HookEnv, HookResult, PromptRecord, TouchedRecord, RaisedRecord, RedRecord, SuccessRecord } from "./types.ts";
 
@@ -107,8 +107,11 @@ function handlePreToolUse(payload: Record<string, unknown>, env: HookEnv): HookR
   const command = text(objectField(payload, "tool_input").command);
   if (command === "") return quiet();
   const findings = fails(lintCommand(command, { repoRoot: guardRoot(env.cwd), running: env.running }));
-  if (findings.length === 0) return quiet();
-  const reason = findings.map(findingText).join("; ");
+  // A read of a file that is not there is held before it runs (round 13, N4); nothing ran, so nothing is recorded.
+  const reads = missingReads(command, workingFolder(payload, env)).map((read) =>
+    `read-missing: ${read.reader} reads ${read.path}, which does not exist yet. Fix: read the step's status first and its outputs in a later call, once the status says they were written; to probe a file, guard the read ([ -f ${read.path} ] && …, or … || …).`);
+  if (findings.length === 0 && reads.length === 0) return quiet();
+  const reason = [...findings.map(findingText), ...reads].join("; ");
   return {
     exitCode: 0,
     stdout: `${JSON.stringify({
