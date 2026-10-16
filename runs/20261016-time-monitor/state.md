@@ -31,3 +31,9 @@ Start 2026-10-16 10:22:01 +0800 · **deadline 11:22:01 +0800** · background tim
 - 10:22 start; criteria written.
 - 10:2x research F1–F8 saved; experts 4/5 answered B; Dave's claude call empty (runner bug, fixed, rerunning); round 10 code + Codex tests 42/42 after integration; guard 1257/1257.
 - 10:3x review: 10 findings, all fixed or answered (review-answers.md, 6105656); deadline end added; guard 1264/1264, Python 1083; report written.
+
+## TODO (owner)
+- [ ] **Update the installed hooks in `~/.claude/settings.json`** so the clock reaches every tool: replace the
+  harness-guard hooks with the output of `bun .claude/skills/workflow-design/guard/src/cli.ts install --print
+  claude-code` (PostToolUse and PostToolUseFailure lose their `matcher`). Back up the file first. Parked by the owner
+  2026-10-16 to brainstorm a new idea first.
