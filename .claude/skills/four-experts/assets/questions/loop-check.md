@@ -11,7 +11,13 @@ your rules, for each piece listed; the others answer theirs.
 In "Answer", give one line per piece id: loop-ready as written / strengthen the check (how) / not loop-ready (why).
 Name a concrete failure the check would miss wherever you can; "looks fine" is not an answer.
 
-Facts (filled in by the COO), per piece:
+Facts (filled in by the COO):
+- The vision and the use cases the work serves (accepted, and provisional in a time-boxed run): <paths, or paste>
+- The research for this question, run before you were asked: <runs/<run>/research/<file>.md — finding ids with their
+  labels>. Rest each verdict on a finding id or a measurement from it; a point you have only from memory is labelled
+  *recall*, and recall alone does not decide.
+
+Per piece:
 - <piece id> — deliverable: <what it produces>
   - check: <the command or checklist, and who runs it> · known to fail on: <the sabotage it catches, or "not yet shown">
   - attempt limit: <n> · feedback on failure: <what goes back> · exit: <where it goes when the limit is hit>

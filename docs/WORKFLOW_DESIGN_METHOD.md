@@ -516,6 +516,14 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
      (the `four-experts` skill: the experts 3.3 or 3.5 names for that step, or all five where no step names them).
      The main agent decides from their advice and writes the decision into the state file as **provisional**: the
      question, the choice, the reason, and the experts' run folder.
+   - **Vision and use cases first.** Every question to the experts carries the vision and the use cases the work
+     serves (the question templates have the slots; `time-boxed-decision.md` for a decision no step names). With no
+     vision yet, the first provisional decision is one, written from the request and its research.
+   - **Research and data, not recall.** Before a question goes to the experts, the run researches it (the researcher
+     role, or Codex with `--search`) or measures it, and saves the findings, labelled verified / reported / measured,
+     in the run folder; the experts get that file and cite its finding ids. A provisional decision cites at least one
+     finding or measurement; a point that rests only on an engine's training data is labelled *recall* and does not
+     decide alone.
    - A provisional decision binds for the rest of the run. When the run ends, the owner accepts or declines each one;
      work resting on a declined one is marked to redo, never deleted.
    - The limit is the owner's go-ahead for the engine calls the run needs inside it, the experts' included.
@@ -527,7 +535,8 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
      it (a branch, a draft) and lists it in the report.
 
    Fails if: a time-boxed run stops to ask the owner before its limit; a provisional decision has no reason or no
-   experts' run folder; the run goes past its limit; the report leaves out a provisional decision; a safety-bound
+   experts' run folder; a question to the experts carries no vision or no use cases; a provisional decision cites no
+   researched finding or measurement, or rests on recall alone; the run goes past its limit; the report leaves out a provisional decision; a safety-bound
    action is taken without the owner.
 
 ## 4. State and memory

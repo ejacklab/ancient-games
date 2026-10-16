@@ -92,6 +92,7 @@ as where their rules are reliable (`runs/20261013-four-experts-where-in-ej-s-wor
 |---|---|---|
 | 3.3 unclear spots, once the list is written | `linus,sun-tzu,lao-tzu,dave` | `assets/questions/unclear-spots.md` |
 | 3.5 before a piece runs as a loop | `linus,fan-li,sun-tzu,dave` | `assets/questions/loop-check.md` |
+| a decision in a time-boxed run (3.8 item 14) | all five | `assets/questions/time-boxed-decision.md` |
 
 Their answers are advice: a raised spot is added and marked *raised by*, a "drop it" goes to EJ as a question, a
 failure a check would miss strengthens the check or sends the piece back to the unclear list. The design's state file

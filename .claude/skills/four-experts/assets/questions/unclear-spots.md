@@ -14,6 +14,10 @@ In "Answer", list spot ids (existing ones, or new ones you raise as N1, N2 …) 
 decide for EJ: a spot to drop is a question for EJ, not a removal.
 
 Facts (filled in by the COO):
+- The vision and the use cases the work serves (accepted, and provisional in a time-boxed run): <paths, or paste>
+- The research for this question, run before you were asked: <runs/<run>/research/<file>.md — finding ids with their
+  labels>. Rest each verdict on a finding id or a measurement from it; a point you have only from memory is labelled
+  *recall*, and recall alone does not decide.
 - The challenge and its restatement: <objective · in scope · out of scope>
 - The algorithm (steps, each with its check): <paste, or the path to workflow-design.md>
 - The unclear-spot list: <paste the table from state.md: id · what is unclear · kind · blocks · depends on>
