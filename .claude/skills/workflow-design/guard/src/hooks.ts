@@ -530,7 +530,8 @@ function handleStop(payload: Record<string, unknown>, root: string, env: HookEnv
     const answers = answered(root);
     const names = [...new Set(pending.map((record) => answers.get(record.id)).filter((name): name is string => name !== undefined))];
     if (names.length === 0 || !names.every((name) => last.includes(name))) {
-      return block(`harness-guard: raise the insight: name ${names.join(", ")} in your final message. The insight must be a section of one of these files, and it must answer every failure of this session.`);
+      // Raising is telling the owner, not pointing at a file: the owner reads the message (R12.3; EJ 2026-10-17).
+      return block(`harness-guard: raise the insight: name ${names.join(", ")} in your final message. The insight must be a section of one of these files, and it must answer every failure of this session. Raising it means telling the owner in the message itself: each failure in one line, and when you ask the owner to choose a fix, each option's text and your pick with its reason — never an id, a count or the file alone.`);
     }
     const record: RaisedRecord = { kind: "raised", time: new Date().toISOString(), session, ids: pending.map((r) => r.id) };
     appendRecord(root, record);

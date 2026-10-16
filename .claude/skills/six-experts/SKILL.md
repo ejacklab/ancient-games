@@ -96,7 +96,8 @@ resting a conclusion on it.
 ## Where they agree
 ## Where they disagree   (side by side, quoted; never averaged)
 ## What each added that the others did not
-## What they need to know   (the questions, merged, for EJ)
+## What they need to know   (the questions, merged, for EJ — and written out in your message to EJ, each one
+                             with its options; never a count or this file alone)
 ## Check   (`check` result; engines and any fallback from status.json)
 ```
 
