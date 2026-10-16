@@ -1,5 +1,13 @@
 # Harness requirements — release notes
 
+## 2026-10-16 — R12.2: a check fails only on a written meaning, and warns where it guesses
+
+An automatic check records a failure only where what it saw has a written meaning; where it can only guess it records a
+warning, which the agent settles (logged as a failure, or dismissed with a kept one-line reason the owner may
+overrule); a check drops what it saw only on a written "not a failure" meaning. Agreed with the project owner after two
+false alarms in run `runs/20261016-integrate-r11-r13/` (F-3e11ce16, F-8392b4ce); the wording and the split between
+"written meaning" and "guess" were the main agent's proposal, accepted as proposed. Guard rounds 8 and 9.
+
 ## 2026-10-16 — R13 moved to the requirement-check skill
 
 R11 and R12 are harness validation and stay here; R13 (use cases and requirements) is a check of what the work is

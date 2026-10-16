@@ -6,7 +6,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { handleHook } from "../src/hooks.ts";
 import { readJournal } from "../src/journal.ts";
-import type { FailureRecord, HookEnv, HookResult } from "../src/types.ts";
+import type { FailureRecord, HookEnv, HookResult, WarningRecord } from "../src/types.ts";
+import { dismiss } from "../src/warnings.ts";
 
 const secret = "SECRET-PLANT-7f3a9c";
 const time = "2026-10-15T14:00:00.000Z";
@@ -63,8 +64,20 @@ function failures(): FailureRecord[] {
   expect(journal.badLines).toBe(0);
   // D6 (COO): the journal may also hold "raised" records after a final message names the insight.
   // Round 5 S1 (COO): passing calls also write "success" lines.
-  expect(journal.records.every((record) => record.kind === "failure" || record.kind === "raised" || record.kind === "success")).toBe(true);
+  // Round 9 (COO): a guess is a "warning", settled by a failure (with `from`) or a "dismissed" record.
+  expect(journal.records.every((record) => ["failure", "raised", "success", "warning", "dismissed"].includes(record.kind))).toBe(true);
   return journal.records.filter((record): record is FailureRecord => record.kind === "failure");
+}
+
+function expectWarning(check: string, fields: Partial<WarningRecord> = {}): WarningRecord {
+  const records = readJournal(folder).records.filter((record): record is WarningRecord => record.kind === "warning");
+  expect(records).toHaveLength(1);
+  const record = records[0]!;
+  expect(record).toMatchObject({ kind: "warning", check, session, harness: "claude-code", ...fields });
+  expect(record.id).toMatch(/^W-[0-9a-f]{8}$/);
+  expect(record.reason.trim().length).toBeGreaterThan(0);
+  expect(fs.statSync(path.resolve(folder, record.evidence)).isFile()).toBe(true);
+  return record;
 }
 
 function expectFailure(check: string, fields: Partial<FailureRecord> = {}): FailureRecord {
@@ -220,10 +233,12 @@ describe("D2 other Bash calls that error", () => {
     [{ command: "pytest-helper --flag", input: "pytest-helper call", exit: 1 }],
     [{ command: "npm run build", input: "npm call", exit: 1 }],
     [{ command: "npx jestify", input: "npx call", exit: 1 }],
-  ])("D2/Fails-if: ordinary failure %j is recorded", ({ command, input, exit }) => {
+  ])("D2/Fails-if (round 9): an ordinary error %j is a warning the agent settles, not a failure", ({ command, input, exit }) => {
     const result = invokeHook(bashFailure(command, `ordinary diagnostic ${secret}`, exit));
-    const record = expectFailure("R12.2-command-error", { input, expected: "exit 0", actual: `exit ${exit}` });
-    contextLine(result, [record.id], true);
+    expect(failures()).toHaveLength(0);
+    const warning = expectWarning("R12.2-command-error", { input, expected: "exit 0", actual: `exit ${exit}` });
+    const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext as string;
+    expect(context).toContain(`harness-guard warning ${warning.id}`);
   });
 
   test.each([["false"], ["grep needle absent.txt"], ["pytest -q"], ["bun test"]])(
@@ -309,10 +324,11 @@ describe("D4 context and insight for the agent's own failures", () => {
   });
 
   test("D4: repeated failures report each new id once without re-announcing old ids", () => {
-    const firstResult = invokeHook(bashFailure("false"));
-    const first = expectFailure("R12.2-command-error");
+    // Round 9: a test run's exit is a written meaning (a failure); a plain command's is a warning, so this uses tests.
+    const firstResult = invokeHook(bashFailure("pytest -q"));
+    const first = expectFailure("R12.2-test-failed");
     contextLine(firstResult, [first.id], true);
-    const secondResult = invokeHook(bashFailure("false"));
+    const secondResult = invokeHook(bashFailure("pytest -q"));
     const records = failures();
     expect(records).toHaveLength(2);
     const second = records[1]!;
@@ -320,16 +336,14 @@ describe("D4 context and insight for the agent's own failures", () => {
     expect(contextLine(secondResult, [second.id], true)).not.toContain(first.id);
   });
 
-  test("D4: both own failure kinds block Stop and one insight section can answer both ids", () => {
+  test("D4 (round 9): a test failure blocks Stop for its insight, then a command error's warning blocks until settled", () => {
     const testResult = invokeHook(bashFailure("pytest -q"));
     const testFailure = expectFailure("R12.2-test-failed");
     contextLine(testResult, [testFailure.id], true);
-    const commandResult = invokeHook(bashFailure("false"));
+    invokeHook(bashFailure("false"));
+    const warning = expectWarning("R12.2-command-error");
     const records = failures();
-    expect(records).toHaveLength(2);
-    const commandFailure = records[1]!;
-    expect(commandFailure.check).toBe("R12.2-command-error");
-    contextLine(commandResult, [commandFailure.id], true);
+    expect(records).toHaveLength(1);
     const stop = { hook_event_name: "Stop", session_id: session, cwd: folder, stop_hook_active: false };
     const blocked = invokeHook(stop);
     expect(blocked.exitCode).toBe(0);
@@ -348,8 +362,13 @@ describe("D4 context and insight for the agent's own failures", () => {
       "1. [check] validate the fixture; evidence: test/round4.test.ts",
       "2. [rule] require a valid fixture; evidence: SPEC.md", "",
     ].join("\n"));
+    const warned = JSON.parse(invokeHook({ ...stop, last_assistant_message: `Insight: ${insight}` }).stdout);
+    expect(warned.decision).toBe("block");
+    expect(warned.reason).toContain(warning.id);
+    expect(warned.reason).toContain("dismiss");
+    dismiss(folder, warning.id, "false is the fixture's own command", new Date(time));
     expect(invokeHook({ ...stop, last_assistant_message: `Insight: ${insight}` })).toEqual({ exitCode: 0, stdout: "", stderr: "" });
-    expect(failures()).toHaveLength(2);
+    expect(failures()).toHaveLength(1);
   });
 });
 

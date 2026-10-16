@@ -9,6 +9,7 @@ import * as path from "node:path";
 import { checkCriteria, isCriteriaFile, loadCriteria, score } from "./criteria.ts";
 import { appendFailure, appendRecord, failuresFor, guardRoot, newFailureId, readJournal, writeEvidence } from "./journal.ts";
 import { answered, greatAnswered, openFailures } from "./insight.ts";
+import { appendWarning, newWarningId, openWarnings } from "./warnings.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
 import { checkResult, commandWord, engineCallSite, lintCommand, recognizeTestRun, segments } from "./traps.ts";
@@ -37,6 +38,17 @@ const ALREADY_LOGGED = "already in the journal; do not log them again. An insigh
 const OWN_FAILURES = "your own failures count — answer them in the insight; one section may answer several ids with one cause.";
 
 // The format an unanswered failure is told to use.
+// Round 9: what the guard could not judge, with the two ways to settle it. Ids, checks and exit facts only.
+function warningReason(root: string, open: { id: string; check: string; input: string; actual: string }[]): string {
+  const cli = `bun ${guardDirFor(root)}/src/cli.ts`;
+  return [
+    `harness-guard: ${open.length} warning(s) the guard could not judge — settle each before you stop:`,
+    ...open.map((w) => `  ${w.id}: ${w.check} — ${w.input}, ${w.actual}`),
+    `If it was a mistake, log it as a failure: \`${cli} warning <id> fail --reason "<one line>"\` (then an insight is required).`,
+    `If it was not, dismiss it with the reason: \`${cli} warning <id> dismiss --reason "<one line>"\` (kept for the project owner).`,
+  ].join("\n");
+}
+
 function insightReason(ids: string[]): string {
   return [
     `harness-guard: ${ids.length} logged failure(s) have no valid insight: ${ids.join(", ")}.`,
@@ -144,6 +156,7 @@ interface FailureSpec {
   expected: string;
   actual: string;
   facts: Record<string, unknown>;
+  guess?: boolean; // Round 9: the guard cannot judge it, so it is a warning, not a failure
 }
 
 function recordFailure(root: string, payload: Record<string, unknown>, env: HookEnv, spec: FailureSpec): string {
@@ -297,6 +310,8 @@ function ownFailureSpec(payload: Record<string, unknown>, command: string, faile
     input: `${word} call`,
     expected: "exit 0",
     actual: `exit ${exitCode}`,
+    // The guard does not know this command's exit codes (grep exits 1 for "no match"), so it cannot judge (Round 9).
+    guess: true,
     facts: {
       commandWord: word,
       exitCode,
@@ -327,6 +342,30 @@ function workingFolder(payload: Record<string, unknown>, env: HookEnv): string {
 }
 
 // The one context line for an event that logged failures: every new id, once, with what to do about them (round 4, D4).
+function recordWarning(root: string, payload: Record<string, unknown>, env: HookEnv, spec: FailureSpec): string {
+  const id = newWarningId();
+  const evidence = writeEvidence(root, id, { rule: spec.finding.rule, ...spec.facts });
+  appendWarning(root, {
+    kind: "warning",
+    id,
+    time: env.now().toISOString(),
+    session: sessionOf(payload),
+    check: spec.finding.rule,
+    input: spec.input,
+    expected: spec.expected,
+    actual: spec.actual,
+    engine: "none",
+    harness: HARNESS,
+    reason: `${spec.finding.message}; the guard does not know this command's exit codes`,
+    evidence,
+  });
+  return id;
+}
+
+function warned(id: string): HookResult {
+  return context("PostToolUse", `harness-guard warning ${id}: a command exited non-zero, and the guard cannot tell whether that was a mistake. Decide before you stop: log it as a failure or dismiss it with a one-line reason (\`cli.ts warning ${id} fail|dismiss --reason "…"\`).`);
+}
+
 function logged(ids: string[], own: boolean): HookResult {
   const tail = own ? `${ALREADY_LOGGED} Note: ${OWN_FAILURES}` : ALREADY_LOGGED;
   return context("PostToolUse", `harness-guard logged ${ids.join(", ")} — ${tail}`);
@@ -342,6 +381,7 @@ function handlePostToolUse(payload: Record<string, unknown>, env: HookEnv, root:
     // No engine call: the failure, if any, is the agent's own (D1, D2).
     if (site === null) {
       const own = ownFailureSpec(payload, command, failed);
+      if (own !== null && own.guess === true) return warned(recordWarning(root, payload, env, own));
       if (own !== null) return logged([recordFailure(root, payload, env, own)], true);
       // A green test run is a success line (round 5, S1).
       const runner = failed ? null : greenTestRun(payload, response, command);
@@ -432,6 +472,8 @@ function handleStop(payload: Record<string, unknown>, root: string, env: HookEnv
 
   const open = openFailures(root, session);
   if (open.length > 0) return block(insightReason(open.map((record) => record.id)));
+  const unsettled = openWarnings(root, session);
+  if (unsettled.length > 0) return block(warningReason(root, unsettled));
 
   const sessionFailures = failuresFor(root, session);
   // The raise step needs the final message to check: a payload without that string is asked, not told (round 3, C10).
@@ -525,8 +567,8 @@ function criteriaStep(root: string, session: string, raised: Set<string>, env: H
   const checks = new Set<string>();
   const lateFiles = new Set<string>();
   for (const record of records) {
-    if (record.kind !== "failure" || record.session !== session) continue;
-    checks.add(record.check);
+    if ((record.kind !== "failure" && record.kind !== "warning") || record.session !== session) continue;
+    if (record.kind === "failure") checks.add(record.check);
     if (record.check === LATE_CHECK) lateFiles.add(record.evidence);
   }
   const workTimes = records
@@ -556,7 +598,21 @@ function criteriaStep(root: string, session: string, raised: Set<string>, env: H
 
     const firstWork = Number.isFinite(first) ? firstWorkOf(first) : null;
     if (firstWork !== null && first > firstWork && !lateFiles.has(file)) {
-      criteriaFailure(root, session, env, file, LATE_CHECK, "criteria written before the work", "criteria written after the work began", "the criteria were written after the work's first checked result");
+      // A timing pattern is a guess — a test run before the criteria may belong to something else (Round 9).
+      appendWarning(root, {
+        kind: "warning",
+        id: newWarningId(),
+        time: env.now().toISOString(),
+        session,
+        check: LATE_CHECK,
+        input: path.basename(file),
+        expected: "criteria written before the work",
+        actual: "criteria written after the request's first checked result",
+        engine: "none",
+        harness: HARNESS,
+        reason: "a checked result of this request came before the criteria file; the guard cannot tell whether it was this task's work",
+        evidence: file,
+      });
       lateFiles.add(file);
       wrote = true;
     }
@@ -605,6 +661,8 @@ function criteriaStep(root: string, session: string, raised: Set<string>, env: H
   if (wrote) {
     const open = openFailures(root, session);
     if (open.length > 0) return block(insightReason(open.map((record) => record.id)));
+    const unsettled = openWarnings(root, session);
+    if (unsettled.length > 0) return block(warningReason(root, unsettled));
   }
   return null;
 }

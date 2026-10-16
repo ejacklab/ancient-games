@@ -7,7 +7,7 @@ import * as path from "node:path";
 import { handleHook } from "../src/hooks.ts";
 import { readJournal } from "../src/journal.ts";
 import { skeleton } from "../src/paths.ts";
-import type { CriteriaFile, Criterion, FailureRecord, HookEnv, HookResult, JournalRecord, SuccessPath } from "../src/types.ts";
+import type { CriteriaFile, Criterion, FailureRecord, HookEnv, HookResult, JournalRecord, SuccessPath, WarningRecord } from "../src/types.ts";
 
 const secret = "SECRET-PLANT-7f3a9c";
 const session = "round6-session";
@@ -58,6 +58,11 @@ function records(): JournalRecord[] {
 
 function failures(check?: string): FailureRecord[] {
   return records().filter((r): r is FailureRecord => r.kind === "failure" && (!check || r.check === check));
+}
+
+// Round 9 (COO): late criteria are a timing guess, so they are warnings, not failures.
+function lateWarnings(): WarningRecord[] {
+  return records().filter((r): r is WarningRecord => r.kind === "warning" && r.check === "R12.7-criteria-late");
 }
 
 function criteria(items: Criterion[] = [{ id: "C1", text: `criterion ${secret}`, met: true, evidence: "checked" }], relative = file, selectedSession = session): void {
@@ -259,9 +264,9 @@ describe("K2 late criteria", () => {
       stop(`see ${insight}`);
     }
     criteria(); touch(); stop();
-    expect(failures("R12.7-criteria-late")).toHaveLength(1);
+    expect(lateWarnings()).toHaveLength(1);
     stop(); touch(); stop();
-    expect(failures("R12.7-criteria-late")).toHaveLength(1);
+    expect(lateWarnings()).toHaveLength(1);
   });
 
   test.each([[true], [false]])("criteria touched first never get a late failure (success %s)", (passing: boolean) => {
@@ -269,26 +274,26 @@ describe("K2 late criteria", () => {
     const ids = failures().map((r) => r.id);
     const message = ids.length ? `see ${answer(ids)}` : "done";
     stop(message);
-    expect(failures("R12.7-criteria-late")).toEqual([]);
+    expect(lateWarnings()).toEqual([]);
   });
 
   test("each late file gets a record once", () => {
     bash(); criteria(); touch();
     criteria(undefined, "runs/task/criteria-second.yaml"); touch("runs/task/criteria-second.yaml");
     stop(); stop();
-    expect(failures("R12.7-criteria-late")).toHaveLength(2);
+    expect(lateWarnings()).toHaveLength(2);
   });
 
   test("a later edit uses the first touch time when detecting late criteria", () => {
     criteria(); touch(); bash();
     criteria([{ id: "C1", text: secret, met: true, evidence: "rechecked" }]); touch(file, "Edit");
     stop();
-    expect(failures("R12.7-criteria-late")).toEqual([]);
+    expect(lateWarnings()).toEqual([]);
   });
 
   test("another session's checked result does not make criteria late", () => {
     bash(true, "other"); criteria(); touch(); stop();
-    expect(failures("R12.7-criteria-late")).toEqual([]);
+    expect(lateWarnings()).toEqual([]);
   });
 
   test("a criterion failure does not make a subsequently touched file late", () => {
@@ -296,7 +301,7 @@ describe("K2 late criteria", () => {
     const insight = answer(failures().map((r) => r.id));
     criteria(undefined, "runs/task/criteria-second.yaml"); touch("runs/task/criteria-second.yaml");
     stop(`see ${insight}`);
-    expect(failures("R12.7-criteria-late")).toEqual([]);
+    expect(lateWarnings()).toEqual([]);
   });
 });
 

@@ -49,7 +49,12 @@ as one record: what was checked, the input,
 the expected and the actual result, the engine and harness that produced it, the reason it is a failure, and the path
 to the evidence (the data) in the run folder. Anyone may declare a failure — an evaluator, a retry, the project owner
 or another agent — but a record without a reason and evidence is not accepted. A failure is logged even when a retry
-later passes.
+later passes. An automatic check records a failure only where the meaning of what it saw is written down — a test
+run's own summary or exit, an exit code the tool documents, an engine result that fails R12.1, a criterion marked not
+met. Where it can only guess — a non-zero exit of a command whose codes it does not know, a timing pattern — it records
+a warning, and the agent settles each warning before the task ends: logged as a failure with its reason, or dismissed
+with a one-line reason. A dismissal is kept for the project owner, who may overrule it. A check drops what it saw
+without any record only where a written meaning says it is not a failure (a tool's documented "findings" exit).
 
 **R12.3 Insight at the end of a task (MUST).** When a task ends with one or more failure records, the agent that ran
 the task writes an insight file in the run folder and raises it to the project owner in its final report. For each
@@ -79,7 +84,7 @@ returning failures while the work still passes, under a comparison the project o
 Fails if: an evaluator crash or an empty result is read as pass; a judge rejects a result that breaks no stated
 condition only because it differs from the expected method or output; a wrong result that passed every condition
 leads to no new condition; a failure a retry later passed, or one found outside an evaluator, has no record; the agent's own failing test run,
-errored tool call or redone step has no record; a task
+errored tool call or redone step has no record; a guess is recorded as a failure, or not recorded at all; a task ends with a warning neither logged nor dismissed; a dismissal has no reason or is not kept; a task
 with failure records ends without an insight file, or with one not raised to the project owner; a failure record has
 no reason or no evidence; an insight offers fewer than two fix options, or applies a fix the owner did not choose; a why stops at the agent forgetting or the model being wrong; a
 check-type fix is trusted without a planted repeat failing it; a model the harness uses changes and no review

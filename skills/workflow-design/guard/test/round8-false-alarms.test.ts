@@ -15,9 +15,10 @@ function box() {
   let clock = 1_000_000;
   const env = { cwd: root, running: [], now: () => new Date((clock += 1000)) };
   const post = (payload: Record<string, unknown>) => handleHook({ session_id: "s", cwd: root, ...payload }, env);
-  const failures = (check?: string) =>
-    readJournal(root).records.filter((r) => r.kind === "failure" && (check === undefined || r.check === check));
-  return { root, post, failures };
+  // Round 9: a command error or late criteria is a warning; "flagged" counts both kinds, so a filter means neither.
+  const flagged = (check?: string) =>
+    readJournal(root).records.filter((r) => (r.kind === "failure" || r.kind === "warning") && (check === undefined || r.check === check));
+  return { root, post, flagged };
 }
 
 function failedCall(post: (p: Record<string, unknown>) => unknown, command: string, exitCode: number) {
@@ -29,9 +30,9 @@ const CLI = "bun /x/.claude/skills/workflow-design/guard/src/cli.ts";
 test.each([["insight"], ["criteria score runs/r/criteria.yaml"], ["register r.yaml"], ["path check p.yaml"]])(
   "a guard query that exits 1 (findings) is not a command error: %s",
   (args: string) => {
-    const { post, failures } = box();
+    const { post, flagged } = box();
     failedCall(post, `git commit -q -m x && ${CLI} ${args}`, 1);
-    expect(failures("R12.2-command-error")).toHaveLength(0);
+    expect(flagged("R12.2-command-error")).toHaveLength(0);
   },
 );
 
@@ -40,10 +41,10 @@ test.each([
   [`${CLI} doctor`, 1],                  // not a query whose exit 1 means findings
   [`${CLI} insight && git push`, 1],     // the exit is the last command's, not the guard's
   ["bun run build", 1],
-])("still a command error: %s exit %d", (command: string, exitCode: number) => {
-  const { post, failures } = box();
+])("still flagged (a warning since round 9): %s exit %d", (command: string, exitCode: number) => {
+  const { post, flagged } = box();
   failedCall(post, command, exitCode);
-  expect(failures("R12.2-command-error")).toHaveLength(1);
+  expect(flagged("R12.2-command-error")).toHaveLength(1);
 });
 
 function criteria(root: string) {
@@ -57,25 +58,25 @@ const green = { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: {
   tool_response: { stdout: "3 passed in 0.01s\n", stderr: "", interrupted: false } };
 
 test("criteria written first for a new request are not late, though an earlier request's work came before", () => {
-  const { root, post, failures } = box();
+  const { root, post, flagged } = box();
   post({ hook_event_name: "UserPromptSubmit", prompt: "first request" });
   post(green);                                            // the first request's work
   post({ hook_event_name: "UserPromptSubmit", prompt: "second request" });
   post({ hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: criteria(root) }, tool_response: {} });
   post(green);                                            // the second request's work, after its criteria
   post({ hook_event_name: "Stop", stop_hook_active: false, last_assistant_message: "done" });
-  expect(failures("R12.7-criteria-late")).toHaveLength(0);
+  expect(flagged("R12.7-criteria-late")).toHaveLength(0);
 });
 
 test("criteria written after the request's own work began are still late", () => {
-  const { root, post, failures } = box();
+  const { root, post, flagged } = box();
   post({ hook_event_name: "UserPromptSubmit", prompt: "first request" });
   post(green);
   post({ hook_event_name: "UserPromptSubmit", prompt: "second request" });
   post(green);                                            // the second request's work, before its criteria
   post({ hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: criteria(root) }, tool_response: {} });
   post({ hook_event_name: "Stop", stop_hook_active: false, last_assistant_message: "done" });
-  expect(failures("R12.7-criteria-late")).toHaveLength(1);
+  expect(flagged("R12.7-criteria-late")).toHaveLength(1);
 });
 
 test("a prompt record holds its time and session only, never the prompt's text", () => {

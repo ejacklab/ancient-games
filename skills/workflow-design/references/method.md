@@ -491,7 +491,10 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    `.harness-guard/journal.jsonl` with its evidence; and a session with logged failures cannot stop until an insight
    answers each (whys to a changeable source, the root cause, 2–3 fix options with evidence) and the final message
    names it. What the code catches by itself is engine calls; the agent's own failures — a failing test run, an errored
-   tool call, a step redone — are failures too (R12.2) and the agent logs them with `fail` until the guard catches them.
+   tool call, a step redone — are failures too (R12.2): the guard logs a failing test run itself; a command that exits
+   non-zero with codes it does not know, and criteria written late, are **warnings** the agent settles before it stops
+   (`warning <id> fail|dismiss --reason "…"`, dismissals kept and listed by `warnings`); the rest the agent logs with
+   `fail`.
    It also learns from success (R12.7): every checked result that passed is one `success` line, so `guard/src/cli.ts
    rates` reads failures against how often a check ran; a session with successes is asked once for its **path**
    (`path new`, then `path check`); a great success gets a `## great:` insight section; and a similar task borrows a

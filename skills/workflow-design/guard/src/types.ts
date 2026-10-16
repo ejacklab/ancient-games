@@ -90,6 +90,33 @@ export interface FailureRecord {
   harness: string;
   reason: string;
   evidence: string; // path, relative to the guard root or absolute
+  from?: string; // Round 9: the warning (W-xxxxxxxx) this failure was logged from, when it was one
+}
+
+// Round 9: what the guard saw but cannot judge — a guess, not a verdict. The same fields as a failure, so the agent can
+// log it as one; it is settled by a failure record whose `from` is its id, or by a dismissed record.
+export interface WarningRecord {
+  kind: "warning";
+  id: string; // W-xxxxxxxx
+  time: string;
+  session: string;
+  check: string;
+  input: string;
+  expected: string;
+  actual: string;
+  engine: string;
+  harness: string;
+  reason: string; // why the guard warned
+  evidence: string;
+}
+
+// Round 9: the agent's one-line reason that a warning was not a failure; the project owner may overrule it.
+export interface DismissedRecord {
+  kind: "dismissed";
+  time: string;
+  session: string;
+  id: string; // the warning's id
+  reason: string;
 }
 
 export interface TouchedRecord {
@@ -131,7 +158,8 @@ export interface PromptRecord {
   session: string;
 }
 
-export type JournalRecord = FailureRecord | TouchedRecord | GuardErrorRecord | RaisedRecord | SuccessRecord | PromptRecord;
+export type JournalRecord = FailureRecord | TouchedRecord | GuardErrorRecord | RaisedRecord | SuccessRecord | PromptRecord
+  | WarningRecord | DismissedRecord;
 
 // Round 5 (R12.7): the path of a successful task, a YAML file.
 export interface PathStep {

@@ -510,3 +510,25 @@ Fails-if: a guard query's exit 1 is logged as a command error; a guard exit 2, a
 command after the guard is not; criteria written before a request's own work are marked late because an earlier
 request's work came first; criteria written after the request's own work began are not marked late; a prompt record
 holds any field beyond kind, time and session.
+
+## Round 9 — fail on a written meaning, warn on a guess (R12.2; run 20261016-integrate-r11-r13)
+
+Types: `WarningRecord` (the failure fields, id `W-xxxxxxxx`), `DismissedRecord`, `FailureRecord.from` in `src/types.ts`.
+Module `src/warnings.ts`.
+
+- **W1 What stays a failure.** A meaning is written down: a recognised test run's summary or exit (D1), an engine
+  result that fails M1 (R12.1), a criterion marked not met (K2), a record written with `fail`.
+- **W2 What becomes a warning.** D2's command error (a non-zero exit of a command whose codes the guard does not know)
+  and K2's late criteria (a timing pattern). Same facts and evidence as the failure would have had; PostToolUse
+  context: "harness-guard warning W-…: … log it as a failure or dismiss it with a one-line reason".
+- **W3 Settling.** `cli.ts warning <W-id> fail --reason "<one line>"` writes a failure record with the warning's facts,
+  `found_by: "agent"`, the reason, and `from: <W-id>` (then R12.3 applies). `cli.ts warning <W-id> dismiss --reason
+  "<one line>"` writes a dismissed record. The reason is required, one line; a warning settles once; an unknown id is
+  refused (exit 1); a malformed command is a usage error (exit 2). `cli.ts warnings [--session S]` lists every warning
+  with its state (open / failure F-… / dismissed: reason); exit 1 while one is open.
+- **W4 Stop.** After open failures, open warnings of this session block every stop, naming each id and both commands.
+- **W5 Filter (Round 8 F1).** A guard query's exit 1 is neither a failure nor a warning.
+
+Fails-if: a guess is written as a failure; a written meaning is written as a warning; a session stops with an open
+warning; a settlement has no reason or a multi-line one; a warning settles twice; a dismissal's reason is not listed by
+`warnings`; a warning logged as a failure has no `from`.

@@ -6,8 +6,9 @@ import os from "node:os";
 import path from "node:path";
 import { handleHook } from "../src/hooks.ts";
 import { readJournal } from "../src/journal.ts";
+import { dismiss } from "../src/warnings.ts";
 
-test("K2: late criteria leave exactly one R12.7-criteria-late record across several stops", () => {
+test("K2 (round 9): late criteria leave exactly one late warning across several stops", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "hg-"));
   execSync("git init -q", { cwd: root });
   let clock = 1_000_000;
@@ -21,13 +22,12 @@ test("K2: late criteria leave exactly one R12.7-criteria-late record across seve
   fs.writeFileSync(file, "criteria: 1\nsession: s\nrequest: r\nitems:\n  - id: C1\n    text: t\n    met: true\n    evidence: e\n");
   post({ hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: file }, tool_response: {} });
   post({ hook_event_name: "Stop", stop_hook_active: false, last_assistant_message: "done" });
-  // answer the late failure, then stop again: the criteria step runs again and must not write a second late record
-  const first = readJournal(root).records.filter((r) => r.kind === "failure" && r.check === "R12.7-criteria-late");
+  // Round 9: late criteria are a warning; settle it (dismiss), then stop again: no second late record is written
+  const first = readJournal(root).records.filter((r) => r.kind === "warning" && r.check === "R12.7-criteria-late");
   expect(first).toHaveLength(1);
-  const insight = path.join(root, ".harness-guard", "insights", "i.md");
-  fs.mkdirSync(path.dirname(insight), { recursive: true });
-  fs.writeFileSync(insight, `## ${first[0]!.kind === "failure" ? first[0]!.id : ""}\nWhys:\n1. a\n2. b\n3. c\nSource: instruction\nRoot cause: x\nOptions:\n1. [rule] y evidence: z\n2. [tool] w evidence: v\n`);
-  for (let i = 0; i < 3; i++) post({ hook_event_name: "Stop", stop_hook_active: false, last_assistant_message: "see .harness-guard/insights/i.md" });
-  const late = readJournal(root).records.filter((r) => r.kind === "failure" && r.check === "R12.7-criteria-late");
+  dismiss(root, first[0]!.kind === "warning" ? first[0]!.id : "", "the test run was this task's own baseline", new Date(clock));
+  for (let i = 0; i < 3; i++) post({ hook_event_name: "Stop", stop_hook_active: false, last_assistant_message: "done" });
+  const late = readJournal(root).records.filter((r) => r.kind === "warning" && r.check === "R12.7-criteria-late");
   expect(late).toHaveLength(1);
+  expect(readJournal(root).records.filter((r) => r.kind === "failure")).toHaveLength(0);
 });

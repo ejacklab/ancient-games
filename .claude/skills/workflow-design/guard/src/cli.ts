@@ -10,8 +10,9 @@ import { CriteriaError, checkCriteria, fromRegister, loadCriteria, score, skelet
 import { doctor, doctorMarkdown } from "./doctor.ts";
 import { handleHook } from "./hooks.ts";
 import { HARNESSES, installSnippet } from "./install.ts";
-import { JournalError, guardRoot, recordFailureFromArgs } from "./journal.ts";
+import { JournalError, guardRoot, newFailureId, recordFailureFromArgs } from "./journal.ts";
 import { checkSection, findInsightFiles, openFailures, parseInsight } from "./insight.ts";
+import { WarningError, dismiss, settleAsFailure, warnings } from "./warnings.ts";
 import { PathError, checkPath, parents, skeleton } from "./paths.ts";
 import { rates, ratesMarkdown } from "./rates.ts";
 import { RegisterError, coverage, loadRegister, validateRegister } from "./register.ts";
@@ -31,6 +32,8 @@ const USAGE = [
   "  result --engine E --out FILE [--exit N] [--stderr-file F]",
   "  fail --check --input --expected --actual --reason --evidence [--found-by --engine --harness --session]",
   "  insight [--session S] [--json]  list open failures and invalid sections",
+  "  warning <W-id> fail|dismiss --reason TEXT   settle a warning the guard could not judge",
+  "  warnings [--session S]          every warning and how it was settled",
   "  register <file>                 validate a register and report its coverage",
   "  install --print <harness>       print the hook settings for a harness",
   "  doctor [--health PATH] [--json] report where the guard is installed",
@@ -176,6 +179,47 @@ function fail(args: string[]): number {
   const record = recordFailureFromArgs(guardRoot(process.cwd()), args);
   out(`${record.id} appended to .harness-guard/journal.jsonl`);
   return OK;
+}
+
+// ---- warnings (round 9) -----------------------------------------------------------------------------------------
+
+// Settle one warning: the agent's judgement, with a one-line reason. Ids and the reason only are printed.
+function warningCommand(args: string[]): number {
+  const [id, verb] = args;
+  if (id === undefined || !/^W-[0-9a-f]{8}$/.test(id)) usageError("warning: give a warning id (W-xxxxxxxx)");
+  if (verb !== "fail" && verb !== "dismiss") usageError("warning: say fail or dismiss");
+  const reason = flagValue(args, "--reason");
+  if (reason === null) usageError("warning: --reason is required");
+  const root = guardRoot(process.cwd());
+  try {
+    if (verb === "fail") {
+      const record = settleAsFailure(root, id, reason, new Date(), newFailureId);
+      out(`${id} logged as ${record.id}: an insight is required before you stop`);
+    } else {
+      dismiss(root, id, reason, new Date());
+      out(`${id} dismissed: the reason is kept for the project owner`);
+    }
+  } catch (error) {
+    if (error instanceof WarningError) {
+      process.stderr.write(`${error.message}\n`);
+      return FINDINGS;
+    }
+    throw error;
+  }
+  return OK;
+}
+
+// Every warning with how it was settled, so the project owner can read the dismissals and overrule them.
+function warningsCommand(args: string[]): number {
+  const rows = warnings(guardRoot(process.cwd()), flagValue(args, "--session"));
+  const lines = ["| warning | check | input | settled |", "|---|---|---|---|"];
+  for (const { warning, settled } of rows) {
+    const state = settled.state === "open" ? "open" : settled.state === "failure" ? `failure ${settled.failure}`
+      : `dismissed: ${settled.reason.replace(/\|/g, "\\|")}`;
+    lines.push(`| ${warning.id} | ${warning.check} | ${warning.input} | ${state} |`);
+  }
+  out(lines.join("\n"));
+  return rows.some((row) => row.settled.state === "open") ? FINDINGS : OK;
 }
 
 // ---- insight ----------------------------------------------------------------------------------------------------
@@ -403,6 +447,8 @@ function run(args: string[]): number {
     case "result": return result(rest);
     case "fail": return fail(rest);
     case "insight": return insight(rest);
+    case "warning": return warningCommand(rest);
+    case "warnings": return warningsCommand(rest);
     case "register": return register(rest);
     case "install": return install(rest);
     case "doctor": return doctorCommand(rest);
