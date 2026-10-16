@@ -246,9 +246,9 @@ and they hold back only the pieces that build on them (3.1). Where spots are res
 joining step compares the answers. A contradiction is a stop: pick one and say why, never average.
 
 **Ask the experts once the list is written** (EJ, 2026-10-13; SHOULD; n=0). In a workflow design — not a prompt
-file — after every spot is listed and before the questions go to EJ, the COO runs the `four-experts` skill with
+file — after every spot is listed and before the questions go to EJ, the COO runs the `six-experts` skill with
 `--only linus,sun-tzu,lao-tzu,dave` on the algorithm and the spot list (question template
-`.claude/skills/four-experts/assets/questions/unclear-spots.md`). Each answers its own question:
+`.claude/skills/six-experts/assets/questions/unclear-spots.md`). Each answers its own question:
 
 - **Linus** (Codex): which choices depend on missing technical facts, and what would make a mistaken choice reversible?
 - **孫子** (dsh): for each piece, do we know that our engines and tools can do it, that the task as posed can be done,
@@ -320,9 +320,9 @@ A loop only closes when its check is objective. (n=1: a planner/critic loop whos
 three rounds, 6 → 5 → 4 problems, and never closed. See `20260919-plan-critic-issues.md`.)
 
 **Ask the experts before calling a piece loop-ready** (EJ, 2026-10-13; SHOULD; n=0). In a workflow design, before
-a piece runs as a loop, the COO runs the `four-experts` skill with `--only linus,fan-li,sun-tzu,dave` on the piece,
+a piece runs as a loop, the COO runs the `six-experts` skill with `--only linus,fan-li,sun-tzu,dave` on the piece,
 its check (conditions 1 and 5) and its attempt limit (condition 2); several pieces may go in one call (question
-template `.claude/skills/four-experts/assets/questions/loop-check.md`). Each answers its own question:
+template `.claude/skills/six-experts/assets/questions/loop-check.md`). Each answers its own question:
 
 - **Linus** (Codex): could this check pass while the requested result is wrong or an existing user workflow breaks?
 - **孫子** (dsh): what is left to the worker's good character rather than to a check it cannot edit?
@@ -516,7 +516,7 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    the owner only about one it could not settle:
    - Every question that would go to the owner — an unclear spot of kind *decision* (3.3), a suggested use case or
      requirement to accept (R13.1, R13.5), a blueprint question, a choice between options — goes to the experts
-     (the `four-experts` skill: the experts 3.3 or 3.5 names for that step, or all five where no step names them).
+     (the `six-experts` skill: the experts 3.3 or 3.5 names for that step, or all five where no step names them).
      The main agent decides from their advice and writes the decision into the state file as **provisional**: the
      question, the choice, the reason, and the experts' run folder.
    - **Vision and use cases first.** Every question to the experts carries the vision and the use cases the work
@@ -546,7 +546,7 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
      background, is a timer that returns at the deadline; `deadline end` stops the clock when the task finishes early.
    - **Workers report while they work.** Every brief tells the worker to divide its task into small pieces, list them
      first, and append a timestamped line as each starts and ends (`docs/workflow-templates/node-brief.md`, "Pieces and
-     progress"); the four-experts runner writes the same lines per expert (`--progress`). The main agent sees progress
+     progress"); the six-experts runner writes the same lines per expert (`--progress`). The main agent sees progress
      and duration during the run, not only the end.
    - **Workflows when possible.** Work with more than one node runs as a workflow — a script that orchestrates the
      agents in phases with visible progress (`.claude/workflows/`, the harness's Workflow tool where it has one) —

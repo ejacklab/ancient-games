@@ -1,0 +1,8 @@
+- 2026-10-16T14:23:10+08:00 · linus · start · opencode
+- 2026-10-16T14:23:10+08:00 · fan-li · start · agy
+- 2026-10-16T14:23:10+08:00 · sun-tzu · start · dsh
+- 2026-10-16T14:23:46+08:00 · linus · fail · opencode exit 0
+- 2026-10-16T14:23:48+08:00 · lao-tzu · start · opencode
+- 2026-10-16T14:24:03+08:00 · lao-tzu · fail · opencode exit 0
+- 2026-10-16T14:27:28+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-16T14:27:43+08:00 · fan-li · done · agy exit 0

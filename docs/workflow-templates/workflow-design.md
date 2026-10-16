@@ -48,7 +48,7 @@ where they fit (INTENT, STOP, OUTPUT, SCOPE; CLAIMS, NOT_ESTABLISHED).
   criteria it is expected to propose; any other piece that does not build lists none>
 - **Check:** <what decides done> — kind: script / checklist judged by a separate agent / EJ
 - **Attempt limit:** <n> (loops and explores)
-- **Experts on the check (method 3.5, loops only):** <the four-experts run folder, or "not asked: <reason>">
+- **Experts on the check (method 3.5, loops only):** <the six-experts run folder, or "not asked: <reason>">
 - **Feedback on failure:** <what goes back to the agent — the check's real output>
 - **Exit when the limit is hit:** <back to the unclear list / to EJ>
 - **Needs the result of:** <piece ids, or none>

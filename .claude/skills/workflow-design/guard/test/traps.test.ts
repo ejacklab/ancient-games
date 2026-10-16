@@ -414,7 +414,7 @@ describe("engine recognition", () => {
     ["dsh headless 'task'", "dsh", true],
     ["qwen -p 'task'", "qwen", true],
     ["claude -p 'task'", "claude", true],
-    ["python3 four_experts.py run", "four-experts", false],
+    ["python3 six_experts.py run", "six-experts", false],
   ])("recognize: %s uses the default %s engine", (command, engine, stdoutIsAnswer) => {
     expect(recognizeEngineCall(command)).toEqual(engineCall({ engine, stdoutIsAnswer }));
   });
@@ -485,8 +485,8 @@ describe("engine recognition", () => {
   });
 
   test("recognize: a wrapper output directory supplies its status file", () => {
-    expect(recognizeEngineCall('python3 four_experts.py run --out "results folder"')).toEqual(
-      engineCall({ engine: "four-experts", outputFile: "results folder", statusFile: path.join("results folder", "status.json") }),
+    expect(recognizeEngineCall('python3 six_experts.py run --out "results folder"')).toEqual(
+      engineCall({ engine: "six-experts", outputFile: "results folder", statusFile: path.join("results folder", "status.json") }),
     );
   });
 
@@ -761,14 +761,14 @@ describe("result check", () => {
   test("result: a wrapper output directory uses status rather than file content checks", () => {
     writeFile("results/status.json", JSON.stringify({ first: { ok: true } }));
     expect(checkResult(resultInput({
-      call: engineCall({ engine: "four-experts", outputFile: "results", statusFile: "results/status.json" }),
+      call: engineCall({ engine: "six-experts", outputFile: "results", statusFile: "results/status.json" }),
       stdout: "",
     }))).toEqual([]);
   });
 
   test("result: missing wrapper status does not also report a missing output file", () => {
     const findings = checkResult(resultInput({
-      call: engineCall({ engine: "four-experts", outputFile: "missing", statusFile: "missing/status.json" }),
+      call: engineCall({ engine: "six-experts", outputFile: "missing", statusFile: "missing/status.json" }),
     }));
     expect(findings.map((finding: Finding) => finding.rule)).toEqual(["R12.1-missing-status"]);
   });
@@ -880,12 +880,12 @@ describe("result check", () => {
   });
 
   test("result: a missing wrapper status file fails", () => {
-    expectFailure(checkResult(resultInput({ call: engineCall({ engine: "four-experts", statusFile: "results/status.json" }) })), "R12.1-missing-status");
+    expectFailure(checkResult(resultInput({ call: engineCall({ engine: "six-experts", statusFile: "results/status.json" }) })), "R12.1-missing-status");
   });
 
   test("result: wrapper status entries that are all ok are clean", () => {
     writeFile("results/status.json", JSON.stringify({ first: { ok: true }, second: { ok: true } }));
-    expect(checkResult(resultInput({ call: engineCall({ engine: "four-experts", statusFile: "results/status.json" }) }))).toEqual([]);
+    expect(checkResult(resultInput({ call: engineCall({ engine: "six-experts", statusFile: "results/status.json" }) }))).toEqual([]);
   });
 
   test("result: each failed wrapper status entry is named without its content", () => {
@@ -895,7 +895,7 @@ describe("result check", () => {
       clean: { ok: true },
     }));
     expectNoSecret(() => {
-      const findings = checkResult(resultInput({ call: engineCall({ engine: "four-experts", statusFile }) }));
+      const findings = checkResult(resultInput({ call: engineCall({ engine: "six-experts", statusFile }) }));
       const wrapped = findings.filter((finding: Finding) => finding.rule === "R12.1-wrapped-fail");
       expect(wrapped).toHaveLength(2);
       for (const key of ["first", "second"]) {

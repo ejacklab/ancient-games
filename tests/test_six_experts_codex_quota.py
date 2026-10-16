@@ -1,4 +1,4 @@
-"""four-experts: Linus moves from Codex to opencode when Codex has 20% or less left (EJ, 2026-10-16)."""
+"""six-experts: Linus moves from Codex to opencode when Codex has 20% or less left (EJ, 2026-10-16)."""
 import argparse
 import importlib.util
 import json
@@ -6,8 +6,8 @@ import os
 import time
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parent.parent / ".claude" / "skills" / "four-experts" / "scripts" / "four_experts.py"
-spec = importlib.util.spec_from_file_location("four_experts", SCRIPT)
+SCRIPT = Path(__file__).resolve().parent.parent / ".claude" / "skills" / "six-experts" / "scripts" / "six_experts.py"
+spec = importlib.util.spec_from_file_location("six_experts", SCRIPT)
 fe = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fe)
 

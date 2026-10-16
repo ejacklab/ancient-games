@@ -50,6 +50,7 @@ Whys:
 3. Why did the code not set it? The spec said "writes no file" but nothing about the runtime it calls; the coder passed the caller's environment as it was.
 4. Why did the spec not say it? The main agent did not know bun writes a cache on a plain run; the guard's earlier tests ran in the real HOME, where the cache already exists, so no test had shown it.
 Source: instruction — the spec's H5 (the guard call's environment), written by the main agent.
+Category: spec
 Root cause: a "writes no file" promise checked only in a HOME where the runtime's cache already existed.
 Options:
 1. [check] HH-28, a real-runtime run in an empty HOME with a tree hash before and after — added in this run, and it kills mutant M1 (`mutants.txt`). evidence: `runs/20261016-integrate-r11-r13/mutants.txt`.
@@ -64,6 +65,7 @@ Whys:
 3. Why? The spec said "output that is not the JSON shape of Round 7 → unknown" but did not list the row's field types; the coder checked the top-level key only.
 4. Why did the spec leave that out? Round 7 names the fields but not their types; the main agent assumed "shape" covered both.
 Source: instruction — spec H5 and guard SPEC Round 7 J1 (field types not stated).
+Category: spec
 Root cause: an external payload's field types were not written into the spec, so its validation stopped at the top level.
 Options:
 1. [check] HH-26 with planted wrong types — exists, kills mutant M3. evidence: `mutants.txt`.
@@ -121,6 +123,7 @@ Whys:
 3. Why were the field checks partial both times? The spec described the payload as "the JSON shape of Round 7" in prose; neither the coder nor I had the fields and types in one place to check against.
 4. Why prose? Round 7 was written as field names only (the same gap as F-b7c8635f, which this repeats).
 Source: instruction — guard SPEC Round 7 and spec H5 give field names without types or presence.
+Category: spec
 Root cause: one cause with F-b7c8635f — a payload contract written as prose names, so each reader checked a different subset.
 Options:
 1. [check] HH-29 plants one payload per missing or mistyped field (11 shapes) — added, kills M10–M12. evidence: `mutants.txt`.
