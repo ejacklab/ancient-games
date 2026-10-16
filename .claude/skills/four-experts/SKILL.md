@@ -13,7 +13,7 @@ one model's echo.
 
 | Expert | Engine | Model |
 |---|---|---|
-| Linus Torvalds | Codex (read-only) | gpt-6.1-sol |
+| Linus Torvalds | Codex (read-only) → **opencode** when Codex has 20% or less left | gpt-6.1-sol → MiniMax-M3.1-Flash-Preview |
 | 范蠡 Fan Li | agy → **Claude** when the task needs web or shell, or when agy fails | gemini-3.8-flash-medium → claude-opus-5-5 |
 | 孫子 Sun Tzu | dsh headless | deepseek-flash |
 | 老子 Laozi | opencode (plan mode) | MiniMax-M3.1-Flash-Preview |
@@ -48,6 +48,11 @@ python3 ~/.claude/skills/four-experts/scripts/four_experts.py run "Should we kee
 - 范蠡 falls back from agy to Claude automatically when agy returns nothing, an error, a timeout, or an answer
   without the required sections (a plan instead of the answer). `status.json` records the reason; the failed agy
   output is kept as `answers/fan-li.agy-failed.md`.
+- Linus moves from Codex to opencode in two cases. Before the run, the lower of Codex's two windows (5-hour and weekly,
+  read from the newest rate-limit snapshot in `~/.codex/sessions/`) may have 20% or less left. During the run, Codex may stop
+  on its usage limit; the failed log is then kept as `logs/linus.codex-failed.log`. `status.json` records
+  `fallback_from: codex` and the reason. On opencode Linus shares 老子's engine and model, so read their agreement as
+  one engine's, not two.
 
 ## 2. Check
 

@@ -7,7 +7,9 @@
     check DIR [--sabotage]
 
 Experts and engines (EJ, 2026-10-13):
-    Linus Torvalds  codex  gpt-6.1-sol (read-only)
+    Linus Torvalds  codex  gpt-6.1-sol (read-only) — runs on opencode instead when Codex has 20% or less left in
+                           its 5-hour or weekly window (EJ, 2026-10-16; read from Codex's own session log), or when
+                           Codex stops on its usage limit
     范蠡            agy    gemini-3.8-flash-medium — falls back to Claude Opus 5.5 when the task needs web or shell
                            (agy headless cannot), or when agy returns nothing, an error, a timeout, or an answer
                            without the required sections (e.g. a plan instead of the answer)
@@ -51,6 +53,8 @@ SECTIONS = ["## Answer", "## How I decided", "## What I need to know", "## Costs
 ITEM_START = re.compile(r"^(?:### (\d{1,2})\. |(\d{1,2})\. \*\*)", re.M)
 CJK_RUN = re.compile(r"[㐀-鿿]{4,}")
 ITEM_CITE = re.compile(r"(?<![\w#])#(\d{1,3})\b")
+CODEX_MIN_LEFT = 20  # percent; at or below it Linus runs on opencode (EJ, 2026-10-16)
+CODEX_LIMIT_ERROR = "usage limit"  # Codex: "You've hit your usage limit ... try again at <time>"
 
 
 def final_list(text: str) -> str:
@@ -72,6 +76,31 @@ def seat_files(sid: str) -> tuple[Path, Path]:
 def slug(q: str) -> str:
     words = re.findall(r"[a-z0-9]+", q.lower())[:5]
     return "-".join(words) or "question"
+
+
+def codex_left(home: Path | None = None, now: float | None = None) -> float | None:
+    """Percent Codex has left: the lower of its windows, from the newest rate-limit snapshot in its session logs.
+
+    A window whose reset time has passed counts as full. None when no log holds a snapshot with a window."""
+    home = home or Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+    now = time.time() if now is None else now
+    logs = sorted((home / "sessions").glob("*/*/*/*.jsonl"), key=lambda f: f.stat().st_mtime, reverse=True)
+    for log in logs[:20]:
+        snapshot = None
+        for line in log.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if '"rate_limits"' not in line:
+                continue
+            try:
+                limits = json.loads(line).get("payload", {}).get("rate_limits") or {}
+            except (json.JSONDecodeError, AttributeError):
+                continue
+            windows = [w for w in (limits.get("primary"), limits.get("secondary")) if isinstance(w, dict)]
+            if windows:
+                snapshot = windows
+        if snapshot:
+            return min(100.0 if w.get("resets_at", 0) <= now else 100.0 - float(w.get("used_percent", 0))
+                       for w in snapshot)
+    return None
 
 
 def command(engine: str, prompt: str, out_file: Path, timeout: int, web: bool, shell: bool) -> list[str]:
@@ -158,6 +187,11 @@ def run(a) -> int:
         jobs["fan-li"].update(engine="claude", fallback_from="agy",
                               fallback_reason="task needs " + " and ".join(
                                   x for x, f in (("web", a.needs_web), ("shell", a.needs_shell)) if f))
+    if "linus" in jobs:
+        left = codex_left()
+        if left is not None and left <= CODEX_MIN_LEFT:
+            jobs["linus"].update(engine="opencode", fallback_from="codex",
+                                 fallback_reason=f"codex has {left:g}% left ({CODEX_MIN_LEFT}% or less)")
     old = out / "status.json"
     status = json.loads(old.read_text(encoding="utf-8")) if only and old.exists() else {}
 
@@ -223,10 +257,21 @@ def run(a) -> int:
                 j["started"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")
                 progress(a, sid, "start", "claude (fallback)")
                 print("started fan-li   on claude (fallback)", flush=True)
+            if (sid == "linus" and j["engine"] == "codex" and not ok and log.exists()
+                    and CODEX_LIMIT_ERROR in log.read_text(encoding="utf-8", errors="ignore")):
+                shutil.move(ans, ans.with_suffix(".codex-failed.md")) if ans.exists() else None
+                shutil.move(log, log.with_suffix(".codex-failed.log"))
+                status["linus-codex"] = status.pop("linus")
+                j.update(engine="opencode", fallback_from="codex", fallback_reason="codex stopped on its usage limit")
+                procs[sid] = (*start("opencode", prompt_for(sid, "opencode"), ans, log, a.timeout, a.needs_web,
+                                     a.needs_shell, cwd), ans, log)
+                j["started"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")
+                progress(a, sid, "start", "opencode (fallback)")
+                print("started linus    on opencode (fallback)", flush=True)
         time.sleep(2)
     (out / "status.json").write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"\n{out}\nnext: python3 {Path(__file__)} check {out}")
-    return 0 if all(s["ok"] is not False for k, s in status.items() if k != "fan-li-agy") else 1
+    return 0 if all(s["ok"] is not False for k, s in status.items() if k not in ("fan-li-agy", "linus-codex")) else 1
     # with --only, earlier entries in status.json are kept and the new ones added
 
 
