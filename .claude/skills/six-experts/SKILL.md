@@ -52,7 +52,7 @@ python3 ~/.claude/skills/six-experts/scripts/six_experts.py run "Should we keep 
   to the answer path it names. Outside Claude Code the script runs `claude -p` itself.
 - `--progress runs/<run>/nodes/experts.progress.md` appends a timestamped line as each expert starts and ends, so the
   caller sees progress while they work; `status.json` records each expert's start and finish time.
-- `--only dave` (or any comma list of ids: `linus,fan-li,sun-tzu,lao-tzu,dave`) with `--out <existing run>` adds
+- `--only dave` (or any comma list of ids: `linus,fan-li,sun-tzu,lao-tzu,dave,dario`) with `--out <existing run>` adds
   those answers to a run and keeps the others.
 - Output: `runs/<date>-six-experts-<slug>/` (or `six-experts/…` when there is no `runs/`): `question.md`,
   `seats/` (the lists used, frozen), `briefs/`, `answers/<id>.md`, `logs/`, `status.json`.
@@ -72,8 +72,9 @@ python3 ~/.claude/skills/six-experts/scripts/six_experts.py check <run dir>
 python3 ~/.claude/skills/six-experts/scripts/six_experts.py check <run dir> --sabotage   # must report ≥ 2 failures
 ```
 
-It checks every answer has the five sections, cites at least one item, cites only item numbers its list has, and
-writes any run of 4+ Chinese characters exactly as its list or identity file does (on a miss it shows the nearest
+It checks every answer has the five sections. For each persona (not Dario, who has no list) it also checks the answer
+cites at least one item, cites only item numbers its list has, and writes any run of 4+ Chinese characters exactly as
+its list or identity file does; Dave must cite insight ids from his index or say "No insight applies" (on a miss it shows the nearest
 passage, so a 趙/赵 script change reads differently from an invention). **What it does not establish:** that a rule
 was applied *correctly*, or that the advice is good — read for that. The script was written by Claude; say so when
 resting a conclusion on it.

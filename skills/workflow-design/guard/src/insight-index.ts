@@ -28,7 +28,10 @@ export interface CategoryRule {
   titles?: string[]; // case-insensitive regexes over the section's heading (used to place it, never printed)
 }
 
-const HEADING_RE = /^##\s+(.*)$/;
+// The same heading rule as insight.ts, so the index and the sections it names never fall out of step (review #2).
+const HEADING_RE = /^##(?!#)\s*(.*)$/;
+// Only known option kinds are printed; anything else in the brackets is the author's text (review #1).
+const OPTION_KINDS = new Set(["rule", "check", "tool", "config-advice"]);
 const ID_RE = /F-[0-9a-f]{8}/g;
 
 function firstWord(text: string | null): string {
@@ -36,14 +39,23 @@ function firstWord(text: string | null): string {
   return match === null ? "-" : match[0];
 }
 
+// A malformed regex in the categories file matches nothing instead of breaking the index (review #3).
+function matches(re: string, text: string, flags = ""): boolean {
+  try {
+    return new RegExp(re, flags).test(text);
+  } catch {
+    return false;
+  }
+}
+
 export function categorize(entry: Omit<IndexEntry, "category">, rules: CategoryRule[], title = "", own: string | null = null): string {
   // The writer's own `Category:` line wins when it names a known category.
   if (own !== null && rules.some((rule) => rule.id === own)) return own;
   for (const rule of rules) {
-    if (rule.titles !== undefined && !rule.titles.some((re) => new RegExp(re, "i").test(title))) continue;
+    if (rule.titles !== undefined && !rule.titles.some((re) => matches(re, title, "i"))) continue;
     if (rule.kinds !== undefined && !rule.kinds.includes(entry.kind)) continue;
     if (rule.sources !== undefined && !rule.sources.includes(entry.source)) continue;
-    if (rule.checks !== undefined && !entry.checks.some((check) => rule.checks!.some((re) => new RegExp(re).test(check)))) continue;
+    if (rule.checks !== undefined && !entry.checks.some((check) => rule.checks!.some((re) => matches(re, check)))) continue;
     return rule.id;
   }
   return "-";
@@ -82,7 +94,7 @@ export function insightIndex(root: string, rules: CategoryRule[]): IndexEntry[] 
         kind,
         checks: section.ids.map((id) => checkOf.get(id) ?? "-"),
         source: firstWord(section.source),
-        optionKinds: section.options.map((option) => option.kind),
+        optionKinds: section.options.map((option) => (OPTION_KINDS.has(option.kind) ? option.kind : "-")),
       };
       entries.push({ ...base, category: categorize(base, rules, head.title, head.own) });
     });

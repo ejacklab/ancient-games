@@ -276,8 +276,14 @@ test("P5 Fails-if: a category rule with no matching section breaks the index —
   const shipped = loadCategories(GUARD_DIR);
   expect(shipped.length).toBeGreaterThan(0);
   expect(shipped.map((rule) => rule.id)).toContain("spec");
-  expect(rows(b, shipped).every((entry) => entry.category === "-" || shipped.some((rule) => rule.id === entry.category)))
-    .toBe(true);
+  // Review #8: every shipped category places at least one planted section of its own kind.
+  b.write("runs/y/insight.md", ["config", "tool", "check", "instruction"].map((source, n) =>
+    `## F-${String(n).padStart(8, "9")} — a ${source === "check" ? "test suite" : source === "instruction" ? "spec" : source} case\n\n`
+    + sectionBody().replace(/Source: instruction/, `Source: ${source}`) + "\n").join("\n")
+    + `## F-99999994 — a guard alarm\n\n${sectionBody().replace(/Source: instruction/, "Source: check")}\n`
+    + `## F-99999995 — my command chain\n\n${sectionBody()}\n`);
+  const placed = new Set(rows(b, shipped).map((entry) => entry.category));
+  for (const rule of shipped) expect(placed.has(rule.id)).toBe(true);
 });
 
 // ---- P6: the CLI in a temporary git root ---------------------------------------------------------------------------
@@ -326,4 +332,32 @@ test("I3: a config section marked `Category: spec` is spec, not config", () => {
     { id: "spec", name: "a spec was unclear", sources: ["instruction"] },
   ];
   expect(rows(b, rules).find((entry) => entry.ids[0] === "F-3c4d5e6f")!.category).toBe("spec");
+});
+
+// COO, after the dsh review (runs/20261016-six-experts/nodes/review.result.md).
+test("review 1: an option label that is not a known kind never reaches the index", () => {
+  const b = box();
+  b.write("runs/x/insight.md", `## F-4d5e6f70 — a case\n\n${sectionBody([`1. [the cause is ${SECRET}] keep — evidence: e`, "2. [check] y — evidence: e"])}\n`);
+  b.journal([b.failure({ id: "F-4d5e6f70", check: "R12.1-exit" })]);
+  const entries = rows(b);
+  expect(entries[0]!.optionKinds).toEqual(["-", "check"]);
+  expect(indexMarkdown(entries)).not.toContain(SECRET);
+});
+
+test("review 2: a heading with no space after ## keeps its override and is shown", () => {
+  const b = box();
+  b.write("runs/x/insight.md", `##F-5e6f7081 — a quota setting\n\n${sectionBody().replace(/Source: instruction/, "Source: config")}\nCategory: spec\n\n`
+    + `## F-6f708192 — another\n\n${sectionBody().replace(/Source: instruction/, "Source: tool")}\n`);
+  b.journal([b.failure({ id: "F-5e6f7081", check: "R12.1-exit" }), b.failure({ id: "F-6f708192", check: "R12.1-exit" })]);
+  const entries = rows(b);
+  expect(entries.find((e) => e.ids[0] === "F-5e6f7081")!.category).toBe("spec");
+  expect(entries.find((e) => e.ids[0] === "F-6f708192")!.category).toBe("tool");
+  expect(showSections(b.root, entries, { categories: ["spec"], refs: [] })).toContain("F-5e6f7081");
+});
+
+test("review 3: a malformed regex in a category rule matches nothing instead of breaking the index", () => {
+  const b = planted();
+  const rules: CategoryRule[] = [{ id: "broken", name: "x", titles: ["([unclosed"] }, { id: "spec", name: "s", sources: ["instruction"] }];
+  expect(() => rows(b, rules)).not.toThrow();
+  expect(rows(b, rules).some((e) => e.category === "broken")).toBe(false);
 });

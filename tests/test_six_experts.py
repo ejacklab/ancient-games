@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 import pytest
+from types import SimpleNamespace
 
 SCRIPT = Path(__file__).resolve().parent.parent / ".claude" / "skills" / "six-experts" / "scripts" / "six_experts.py"
 spec = importlib.util.spec_from_file_location("six_experts", SCRIPT)
@@ -272,8 +273,11 @@ def test_dave_passes_with_no_citation_when_he_says_no_insight_applies(tmp_path):
 
 def test_darios_plain_answer_is_not_judged_on_citations_or_chinese(tmp_path):
     out = make_run(tmp_path, {})
-    text = ANSWER + "\nNo items, and not one character of 中文 here.\n"
+    # Review #8: a 4+ character run that a persona's list does not hold, so the Chinese check would fire if Dario
+    # were checked like a persona (shown by checking the same text as Linus).
+    text = ANSWER + "\nNo items, and 完全不在列表 here.\n"
     assert fe.check_one("dario", text, out) == []
+    assert fe.check_one("linus", text, out) != []
 
 
 def test_check_reports_dave_and_dario_together(tmp_path):
@@ -313,3 +317,25 @@ def test_one_opencode_expert_is_not_queued_when_the_other_is_on_codex(tmp_path, 
     seats = started(calls)
     assert [c["engine"] for c in seats] == ["codex", "opencode"]
     assert seats[1]["running"] == ["linus"]  # different engines may overlap
+
+
+# COO, after the dsh review (runs/20261016-six-experts/nodes/review.result.md).
+def test_sabotage_without_chinese_still_fails_the_check(tmp_path, capsys):
+    out = make_run(tmp_path, {"linus": ANSWER + "\nmy #1\n"})
+    assert fe.check(SimpleNamespace(dir=str(out), sabotage=True)) == 0
+    import re as _re
+    found = _re.search(r"→ (\d+) failure\(s\)", capsys.readouterr().out)
+    assert found and int(found.group(1)) >= 2
+
+
+def test_caller_mode_names_dave_and_darios_model(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(fe, "guard_text", lambda args, cwd: "")
+    q = tmp_path / "q.md"
+    q.write_text("A question?\n", encoding="utf-8")
+    out = tmp_path / "run"
+    fe.run(SimpleNamespace(question=None, question_file=str(q), out=str(out), needs_web=False, needs_shell=False,
+                           timeout=60, only="dave,dario", claude_by_caller=True, insights=None, progress=None))
+    printed = capsys.readouterr().out
+    assert printed.count("on claude-sonnet-5-5") == 2
+    status = __import__("json").loads((out / "status.json").read_text(encoding="utf-8"))
+    assert status["dave"]["model"] == status["dario"]["model"] == "claude-sonnet-5-5"

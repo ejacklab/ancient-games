@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""six_experts.py — ask four experts and Dave (the control) one question, each on its own engine.
+"""six_experts.py — ask six experts one question, each on its own engine: four researched personas, Dave (rules and
+the project's insights) and Dario (the plain control).
 
     run   "<question>" [--question-file F] [--out DIR] [--needs-web] [--needs-shell] [--timeout S] [--only IDS]
           [--claude-by-caller]   inside Claude Code: do not start `claude -p`; list Dave (and any 范蠡 fallback)
@@ -15,13 +16,16 @@ Experts and engines (EJ, 2026-10-13):
                            without the required sections (e.g. a plan instead of the answer)
     孫子            dsh    deepseek-flash (dsh headless)
     老子            opencode  minimax-coding-plan/MiniMax-M3.1-Flash-Preview (plan mode)
-    Dave            claude Opus 5.5 — the control (EJ, 2026-10-13): experiments, data, nature-inspired solutions;
-                    his rules are EJ's, in assets/seats/. EJ chose a persona control over a plain no-persona answer.
+    Dave            claude Sonnet 5.5 — EJ's ten rules (assets/seats/; experiments, data, nature-inspired), and since
+                    2026-10-16 the project's insights: the guard's insight index and the named categories' sections
+    Dario           claude Sonnet 5.5 — the plain control (EJ, 2026-10-16): no rules, no identity, no insights; the
+                    same model and tools as Dave, so Dave against Dario measures what the rules and insights add
 
-Each expert gets its own list from the four-seats run (copied into DIR/seats/, because opencode cannot read files
-outside the project) and a brief that makes it decide through its numbered rules. Prompts go in files; every engine
-call reads stdin from /dev/null. `check` verifies each expert cited only item numbers its list has and quoted Chinese
-only as its list writes it; `--sabotage` proves the check fails on an invented quote and a non-existent item.
+Each persona gets its own list from the four-seats run (copied into DIR/seats/, because opencode cannot read files
+outside the project) and a brief that makes it decide through its numbered rules; Dario gets only the question and the
+answer's shape. Prompts go in files; every engine
+call reads stdin from /dev/null. `check` verifies each persona cited only item numbers its list has and quoted Chinese
+only as its list writes it, Dave cited real insight ids (or said none applies), and Dario wrote the five sections; `--sabotage` proves the check fails on an invented quote and a non-existent item.
 """
 from __future__ import annotations
 
@@ -253,11 +257,12 @@ def run(a) -> int:
         return p
 
     def hand_to_caller(sid):
-        status[sid] = {"expert": jobs[sid]["expert"], "engine": "claude-subagent (caller)", "model": "caller's choice",
+        model = SEAT_MODEL.get(sid)  # Dave and Dario keep their model under the caller too (review #4)
+        status[sid] = {"expert": jobs[sid]["expert"], "engine": "claude-subagent (caller)", "model": model or "caller's choice",
                        "ok": None, "problem": "to run by the caller",
                        "brief": str(jobs[sid]["brief"]), "answer": str(out / "answers" / f"{sid}.md"),
                        **({k: jobs[sid][k] for k in ("fallback_from", "fallback_reason") if k in jobs[sid]})}
-        print(f"CALLER  {sid:8} run a Claude subagent: 'Read {jobs[sid]['brief']} and do what it says.' "
+        print(f"CALLER  {sid:8} run a Claude subagent{' on ' + model if model else ''}: 'Read {jobs[sid]['brief']} and do what it says.' "
               f"and save its final message to {out / 'answers' / (sid + '.md')}", flush=True)
         progress(a, sid, "start", "handed to the caller")
         if a.progress:  # the caller writes the end line, since this script never sees the subagent finish
@@ -389,10 +394,17 @@ def check(a) -> int:
     answers = {p.stem: p.read_text(encoding="utf-8", errors="ignore") for p in (out / "answers").glob("*.md")
                if "." not in p.stem}
     if a.sabotage:
-        sid = next(s for s in answers if s in {x for x, _, _ in EXPERTS} and CJK_RUN.search(answers[s]))
+        listed = [s for s in answers if s in {x for x, _, _ in EXPERTS} and s not in PLAIN]
+        sid = next((s for s in listed if CJK_RUN.search(answers[s])), listed[0] if listed else None)
+        if sid is None:
+            print("sabotage: no persona answer to alter")
+            return 1
         t = answers[sid]
         m = CJK_RUN.search(t)
-        t = t[:m.start() + 1] + "鑫" + t[m.start() + 2:] + "\nAs my #99 says."
+        if m:  # alter one quoted character and cite a missing item
+            t = t[:m.start() + 1] + "鑫" + t[m.start() + 2:] + "\nAs my #99 says."
+        else:  # no Chinese to alter (review #3): cite a missing item and drop a required section instead
+            t = t.replace("## Answer", "## Answr", 1) + "\nAs my #99 says."
         found = check_one(sid, t, out)
         print(f"sabotage on {sid}: altered one quoted character and cited #99 → {len(found)} failure(s)")
         for f in found:
