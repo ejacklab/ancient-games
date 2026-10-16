@@ -36,7 +36,9 @@ the pattern* and say what it would change.
 2. **Do not invent facts.** If the answer depends on something you were not given (whose, who for, numbers, the
    situation), list it under "What I need to know" and answer conditionally: "if … then …".
 3. **Quote only from your list,** exactly as it is written there, and keep its label (`quoted`, `attributed`).
-   Never put words in {name}'s mouth that your list does not contain.
+   Never put words in {name}'s mouth that your list does not contain. Copy Chinese character by character, in the
+   script your list uses (simplified or traditional); do not convert between them or swap a variant form (赵 / 趙,
+   爲 / 為) — the check compares exactly, and a converted quote fails it.
 4. **Say what it costs.** Every recommendation names its risk or price.
 5. Re-read your list while you work, not only at the start.
 6. Write in plain English Markdown. Refer to EJ as they/them. Do not write files; your final message is the answer.
