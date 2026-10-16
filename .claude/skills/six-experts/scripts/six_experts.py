@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""four_experts.py — ask four experts and Dave (the control) one question, each on its own engine.
+"""six_experts.py — ask six experts one question, each on its own engine: four researched personas, Dave (rules and
+the project's insights) and Dario (the plain control).
 
     run   "<question>" [--question-file F] [--out DIR] [--needs-web] [--needs-shell] [--timeout S] [--only IDS]
           [--claude-by-caller]   inside Claude Code: do not start `claude -p`; list Dave (and any 范蠡 fallback)
@@ -15,13 +16,16 @@ Experts and engines (EJ, 2026-10-13):
                            without the required sections (e.g. a plan instead of the answer)
     孫子            dsh    deepseek-flash (dsh headless)
     老子            opencode  minimax-coding-plan/MiniMax-M3.1-Flash-Preview (plan mode)
-    Dave            claude Opus 5.5 — the control (EJ, 2026-10-13): experiments, data, nature-inspired solutions;
-                    his rules are EJ's, in assets/seats/. EJ chose a persona control over a plain no-persona answer.
+    Dave            claude Sonnet 5.5 — EJ's ten rules (assets/seats/; experiments, data, nature-inspired), and since
+                    2026-10-16 the project's insights: the guard's insight index and the named categories' sections
+    Dario           claude Sonnet 5.5 — the plain control (EJ, 2026-10-16): no rules, no identity, no insights; the
+                    same model and tools as Dave, so Dave against Dario measures what the rules and insights add
 
-Each expert gets its own list from the four-seats run (copied into DIR/seats/, because opencode cannot read files
-outside the project) and a brief that makes it decide through its numbered rules. Prompts go in files; every engine
-call reads stdin from /dev/null. `check` verifies each expert cited only item numbers its list has and quoted Chinese
-only as its list writes it; `--sabotage` proves the check fails on an invented quote and a non-existent item.
+Each persona gets its own list from the four-seats run (copied into DIR/seats/, because opencode cannot read files
+outside the project) and a brief that makes it decide through its numbered rules; Dario gets only the question and the
+answer's shape. Prompts go in files; every engine
+call reads stdin from /dev/null. `check` verifies each persona cited only item numbers its list has and quoted Chinese
+only as its list writes it, Dave cited real insight ids (or said none applies), and Dario wrote the five sections; `--sabotage` proves the check fails on an invented quote and a non-existent item.
 """
 from __future__ import annotations
 
@@ -37,15 +41,23 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
-REPO = HERE.parent.parent.parent  # the skill lives in <repo>/.claude/skills/four-experts
-SEATS_ROOT = Path(os.environ.get("FOUR_EXPERTS_SEATS", REPO / "runs" / "20261013-four-seats")).expanduser()
+REPO = HERE.parent.parent.parent  # the skill lives in <repo>/.claude/skills/six-experts
+SEATS_ROOT = Path(os.environ.get("SIX_EXPERTS_SEATS") or os.environ.get("FOUR_EXPERTS_SEATS")
+                  or REPO / "runs" / "20261013-four-seats").expanduser()
 EXPERTS = [  # id, name, engine
     ("linus", "Linus Torvalds", "codex"),
     ("fan-li", "范蠡 (Fan Li)", "agy"),
     ("sun-tzu", "孫子 (Sun Tzu)", "dsh"),
     ("lao-tzu", "老子 (Laozi)", "opencode"),
-    ("dave", "Dave", "claude"),  # the control seat, EJ 2026-10-13: experiments, data, nature-inspired; rules in assets/seats
+    ("dave", "Dave", "claude"),  # EJ 2026-10-13: experiments, data, nature-inspired; rules in assets/seats; loads insights
+    ("dario", "Dario", "claude"),  # the plain control, EJ 2026-10-16: no rules, no identity, no insights; same engine as Dave
 ]
+PLAIN = {"dario"}
+# Dave and Dario on the same model, so their comparison isolates the rules and insights (run 20261016-six-experts, D2).
+SEAT_MODEL = {"dave": "claude-sonnet-5-5", "dario": "claude-sonnet-5-5"}
+INSIGHT_SEAT = "dave"  # loads the insights before answering
+GUARD_CLI = HERE.parent / "workflow-design" / "guard" / "src" / "cli.ts"
+INSIGHT_ID = re.compile(r"\bF-[0-9a-f]{8}\b")  # seats with no list: their brief is the question alone, and check reads their sections only
 MODELS = {"codex": "gpt-6.1-sol", "agy": "gemini-3.8-flash-medium", "dsh": "deepseek-flash (dsh headless profile)",
           "opencode": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview", "claude": "claude-opus-5-5"}
 SECTIONS = ["## Answer", "## How I decided", "## What I need to know", "## Costs and risks",
@@ -103,7 +115,8 @@ def codex_left(home: Path | None = None, now: float | None = None) -> float | No
     return None
 
 
-def command(engine: str, prompt: str, out_file: Path, timeout: int, web: bool, shell: bool) -> list[str]:
+def command(engine: str, prompt: str, out_file: Path, timeout: int, web: bool, shell: bool,
+            model: str | None = None) -> list[str]:
     if engine == "codex":
         return ["codex", "-m", MODELS["codex"], *(["--search"] if web else []), "exec", "-s", "read-only",
                 "--skip-git-repo-check", "-o", str(out_file), prompt]
@@ -118,16 +131,17 @@ def command(engine: str, prompt: str, out_file: Path, timeout: int, web: bool, s
         tools = ["Read", "Grep", "Glob"] + (["WebSearch", "WebFetch"] if web else []) + (["Bash"] if shell else [])
         # `--allowedTools` takes several values, so the bare form swallows the prompt that follows it (run
         # 20261016-time-monitor: Dave got "Input must be provided"); `=` keeps the prompt an argument.
-        return ["claude", "-p", "--model", MODELS["claude"], "--output-format", "text",
+        return ["claude", "-p", "--model", model or MODELS["claude"], "--output-format", "text",
                 f"--allowedTools={','.join(tools)}", prompt]
     raise ValueError(engine)
 
 
-def start(engine: str, prompt: str, ans: Path, log: Path, timeout: int, web: bool, shell: bool, cwd: Path):
+def start(engine: str, prompt: str, ans: Path, log: Path, timeout: int, web: bool, shell: bool, cwd: Path,
+          model: str | None = None):
     env = dict(os.environ)
     if engine == "claude":
         env.pop("ANTHROPIC_API_KEY", None)  # use the subscription login, not an API key
-    cmd = ["timeout", str(timeout), *command(engine, prompt, ans, timeout, web, shell)]
+    cmd = ["timeout", str(timeout), *command(engine, prompt, ans, timeout, web, shell, model)]
     out = open(log if engine == "codex" else ans, "w")
     err = open(log, "a" if engine == "codex" else "w")
     p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=out, stderr=err, cwd=cwd, env=env)
@@ -140,6 +154,39 @@ def answer_ok(ans: Path) -> tuple[bool, str]:
         return False, "empty answer"
     missing = [s for s in SECTIONS if s not in text]
     return (False, f"missing sections {missing}") if missing else (True, "")
+
+
+def guard_text(args: list[str], cwd: Path) -> str:
+    """The guard's insight index or chosen sections, as text; "" when the guard cannot answer."""
+    try:
+        p = subprocess.run(["bun", str(GUARD_CLI), "insight", *args], cwd=cwd, capture_output=True, text=True,
+                           timeout=60, stdin=subprocess.DEVNULL, env={**os.environ, "BUN_RUNTIME_TRANSPILER_CACHE_PATH": "0"})
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return p.stdout if p.returncode == 0 else ""
+
+
+def insight_load(out: Path, categories: str | None, cwd: Path) -> str:
+    """Dave's insights (run 20261016-six-experts, D1): the index, then the named categories' sections, copied into the
+    run folder so every engine can read them; the brief section that tells him to load and cite them."""
+    index = guard_text(["index"], cwd)
+    (out / "seats" / "dave-insight-index.md").write_text(index or "(the guard gave no index)\n", encoding="utf-8")
+    cats = [c.strip() for c in (categories or "").split(",") if c.strip()]
+    sections = guard_text(["show", *[x for c in cats for x in ("--category", c)]], cwd) if cats else ""
+    (out / "seats" / "dave-insights.md").write_text(sections or "(no category named: choose from the index)\n",
+                                                   encoding="utf-8")
+    named = ", ".join(cats) if cats else "none — choose from the index"
+    return f"""
+## Load first: what was learned
+
+Before you answer, read the insights — six whys, root causes and fix options from past failures in this project.
+
+- The index, one line per insight: `{out / 'seats' / 'dave-insight-index.md'}` (file, ids, check, source, category).
+- The sections of the categories the main agent named ({named}): `{out / 'seats' / 'dave-insights.md'}`. You may add
+  any other section from the index; read it in its file.
+- In "How I decided", cite each insight you used as `<file>#<id>` and what it changed in your answer; if none applies,
+  write `No insight applies: <why>`. If a named category was the wrong one, say so in one line.
+"""
 
 
 def progress(a, piece: str, state: str, note: str) -> None:
@@ -159,8 +206,8 @@ def run(a) -> int:
     if not question or not question.strip():
         sys.exit("no question given")
     cwd = Path.cwd()
-    out = Path(a.out) if a.out else (cwd / ("runs" if (cwd / "runs").is_dir() else "four-experts")
-                                     / f"{dt.date.today():%Y%m%d}-four-experts-{slug(question)}")
+    out = Path(a.out) if a.out else (cwd / ("runs" if (cwd / "runs").is_dir() else "six-experts")
+                                     / f"{dt.date.today():%Y%m%d}-six-experts-{slug(question)}")
     out = out.resolve()
     if not str(out).startswith(str(cwd.resolve())):
         print(f"warning: {out} is outside {cwd}; opencode cannot read it", file=sys.stderr)
@@ -170,18 +217,26 @@ def run(a) -> int:
         Path(a.progress).parent.mkdir(parents=True, exist_ok=True)
     (out / "question.md").write_text(question.strip() + "\n", encoding="utf-8")
     brief_t = (HERE / "assets" / "brief.md").read_text(encoding="utf-8")
+    plain_t = (HERE / "assets" / "brief-plain.md").read_text(encoding="utf-8")
     only = set(a.only.split(",")) if a.only else None
     jobs = {}
     for sid, name, engine in EXPERTS:
         lst, ident = out / "seats" / f"{sid}-list.md", out / "seats" / f"{sid}-identity.md"
         if only and sid not in only:
             continue
+        brief = out / "briefs" / f"{sid}.md"
+        if sid in PLAIN:  # the control gets the question and the answer's shape, nothing else
+            brief.write_text(plain_t.format(question=question.strip()), encoding="utf-8")
+            jobs[sid] = {"expert": name, "engine": engine, "brief": brief}
+            continue
         src_list, src_ident = seat_files(sid)
         shutil.copyfile(src_list, lst)
         shutil.copyfile(src_ident, ident)
-        brief = out / "briefs" / f"{sid}.md"
-        brief.write_text(brief_t.format(name=name, list_path=lst, identity_path=ident, n_items=n_items(lst),
-                                        question=question.strip()), encoding="utf-8")
+        text = brief_t.format(name=name, list_path=lst, identity_path=ident, n_items=n_items(lst),
+                              question=question.strip())
+        if sid == INSIGHT_SEAT:
+            text += insight_load(out, a.insights, cwd)
+        brief.write_text(text, encoding="utf-8")
         jobs[sid] = {"expert": name, "engine": engine, "brief": brief}
     if (a.needs_web or a.needs_shell) and "fan-li" in jobs:
         jobs["fan-li"].update(engine="claude", fallback_from="agy",
@@ -202,11 +257,12 @@ def run(a) -> int:
         return p
 
     def hand_to_caller(sid):
-        status[sid] = {"expert": jobs[sid]["expert"], "engine": "claude-subagent (caller)", "model": "caller's choice",
+        model = SEAT_MODEL.get(sid)  # Dave and Dario keep their model under the caller too (review #4)
+        status[sid] = {"expert": jobs[sid]["expert"], "engine": "claude-subagent (caller)", "model": model or "caller's choice",
                        "ok": None, "problem": "to run by the caller",
                        "brief": str(jobs[sid]["brief"]), "answer": str(out / "answers" / f"{sid}.md"),
                        **({k: jobs[sid][k] for k in ("fallback_from", "fallback_reason") if k in jobs[sid]})}
-        print(f"CALLER  {sid:8} run a Claude subagent: 'Read {jobs[sid]['brief']} and do what it says.' "
+        print(f"CALLER  {sid:8} run a Claude subagent{' on ' + model if model else ''}: 'Read {jobs[sid]['brief']} and do what it says.' "
               f"and save its final message to {out / 'answers' / (sid + '.md')}", flush=True)
         progress(a, sid, "start", "handed to the caller")
         if a.progress:  # the caller writes the end line, since this script never sees the subagent finish
@@ -214,17 +270,36 @@ def run(a) -> int:
                   flush=True)
 
     procs = {}
+    waiting = []  # opencode runs wait for each other: parallel starts can fail with "database is locked"
+
+    def launch(sid):
+        j = jobs[sid]
+        ans, log = out / "answers" / f"{sid}.md", out / "logs" / f"{sid}.log"
+        procs[sid] = (*start(j["engine"], prompt_for(sid, j["engine"]), ans, log, a.timeout, a.needs_web,
+                             a.needs_shell, cwd, **seat_model(sid, j["engine"])), ans, log)
+        j["started"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")
+        progress(a, sid, "start", j["engine"])
+        print(f"started {sid:8} on {j['engine']}", flush=True)
+
+    def seat_model(sid, engine):  # only a Claude seat with its own model passes one; other calls keep their shape
+        model = SEAT_MODEL.get(sid) if engine == "claude" else None
+        return {"model": model} if model else {}
+
+    def opencode_busy():
+        return any(jobs[sid]["engine"] == "opencode" for sid in procs)
+
     for sid, j in jobs.items():
         if j["engine"] == "claude" and a.claude_by_caller:
             hand_to_caller(sid)
             continue
-        ans, log = out / "answers" / f"{sid}.md", out / "logs" / f"{sid}.log"
-        procs[sid] = (*start(j["engine"], prompt_for(sid, j["engine"]), ans, log, a.timeout, a.needs_web,
-                             a.needs_shell, cwd), ans, log)
-        j["started"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")
-        progress(a, sid, "start", j["engine"])
-        print(f"started {sid:8} on {j['engine']}", flush=True)
-    while procs:
+        if j["engine"] == "opencode" and opencode_busy():
+            waiting.append(sid)
+            print(f"waiting {sid:8} for the running opencode expert", flush=True)
+            continue
+        launch(sid)
+    while procs or waiting:
+        if waiting and not opencode_busy():
+            launch(waiting.pop(0))
         for sid, (p, t0, ans, log) in list(procs.items()):
             if p.poll() is None:
                 continue
@@ -236,7 +311,7 @@ def run(a) -> int:
             elif p.returncode != 0 and ok:
                 ok, why = False, f"exit {p.returncode}"
             progress(a, sid, "done" if ok else "fail", f"{j['engine']} exit {p.returncode}")
-            status[sid] = {"expert": j["expert"], "engine": j["engine"], "model": MODELS[j["engine"]],
+            status[sid] = {"expert": j["expert"], "engine": j["engine"], "model": (SEAT_MODEL.get(sid) if j["engine"] == "claude" else None) or MODELS[j["engine"]],
                            "started": j.get("started"),
                            "finished": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
                            "exit": p.returncode, "seconds": round(time.time() - t0, 1), "ok": ok, "problem": why,
@@ -263,11 +338,11 @@ def run(a) -> int:
                 shutil.move(log, log.with_suffix(".codex-failed.log"))
                 status["linus-codex"] = status.pop("linus")
                 j.update(engine="opencode", fallback_from="codex", fallback_reason="codex stopped on its usage limit")
-                procs[sid] = (*start("opencode", prompt_for(sid, "opencode"), ans, log, a.timeout, a.needs_web,
-                                     a.needs_shell, cwd), ans, log)
-                j["started"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")
-                progress(a, sid, "start", "opencode (fallback)")
-                print("started linus    on opencode (fallback)", flush=True)
+                if opencode_busy():  # one opencode at a time (database is locked)
+                    waiting.append(sid)
+                    print("waiting linus    for the running opencode expert (fallback)", flush=True)
+                else:
+                    launch(sid)
         time.sleep(2)
     (out / "status.json").write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"\n{out}\nnext: python3 {Path(__file__)} check {out}")
@@ -289,6 +364,16 @@ def nearest(run_: str, allowed: str) -> str:
 
 def check_one(sid: str, text: str, out: Path) -> list[str]:
     bad = [f"{sid}: missing section {s}" for s in SECTIONS if s not in text]
+    if sid in PLAIN:  # no list to cite from: the sections are the whole check
+        return bad
+    index = out / "seats" / "dave-insight-index.md"
+    if sid == INSIGHT_SEAT and index.exists():  # Dave loaded insights: he cites real ones, or says none applies
+        known = set(INSIGHT_ID.findall(index.read_text(encoding="utf-8")))
+        cited = set(INSIGHT_ID.findall(text))
+        if cited - known:
+            bad.append(f"{sid}: cites insight ids not in the index: {', '.join(sorted(cited - known))}")
+        if not cited and "No insight applies" not in text:
+            bad.append(f"{sid}: loaded insights but cites none and does not say why none applies")
     lst = out / "seats" / f"{sid}-list.md"
     n = n_items(lst)
     allowed = re.sub(r"\s+", "", lst.read_text(encoding="utf-8") +
@@ -309,10 +394,17 @@ def check(a) -> int:
     answers = {p.stem: p.read_text(encoding="utf-8", errors="ignore") for p in (out / "answers").glob("*.md")
                if "." not in p.stem}
     if a.sabotage:
-        sid = next(s for s in answers if s in {x for x, _, _ in EXPERTS} and CJK_RUN.search(answers[s]))
+        listed = [s for s in answers if s in {x for x, _, _ in EXPERTS} and s not in PLAIN]
+        sid = next((s for s in listed if CJK_RUN.search(answers[s])), listed[0] if listed else None)
+        if sid is None:
+            print("sabotage: no persona answer to alter")
+            return 1
         t = answers[sid]
         m = CJK_RUN.search(t)
-        t = t[:m.start() + 1] + "鑫" + t[m.start() + 2:] + "\nAs my #99 says."
+        if m:  # alter one quoted character and cite a missing item
+            t = t[:m.start() + 1] + "鑫" + t[m.start() + 2:] + "\nAs my #99 says."
+        else:  # no Chinese to alter (review #3): cite a missing item and drop a required section instead
+            t = t.replace("## Answer", "## Answr", 1) + "\nAs my #99 says."
         found = check_one(sid, t, out)
         print(f"sabotage on {sid}: altered one quoted character and cited #99 → {len(found)} failure(s)")
         for f in found:
@@ -346,6 +438,8 @@ def main() -> int:
     r.add_argument("--needs-web", action="store_true", help="the task needs web search: 范蠡 goes to Claude")
     r.add_argument("--needs-shell", action="store_true", help="the task needs a shell: 范蠡 goes to Claude")
     r.add_argument("--timeout", type=int, default=1800, help="seconds per engine call")
+    r.add_argument("--insights", help="the insight categories Dave loads, comma-separated (e.g. spec,own-work); "
+                                      "with none named he chooses from the index")
     r.add_argument("--progress", help="append a timestamped line per expert start and end to this file "
                                       "(e.g. runs/<run>/nodes/experts.progress.md)")
     r.add_argument("--only", help="comma-separated ids to run (e.g. dave or linus,dave); with --out, adds them to an "

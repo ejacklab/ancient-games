@@ -1,15 +1,18 @@
 ---
-name: four-experts
-description: Ask EJ's four experts — Linus Torvalds (Codex), 范蠡 Fan Li (agy, or Claude when the task needs web or shell), 孫子 Sun Tzu (dsh / DeepSeek), 老子 Laozi (opencode / MiniMax) — plus Dave, the control (Claude; experiments, data, nature-inspired solutions), one question or decision, each answering through its own numbered decision rules on its own engine; then check their citations and compare them side by side. Use when EJ says "ask the four experts", "four seats", "ask Dave", "what would Linus / 范蠡 / 孫子 / 老子 say", or wants a decision examined from several rule-based viewpoints. NOT for: plain factual lookups (one search answers those), code changes, or anything that needs the experts to act rather than advise.
+name: six-experts
+description: Ask EJ's six experts one question or decision — four researched personas, Linus Torvalds (Codex, or opencode when Codex is low), 范蠡 Fan Li (agy, or Claude for web/shell), 孫子 Sun Tzu (dsh / DeepSeek), 老子 Laozi (opencode / MiniMax); Dave (Claude Sonnet; experiments and data, ten rules, and he loads the project's insights by category before answering); and Dario, the plain control (the same Claude model, no rules, no insights) — each on its own engine; then check their citations and compare them side by side. Use when EJ says "ask the experts", "six experts", "four experts", "four seats", "ask Dave", "ask Dario", "what would Linus / 范蠡 / 孫子 / 老子 say", or wants a decision examined from several rule-based viewpoints. NOT for: plain factual lookups (one search answers those), code changes, or anything that needs the experts to act rather than advise.
 ---
 
-# Four experts and Dave
+# Six experts
 
 Four experts, each built from a researched list of a real person's own mindsets, decision rules and algorithms
 (18–20 numbered items with their words and a source, run `20261013-four-seats` in `~/dev/ancient-games`), and
-**Dave, the control**: ten numbered rules written from EJ's description — he loves experiments, is data-driven, and
-borrows solutions from nature. Each answers on a different engine, so their agreement is closer to five views than
-one model's echo.
+**Dave**: ten numbered rules written from EJ's description — he loves experiments, is data-driven, and borrows solutions
+from nature — and, since 2026-10-16, **the project's insights**: before answering he reads the insight index and the
+sections of the categories the question names, and cites the ones he used. **Dario, the plain control**: the same
+Claude model as Dave, with no rules, no identity and no insights, so Dave against Dario measures what the rules and
+insights add. Each persona answers on a different engine, so their agreement is closer to six views than one model's
+echo.
 
 | Expert | Engine | Model |
 |---|---|---|
@@ -17,11 +20,12 @@ one model's echo.
 | 范蠡 Fan Li | agy → **Claude** when the task needs web or shell, or when agy fails | gemini-3.8-flash-medium → claude-opus-5-5 |
 | 孫子 Sun Tzu | dsh headless | deepseek-flash |
 | 老子 Laozi | opencode (plan mode) | MiniMax-M3.1-Flash-Preview |
-| **Dave — the control** | Claude | claude-opus-5-5 |
+| **Dave** — rules + insights | Claude | claude-sonnet-5-5 |
+| **Dario — the plain control** | Claude | claude-sonnet-5-5 |
 
-Mapping, fallback and Dave: EJ, 2026-10-13. EJ chose Dave as the control instead of a plain no-persona answer, so
-there is no persona-free baseline: a comparison shows what each rule set adds relative to the others, not relative
-to a plain model. Why the briefs are built this way (rules applied as instructions, item numbers cited, no invented
+Mapping, fallback and Dave: EJ, 2026-10-13. Dario and Dave's insights: EJ, 2026-10-16 (run
+`runs/20261016-six-experts/`; Dave and Dario on Sonnet 5.5 by the experts' advice there, decision D2). Dario is the
+persona-free baseline the record lacked until then. Why the briefs are built this way (rules applied as instructions, item numbers cited, no invented
 facts): `runs/20261013-seats-roleplay/synthesis.md` in the same repo.
 
 ## 1. Run
@@ -29,11 +33,18 @@ facts): `runs/20261013-seats-roleplay/synthesis.md` in the same repo.
 From the project root (opencode can read only files inside it):
 
 ```bash
-python3 ~/.claude/skills/four-experts/scripts/four_experts.py run "Should we keep Cloudflare analytics on the page?"
+python3 ~/.claude/skills/six-experts/scripts/six_experts.py run "Should we keep Cloudflare analytics on the page?"
 ```
 
 - `--question-file F` for a long question. Put the facts the experts need **in the question**; they are told not to
   invent missing ones and will list them as questions instead.
+- `--insights spec,own-work` names the insight categories Dave loads (config · tool · test · guard-check · spec ·
+  own-work; `guard/src/cli.ts insight index` shows them). With none named he chooses from the index. The runner copies
+  the index and the sections into the run's `seats/`, so every engine can read them; `check` fails Dave when he cites
+  an id that is not in the index, or cites none without "No insight applies".
+- For a Dave-against-Dario comparison, run both through the runner (not `--claude-by-caller`), so both use the same
+  model and tools.
+- Two experts on opencode never start together (parallel starts can fail with "database is locked"); the second waits.
 - `--needs-web` / `--needs-shell` when the task needs either — **you decide this from the task** — then 范蠡 runs
   on Claude, because agy headless cannot use web or shell (soft-denied, exits 0 with nothing).
 - **Inside Claude Code, add `--claude-by-caller`.** The script then leaves Dave (and any 范蠡 fallback) to you: for
@@ -41,9 +52,9 @@ python3 ~/.claude/skills/four-experts/scripts/four_experts.py run "Should we kee
   to the answer path it names. Outside Claude Code the script runs `claude -p` itself.
 - `--progress runs/<run>/nodes/experts.progress.md` appends a timestamped line as each expert starts and ends, so the
   caller sees progress while they work; `status.json` records each expert's start and finish time.
-- `--only dave` (or any comma list of ids: `linus,fan-li,sun-tzu,lao-tzu,dave`) with `--out <existing run>` adds
+- `--only dave` (or any comma list of ids: `linus,fan-li,sun-tzu,lao-tzu,dave,dario`) with `--out <existing run>` adds
   those answers to a run and keeps the others.
-- Output: `runs/<date>-four-experts-<slug>/` (or `four-experts/…` when there is no `runs/`): `question.md`,
+- Output: `runs/<date>-six-experts-<slug>/` (or `six-experts/…` when there is no `runs/`): `question.md`,
   `seats/` (the lists used, frozen), `briefs/`, `answers/<id>.md`, `logs/`, `status.json`.
 - 范蠡 falls back from agy to Claude automatically when agy returns nothing, an error, a timeout, or an answer
   without the required sections (a plan instead of the answer). `status.json` records the reason; the failed agy
@@ -57,12 +68,13 @@ python3 ~/.claude/skills/four-experts/scripts/four_experts.py run "Should we kee
 ## 2. Check
 
 ```bash
-python3 ~/.claude/skills/four-experts/scripts/four_experts.py check <run dir>
-python3 ~/.claude/skills/four-experts/scripts/four_experts.py check <run dir> --sabotage   # must report ≥ 2 failures
+python3 ~/.claude/skills/six-experts/scripts/six_experts.py check <run dir>
+python3 ~/.claude/skills/six-experts/scripts/six_experts.py check <run dir> --sabotage   # must report ≥ 2 failures
 ```
 
-It checks every answer has the five sections, cites at least one item, cites only item numbers its list has, and
-writes any run of 4+ Chinese characters exactly as its list or identity file does (on a miss it shows the nearest
+It checks every answer has the five sections. For each persona (not Dario, who has no list) it also checks the answer
+cites at least one item, cites only item numbers its list has, and writes any run of 4+ Chinese characters exactly as
+its list or identity file does; Dave must cite insight ids from his index or say "No insight applies" (on a miss it shows the nearest
 passage, so a 趙/赵 script change reads differently from an invention). **What it does not establish:** that a rule
 was applied *correctly*, or that the advice is good — read for that. The script was written by Claude; say so when
 resting a conclusion on it.
@@ -70,12 +82,13 @@ resting a conclusion on it.
 ## 3. Compare (the caller writes `compare.md` in the run folder)
 
 ```
-# Four experts and Dave — <question>
+# Six experts — <question>
 
-| | Linus | 范蠡 | 孫子 | 老子 | Dave (control) |
-|---|---|---|---|---|---|
-| Answer (one line) | | | | | |
-| Main items used | #… | #… | #… | #… | #… |
+| | Linus | 范蠡 | 孫子 | 老子 | Dave (rules + insights) | Dario (plain control) |
+|---|---|---|---|---|---|---|
+| Answer (one line) | | | | | | |
+| Main items used | #… | #… | #… | #… | #… | — |
+| Insights cited | — | — | — | — | <file>#<id> … | — |
 
 ## Where they agree
 ## Where they disagree   (side by side, quoted; never averaged)
@@ -109,8 +122,8 @@ records the run folder, or *not asked* with the reason.
 
 - Plain English Markdown briefs for every engine; replies in English; EJ referred to as they/them (EJ, 2026-10-13).
   Chinese appears only where an expert quotes its own list.
-- The skill lives in the Ancient Games repo (`.claude/skills/four-experts/`), linked into `~/.claude/skills` and
-  `~/.agents/skills`. The four lists are read from `$FOUR_EXPERTS_SEATS` (default `runs/20261013-four-seats` in
+- The skill lives in the Ancient Games repo (`.claude/skills/six-experts/`), linked into `~/.claude/skills` and
+  `~/.agents/skills`. The four lists are read from `$SIX_EXPERTS_SEATS` (default `runs/20261013-four-seats` in
   that repo),
   files `final-opus/<id>.md` and `identity/<id>.md` — the one copy. Dave's are in this skill's `assets/seats/`. Each
   run folder keeps a frozen copy of what was used.

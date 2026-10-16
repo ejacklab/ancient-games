@@ -1,0 +1,18 @@
+- 2026-10-16T14:44:15+08:00 · P1-claude-command · planned · prompt is the last argument, tools in one --allowedTools= argument
+- 2026-10-16T14:44:15+08:00 · P2-same-model · planned · Dave and Dario both run on claude-sonnet-5-5
+- 2026-10-16T14:44:15+08:00 · P3-dario-brief · planned · question + five sections, no list, identity, Load first or insight path
+- 2026-10-16T14:44:15+08:00 · P4-dave-brief · planned · Load first, index path, named categories, files written into seats/
+- 2026-10-16T14:44:15+08:00 · P5-check · planned · Dario passes on the sections; Dave fails on an unknown id and on none without No insight applies
+- 2026-10-16T14:44:15+08:00 · P6-opencode-serial · planned · two opencode experts never run at the same time- 2026-10-16T14:44:32+08:00 · P1-claude-command · start · written
+- 2026-10-16T14:44:32+08:00 · P2-same-model · start · written
+- 2026-10-16T14:44:32+08:00 · P3-dario-brief · start · written
+- 2026-10-16T14:44:32+08:00 · P4-dave-brief · start · written
+- 2026-10-16T14:44:32+08:00 · P5-check · start · written
+- 2026-10-16T14:44:32+08:00 · P6-opencode-serial · start · written
+- 2026-10-16T14:51:04+08:00 · P1-claude-command · done · 4 tests pass (mutant M1 caught)
+- 2026-10-16T14:51:04+08:00 · P2-same-model · done · 2 tests pass (M2 caught)
+- 2026-10-16T14:51:04+08:00 · P3-dario-brief · done · 3 tests pass (M3 caught)
+- 2026-10-16T14:51:04+08:00 · P4-dave-brief · done · 5 tests pass (M4 caught)
+- 2026-10-16T14:51:04+08:00 · P5-check · done · 7 tests pass (M5 caught)
+- 2026-10-16T14:51:04+08:00 · P6-opencode-serial · done · 3 tests pass (M6 caught)
+- 2026-10-16T14:51:04+08:00 · full-suite · done · 23 in this file pass; whole suite 1109 pass, 5 fail, all 5 pre-existing (4 quota-test signatures, 1 skills export drift)

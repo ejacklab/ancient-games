@@ -1,0 +1,12 @@
+- 2026-10-16T15:06:27+08:00 · linus · start · codex
+- 2026-10-16T15:06:27+08:00 · fan-li · start · agy
+- 2026-10-16T15:06:27+08:00 · sun-tzu · start · dsh
+- 2026-10-16T15:06:27+08:00 · lao-tzu · start · opencode
+- 2026-10-16T15:06:27+08:00 · dave · start · claude
+- 2026-10-16T15:06:27+08:00 · dario · start · claude
+- 2026-10-16T15:07:37+08:00 · dario · done · claude exit 0
+- 2026-10-16T15:07:39+08:00 · linus · done · codex exit 0
+- 2026-10-16T15:08:17+08:00 · fan-li · done · agy exit 0
+- 2026-10-16T15:09:48+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-16T15:10:03+08:00 · dave · done · claude exit 0
+- 2026-10-16T15:10:38+08:00 · lao-tzu · done · opencode exit 0

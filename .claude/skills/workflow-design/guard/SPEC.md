@@ -58,7 +58,7 @@ Exports:
   - `outputFile`: the value after any of the spec's `output_flags` (`-o FILE`, `-o=FILE`, `--out FILE`), else the
     target of a stdout redirect `> FILE` or `>> FILE` (not `2>`); quotes stripped; `null` if none.
   - `stdoutIsAnswer`: from the spec, but `false` when `outputFile` came from a redirect (the answer went to the file).
-  - `statusFile`: for specs with `status_from_out_dir: true` (a wrapper such as `four_experts.py run --out DIR`),
+  - `statusFile`: for specs with `status_from_out_dir: true` (a wrapper such as `six_experts.py run --out DIR`),
     `DIR/status.json`; else `null`. For such a wrapper `outputFile` is the folder `DIR` itself.
   - `background`: the matching segment's `background`. (A caller that knows more passes `LintContext.background` to
     `lintCommand`.)
@@ -585,3 +585,31 @@ call (PostToolUse and PostToolUseFailure have no matcher) — an installed harne
 **Round 10, `deadline end`:** `cli.ts deadline end [--session S]` writes `ended` (ISO) into the session's current
 deadline; an ended deadline is no deadline (no clock, no time-up); exit 2 when there is none. Fails-if: the clock or
 time-up continues after `deadline end`.
+
+## Round 11 — what was learned, listed and loaded (plan A Part C step 9; plan B round 2; run 20261016-six-experts)
+
+Module `src/insight-index.ts`; categories are data in `data/insight-categories.yaml`.
+
+- **I1 `cli.ts insight index [--json]`.** One row per insight section in `runs/<run>/insight*.md` and `.harness-guard/insights/` (the files `findInsightFiles` finds, M3, except those nested deeper inside a run — an experiment's test agents wrote them):
+
+  | field | type | value |
+  |---|---|---|
+  | file | string | root-relative path |
+  | ids | string[] | the section's failure ids; `[]` for a great section |
+  | kind | `failure` \| `great` | |
+  | checks | string[] | the journal's `check` for each id, `-` when the journal has no record of it |
+  | source | string | the Source line's first word, `-` when absent |
+  | optionKinds | string[] | each option's kind |
+  | category | string | the first rule in `data/insight-categories.yaml` that matches, `-` when none does |
+
+  The author's text (whys, root cause, option text) is never printed. Example row:
+  `| runs/x/insight.md | F-60cad515 | failure | R12.2-command-error | tool | tool, rule, check | <category> |`.
+- **I2 `cli.ts insight show (--category C)… | <file>#<id>…`.** Prints the whole text of the matching sections, each
+  preceded by `<!-- <file> -->`, for an expert that loads them on purpose. Usage error (2) with neither argument; "no
+  matching insight sections" when nothing matches.
+- **I3 Categories.** `categories: [{ id, name, sources?, checks? (regexes), kinds? }]`; a section takes the first
+  rule whose every given condition matches.
+
+Fails-if: a section is missing from the index or listed twice; the index prints any whys, root-cause or option text;
+`show` prints a section that does not match, or misses one that does; a category rule with no matching section breaks
+the index.

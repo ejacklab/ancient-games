@@ -22,6 +22,7 @@ Whys:
 3. Why does the check fail it? It compares 4+ character runs exactly, by design, so an invented quote cannot pass; it reports the nearest passage so a variant reads differently from an invention.
 4. Why does the brief not prevent it? It says "quote only from your list, exactly as written", but gives no reason the forms matter.
 Source: instruction — the experts' brief (`assets/brief.md`, "Quote only from your list, exactly as it is written there").
+Category: spec
 Root cause: an engine normalised a variant character in a quote, and the exact-match check is right to flag it — the quote is not verbatim.
 Options:
 1. [rule] The brief adds: "copy Chinese quotes character by character from the list; do not normalise variant forms (爲/為, 於/于)". evidence: the check output names a 1-character variant.

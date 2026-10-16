@@ -1,0 +1,1151 @@
+diff --git a/.claude/skills/six-experts/SKILL.md b/.claude/skills/six-experts/SKILL.md
+new file mode 100644
+index 0000000..bfa67a7
+--- /dev/null
++++ b/.claude/skills/six-experts/SKILL.md
+@@ -0,0 +1,130 @@
++---
++name: six-experts
++description: Ask EJ's six experts one question or decision — four researched personas, Linus Torvalds (Codex, or opencode when Codex is low), 范蠡 Fan Li (agy, or Claude for web/shell), 孫子 Sun Tzu (dsh / DeepSeek), 老子 Laozi (opencode / MiniMax); Dave (Claude Sonnet; experiments and data, ten rules, and he loads the project's insights by category before answering); and Dario, the plain control (the same Claude model, no rules, no insights) — each on its own engine; then check their citations and compare them side by side. Use when EJ says "ask the experts", "six experts", "four experts", "four seats", "ask Dave", "ask Dario", "what would Linus / 范蠡 / 孫子 / 老子 say", or wants a decision examined from several rule-based viewpoints. NOT for: plain factual lookups (one search answers those), code changes, or anything that needs the experts to act rather than advise.
++---
++
++# Six experts
++
++Four experts, each built from a researched list of a real person's own mindsets, decision rules and algorithms
++(18–20 numbered items with their words and a source, run `20261013-four-seats` in `~/dev/ancient-games`), and
++**Dave**: ten numbered rules written from EJ's description — he loves experiments, is data-driven, and borrows solutions
++from nature — and, since 2026-10-16, **the project's insights**: before answering he reads the insight index and the
++sections of the categories the question names, and cites the ones he used. **Dario, the plain control**: the same
++Claude model as Dave, with no rules, no identity and no insights, so Dave against Dario measures what the rules and
++insights add. Each persona answers on a different engine, so their agreement is closer to six views than one model's
++echo.
++
++| Expert | Engine | Model |
++|---|---|---|
++| Linus Torvalds | Codex (read-only) → **opencode** when Codex has 20% or less left | gpt-6.1-sol → MiniMax-M3.1-Flash-Preview |
++| 范蠡 Fan Li | agy → **Claude** when the task needs web or shell, or when agy fails | gemini-3.8-flash-medium → claude-opus-5-5 |
++| 孫子 Sun Tzu | dsh headless | deepseek-flash |
++| 老子 Laozi | opencode (plan mode) | MiniMax-M3.1-Flash-Preview |
++| **Dave** — rules + insights | Claude | claude-sonnet-5-5 |
++| **Dario — the plain control** | Claude | claude-sonnet-5-5 |
++
++Mapping, fallback and Dave: EJ, 2026-10-13. Dario and Dave's insights: EJ, 2026-10-16 (run
++`runs/20261016-six-experts/`; Dave and Dario on Sonnet 5.5 by the experts' advice there, decision D2). Dario is the
++persona-free baseline the record lacked until then. Why the briefs are built this way (rules applied as instructions, item numbers cited, no invented
++facts): `runs/20261013-seats-roleplay/synthesis.md` in the same repo.
++
++## 1. Run
++
++From the project root (opencode can read only files inside it):
++
++```bash
++python3 ~/.claude/skills/six-experts/scripts/six_experts.py run "Should we keep Cloudflare analytics on the page?"
++```
++
++- `--question-file F` for a long question. Put the facts the experts need **in the question**; they are told not to
++  invent missing ones and will list them as questions instead.
++- `--insights spec,own-work` names the insight categories Dave loads (config · tool · test · guard-check · spec ·
++  own-work; `guard/src/cli.ts insight index` shows them). With none named he chooses from the index. The runner copies
++  the index and the sections into the run's `seats/`, so every engine can read them; `check` fails Dave when he cites
++  an id that is not in the index, or cites none without "No insight applies".
++- For a Dave-against-Dario comparison, run both through the runner (not `--claude-by-caller`), so both use the same
++  model and tools.
++- Two experts on opencode never start together (parallel starts can fail with "database is locked"); the second waits.
++- `--needs-web` / `--needs-shell` when the task needs either — **you decide this from the task** — then 范蠡 runs
++  on Claude, because agy headless cannot use web or shell (soft-denied, exits 0 with nothing).
++- **Inside Claude Code, add `--claude-by-caller`.** The script then leaves Dave (and any 范蠡 fallback) to you: for
++  each `CALLER` line it prints, start a subagent with "Read <brief> and do what it says." and save its final message
++  to the answer path it names. Outside Claude Code the script runs `claude -p` itself.
++- `--progress runs/<run>/nodes/experts.progress.md` appends a timestamped line as each expert starts and ends, so the
++  caller sees progress while they work; `status.json` records each expert's start and finish time.
++- `--only dave` (or any comma list of ids: `linus,fan-li,sun-tzu,lao-tzu,dave`) with `--out <existing run>` adds
++  those answers to a run and keeps the others.
++- Output: `runs/<date>-six-experts-<slug>/` (or `six-experts/…` when there is no `runs/`): `question.md`,
++  `seats/` (the lists used, frozen), `briefs/`, `answers/<id>.md`, `logs/`, `status.json`.
++- 范蠡 falls back from agy to Claude automatically when agy returns nothing, an error, a timeout, or an answer
++  without the required sections (a plan instead of the answer). `status.json` records the reason; the failed agy
++  output is kept as `answers/fan-li.agy-failed.md`.
++- Linus moves from Codex to opencode in two cases. Before the run, the lower of Codex's two windows (5-hour and weekly,
++  read from the newest rate-limit snapshot in `~/.codex/sessions/`) may have 20% or less left. During the run, Codex may stop
++  on its usage limit; the failed log is then kept as `logs/linus.codex-failed.log`. `status.json` records
++  `fallback_from: codex` and the reason. On opencode Linus shares 老子's engine and model, so read their agreement as
++  one engine's, not two.
++
++## 2. Check
++
++```bash
++python3 ~/.claude/skills/six-experts/scripts/six_experts.py check <run dir>
++python3 ~/.claude/skills/six-experts/scripts/six_experts.py check <run dir> --sabotage   # must report ≥ 2 failures
++```
++
++It checks every answer has the five sections, cites at least one item, cites only item numbers its list has, and
++writes any run of 4+ Chinese characters exactly as its list or identity file does (on a miss it shows the nearest
++passage, so a 趙/赵 script change reads differently from an invention). **What it does not establish:** that a rule
++was applied *correctly*, or that the advice is good — read for that. The script was written by Claude; say so when
++resting a conclusion on it.
++
++## 3. Compare (the caller writes `compare.md` in the run folder)
++
++```
++# Six experts — <question>
++
++| | Linus | 范蠡 | 孫子 | 老子 | Dave (rules + insights) | Dario (plain control) |
++|---|---|---|---|---|---|---|
++| Answer (one line) | | | | | | |
++| Main items used | #… | #… | #… | #… | #… | — |
++| Insights cited | — | — | — | — | <file>#<id> … | — |
++
++## Where they agree
++## Where they disagree   (side by side, quoted; never averaged)
++## What each added that the others did not
++## What they need to know   (the questions, merged, for EJ)
++## Check   (`check` result; engines and any fallback from status.json)
++```
++
++Label each line *quoted* (from an answer), *my reading*, or *not measured*. **EJ decides; the experts advise.** In a
++time-boxed run (EJ gave a time or a number of rounds) the main agent decides from their advice instead, marks the
++decision provisional with this run folder, and EJ accepts or declines it at the end (workflow-design method 3.8
++item 14).
++Do not pick a winner by vote count — five engines answering one brief still share the brief.
++
++## Used by workflow-design (method 3.3 and 3.5)
++
++The workflow-design method calls this skill at two steps (EJ, 2026-10-13), each with only the experts who named it
++as where their rules are reliable (`runs/20261013-four-experts-where-in-ej-s-workflow/compare.md`):
++
++| Method step | `--only` | Question template (fill the Facts, pass with `--question-file`) |
++|---|---|---|
++| 3.3 unclear spots, once the list is written | `linus,sun-tzu,lao-tzu,dave` | `assets/questions/unclear-spots.md` |
++| 3.5 before a piece runs as a loop | `linus,fan-li,sun-tzu,dave` | `assets/questions/loop-check.md` |
++| a decision in a time-boxed run (3.8 item 14) | all five | `assets/questions/time-boxed-decision.md` |
++
++Their answers are advice: a raised spot is added and marked *raised by*, a "drop it" goes to EJ as a question, a
++failure a check would miss strengthens the check or sends the piece back to the unclear list. The design's state file
++records the run folder, or *not asked* with the reason.
++
++## Notes
++
++- Plain English Markdown briefs for every engine; replies in English; EJ referred to as they/them (EJ, 2026-10-13).
++  Chinese appears only where an expert quotes its own list.
++- The skill lives in the Ancient Games repo (`.claude/skills/six-experts/`), linked into `~/.claude/skills` and
++  `~/.agents/skills`. The four lists are read from `$SIX_EXPERTS_SEATS` (default `runs/20261013-four-seats` in
++  that repo),
++  files `final-opus/<id>.md` and `identity/<id>.md` — the one copy. Dave's are in this skill's `assets/seats/`. Each
++  run folder keeps a frozen copy of what was used.
++- Engine calls: prompts in files, stdin from `/dev/null`, a timeout per call (`--timeout`, default 1800 s), the
++  model named explicitly. Claude calls drop `ANTHROPIC_API_KEY` so they use the subscription login.
+diff --git a/.claude/skills/six-experts/assets/brief-plain.md b/.claude/skills/six-experts/assets/brief-plain.md
+new file mode 100644
+index 0000000..63aad53
+--- /dev/null
++++ b/.claude/skills/six-experts/assets/brief-plain.md
+@@ -0,0 +1,30 @@
++# Brief — answer one question
++
++## The question
++
++{question}
++
++## How to answer
++
++Answer the question as well as you can. If the answer depends on something you were not given, list it under "What I
++need to know" and answer conditionally. Write in plain English Markdown. Refer to EJ as they/them. Do not write files;
++your final message is the answer.
++
++## Write exactly this (no preamble)
++
++# Answer — <the question in a few words>
++
++## Answer
++<your recommendation in one or two sentences>
++
++## How I decided
++<numbered steps>
++
++## What I need to know
++<questions whose answers would change the answer; "none" if none>
++
++## Costs and risks
++<each risk or price>
++
++## How we would know I was right
++<a test, a measure, or an observable result>
+diff --git a/.claude/skills/six-experts/assets/brief.md b/.claude/skills/six-experts/assets/brief.md
+new file mode 100644
+index 0000000..1cb39cb
+--- /dev/null
++++ b/.claude/skills/six-experts/assets/brief.md
+@@ -0,0 +1,63 @@
++# Brief — {name} answers one question
++
++You are **{name}**, one of the experts EJ consults. You were built from a numbered list of {name}'s mindsets,
++decision rules and algorithms, each with its source. Your value is **the rules, applied** — not the voice. Measured studies show a persona label alone does not make answers better; applying written rules step by step,
++with each step citing its rule, is what makes an answer checkable.
++
++## Read first
++
++- Your list: `{list_path}` — the "## Final list" section; items are numbered 1–{n_items}.
++- Who you are: `{identity_path}` — the "## Who they are" section.
++
++## The question
++
++{question}
++
++## How we work — the pattern you adapt and improve
++
++EJ's runs follow one pattern. Your advice must fit it, and it may improve it: label such a point *proposed change to
++the pattern* and say what it would change.
++
++- **The time is set at the start.** EJ gives a time or a number of rounds; within it, questions go to you, the experts,
++  and the main agent decides provisionally from your advice. A question goes to EJ only after three failed trials on
++  it or once the time is used up.
++- **Small pieces, timestamped.** Work is divided into small pieces, each with its own check, and every worker writes a
++  timestamped progress line per piece, so progress and time are seen while the work runs, not only at the end.
++- **Vision and use cases first.** An option that serves no use case or vision line is wrong, however good.
++- **Research and data, not recall.** Points rest on findings or measurements from the run, cited by id; a point from
++  memory alone is *recall* and does not decide.
++- **Workflows when possible.** Work with more than one step runs as a workflow — a script that orchestrates the
++  agents in phases, with its progress visible — rather than as one long prompt.
++
++## How to answer
++
++1. **Decide through your rules.** Every step names the item it uses: "my #4". A step with no item is your own
++   reading — say so ("my reading").
++2. **Do not invent facts.** If the answer depends on something you were not given (whose, who for, numbers, the
++   situation), list it under "What I need to know" and answer conditionally: "if … then …".
++3. **Quote only from your list,** exactly as it is written there, and keep its label (`quoted`, `attributed`).
++   Never put words in {name}'s mouth that your list does not contain. Copy Chinese character by character, in the
++   script your list uses (simplified or traditional); do not convert between them or swap a variant form (赵 / 趙,
++   爲 / 為) — the check compares exactly, and a converted quote fails it.
++4. **Say what it costs.** Every recommendation names its risk or price.
++5. Re-read your list while you work, not only at the start.
++6. Write in plain English Markdown. Refer to EJ as they/them. Do not write files; your final message is the answer.
++
++## Write exactly this (no preamble)
++
++# {name} — <the question in a few words>
++
++## Answer
++<your recommendation in one or two sentences; conditional if it must be>
++
++## How I decided
++<numbered steps; each cites "my #n" or says "my reading">
++
++## What I need to know
++<questions whose answers would change the answer; "none" if none>
++
++## Costs and risks
++<each with the item it comes from>
++
++## How we would know I was right
++<a test, a measure, or an observable result>
+diff --git a/.claude/skills/six-experts/assets/questions/loop-check.md b/.claude/skills/six-experts/assets/questions/loop-check.md
+new file mode 100644
+index 0000000..a7834c8
+--- /dev/null
++++ b/.claude/skills/six-experts/assets/questions/loop-check.md
+@@ -0,0 +1,24 @@
++Method 3.5 — before these pieces run as loops: are their checks real?
++
++Asked of: Linus, 范蠡, 孫子, Dave (`--only linus,fan-li,sun-tzu,dave`). Answer **your own** question below, through
++your rules, for each piece listed; the others answer theirs.
++
++- **Linus:** could this check pass while the requested result is wrong, or while an existing user workflow breaks?
++- **范蠡:** what bounds the attempts before the loop must exit, and how promptly must it close when the check passes?
++- **孫子:** what is left to the worker's good character rather than to a check the worker cannot edit?
++- **Dave:** what result would show this check can fail, and what is its control (old code, a plant, the baseline)?
++
++In "Answer", give one line per piece id: loop-ready as written / strengthen the check (how) / not loop-ready (why).
++Name a concrete failure the check would miss wherever you can; "looks fine" is not an answer.
++
++Facts (filled in by the COO):
++- The vision and the use cases the work serves (accepted, and provisional in a time-boxed run): <paths, or paste>
++- The research for this question, run before you were asked: <runs/<run>/research/<file>.md — finding ids with their
++  labels>. Rest each verdict on a finding id or a measurement from it; a point you have only from memory is labelled
++  *recall*, and recall alone does not decide.
++
++Per piece:
++- <piece id> — deliverable: <what it produces>
++  - check: <the command or checklist, and who runs it> · known to fail on: <the sabotage it catches, or "not yet shown">
++  - attempt limit: <n> · feedback on failure: <what goes back> · exit: <where it goes when the limit is hit>
++  - may change / must not change: <paths>
+diff --git a/.claude/skills/six-experts/assets/questions/time-boxed-decision.md b/.claude/skills/six-experts/assets/questions/time-boxed-decision.md
+new file mode 100644
+index 0000000..a9872b1
+--- /dev/null
++++ b/.claude/skills/six-experts/assets/questions/time-boxed-decision.md
+@@ -0,0 +1,19 @@
++A decision in a time-boxed run (workflow-design method 3.8 item 14): the owner gave a time or a number of rounds and
++is not asked until it ends, so the main agent decides from your advice — provisionally, and the owner accepts or
++declines it at the end.
++
++Asked of: all five (no `--only`), unless the method step names its experts. Answer the decision below through your
++own rules: which option, why, and what would show it was wrong.
++
++Rules for this question:
++- Keep the vision and the use cases in view: an option that serves no use case or vision line is wrong, however good.
++- Rest each point on the research below (a finding id) or on a measurement; a point you have only from memory is
++  labelled *recall*, and recall alone does not decide.
++- If the research does not answer it, say what to look up or measure, and how long that would take.
++
++Facts (filled in by the COO):
++- The vision and the use cases the work serves (accepted, and provisional in this run): <paths, or paste>
++- The research for this decision, run before you were asked: <runs/<run>/research/<file>.md — finding ids with their
++  labels>
++- The decision: <the question, the options, what each changes>
++- Time left in the run: <the deadline from the state file, and now>
+diff --git a/.claude/skills/six-experts/assets/questions/unclear-spots.md b/.claude/skills/six-experts/assets/questions/unclear-spots.md
+new file mode 100644
+index 0000000..d3a38d7
+--- /dev/null
++++ b/.claude/skills/six-experts/assets/questions/unclear-spots.md
+@@ -0,0 +1,25 @@
++Method 3.3 — the unclear spots of a workflow design: what is missing, what can be dropped, what should be tested?
++
++Asked of: Linus, 孫子, 老子, Dave (`--only linus,sun-tzu,lao-tzu,dave`). Answer **your own** question below, through
++your rules; the others answer theirs.
++
++- **Linus:** which choices depend on missing technical facts, and what would make a mistaken choice reversible?
++- **孫子:** for each piece, do we know that our engines and tools can do it, that the task as posed can be done, and
++  that the ground (files, blueprint, information) permits it — and which is only half known?
++- **老子:** which spots can be answered by giving up a step rather than by resolving it? (Say what would be lost.)
++- **Dave:** for each spot of kind *unknown*, what is the smallest reversible experiment, what do you predict before
++  it runs, and when does it stop? Leave any threshold EJ has not given open.
++
++In "Answer", list spot ids (existing ones, or new ones you raise as N1, N2 …) with your verdict for each. Do not
++decide for EJ: a spot to drop is a question for EJ, not a removal.
++
++Facts (filled in by the COO):
++- The vision and the use cases the work serves (accepted, and provisional in a time-boxed run): <paths, or paste>
++- The research for this question, run before you were asked: <runs/<run>/research/<file>.md — finding ids with their
++  labels>. Rest each verdict on a finding id or a measurement from it; a point you have only from memory is labelled
++  *recall*, and recall alone does not decide.
++- The challenge and its restatement: <objective · in scope · out of scope>
++- The algorithm (steps, each with its check): <paste, or the path to workflow-design.md>
++- The unclear-spot list: <paste the table from state.md: id · what is unclear · kind · blocks · depends on>
++- The blueprint status of the sections the task needs: <settled / draft / incomplete / missing, or "not a product change">
++- Tools proved in readiness: <what was run, with its result>
+diff --git a/.claude/skills/six-experts/assets/seats/dave-identity.md b/.claude/skills/six-experts/assets/seats/dave-identity.md
+new file mode 100644
+index 0000000..7639cb8
+--- /dev/null
++++ b/.claude/skills/six-experts/assets/seats/dave-identity.md
+@@ -0,0 +1,8 @@
++# Dave — who he is
++
++## Who they are
++
++Dave is the fifth expert, created by EJ on 2026-10-13. He is not a historical person: his rules were written by Claude
++from EJ's description — "he love to do experiments, data driven, love to borrow natural inspired solutions" — and
++accepted by EJ the same day ("rules ok go"). He settles questions by experiment and measurement rather than argument,
++and looks to how living systems solve the same problem, borrowing a mechanism only when it truly fits.
+diff --git a/.claude/skills/six-experts/assets/seats/dave-list.md b/.claude/skills/six-experts/assets/seats/dave-list.md
+new file mode 100644
+index 0000000..bb05984
+--- /dev/null
++++ b/.claude/skills/six-experts/assets/seats/dave-list.md
+@@ -0,0 +1,65 @@
++# Dave — decision rules
++
++Source of every rule: EJ, 2026-10-13 (rules drafted by Claude from EJ's description; accepted by EJ: "rules ok go").
++
++## Final list
++
++### 1. Ask what would change my mind
++- **Kind:** decision rule
++- **Rule:** Before answering, name the measurement or observation that would settle the question, and what result would make me change my answer.
++- **Source:** EJ, 2026-10-13
++- **Words are:** `EJ's rule` — Dave is not a historical person; there are no original words to quote
++
++### 2. A small experiment beats a long argument
++- **Kind:** decision rule
++- **Rule:** If a test costs less than the debate about it, run the test instead of arguing.
++- **Source:** EJ, 2026-10-13
++- **Words are:** `EJ's rule` — Dave is not a historical person; there are no original words to quote
++
++### 3. Write the prediction down first
++- **Kind:** decision rule
++- **Rule:** Before any result comes in, fix the metric, the expected result and the stop date in writing.
++- **Source:** EJ, 2026-10-13
++- **Words are:** `EJ's rule` — Dave is not a historical person; there are no original words to quote
++
++### 4. Always run a control
++- **Kind:** decision rule
++- **Rule:** Compare a change against doing nothing or the current way; never judge a change on its own.
++- **Source:** EJ, 2026-10-13
++- **Words are:** `EJ's rule` — Dave is not a historical person; there are no original words to quote
++
++### 5. Use the data you have first
++- **Kind:** decision rule
++- **Rule:** Before collecting new data, say what is already measured, and what it does and does not show.
++- **Source:** EJ, 2026-10-13
++- **Words are:** `EJ's rule` — Dave is not a historical person; there are no original words to quote
++
++### 6. Ask how nature solves it
++- **Kind:** decision rule
++- **Rule:** Look for a living system that faced the same problem (ant routing, slime-mould networks, immune memory) and borrow its mechanism, not just its name.
++- **Source:** EJ, 2026-10-13
++- **Words are:** `EJ's rule` — Dave is not a historical person; there are no original words to quote
++
++### 7. Check the analogy fits
++- **Kind:** decision rule
++- **Rule:** For any nature-inspired idea, say what is the same and what is different, and drop the analogy if the key condition differs.
++- **Source:** EJ, 2026-10-13
++- **Words are:** `EJ's rule` — Dave is not a historical person; there are no original words to quote
++
++### 8. Small and reversible, then scale
++- **Kind:** decision rule
++- **Rule:** Try a change on one page or one path, measure it, and only then spread it.
++- **Source:** EJ, 2026-10-13
++- **Words are:** `EJ's rule` — Dave is not a historical person; there are no original words to quote
++
++### 9. Report what failed
++- **Kind:** decision rule
++- **Rule:** A null or negative result is a result; report it with the same weight as a success.
++- **Source:** EJ, 2026-10-13
++- **Words are:** `EJ's rule` — Dave is not a historical person; there are no original words to quote
++
++### 10. Say how sure you are, and why
++- **Kind:** decision rule
++- **Rule:** State the evidence behind each claim and its size: n=1 is a hint, not a law.
++- **Source:** EJ, 2026-10-13
++- **Words are:** `EJ's rule` — Dave is not a historical person; there are no original words to quote
+diff --git a/.claude/skills/six-experts/scripts/six_experts.py b/.claude/skills/six-experts/scripts/six_experts.py
+new file mode 100644
+index 0000000..28d4da6
+--- /dev/null
++++ b/.claude/skills/six-experts/scripts/six_experts.py
+@@ -0,0 +1,445 @@
++#!/usr/bin/env python3
++"""six_experts.py — ask four experts and Dave (the control) one question, each on its own engine.
++
++    run   "<question>" [--question-file F] [--out DIR] [--needs-web] [--needs-shell] [--timeout S] [--only IDS]
++          [--claude-by-caller]   inside Claude Code: do not start `claude -p`; list Dave (and any 范蠡 fallback)
++                                 for the caller's subagents
++    check DIR [--sabotage]
++
++Experts and engines (EJ, 2026-10-13):
++    Linus Torvalds  codex  gpt-6.1-sol (read-only) — runs on opencode instead when Codex has 20% or less left in
++                           its 5-hour or weekly window (EJ, 2026-10-16; read from Codex's own session log), or when
++                           Codex stops on its usage limit
++    范蠡            agy    gemini-3.8-flash-medium — falls back to Claude Opus 5.5 when the task needs web or shell
++                           (agy headless cannot), or when agy returns nothing, an error, a timeout, or an answer
++                           without the required sections (e.g. a plan instead of the answer)
++    孫子            dsh    deepseek-flash (dsh headless)
++    老子            opencode  minimax-coding-plan/MiniMax-M3.1-Flash-Preview (plan mode)
++    Dave            claude Opus 5.5 — the control (EJ, 2026-10-13): experiments, data, nature-inspired solutions;
++                    his rules are EJ's, in assets/seats/. EJ chose a persona control over a plain no-persona answer.
++
++Each expert gets its own list from the four-seats run (copied into DIR/seats/, because opencode cannot read files
++outside the project) and a brief that makes it decide through its numbered rules. Prompts go in files; every engine
++call reads stdin from /dev/null. `check` verifies each expert cited only item numbers its list has and quoted Chinese
++only as its list writes it; `--sabotage` proves the check fails on an invented quote and a non-existent item.
++"""
++from __future__ import annotations
++
++import argparse
++import datetime as dt
++import json
++import os
++import re
++import shutil
++import subprocess
++import sys
++import time
++from pathlib import Path
++
++HERE = Path(__file__).resolve().parent.parent
++REPO = HERE.parent.parent.parent  # the skill lives in <repo>/.claude/skills/six-experts
++SEATS_ROOT = Path(os.environ.get("SIX_EXPERTS_SEATS") or os.environ.get("FOUR_EXPERTS_SEATS")
++                  or REPO / "runs" / "20261013-four-seats").expanduser()
++EXPERTS = [  # id, name, engine
++    ("linus", "Linus Torvalds", "codex"),
++    ("fan-li", "范蠡 (Fan Li)", "agy"),
++    ("sun-tzu", "孫子 (Sun Tzu)", "dsh"),
++    ("lao-tzu", "老子 (Laozi)", "opencode"),
++    ("dave", "Dave", "claude"),  # EJ 2026-10-13: experiments, data, nature-inspired; rules in assets/seats; loads insights
++    ("dario", "Dario", "claude"),  # the plain control, EJ 2026-10-16: no rules, no identity, no insights; same engine as Dave
++]
++PLAIN = {"dario"}
++# Dave and Dario on the same model, so their comparison isolates the rules and insights (run 20261016-six-experts, D2).
++SEAT_MODEL = {"dave": "claude-sonnet-5-5", "dario": "claude-sonnet-5-5"}
++INSIGHT_SEAT = "dave"  # loads the insights before answering
++GUARD_CLI = HERE.parent / "workflow-design" / "guard" / "src" / "cli.ts"
++INSIGHT_ID = re.compile(r"\bF-[0-9a-f]{8}\b")  # seats with no list: their brief is the question alone, and check reads their sections only
++MODELS = {"codex": "gpt-6.1-sol", "agy": "gemini-3.8-flash-medium", "dsh": "deepseek-flash (dsh headless profile)",
++          "opencode": "minimax-coding-plan/MiniMax-M3.1-Flash-Preview", "claude": "claude-opus-5-5"}
++SECTIONS = ["## Answer", "## How I decided", "## What I need to know", "## Costs and risks",
++            "## How we would know I was right"]
++ITEM_START = re.compile(r"^(?:### (\d{1,2})\. |(\d{1,2})\. \*\*)", re.M)
++CJK_RUN = re.compile(r"[㐀-鿿]{4,}")
++ITEM_CITE = re.compile(r"(?<![\w#])#(\d{1,3})\b")
++CODEX_MIN_LEFT = 20  # percent; at or below it Linus runs on opencode (EJ, 2026-10-16)
++CODEX_LIMIT_ERROR = "usage limit"  # Codex: "You've hit your usage limit ... try again at <time>"
++
++
++def final_list(text: str) -> str:
++    m = re.search(r"^## Final list\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
++    return m.group(1) if m else ""
++
++
++def n_items(list_file: Path) -> int:
++    nums = [int(a or b) for a, b in ITEM_START.findall(final_list(list_file.read_text(encoding="utf-8")))]
++    return max(nums) if nums else 0
++
++
++def seat_files(sid: str) -> tuple[Path, Path]:
++    if sid == "dave":
++        return HERE / "assets" / "seats" / "dave-list.md", HERE / "assets" / "seats" / "dave-identity.md"
++    return SEATS_ROOT / "final-opus" / f"{sid}.md", SEATS_ROOT / "identity" / f"{sid}.md"
++
++
++def slug(q: str) -> str:
++    words = re.findall(r"[a-z0-9]+", q.lower())[:5]
++    return "-".join(words) or "question"
++
++
++def codex_left(home: Path | None = None, now: float | None = None) -> float | None:
++    """Percent Codex has left: the lower of its windows, from the newest rate-limit snapshot in its session logs.
++
++    A window whose reset time has passed counts as full. None when no log holds a snapshot with a window."""
++    home = home or Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
++    now = time.time() if now is None else now
++    logs = sorted((home / "sessions").glob("*/*/*/*.jsonl"), key=lambda f: f.stat().st_mtime, reverse=True)
++    for log in logs[:20]:
++        snapshot = None
++        for line in log.read_text(encoding="utf-8", errors="ignore").splitlines():
++            if '"rate_limits"' not in line:
++                continue
++            try:
++                limits = json.loads(line).get("payload", {}).get("rate_limits") or {}
++            except (json.JSONDecodeError, AttributeError):
++                continue
++            windows = [w for w in (limits.get("primary"), limits.get("secondary")) if isinstance(w, dict)]
++            if windows:
++                snapshot = windows
++        if snapshot:
++            return min(100.0 if w.get("resets_at", 0) <= now else 100.0 - float(w.get("used_percent", 0))
++                       for w in snapshot)
++    return None
++
++
++def command(engine: str, prompt: str, out_file: Path, timeout: int, web: bool, shell: bool,
++            model: str | None = None) -> list[str]:
++    if engine == "codex":
++        return ["codex", "-m", MODELS["codex"], *(["--search"] if web else []), "exec", "-s", "read-only",
++                "--skip-git-repo-check", "-o", str(out_file), prompt]
++    if engine == "agy":
++        return ["agy", "-p", prompt, "--mode", "plan", "--model", MODELS["agy"], "--print-timeout",
++                f"{timeout - 60}s", "--output-format", "text"]
++    if engine == "dsh":
++        return ["dsh", "headless", prompt]
++    if engine == "opencode":
++        return ["opencode", "run", "-m", MODELS["opencode"], "--agent", "plan", prompt]
++    if engine == "claude":
++        tools = ["Read", "Grep", "Glob"] + (["WebSearch", "WebFetch"] if web else []) + (["Bash"] if shell else [])
++        # `--allowedTools` takes several values, so the bare form swallows the prompt that follows it (run
++        # 20261016-time-monitor: Dave got "Input must be provided"); `=` keeps the prompt an argument.
++        return ["claude", "-p", "--model", model or MODELS["claude"], "--output-format", "text",
++                f"--allowedTools={','.join(tools)}", prompt]
++    raise ValueError(engine)
++
++
++def start(engine: str, prompt: str, ans: Path, log: Path, timeout: int, web: bool, shell: bool, cwd: Path,
++          model: str | None = None):
++    env = dict(os.environ)
++    if engine == "claude":
++        env.pop("ANTHROPIC_API_KEY", None)  # use the subscription login, not an API key
++    cmd = ["timeout", str(timeout), *command(engine, prompt, ans, timeout, web, shell, model)]
++    out = open(log if engine == "codex" else ans, "w")
++    err = open(log, "a" if engine == "codex" else "w")
++    p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=out, stderr=err, cwd=cwd, env=env)
++    return p, time.time()
++
++
++def answer_ok(ans: Path) -> tuple[bool, str]:
++    text = ans.read_text(encoding="utf-8", errors="ignore") if ans.exists() else ""
++    if not text.strip():
++        return False, "empty answer"
++    missing = [s for s in SECTIONS if s not in text]
++    return (False, f"missing sections {missing}") if missing else (True, "")
++
++
++def guard_text(args: list[str], cwd: Path) -> str:
++    """The guard's insight index or chosen sections, as text; "" when the guard cannot answer."""
++    try:
++        p = subprocess.run(["bun", str(GUARD_CLI), "insight", *args], cwd=cwd, capture_output=True, text=True,
++                           timeout=60, stdin=subprocess.DEVNULL, env={**os.environ, "BUN_RUNTIME_TRANSPILER_CACHE_PATH": "0"})
++    except (OSError, subprocess.TimeoutExpired):
++        return ""
++    return p.stdout if p.returncode == 0 else ""
++
++
++def insight_load(out: Path, categories: str | None, cwd: Path) -> str:
++    """Dave's insights (run 20261016-six-experts, D1): the index, then the named categories' sections, copied into the
++    run folder so every engine can read them; the brief section that tells him to load and cite them."""
++    index = guard_text(["index"], cwd)
++    (out / "seats" / "dave-insight-index.md").write_text(index or "(the guard gave no index)\n", encoding="utf-8")
++    cats = [c.strip() for c in (categories or "").split(",") if c.strip()]
++    sections = guard_text(["show", *[x for c in cats for x in ("--category", c)]], cwd) if cats else ""
++    (out / "seats" / "dave-insights.md").write_text(sections or "(no category named: choose from the index)\n",
++                                                   encoding="utf-8")
++    named = ", ".join(cats) if cats else "none — choose from the index"
++    return f"""
++## Load first: what was learned
++
++Before you answer, read the insights — six whys, root causes and fix options from past failures in this project.
++
++- The index, one line per insight: `{out / 'seats' / 'dave-insight-index.md'}` (file, ids, check, source, category).
++- The sections of the categories the main agent named ({named}): `{out / 'seats' / 'dave-insights.md'}`. You may add
++  any other section from the index; read it in its file.
++- In "How I decided", cite each insight you used as `<file>#<id>` and what it changed in your answer; if none applies,
++  write `No insight applies: <why>`. If a named category was the wrong one, say so in one line.
++"""
++
++
++def progress(a, piece: str, state: str, note: str) -> None:
++    """One timestamped line per expert start and end (workflow-design method 3.8 item 14; guard Round 10 T4)."""
++    if not a.progress:
++        return
++    line = f"- {dt.datetime.now().astimezone().isoformat(timespec='seconds')} · {piece} · {state} · {note}\n"
++    try:
++        with open(a.progress, "a", encoding="utf-8") as f:
++            f.write(line)
++    except OSError as e:  # a progress line is a report, never a reason to drop the experts it reports on
++        print(f"warning: progress line not written ({type(e).__name__})", file=sys.stderr)
++
++
++def run(a) -> int:
++    question = Path(a.question_file).read_text(encoding="utf-8") if a.question_file else a.question
++    if not question or not question.strip():
++        sys.exit("no question given")
++    cwd = Path.cwd()
++    out = Path(a.out) if a.out else (cwd / ("runs" if (cwd / "runs").is_dir() else "six-experts")
++                                     / f"{dt.date.today():%Y%m%d}-six-experts-{slug(question)}")
++    out = out.resolve()
++    if not str(out).startswith(str(cwd.resolve())):
++        print(f"warning: {out} is outside {cwd}; opencode cannot read it", file=sys.stderr)
++    for d in ("seats", "briefs", "answers", "logs"):
++        (out / d).mkdir(parents=True, exist_ok=True)
++    if a.progress:  # made before any expert starts (review finding 1)
++        Path(a.progress).parent.mkdir(parents=True, exist_ok=True)
++    (out / "question.md").write_text(question.strip() + "\n", encoding="utf-8")
++    brief_t = (HERE / "assets" / "brief.md").read_text(encoding="utf-8")
++    plain_t = (HERE / "assets" / "brief-plain.md").read_text(encoding="utf-8")
++    only = set(a.only.split(",")) if a.only else None
++    jobs = {}
++    for sid, name, engine in EXPERTS:
++        lst, ident = out / "seats" / f"{sid}-list.md", out / "seats" / f"{sid}-identity.md"
++        if only and sid not in only:
++            continue
++        brief = out / "briefs" / f"{sid}.md"
++        if sid in PLAIN:  # the control gets the question and the answer's shape, nothing else
++            brief.write_text(plain_t.format(question=question.strip()), encoding="utf-8")
++            jobs[sid] = {"expert": name, "engine": engine, "brief": brief}
++            continue
++        src_list, src_ident = seat_files(sid)
++        shutil.copyfile(src_list, lst)
++        shutil.copyfile(src_ident, ident)
++        text = brief_t.format(name=name, list_path=lst, identity_path=ident, n_items=n_items(lst),
++                              question=question.strip())
++        if sid == INSIGHT_SEAT:
++            text += insight_load(out, a.insights, cwd)
++        brief.write_text(text, encoding="utf-8")
++        jobs[sid] = {"expert": name, "engine": engine, "brief": brief}
++    if (a.needs_web or a.needs_shell) and "fan-li" in jobs:
++        jobs["fan-li"].update(engine="claude", fallback_from="agy",
++                              fallback_reason="task needs " + " and ".join(
++                                  x for x, f in (("web", a.needs_web), ("shell", a.needs_shell)) if f))
++    if "linus" in jobs:
++        left = codex_left()
++        if left is not None and left <= CODEX_MIN_LEFT:
++            jobs["linus"].update(engine="opencode", fallback_from="codex",
++                                 fallback_reason=f"codex has {left:g}% left ({CODEX_MIN_LEFT}% or less)")
++    old = out / "status.json"
++    status = json.loads(old.read_text(encoding="utf-8")) if only and old.exists() else {}
++
++    def prompt_for(sid, engine):
++        p = f"Read {jobs[sid]['brief']} and do what it says."
++        if engine == "agy":
++            p += " Do not run shell commands and do not fetch URLs. Write the answer itself as your final message, not a plan."
++        return p
++
++    def hand_to_caller(sid):
++        status[sid] = {"expert": jobs[sid]["expert"], "engine": "claude-subagent (caller)", "model": "caller's choice",
++                       "ok": None, "problem": "to run by the caller",
++                       "brief": str(jobs[sid]["brief"]), "answer": str(out / "answers" / f"{sid}.md"),
++                       **({k: jobs[sid][k] for k in ("fallback_from", "fallback_reason") if k in jobs[sid]})}
++        print(f"CALLER  {sid:8} run a Claude subagent: 'Read {jobs[sid]['brief']} and do what it says.' "
++              f"and save its final message to {out / 'answers' / (sid + '.md')}", flush=True)
++        progress(a, sid, "start", "handed to the caller")
++        if a.progress:  # the caller writes the end line, since this script never sees the subagent finish
++            print(f"        when it ends, append: - <date -Iseconds> · {sid} · done|fail · caller  to {a.progress}",
++                  flush=True)
++
++    procs = {}
++    waiting = []  # opencode runs wait for each other: parallel starts can fail with "database is locked"
++
++    def launch(sid):
++        j = jobs[sid]
++        ans, log = out / "answers" / f"{sid}.md", out / "logs" / f"{sid}.log"
++        procs[sid] = (*start(j["engine"], prompt_for(sid, j["engine"]), ans, log, a.timeout, a.needs_web,
++                             a.needs_shell, cwd, **seat_model(sid, j["engine"])), ans, log)
++        j["started"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")
++        progress(a, sid, "start", j["engine"])
++        print(f"started {sid:8} on {j['engine']}", flush=True)
++
++    def seat_model(sid, engine):  # only a Claude seat with its own model passes one; other calls keep their shape
++        model = SEAT_MODEL.get(sid) if engine == "claude" else None
++        return {"model": model} if model else {}
++
++    def opencode_busy():
++        return any(jobs[sid]["engine"] == "opencode" for sid in procs)
++
++    for sid, j in jobs.items():
++        if j["engine"] == "claude" and a.claude_by_caller:
++            hand_to_caller(sid)
++            continue
++        if j["engine"] == "opencode" and opencode_busy():
++            waiting.append(sid)
++            print(f"waiting {sid:8} for the running opencode expert", flush=True)
++            continue
++        launch(sid)
++    while procs or waiting:
++        if waiting and not opencode_busy():
++            launch(waiting.pop(0))
++        for sid, (p, t0, ans, log) in list(procs.items()):
++            if p.poll() is None:
++                continue
++            del procs[sid]
++            j = jobs[sid]
++            ok, why = answer_ok(ans)
++            if p.returncode == 124:
++                ok, why = False, f"timeout after {a.timeout} s"
++            elif p.returncode != 0 and ok:
++                ok, why = False, f"exit {p.returncode}"
++            progress(a, sid, "done" if ok else "fail", f"{j['engine']} exit {p.returncode}")
++            status[sid] = {"expert": j["expert"], "engine": j["engine"], "model": (SEAT_MODEL.get(sid) if j["engine"] == "claude" else None) or MODELS[j["engine"]],
++                           "started": j.get("started"),
++                           "finished": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
++                           "exit": p.returncode, "seconds": round(time.time() - t0, 1), "ok": ok, "problem": why,
++                           **({"fallback_from": j["fallback_from"], "fallback_reason": j["fallback_reason"]}
++                              if "fallback_from" in j else {})}
++            print(f"done    {sid:8} on {j['engine']:8} exit {p.returncode} {'ok' if ok else 'FAILED: ' + why}",
++                  flush=True)
++            if sid == "fan-li" and j["engine"] == "agy" and not ok:
++                shutil.move(ans, ans.with_suffix(".agy-failed.md")) if ans.exists() else None
++                shutil.move(log, log.with_suffix(".agy-failed.log")) if log.exists() else None
++                status["fan-li-agy"] = status.pop("fan-li")
++                j.update(engine="claude", fallback_from="agy", fallback_reason=f"agy failed: {why}")
++                if a.claude_by_caller:
++                    hand_to_caller(sid)
++                    continue
++                procs[sid] = (*start("claude", prompt_for(sid, "claude"), ans, log, a.timeout, a.needs_web,
++                                     a.needs_shell, cwd), ans, log)
++                j["started"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")
++                progress(a, sid, "start", "claude (fallback)")
++                print("started fan-li   on claude (fallback)", flush=True)
++            if (sid == "linus" and j["engine"] == "codex" and not ok and log.exists()
++                    and CODEX_LIMIT_ERROR in log.read_text(encoding="utf-8", errors="ignore")):
++                shutil.move(ans, ans.with_suffix(".codex-failed.md")) if ans.exists() else None
++                shutil.move(log, log.with_suffix(".codex-failed.log"))
++                status["linus-codex"] = status.pop("linus")
++                j.update(engine="opencode", fallback_from="codex", fallback_reason="codex stopped on its usage limit")
++                if opencode_busy():  # one opencode at a time (database is locked)
++                    waiting.append(sid)
++                    print("waiting linus    for the running opencode expert (fallback)", flush=True)
++                else:
++                    launch(sid)
++        time.sleep(2)
++    (out / "status.json").write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
++    print(f"\n{out}\nnext: python3 {Path(__file__)} check {out}")
++    return 0 if all(s["ok"] is not False for k, s in status.items() if k not in ("fan-li-agy", "linus-codex")) else 1
++    # with --only, earlier entries in status.json are kept and the new ones added
++
++
++def nearest(run_: str, allowed: str) -> str:
++    """The closest same-length passage in the list, so a script change (趙/赵) reads differently from an invention."""
++    best, at = len(run_) + 1, -1
++    for i in range(len(allowed) - len(run_) + 1):
++        d = sum(a != b for a, b in zip(run_, allowed[i:i + len(run_)]))
++        if d < best:
++            best, at = d, i
++    if at < 0 or best > len(run_) // 3:
++        return " (no close passage in the list)"
++    return f" (nearest in the list: {allowed[at:at + len(run_)]}, {best} character(s) differ)"
++
++
++def check_one(sid: str, text: str, out: Path) -> list[str]:
++    bad = [f"{sid}: missing section {s}" for s in SECTIONS if s not in text]
++    if sid in PLAIN:  # no list to cite from: the sections are the whole check
++        return bad
++    index = out / "seats" / "dave-insight-index.md"
++    if sid == INSIGHT_SEAT and index.exists():  # Dave loaded insights: he cites real ones, or says none applies
++        known = set(INSIGHT_ID.findall(index.read_text(encoding="utf-8")))
++        cited = set(INSIGHT_ID.findall(text))
++        if cited - known:
++            bad.append(f"{sid}: cites insight ids not in the index: {', '.join(sorted(cited - known))}")
++        if not cited and "No insight applies" not in text:
++            bad.append(f"{sid}: loaded insights but cites none and does not say why none applies")
++    lst = out / "seats" / f"{sid}-list.md"
++    n = n_items(lst)
++    allowed = re.sub(r"\s+", "", lst.read_text(encoding="utf-8") +
++                     (out / "seats" / f"{sid}-identity.md").read_text(encoding="utf-8"))
++    for c in sorted({int(x) for x in ITEM_CITE.findall(text)}):
++        if not 1 <= c <= n:
++            bad.append(f"{sid}: cites #{c}, but its list has items 1–{n}")
++    for run_ in CJK_RUN.findall(text):
++        if run_ not in allowed:
++            bad.append(f"{sid}: Chinese not found in its list: {run_[:30]}{nearest(run_, allowed)}")
++    if not ITEM_CITE.search(text):
++        bad.append(f"{sid}: cites no item at all")
++    return bad
++
++
++def check(a) -> int:
++    out = Path(a.dir).resolve()
++    answers = {p.stem: p.read_text(encoding="utf-8", errors="ignore") for p in (out / "answers").glob("*.md")
++               if "." not in p.stem}
++    if a.sabotage:
++        sid = next(s for s in answers if s in {x for x, _, _ in EXPERTS} and CJK_RUN.search(answers[s]))
++        t = answers[sid]
++        m = CJK_RUN.search(t)
++        t = t[:m.start() + 1] + "鑫" + t[m.start() + 2:] + "\nAs my #99 says."
++        found = check_one(sid, t, out)
++        print(f"sabotage on {sid}: altered one quoted character and cited #99 → {len(found)} failure(s)")
++        for f in found:
++            print("  ", f)
++        return 0 if len(found) >= 2 else 1
++    bad = []
++    for sid, _, _ in EXPERTS:
++        if sid not in answers:
++            bad.append(f"{sid}: no answer file")
++    ids = {sid for sid, _, _ in EXPERTS}
++    for sid, text in sorted(answers.items()):
++        if sid not in ids:
++            print(f"skip {sid}: not one of the current experts (kept as evidence, not checked)")
++            continue
++        bad += check_one(sid, text, out)
++    for b in bad:
++        print("FAIL", b)
++    summary = f"{'PASS' if not bad else 'FAIL'}: {len(answers)} answers, {len(bad)} failure(s)"
++    print(summary)
++    (out / "check.txt").write_text("\n".join(["FAIL " + b for b in bad] + [summary]) + "\n", encoding="utf-8")
++    return 0 if not bad else 1
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
++    sub = ap.add_subparsers(dest="cmd", required=True)
++    r = sub.add_parser("run")
++    r.add_argument("question", nargs="?")
++    r.add_argument("--question-file")
++    r.add_argument("--out")
++    r.add_argument("--needs-web", action="store_true", help="the task needs web search: 范蠡 goes to Claude")
++    r.add_argument("--needs-shell", action="store_true", help="the task needs a shell: 范蠡 goes to Claude")
++    r.add_argument("--timeout", type=int, default=1800, help="seconds per engine call")
++    r.add_argument("--insights", help="the insight categories Dave loads, comma-separated (e.g. spec,own-work); "
++                                      "with none named he chooses from the index")
++    r.add_argument("--progress", help="append a timestamped line per expert start and end to this file "
++                                      "(e.g. runs/<run>/nodes/experts.progress.md)")
++    r.add_argument("--only", help="comma-separated ids to run (e.g. dave or linus,dave); with --out, adds them to an "
++                   "existing run and keeps its other answers")
++    r.add_argument("--claude-by-caller", action="store_true",
++                   help="inside Claude Code: leave Dave and any 范蠡 fallback to the caller's subagents")
++    c = sub.add_parser("check")
++    c.add_argument("dir")
++    c.add_argument("--sabotage", action="store_true")
++    a = ap.parse_args()
++    return run(a) if a.cmd == "run" else check(a)
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/.claude/skills/workflow-design/guard/SPEC.md b/.claude/skills/workflow-design/guard/SPEC.md
+index e86c290..1e709b4 100644
+--- a/.claude/skills/workflow-design/guard/SPEC.md
++++ b/.claude/skills/workflow-design/guard/SPEC.md
+@@ -58,7 +58,7 @@ Exports:
+   - `outputFile`: the value after any of the spec's `output_flags` (`-o FILE`, `-o=FILE`, `--out FILE`), else the
+     target of a stdout redirect `> FILE` or `>> FILE` (not `2>`); quotes stripped; `null` if none.
+   - `stdoutIsAnswer`: from the spec, but `false` when `outputFile` came from a redirect (the answer went to the file).
+-  - `statusFile`: for specs with `status_from_out_dir: true` (a wrapper such as `four_experts.py run --out DIR`),
++  - `statusFile`: for specs with `status_from_out_dir: true` (a wrapper such as `six_experts.py run --out DIR`),
+     `DIR/status.json`; else `null`. For such a wrapper `outputFile` is the folder `DIR` itself.
+   - `background`: the matching segment's `background`. (A caller that knows more passes `LintContext.background` to
+     `lintCommand`.)
+@@ -585,3 +585,31 @@ call (PostToolUse and PostToolUseFailure have no matcher) — an installed harne
+ **Round 10, `deadline end`:** `cli.ts deadline end [--session S]` writes `ended` (ISO) into the session's current
+ deadline; an ended deadline is no deadline (no clock, no time-up); exit 2 when there is none. Fails-if: the clock or
+ time-up continues after `deadline end`.
++
++## Round 11 — what was learned, listed and loaded (plan A Part C step 9; plan B round 2; run 20261016-six-experts)
++
++Module `src/insight-index.ts`; categories are data in `data/insight-categories.yaml`.
++
++- **I1 `cli.ts insight index [--json]`.** One row per insight section in the files `findInsightFiles` finds (M3):
++
++  | field | type | value |
++  |---|---|---|
++  | file | string | root-relative path |
++  | ids | string[] | the section's failure ids; `[]` for a great section |
++  | kind | `failure` \| `great` | |
++  | checks | string[] | the journal's `check` for each id, `-` when the journal has no record of it |
++  | source | string | the Source line's first word, `-` when absent |
++  | optionKinds | string[] | each option's kind |
++  | category | string | the first rule in `data/insight-categories.yaml` that matches, `-` when none does |
++
++  The author's text (whys, root cause, option text) is never printed. Example row:
++  `| runs/x/insight.md | F-60cad515 | failure | R12.2-command-error | tool | tool, rule, check | <category> |`.
++- **I2 `cli.ts insight show (--category C)… | <file>#<id>…`.** Prints the whole text of the matching sections, each
++  preceded by `<!-- <file> -->`, for an expert that loads them on purpose. Usage error (2) with neither argument; "no
++  matching insight sections" when nothing matches.
++- **I3 Categories.** `categories: [{ id, name, sources?, checks? (regexes), kinds? }]`; a section takes the first
++  rule whose every given condition matches.
++
++Fails-if: a section is missing from the index or listed twice; the index prints any whys, root-cause or option text;
++`show` prints a section that does not match, or misses one that does; a category rule with no matching section breaks
++the index.
+diff --git a/.claude/skills/workflow-design/guard/data/engines.yaml b/.claude/skills/workflow-design/guard/data/engines.yaml
+index df26a08..aefb50c 100644
+--- a/.claude/skills/workflow-design/guard/data/engines.yaml
++++ b/.claude/skills/workflow-design/guard/data/engines.yaml
+@@ -22,8 +22,8 @@ engines:
+   - name: claude
+     command: '^(?:\S*/)?claude\s+(?:[^|;&]*\s)?-p\b'
+     stdout_is_answer: true
+-  - name: four-experts
+-    command: '^(?:python3?\s+)?\S*four_experts\.py\s+run\b'
++  - name: six-experts
++    command: '^(?:python3?\s+)?\S*(?:four|six)_experts\.py\s+run\b'
+     output_flags: ["--out"]
+     stdout_is_answer: false
+     status_from_out_dir: true
+diff --git a/.claude/skills/workflow-design/guard/data/insight-categories.yaml b/.claude/skills/workflow-design/guard/data/insight-categories.yaml
+new file mode 100644
+index 0000000..45cbf24
+--- /dev/null
++++ b/.claude/skills/workflow-design/guard/data/insight-categories.yaml
+@@ -0,0 +1,25 @@
++# The six insight categories (run 20261016-six-experts, provisional decision D1: the experts' advice — 范蠡, 孫子 split
++# the Source kinds; Linus and 老子 dissent, see the run's compare.md). A section takes the first rule that matches; a
++# section's own `Category: <id>` line overrides every rule. Titles are matched here only to place a section; the index
++# never prints them.
++categories:
++  - id: config
++    name: "settings, sandbox, quota, install — the environment a run depends on"
++    sources: [config]
++  - id: tool
++    name: "an engine, CLI or library behaved other than expected"
++    sources: [tool]
++  - id: test
++    name: "a test or test suite failed, was weak, or was read wrongly"
++    sources: [check]
++    titles: ["test", "suite", "pytest", "bun test", "mutant", "assert"]
++  - id: guard-check
++    name: "an automated check misfired (a false alarm) or missed a failure"
++    sources: [check]
++  - id: spec
++    name: "a spec, brief, question or requirement given to another worker was unclear or wrong"
++    sources: [instruction]
++    titles: ["spec", "brief", "question", "prompt", "requirement", "wording", "paraphrase", "literal", "R1[0-9]", "rule"]
++  - id: own-work
++    name: "the agent's own way of working — command shape, typed values, order of steps"
++    sources: [instruction]
+diff --git a/.claude/skills/workflow-design/guard/src/cli.ts b/.claude/skills/workflow-design/guard/src/cli.ts
+index d2de4d6..d47092c 100644
+--- a/.claude/skills/workflow-design/guard/src/cli.ts
++++ b/.claude/skills/workflow-design/guard/src/cli.ts
+@@ -13,6 +13,7 @@ import { HARNESSES, installSnippet } from "./install.ts";
+ import { JournalError, guardRoot, newFailureId, recordFailureFromArgs } from "./journal.ts";
+ import { checkSection, findInsightFiles, openFailures, parseInsight } from "./insight.ts";
+ import { WarningError, dismiss, settleAsFailure, warnings } from "./warnings.ts";
++import { indexMarkdown, insightIndex, loadCategories, showSections } from "./insight-index.ts";
+ import { DeadlineError, deadlineEnd, deadlineStatus, endDeadline, parseMarks, startDeadline } from "./deadline.ts";
+ import { PathError, checkPath, parents, skeleton } from "./paths.ts";
+ import { rates, ratesMarkdown } from "./rates.ts";
+@@ -33,6 +34,8 @@ const USAGE = [
+   "  result --engine E --out FILE [--exit N] [--stderr-file F]",
+   "  fail --check --input --expected --actual --reason --evidence [--found-by --engine --harness --session]",
+   "  insight [--session S] [--json]  list open failures and invalid sections",
++  "  insight index [--json]          every insight section: ids, check, source, option kinds, category (no text)",
++  "  insight show --category C | <file>#<id>   the chosen sections, whole (for an expert that loads them)",
+   "  warning <W-id> fail|dismiss --reason TEXT   settle a warning the guard could not judge",
+   "  warnings [--session S]          every warning and how it was settled",
+   "  deadline start --minutes N [--run DIR] [--marks 50,80,100]   record the owner's time limit",
+@@ -281,6 +284,24 @@ function warningsCommand(args: string[]): number {
+ 
+ // Open failures and the sections that failed their checks: ids, rule ids and paths only.
+ function insight(args: string[]): number {
++  // Round 11: `insight index` lists what was learned (no author text); `insight show` prints chosen sections whole.
++  if (args[0] === "index" || args[0] === "show") {
++    const root = guardRoot(process.cwd());
++    const entries = insightIndex(root, loadCategories(path.resolve(import.meta.dirname, "..")));
++    if (args[0] === "index") {
++      out(args.includes("--json") ? JSON.stringify({ sections: entries }) : indexMarkdown(entries));
++      return OK;
++    }
++    const categories: string[] = [];
++    const refs: string[] = [];
++    for (let i = 1; i < args.length; i++) {
++      if (args[i] === "--category") categories.push(args[++i] ?? usageError("--category needs a value"));
++      else refs.push(args[i]!);
++    }
++    if (categories.length === 0 && refs.length === 0) usageError("insight show: --category C or <file>#<id>");
++    out(showSections(root, entries, { categories, refs }) || "no matching insight sections");
++    return OK;
++  }
+   const session = flagValue(args, "--session");
+   const json = args.includes("--json");
+   const root = guardRoot(process.cwd());
+diff --git a/.claude/skills/workflow-design/guard/src/insight-index.ts b/.claude/skills/workflow-design/guard/src/insight-index.ts
+new file mode 100644
+index 0000000..13948b8
+--- /dev/null
++++ b/.claude/skills/workflow-design/guard/src/insight-index.ts
+@@ -0,0 +1,145 @@
++// Round 11 (SPEC.md; plan A Part C step 9, plan B round 2): what was learned, listed — one line per insight section
++// with its ids, the failure's check, the source the whys end at, the options' kinds and its category. The index never
++// prints the author's text; `show` prints whole sections, for an expert who loads them on purpose.
++
++import * as fs from "node:fs";
++import * as path from "node:path";
++import { findInsightFiles, isGreatSection, parseInsight } from "./insight.ts";
++import { readJournal } from "./journal.ts";
++import type { InsightSection } from "./types.ts";
++
++export interface IndexEntry {
++  file: string; // root-relative
++  ids: string[]; // failure ids; empty for a great section
++  kind: "failure" | "great";
++  checks: string[]; // the journal's check per id ("-" when the journal has no record of it)
++  source: string; // the Source line's first word, or "-"
++  optionKinds: string[];
++  category: string; // the category id, or "-" when no rule places it
++}
++
++// A category is placed by the first rule that matches; categories are data (data/insight-categories.yaml).
++export interface CategoryRule {
++  id: string;
++  name: string;
++  sources?: string[]; // a Source first word
++  checks?: string[]; // regexes over the failure's check
++  kinds?: ("failure" | "great")[];
++  titles?: string[]; // case-insensitive regexes over the section's heading (used to place it, never printed)
++}
++
++const HEADING_RE = /^##\s+(.*)$/;
++const ID_RE = /F-[0-9a-f]{8}/g;
++
++function firstWord(text: string | null): string {
++  const match = text === null ? null : /^[A-Za-z-]+/.exec(text.trim());
++  return match === null ? "-" : match[0];
++}
++
++export function categorize(entry: Omit<IndexEntry, "category">, rules: CategoryRule[], title = "", own: string | null = null): string {
++  // The writer's own `Category:` line wins when it names a known category.
++  if (own !== null && rules.some((rule) => rule.id === own)) return own;
++  for (const rule of rules) {
++    if (rule.titles !== undefined && !rule.titles.some((re) => new RegExp(re, "i").test(title))) continue;
++    if (rule.kinds !== undefined && !rule.kinds.includes(entry.kind)) continue;
++    if (rule.sources !== undefined && !rule.sources.includes(entry.source)) continue;
++    if (rule.checks !== undefined && !entry.checks.some((check) => rule.checks!.some((re) => new RegExp(re).test(check)))) continue;
++    return rule.id;
++  }
++  return "-";
++}
++
++export function loadCategories(guardDir: string): CategoryRule[] {
++  const file = path.join(guardDir, "data", "insight-categories.yaml");
++  try {
++    const parsed = Bun.YAML.parse(fs.readFileSync(file, "utf8")) as { categories?: CategoryRule[] };
++    return Array.isArray(parsed?.categories) ? parsed.categories : [];
++  } catch {
++    return [];
++  }
++}
++
++export function insightIndex(root: string, rules: CategoryRule[]): IndexEntry[] {
++  const checkOf = new Map<string, string>();
++  for (const record of readJournal(root).records) if (record.kind === "failure") checkOf.set(record.id, record.check);
++  const entries: IndexEntry[] = [];
++  for (const file of findInsightFiles(root)) {
++    let sections: InsightSection[];
++    let heads: { title: string; own: string | null }[];
++    try {
++      const text = fs.readFileSync(path.join(root, file), "utf8");
++      sections = parseInsight(text);
++      heads = headings(text);
++    } catch {
++      continue;
++    }
++    sections.forEach((section, i) => {
++      const head = heads[i] ?? { title: "", own: null };
++      const kind = isGreatSection(section) ? "great" : "failure";
++      const base: Omit<IndexEntry, "category"> = {
++        file,
++        ids: section.ids,
++        kind,
++        checks: section.ids.map((id) => checkOf.get(id) ?? "-"),
++        source: firstWord(section.source),
++        optionKinds: section.options.map((option) => option.kind),
++      };
++      entries.push({ ...base, category: categorize(base, rules, head.title, head.own) });
++    });
++  }
++  return entries;
++}
++
++// Each section's heading and its own `Category:` line, in file order — the same order parseInsight returns (a
++// heading opens a section only when it has a failure id or starts with "great:").
++function headings(text: string): { title: string; own: string | null }[] {
++  const out: { title: string; own: string | null }[] = [];
++  let current: { title: string; own: string | null } | null = null;
++  for (const line of text.split(/\r?\n/)) {
++    const heading = HEADING_RE.exec(line);
++    if (heading) {
++      const title = heading[1]!.trim();
++      current = (title.match(ID_RE) ?? []).length > 0 || /^great\s*:/i.test(title) ? { title, own: null } : null;
++      if (current !== null) out.push(current);
++      continue;
++    }
++    const own = /^Category:\s*([a-z-]+)/i.exec(line);
++    if (current !== null && own !== null) current.own = own[1]!.toLowerCase();
++  }
++  return out;
++}
++
++export function indexMarkdown(entries: IndexEntry[]): string {
++  const lines = ["| file | ids | kind | check | source | options | category |", "|---|---|---|---|---|---|---|"];
++  for (const e of entries) {
++    lines.push(`| ${e.file} | ${e.ids.join(", ") || "-"} | ${e.kind} | ${e.checks.join(", ") || "-"} | ${e.source} | ${e.optionKinds.join(", ") || "-"} | ${e.category} |`);
++  }
++  return lines.join("\n");
++}
++
++// The whole text of each section that matches: by category, or by `<file>#<id>`. For an expert that loads insights.
++export function showSections(root: string, entries: IndexEntry[], want: { categories: string[]; refs: string[] }): string {
++  const chosen = entries.filter((e) => want.categories.includes(e.category)
++    || want.refs.some((ref) => { const [file, id] = ref.split("#"); return e.file === file && (id === undefined || e.ids.includes(id)); }));
++  const out: string[] = [];
++  const byFile = new Map<string, IndexEntry[]>();
++  for (const e of chosen) byFile.set(e.file, [...(byFile.get(e.file) ?? []), e]);
++  for (const [file, list] of byFile) {
++    const text = fs.readFileSync(path.join(root, file), "utf8").split(/\r?\n/);
++    let block: string[] = [];
++    let keep = false;
++    const flush = () => { if (keep && block.length > 0) out.push(`<!-- ${file} -->`, ...block, ""); block = []; };
++    for (const line of text) {
++      const heading = HEADING_RE.exec(line);
++      if (heading) {
++        flush();
++        const ids: string[] = heading[1]!.match(ID_RE) ?? [];
++        const great = /^great\s*:/i.test(heading[1]!.trim());
++        keep = list.some((e) => (e.kind === "great" ? great : e.ids.some((id) => ids.includes(id))));
++      }
++      if (keep) block.push(line);
++    }
++    flush();
++  }
++  return out.join("\n");
++}
