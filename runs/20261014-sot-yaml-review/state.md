@@ -76,7 +76,7 @@ The tool `tools/memory_index.py` checks the id form and conflict markers (merged
     `runs/20261015-harness-health/coverage-trial/results.md`. **Not now** (EJ, 2026-10-15): pick it up once the harness
     health work (`runs/20261015-harness-health/`) is solid, and use it to enhance the whole memory system.
 13. **From the W3.6 round** (`runs/20261016-w36-procedure-script/experts/compare.md`), EJ's call:
-    - A step that only waits for a person (an approval, a typed confirmation): does a script that stops there count as
-      a script (孫子), or does the procedure become a page (Linus; W3.6's wording as applied reads this way)?
+    - ~~A step that only waits for a person~~ — settled 2026-10-16, EJ: *"Yes, a script paused still a script"*;
+      W3.6, the prose and the release note say so.
     - "Can" versus "worth it": may a scriptable procedure stay a page because it runs rarely, and who decides that
       (孫子: the project owner)?

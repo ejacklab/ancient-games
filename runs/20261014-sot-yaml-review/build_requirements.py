@@ -138,9 +138,10 @@ CATEGORIES = [
               "they live elsewhere, with no written reason.", "reviewer", part_of="W3.5"),
             r("W3.6", "SHOULD", "No copy of the project's existing documents (requirements, architecture in `docs/`) "
               "or of its procedures: an entry links to them. A procedure lives in the repo as a script with an "
-              "external check; where a step cannot be a command with a checkable result — a person's action, or a "
-              "choice that depends on judging what was seen — it is a page in `docs/` that names that step and calls "
-              "scripts for the rest. The agent writing the procedure decides by trying the script first; the project "
+              "external check. A script that stops and waits for a person (an approval, a typed confirmation) is "
+              "still a script. Where a step cannot be a command with a checkable result — an action a script cannot "
+              "do or wait for, or a choice that depends on judging what was seen — it is a page in `docs/` that names "
+              "that step and calls scripts for the rest. The agent writing the procedure decides by trying the script first; the project "
               "owner decides if it is contested. `AGENTS.md` names each script, one line each. A script is project "
               "work, not memory.",
               "an entry copies a document or a procedure's steps, or a procedure page names no step a script cannot "

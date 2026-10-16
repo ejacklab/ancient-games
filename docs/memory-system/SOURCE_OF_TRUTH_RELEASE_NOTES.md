@@ -13,6 +13,9 @@ so an agent reading it carries no history it does not need (EJ, 2026-10-14). New
   page that names no unscriptable step. `who_decides` was `unassigned`. Wording: Dave's, from one round of the four
   experts and Dave (`runs/20261016-w36-procedure-script/experts/compare.md`; all five agreed "not always" and on who
   decides); EJ: *"Yes apply them"*.
+- **W3.6: a script that waits for a person is still a script** (an approval, a typed confirmation). The page is for an
+  action a script cannot do or wait for, or a choice that depends on judging what was seen. EJ: *"Yes, a script
+  paused still a script"*.
 
 ## 2026-10-15
 
