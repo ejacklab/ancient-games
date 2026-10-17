@@ -25,12 +25,12 @@ The lesson, in one to three sentences. No path from one project: that is a proje
 
 ## Filing
 
-When the owner chooses an insight's option, the agent that wrote the insight files:
+When the agent applies an insight's fix (R12.3: the option it ranks first; the owner may overrule), it files:
 - the lesson, here, when it holds for an agent type or every agent anywhere;
 - the project facts, in the `LESSONS.md` of the folder that holds the code, as ``- `<file name>` — <fact>``;
-- `filed:` with both files, on the decision's entry in `insight-decisions.md`.
+- `filed:` with both files, on the fix's entry in `insight-decisions.md`.
 
-An insight with no choice files nothing. When a check or test comes to enforce a lesson, set `enforced_by`; the lesson
+A lesson the owner overrules is removed. When a check or test comes to enforce a lesson, set `enforced_by`; the lesson
 is then given only as a pointer to that check.
 
 ## Getting the matching lessons
