@@ -13,8 +13,6 @@ Options:
 1. [rule] Before parsing a tool's output file, print its top-level keys (one command), then write the parse. evidence: the second try did that and worked in one step.
 2. [rule] For a finished workflow, read `<transcript>/journal.jsonl` as its diagnostics say, never the task output file. evidence: the notification's diagnostics line names journal.jsonl.
 
-Chosen (EJ, 2026-10-17): option 1 — "I prefer 1, extra step is ok". Applied as a working rule in the main agent's memory (print-keys-before-parsing).
-
 ## F-bdea5631 — a trailing `ls` in a test command line was logged as a failed test run
 
 (Corrected after the workflow's own report: the first version of this section blamed the planned fail-first run; the
@@ -31,5 +29,3 @@ Options:
 1. [check] D1 records a test failure only when the test runner is the call's last command, or when the runner's own summary in the output shows failures; otherwise the call is a command-error warning naming the last command word. evidence: this call's output summary showed "7 pass, 10 fail" for the planned run, and the exit 2 was the `ls`.
 2. [rule] A planned red test run is its own Bash call, never chained with lookups; with `expect-fail --run` when it is planned (Round 12). evidence: `cli.ts` usage: "expect-fail --run COMMAND --out FILE … run a planned red run".
 3. [tool] crossed-build-check's fail-first step runs the base tests through `expect-fail --run` and checks the worktree in a separate call. evidence: the step's report names both commands.
-
-Chosen (EJ, 2026-10-17): option 1 — "go with option 1". Option 1 was mine. Built as guard Round 17 (SPEC.md; `src/hooks.ts` testRunMadeExit; `test/round17-runner-exit.test.ts`, T1 and T2 failing on the old code). A runner followed by `&&` with no summary is now a warning, not a failure: the guard cannot tell whose exit it is.

@@ -61,7 +61,10 @@ the task writes an insight file in the run folder and raises it to the project o
 failure, or each group with one cause: six whys down to a source that can be changed (an instruction, a check, a tool,
 a config), the root cause, and two or three fix options — each a rule, a check or a tool — that the agent has
 researched, ranked by expected effect, with the evidence for each. The agent proposes; it does not apply a fix without
-the project owner's choice. A fix that is a check is shown failing on a planted repeat of the failure before it is
+the project owner's choice. The agent records each choice in `insight-decisions.md` beside the insight file, one entry
+per insight section: the decision (an option, with whether it was the agent's, the owner's own fix, or declined), the
+owner's words, the date, and where the fix was applied or "not yet". The insight file holds no choices; a section with
+no entry is open. A fix that is a check is shown failing on a planted repeat of the failure before it is
 trusted. A fix to a harness's config is advice to the project owner; the agent never edits it.
 
 **R12.4 Judges say what is wrong, not how to be right (SHOULD).** An evaluation rule states the conditions that make
@@ -86,7 +89,8 @@ condition only because it differs from the expected method or output; a wrong re
 leads to no new condition; a failure a retry later passed, or one found outside an evaluator, has no record; the agent's own failing test run,
 errored tool call or redone step has no record; a guess is recorded as a failure, or not recorded at all; a task ends with a warning neither logged nor dismissed; a dismissal has no reason or is not kept; a task
 with failure records ends without an insight file, or with one not raised to the project owner; a failure record has
-no reason or no evidence; an insight offers fewer than two fix options, or applies a fix the owner did not choose; a why stops at the agent forgetting or the model being wrong; a
+no reason or no evidence; an insight offers fewer than two fix options, or applies a fix the owner did not choose; a choice the owner made has
+no entry in `insight-decisions.md`, or an entry has no owner's words; a why stops at the agent forgetting or the model being wrong; a
 check-type fix is trusted without a planted repeat failing it; a model the harness uses changes and no review
 follows; a scaffolding item names no weakness it compensates for, or no observable that shows it still occurs; an
 item that shows no contribution under the owner's comparison is not put up for withdrawal; the review uses a
