@@ -1,7 +1,7 @@
 ---
 agents: [all]
 kinds: [engine-call]
-commands: [codex, opencode, agy, dsh, mcode, claude]
+commands: ["codex exec", "opencode run", "agy -p", "claude -p", "mcode exec", "dsh"]
 from: memory prompt-in-a-file (2026-10-12)
 ---
 Write an engine's whole prompt to a file and call the engine with a short fixed instruction that names it ("Read

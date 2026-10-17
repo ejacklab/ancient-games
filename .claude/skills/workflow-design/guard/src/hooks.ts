@@ -13,7 +13,7 @@ import { appendWarning, newWarningId, openWarnings } from "./warnings.ts";
 import { claimDeadlines, deadlineStatus, sessionDeadline } from "./deadline.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
-import { FAILED_SUMMARY, checkResult, commandWord, engineCallSite, inlineScripts, lintCommand, missingReads, recognizeTestRun, segments, testRunFiles } from "./traps.ts";
+import { FAILED_SUMMARY, checkResult, commandWord, commandWords, engineCallSite, inlineScripts, lintCommand, missingReads, recognizeTestRun, segments, testRunFiles } from "./traps.ts";
 import { type Query, factLine, lessonLine, lessonsFor, takeUnshown } from "./lessons.ts";
 import { coveringDeclarations } from "./expect.ts";
 import type { Finding, GuardErrorRecord, HookEnv, HookResult, PromptRecord, TouchedRecord, RaisedRecord, RedRecord, SuccessRecord } from "./types.ts";
@@ -113,7 +113,7 @@ function lessonLines(payload: Record<string, unknown>, env: HookEnv): string[] {
   const tool = payload.tool_name;
   const query: Query = { agent: "claude-main", root };
   if (tool === "Bash") {
-    query.commands = segments(text(input.command)).map((part) => commandWord(part.text)).filter((word): word is string => word !== null);
+    query.commands = segments(text(input.command)).map((part) => commandWords(part.text).join(" ")).filter((words) => words !== "");
   } else if (typeof tool === "string" && FILE_TOOLS.has(tool) && text(input.file_path) !== "") {
     query.paths = [path.resolve(env.cwd, text(input.file_path))];
   } else {

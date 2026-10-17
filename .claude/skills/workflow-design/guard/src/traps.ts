@@ -548,6 +548,14 @@ export function commandWord(segment: string): string | null {
   return value;
 }
 
+// The words of one segment after M1's wrappers, unquoted, the first as its file name: what a lesson's `commands`
+// entry is matched against (Round 18).
+export function commandWords(segment: string): string[] {
+  const found = words(stripWrappers(segment)).map((word) => unquote(word.text)).filter((word) => word !== "");
+  if (found.length === 0 || REDIRECT_PREFIX.test(found[0]!)) return [];
+  return [path.basename(found[0]!), ...found.slice(1)];
+}
+
 // The test runners of round 4, D1: the segment's stripped text must be the whole invocation, so `pytest-helper` and a
 // prompt naming pytest are not test runs. The label is the runner as the specification writes it.
 const TEST_RUNNERS: { label: string; pattern: RegExp }[] = [

@@ -243,3 +243,21 @@ test("review 5: a closing --- that is not on its own line is not front matter", 
   expect(readLessons(store)).toEqual([]);
   expect(checkLessons(store)[0]!.reason).toContain("front matter");
 });
+
+// ---- run 20261017-agent-lessons, round 3: every hold on the main agent was noise when commands matched a word only
+
+test.each([
+  ["claude -p", "claude --help", false],
+  ["claude -p", "env -u ANTHROPIC_API_KEY claude -p \"/usage\" </dev/null", true],
+  ["codex exec", "cd work && timeout 600 codex -m gpt --search exec -s read-only x </dev/null", true],
+  ["codex exec", "codex login status", false],
+  ["python3 -c", "python3 tools/export_skills.py", false],
+  ["python3 -c", "python3 -c 'import json'", true],
+  ["git", "git status", true],
+  ["mcode exec", "~/.minimax-code/bin/mcode exec --mode lightweight --input -", true],
+])("commands entry %p against %p: %p", (entry, command, expected) => {
+  lesson("probe", `agents: [all]\nkinds: [command]\ncommands: [${JSON.stringify(entry)}]`);
+  const result = pre("Bash", { command });
+  expect(result.stdout === "" ? "" : context(result)).toBe(expected ? context(result) : "");
+  expect(result.stdout !== "").toBe(expected);
+});

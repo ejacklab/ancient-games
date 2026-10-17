@@ -1,7 +1,7 @@
 ---
 agents: [all]
 kinds: [engine-call]
-commands: [codex, opencode, mcode, agy, dsh, claude]
+commands: ["codex exec", "opencode run", "mcode exec", "agy -p", "dsh", "claude -p"]
 from: memory engine-calls-need-dev-null (2026-10-12)
 ---
 Give every headless engine call stdin from /dev/null (`< /dev/null`): `codex exec` reads stdin whenever it is not a

@@ -1,7 +1,7 @@
 ---
 agents: [all]
 kinds: [engine-call]
-commands: [mcode]
+commands: ["mcode exec"]
 from: memory mcode-headless-traps (2026-10-16)
 ---
 mcode (MiniMax Code): call it by its full path, since only interactive shells put it on PATH. `exec --mode

@@ -136,6 +136,16 @@ function relativeTo(root: string, file: string): string {
   return outside ? absolute : relative.split(path.sep).join("/");
 }
 
+// A `commands` entry is a command word, optionally followed by words the command must also hold: "codex exec" matches
+// `codex -m m exec …`, not `codex login`; "claude -p" not `claude --help` (L3; run 20261017-agent-lessons round 3).
+// `command` is one segment's words after the wrappers, joined by spaces.
+export function commandMatches(entry: string, command: string): boolean {
+  const want = entry.trim().split(/\s+/);
+  const have = command.trim().split(/\s+/);
+  if (want[0] === "" || have[0] === "" || path.basename(want[0]!) !== path.basename(have[0]!)) return false;
+  return want.slice(1).every((word) => have.slice(1).includes(word));
+}
+
 // Whether one lesson matches the query (L3).
 export function matches(lesson: Lesson, query: Query): boolean {
   if (!lesson.agents.includes("all") && !lesson.agents.includes(query.agent)) return false;
@@ -144,7 +154,7 @@ export function matches(lesson: Lesson, query: Query): boolean {
     if (lesson.paths.some((glob) => new Bun.Glob(glob).match(file))) return true;
     if (lesson.kinds.includes(isTestFile(file) ? "test" : "code-edit")) return true;
   }
-  if ((query.commands ?? []).some((word) => lesson.commands.includes(word))) return true;
+  if ((query.commands ?? []).some((command) => lesson.commands.some((entry) => commandMatches(entry, command)))) return true;
   return (query.kinds ?? []).some((kind) => lesson.kinds.includes(kind));
 }
 

@@ -1,7 +1,7 @@
 ---
 agents: [all]
 kinds: [engine-call]
-commands: [codex]
+commands: ["codex -c"]
 from: memory codex-config-key-check (2026-10-15)
 ---
 To prove a Codex config key's name without spending quota, run `codex -c 'key="bogus"' login status </dev/null`: a

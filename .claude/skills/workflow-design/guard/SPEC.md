@@ -815,7 +815,7 @@ in the code's own folder. The guard gives the main agent the ones that match wha
   | `agents` | list of `all`, `claude-main`, `opencode`, `codex`, `agy`, `mcode`, `dsh` | yes, not empty |
   | `kinds` | list of `test`, `code-edit`, `engine-call`, `brief`, `command` | yes, not empty |
   | `paths` | list of globs matched against a file path relative to its git root | no (default `[]`) |
-  | `commands` | list of command words (M1's, wrappers stripped) | no (default `[]`) |
+  | `commands` | list of entries: a command word, then any words the command must also hold ("codex exec", "claude -p") | no (default `[]`) |
   | `from` | `runs/<run>/insight.md#<id>` or a memory file name | yes |
   | `enforced_by` | a check or test that now enforces it | no |
 
@@ -826,7 +826,7 @@ in the code's own folder. The guard gives the main agent the ones that match wha
 - **L3 Which lessons match.** For an agent `A`: the lesson's `agents` holds `all` or `A`, and at least one of — a
   path given matches one of its `paths`; a path given is a test file (a path segment `test` or `tests`, or a name
   containing `.test.`, `_test.` or starting `test_`) and its `kinds` holds `test`; a path given is any other file and
-  its `kinds` holds `code-edit`; a command word given is in its `commands`; a kind given is in its `kinds`. A lesson
+  its `kinds` holds `code-edit`; a command given (one segment's words after M1's wrappers, the first as its file name) has the first word of one of its `commands` entries as its first word and every other word of that entry among its words; a kind given is in its `kinds`. A lesson
   with `enforced_by` set is listed by `lessons for` as its pointer, "<slug>: enforced by <enforced_by>", and never holds a
   call (L5): its check acts at the moment already.
 - **L4 `lessons for`.** `cli.ts lessons for --agent A [--kinds K,…] [--paths P,…] [--commands C,…] [--dir D]` prints

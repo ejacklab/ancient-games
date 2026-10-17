@@ -1,7 +1,7 @@
 ---
 agents: [all]
 kinds: [engine-call]
-commands: [opencode]
+commands: ["opencode run"]
 from: memory opencode-parallel-db-lock (2026-10-13)
 ---
 opencode headless: several `opencode run` calls started together can fail with "database is locked" (exit 1, empty

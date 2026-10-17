@@ -1,7 +1,7 @@
 ---
 agents: [all]
 kinds: [engine-call]
-commands: [agy]
+commands: ["agy -p"]
 from: memory agy-headless-traps (2026-10-13)
 ---
 agy headless (`-p`): a tool that needs shell or web permission is soft-denied, and the run exits 0 with nothing on
