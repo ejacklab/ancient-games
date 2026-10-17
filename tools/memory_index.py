@@ -347,6 +347,11 @@ def example_limits() -> Limits:
     return Limits(lines=MAX_LINES, bytes=MAX_BYTES)
 
 
+def clipped(text: str, most: int = 40) -> str:
+    """A bad value quoted in a limits error, cut to `most` characters so a huge value cannot flood the report."""
+    return text if len(text) <= most else text[:most] + "…"
+
+
 def parse_limits(raw: bytes) -> Limits:
     """The limits the file records: for each unit the smallest `limit` among its rows, and the design's example
     for a unit no row names (B4.1). A file that is not UTF-8 JSON, is not an object with a non-empty `limits`
@@ -394,19 +399,23 @@ def read_limit_row(row: object, number: int) -> int:
     for name in LIMIT_TEXT_FIELDS:
         if name not in row:
             raise LimitsError(f"row {number} has no {name} field")
-        if not isinstance(row[name], str) or not row[name].strip():
-            raise LimitsError(f"row {number} has a {name} field that is not text")
+        if not isinstance(row[name], str):
+            raise LimitsError(f"row {number}: the {name!r} field is not text")
+        if not row[name].strip():
+            raise LimitsError(f"row {number}: the {name!r} field is empty")
     if "limit" not in row:
         raise LimitsError(f"row {number} has no 'limit'")
     if row["unit"] not in LIMIT_UNITS:
-        raise LimitsError(f"row {number} has an unknown unit {row['unit']!r} (not {' / '.join(LIMIT_UNITS)})")
+        raise LimitsError(f"row {number} has an unknown unit {clipped(repr(row['unit']))} "
+                          f"(not {' / '.join(LIMIT_UNITS)})")
     if row["basis"] not in LIMIT_BASES:
-        raise LimitsError(f"row {number} has an unknown basis {row['basis']!r} (not {' / '.join(LIMIT_BASES)})")
+        raise LimitsError(f"row {number} has an unknown basis {clipped(repr(row['basis']))} "
+                          f"(not {' / '.join(LIMIT_BASES)})")
     # `bool` is an `int` in Python, and `json` gives a float for `1.0`: neither is the whole number B4.1 asks for.
     limit = row["limit"]
     if isinstance(limit, int) and not isinstance(limit, bool) and limit > 0:
         return limit
-    raise LimitsError(f"row {number} has a limit that is not a whole number above 0 ({limit!r})")
+    raise LimitsError(f"row {number}: the 'limit' is not a JSON integer above 0 ({clipped(repr(limit))})")
 
 
 # --- the index ---------------------------------------------------------------------------------------------------
@@ -657,6 +666,9 @@ def snapshot_memory(
         limits = blobs.get(paths[LIMITS_PATH])
         if limits is None:
             limits_problem = "its blob is missing from the snapshot"
+    elif any(path.startswith(LIMITS_PATH + "/") for path in paths):
+        # A folder at the limits path is not a file to read: a problem, never the example silently (B4.5).
+        limits_problem = "is a folder in the snapshot, not a file"
     return entries, current, limits, limits_problem
 
 

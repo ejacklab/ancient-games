@@ -441,6 +441,31 @@ def test_an_index_already_over_the_limit_still_warns(tmp_path, monkeypatch, caps
     assert "is up to date" in out and "over the limit" in out
 
 
+def test_a_folder_at_the_limits_path_in_the_snapshot_is_a_problem(tmp_path, monkeypatch, capsys):
+    """B4.5 — check mode: a folder staged at the limits path is an error, never the example silently."""
+    repo = make_memory_repo(tmp_path, monkeypatch)
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "first"], cwd=repo,
+                   check=True)
+    (repo / "project-memory/start-limits.json").mkdir()
+    (repo / "project-memory/start-limits.json/f.txt").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(sys, "argv", ["memory_index.py", "--check"])
+    assert memory_index.main() == 1
+    captured = capsys.readouterr()
+    assert "project-memory/start-limits.json: is a folder in the snapshot" in captured.err
+    assert "the design's example" not in captured.out
+
+
+def test_a_bad_limit_value_is_quoted_short():
+    """B4.5 — a huge bad value is cut short in the report, so one row cannot flood it."""
+    raw = ('{"limits": [{"agent": "a", "unit": "' + "x" * 4000 + '", "limit": 5, "basis": "documented", '
+           '"source": "s"}]}').encode()
+    with pytest.raises(memory_index.LimitsError) as caught:
+        memory_index.parse_limits(raw)
+    assert len(str(caught.value)) < 200, str(caught.value)
+
+
 def test_an_os_error_on_the_index_is_a_problem_not_a_traceback(tmp_path, monkeypatch, capsys):
     """B2.6 — INDEX.md being a folder is reported as `<file>: <problem>` with exit 1, never a traceback."""
     repo = make_memory_repo(tmp_path, monkeypatch)
