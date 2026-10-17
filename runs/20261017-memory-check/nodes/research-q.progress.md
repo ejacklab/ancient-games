@@ -1,0 +1,36 @@
+- 2026-10-17T17:24:41+08:00 · check-fan-li · start · 
+- 2026-10-17T17:24:42+08:00 · check-linus · start · 
+- 2026-10-17T17:24:41+08:00 · check-dave · start · 
+- 2026-10-17T17:24:42+08:00 · check-sun-tzu · start · 
+- 2026-10-17T17:24:43+08:00 · check-linus · failed · six_experts check crashed: folder runs/20261017-memory-check/research-q/linus does not exist; linus has no answer file
+- 2026-10-17T17:24:44+08:00 · check-dario · start · 
+- 2026-10-17T17:24:46+08:00 · check-fan-li · fail · no answer folder runs/20261017-memory-check/research-q/fan-li; six_experts.py check crashed writing check.txt (FileNotFoundError)
+- 2026-10-17T17:24:47+08:00 · check-dave · fail · folder runs/20261017-memory-check/research-q/dave does not exist; check crashed (FileNotFoundError), no answer for dave
+- 2026-10-17T17:24:48+08:00 · check-sun-tzu · fail · folder runs/20261017-memory-check/research-q/sun-tzu does not exist; no answer to check
+- 2026-10-17T17:24:50+08:00 · check-dario · fail · no answer folder runs/20261017-memory-check/research-q/dario; check script crashed writing check.txt
+- 2026-10-17T17:24:54+08:00 · linus · start · codex
+- 2026-10-17T17:24:55+08:00 · fan-li · start · agy
+- 2026-10-17T17:24:57+08:00 · sun-tzu · start · dsh
+- 2026-10-17T17:24:59+08:00 · dario · start · claude
+- 2026-10-17T17:24:59+08:00 · dave · start · claude
+- 2026-10-17T17:26:58+08:00 · linus · done · codex exit 0
+- 2026-10-17T17:27:11+08:00 · check-linus · start · 
+- 2026-10-17T17:27:14+08:00 · check-linus · done · linus answer file checked, no FAIL linus line
+- 2026-10-17T17:28:29+08:00 · fan-li · done · agy exit 0
+- 2026-10-17T17:28:42+08:00 · check-fan-li · start · 
+- 2026-10-17T17:28:45+08:00 · check-fan-li · done · fan-li answer passes the check; other experts absent by design
+- 2026-10-17T17:29:56+08:00 · dario · done · claude exit 0
+- 2026-10-17T17:30:09+08:00 · check-dario · start · 
+- 2026-10-17T17:30:12+08:00 · check-dario · done · dario answer check passed (other experts absent by design)
+- 2026-10-17T17:30:32+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-17T17:30:43+08:00 · check-sun-tzu · start · 
+- 2026-10-17T17:30:46+08:00 · check-sun-tzu · done · sun-tzu check clean; other experts have no answer file here (expected)
+- 2026-10-17T17:32:33+08:00 · dave · done · claude exit 0
+- 2026-10-17T17:32:47+08:00 · check-dave · start · 
+- 2026-10-17T17:32:49+08:00 · check-dave · done · dave answer passes check; other experts absent as expected
+- 2026-10-17T17:32:56+08:00 · lao-tzu · start · opencode
+- 2026-10-17T17:34:15+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-17T17:34:24+08:00 · check-lao-tzu · start · 
+- 2026-10-17T17:34:27+08:00 · check-lao-tzu · done · lao-tzu answer passes check; other experts absent from this folder by design
+- 2026-10-17T17:34:39+08:00 · compare · start · 
+- 2026-10-17T17:38:25+08:00 · compare · done · compare.md written: 6 usable answers, 9 disagreements, 16 merged questions; no winner picked

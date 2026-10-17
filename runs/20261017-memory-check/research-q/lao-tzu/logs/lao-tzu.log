@@ -1,0 +1,92 @@
+[0m
+> plan · MiniMax-M3.1-Flash-Preview
+[0m
+[0m→ [0mRead runs/20261017-memory-check/research-q/lao-tzu/briefs/lao-tzu.md
+[0m→ [0mRead runs/20261017-memory-check/research-q/lao-tzu/seats/lao-tzu-list.md
+[0m→ [0mRead runs/20261017-memory-check/research-q/lao-tzu/seats/lao-tzu-identity.md
+[0m→ [0mRead memory_check/USE_CASES.md
+[0m→ [0mRead memory_check/REQUIREMENTS.md
+[0m→ [0mRead memory_check/VISION.md
+[0m→ [0mRead memory_check/AGENTS.md
+[0m→ [0mRead docs/memory-system/CACHES.md
+[0m→ [0mRead docs/memory-system/SOURCE_OF_TRUTH.md
+[0m→ [0mRead runs/20261017-memory-check/sot-requirements.txt
+[0m→ [0mRead docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml
+[0m→ [0mRead tools/memory_index.py
+[0m
+[0m$ [0mls -d project-memory 2>&1; echo "---"; ls memory_check/ 2>&1; echo "--- code_map pkg"; cat code_map/package.json 2>&1; echo "--- guard pkg"; cat .claude/skills/workflow-design/guard/package.json 2>&1
+ls: cannot access 'project-memory': No such file or directory
+---
+AGENTS.md
+REQUIREMENTS.md
+USE_CASES.md
+VISION.md
+--- code_map pkg
+{
+  "name": "code-map",
+  "private": true,
+  "type": "module",
+  "bin": { "code-map": "src/cli.ts" },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsgo --noEmit",
+    "eval": "bun eval/run.ts"
+  },
+  "dependencies": {
+    "typescript": "5.8.2"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "@typescript/native-preview": "7.0.0-dev.20251207.1"
+  }
+}
+--- guard pkg
+{
+  "name": "harness-guard",
+  "private": true,
+  "type": "module",
+  "bin": { "harness-guard": "src/cli.ts" },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsgo --noEmit -p ."
+  }
+}
+[0m
+[0m$ [0mpython3 - <<'PY'
+import yaml
+d=yaml.safe_load(open('docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml'))
+recs=[]
+for cat in d['categories']:
+    for g in cat['groups']:
+        for r in g['requirements']:
+            recs.append(r)
+print('total records', len(recs))
+from collections import Counter
+c=Counter()
+for r in recs:
+    for ch in [x.strip() for x in str(r['check']).split(';')]:
+        c[ch]+=1
+print(c)
+tool=[r['id'] for r in recs if 'tool' in str(r['check'])]
+git=[r['id'] for r in recs if 'git' in str(r['check'])]
+rev=[r['id'] for r in recs if 'reviewer' in str(r['check'])]
+none=[r['id'] for r in recs if 'none'==str(r['check']).strip()]
+print('tool', len(tool), tool)
+print('git', len(git), git)
+print('reviewer-involved', len(rev))
+print('none', len(none), none)
+both=[r['id'] for r in recs if 'reviewer' in str(r['check']) and ('tool' in str(r['check']) or 'git' in str(r['check']))]
+print('reviewer AND tool/git (C1 vs U4 conflict)', len(both), both)
+print('tool-or-git', len(set(tool)|set(git)))
+print('reviewer-only', len([r for r in recs if 'reviewer' in str(r['check']) and 'tool' not in str(r['check']) and 'git' not in str(r['check'])]))
+PY
+total records 64
+Counter({'reviewer': 39, 'git': 13, 'none': 11, 'tool': 9, 'secret scanner': 1})
+tool 9 ['W1.1a', 'W1.1b', 'W1.2a', 'W1.3a', 'W4.1b', 'K6.1a', 'K6.2', 'K6.3a', 'Rd3.1a']
+git 13 ['W1.1a', 'W1.1b', 'W2.1b', 'W4.2', 'W5.1', 'W6.1a', 'W6.1b', 'W6.2', 'W6.3a', 'K1.1', 'K4.1', 'K4.3', 'K5.1']
+reviewer-involved 39
+none 11 ['W2.1a', 'W2.2a', 'W4.1a', 'W4.3', 'K4.2', 'Rd3.1b', 'Rd4.2', 'Rd4.3', 'Rd4.5a', 'Rd5.4', 'Rd5.5']
+reviewer AND tool/git (C1 vs U4 conflict) 6 ['W1.3a', 'W5.1', 'W6.1a', 'W6.3a', 'K1.1', 'K4.1']
+tool-or-git 20
+reviewer-only 33
+[0m
