@@ -1,0 +1,2 @@
+- C1: Already fixed by E-1 in f3d6132: checks.ts:113-116 keeps the reasons of the failed staged read (stagedRead), and sotResult (checks.ts:225-235) returns 'could not run' rather than 'not applicable' for every non-guidance record when that read failed. Exit becomes 1 and the warning lists them (warn.ts:317).
+- C10: Already fixed by E-1 in f3d6132: checkRd1 (cachechecks.ts:69-102) collects unreadable session-start files and returns couldNotRun for them, so Rd1 can no longer pass.

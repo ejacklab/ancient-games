@@ -1,0 +1,7 @@
+- 2026-10-18T03:22:14+08:00 · cr1a · planned · Round 20 review fix
+- 2026-10-18T03:22:14+08:00 · dl5 · planned · Round 20 review fix
+- 2026-10-18T03:22:14+08:00 · xb · planned · Round 20 review fix
+- 2026-10-18T03:24:34+08:00 · cr1a · done · hooks.ts criteriaStep returns null while the session's deadline runs; round20b CR1a 3 pass
+- 2026-10-18T03:24:34+08:00 · dl5 · done · cli.ts deadlineCommand refuses wait --mark before any deadline is resolved; 3 pass
+- 2026-10-18T03:24:34+08:00 · xb · done · crossed-build-check.js bgCommand/testRun + missing-.exit rule; harness all passed
+- 2026-10-18T03:25:03+08:00 · all · done · bun test 1560 pass, tsgo clean, harness all passed

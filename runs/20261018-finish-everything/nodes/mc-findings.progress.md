@@ -1,0 +1,9 @@
+- 2026-10-18T02:28:02+08:00 · judge · start · judging 17 findings
+- 2026-10-18T02:30:45+08:00 · judge · done · 12 accepted (C2, C3, C4+A3, C5, C6, C7+A1, C8, C9, C11, C12+A5, A2, A4), 2 dropped (C1, C10 fixed by E-1 in f3d6132); probes in /tmp, removed
+- 2026-10-18T02:31:21+08:00 · reproduce · start · writing review2 tests for 12 findings
+- 2026-10-18T02:36:39+08:00 · reproduce · done · 12/12 reproduced (13 tests: 9 TS in memory_check/test/review2.test.ts, 4 py in tests/test_memory_index_review2.py); red files mc-reproduce-ts.red.txt, mc-reproduce-py.red.txt; other suites: bun 87 pass + 9 review2 fail, pytest 465 passed; note: C6 fix will break test_memory_index_unit.py::test_active_problems_are_errors_and_inactive_ones_are_warnings
+- 2026-10-18T02:36:58+08:00 · fix-a · start · writing brief mc-fix-a.md, then opencode
+- 2026-10-18T02:38:47+08:00 · fix-a · start · mcode run of briefs/mc-fix-a.md
+- 2026-10-18T02:47:16+08:00 · fix-a · done · mcode exit 0; result file has no status line (12/12 pieces described); its claims: bun 97 pass/0 fail, pytest 468 passed, tsgo clean (not rerun by fix-a); 9 files in memory_check/src + tools/memory_index.py changed
+- 2026-10-18T02:47:35+08:00 · verify-a · start · running verify after fix a
+- 2026-10-18T02:48:42+08:00 · verify-a · done · pass: bun 97 pass/0 fail; tsgo exit 0; pytest 468 passed; git status short identical before/after smoke (report is inside already-untracked runs/20261018-finish-everything/); the two new test files' sha256 unchanged

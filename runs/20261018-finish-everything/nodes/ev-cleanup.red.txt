@@ -1,0 +1,106 @@
+FFFF..F                                                                  [100%]
+=================================== FAILURES ===================================
+_ test_a_successful_merge_removes_the_judge_folder_and_keeps_call_one_in_the_run _
+
+make_run = <function make_run.<locals>.factory at 0x77f6e2856de0>
+
+    def test_a_successful_merge_removes_the_judge_folder_and_keeps_call_one_in_the_run(make_run):
+        """Item 8 — after judged-merge the /tmp folder is gone and judge-1.json lives on in the run folder."""
+        run = make_run()
+        folder = answered(run)
+        result = cli_ok("judged-merge", run)
+        assert result.stdout.strip() == "plant_found: true", result.stdout
+>       assert gone(folder), f"{folder} was left behind: {sorted(str(p) for p in folder.rglob('*'))}"
+E       AssertionError: /tmp/evaluator-judge-cleanup-be725f1cf56d was left behind: ['/tmp/evaluator-judge-cleanup-be725f1cf56d/judge-1.json', '/tmp/evaluator-judge-cleanup-be725f1cf56d/judge-input.json', '/tmp/evaluator-judge-cleanup-be725f1cf56d/product', '/tmp/evaluator-judge-cleanup-be725f1cf56d/product/calc.py', '/tmp/evaluator-judge-cleanup-be725f1cf56d/product/notes.txt']
+E       assert False
+E        +  where False = gone(PosixPath('/tmp/evaluator-judge-cleanup-be725f1cf56d'))
+
+tests/test_evaluator_judge_cleanup.py:86: AssertionError
+___________ test_a_merge_with_no_plant_removes_the_judge_folder_too ____________
+
+make_run = <function make_run.<locals>.factory at 0x77f6e2857d80>
+
+    def test_a_merge_with_no_plant_removes_the_judge_folder_too(make_run):
+        """Item 8 — with judged cases but no valid plant, call 2 is not required; the folder still goes."""
+        run = make_run(plants=[])
+        call_one = {"cases": [{"case": "G2-F1", "holds": True, "evidence": CLEAN_QUOTE}]}
+        folder = answered(run, call_one=call_one, call_two=None)
+        assert read(run / ".coordinator/plant.json")["plant_case"] is None
+        result = cli_ok("judged-merge", run)
+        assert result.stdout.strip() == "plant_found: false", result.stdout
+>       assert gone(folder), f"{folder} was left behind on the no-plant path"
+E       AssertionError: /tmp/evaluator-judge-cleanup-03a84e69361d was left behind on the no-plant path
+E       assert False
+E        +  where False = gone(PosixPath('/tmp/evaluator-judge-cleanup-03a84e69361d'))
+
+tests/test_evaluator_judge_cleanup.py:101: AssertionError
+_______ test_a_malformed_call_one_answer_still_removes_the_judge_folder ________
+
+make_run = <function make_run.<locals>.factory at 0x77f6e2856f20>
+
+    def test_a_malformed_call_one_answer_still_removes_the_judge_folder(make_run):
+        """Item 8 — judge-1.json that is not JSON makes the merge exit 2, and the folder is removed all the same."""
+        run = make_run()
+        folder = answered(run, call_one=None)
+        (folder / "judge-1.json").write_text("{ this is not json", encoding="utf-8")
+        result = run_model_io("judged-merge", run)
+        assert result.returncode == 2, f"exited {result.returncode}: {result.stdout}{result.stderr}"
+        assert "judge-1.json" in result.stderr, result.stderr
+>       assert gone(folder), f"{folder} was left behind after the merge raised"
+E       AssertionError: /tmp/evaluator-judge-cleanup-d15af8e4a9fd was left behind after the merge raised
+E       assert False
+E        +  where False = gone(PosixPath('/tmp/evaluator-judge-cleanup-d15af8e4a9fd'))
+
+tests/test_evaluator_judge_cleanup.py:116: AssertionError
+________ test_a_missing_call_two_answer_still_removes_the_judge_folder _________
+
+make_run = <function make_run.<locals>.factory at 0x77f6e2857a60>
+
+    def test_a_missing_call_two_answer_still_removes_the_judge_folder(make_run):
+        """Item 8 — with a plant and no judge-2.json the merge exits 1 (EV-C6.2), and the folder is removed too."""
+        run = make_run()
+        folder = answered(run, call_two=None)
+        assert not (run / "judge-2.json").exists()
+        result = run_model_io("judged-merge", run)
+        assert result.returncode == 1, f"exited {result.returncode}: {result.stdout}{result.stderr}"
+        assert "judge-2.json" in result.stderr, result.stderr
+>       assert gone(folder), f"{folder} was left behind after the merge raised"
+E       AssertionError: /tmp/evaluator-judge-cleanup-d108783f0160 was left behind after the merge raised
+E       assert False
+E        +  where False = gone(PosixPath('/tmp/evaluator-judge-cleanup-d108783f0160'))
+
+tests/test_evaluator_judge_cleanup.py:127: AssertionError
+___________ test_the_merge_removes_nothing_outside_the_judge_folder ____________
+
+make_run = <function make_run.<locals>.factory at 0x77f6e2889ee0>
+tmp_path = PosixPath('/tmp/pytest-of-smoke01/pytest-640/test_the_merge_removes_nothing0')
+
+    def test_the_merge_removes_nothing_outside_the_judge_folder(make_run, tmp_path):
+        """Item 8 — the run folder, look-alike /tmp siblings and what a link inside the folder points to all survive."""
+        run = make_run(siblings=("-sibling", "x"))
+        folder = answered(run)
+        siblings = [Path(f"{folder}-sibling"), Path(f"{folder}x")]
+        for sibling in siblings:
+            sibling.mkdir()
+            (sibling / "keep.txt").write_text("a look-alike name\n", encoding="utf-8")
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "keep.txt").write_text("linked from inside the judge folder\n", encoding="utf-8")
+        (folder / "link-out").symlink_to(outside, target_is_directory=True)
+        (folder / "file-link").symlink_to(outside / "keep.txt")
+    
+        cli_ok("judged-merge", run)
+    
+>       assert gone(folder), "the judge folder itself was not removed"
+E       AssertionError: the judge folder itself was not removed
+E       assert False
+E        +  where False = gone(PosixPath('/tmp/evaluator-judge-cleanup-6063a1631daa'))
+
+tests/test_evaluator_judge_cleanup.py:184: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_evaluator_judge_cleanup.py::test_a_successful_merge_removes_the_judge_folder_and_keeps_call_one_in_the_run
+FAILED tests/test_evaluator_judge_cleanup.py::test_a_merge_with_no_plant_removes_the_judge_folder_too
+FAILED tests/test_evaluator_judge_cleanup.py::test_a_malformed_call_one_answer_still_removes_the_judge_folder
+FAILED tests/test_evaluator_judge_cleanup.py::test_a_missing_call_two_answer_still_removes_the_judge_folder
+FAILED tests/test_evaluator_judge_cleanup.py::test_the_merge_removes_nothing_outside_the_judge_folder
+5 failed, 2 passed in 0.54s

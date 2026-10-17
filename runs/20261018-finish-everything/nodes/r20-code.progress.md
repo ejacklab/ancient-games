@@ -1,0 +1,9 @@
+- 2026-10-18T03:06:00+08:00 · dl · planned · deadline --id/--run and end-never-guesses in src/deadline.ts and src/cli.ts
+- 2026-10-18T03:06:00+08:00 · cr · planned · criteria step waits while the session's deadline runs, in src/hooks.ts
+- 2026-10-18T03:06:00+08:00 · xb · planned · args.timeout reaches every engine call and test command in crossed-build-check.js
+- 2026-10-18T03:07:00+08:00 · dl · start · read SPEC Round 20 DL1-DL4 and the tests; change deadline.ts selection helpers and cli.ts flags
+- 2026-10-18T03:07:38+08:00 · dl · done · --id/--run name one deadline, end refuses to guess; round20-deadline 22 pass
+- 2026-10-18T03:07:40+08:00 · cr · start · defer the criteria step while the session deadline runs
+- 2026-10-18T03:07:53+08:00 · cr · done · criteria step defers while the session deadline runs; round20-criteria 5 pass
+- 2026-10-18T03:07:53+08:00 · xb · start · args.timeout through every engine call and test command
+- 2026-10-18T03:09:17+08:00 · xb · done · args.timeout validated and threaded into every engine call and test command; harness all passed

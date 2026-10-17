@@ -1,0 +1,8 @@
+- 2026-10-18T02:42:57+08:00 · ev-tests · start · writing tests/test_evaluator_judge_cleanup.py
+- 2026-10-18T02:46:10+08:00 · ev-tests · done · 7 tests; red 5 (folder left behind), not_red 2 (missing folder no-rows, symlink target survives); all 7 pass against a scratch copy with a try/finally rmtree; other evaluator tests 184 pass; red in nodes/ev-cleanup.red.txt
+- 2026-10-18T03:10:47+08:00 · ev-code-a · start · waiting for opencode to be free
+- 2026-10-18T03:12:09+08:00 · cleanup · start · read brief and judged_merge; folder reached on 4 paths (rows with plant, rows without plant, malformed judge-1.json, missing judge-2.json)
+- 2026-10-18T03:14:22+08:00 · cleanup · done · try/finally around the folder reads plus _remove_judge_folder (no symlink, missing is nothing); tests/test_evaluator_judge_cleanup.py 7 passed; tests/test_evaluator_*.py 191 passed
+- 2026-10-18T03:12:25+08:00 · ev-code-a · done · opencode exit 0; result status done; model_io.py 21+/7-
+- 2026-10-18T03:12:39+08:00 · ev-verify-a · start · verify model_io.py judge cleanup
+- 2026-10-18T03:14:12+08:00 · ev-verify-a · done · pytest 191 passed; evaluate_harness 20/20; one rmtree added, on _judge_folder(run), no symlink followed; no /tmp/evaluator-judge-* left; test file sha256 a3e2af8d... at start and end (same) but the reference '8...' in the task does not match it: pass false

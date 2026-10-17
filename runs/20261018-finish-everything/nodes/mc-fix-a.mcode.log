@@ -1,0 +1,32 @@
+All 12 accepted findings are fixed and every check in the brief's standard is green.
+
+**Checks (baseline from this session's first run → now)**
+
+| Check | Before | After |
+| --- | --- | --- |
+| `cd memory_check && bun test` | 87 pass / **10 fail** | **97 pass / 0 fail** |
+| `pytest -q tests/test_memory_index.py tests/test_memory_index_unit.py tests/test_memory_index_review2.py` | 465 pass / **3 fail** | **468 passed** |
+| `cd memory_check && ./node_modules/.bin/tsgo --noEmit -p .` | clean | clean |
+
+**What each fix was, and where**
+
+- **C2** — `projectMemory` is now also true when the staged diff *removes* memory (`gitchecks.ts:stagedMemoryRemovals`, new), so a staged `git rm` of all of `project-memory/` reaches `checkK41` instead of reading as "not applicable".
+- **C3** — `versionsOf`'s baseline falls back to the entry's text at the head of the range when the range holds no commit of that entry, so `--since` compares HEAD→staged instead of passing over 0 transitions.
+- **C4+A3** — a command registered under `hooks.SessionStart` in a harness settings file is read as a session-start read whatever its wording; `command` strings are parsed out of the JSON and judged with `atStart` forced true.
+- **C5** — `checkRd1` reads session-start files from the staging area (`gitchecks.ts:stagedFiles`, new: one `ls-files -s` + one `cat-file --batch`). A file in no staged version (untracked, or a hook under `.git/`) is read from the working tree, and the evidence now says which of the two was read — that fallback is what keeps `review-enh.test.ts` E-1b (unreadable untracked CLAUDE.md) green.
+- **C6** — a `memory_index.py` warning naming W1.1a is a break; every other warning stays a note. `tools/memory_index.py` untouched, as the brief required (B2.5).
+- **C7+A1** (py) — the unborn-HEAD early return applies only to a revision; `--check` on the staging area now reads it.
+- **C8** (py) — `is_object_id` accepts 40- and 64-character hex ids.
+- **C9** — `headerDelimiters` keeps only `---` pairs whose lines between them hold a top-level `key:`.
+- **C11** — `agentMemory` lists child folders only.
+- **C12+A5** — the warning names entry files from the parsed staged paths (`CheckRun.stagedEntries`) instead of a pattern over the evidence, so a bare tool name and a name with a space are both named whole.
+- **A2** (py) — `check_index` reports the over-limit failure beside a mismatch.
+- **A4** — `linksNothing` reads a bare `-` as no link.
+
+**Two judgement calls worth your eye.** `checks.ts:270`'s Rd3.1a workaround became unreachable after the A2 fix; I left it as a guard against reporting a pass for a check that never ran, since removing it is in no accepted finding. And the reproduce step's warning that the C6 fix would break `test_active_problems_are_errors_and_inactive_ones_are_warnings` did not materialise — that unit test exercises `parse_entry` only, and it passes.
+
+One limitation stated plainly: this repository has no `project-memory/`, so running the tool against it exercises almost none of the changed paths. I eyeballed the new Rd1 evidence on a scratch repo under `/tmp` instead — both new breaks appear as `AGENTS.md:2 — "At session start, read …"` (from the staged blob) and `.claude/settings.json — hooks.SessionStart[0]: "cat …"`. Nothing asserts on that text.
+
+Files:
+- mc-fix-a result: 12 pieces, before/after numbers, what the checks do not establish · /home/smoke01/dev/ancient-games/runs/20261018-finish-everything/nodes/mc-fix-a.result.md
+- mc-fix-a progress log · /home/smoke01/dev/ancient-games/runs/20261018-finish-everything/nodes/mc-fix-a.progress.md

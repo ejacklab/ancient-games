@@ -1,0 +1,45 @@
+# Brief — fix the memory-check tools against the accepted review findings (a)
+
+You work in the repository root. **Use relative paths only, from the repository root; never `cd` to an absolute
+path** — some engines auto-reject them and stops with no work done. Change only `memory_check/src/**` and
+`tools/memory_index.py`, the progress file and the result file below. Do not change any test, any doc or the
+guidelines. Do not commit or stage anything.
+
+## Task
+Make the failing tests pass — one test per accepted finding listed below, each failing now for the reason the finding
+names — while every other test keeps passing.
+
+Tests: memory_check/test/review2.test.ts (10 tests) and tests/test_memory_index_review2.py (3 tests)
+
+Accepted findings:
+- C2 [ts] (U2 (SoT:K4.1 MUST; U2 wins over C4)): Staging the deletion of all of project-memory/ makes projectMemory false (checks.ts:114), so sotResult (checks.ts:225) returns K4.1 'not applicable' and drops the deletion that checkK41 found; the run does not fail. — input: Repo with one valid committed entry and INDEX.md; `git rm -rq project-memory`; run memory-check. Probe printed: '- **SoT:K4.1** (MUST) — not applicable — project-memory/ is absent from the staged state...'.
+- C3 [ts] (C1 / SoT:K4.3 (MUST), U2): With --since, versionsOf (gitrequirements.ts:217-233) sets baseline only when the range holds a commit of the entry; when it holds none, the HEAD-to-staged change is never compared and K4.3 passes over 0 transitions. — input: Commit an entry, commit an unrelated file, change the entry's source to s2 and stage it, run with --since HEAD. Probe printed: 'SoT:K4.3 (MUST) — pass — ... over 0 transition(s) in HEAD^..HEAD'; without --since: 'fail — ... source changed in the staged state: "s1" → "s2"'.
+- C4+A3 [ts] (C6 / CACHES:Rd1, U2): readLine (cachechecks.ts:37-50) tests every line on its own against the SESSION_START wording, so a SessionStart hook in .claude/settings.json whose command opens a cache file reads as an on-demand read and Rd1 passes. — input: .claude/settings.json = {"hooks":{"SessionStart":[{"matcher":".*","hooks":[{"type":"command","command":"cat project-memory/.cache/index.sqlite"}]}]}} with project-memory/.cache/ present and ignored. Probe printed: 'CACHES:Rd1 ... — pass — clause Rd1.1: 2 session-start file(s) scanned ...'.
+- C5 [ts] (C5 (files are checked in the staged state, and the report says so)): checkRd1 reads instruction files with readFileSync (cachechecks.ts:68), i.e. from the working tree, while the report and F1's evidence say every verdict reads the staged state; for tracked files a staged instruction to open the cache that is removed only in the working tree passes. Read, not probed. — input: Stage an AGENTS.md line 'At session start, read project-memory/.cache/index.sqlite', then delete that line in the working tree without staging it; run memory-check: Rd1 passes on the working-tree text.
+- C6 [ts] (SoT:W1.1a (MUST; fails_if has no status exemption), U2, C3): a retired or superseded entry whose prefix does not match its kind gives memory_index.py only a warning (its B2.5, which stays: one old entry must not block the build), and memory-check then reports SoT:W1.1a pass. Fix in memory_check: a kind/prefix warning from memory_index.py makes W1.1a fail. Do not change memory_index.py for C6. — input: a retired D- entry with kind: fact (test C6 in memory_check/test/review2.test.ts)
+- C7+A1 [py] (SoT:W4.1b, W1.2a, K6.1a/K6.2 (MUST), U2, C3): check_index returns 0 on an unborn HEAD before it reads the staging area (tools/memory_index.py:483-485), even though `git ls-files -s` works before the first commit. Since f3d6132 (checks.ts:287) memory-check reports 'could not run' instead of pass, but a planted break still never shows as a fail (U2), and C3 puts the fix in memory_index.py. — input: git init; stage an entry with status: invalid; no commit. Probe printed: 'nothing to check: HEAD names no commit yet...', 'py exit 0', and 'SoT:W4.1b (MUST) — could not run'.
+- C8 [py] (SoT:K6.1a, K6.2 (MUST), U2, U6, C3): is_object_id (tools/memory_index.py:353-354) accepts only 40-character ids, so a SHA-256 repository's staged memory looks absent and --check exits 0. memory-check's E-1 guard (checks.ts:287) turns this into 'could not run', but the planted break is still not a fail. — input: git init --object-format=sha256; commit an entry and an INDEX.md that says 'wrong'. Probe printed: 'nothing to check: no project-memory/ in the staging area', 'py exit 0'.
+- C9 [ts] (U2 (exactly the planted breaks fail), SoT:W6.1a, R3): headerDelimiters (entry.ts:53-67) counts every '---' line outside fences, and headerBlocks = floor(count/2) (entry.ts:128), so two thematic breaks in the body read as a second header block and W6.1a fails falsely. — input: One valid entry whose body after **Why:** has two '---' lines. Probe printed: 'SoT:W6.1a (MUST) — fail — ...D-17-10-abc123-2026-a.md:7 — a second --- header block'.
+- C11 [ts] (F1 (MUST), U1): agentMemory (locations.ts:228-238) lists every child of <home>/.claude/agent-memory, files included, as a present '<name>/' agent-memory folder. — input: --home H where H/.claude/agent-memory/ holds only a regular README.md. Probe printed: '| agent memory README.md/ | `.../agent-memory/README.md` | present |'.
+- C12+A5 [ts] (R2 (MUST: the warning gives ids and file names), U3): warn.ts:12 FILE_NAME matches only 'project-memory/entries/[\w.\-]+', so the bare file names in memory_index.py findings are never matched (C12), and names with spaces or non-ASCII characters are cut short (A5). Merged: same line, same defect class, one fix (carry the parsed entry paths into the warning). — input: C12: a committed entry restaged with status: invalid, run --warn. Probe printed: 'memory-check: SoT:W4.1b fails — an entry's status is not one of active, superseded, retired', with no file. A5 (read): an entry named 'project-memory/entries/D-17-10-abc123-2026-time check.md' with a failing MUST gets 'files: project-memory/entries/D-17-10-abc123-2026-time'.
+- A2 [py] (SoT:Rd3.1a (MUST), U2, C3): check_index returns 1 on an index mismatch (tools/memory_index.py:499-502) before it reaches over_limit (line 503), so an over-limit index that is also stale never gets its Rd3.1a failure. memory-check works around this at checks.ts:270 by reporting 'could not run'; the amended C3 says to fix it in memory_index.py. Read, not probed. — input: Active entries whose rendered index is over 200 lines or 24,000 bytes, with a stale staged INDEX.md; `memory_index.py --check` reports only the mismatch, and memory-check gives Rd3.1a 'could not run', not fail.
+- A4 [ts] (SoT:K4.1 (MUST), U2, R3): An indented empty bullet under superseded_by gives Field.full '-' (entry.ts:94-97), which linksNothing (gitrequirements.ts:146-149) does not treat as empty, so a superseded entry with no link gets 'needs a reviewer' instead of a fail. — input: A committed entry with status: superseded and 'superseded_by:\n  -'. Probe printed: '- **SoT:K4.1** (MUST) — needs a reviewer — ... no status: superseded without superseded_by ...'.
+
+## Lessons (from `lessons for --agent the engine --kinds code-edit`)
+- When a change sends new cases into an existing code path, list that path's early returns and exemptions first, and
+  test each with one of the new cases.
+- some engines auto-reject a command with an absolute path, even inside the repo: relative paths only.
+
+## Pieces and progress (first)
+One piece per finding. Before starting, append one `planned` line per piece to
+`runs/20261018-finish-everything/nodes/mc-fix-a.progress.md`, then one line as each starts and ends:
+`- <ISO time from date -Iseconds> · <piece-id> · <planned|start|done|fail> · <short note>` (the piece id is one word).
+
+## Standard
+`cd memory_check && bun test` passes; `python3 -m pytest -q tests/test_memory_index*.py` passes;
+`cd memory_check && ./node_modules/.bin/tsgo --noEmit -p .` is clean.
+
+## Result
+`runs/20261018-finish-everything/nodes/mc-fix-a.result.md`: `status: done|partial|fail`, one sentence; per finding
+what changed (file and function); the test and typecheck commands with their last lines; CONTRADICTS (a finding that
+cannot be fixed without breaking a requirement, with the id) or none.

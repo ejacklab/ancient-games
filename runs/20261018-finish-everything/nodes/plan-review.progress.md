@@ -1,0 +1,26 @@
+- 2026-10-18T02:21:07+08:00 · linus · start · mcode
+- 2026-10-18T02:21:08+08:00 · dave · start · claude
+- 2026-10-18T02:21:09+08:00 · dario · start · claude
+- 2026-10-18T02:21:09+08:00 · sun-tzu · start · dsh
+- 2026-10-18T02:21:12+08:00 · fan-li · start · agy
+- 2026-10-18T02:22:37+08:00 · linus · done · mcode exit 0
+- 2026-10-18T02:22:42+08:00 · fan-li · done · agy exit 0
+- 2026-10-18T02:22:43+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-18T02:22:48+08:00 · check-linus · start · 
+- 2026-10-18T02:22:51+08:00 · check-linus · done · linus check has no FAIL line; other experts have no answer file (ignored)
+- 2026-10-18T02:22:54+08:00 · check-sun-tzu · start · 
+- 2026-10-18T02:22:56+08:00 · check-fan-li · start · 
+- 2026-10-18T02:22:57+08:00 · check-sun-tzu · done · sun-tzu answer passes check; other experts absent from this folder, as expected
+- 2026-10-18T02:22:59+08:00 · check-fan-li · done · fan-li answer file checks clean
+- 2026-10-18T02:23:13+08:00 · dario · done · claude exit 0
+- 2026-10-18T02:23:24+08:00 · check-dario · start · 
+- 2026-10-18T02:23:26+08:00 · check-dario · done · dario check has no FAIL dario lines; other experts report no answer file (ignored)
+- 2026-10-18T02:24:49+08:00 · dave · done · claude exit 0
+- 2026-10-18T02:24:59+08:00 · check-dave · start · 
+- 2026-10-18T02:25:01+08:00 · check-dave · done · dave answer passes check; other experts no answer file (ignored)
+- 2026-10-18T02:25:11+08:00 · lao-tzu · start · opencode
+- 2026-10-18T02:25:57+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-18T02:26:07+08:00 · check-lao-tzu · start · 
+- 2026-10-18T02:26:10+08:00 · check-lao-tzu · done · lao-tzu answer checked, no FAIL lines for lao-tzu
+- 2026-10-18T02:26:22+08:00 · compare · start · 
+- 2026-10-18T02:29:18+08:00 · compare · done · compare.md written; all six CHANGE; master already holds the evaluator merge (76596fa), flagged

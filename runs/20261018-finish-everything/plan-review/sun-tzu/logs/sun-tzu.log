@@ -1,0 +1,636 @@
+dsh: reasoning:
+Let me read the plan file.
+dsh: reasoning:
+Now I need to answer as Sun Tzu, following the format. Let me think carefully.
+
+The question: Is the order right? What to drop or defer? Biggest risk and the one check that would catch it?
+
+Facts given:
+- Engines: Codex at 99% until ~04:00; opencode works one at a time; mcode works on small briefs; agy read-only; dsh empty on last review; Claude subagents work.
+- Items 1-8 fixes with known check. Items 9-11 design choices for evaluator, each ~1M tokens to measure on real run. Item 12 runs evaluator once (~1M tokens). Item 13 reading 42 old insight sections and marking each.
+- Master merge (item 1) cannot land while another session's uncommitted edit sits on a file the branch touches.
+
+Deadline 08:18, current time around 02:18 (engines checked 02:18). 6 hours.
+
+My answer should be a vote: APPROVE or CHANGE. I think CHANGE.
+
+Key reasoning through rules:
+
+1. Order: Item 1 (merge) is blocked by another session's uncommitted edit — cannot land. The plan puts a blocked, external-dependency item first. Rule #2: make yourself unbeatable first; don't seek battle you can't win. Rule #9: bring the other side to you; do not be brought — i.e., the blocked item should be moved to where its dependency clears, not sit at the head of the queue. But note item 1 says "merged in a clean worktree branch `merge/evaluator` with every suite passing; the master merge itself waits only for..." — so partial work can proceed: create the clean worktree and validate. That may be worth starting early because it's the base for everything else? Actually items 9-12 are evaluator design/integration, depending on evaluator branch. Hmm.
+
+Also #3: whole over broken — prefer preserving. Merge conflicts / worktree churn risk.
+
+2. Drop/defer: items 9-11 each ~1M tokens to measure, plus 12 ~1M. That's 4M tokens for design choices that can be deferred. Rule #14: choose action by ratio of forces. Rule #5: move only when it accords with advantage. Within 6 hours, the evaluator design choices are the most expensive and least certain; the known-check fixes 1-8 are cheap and definite. #8 says value victory not duration, speed. So do 1-8, 12 maybe, 13; defer 9-11 (or reduce to written proposals without measuring) — but the plan's "done when" for 9-11 is "experts' design applied" — applying design is cheap; measuring is the 1M cost. Hmm, the facts say "each costing about 1M tokens to measure on a real run" — so the choice is: measure each on a real run. That's the cost. Could apply design without measuring and mark not measured. But plan says "Items 9–11 are design choices for the evaluator".
+
+Wait — "each costing about 1M tokens to measure on a real run" could refer to the evaluator run itself. Item 12 "runs the evaluator once (about 1M tokens)". So 9-11 = 3M plus 12 = 1M = 4M tokens. In 6 hours with the engine constraints, that's a lot.
+
+3. Biggest risk: the single point of failure is the master merge blocked by another session's uncommitted edit (external, cannot be resolved by any engine, only the owner or the other session). If it doesn't clear, item 1 never lands, and items 9-12 (evaluator integration) rest on a branch that isn't master. The one check: before starting, verify the other session's uncommitted edit's status — a check at time T that re-checks at fixed intervals; or the check that catches it: does the branch that everything else builds on actually merge into master with suites passing, run early, or confirm whether the evaluator work can proceed and be committed to `merge/evaluator` even without master. The one check: "run the full suite on the merge/evaluator worktree and record the master merge as an owner-blocked item at the top of the report" — hmm, that's not "catch" the risk.
+
+Actually the one check that would catch the biggest risk: at a fixed time (e.g., 05:00), check whether `docs/TASK_TYPES_LEDGER.md` is committed; if not, it's an owner question and items depending on master are dropped from the 6-hour scope. So the check is a time-boxed gate.
+
+Alternatively the biggest risk is contention: opencode one at a time shared with another session, Codex at 99% until 04:00, dsh unreliable. If the one concurrent engine is occupied by the other session, the whole plan stalls. The check: at 02:30, one probe call to opencode and time it; if it isn't free, plan collapses to Claude subagents only.
+
+Hmm, which is biggest? The plan says engines checked at 02:18: opencode free now, but another session also uses it. Single-engine serialization means 14 items sequential. Six hours; each workflow item maybe 20-40 min → 14 items ≈ too much. The plan overcommits: 14 items, many needing review/crossed builds each with several agent calls, sequential on one engine. Rule #14 ratio of forces: the plan is outmatched — too many objectives for the force available. Should consolidate: do items 1-8 + 13 (13 is reading, parallelizable? no engine needed maybe), and defer 9-12.
+
+Let me think about the token budget too: 9-12 ≈ 4M tokens. Time-wise evaluator runs consume wall-clock.
+
+The answer format wants "CHANGE followed by each change as the exact current words and the exact new words". So I need to quote the plan lines exactly and give replacements. That conflicts with "Quote nothing" in the brief — "Your rules above hold no original words; cite them by number." That means quote nothing *from the rules*? "Quote nothing. Your rules above hold no original words; cite them by number." But the required output format says "each change as the exact current words and the exact new words" — so quoting the plan is required. I think "quote nothing" means don't quote the source text of Sun Tzu (the rules hold no original words). The output format requires exact current words from the plan. I'll quote the plan words as required.
+
+Now, what exact changes?
+
+Current item 1 row:
+"| 1 | Merge `build/evaluator` + the parser fix into master | merge | merged in a clean worktree branch `merge/evaluator` with every suite passing; the master merge itself waits only for the other session's uncommitted `docs/TASK_TYPES_LEDGER.md` (safety bound) — done the moment it is committed |"
+
+Change: move items 9-11 later/deferred; reorder. The exact current words should be lines from the plan.
+
+Let me propose these changes:
+
+1. Reorder: move the merge (item 1) out of the head of the queue? Actually the cheapest decisive move: run items 2-8 first (known checks, cheap), then item 1 merge when the ledger commit appears, then 13, then 12, defer 9-11. But item 1 is a prerequisite for 8? Item 8 is evaluator fix EV-R3.2 — the evaluator branch is `build/evaluator`; item 8 is "Evaluator: the judge copy inside the run folder (EV-R3.2)" — that's a fix to evaluator code, depends on evaluator branch. Item 1 merges build/evaluator + parser fix into master. Item 12 evaluates memory_check using the evaluator.
+
+Order: It says "each: done when its check holds". If items 2-8 are on memory_check/guard/workflow code (items 2-6 memory_check & guard; 7 crossed-build-check; 8 evaluator), they can proceed without master. Actually the branch merge can be done into `merge/evaluator` early (that part is not blocked) and only the master merge waits. So item 1's "done" has two parts; the worktree part is unblocked. So keeping item 1 first is fine for the branch part, but the "done when" won't be satisfied → it looks started, not done. Rule #16 orders clear first; rule #2 make self unbeatable first.
+
+I think the sharper change: the plan should not spend the first and most valuable hours on a merge whose final step is owned by another session. Do the worktree merge + full suites as item 1a (time-boxed), then move on regardless; register the master merge as an owner-wait at 04:00/08:00 not a gate.
+
+2. Drop/defer 9-11: change rows 26-28 to deferred past the 6 hours, keeping the experts' written designs (no 1M-token measurement), and item 12 runs once only if items 1-8 and 13 are all closed by 06:00. That's the ratio-of-forces (#14) and value-not-duration (#8).
+
+3. Add a gate/check: a single line in "How it runs": at 04:00, stop and check the time used vs items closed; drop anything not started. #5 no move without advantage; #16 clear orders.
+
+Biggest risk: the one-engine bottleneck + the 4M-token evaluator work = running out of time with nothing landed. The one check: a fixed mid-point checkpoint at 05:00 that compares closed items against the clock and freezes scope — if fewer than 6 items closed, defer 9-12. Alternatively the check that would catch the merge-block: whether `docs/TASK_TYPES_LEDGER.md` is committed.
+
+Hmm. Question 3 asks: "What is the biggest risk to the plan, and the one check that would catch it?" The answer should name one risk and one check. I'll choose: the plan is outmatched — more work than the force can carry in the time, so it ends at 08:18 with several items half-done and the master merge not landed. The one check: at 04:00 (half-time), count items closed against items started; if closed < 6 of 8, drop 9-12 entirely. That is a check with a threshold. But is "6 of 8" invented structure? The brief says don't invent numbers where not given — but a recommendation can pick a threshold and name its price. Hmm, rule: "Never fill a gap with my own value" applies to EJ's rules, but here I'm advising. Better to base the threshold on the plan's own items: half-time = 4 hours in = 06:18? Wait, start ~02:18, deadline 08:18, so halfway is 05:18. Hmm, the brief says time-boxed 6 hours deadline 08:18 and engines checked 02:18. So 03:18 is 1h in... Let me compute: 02:18 + 6h = 08:18. Halfway = 05:18.
+
+But I shouldn't rely too hard on time arithmetic. I could say: at the halfway point (05:18), if items 1-8 are not all closed, defer 9-12. That's a clean rule using the plan's own stated cutoff.
+
+Also the engine constraint: Codex resets ~04:00, meaning the most capable engine is unavailable for the first ~1h40m. #9: bring the other side to you — start the pieces that need no engine (item 13 triage is reading 42 sections and marking each — could be done by the main agent or parallel Claude subagents; it's cheap and independent) and the design write-ups for 9-11 (paper only, no measurement) before 04:00, while Codex is down. Hmm, but 13 is "triage" with 42 insights; reading can be split across agents. Do that early because it needs no opencode? Actually all agents run on some engine. Claude subagents work always — those are "inside workflows" and unaffected by Codex/opencode contention. So use Claude subagents for 13 and for the design drafts, and keep opencode/Codex for builds/tests.
+
+So change: item 13 moves earlier (out of last place before reporting) because it's independent of the merge and can be split across Claude subagents while Codex is down. That's #9 and #12 (regular/irregular combos) and #14.
+
+Let me formulate exact changes with exact current words.
+
+Change 1 — order: move item 13 earlier and item 1's master-merge gate out of the head.
+
+Current line 18:
+"| 1 | Merge `build/evaluator` + the parser fix into master | merge | merged in a clean worktree branch `merge/evaluator` with every suite passing; the master merge itself waits only for the other session's uncommitted `docs/TASK_TYPES_LEDGER.md` (safety bound) — done the moment it is committed |"
+
+New:
+"| 1 | Merge `build/evaluator` + the parser fix into `merge/evaluator` | merge | `merge/evaluator` carries both branches with every suite passing — time-boxed to one hour; the master merge is a separate owner-wait row (1b), not a gate on items 2–8 |"
+plus a row 1b? The format says each change = exact current words and exact new words. I can replace the row with new text that includes the split.
+
+Hmm, but should the merge even be first? Arguments for first: everything (items 9, 10, 12 evaluator) builds on the evaluator branch; a clean merge validates that the branch is sound and gives the base. Arguments against: it is blocked at the last step. #2 says make yourself unbeatable first — the merge is making the base sound, so it belongs first, provided its blocked tail doesn't gate the rest. So keep the worktree part first, split off the owner-wait. Good.
+
+Change 2 — drop/defer 9-11 to after the 6 hours; keep only their written designs.
+
+Current rows 26-28. Replace them with a single row "9–11 (deferred)"? The exact-current-words/new-words format: I can replace the three rows with:
+
+"| 9–11 | Evaluator design choices (five result states, use cases as input, proof rule O8): experts write the design; measurement deferred | design, deferred | a written recommendation per item in `runs/20261018-finish-everything/`, marked not measured; no 1M-token run inside the 6 hours |"
+
+Hmm, but the question says items 9-11 are design choices that cost 1M each to measure. Deferring means "kept open with a reason" per the plan's own done-when "experts' design applied, or kept open with a reason". So the plan already permits keeping open — that's the lever! "as 9" / "experts' design applied, or kept open with a reason". So the change can use the plan's own escape clause: write it explicitly as "kept open with a reason" for 9-11 rather than measuring. That's elegant: no new structure, uses the plan's words.
+
+Change 3 — item 12 conditional: "only if 1–8 and 13 are closed by 06:00" — exact current words line 29. New words add the gate.
+
+Change 4 — add midpoint check in How it runs.
+
+Change 5 — item 13 earlier: move the row or add a line to How it runs that 13 runs first in parallel by Claude subagents while Codex is down.
+
+But eh, the plan says "each item done when check holds" and sequential. The order in the table implies the order of execution. Moving row 13 up would mean physically reordering the table.
+
+Let me settle a concrete revised order:
+- 02:20–04:00 (Codex down): 13 (triage, Claude subagents, splittable) + 2 (parser spec, cheap) + design write-ups for 9-11 (paper, no measurement).
+- 04:00 onwards: 1 merge worktree, then 3-8, then 12 if time.
+- Master merge and 9-11 measurements: deferred/owner-wait.
+
+Wait, but item 3 "17 unjudged review findings" — needs review-enhance workflow, another engine. Item 2 parser spec is a build. Hmm.
+
+Could argue: start with the cheap, known-check fixes (2-8), because they are the "make yourself unbeatable" (tests passing, guard fixed) and they give early wins; the merge is mostly a mechanical joining. But items 3-6 relate to memory_check/guard, and item 1's parser fix overlaps item 2 (memory_check's Fails-if lines → parser cases). So merge first gives the base the parser fix sits on. Actually item 1 = merge build/evaluator + parser fix into master. Item 2 = memory_check's Fails-if lines separate cases with "; " — that's about the parser, likely the "parser fix" in item 1. Hmm, item 2 could be part of item 1's branch.
+
+I'll not over-engineer. The core changes:
+
+A. Split item 1 into the unblocked branch merge (first, time-boxed) and the blocked master merge (owner-wait, never a gate).
+B. Use items 9-11's own "kept open with a reason" — defer measurement; written design only.
+C. Make item 12 conditional on 1-8 closed.
+D. Move item 13 to the front, in parallel with the branch work, run by Claude subagents (Codex down until 04:00).
+E. Add a halfway gate at 05:18: count closed items; if 1-8 not all closed, drop 9-12 (already deferred) and 13's remainder → report.
+
+Actually if 13 moves to front it's done early. Good.
+
+Biggest risk: the merge's master landing blocked by another session's uncommitted file — and the plan's first item's "done when" cannot be met by any agent, so the plan starts by recording an incomplete item and everything downstream that assumes master is wrong. The one check that catches it: before the first commit, run `git status`/`git log` on `docs/TASK_TYPES_LEDGER.md` in the other session's worktree... but the brief says the main agent can't touch another session's work. The check: at 04:00, verify the file is committed and the merge applies cleanly to master; if not, mark 1b owner-wait and stop treating master as the base. That's a timed check with a definite outcome.
+
+Alternatively the biggest risk is the engine bottleneck: only one opencode at a time, shared with another session; Codex down until 04:00; dsh unreliable; agy read-only. If opencode is busy, the crossed-build pattern cannot run, and 9 build items in 6 hours don't fit. The one check: a single timed probe at the start — dispatch one small opencode call and one Claude subagent call, record wall-clock; if opencode's call doesn't return within the first workflow's cost, plan collapses to Claude subagents only.
+
+Which does the question want? "the biggest risk to the plan, and the one check that would catch it". The plan itself flags the merge block. But it says the branch part is unblocked. Hmm, the facts list the merge block as a fact, suggesting the questioner wants it addressed. I'd pick the bottleneck risk? Let me weigh:
+
+- Six hours, 14 items, sequential on effectively one engine, plus 4M evaluator tokens. That is a plan that cannot finish. Rule #14: with fewer forces, hold/avoid — don't seek a battle you're outmatched in. The risk is "the plan overcommits; the clock is the enemy" and the check is a halfway count.
+
+I think the strongest answer: the biggest risk is time, not the merge. The merge is a known external block with a known owner. The plan does not have enough force for 14 items; it will hit 08:18 with 9-12 half-done. And the one check: at 05:18 (halfway), count closed items; if 1-8 are not all closed, do not start 12 at all and write the report then.
+
+But "one check that would catch it" — a midpoint count is a check that catches overrun when it's still fixable at halfway. Yes.
+
+Hmm, but I could combine: name the risk as the clock vs force, with the merge block as the part of it that no agent can compress.
+
+Also rule #5: never move from anger — don't let the pressure to "finish everything" cause a risky merge over another session's work. Safety bound is right; keep it.
+
+Rule #3: whole over broken — prefer the branch whole and tested over a rushed master merge; a half-merged master breaks everyone.
+
+Rule #15: general's faults — the plan's fault is wanting to finish everything (the general set on dying / on living?) — a general who will not accept loss gets captured. Actually the plan is set on "finish everything"; that's the fault "one set on dying can be killed" — willing to risk total. Naming that is good: the plan's own title "finish everything" is a fault under #15. Add a written acceptance that not everything finishes.
+
+Rule #7: deception — not relevant.
+Rule #11: foreknowledge from people — the engine check was done at 02:18 by watching, good; extend: measure the other session's use of opencode, not assume.
+Rule #17: probe — one probe call to opencode, measure latency.
+Rule #20: which house falls first — judge by land/tax/breed; analog: which item should fall first — judge by cost and dependency. Could use for ordering: the item with the fewest dependencies and known check falls first.
+
+Rule #14: ratio of forces — outmatched, avoid; choose the action by ratio. 14 items vs 6h and one engine → avoid (narrow the objective).
+Rule #13: not every road taken; not every command accepted — the "finish everything" command should not be accepted in full; omit 9-11. Strong fit: "commands of the ruler not to be accepted" — EJ's instruction "finish everything" is a command a general may not accept when it endangers the whole. That's an edgy but apt use.
+Rule #8: value victory not duration.
+Rule #2: unbeatable first: make the base (tests green, merge branch) unbeatable before design work.
+Rule #9: be first on the field: start the unblocked, dependency-free work before Codex is available; don't wait.
+Rule #16: clear orders then enforced: the plan's done-when are mostly clear; item 9-11's "as 9" and "experts advise" aren't orders; item 12 "a verdict exists" is clear.
+
+Now, "What should be dropped or deferred": 9-11 measurement (3M tokens) and 12 conditional. Also item 1's master merge (defer to owner/other session). Also maybe item 7 (crossed-build-check timeout) — hmm, that's a workflow fix and cheap; keep.
+
+What about item 13 — 42 sections, reading 42 old insight sections and marking each — is that a big cost? Reading 42 sections could be split across agents; cheap-ish, but deciding "evidence vs real failure with its top fix applied" could expand: 42 fixes! The row says each marked as evidence or a real failure with its top fix applied. If many are real failures, applying 42 top fixes is unbounded. That's a hidden cost. #17 probe: sample a subset (e.g., the first 10) to estimate how many are real failures, then decide. That's a good point: probe before committing. And rule #14: choose by ratio. Defer the fixes; mark only. Actually the plan's done-when requires fixes applied. I'd flag that item 13's check is not a check — "each marked" is measurable but "top fix applied" is unbounded. So change item 13's done-when to "each marked; fixes applied only to those whose top fix has a known check, the rest listed". Hmm, that's close to items 1-8's "known check" idea.
+
+Let me decide the changes list (keep it tight, since output says "a vote, not an essay", "at most five lines" for Why):
+
+Changes:
+1. Row 1 split into 1a (branch, time-boxed, first) and 1b (master merge, owner-wait, not a gate).
+2. Rows 9-11 replaced by a deferred row using the plan's own "kept open with a reason" — written design only, no 1M run.
+3. Row 12 gets a condition: only if 1-8 and 13 are closed by 05:18.
+4. Row 13 moves to the top of the queue (before 1a or right after start), run by Claude subagents; its done-when splits marking from applying fixes.
+5. Add a 05:18 check line in How it runs.
+
+Five changes might be a lot but OK. The format wants "each change as the exact current words and the exact new words". Let me write them precisely.
+
+Change 1:
+Exact current: "| 1 | Merge `build/evaluator` + the parser fix into master | merge | merged in a clean worktree branch `merge/evaluator` with every suite passing; the master merge itself waits only for the other session's uncommitted `docs/TASK_TYPES_LEDGER.md` (safety bound) — done the moment it is committed |"
+New: "| 1a | Merge `build/evaluator` + the parser fix into a clean worktree branch `merge/evaluator` | merge | `merge/evaluator` carries both, every suite passing; time-boxed to 04:30, then abandoned without touching master |\n| 1b | The master merge itself | owner-wait | waits on the other session's uncommitted `docs/TASK_TYPES_LEDGER.md`; recorded in the report, never a gate on 2–8 |"
+
+Hmm "time-boxed to 04:30" — is that a good number? Codex resets 04:00. Starting merges before 04:00 uses opencode. It's fine but maybe avoid inventing. A time box is a recommendation, and #5/#14 support it. I'll say "time-boxed to one hour".
+
+Change 2:
+Exact current rows 26-28:
+"| 9 | Evaluator: the five result states (pass, fail, needs a reviewer, not applicable, could not run) | evaluator design | experts' design applied, or kept open with a reason |
+| 10 | Evaluator: use cases as an input (trace each use case to requirement ids) | evaluator design | as 9 |
+| 11 | Evaluator: proof rule O8 (every probe red on its mutant, or one) | evaluator decision | experts advise; the main agent decides provisionally |"
+New: "| 9–11 | Evaluator: the five result states, use cases as an input, proof rule O8 | evaluator design, deferred | kept open with a reason: a written recommendation per item in `runs/20261018-finish-everything/`, no 1M-token measurement inside the 6 hours |"
+
+Change 3:
+Exact current: "| 12 | The evaluator at a milestone, end to end: evaluate memory_check, ingest the verdict | integration | a verdict on memory_check exists and `evaluation ingest` turned it into failures and notes (cost recorded) |"
+New: same row + "only started if 1–8 and 13 are closed by 05:18; otherwise deferred with the reason" — exact new words.
+
+Change 4:
+Exact current: "| 13 | The 42 older insights with no recorded choice | triage | each marked, under today's R12.2, as evidence (no choice needed) or a real failure with its top fix applied |"
+New: "| 13 | The 42 older insights with no recorded choice — run first, in parallel with 1a, by Claude subagents | triage | each marked under today's R12.2; fixes applied only where the top fix has a known check, the rest listed as a new backlog item |"
+
+And "run first" — position: the table order is the order, so placing 13 first means moving the row. Should I physically move it? In a CHANGE list, I can say the row moves to position 0. Maybe simpler: add to How it runs a line "13 runs from the start, split across Claude subagents, in parallel with 1a; Codex is unavailable until 04:00."
+
+Change 5:
+Exact current: "One workflow per item or pair of items, in the order above (sequential; opencode never twice at once), using the saved"
+New: "One workflow per item or pair of items, in the order above (sequential; opencode never twice at once; 13 runs first, split across Claude subagents while Codex is down), using the saved"
+
+And add a line after: "At 05:18, count closed items: if 1–8 are not all closed, start nothing new, write the report, and leave 9–12 open with reasons."
+
+Hmm, 05:18 is the midpoint. Might be better at 06:00 to leave 2h? Halfway is the natural check: rule #17 probe, #16. I'll use the midpoint and say why (half the time left to recover).
+
+Wait, the time: engines checked 02:18, deadline 08:18. Halfway 05:18. Yes.
+
+Now Why section, at most five lines, each citing rule:
+
+1. "my #13 and #14: the instruction is 'finish everything', but 14 items on one shared engine with four of them costing ~4M evaluator tokens is more than the force can carry; a general does not accept every command, and can only avoid when outmatched."
+2. "my #2 and #9: make the base unbeatable on the unblocked branch, and be first on the field with the work that needs no unavailable engine — 13 and the 9–11 design notes before 04:00, not last."
+3. "my #5 and #8: master merge blocked by another session's edit must not be fought for; value the items that land whole over a duration-driven attempt to land all."
+4. "my #17: one probe — at 05:18 count closed items — gives foreknowledge cheaply instead of discovering the overrun at 08:18."
+5. "my #15: the plan's title is the fault 'set on dying'; a general who will not accept loss in one item risks all of them. my reading: the merge is a dependency, not a task to be won."
+
+Line 5 mixes #15 and reading. Maybe trim.
+
+What I need to know:
+- Is item 2's parser fix the same change as "the parser fix" merged in item 1? (If so, 1a and 2 are one branch and 2 cannot run parallel.)
+- Is the other session's `docs/TASK_TYPES_LEDGER.md` expected to be committed by a known time? (If never, 1b leaves the 6-hour scope entirely.)
+- Is opencode dedicated to this run or shared turn-by-turn? (If shared, Claude subagents are the only engine and items 3-8 must be re-cut.)
+- Does "finish everything" include items 9-11's measurement, or is a written recommendation acceptable? (This decides whether deferring them counts as done.)
+- What is the token budget for the 6 hours? (If 4M is affordable, 12 can stay unconditional.)
+
+Those are questions whose answers change the answer. Good, but brief says list only what changes the answer. 3-4 is fine.
+
+Lessons: apply cite-files-inside-the-repo (not relevant — I'm answering in-message, no files written; brief cites plan path inside repo — fine, don't write files anyway). criteria-name-outcomes: my criteria should name outcomes — e.g., "1-8 closed" is an outcome; "time-boxed to one hour" is a mechanism but paired with outcome. facts-carry-their-source: I should label facts. In "Why" lines I should mark which facts are from the brief vs. recall. Hmm, the required format doesn't have a facts section, but the lesson says each fact in a question/brief carries its label — that's about the brief I received (it did label). For my answer, I can mark anything not in the brief as "my reading". I'll be careful.
+
+Also the brief says "Do not write files; your final message is the answer." So just the message.
+
+Now, does the question ask for APPROVE or CHANGE? CHANGE.
+
+Let me make sure the change block is exact: "exact current words and the exact new words". I'll present as a list of "Now: ... → New: ...".
+
+Careful about the quote-nothing rule: I'm quoting the plan, which is required. I'll phrase "Current words (plan.md:18)" etc. Good.
+
+Let me also reconsider whether to defer item 12. Item 12 is the integration proof: "the evaluator at a milestone, end to end" — it produces a verdict and ingest. That is the item that proves the evaluator works. If it's the point of the whole run, cutting it loses the demonstration. But it costs 1M tokens and comes after 9-11 (which are deferred — but 12 doesn't depend on 9-11 being decided; it can run with current evaluator). Hmm, plan order has 12 after 9-11. If 9-11 deferred, 12 could move earlier — that's actually a good change: 12 is the one integration proof; do it before the design items, not after. But at 1M tokens and needing the merge base, maybe after 1a and 8 (the judge copy fix inside run folder, which affects what a run writes). Item 8 is "no evaluator file is written outside runs/<runId>/" — relevant to running the evaluator (12). So order: 1a, 8, 12, then 3-7? Hmm.
+
+Wait — is 12 more valuable than 9-11? Yes: it verifies the evaluator end to end on a real milestone (memory_check), which catches far more than deciding three design questions. So I'd move 12 up (right after the base is green and 8 is fixed), and defer 9-11 measurements. That's a stronger change: "What should move earlier or later?" Answer: 12 earlier (once 1a+8 land), 9-11 later, 13 earlier/parallel.
+
+Yes, that's a sharper ordering answer:
+- 13 first (parallel, Claude subagents, Codex down).
+- 1a branch merge first for the base.
+- 8 (evaluator judge copy) right after 1a — because 12 depends on it.
+- 12 next — the integration proof.
+- 3-7 after.
+- 9-11 deferred.
+- 2 wherever it fits with the parser.
+- 1b owner-wait.
+
+Hmm, but 3-6 (memory_check review findings, guard fixes) are fixes with known checks — cheap and definite, and perhaps they should come before the 1M-token 12. Rule #14: with limited force, attack the empty/cheap first? Or #8: value victory — after 1a+8, running 12 gives a big verified win. But 12 costs 1M tokens and maybe 45 min; 3-7 are maybe 2h total. With 6 hours, you can do both if 9-11 are cut: 1a (1h) + 8 (0.5) + 12 (1) + 3-7 (2) = 4.5h plus 13 parallel. Feasible-ish.
+
+I need to be decisive without over-specifying. The vote is CHANGE with ~4 changes.
+
+Let me reconsider the "biggest risk" once more. I'll name: time against force — specifically that the plan's first row cannot be completed by anyone in the room, so the plan's own progress measure ("done when") reports failure from hour one while items 9-12 spend ~4M tokens on measurement. The one check: at 05:18 count closed rows; if 1a and 8 aren't closed, don't start 12. Hmm, that mixes.
+
+Better single risk: "the merge's final step is owned by another session; until it lands, every item that assumes master is measuring against a branch." The check: before 1a starts, `git log -1` on `docs/TASK_TYPES_LEDGER.md` and `git status` in the main worktree — if the file is dirty, 1b moves out of scope for the whole 6 hours, recorded once. That's a concrete one check that catches it. But the brief's fact already says it cannot land; the plan already records it as a safety bound. So that risk is known and handled; the *unhandled* risk is the overcommit. A reviewer should catch what the plan missed, not restate what it handled.
+
+So: biggest risk = overcommit/time; the one check = the 05:18 count.
+
+But maybe even better: the biggest risk is that the crossed-build pattern (one engine at a time, shared) serializes everything, and the plan's "One workflow per item or pair of items, in the order above" makes it strictly sequential — no use of Claude subagents for parallel work. The check: at 02:30, dispatch two independent Claude-subagent pieces (13 split in two) and one opencode piece; if the opencode piece hasn't started in 20 min, cut to Claude-only. Hmm, that's a probe (#17) which I like.
+
+I'll combine risk statement: "the plan is one queue on one shared engine, and 14 rows do not fit in 6 hours; the overrun will appear only at the end" and check "at 05:18 count closed rows and freeze scope". That's a single risk and a single check. Then Why line cites #14/#17.
+
+Now write the answer strictly in the format:
+
+# 孫子 (Sun Tzu) — review a 6-hour plan before it runs
+
+## Answer
+CHANGE
+1. Move 13 to the front, run in parallel by Claude subagents.
+   Now: `| 13 | The 42 older insights with no recorded choice | triage | each marked, under today's R12.2, as evidence (no choice needed) or a real failure with its top fix applied |`
+   New: ...
+2. Split row 1...
+3. Move 12 earlier and gate it...
+4. Defer 9-11...
+5. Add midpoint check...
+
+Hmm, "each change as the exact current words and the exact new words" — numbered list is fine? "Never add structure that was not given" — the format gives "each change" but not numbering. A numbered list is the natural rendering of "each change"; I'll use bullets or numbers. Bullets are less structured. I'll use "-".
+
+Let me draft the new words carefully so they read as plan table rows.
+
+Change 1 (row 1):
+Now: `| 1 | Merge `build/evaluator` + the parser fix into master | merge | merged in a clean worktree branch `merge/evaluator` with every suite passing; the master merge itself waits only for the other session's uncommitted `docs/TASK_TYPES_LEDGER.md` (safety bound) — done the moment it is committed |`
+New:
+```
+| 1a | Merge `build/evaluator` + the parser fix into a clean worktree branch `merge/evaluator` | merge | `merge/evaluator` carries both, every suite passing; time-boxed to one hour, then left as is |
+| 1b | The master merge | owner-wait | the other session's uncommitted `docs/TASK_TYPES_LEDGER.md` is committed and the merge applies clean; recorded in the report, no gate on any other row |
+```
+
+Change 2 (row 13):
+Now: `| 13 | The 42 older insights with no recorded choice | triage | each marked, under today's R12.2, as evidence (no choice needed) or a real failure with its top fix applied |`
+New: `| 13 | The 42 older insights with no recorded choice — run first, split across Claude subagents while Codex is down | triage | each marked under today's R12.2 as evidence (no choice needed) or a real failure; a fix is applied only where its check is known, the rest listed as a new backlog item |`
+
+Change 3 (row 12):
+Now: `| 12 | The evaluator at a milestone, end to end: evaluate memory_check, ingest the verdict | integration | a verdict on memory_check exists and `evaluation ingest` turned it into failures and notes (cost recorded) |`
+New: `| 12 | The evaluator at a milestone, end to end: evaluate memory_check after 1a and 8 land, ingest the verdict | integration | a verdict on memory_check exists and `evaluation ingest` turned it into failures and notes (cost recorded) |`
+Plus gating in How it runs or in done-when: "only started if 1a and 8 are closed". Let me put that in the row: `| 12 | ... — started as soon as 1a and 8 are closed, before 3–7 | integration | ... |`. Hmm, "before 3-7" is the ordering change.
+
+Change 4 (rows 9-11):
+Now the three rows. New one row:
+`| 9–11 | Evaluator: the five result states, use cases as an input, proof rule O8 | evaluator design, deferred | kept open with a reason: a written recommendation per item in `runs/20261018-finish-everything/`, no 1M-token measurement inside the 6 hours |`
+
+Change 5 (How it runs):
+Now: `One workflow per item or pair of items, in the order above (sequential; opencode never twice at once), using the saved`
+New: `One workflow per item or pair of items, in the order above (sequential; opencode never twice at once), with 13 running first in parallel on Claude subagents, using the saved`
+Add: `At 05:18, count the rows closed: if 1a and 8 are not closed, start nothing new; write the report and leave 9–12 open with reasons.`
+
+Hmm, that adds a sentence to How it runs — "exact new words" can include an added line. Fine.
+
+But wait: if 12 is "before 3-7" and 9-11 deferred, the order is 1a, 8, 12, 3-7, 2, 13? That's messy. Let me not move 12 before 3-7; instead simply: 12 runs after 1a and 8, when they are closed, and is not gated on 9-11. The plan's order already has 12 after 8 and after 9-11; deferring 9-11 automatically moves 12 up. So change 3 only needs to say 12 does not wait for 9-11 and starts as soon as 1a and 8 are closed.
+
+Actually that's implied by deferring 9-11. But explicit is better.
+
+Let me simplify to 4 changes:
+1. Row 1 split (1a branch / 1b master owner-wait).
+2. Rows 9-11 → one deferred row, written recommendation only.
+3. Row 12: starts as soon as 1a and 8 are closed, not after 9-11.
+4. Row 13: run first, split across Claude subagents; marking separated from fixes.
+5. How it runs: 05:18 count gate.
+
+Five. OK.
+
+Check the "at most five lines" for Why — I'll do exactly five bullet lines.
+
+Why:
+- my #13: the plan takes "finish everything" as given; with one shared engine and four items at ~1M tokens each, not every road is taken — 9–11's measurement is the road to leave, and 1b's master merge is a command no agent here can carry out.
+- my #14: count the force — 14 rows against one serial engine and ~6 hours is outmatched; with fewer than the task needs, avoid (cut scope), do not seek the full battle.
+- my #2 and #9: the unblocked branch (1a) and the work that needs no unavailable engine (13, 9–11's written notes) come first; waiting for Codex at 04:00 with nothing started is being brought to the field.
+- my #8: value victory, not duration — 1a whole and 12 proved beats 14 rows half-done at 08:18.
+- my #17: the 05:18 count is the probe that gives foreknowledge while there is still time to act on it.
+
+That's five lines. Does it answer Q1/Q2/Q3 explicitly? Q1 order: 13 first, 1a first, 12 earlier. Q3 risk: overcommit/time; check at 05:18. But I should state the risk explicitly outside Why? The format has only Answer/Why/What I need to know. The change list can name the risk inside change 5: "the biggest risk is the plan runs out of clock with rows half-done". Better: put the risk sentence in the change 5 new words? Hmm, the format is rigid. Maybe in the Answer, under CHANGE, one bullet can be the check with its reason: e.g., "- Add to *How it runs*: the biggest risk is the clock, not any one engine; ...". But Answer should be "each change as exact current and new words".
+
+I could add the risk statement in the Why lines (line 2 and 5 imply it), and make change 5 explicit. The question asked "what is the biggest risk...and the one check" — I should name it plainly. I'll fold it into the change text: 
+
+`- Add to "How it runs": "The biggest risk is the clock against 14 rows on one shared engine; at 05:18 count the rows closed — if 1a and 8 are not closed, start nothing new, write the report and leave 9–12 open with reasons."`
+
+That gives exact new words and names the risk + the check. Good. But "14 rows" will be 11 after merging 9-11; say "the rows above".
+
+Let me phrase: `The biggest risk is the clock against the rows above on one shared engine: at 05:18 count them closed; if 1a and 8 are not closed, start nothing new, write the report and leave 9–12 open with reasons.`
+
+Good.
+
+Now, is 05:18 right? Half of 6h from 02:18 = 05:18. Yes, and plan deadline 08:18. Good — using the plan's own numbers, not invented. Note the time is the plan's stated one.
+
+One more thought on Q2 "what should be dropped or deferred": also the master merge (1b). Covered. Also maybe item 7 (crossed-build-check timeout) — is it worth it? It fixes a workflow so future runs don't hang; cheap, known check. Keep.
+
+Also "dropped" — the title "finish everything" itself. Could propose a change to the pattern: "A question trials cannot answer goes to the owner at once" is already an owner-only item. My proposed change to the pattern? The brief invites "proposed change to the pattern". Is there one? Maybe: the pattern's "small pieces, each with its own check" should add "each piece also names its time box and the clock time it must be abandoned" — because the plan has checks but no abandonment times. That's a genuine pattern improvement that fits #8 (value victory not duration) and #16 (orders clear). I'll label it *proposed change to the pattern* and put it under What I need to know? No — it should be in the Answer as a change. Hmm, format says Answer is "APPROVE, or CHANGE followed by each change as the exact current words and the exact new words". A pattern change has no current words in the plan. I can phrase it as an addition with current words = none? 
+
+Maybe skip the pattern change to keep the vote tight. Or include it as a final bullet: "*Proposed change to the pattern* (not to this plan's words): every piece carries its abandonment time as well as its check — the plan has 11 checks and no abandonment time, which is why the clock can only be discovered at the deadline." That's good and allowed ("label such a point *proposed change to the pattern*"). But the instruction says "Your advice must fit it, and it may improve it: label such a point *proposed change to the pattern* and say what it would change." So include, labeled.
+
+Where? Under Answer after the changes, or as its own line. I'll put it as a final bullet in Answer with the label.
+
+Cost: each recommendation names its risk/price. The change list doesn't name prices. The Why lines partly do. I should add price to each change briefly? The instruction "Say what it costs. Every recommendation names its risk or price." I can append "Price:" to each change bullet. That may make it long but it's required. Let me add short parentheticals:
+- Split 1: price — the branch may sit unmerged until the other session commits, so the run ends with work on a branch not master.
+- Defer 9-11: price — the evaluator's three design choices stay open and unmeasured, so 12 proves only the current behavior.
+- 12 early: price — if 12 fails on a real defect, 3-7 slip; the 1M tokens are spent before the cheap fixes.
+- 13 first/parallel: price — 42 sections split across subagents may mark inconsistently; a second pass over markings needed.
+- 05:18 gate: price — rows cut at 05:18 are not recovered; better to plan the cut now.
+- Pattern: price — abandonment times can become a reason to stop early; they are set in advance, not at the wall.
+
+Hmm, that's a lot. Keep prices one clause each.
+
+Now, "What I need to know": 3-4 questions. Should be ones that change the answer:
+1. Is "finish everything" satisfied by items 1-8 + 12 + 13 with 9-11 written and open, or does the owner require 9-11 measured today? (If required: the 6 hours cannot hold it; the plan needs an 8-hour block or a second opencode.)
+2. Is the other session's `docs/TASK_TYPES_LEDGER.md` expected to be committed within the 6 hours, and by whom? (If not: 1b is out of scope from the start and every item must build on `merge/evaluator`, not master.)
+3. Is opencode dedicated to this run, or shared turn-by-turn with the other session? (If shared: items 3-8 are Claude-subagent work only and 12 is the only engine call worth queuing.)
+4. Does item 2's parser change overlap the "parser fix" in item 1? (If the same change, 1a and 2 are one piece and the plan has one fewer row.)
+
+The format says "## What I need to know <questions whose answers would change the answer; 'none' if none>". Good.
+
+Should I mention tokens budget? Maybe fold into Q1.
+
+Also the brief asks me to answer the questions — is the order right, drop/defer, biggest risk. My answer covers via changes. Fine.
+
+Let me double check "Do not invent facts" — I use facts from the brief: Codex reset 04:00, opencode one at a time, items 9-11 1M each, 12 1M, 13 42 sections, merge blocked. Good. The item 1 / item 2 overlap is a question, not an assertion. The 05:18 is derived from plan's 6h/08:18 and 02:18 check. I can note "from the plan's stated deadline" — maybe mark my reading.
+
+One thing: the plan's deadline 08:18 and 6 hours implies start 02:18. Halfway 05:18. Fine.
+
+Also, should the answer be "APPROVE" because the plan already says items 9-11 "or kept open with a reason"? No — the plan still sequences them as measurement-costing and puts 12 after them; the facts say each ~1M. CHANGE is right.
+
+Let me make sure the exact current words I quote match the file exactly, including backticks and en dashes.
+
+Row 1 (line 18):
+`| 1 | Merge `build/evaluator` + the parser fix into master | merge | merged in a clean worktree branch `merge/evaluator` with every suite passing; the master merge itself waits only for the other session's uncommitted `docs/TASK_TYPES_LEDGER.md` (safety bound) — done the moment it is committed |`
+
+Rows 9-11 (lines 26-28) exact.
+
+Row 12 (line 29):
+`| 12 | The evaluator at a milestone, end to end: evaluate memory_check, ingest the verdict | integration | a verdict on memory_check exists and `evaluation ingest` turned it into failures and notes (cost recorded) |`
+
+Row 13 (line 30):
+`| 13 | The 42 older insights with no recorded choice | triage | each marked, under today's R12.2, as evidence (no choice needed) or a real failure with its top fix applied |`
+
+How it runs first line (40):
+`One workflow per item or pair of items, in the order above (sequential; opencode never twice at once), using the saved`
+
+Quote in markdown: using backticks inside a line with backticks is fine if I present as indented or code blocks. Better present current/new as fenced blocks? The table rows contain backticks; a fenced block is clean. But nesting fences... I can use 4-space indentation for the current/new words. That's readable.
+
+Actually for the "each change as the exact current words and the exact new words", I'll do:
+
+- **Change 1 — row 1 splits.**
+  Current:
+      | 1 | Merge ...
+  New:
+      | 1a | ...
+      | 1b | ...
+
+Indentation preserves pipe rows literally. Good.
+
+Now, the instruction "no preamble". Start with the H1 exactly.
+
+Also "Quote nothing" — I'm quoting the plan words as the format demands; I will not quote the rules. In Why, cite by number only. Good. And rule #n headings — naming rule topic is fine without quoting.
+
+Let me now think again about whether item 13 running first is wise. It's 42 sections, marking each — a reading task, no build, no merge dependency. Claude subagents can do it while Codex is down. It produces the report's largest chunk. Yes, first is right under #9. But does it compete for opencode? No, Claude subagents. The plan says "Claude subagents: inside workflows" — they work. Also the pattern says "Workflows when possible" — 13 can be a workflow with 4-6 parallel subagents. Good; label as such? The change says split across Claude subagents. Fine.
+
+One risk: item 13's marking may need judgement about R12.2; splitting across agents could produce inconsistent marks. Price noted.
+
+Now the pattern change. Phrase: "*proposed change to the pattern* — each piece names, at the start, the clock time by which it is abandoned as well as its check. This plan has a check for every row and no abandonment time for any, so the first time the clock is consulted is the deadline. Price: a fixed abandonment time can cut a piece that was about to land; the time is set before the work, not at the wall."
+
+Is that a change to "the pattern" (EJ's runs pattern) or to this plan? It's a change to the pattern. Good. But then it also implies adding abandonment times to this plan — which my change 5 does as one global gate. That's consistent.
+
+Hmm, "one check that would catch it" — the 05:18 count. But is a count "the one check"? Yes: closed rows vs rows started.
+
+Wait — should the checkpoint be at 04:00 (Codex reset) instead? The risk is the clock; 05:18 midpoint leaves 3h. If 1a and 8 aren't closed by 05:18, that's bad: 1a time-boxed 1h, 8 is small. By 05:18 (3h in) items 1a, 8, maybe 12 should be done. So the threshold could be stronger: "if 1a, 8 and 12 are not closed". But 12 costs 1M and may take long. I'll use "1a and 8" as the minimum gate (the base and the fix 12 depends on), which is defensible. Maybe also require 12 started. Let me say: "if 1a, 8 and 12 are not closed, start nothing new". Three hours for three pieces is reasonable. Hmm, but if opencode is blocked by another session, that slips through no fault. Still the check triggers action.
+
+I'll phrase: "if 1a, 8 and 12 are not closed by 05:18, start nothing new". And the Why line says the probe gives foreknowledge. Good.
+
+But then deferring 9-11 and gating 12 means if 12 fails, the run has 1a+8+13 only at 05:18 — acceptable.
+
+Let me reconsider the biggest risk one more time: is it really the clock? The facts: engine availability is the constraint (Codex 99% till 04:00, opencode one-at-a-time shared, dsh broken, agy read-only), and items 9-12 burn ~4M tokens. The clock risk is the manifestation; the cause is the force. I'll name it as "the clock against the rows on one shared engine" — combining.
+
+Now let me also double-check the "What I need to know" questions don't ask what the plan already answers. Q: is "finish everything" satisfied by...? The plan's own done-when for 9-11 says "experts' design applied, or kept open with a reason" — so keeping open is already allowed. Then asking whether the owner requires measurement is somewhat answered by the plan. Drop that one? It changes whether deferral is acceptable. But the plan already answers: "or kept open with a reason". So don't ask. Better question: is the 1M-token cost per item 9-11 (from the brief) the evaluator's run cost, or the design's measurement? Hmm.
+
+Replace with: "Does the 6 hours need items 9–11 decided, or is a written recommendation with its reason enough for the owner to accept at the end?" The plan permits the latter, so EJ's answer is likely "enough". Still, that's the pivot of my main cut, and the plan's permission is a done-when (conditional) not a scope decision. I think it's legitimate to ask. The instruction says don't ask what the template already answers or has an obvious default. The default is in the plan: kept open with reason is allowed. So asking is redundant → drop.
+
+Better questions:
+1. Is opencode dedicated to this run or shared turn-by-turn? (Changes the whole build order: if shared, 3-8 are Claude-only and 12 should be queued first at 04:00 when Codex returns, not now.)
+2. Is the other session's `docs/TASK_TYPES_LEDGER.md` expected to be committed inside the 6 hours? (If no, 1b is out of scope and "master" is not the base — a bigger change: 12 and all testing happen on `merge/evaluator`.)
+3. Are items 2 and 1's "parser fix" the same change? (If yes, one row, and 1a carries it.)
+4. Is there a token budget for the 6 hours? (If ~4M is fine, 9-11 could be measured after 12 rather than deferred; if not, the cut is forced.) — This changes the answer (whether to defer or just resequence). Good.
+
+These four all change the answer. Good.
+
+Now, labels: "my reading" where I infer. E.g., "the plan's title is a fault" is my reading of #15. In Why, line 5 could be the risk/check with #17.
+
+Let me finalize Why (five lines max):
+- my #13 and #14: the force is one shared engine and about six hours; the rows are eleven tasks plus a merge another session owns. A general does not take every road, and with fewer than the task needs, avoids the full battle — so 9–11's measurement and 1b's master merge leave the six hours.
+- my #2 and #9: unbeatable first on the branch no one else owns (1a), and first on the field with 13 while Codex is down; waiting until 04:00 with nothing running is being brought to battle.
+- my #8: value victory, not duration — 1a green, 8 in, and 12 proved on memory_check is the win; ten half-closed rows at 08:18 is not.
+- my #15: a plan titled *finish everything* is the general set on dying; the fault risks all for the one. (Careful: "set on dying can be killed" — willing to die = can be killed. Yes.)
+- my #17: the 05:18 count is the probe — reckoning the plan against the clock while there is still time to shed rows, instead of discovering it at the deadline. (Also #6? Mixing harm into benefit.)
+
+Good, five lines, each cites.
+
+Does any line claim facts not given? The eleven rows: after merging 9-11 it's 11 rows (1-8, 12, 13 = 10 + merged 9-11 = 11). Plus 1b — 12 rows. I'll say "the rows above" instead of a count to avoid error. Actually "eleven tasks" is my count; keep it vague.
+
+Now the Answer block. Order: maybe put the scope cut first (it's the headline), then order changes, then gate. Let me order:
+1. Defer 9-11 measurement (rows 26-28 → one row).
+2. Split row 1 into 1a/1b.
+3. Row 12 starts as soon as 1a and 8 close (before 3-7? The plan has 12 after 8 anyway — after deferring 9-11, 12 naturally follows 8. So the change is just "not gated on 9-11" — redundant with change 1. Maybe drop change 3 and instead say the row stays, but the How it runs line says 12 runs before 9-11's notes are finalized? Hmm.
+
+Actually with 9-11 deferred, the table order is 1a, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14. That puts 12 after 8, good, and 12 spends 1M before 3-7's cheap fixes. Is that the right order? Under #14, with limited force, do cheap known wins first (3-7) before the expensive proof (12)? But 12 is the integration proof that validates the evaluator the whole run is about; if it fails, everything changes. #17 says probe: 12 is the probe of the evaluator. But 12 costs 1M; if done at the end and fails, no time to fix. So earlier is better: after 8, before 3-7. Yes, change 3: move 12 to directly after 8 and before 3-7, and 3-7 can run in parallel? opencode one at a time — 12 uses the evaluator heavily; 3-7 are separate. Sequential.
+
+So order: 13 (parallel), 1a, 8, 12, then 3-7, 2 woven in, 14 report. Hmm, should 2 (parser spec) come before 1a since 1a includes "the parser fix"? Change 3 could absorb: 1a carries the parser fix; row 2 is the spec check on it. Ask in What I need to know.
+
+Let me phrase change 3: Row 12 becomes "start immediately after 1a and 8 close, then 3-7". Exact words.
+
+And a change for 3-7? No, the plan already has them after 8; only 12 moves ahead of them.
+
+Change 4 (row 13) moves to front.
+
+Change 5: the 05:18 gate.
+
+Change 6: pattern change (labeled).
+
+Six bullets is fine.
+
+Should I also change item 13's position by physically moving the row? In the table, order matters. My new row text says "run first". That's enough.
+
+Now cost/price for each:
+1. Defer 9-11: price — the evaluator's three design questions stay open; 12 proves only today's behavior, so a second 3M-token session is owed.
+2. Split 1: price — the branch merge is only half the row; master still waits, and every later item must build on `merge/evaluator`.
+3. 12 early: price — if 12 fails, the 1M tokens are spent before 3-7's cheap fixes; 3-7 then run under less clock.
+4. 13 first: price — 42 marks split across subagents drift in judgement; a second pass is owed, and I have no measurement that the split is faster than one reader. ("not measured" label — good per lessons.)
+5. 05:18 gate: price — rows cut are not recovered; the cut is chosen before the pressure.
+6. Pattern: price — an abandonment time set in advance can cut a piece about to land.
+
+Now write it cleanly. Keep it compact but complete. The required H1: "# 孫子 (Sun Tzu) — <the question in a few words>" → "# 孫子 (Sun Tzu) — a 6-hour plan, reviewed before it runs".
+
+One more check: "Refer to EJ as they/them." I do (the owner). "Do not write files" — I only wrote this message. Also I read the plan per the brief. I ran no shell commands. Good.
+
+Let me double-check the exact text of line 18 and others via the read output — yes.
+
+Note: line 18 has "—" em dash. I'll copy exactly.
+
+Line 29: "| 12 | The evaluator at a milestone, end to end: evaluate memory_check, ingest the verdict | integration | a verdict on memory_check exists and `evaluation ingest` turned it into failures and notes (cost recorded) |"
+
+Line 30: "| 13 | The 42 older insights with no recorded choice | triage | each marked, under today's R12.2, as evidence (no choice needed) or a real failure with its top fix applied |"
+
+Line 40: "One workflow per item or pair of items, in the order above (sequential; opencode never twice at once), using the saved"
+
+New line 40: "One workflow per item or pair of items, in the order above (sequential; opencode never twice at once), with 13 running first on Claude subagents, using the saved"
+
+And add a sentence: "The biggest risk is the clock against the rows on one shared engine: at 05:18 count them closed; if 1a, 8 and 12 are not closed, start nothing new, write the report, and leave 9–11 open with reasons."
+
+Hmm, if 9-11 are already deferred, "leave 9-11 open with reasons" is redundant but harmless; maybe "leave the rest open with reasons."
+
+Also should the report row 14 be protected? Yes, it's the last. If the gate fires at 05:18, the report gets written then (3h early), which is good.
+
+Wait — if the gate says "write the report" at 05:18, but the deadline is 08:18 and some work could continue... "start nothing new; write the report and leave the rest open with reasons" — the report can be drafted at 05:18 and finished at the end. The plan's row 14 says "written at the end of the time". Fine — the gate means: no new rows, draft the report, continue only in-flight rows.
+
+Let me phrase: "if 1a, 8 and 12 are not closed, start nothing new, spend the rest closing what is open, and draft the report from 07:30."
+
+Hmm, simpler: "start nothing new and draft the report from what is closed."
+
+I'll keep: "if 1a, 8 and 12 are not closed, start nothing new; close what is open, and write the report from that."
+
+Good. Now the What I need to know section.
+
+One concern: the brief says "Quote nothing. Your rules above hold no original words; cite them by number." and I'm using the plan's *title* words "finish everything" in a Why line. That's quoting the plan, not the rules. The format demands exact words for changes, so quoting the plan is sanctioned. The title quote in Why is arguably fine but to be safe I'll say "a plan whose title promises everything" without quotation marks. Actually "finish everything" is the title on line 1. I'll paraphrase: "the plan's title is the fault #15 names — the general set on dying." No quote.
+
+Also I use "my reading" where I'm not citing a rule — e.g., the claim that master merge is a command no agent can carry out rests on the brief's fact. Cite nothing? I can say "the facts give it". Hmm, each Why line must cite "my #n" or say "my reading"; mine all cite.
+
+Let me also make sure not to overclaim "a general does not take every road" — that's #13. Fine.
+
+Draft final:
+
+# 孫子 (Sun Tzu) — a 6-hour plan, reviewed before it runs
+
+## Answer
+CHANGE
+
+- **Defer 9–11; keep only their written design.**
+  Current:
+      | 9 | ... (three rows)
+  New:
+      | 9–11 | ... one row
+  Price: ...
+
+- **Split row 1 ...**
+  Current: ...
+  New: ...
+  Price: ...
+
+- **Run 12 as soon as 1a and 8 close, ahead of 3–7.**
+  Current: row 12
+  New: row 12 with "started as soon as 1a and 8 close, before 3–7"
+  Price: ...
+
+- **Run 13 first ...**
+  Current / New
+  Price
+
+- **Put the clock check in "How it runs" (the biggest risk is the clock, not any one engine).**
+  Current: line 40
+  New: line 40 + sentence
+  Price
+
+- ***proposed change to the pattern*** ...
+  Price
+
+## Why
+five lines
+
+## What I need to know
+four questions
+
+Let me be careful with the "New" for change 3 — "exact new words" of the row:
+
+`| 12 | The evaluator at a milestone, end to end: evaluate memory_check — started as soon as 1a and 8 are closed, before 3–7 — ingest the verdict | integration | a verdict on memory_check exists and `evaluation ingest` turned it into failures and notes (cost recorded) |`
+
+Hmm, inserting into the middle of the description with em dashes is clunky. Alternative: keep row text and add at the end of done-when: "| ... (cost recorded) — started as soon as 1a and 8 close, before 3–7 |". Let me put it in the Kind column: "integration (starts when 1a and 8 close, before 3–7)". Cleaner:
+
+`| 12 | The evaluator at a milestone, end to end: evaluate memory_check, ingest the verdict | integration (starts when 1a and 8 close, before 3–7) | a verdict on memory_check exists and `evaluation ingest` turned it into failures and notes (cost recorded) |`
+
+Good.
+
+For 13:
+
+`| 13 | The 42 older insights with no recorded choice — run first, split across Claude subagents | triage | each marked under today's R12.2 as evidence (no choice needed) or a real failure; a fix applied only where its check is known, the rest listed as new backlog |`
+
+Good.
+
+For 1a/1b as above.
+
+For the How it runs line:
+
+Current: `One workflow per item or pair of items, in the order above (sequential; opencode never twice at once), using the saved`
+
+New: `One workflow per item or pair of items, in the order above (sequential; opencode never twice at once), with 13 running first and split across Claude subagents, using the saved`
+
+and a new paragraph after the "How it runs" sentence: `The biggest risk is the clock against these rows on one shared engine. At 05:18 count the rows closed: if 1a, 8 and 12 are not closed, start nothing new, close what is open, and write the report from that.`
+
+That names the risk + the check. Good.
+
+Pattern change wording:
+"***proposed change to the pattern*** — every piece names, at the start, the clock time by which it is abandoned as well as its check. This plan has a check for every row and an abandonment time for none, so the clock first speaks at the deadline. Price: a time set in advance can cut a piece that was one step from landing."
+
+Should this be in Answer or a separate section? The output format says exactly Answer/Why/What I need to know. But the brief says label pattern points as "proposed change to the pattern". I'll put it as a final bullet in Answer, labeled.
+
+Length: probably okay.
+
+Now Why lines:
+
+1. "my #13 and #14: the force is one shared engine and about six hours, and the rows include a merge another session owns; a general does not take every road, and when outmatched avoids the full battle — the 9–11 measurements and the master merge are the roads left."
+2. "my #2 and #9: make the unowned branch unbeatable (1a) and be first on the field with 13 while Codex is down; starting at 04:00 with nothing run is coming late to battle."
+3. "my #8: victory, not duration — 1a green, 8 in, and 12 proved on memory_check is the win; many rows half-closed at 08:18 is not."
+4. "my #15: the plan's title is the first fault — the general set on dying. Holding every row risks all of them for the last one." Hmm "set on dying can be killed" means the one who is willing to die can be killed. A plan that will not give up a row can be killed by any one blocked row. Good.
+5. "my #17: the 05:18 count is the probe — reckoning the plan against the clock while there is still time to shed rows, rather than learning it at 08:18."
+
+Also #6 (mix harm into benefit) is used? Not explicitly; fine.
+
+"at most five lines" — these are five bullets, each maybe wrapping. OK.
+
+What I need to know:
+- "Is opencode this run's alone, or shared turn-by-turn with the other session? If shared, items 3–8 are Claude-subagent work and 12 is the only call worth queuing for 04:00."
+- "Is the other session's `docs/TASK_TYPES_LEDGER.md` expected to be committed inside the six hours? If not, 1b leaves the run entirely and every test runs on `merge/evaluator`, not master."
+- "Is row 2's change the same \"parser fix\" row 1 carries? If so, row 2 is not a separate row and 1a covers it." (Avoid quotes? fine.)
+- "Is there a token ceiling for the six hours? If roughly 4M is affordable, 9–11 are resequenced after 12 rather than deferred; if not, the deferral is forced."
+
+Good.
+
+One more: the question asks "Is the order right?" — my answer changes the order. "What should move earlier or later?" covered. "What should be dropped or deferred?" covered. "Biggest risk and one check" covered.
+
+Check exact wording of row 9-11 current that I must reproduce exactly. From the read:
+
+| 9 | Evaluator: the five result states (pass, fail, needs a reviewer, not applicable, could not run) | evaluator design | experts' design applied, or kept open with a reason |
+| 10 | Evaluator: use cases as an input (trace each use case to requirement ids) | evaluator design | as 9 |
+| 11 | Evaluator: proof rule O8 (every probe red on its mutant, or one) | evaluator decision | experts advise; the main agent decides provisionally |
+
+Yes.
+
+Should the new 9-11 row say "design, deferred" — but the 6-hour plan might still want the experts' written advice in the owner-only section (O1/O3 etc.). The plan's row 11 says "experts advise; the main agent decides provisionally" — deferring measurement doesn't defer advice. So new row: "experts' written advice recorded and the choice left open with a reason; no 1M-token measurement in the six hours". Good.
+
+Final new row:
+`| 9–11 | Evaluator: the five result states, use cases as an input, proof rule O8 | evaluator design, deferred | a written recommendation per item in `runs/20261018-finish-everything/` and the choice kept open with a reason — no 1M-token measurement inside the six hours |`
+
+Good.
+
+Now write the final message. No preamble. Use the exact H1 format. Keep it a vote, not essay.
+
+Double check: "APPROVE, or CHANGE followed by each change as the exact current words and the exact new words" — so "CHANGE" then changes. Good.
+
+I won't add a "Lessons" section — the lessons are in the brief to be applied, not repeated. Applied: outcomes named (closed rows), facts labelled, files inside repo (no writes). I should perhaps mark the one claim I have not measured: "I have no measurement that splitting 13 across subagents is faster" — that's in its price. Good, and it names what the check does not establish? The lesson "Name what that check does not establish" — my 05:18 check establishes time used vs rows closed, but not whether the remaining rows can finish in 3h. I can add to the check line: "(it shows the clock, not the remaining cost)". Hmm, might be too much. Actually the lesson says name who wrote the check and what it does not establish. I wrote the check; it counts closed rows, not whether the cut is right. I'll add a short parenthetical in the price of the gate: "Price: the count shows the clock, not whether the rows left can fit it; the cut is still my reading." That satisfies the lesson.
+
+Ok, write it.
