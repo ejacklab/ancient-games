@@ -1,0 +1,470 @@
+dsh: reasoning:
+Now read the list and identity files.
+dsh: reasoning:
+Let me read the rest of the list (lines 304+).
+dsh: reasoning:
+Now let me check the repository facts quickly. I have a 10-minute budget. Let me look at the run folder, the insights file, and the relevant docs to ground my answer.
+
+Let me look at:
+- runs/20261017-insight-placement/ (structure, sibling seats?)
+- runs/20261017-insight-level/insights.md (56 sections)
+- docs/HARNESS_REQUIREMENTS.md R12.3
+- .claude/skills/workflow-design/guard/
+
+Let me do parallel greps/reads.
+dsh: reasoning:
+The guard dir doesn't exist at `.claude/skills/workflow-design/guard/` — the ls shows SPEC.md etc.; wait, that first ls output was for `.claude/skills/workflow-design/guard/`? Actually the output shows a directory with SPEC.md, data, src, test, package.json — that looks like `guard/` is a project (the harness-guard is a separate codebase maybe). Hmm, the `.gitignore` and package.json — so `.claude/skills/workflow-design/guard/` contains SPEC.md 67KB and src, test, data. That's the harness-guard. Good.
+
+Let me read the question.md, criteria.yaml, and key docs. Also look at insights.md structure and how existing insights are written. Also check the other seats' answers if any (they may be running). And check docs/WORKFLOW_DESIGN_METHOD.md §4.
+
+Let me spend a few minutes.
+dsh: reasoning:
+Now check METHOD §4, the guard code for what it actually sees, and insights.md structure. Also maybe check docs/HARNESS_REQUIREMENTS.md R12.3.
+dsh: reasoning:
+The insights.md format uses per-section entries with Source and Root cause. Let me check an actual insight.md file to see the form of a section (six whys, options), and insight-decisions.md.
+
+Also check the guard SPEC for what triggers are implemented: does the guard see Write/Edit path and can add a line to context? Let's grep for PreToolUse, additionalContext.
+
+Also: the code map design. And check whether there's an existing `~/.agents/insights` or similar. And check `project-memory/` existence in this repo.
+
+Let me be efficient — 10 min budget. Key facts to verify:
+1. Does `~/.claude/projects/.../memory/` exist with index? (fact given)
+2. Guard: PreToolUse sees paths, can add context — check SPEC.
+3. Skill roots: check that ~/.agents/skills is scanned by DSH — fact given in CLAUDE.md.
+4. Does this repo have project-memory/? 
+5. Do insights get read by main agent? Check how insight files are found now.
+6. Public repo.
+
+Let me run these.
+dsh: reasoning:
+Excellent. Key: the guard has a "Stop" hook too, and it already enforces "raise the insight" by naming the path. Also `.harness-guard/insights/*.md` is an accepted location — important: the guard recognizes insights in `.harness-guard/insights/` under the root. That's a project-local place that already exists as a convention in the guard spec. Let me check what `.harness-guard` is and whether it's per-project, and if there's a global one.
+
+Also check guard M3 details lines 134-230 for how insight is found and "open failures of other sessions in this root" (SessionStart). That suggests the guard can surface open failures at SessionStart across sessions in the same root — but "root" is the project working dir. Cross-project doesn't happen.
+
+Let me read that section.
+dsh: reasoning:
+Very useful. The guard already: SessionStart raises open failures of other sessions *in this root*, and accepts `.harness-guard/insights/*.md`. That is a delivery mechanism the main agent already gets — but only same-root (same project). Cross-project delivery is not there.
+
+Key design insight for Sun Tzu: "the ground" (地形) — choose the ground where the lesson will be met, rather than send it everywhere. And #17: learn by probing and signs — i.e., test delivery with a planted lesson. #1: reckon — count what's actually there.
+
+Let me check a couple more facts:
+- `.harness-guard` usage in this repo — does it exist? Is it gitignored? Public repo.
+- The `insight-decisions.md` sibling.
+- Is there any existing global memory mechanism for other engines? `~/.agents/` — check contents.
+- The template node-brief.md to see where memory goes.
+
+Also: the "two versions" thing — the main agent writes them. My job: recommend, plus end with recommended version in ≤5 lines.
+
+Let me check `~/.agents` and `.harness-guard`, and the node-brief template.
+dsh: reasoning:
+Good. `.harness-guard/` is gitignored — so it's local, not public, per project. That's a strong candidate for the project-specific store: `.harness-guard/insights/` is already recognized by M3, gitignored, and the guard already raises at SessionStart. But it is per root (per project), not global.
+
+The agent-level store: options (a) `~/.agents/insights/` user-global, (b) in this repo as a skill linked into both roots.
+
+Facts: opencode auto-rejects files outside repo; agy soft-denies shell/web. So a store outside the repo cannot be read by opencode/agy unless copied into the brief. But the main agent can read it and copy the relevant line into the brief. That's the key: the store location matters less than the gate that puts the line in the brief. Sun Tzu #9: bring the other side to you, don't be brought — make the delivery happen at the moment of action, not hope they read.
+
+Also #1: reckon before battle — count what each engine can actually read. #4: know yourself and the other side. #2: first make yourself unbeatable — the 不可胜 side is the check that runs before writing/acting; the enemy (mistake) becoming beatable is not in your hand. So: build the check, not the reminder.
+
+#3: whole over broken — keep the insight whole in one place, not split across 6 copies; a copy per engine breaks it. Deliver a pointer/quote from the one copy rather than duplicating.
+
+#6: mix harm into benefit — every mechanism has a cost: global store = privacy/public leak; skill = loaded only when description matches; per-brief = noise.
+
+#8: value victory not duration — the delivery must be fast/short: one line in the brief, not reading 56 sections.
+
+#12: 求之于势，不责于人 — change the conditions so the right lesson arrives, don't exhort agents to remember. A hook at the moment of write is 势 — it arrives when the path matches.
+
+#13: 君命有所不受 — the engine may be told to read but won't (opencode rejects outside repo); so don't route via commands that an engine can ignore — put it in the brief.
+
+#10: avoid solid, strike empty — don't put lessons where they're already covered (generic advice), put them where the specific case is: index by path/trigger.
+
+#19: name the ground — the lesson needs a named trigger (path, command, task kind), otherwise it's not delivered.
+
+#20: judge by the land unit, tax, what they breed — measure adoption via an observable: does the store shrink? Do repeats drop? This can be the "how we'd know" test.
+
+#17: probe and read the signs — plant a repeat and see whether the agent is caught; that's the verification test. Also #2: the test is the check on a planted repeat (this is already in R12.3: "A fix that is a check is shown failing on a planted repeat of the failure before it is trusted").
+
+#5: move only on advantage — don't file a lesson without a named cost/trigger; else it's 费留.
+
+#14: choose action by ratio of forces — small number of high-value lessons vs. many: with many lessons (56), don't load all; narrow.
+
+#11: foreknowledge from people, pay for it — knowledge of what fails comes from the agents' own reports (the six whys) not from introspection; the store must be fed by the failure records, and the maintenance has a cost.
+
+#15: general's faults — the five dangers: e.g. love of completeness (爱民可烦) → don't file everything; the one set on living (必生) = keep every insight forever. Warn against a store that grows.
+
+#18: spirit — strike when it flags: deliver at the moment the agent is about to do the thing (hook), not at session start when attention is fresh/elsewhere? Actually the text says avoid keen spirit and strike when it flags. That maps: don't compete with the first instruction at session start; deliver at the moment of action when the agent's attention is on the task. Good.
+
+#16: orders clear first, then enforced — the lesson must be clear and the check must enforce it; a lesson without a check is like orders not drilled.
+
+#7: deception — not much use here. Maybe not cite.
+
+Now the concrete recommendation. Let me think about what's actually best given facts.
+
+**Store (decision 1):**
+- Single source of truth: a git repo that is the agent-level store, with one file per lesson? Where? `~/.agents/insights/` is user-global, private, and every engine that can read absolute paths can read it — but opencode/agy cannot read outside repo. The main agent (Claude Code) can read it. Codex and DSH scan `~/.agents/skills` only — they don't read `~/.agents/insights`. So option (a) is read by exactly one reader unless we add a mechanism.
+- Option (b): a skill in this repo linked into both roots — read by skill loading, but only when the description matches. A "lessons" skill would not match most tasks. So it's a reference, not delivery.
+- Better: split by reader role. Store = one private user-global folder, `~/.agents/lessons/` (a git repo of its own, not public) that is the source of truth; each lesson is one file with front-matter: `id`, `scope: engine:<name> | all`, `triggers:` (paths/globs/commands/task kinds), `rule:` one line, `check:` if any, `project-facts:` pointing back. The public/private concern: this repo is public; insight files with details about EJ's environment go into the private global store. But the brief says any insight filed in this repo is public. The lesson text is generic — fine to be public. Hmm, but the store in a public repo means all lessons public. EJ may not want that. But there's a counter: the lessons are about mistakes in agent behaviour; publishing them is probably fine and even useful ("the Ancient Games" is EJ's public framework). Still, agent-level store in this repo makes it versioned and visible in diffs, which matters.
+
+The key criterion I should apply: which option makes the lesson *arrive*? Let's design the delivery first, then place the store where delivery requires.
+
+**Delivery (decision 3):**
+Three readers, three mechanisms:
+1. **Main agent (Claude Code)**: the hook is the only thing that runs at the moment of action, unconditionally, without the model choosing. Two surfaces: SessionStart (lessons for this project, top N by trigger match) and PreToolUse Write/Edit (lessons whose trigger matches the path being written). The guard already sees paths and already emits additionalContext; it can also deny. That is the "勢" — conditions, not exhortation. But note the guard sees Bash only as a command line, so bash writes are a gap (fact).
+   - Flood avoidance: only lessons whose trigger matches the current path/session project; cap at 1–3 lines.
+2. **Engine that reads only its brief**: the main agent must select lessons at brief-writing time. Give the brief writer a manifest with `triggers:`; a small script `lessons-for --paths <paths> --engine <name>` prints matching lessons (rule line + id), which the main agent pastes into the brief's Context. No flooding because it's filtered by path and engine, and it's part of the brief template (one new field: "Lessons that bite here").
+   - This is a **proposed change to the pattern**: the node-brief template gains a section "Lessons that bite here (from the store, by trigger)" and the brief-writing step runs the selector.
+3. **Engines that can read the repo (Codex, DSH, Claude Code)**: the skill is a nice-to-have index, not the delivery. Actually, a `lessons` skill linked into both roots gives the main agent an on-demand lookup, but I'd rather the selector tool.
+
+So: the deterministic gate is at the moment the work is produced (write path) and at the moment the brief is written (engine). Both are places the main agent controls before the mistake can repeat.
+
+**Project-specific facts (decision 2):**
+"Kept with the code they are about" — best: the lesson's project-specific half goes to the file it is about, as a *short* comment or doc line **where the code can be seen**, but the searchable part goes to the code map by path. Since code_map is designed not built, and a per-folder lessons file is a new artifact that will drift, I'd say:
+- Primary: a line at the code (comment or docstring) only when the fact is local and short, e.g. `# export treats requirement-check as one file; adding a reference file needs the export list updated` — because it is read exactly when the code is edited.
+- The agent-level lesson gets a `project-facts:` pointer (repo-relative path + symbol) so you can get from lesson to fact in one hop and back.
+- NOT the code map alone: designed, not built, and an entry in a map requires a read; whereas a comment is at the line. But a comment is invisible to search unless grep. Hmm.
+- A middle option: `.harness-guard/insights/` — the guard already recognizes it and it is gitignored, so private. Project facts could live there per project? But "kept with the code they are about" means findable when editing the code. A per-folder `LESSONS.md` is discoverable only if the agent lists the folder. The hook fixes this: on Write/Edit of a path, the guard can print the project facts for that path, drawn from a single `.harness-guard/lessons.yaml` keyed by glob. That gives "kept with the code" in the sense of *keyed to the code*, delivered at the line, without editing source files with comments and without a folder-per-lessons file.
+
+I like this: project facts = `.harness-guard/lessons.yaml` (or `lessons.md`) in the repo, keyed by path glob, gitignored (private facts). It is "with the code" because the key is the code path; the delivery is at the moment of edit. And for readers without the guard (other engines), the same file is in the repo so the brief selector can read it if it's committed — but gitignored means opencode in the repo *can* read it (it's inside the repo), it's just not public. Good: opencode can read repo files. So a gitignored file inside the repo is readable by all engines working in the repo (the guard roots at repo). That's better than `~/.agents/insights` for engine reach.
+
+Wait — is a gitignored file a good place for knowledge? It's local to this machine, lost if not backed up, invisible in git history. But for project-specific facts that may be sensitive, it's the right side of the line. Hmm, but "kept with the code" implies versioned with the code, otherwise it's lost on clone. The fact "this repo's tools/export_skills.py treats requirement-check as one file" is not sensitive at all. Making it private reduces its value (other clones lack it; EJ's other machine lacks it). I'd argue: the project-fact half should be **committed** with the code (public repo is fine for it), in the code map / a per-folder doc; and only facts that name EJ's private environment go to the gitignored place. But the brief says the lesson is agent-level, the facts stay in the project. Simplicity: project facts are committed.
+
+Where exactly? Options (a) lessons file in the code's folder; (b) comment at the line; (c) code map by path. My pick: **a machine-readable lessons file keyed by path at the repo root**, `.agents/lessons.yaml` or `lessons/project.yaml`, plus a one-line comment only where the trap is non-obvious and a reader would hit it cold. Because:
+- A comment at the line is read only if that line is read; an edit often touches a file without reading the exact line, and comments in code are deleted/moved by refactors.
+- A per-folder lessons file drifts from the code's structure and adds folder clutter; but it has the advantage of being next to the thing.
+- The code map is designed, not built (fact), so it cannot carry anything today.
+- The path-keyed single file is readable by every engine in the repo, is versioned, and gives one place to run a selector. It is "with the code" by key, not by physical adjacency. The brief asked "what does 'kept with the code they are about' mean" — my answer: the fact is *reachable from the code path in one hop*, and the hop is mechanical (selector/hook), not the agent's judgment.
+
+Hmm, but does that satisfy "kept with the code they are about" in spirit? A path-keyed file at root is "about" the path. Yes, and it's better than 56 scattered files.
+
+Actually let me reconsider: the "one thing" principle. The project fact's job: stop a repeat when someone edits that code. The delivery mechanism is the guard's PreToolUse, which needs a machine-readable key → path. So the shape of the store is dictated by the delivery. That's Sun Tzu #1 (reckon) and #12 (勢, not 責于人).
+
+**How one-type vs all-agents lessons are kept apart:**
+- `scope:` field, not folders. Reason: folders duplicate the delivery logic and a lesson that applies to one engine is still worth the main agent knowing (it should not brief that engine with a task it can't do). But scope decides *who it is pushed to*, not who may read it. Keep one directory, one file per lesson, `scope: all | engine:claude | engine:opencode | ...`. If scopes multiply (e.g., tool-specific quirks), a `scope: [engine:opencode, engine:agy]` list. One index generated from front-matter.
+
+Wait — the brief says "for one agent type ... or for all agents — where every project's agents read it." So scope is the field.
+
+**Detection / how we'd know I was right** (#17, #1, #2):
+- Plant a repeat: take a known failure class (e.g. F-1e90a8e1 pipe hides a failed merge, or F-682702da export skipped a reference file), and have an agent run a task where the trap is likely, on a scratch copy. Pass: the lesson appears in the brief and/or the hook names it before the action. Fail: the agent does the trap and nothing fired.
+- Measure: count of repeat failures (same source + root cause) per week across projects, from the guard's failure records; and the store's size stays bounded (e.g. 1 line per lesson, read set per task ≤3). Also: the number of lessons *delivered* per task (should be 0–2; if average >3, it's flooding).
+- And: after 20 tasks, does any agent ask for a lesson? Should be zero.
+
+**Costs and risks** (#6, #5, #15, #8):
+- Hook maintenance: guard sees Bash writes only as a command line (fact) → a lesson keyed to a bash command (`sed -i`, heredoc) is missed. So coverage is partial; don't sell it as complete.
+- False positives / noise: each additional matching lesson on a write costs attention; path globs will over-match. Mitigation: a cap and a "why" line.
+- Skill-loading option is weak: a skill loads only when the description matches (fact), so a "lessons" skill will load rarely — it's a lookup, not delivery.
+- Public repo: lessons filed here are public (fact); personal or vendor-specific details must be stripped or the store must be private. The lesson text is general by design, so this mostly works.
+- Store growth: 56 sections already; if every lesson is pushed, the brief gets flooded. Need a retirement rule (a lesson that a check now enforces can be demoted to the check; the store keeps the pointer only). Risk: a check is stronger than a lesson, but also can be wrong/over-broad.
+- `~/.agents/insights` unreachable for opencode/agy (fact) and not scanned by any engine for non-skills — so a user-global store is only reachable by the main agent and by explicit brief copying. If EJ wants reach across projects for the main agent, user-global works; for all engines, a repo file is the only thing they can read.
+- Two copies risk (agent-level + project) diverging; fix: the project entry names the lesson id, the lesson names none.
+
+Hmm. Decision 1: where does the agent-level store live? I'll recommend: **a separate private git repo at `~/agent-lessons/`?** No — the fact pattern says options are (a) `~/.agents/insights/`; (b) in this repo as a skill linked into both roots. Let me think about which is better, or a third.
+
+If in this repo: public, versioned, visible, linked as a skill → but a skill is the wrong load mechanism. Could be in the repo not as a skill but a folder `agent-lessons/` + a selector script; the repo's own skills are for method, not for memory. Is this repo the right home for *all agents'* lessons? They are lessons learned in this workspace, and the workflow-design skill is already the framework's home; the lessons are framework knowledge ("an export test checks every file the bundle names exists" is generic engineering). It fits the Ancient Games' purpose and gets versioned. Also, the DSH and Codex scan `~/.agents/skills`; a symlink into the repo works for reads by those engines only via skill loading.
+
+If at `~/.agents/insights/`: private, user-global, but invisible to git, no review/diff, and the fact says opencode can't read outside its repo. Also no engine scans it — delivery has to be by copying into briefs anyway. So `~/.agents/insights/` is a private archive only the main agent reads. That's a weaker store.
+
+But there's one strong reason for user-global: these lessons must reach *every project's* agents, and this repo is not present in other projects. If the store is in this repo, another project's Claude Code session never reads it (its cwd is elsewhere; the guard roots elsewhere; the skills are linked globally but a skill named "lessons" might load...). Hmm! This is the crux. The rule says "where every project's agents read it." A file in this repo is not read by an agent working in project X, unless (i) it's linked as a skill in the global roots (then it loads only by description match), or (ii) the global hook reads it by absolute path (allowed: Claude Code hooks can read any path), or (iii) it's copied. The main agent's SessionStart hook is installed globally? Let me check: guard install — is it installed globally (user settings) or per-project? That decides whether a hook can push a lesson in any project. Let me check `~/.claude/settings.json` for the hook.
+
+This is a crucial fact: does the guard run in every project or only this one? SPEC mentions `guardRoot`. Let me check quickly.
+dsh: reasoning:
+The guard is installed in the user-global `~/.claude/settings.json`, so it runs in every project, and `guardRoot(cwd)` = git top-level of the current project. So a SessionStart hook can read a *global* store by absolute path, and a PreToolUse hook can push a lesson for the current project's path regardless of project. That settles the store: user-global is reachable by the hook in every project; a file in this repo is reachable by the hook too (absolute path) but only because the hook is from this repo — still fine.
+
+But note: the guard runs only for Claude Code (and a bridge for opencode). For other engines, the delivery is the brief. So:
+
+- Agent-level store: `~/.agents/lessons/` (or `~/.agents/insights/`). Read by the global hook (Claude Code) in every project, and by the brief writer who copies the matching rule into the brief. It must be a git repo (private) for versioning, or at least files with front-matter and an index. It is NOT in the public repo → no leak, and lessons are machine-local, but that means they're lost on a new machine... a git repo fixes that.
+- But other *engines* can't read it (opencode rejects outside repo; agy soft-denies). That's fine because they get the line in the brief. The store isn't for them to read.
+
+Wait, but there's a subtlety: the hook is installed globally but its code lives in this repo. If another project's agent is Claude Code, the hook reads `~/.agents/lessons/`. Good.
+
+Now, does the main agent *read* the store at all, or does the hook push? The hook pushes ≤3 lines by trigger. The index/selector is for the brief writer. So the main agent doesn't need to read the store; the hook reads it. That's the 势 design: the lesson arrives without the agent choosing.
+
+So decision 1: (a) `~/.agents/lessons/` (rename from insights, one folder), a private git repo, one markdown file per lesson with YAML front-matter; an `INDEX.md` generated; one type vs all = `scope:` field. Not (b), because a skill loads only on description match (fact) and because this repo is public (fact): a lesson store that names EJ's other projects and their traps would be published.
+
+Hmm, but is the lesson content sensitive? "The export skipped a reference file" is not. But "opencode auto-rejects outside repo" is about EJ's machine. Still general. The bigger argument against the repo: a skill is the wrong mechanism (loads rarely) and adding a skill to both roots is more machinery. But the repo gives versioning and sync. A private git repo in `~/.agents/lessons/` gives versioning too (git init there, optionally a private remote). Good.
+
+But wait — one more consideration for (b): the code map is designed not built, but the framework's own knowledge docs are in this repo. The lessons are framework knowledge and EJ might want them public as part of the Ancient Games. That's an EJ decision, not mine. I'll note it as a conditional in "What I need to know": if the lessons should be public, flip the store to this repo and keep the same shape; the delivery doesn't change. That's a good conditional.
+
+Decision 3 delivery details:
+- **Brief writer (all engines)**: new template section in `node-brief.md`: "Lessons that bite here" filled by `lessons-for --repo <path> --paths <glob> --engine <name>`, which prints at most 2 rule lines + ids. The main agent's own workflow does it; the guard can *require* it? A check: at engine call, the guard's `recognizeEngineCall` sees the command line and could check that the brief names the lessons... but the guard doesn't read the brief. Could be added: PostToolUse on an engine call — before? PreToolUse on Bash for a recognized engine call can inspect the command line and the brief path, open the brief, and require a "Lessons" section if any lesson matches the repo path. That is a real gate: the guard already parses engine calls (PostToolUse `recognizeEngineCall`), so PreToolUse could too. But is that too much for 20 minutes? It's a proposed change; say it's optional.
+- **Main agent**: SessionStart (open failures across projects) + PreToolUse Write/Edit (path-keyed lesson, ≤1 line per match, cap 2). Existing hook already sees the path and emits a context line on Bash; adding a Write/Edit context emit is a small extension. Note the fact: today the guard sees Write/Edit paths but uses them for register/insight, and it can add context.
+- **Do not** rely on: the main agent remembering to read a file; a skill loading; a "don't forget" line.
+
+Decision 2 project facts:
+- A committed file per repo: `.agents/lessons.yaml` (path glob → one-line fact + link). Keyed by path, not a folder-local file. Delivered by the same PreToolUse hook (the guard reads it from the current repo) at the moment of edit. The code map, when built, gets these as a column/annotation; until then this file is the code map's lesson layer — so option (c) is where it should eventually live, but that's not buildable today.
+- What "kept with the code" means: one hop from the path, checked mechanically at the moment the path is written, and versioned in the same git history as the code. Not a comment at the line (read only if the line is read; deleted by refactors) and not a folder-local file (drifts, invisible from the root, needs a listing).
+- Hmm, but "kept with the code they are about" — I should be careful not to over-rationalize. The brief's example is "this repo's tools/export_skills.py treats requirement-check as one file" — a fact about one file. A path-keyed line in a root file is fine.
+
+Actually, maybe better: `.agents/lessons.yaml` at repo root is a bit of an invented artifact. There is already `.harness-guard/` (gitignored) for guard records, and `.claude/` for skills. The guard root is the git top-level. A committed `.agents/lessons.yaml` is discoverable and readable by opencode too (inside repo). Good. But is it "kept with the code"? I'll frame it explicitly: "one hop from the path" — this is my reading, not the brief's words.
+
+Alternatively, use `.claude/lessons.yaml`? No — `.agents/` is engine-neutral and matches the existing `~/.agents` naming. Hmm, `.agents/lessons.yaml` inside a project would look like agent config. Fine.
+
+Also: a project fact that is long (e.g. "the export test must list...") should be one line, with a pointer to the code. Cap: one line, ≤200 chars; if longer, it's a doc, link to it.
+
+**How one-type vs all-agents lessons are kept apart:** `scope:` front-matter; one directory; index generated. The main agent reads all scopes at brief-writing time (it must know the engine's limits to brief it right) but pushes only the matching scope into the brief. This is an important distinction: scope controls *push*, not *read*.
+
+**What I need to know** (would change the answer):
+1. Does EJ want the lessons public (part of Ancient Games) or private? If public, the store moves into this repo (same shape); if private, `~/.agents/lessons/`. Delivery unchanged. This is the big one.
+2. Which engines must *themselves* read the store, not just receive it in a brief? If Codex/DSH must browse it, it has to be inside each project (or a synced copy), because opencode/agy can't read outside their repo (fact). The brief only mentions "an engine that reads only its brief", so I assume none.
+3. Is the guard installed for all engines or only Claude Code? (I checked: globally for Claude Code; SPEC mentions codex/qwen hooks and an opencode plugin, so maybe more.) If the hook runs for other engines too, the delivery can be uniform; if not, the brief is the only channel for them. Worth asking, but I can answer conditionally.
+4. How many lessons does EJ expect (10? 500?) — decides whether an index/selector is worth it vs a single file. 56 today, so an index.
+
+**Costs and risks:**
+- Partial coverage: the guard sees Bash writes only as a command line (fact) → lessons keyed to shell edits (`sed -i`, heredoc, `python - <<`) will miss. So the hook is a net, not a wall. (#2: you cannot make the enemy certain — the repeat cannot be made impossible, only made unlikely; my #2)
+- Noise: a lesson on every write is a tax on every write; over-matching globs is the likely failure. Cap + trigger precision. (#8: speed/value — the brief wants less noise; #15: 爱民可烦 — a store that wants to save every mistake becomes a nuisance.)
+- Store rot: 56 sections and growing; without retirement it becomes unread. Retire a lesson when a check enforces it; keep a pointer. (#15 必生 — the one set on living = keeping every insight alive; #3 whole vs broken: one canonical copy, not copies per engine)
+- Divergence: agent lesson + project fact can disagree; the project fact must not be duplicated in the store. (#3)
+- False confidence: the hook naming a lesson is not proof it was read or followed; only a planted repeat shows it. (#17 probe, and R12.3's "shown failing on a planted repeat")
+- Privacy: lessons about EJ's machine in a public repo (fact). (#6 harm column)
+- Migration: 56 existing sections are per-run; someone must classify each into scope + trigger. That's real work, and only EJ can decide the scope. (#1 reckon: count before you commit — 56 is the count; don't build a delivery for a store that hasn't been classified.) Maybe start with the 10 most-repeated failures, not all 56. (#14: ratio of forces — with a small force, don't attack everything.)
+
+**How we'd know I was right:**
+- A planted repeat on a scratch repo: take F-1e90a8e1 (pipe hid a failed merge) or F-682702da (export skipped a reference file); a worker is given the same task and the same conditions, without the lesson in its brief. Pass if the brief selector names the lesson and the worker's action avoids the trap, or the hook names it before the write. This is the same test R12.3 already requires for checks (fact).
+- Count repeats: failure records grouped by (source, root cause) should fall; measure over N=10 runs, and specifically the repeat count for lessons that have a trigger.
+- Noise measure: lessons delivered per brief/task ≤2 on average; EJ doesn't say "too much" (that's a judgement, but observable).
+- Reach test: a new project's Claude Code session, first write to a matching path, shows the line. This tests the "every project" claim.
+
+Now, the required output format:
+
+```
+# 孫子 (Sun Tzu) — <the question in a few words>
+
+## Answer
+<one or two sentences>
+
+## How I decided
+<numbered steps; each cites "my #n" or "my reading">
+
+## What I need to know
+...
+
+## Costs and risks
+...
+
+## How we would know I was right
+...
+```
+
+And "End with your recommended version in five lines or fewer: the store, the project place, and the delivery." Where does that go? The brief says "End with..." — so after "How we would know". I'll add a final block with 5 lines. That's consistent.
+
+I must quote exactly from the list. If I quote Chinese, copy exactly. I'll use only quotes that appear verbatim in the list. I need to be careful about simplified vs traditional. The list quotes are in traditional for the thirteen chapters. Let me pick quotes I can copy exactly:
+
+- #1: 「夫未戰而廟算勝者，得算多也；未戰而廟算不勝者，得算少也。多算勝，少算不勝，而況於無算乎？」 — appears at line 50.
+- #1 chain: 「地生度，度生量，量生數，數生稱，稱生勝。」 — line 51.
+- #2: 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 — line 61.
+- #2: 「勝兵先勝而後求戰，敗兵先戰而後求勝。」 — part of line 60 (「是故勝兵先勝而後求戰，敗兵先戰而後求勝。」). I can quote the substring, but safer to quote the full sentence as printed.
+- #3: 「不戰而屈人之兵，善之善者也。」 — line 70 substring. Quote "「是故百戰百勝，非善之善者也；不戰而屈人之兵，善之善者也。」" exact.
+- #4: 「知彼知己，百戰不殆」 — line 87 has 「故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」.
+- #5: 「非利不動，非得不用，非危不戰。」 — line 97 substring; quote full sentence to be safe: 「故曰：明主慮之，良將修之，非利不動，非得不用，非危不戰。」 exact? Line 97: 「...命曰『費留』。故曰：明主慮之，良將修之，非利不動，非得不用，非危不戰。主不可以怒而興師...」 Yes.
+- #6: 「是故智者之慮，必雜於利害」 — line 108 full: 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」
+- #8: 「故兵聞拙速，未睹巧之久也。」 — line 131 has 「故兵聞拙速，未睹巧之久也。」 exact? Line 131: 「...故兵聞拙速，未睹巧之久也。夫兵久而國利者，未之有也。」 Yes.
+- #9: 「故善戰者，致人而不致於人。」 — line 144 exact? Line 144: 「...故善戰者，致人而不致於人。能使敵自至者，利之也...」 Yes.
+- #12: 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」 — line 172 exact.
+- #13: 「途有所不由，軍有所不擊，城有所不攻，地有所不爭，君命有所不受。」 — line 181 exact.
+- #17: 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」 — line 243 exact.
+- #15: 「故將有五危︰必死，可殺也...」 — note the colon variant 「︰」 and 「﹔」. Risky to retype. I can quote just 「凡此五者，將之過也，用兵之災也。」 — line 215 contains "凡此五者，將之過也，用兵之災也。" exact with 。 yes.
+- #19: 「是故散地則無戰，輕地則無止...」 risky. Use 「九地之變，屈伸之利，人情之理，不可不察也。」 — line 290 exact.
+- #16: 「約束不明，申令不熟，將之罪也；既已明而不如法者，吏士之罪也。」 — line 225 exact? Line 225: 「約束不明，申令不熟，將之罪也；既已明而不如法者，吏士之罪也。」 yes.
+- #18: 「以近待遠，以佚待勞，以飽待饑」 — line 267 substring, with 「，」 separators. Quote the full: 「以治待亂，以靜待嘩，此治心者也；以近待遠，以佚待勞，以飽待饑，此治力者也」 — hmm, exact substring from line 267: "以近待遠，以佚待勞，以飽待饑，此治力者也" yes.
+
+I don't need many quotes; a few key ones. But each step should name the item, and quoting the operative line strengthens it. I'll quote 4–6.
+
+Now let me structure "How I decided" — should be the reasoning chain, 8–12 steps:
+
+1. Count the ground (#1 多算): three readers, three channels. Facts: the main agent's lessons are in `~/.claude/projects/.../memory/` (only that project/engine); engines read only their brief or working repo; the guard sees Write/Edit paths globally (installed in `~/.claude/settings.json`) and can add a context line; skills load only on description match. So a single "lessons skill" delivers to nobody reliably. My reading of the facts.
+   — Actually the count itself is my reading; #1 says count before committing: I counted 3 readers/channels. Cite "my #1".
+2. Choose the gate over the reminder (#12 求之於勢，不責於人): put the lesson in the mechanism that fires at the moment of the action — the hook for the main agent, the brief for the engine — not in a file the agent must remember to read. Also #2: you can make your side (the gate) ready; you cannot make the other side (the agent) remember.
+3. Therefore the store must be reachable by the hook in *every* project, so it is user-global: `~/.agents/lessons/`, one folder, private git repo. Not a skill in this repo, because (a) skill loading is description-matched (fact) and (b) this repo is public (fact). My #13-ish (a command an engine won't obey is not delivery — opencode rejects outside-repo reads, so don't route via "go read the store"; route via the brief text).
+4. One type vs all: a `scope:` field, one directory, one file per lesson. Scope controls who it is pushed to, not who may read it. My #3 (whole over broken): one canonical copy, no per-engine copies; copies are how a store breaks.
+5. Project facts: keyed by path in a committed file at the repo root, `.agents/lessons.yaml`; one hop from the path; same hook delivers it at the write. Comment-at-the-line is read only if the line is read and dies in a refactor; a folder-local file drifts and is invisible from the root; the code map is designed, not built (fact) so it cannot hold it today. My reading of the facts, plus #10 (avoid solid, strike empty): put the fact where the edit is empty of it, not in a general doc everyone skips.
+6. Shape driven by delivery: every lesson needs `triggers:` (path globs, command patterns, task kinds) and one `rule:` line; a lesson with no trigger is not filed until it has one. My #5 (非利不動): a lesson with no trigger has no advantage to act on. Also #19 name the ground.
+7. Noise control: cap at 2 lines per delivery, 1 line per lesson; a rule that has become a check is demoted to the check and only a pointer remains. My #8 (value victory, not duration): the brief is expensive; deliver few, fast. My #15 / #3: a store that keeps everything becomes the spoiled child (#16 analogy is a stretch — skip).
+8. The brief: template gains "Lessons that bite here", filled by the selector. Concrete proposed change to the pattern: node-brief gets a section and the brief-writing step runs `lessons-for`; this is the change I propose, marked.
+9. The engine gate (optional): PreToolUse already parses engine calls (PostToolUse does, fact) — extend to PreToolUse to refuse an engine call whose brief lacks the matching lesson. My #16: orders clear first then enforced — the lesson must be in the order (brief), and the gate enforces that it is.
+10. Start small: classify the 10 most repeated failure ids, not all 56; with a small force, do not attack everywhere (#14). My#1: the count is 56; committing to deliver 56 at once is 無算.
+11. Test by planted repeat (#17): before trusting any of it, plant the old failure and watch whether it fires. R12.3 already requires this of checks (fact).
+12. Conditional: if EJ wants the lessons public, the same shape moves into this repo; delivery unchanged. If an engine must browse the store itself, it needs a copy inside its repo; opencode/agy cannot read outside (fact).
+
+That's a lot of steps. Keep them tight, 10 max.
+
+Answer (1–2 sentences): "File one lesson per record in a private user-global store, `~/.agents/lessons/`, keyed by scope and trigger; keep each project's facts in a committed, path-keyed file at that project's root; and deliver both mechanically — the guard's hook at the write for the main agent, and a filled 'Lessons that bite here' line in the brief for every engine — never by asking an agent to remember."
+
+Conditional: "If EJ wants the lessons public, the same shape sits in this repo instead; the delivery does not change."
+
+Now the final 5-line version:
+
+```
+**Recommended version**
+1. Store: `~/.agents/lessons/` — a private git repo, one Markdown file per lesson with `id`, `scope` (`all` or `engine:<name>`), `triggers`, one `rule` line, and a `project-facts:` pointer; `INDEX.md` generated.
+2. One type vs all: the `scope` field, one directory — scope decides who it is pushed to, not who may read it.
+3. Project place: `.agents/lessons.yaml` committed at the repo root, keyed by path glob, one line each; the code map reads it when built.
+4. Delivery to the main agent: the global guard hook — SessionStart by project, PreToolUse on Write/Edit by matching path, at most 2 lines.
+5. Delivery to an engine: the brief template gains "Lessons that bite here", filled from `lessons-for --repo --paths --engine`, at most 2 rule lines.
+```
+That's 5 lines. Good.
+
+Wait: should the store be `~/.agents/insights/` (matching the existing name) or `lessons/`? The brief says "agent-level store" and the rule calls them lessons. `~/.agents/lessons/` is clearer, and "insights" is per-run artifacts. I'll say `~/.agents/lessons/` and note the per-run insight.md remains the source record (R12.3) with decisions — the store is the distilled lesson, not a copy of the run file.
+
+One important thing: the per-run `insight.md` and `insight-decisions.md` must remain (R12.3). The store is written *after* EJ's choice (a fix chosen), because a lesson without a chosen fix is just a record. Hmm — actually, should the lesson be filed before the owner chooses? The rule already decided says "When an insight is written, its lesson is filed at agent level." But R12.3 says choices are the owner's. I think the store should take a lesson when the insight section is *answered* (an option chosen), or it may carry all options. But the question is placement, not timing. I'll note: the store is fed from the insight section at the moment the owner chooses a fix (otherwise you propagate proposals EJ rejected). Is that adding a rule not asked? It's a real risk: a lesson filed from an unchosen option pollutes. I'll mention it in the delivery step briefly, or in "What I need to know": "Is the lesson filed at insight-writing time (all options) or only when EJ picks a fix?" That's a genuine gap in the rule already decided, and it changes the store's contents. Good question.
+
+Also, who writes the lesson? The agent that ran the task (per R12.3 writes the insight). The store needs one maker; the main agent writes it. Fine, no need.
+
+Now "What I need to know":
+1. Public or private? (store location conditional)
+2. Does any engine need to browse the store itself, rather than receive lines in its brief? (if yes: store copy inside each project)
+3. Is the lesson filed at insight time or only after EJ chooses the fix? (contents; avoids propagating rejected options)
+4. Does the hook run for engines other than Claude Code (Codex/Qwen/opencode bridge), and at which events? The SPEC reports codex/qwen hooks and an opencode plugin, but the fact given only says "the harness-guard sees Write/Edit/MultiEdit". I could check quickly... I checked SPEC line 252: install targets codex, qwen, opencode. So the hook may run for those too. But I shouldn't over-claim. It changes whether delivery can be uniform. I'll ask it, or state "if the guard's hooks are installed for an engine, it can be delivered the same way; otherwise the brief is the only channel." I can present that conditionally without asking.
+
+Maybe 3 questions max to keep it sharp. I'll list 3, with the conditional answer inline. Actually the instruction: "questions whose answers would change the answer; 'none' if none." Keep 3.
+
+Costs and risks:
+1. Coverage gap: Bash writes seen only as a command line (fact) → shell edits miss the hook. My #2 (cannot make the enemy certain).
+2. Over-matching triggers → noise, the very thing EJ wants less of. My #8 + #15 (爱民可烦 is about loving the people; not quite. Use #15 "the general's faults" generally? Better #5: a lesson that never fires has no advantage; a lesson that always fires is a cost without gain.)
+3. Store rot / scope creep: every lesson pushed = flood; retirement rule needed. My #15 (the faults of the general — love of completeness) hmm. #15's five dangers: 必死/必生/忿速/廉潔/愛民. "必生" = set on living → can be captured. A store set on keeping every lesson alive... a stretch but defensible as "my reading of #15". I'd rather say "my reading of #15": a store that will not let a lesson die is a handle for the enemy (stale advice). Fine, label as my reading.
+4. Divergence: project fact duplicated in the store; the fix is pointer only. My #3.
+5. Migration cost: 56 sections to classify; start with the 10 most repeated. My #1 (count), #14 (ratio).
+6. False confidence: the hook naming a lesson is not evidence it was followed; only a planted repeat tests it. My #17.
+7. Public repo leak if the store moves there. My #6 (harm mixed in).
+
+How we'd know:
+- Planted repeat test, pass/fail, per R12.3's own standard (fact).
+- Repeat rate: same source+root cause should not recur; measure from the guard's failure records over 10 runs; specific numbers: e.g. F-1e90a8e1 and F-15cf1278's class repeated (I see F-15cf1278 and F-98c2c4c9 as a first repeat in the extracted insights — good evidence: "no way to mark a fail-first run as planned; this is its first repeat" — and F-8243a18f, F-96578c5b "criterion C4 not met twice the same day". That's a real repeat count from the repo I checked. I can cite: `runs/20261017-insight-level/insights.md` lists the fail-first check repeating the same day (F-15cf1278 → F-98c2c4c9, F-8243a18f → F-96578c5b). That's a good concrete measure: those two classes should not produce a third id.
+  Let me verify F-15cf1278/F-98c2c4c9 text: yes, "the same as F-15cf1278 — no way to mark a fail-first run as planned; this is its first repeat." And F-8243a18f/F-96578c5b "criterion C4 not met twice the same day". Good.
+- Noise: lessons shown per task ≤2; EJ's own "too much" judgement.
+- Reach: a new project (different git root) sees the line on SessionStart/first write. That tests "every project".
+
+Let me also double-check the claim that the guard is installed globally and runs in every project: `~/.claude/settings.json` lines show the command with absolute paths; guardRoot takes cwd's git top-level. Yes. I'll cite that as a check in the repo: "`~/.claude/settings.json` installs the hook for every project; `guardRoot(cwd)` is the git top-level of whatever repo Claude Code is in (guard SPEC l.22)." Good.
+
+One more fact I should verify: does `~/.claude/settings.json` have SessionStart pointing at the guard? Yes, line 89-94. And PreToolUse? Likely. Fine.
+
+Also: the main agent's memory index is loaded every session — per the brief. A competing mechanism. Should I recommend migrating? The store's role is cross-project, and Claude Code memory is per-project, so both can coexist: the memory folder holds project-specific recall; the store holds lessons with triggers. But duplication risk. I'll mention: do not keep two copies of the same lesson; the memory index may hold a one-line pointer for the main agent's own project, nothing more. Hmm, that adds complexity. Maybe skip or mention briefly in costs.
+
+Now, the time budget: I've spent maybe 8 minutes. Write the answer now.
+
+Format check: "Write exactly this (no preamble)" with the heading, then the sections. End with recommended version (5 lines). Use plain English Markdown. Quote only from the list, exact.
+
+Let me be careful with the quote in step about #12: 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」 — from line 172, exact. Good.
+
+#1 quote: 「多算勝，少算不勝，而況於無算乎？」 is a substring of line 50. Quoting substrings is fine as long as exact. I'll include the full sentence to be safe.
+
+#2 quote: 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 — exact from line 61. Note line 61 begins 「故用兵之法，無恃其不來...」. Yes.
+
+#13 quote: 「途有所不由，軍有所不擊，城有所不攻，地有所不爭，君命有所不受。」 — exact line 181.
+
+#17 quote: exact line 243.
+
+#16 quote: exact line 225.
+
+#14: 「故用兵之法，十則圍之，五則攻之，倍則分之，敵則能戰之，少則能守之，不若則能避之。」 — line 194. Could use for "start with 10, not 56" — but that's a ratio-of-forces metaphor; the item is about military ratios. Better to cite #14's principle "do not attack everywhere with a small force" as my reading of #14. The rule says "A small force that holds stubbornly is taken by a large one." For migration, my reading.
+
+#8: 「故兵聞拙速，未睹巧之久也。」 exact line 131.
+
+#19: 「九地之變，屈伸之利，人情之理，不可不察也。」 exact line 290.
+
+I need to be careful: quoting many Chinese lines risks a typo. Let me copy from the file text I have above. I'll use 5 quotes max: #1, #2 (無恃), #8, #12, #17. And maybe #13 for the opencode point (a command an engine won't obey is not delivery). Let me use #13 too.
+
+Actually #13 fits the "do not route by an instruction the engine will not accept" point perfectly: 「君命有所不受」 — the ruler's command is not accepted; so a store the engine won't read is a command not accepted. Good.
+
+Now write. Keep each section tight.
+
+Structure of "How I decided" (numbered, ~9):
+
+1. I counted the three readers and what each can actually read (my #1). Facts: main agent's memory is per-project (60+ files); an engine reads its brief or its working repo; opencode rejects outside-repo paths, agy soft-denies shell/web; the guard is installed for every project in `~/.claude/settings.json` and roots at the git top-level; a skill loads only on description match. Reading: no single file is read by all three on its own, so the store's location does not deliver anything — the gate does.
+2. So choose the gate, not the reminder (my #12): 「故善戰者，求之於勢，不責於人」 — change the condition so the lesson arrives at the action. And my #2: 「無恃其不來，恃吾有以待之」 — build the side you own (the gate), do not rely on the agent remembering.
+3. Where the gate can read from, in every project: user-global. `~/.agents/lessons/`. Not a skill in this repo: skills load by description (fact) and this repo is public (fact). If EJ wants them public, move the same shape into the repo; delivery unchanged.
+4. Never route by "go read the store": my #13 「君命有所不受」 — opencode/agy will not accept a command to read outside their repo, so for them the line must be inside the brief text.
+5. Scope, not folders (my #3 whole over broken): one canonical copy per lesson, `scope:` field; who it is pushed to, not who may read it.
+6. Project facts: keyed by path in a committed `.agents/lessons.yaml` at the repo root; one hop. Comment at the line dies in refactors and is read only if the line is read; folder-local file drifts; code map designed not built. (my reading + #10 avoid solid/strike empty: put it where the write happens, not in a doc nobody opens)
+7. Shape: `triggers` required; no trigger → no filing (my #5 非利不動; #19 name the ground).
+8. Noise cap: ≤2 per push, one line each; retire to a check when one exists (my #8 value victory not duration).
+9. Delivery 1 (main agent): extend the existing hook — SessionStart by project + PreToolUse Write/Edit by path; today it already sees the path and emits context (fact). Delivery 2 (engines): brief template section, selector command. Proposed change to the pattern.
+10. Start from the repeated ones, not all 56 (my #1 count; my #14 ratio): the extracted index already shows same-day repeats (F-15cf1278→F-98c2c4c9; F-8243a18f→F-96578c5b). Test by planted repeat (my #17 「故策之而知得失之計…」 or better #17's probe idea).
+
+That's 10. Fine.
+
+Hmm, the output requires "## How I decided" with numbered steps each citing "my #n" or "my reading". Good.
+
+"## Answer" — one or two sentences, conditional if needed.
+
+Let me also make sure I answer the sub-question "Say how one-type lessons are kept apart from all-agents lessons" explicitly in the Answer or How I decided. Yes: step 5 + version line 2.
+
+Time check: ~10 min. Write it.
+
+For the "Recommended version" heading — the brief says "End with your recommended version in five lines or fewer". I'll use `## Recommended version` and 5 numbered lines. It says "Write exactly this (no preamble)" with five headings, but also "End with your recommended version". Adding a sixth heading is required by the second instruction; the five-line block is that. Good.
+
+One more consideration on decision 1: should I actually pick (a) `~/.agents/insights/` as named in the options? I pick a variant: `~/.agents/lessons/` (same place, clearer name, one file per lesson). The question allows "or another you can defend". I defend it.
+
+Draft:
+
+# 孫子 (Sun Tzu) — where lessons live and how they reach each agent
+
+## Answer
+File each lesson once in a private, user-global store (`~/.agents/lessons/`), one file per lesson with a `scope` (all agents or one engine) and a `trigger` (the paths, commands or task kinds it bites on), and keep each project's facts in a committed, path-keyed file at that project's root. Deliver both mechanically, never by asking an agent to remember: the guard hook pushes the matching lesson into the main agent's context at the moment it writes a matching path, and the brief writer copies the matching rule line into every engine's brief. If EJ wants the lessons public, the same shape moves into this repo and the delivery does not change.
+
+## How I decided
+1. I counted what each reader can actually reach before choosing a store (my #1: 「夫未戰而廟算勝者，得算多也；未戰而廟算不勝者，得算少也。多算勝，少算不勝，而況於無算乎？」). Facts: the main agent's lessons sit in one project's Claude Code memory; an engine reads its brief or its working repo; opencode refuses outside-repo paths and agy soft-denies shell and web; the guard is installed once in `~/.claude/settings.json` and roots at whatever git repo it is called in (`guard/src` SPEC l.22); a skill loads only when its description matches. My reading: no single file is read by all three, so the store's location decides nothing by itself — the gate that pushes it decides.
+2. So I chose the gate over the reminder (my #12: 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」). Change the condition under which the lesson appears — at the write, and inside the brief — instead of exhorting the agent to read. My #2 gives the split: 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 — build the side you own (the gate); do not rely on the agent's remembering.
+3. The gate must read the store from any project, so the store is user-global: `~/.agents/lessons/`, a private git repo, one Markdown file per lesson. Not option (b) — a skill in this repo: a skill loads only on a description match, and this repo is public, so a store that names other projects' traps would be published.
+4. Do not route delivery through "go read the store" (my #13: 「途有所不由，軍有所不擊，城有所不攻，地有所不爭，君命有所不受。」). A command an engine will not accept is not delivery: opencode and agy cannot read outside their repo, so for them the line must be in the brief text.
+5. One type vs all agents: a `scope:` field in the lesson file, one directory, no per-engine folders (my #3: 「是故百戰百勝，非善之善者也；不戰而屈人之兵，善之善者也。」 — one copy that stays whole beats copies per engine). Scope decides who it is pushed to, not who may read it: the main agent may read every scope, because it must know an engine's limits to brief it.
+6. Project facts are keyed by path, not by a folder. My reading of the three options: a comment at the line is read only when the line is read and disappears in a refactor; a file in the code's folder drifts and is invisible from the root; the code map is designed, not built, so it can hold nothing today. What is left is one committed file at the repo root, `.agents/lessons.yaml`, mapping a path glob to one line. "Kept with the code" then means reachable from the path in one mechanical hop (my #10: avoid the solid, strike the empty — put the fact where the write is empty of it, not in a general doc).
+7. Every lesson must name its ground (my #19: 「九地之變，屈伸之利，人情之理，不可不察也。」). `triggers:` is required — path globs, command patterns, task kinds. A lesson with no trigger is not filed yet (my #5: 「非利不動」... wait, exact quote is 「故曰：明主慮之，良將修之，非利不動，非得不用，非危不戰。」 — use just 「非利不動」? That's an exact substring, fine. Or cite without quote.)
+8. Noise is the price, so cap it: at most two lines per push, one line per lesson; when a lesson becomes a check, the store keeps only a pointer and the check does the enforcing (my #8: 「故兵聞拙速，未睹巧之久也。」 — value the brief's speed over the completeness of the store). 
+9. Delivery 1, main agent: the guard already sees every Write/Edit/MultiEdit path before it runs and can add a context line (fact). Add the match there, and at SessionStart for the project. Delivery 2, engines: a brief section, filled by one selector command. **Proposed change to the pattern:** `docs/workflow-templates/node-brief.md` gains "Lessons that bite here", and the brief-writing step runs `lessons-for --repo <path> --paths <paths> --engine <name>`; the brief writer pastes its output. No engine is asked to fetch anything.
+10. Start from the repeats, not the 56 (my #1 counts; my #14: with a small force, do not attack everywhere). The extracted index already shows same-day repeats of a class (F-15cf1278 → F-98c2c4c9; F-8243a18f → F-96578c5b), so classify those ten first and prove the delivery on them (my #17: 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」 — probe and read the sign, do not assume).
+
+Hmm, step 1 quote is long; fine. But does the quote support counting? It supports reckoning. OK.
+
+## What I need to know
+1. Should the lessons be public (part of the Ancient Games) or private? If public, the store is `ancient-games/agent-lessons/` (same file shape, same triggers) and this repo is its git remote; delivery is unchanged. This is the only choice that moves the store.
+2. Does any engine have to browse the store itself, rather than receive the two lines in its brief? If yes, the store needs a read-only copy inside each project, because opencode and agy cannot read it where it lives.
+3. Is a lesson filed when the insight is written (with all options) or only after EJ picks a fix? If it is filed before the choice, the store propagates options EJ may decline; I would file only the chosen fix and keep the rest in the run's `insight.md`.
+
+## Costs and risks
+- Partial coverage: the guard sees Bash writes only as a command line (fact), so shell edits and heredocs escape the path gate; a lesson keyed to `sed -i` will not fire (my #2: you can make yourself unbeatable, you cannot make the enemy's error certain).
+- Noise from over-matching triggers is the likeliest failure and the one EJ already named; a glob like `**/*.py` would push on every write (my #8: a lesson delivered slowly is a cost with no gain).
+- Rot: a store that never retires a lesson becomes stale advice; a lesson that is now a check must be demoted to a pointer (my reading of #15: a general set on keeping every position can be moved).
+- Divergence: a fact copied into both the store and the project file will disagree one day; the project entry may name the lesson id, never repeat its rule (my #3).
+- Migration is real work: 56 sections to classify by scope and trigger, and only EJ can settle each scope; if it starts at 56 it will stall (my #1: more reckoning wins, no reckoning loses).
+- False confidence: the hook naming a lesson is not evidence the agent followed it; only a planted repeat tests the delivery (my #17).
+- Public exposure: anything filed in this repo is public (fact); a lesson that names a private repo or a vendor's quirk must stay in the private store (my #6: deliberation must mix harm with benefit).
+
+## How we would know I was right
+Take the two classes that already repeated the same day — the fail-first run check (F-15cf1278 → F-98c2c4c9) and C4 wording (F-8243a18f → F-96578c5b). On a scratch repo, plant the same trap and run the task without the lesson in the brief. Pass: the selector names the lesson and the brief carries it, or the hook shows it before the write, and the worker does not repeat the trap. Fail: nothing fires, or the worker sees the line and repeats anyway. Then measure over ten runs: no third failure id with the same source and root cause; at most two lessons shown per task; and a first write in a *different* git repo still shows its matching line — that last one is what proves "every project's agents read it."
+
+## Recommended version
+1. **Store:** `~/.agents/lessons/` — private git repo, one Markdown file per lesson: `id`, `scope` (`all` or `engine:<name>`), `triggers` (paths, commands, task kinds), one `rule` line, `project-facts:` pointer; `INDEX.md` generated.
+2. **One type vs all:** the `scope` field, one directory, one canonical copy — scope decides who it is pushed to, not who may read it.
+3. **Project place:** `.agents/lessons.yaml` committed at the repo root, path glob → one line; the code map reads it when it is built.
+4. **Delivery, main agent:** the global guard hook — SessionStart by project, PreToolUse on Write/Edit by matching path, at most two lines.
+5. **Delivery, engines:** `node-brief.md` gains "Lessons that bite here", filled from `lessons-for --repo --paths --engine`, at most two rule lines.
+
+That's 5 lines (each is one line in markdown, though long). Good.
+
+Wait — the brief's required output says "## Answer <your recommendation in one or two sentences; conditional if it must be>". My answer is 3 sentences. Trim to 2.
+
+Also check "Quote only from your list, exactly as it is written there" — I must verify each quote character by character. Let me grep for each exact string in the list file to be safe.
+
+Quotes to verify:
+Q1: 夫未戰而廟算勝者，得算多也；未戰而廟算不勝者，得算少也。多算勝，少算不勝，而況於無算乎？
+Q2: 故善戰者，求之於勢，不責於人，故能擇人而任勢。
+Q3: 故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。
+Q4: 途有所不由，軍有所不擊，城有所不攻，地有所不爭，君命有所不受。
+Q5: 是故百戰百勝，非善之善者也；不戰而屈人之兵，善之善者也。
+Q6: 九地之變，屈伸之利，人情之理，不可不察也。
+Q7: 故兵聞拙速，未睹巧之久也。
+Q8: 故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。
+
+Let me grep each with -F to confirm.
+dsh: reasoning:
+All 8 quotes verify. Now write the final answer. Keep it within 10 minutes of work — done.
+
+One last check: the two repeat pairs I cite. Let me verify the exact ids and phrasing from insights.md:
+- F-15cf1278 "the planned fail-first test run was logged as a failure" and F-98c2c4c9 "the second planned fail-first run, logged as a failure again" — root cause "the same as F-15cf1278 — no way to mark a fail-first run as planned; this is its first repeat." Yes.
+- F-8243a18f, F-96578c5b — "criterion C4 not met twice the same day: 'every new test fails on the old code'". Yes.
+
+Good. These are facts I checked in the repo. Cite path.
+
+Also the guard's SessionStart currently raises open failures of other sessions in this root — but the store push is new. My step 9 says "add the match there", which is accurate (the event exists; the lesson lookup is the addition).
+
+I should note the insight file name convention: the store is not `insight.md`; it's the distilled lesson. Fine.
+
+Write it now.
