@@ -1,7 +1,7 @@
 export const meta = {
   name: 'experts-decide',
   description: 'Ask the six experts one question, each in its own subfolder; check each answer; rerun an expert with no usable answer once; compare them in compare.md. Returns the summary; decides nothing.',
-  whenToUse: 'When a decision needs the six experts (skill six-experts) as a saved, clocked workflow. args: {run: "runs/<YYYYMMDD-slug>", question: "<question file inside the repo>", out: "<subfolder>", only?: ["linus", ...], insights?: "instruction,check", needsWeb?: true, research?: "<a research question>"}. Writes under <run>/<out>/, <run>/nodes/<out>.progress.md and, with research, <run>/research/. The main agent reads the summary and decides.',
+  whenToUse: 'When a decision needs the six experts (skill six-experts) as a saved, clocked workflow. args: {run: "runs/<YYYYMMDD-slug>", question: "<question file inside the repo>", out: "<subfolder>", only?: ["linus", ...], insights?: "instruction,check", needsWeb?: true, approveOrChange?: true (the answer is APPROVE or CHANGE: the experts get the rules as a card and answer in the vote form), research?: "<a research question>"}. Writes under <run>/<out>/, <run>/nodes/<out>.progress.md and, with research, <run>/research/. The main agent reads the summary and decides.',
   phases: [
     { title: 'Research', detail: 'only with args.research: answer it from the web and add the findings to a copy of the question' },
     { title: 'Ask', detail: 'one step per expert, each its own --out subfolder; 老子 (opencode) alone, after the others' },
@@ -43,6 +43,8 @@ const SIDS = IDS.filter(s => ONLY.includes(s))
 const INSIGHTS = str(opts.insights)
 if (INSIGHTS && !/^[a-z]+(,[a-z]+)*$/.test(INSIGHTS)) return err(`args.insights must be a comma list of category names, got "${INSIGHTS}".`)
 const NEEDS_WEB = opts.needsWeb === true
+// An approve-or-change question: the rules as a card and the vote form (run 20261017-experts-speed-trial).
+const APPROVE = opts.approveOrChange === true
 const RESEARCH = str(opts.research)
 
 const PROGRESS = `${RUN}/nodes/${OUT}.progress.md`
@@ -86,7 +88,7 @@ const askPrompt = (sid, again) => `${COMMON}
 
 Your step: ${again ? 'ask once more' : 'ask'} the expert "${sid}". Run exactly this command with the Bash tool, timeout 590000 ms:
 
-${RUNNER} run --question-file ${QFILE} --out ${dirOf(sid)} --only ${sid}${sid === 'dave' && INSIGHTS ? ` --insights ${INSIGHTS}` : ''}${NEEDS_WEB ? ' --needs-web' : ''} --progress ${PROGRESS} --timeout 540 </dev/null
+${RUNNER} run --question-file ${QFILE} --out ${dirOf(sid)} --only ${sid}${sid === 'dave' && INSIGHTS ? ` --insights ${INSIGHTS}` : ''}${NEEDS_WEB ? ' --needs-web' : ''}${APPROVE ? ' --card --vote' : ''} --progress ${PROGRESS} --timeout 540 </dev/null
 
 The runner writes its own progress lines; do not add any. Do not change the command, do not answer the question yourself.
 When it ends, read ${dirOf(sid)}/status.json (the "${sid}" entry) and count the bytes of ${dirOf(sid)}/answers/${sid}.md

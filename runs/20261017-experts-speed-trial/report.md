@@ -63,3 +63,17 @@ The other reads were of files the question named.
 - The three fixes ran together, so their effects are not separated.
 - Whether the shorter answers are as good. My reading: each still cites rules and reaches the same verdict, but I
   did not have them judged blind.
+
+## Decision — 2026-10-17
+
+EJ: "make them the default for approve-or-change questions". The option was Claude's, offered as "make
+`--card --vote` the default for approve-or-change questions now, or run each flag alone once first"; EJ chose the
+first.
+
+Rule as written (SKILL.md §1): an approve-or-change question (its answer is APPROVE, or CHANGE with the exact words)
+runs with `--card --vote`. The caller decides the type from the question, as with `--needs-web`; in the
+experts-decide workflow it passes `approveOrChange: true`. Any other question runs without them. Who decides the
+type, the caller, is Claude's reading, following the `--needs-web` pattern.
+
+Tests: experts_decide_harness.mjs case 9 (red before the change, planted copy caught); 42 checks pass;
+test_six_experts.py 37 pass.

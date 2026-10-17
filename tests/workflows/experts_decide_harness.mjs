@@ -176,5 +176,17 @@ await testCase('compare starts after every check and recheck', src => runCase({
   expect('sabotage: a piece id with a space is caught', planted.some(p => /\s/.test(p)), planted.join(' | '))
 }
 
+// 9. An approve-or-change question runs with --card --vote (run 20261017-experts-speed-trial); any other question
+// runs as before.
+{
+  const flagged = calls => IDS.filter(sid => calls.find(c => c.label === `ask ${sid}`).prompt.includes(' --card --vote '))
+  await testCase('approveOrChange -> every ask runs --card --vote', src => runCase({}, { ...ARGS, approveOrChange: true }, src),
+    ({ calls }) => flagged(calls).length === IDS.length ? '' : `flagged only: ${flagged(calls).join(', ')}`,
+    plant("${APPROVE ? ' --card --vote' : ''}", ''))
+  const plain = await runCase({}, ARGS)
+  expect('without approveOrChange -> no ask runs --card or --vote',
+    plain.calls.every(c => !c.prompt.includes('--card') && !c.prompt.includes('--vote')), flagged(plain.calls).join(', '))
+}
+
 console.log(failures ? `\n${failures} FAILED` : '\nall passed')
 process.exit(failures ? 1 : 0)
