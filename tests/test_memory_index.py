@@ -532,6 +532,168 @@ def test_conflict_markers_after_other_characters_are_accepted(tmp_path, status, 
     assert (repo / INDEX).read_bytes() == expected
 
 
+CREDENTIAL_FORMS = [
+    pytest.param("AKIA", "AZ27", 16, id="aws-akia"),
+    pytest.param("ASIA", "ZA72", 16, id="aws-asia"),
+    pytest.param("ABIA", "27AZ", 16, id="aws-abia"),
+    pytest.param("ACCA", "72ZA", 16, id="aws-acca"),
+    pytest.param("ghp_", "Az09", 36, id="github-ghp"),
+    pytest.param("gho_", "Az09", 36, id="github-gho"),
+    pytest.param("ghu_", "Az09", 36, id="github-ghu"),
+    pytest.param("ghs_", "Az09", 36, id="github-ghs"),
+    pytest.param("ghr_", "Az09", 36, id="github-ghr"),
+    pytest.param("github_pat_", "Az09_", 82, id="github-pat"),
+    pytest.param("glpat-", "Az09-_", 20, id="gitlab"),
+    pytest.param("xoxb-", "1", 1, id="slack-xoxb"),
+    pytest.param("xoxp-", "1", 1, id="slack-xoxp"),
+    pytest.param("xoxe-", "1", 1, id="slack-xoxe"),
+    pytest.param("sk-ant-", "api03-", 6, id="anthropic"),
+    pytest.param("AIza", "Az09-_", 35, id="google"),
+]
+
+
+def insert_entry_text(path, text, location):
+    raw = path.read_text(encoding="utf-8")
+    if location == "header":
+        raw = raw.replace("---\n", f"---\n{text}\n", 1)
+    elif location == "claim":
+        raw = raw.replace("\n**Why:**", f"\n{text}\n**Why:**", 1)
+    else:
+        raw += f"{text}\n"
+    path.write_text(raw, encoding="utf-8")
+    return raw.splitlines().index(text.splitlines()[0]) + 1
+
+
+@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("location", ["header", "claim", "after-why"])
+@pytest.mark.parametrize("prefix,alphabet,length", CREDENTIAL_FORMS)
+def test_known_credentials_fail_without_disclosure(tmp_path, status, mode, location, prefix, alphabet, length):
+    """B2.8 — each credential form must fail in every status and mode, naming its line without disclosing it."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    value = prefix + (alphabet * length)[:length]
+    path = write_entry(repo, "D-credential.md", id="14-10-secret-2026", status=status)
+    line = insert_entry_text(path, f"example: {value}", location)
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 1
+    assert value not in output(result)
+    assert re.search(rf"D-credential\.md: possible credential \([^\n)]+\) on line {line}\b", output(result))
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("location", ["header", "claim", "after-why"])
+@pytest.mark.parametrize("key_kind", ["RSA", "EC", "OPENSSH", "ENCRYPTED"])
+@pytest.mark.parametrize("body_lines", [1, 2])
+def test_private_key_bodies_fail_without_disclosure(tmp_path, status, mode, location, key_kind, body_lines):
+    """B2.8 — a private-key body of 64 characters, including wrapped bodies, must fail without being printed."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    body_line = "A" * (64 // body_lines)
+    value = (
+        f"-----BEGIN {key_kind} PRIVATE KEY-----\n"
+        + "\n".join([body_line] * body_lines)
+        + f"\n-----END {key_kind} PRIVATE KEY-----"
+    )
+    path = write_entry(repo, "D-credential.md", id="14-10-secret-2026", status=status)
+    line = insert_entry_text(path, value, location)
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 1
+    assert value not in output(result)
+    assert body_line not in output(result)
+    assert re.search(rf"D-credential\.md: possible credential \([^\n)]+\) on line {line}\b", output(result))
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("status", ["superseded", "retired"])
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("raw", [
+    "---\nid: 14-10-secret-2026\nstatus: {status}\n---\n",
+    "---\nid: 14-10-secret-2026\nkind: unknown\nstatus: {status}\n---\nClaim.\n",
+    "---\nid: 14-10-secret-2026\nkind: fact\nstatus: {status}\n---\nClaim.\n**Why:** reason\n",
+])
+def test_inactive_content_warnings_do_not_hide_credentials(tmp_path, status, mode, raw):
+    """B2.8 B2.5 — inactive content defects that only warn must not exempt a known credential from rejection."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    value = "ghp_" + "A" * 36
+    path = write_entry(repo, "D-credential.md", raw=raw.format(status=status))
+    line = insert_entry_text(path, f"example: {value}", "after-why")
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 1
+    assert value not in output(result)
+    assert re.search(rf"D-credential\.md: possible credential \([^\n)]+\) on line {line}\b", output(result))
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("location", ["header", "claim", "after-why"])
+@pytest.mark.parametrize("prefix,alphabet,length", CREDENTIAL_FORMS)
+def test_shortened_credentials_are_accepted(tmp_path, status, mode, location, prefix, alphabet, length):
+    """B2.8 — a value one character shorter than each fixed-prefix form must pass without a credential error."""
+    repo = make_repo(tmp_path)
+    value = (prefix + (alphabet * length)[:length])[:-1]
+    path = write_entry(repo, status=status)
+    insert_entry_text(path, f"example: {value}", location)
+    claim = "Use code-point order for the index."
+    if location == "claim":
+        claim += f" example: {value}"
+    expected = HEADER + (
+        f"- [14-10-a1b2c3-2026](entries/D-one.md) decision: {claim}\n"
+    ).encode("utf-8") if status == "active" else EMPTY_INDEX
+    (repo / INDEX).write_bytes(expected)
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    assert "possible credential" not in output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == expected
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("location", ["header", "after-why"])
+@pytest.mark.parametrize("body_length", [0, 63])
+def test_private_key_headers_with_short_or_no_body_are_accepted(tmp_path, mode, location, body_length):
+    """B2.8 — a private-key header alone or with fewer than 64 body characters must pass."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    value = "-----BEGIN " + "RSA PRIVATE KEY-----"
+    if body_length:
+        value += "\n" + "A" * body_length + "\n-----END RSA PRIVATE KEY-----"
+    insert_entry_text(repo / ENTRIES / "D-one.md", value, location)
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    assert "possible credential" not in output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("prefix", ["AKIA", "ghp_", "github_pat_", "glpat-", "xoxb-", "AIza"])
+def test_credential_prefix_mentions_are_accepted(tmp_path, mode, prefix):
+    """B2.8 — text that only mentions a credential prefix must pass without an entropy or keyword rule."""
+    repo = make_repo(tmp_path)
+    claim = f"The {prefix} prefix is documented."
+    write_entry(repo, claim=claim)
+    expected = HEADER + f"- [14-10-a1b2c3-2026](entries/D-one.md) decision: {claim}\n".encode("utf-8")
+    (repo / INDEX).write_bytes(expected)
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    assert "possible credential" not in output(result)
+    assert (repo / INDEX).read_bytes() == expected
+
+
 def test_all_validation_problems_are_reported(tmp_path):
     """B2.3 B2.4 B2.6 — one invalid file must not hide problems in other files."""
     repo = make_repo(tmp_path)
@@ -657,6 +819,284 @@ def test_size_line_counts_lines_and_utf8_bytes(tmp_path, mode):
     result = run_index(repo, *snapshot_args(repo, mode))
     assert result.returncode == 0, output(result)
     size_numbers(result, SINGLE_INDEX)
+
+
+def limit_row(unit, limit, *, agent="fixture-agent", basis="measured"):
+    return {"agent": agent, "unit": unit, "limit": limit, "basis": basis, "source": "acceptance fixture"}
+
+
+def write_limits(repo, rows):
+    path = repo / "project-memory/start-limits.json"
+    path.write_text(json.dumps({"limits": rows}), encoding="utf-8")
+    return path
+
+
+def stage_limit_index(repo, unit, *, over_example=False):
+    if unit == "lines" and over_example:
+        rows = []
+        for number in range(201 - len(HEADER.splitlines())):
+            name = f"D-{number:03d}.md"
+            entry_id = f"14-10-{number:06x}-2026"
+            write_entry(repo, name, id=entry_id, claim="x")
+            rows.append(f"- [{entry_id}](entries/{name}) decision: x\n")
+        expected = HEADER + "".join(rows).encode("utf-8")
+    else:
+        claim = "界" * (8000 if over_example else 8)
+        write_entry(repo, claim=claim)
+        expected = HEADER + f"- [14-10-a1b2c3-2026](entries/D-one.md) decision: {claim}\n".encode("utf-8")
+    (repo / INDEX).write_bytes(expected)
+    git(repo, "add", "-A")
+    counts = {
+        "lines": len(expected.splitlines()),
+        "bytes": len(expected),
+        "characters": len(expected.decode("utf-8")),
+    }
+    return expected, counts
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("unit", ["lines", "bytes", "characters"])
+@pytest.mark.parametrize("limit_offset", [-1, 0, 1])
+@pytest.mark.parametrize("strict_first", [False, True])
+def test_limits_file_uses_smallest_limit_per_unit(tmp_path, mode, unit, limit_offset, strict_first):
+    """B4.1 B4.2 B4.3 — the smaller row must apply in either order, warning on write and failing checks over it."""
+    repo = make_repo(tmp_path)
+    expected, counts = stage_limit_index(repo, unit)
+    strict_limit = counts[unit] + limit_offset
+    over_limit = limit_offset < 0
+    rows = [limit_row(unit, strict_limit), limit_row(unit, strict_limit + 100, agent="other-agent")]
+    write_limits(repo, rows if strict_first else rows[::-1])
+    if mode == "write":
+        (repo / INDEX).write_bytes(b"previous index\n")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == (1 if over_limit and mode != "write" else 0), output(result)
+    assert (repo / INDEX).read_bytes() == expected
+    max_lines = strict_limit if unit == "lines" else 200
+    max_bytes = strict_limit if unit == "bytes" else 24_000
+    assert size_numbers(result, expected) == (max_lines, max_bytes)
+    size_line = f"INDEX.md: {counts['lines']}/{max_lines} lines, {counts['bytes']}/{max_bytes} bytes"
+    if unit == "characters":
+        assert counts["characters"] < counts["bytes"]
+        size_line += f", {counts['characters']}/{strict_limit} characters"
+    assert size_line + "\nlimits: project-memory/start-limits.json" in output(result)
+    assert "Traceback" not in output(result)
+    if over_limit and mode == "write":
+        assert "warning" in output(result).lower(), output(result)
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("unit", ["lines", "bytes"])
+@pytest.mark.parametrize("basis", ["measured", "documented", "example"])
+def test_limits_file_can_raise_example_limits(tmp_path, mode, unit, basis):
+    """B4.1 B4.2 — an index beyond the example must pass at the file's larger limit for every allowed basis."""
+    repo = make_repo(tmp_path)
+    expected, counts = stage_limit_index(repo, unit, over_example=True)
+    assert counts[unit] > {"lines": 200, "bytes": 24_000}[unit]
+    other_unit = "bytes" if unit == "lines" else "lines"
+    assert counts[other_unit] <= {"lines": 200, "bytes": 24_000}[other_unit]
+    configured_limit = counts[unit] + 1
+    write_limits(repo, [limit_row(unit, configured_limit, basis=basis)])
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    assert (repo / INDEX).read_bytes() == expected
+    limits = (configured_limit, 24_000) if unit == "lines" else (200, configured_limit)
+    assert size_numbers(result, expected) == limits
+    assert "limits: project-memory/start-limits.json" in output(result).splitlines()
+    assert "warning" not in output(result).lower(), output(result)
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("missing_unit", ["lines", "bytes"])
+def test_limits_file_preserves_example_for_missing_unit(tmp_path, mode, missing_unit):
+    """B4.1 B4.2 — omitting a unit must retain that example limit even when another unit has a larger row."""
+    repo = make_repo(tmp_path)
+    expected, counts = stage_limit_index(repo, missing_unit, over_example=True)
+    other_unit = "bytes" if missing_unit == "lines" else "lines"
+    other_limit = counts[other_unit] + 100
+    write_limits(repo, [limit_row(other_unit, other_limit)])
+    if mode == "write":
+        (repo / INDEX).write_bytes(b"previous index\n")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == (0 if mode == "write" else 1), output(result)
+    assert (repo / INDEX).read_bytes() == expected
+    limits = (200, other_limit) if missing_unit == "lines" else (other_limit, 24_000)
+    assert size_numbers(result, expected) == limits
+    size_line = f"INDEX.md: {counts['lines']}/{limits[0]} lines, {counts['bytes']}/{limits[1]} bytes"
+    assert size_line + "\nlimits: project-memory/start-limits.json" in output(result)
+    if mode == "write":
+        assert "warning" in output(result).lower(), output(result)
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+def test_limits_file_reports_all_applicable_units(tmp_path, mode):
+    """B4.1 B4.2 — simultaneous unit limits must print exact lines, UTF-8 bytes and Unicode code points."""
+    repo = make_repo(tmp_path)
+    expected, counts = stage_limit_index(repo, "characters")
+    write_limits(repo, [limit_row(unit, count) for unit, count in counts.items()])
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    assert counts["bytes"] > counts["characters"]
+    size_line = (
+        f"INDEX.md: {counts['lines']}/{counts['lines']} lines, {counts['bytes']}/{counts['bytes']} bytes, "
+        f"{counts['characters']}/{counts['characters']} characters"
+    )
+    assert size_line + "\nlimits: project-memory/start-limits.json" in output(result)
+    assert (repo / INDEX).read_bytes() == expected
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+def test_no_limits_file_reports_design_example(tmp_path, mode):
+    """B4.2 — without a limits file, every mode must print the example limits and their exact source line."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    assert size_numbers(result, SINGLE_INDEX) == (200, 24_000)
+    size_line = f"INDEX.md: {len(SINGLE_INDEX.splitlines())}/200 lines, {len(SINGLE_INDEX)}/24000 bytes"
+    assert (
+        size_line + "\nlimits: the design's example (no project-memory/start-limits.json)"
+    ) in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+BAD_LIMITS_FILES = [
+    pytest.param(b"{not JSON", id="not-json"),
+    pytest.param(b"\xff", id="not-utf8"),
+    pytest.param(b"[]", id="not-object-list"),
+    pytest.param(b"null", id="not-object-null"),
+    pytest.param(b"{}", id="missing-limits"),
+    pytest.param(b'{"limits": []}', id="empty-limits"),
+    pytest.param(b'{"limits": {}}', id="limits-object"),
+    pytest.param(b'{"limits": null}', id="limits-null"),
+    pytest.param(b'{"limits": "rows"}', id="limits-string"),
+    pytest.param(b'{"limits": [null]}', id="row-null"),
+    pytest.param(b'{"limits": [[]]}', id="row-list"),
+    pytest.param(b'{"limits": ["row"]}', id="row-string"),
+    *[
+        pytest.param(
+            json.dumps({"limits": [{key: value for key, value in limit_row("lines", 200).items() if key != field}]}),
+            id=f"missing-{field}",
+        )
+        for field in ("agent", "unit", "limit", "basis", "source")
+    ],
+    *[
+        pytest.param(json.dumps({"limits": [dict(limit_row("lines", 200), limit=value)]}), id=f"limit-{name}")
+        for name, value in (
+            ("zero", 0), ("negative", -1), ("float", 1.5), ("integral-float", 1.0),
+            ("string", "200"), ("true", True), ("false", False), ("null", None), ("list", []),
+        )
+    ],
+    *[
+        pytest.param(json.dumps({"limits": [dict(limit_row("lines", 200), **{field: value})]}), id=name)
+        for name, field, value in (
+            ("unknown-unit", "unit", "tokens"), ("unit-not-string", "unit", 200),
+            ("unknown-basis", "basis", "guessed"), ("basis-not-string", "basis", []),
+            ("agent-not-string", "agent", 1), ("agent-null", "agent", None),
+            ("source-not-string", "source", {}), ("source-null", "source", None),
+        )
+    ],
+    pytest.param(
+        json.dumps({"limits": [limit_row("lines", 200), limit_row("tokens", 1000)]}),
+        id="invalid-row-after-valid-row",
+    ),
+]
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("index_exists", [False, True])
+@pytest.mark.parametrize("raw", BAD_LIMITS_FILES)
+def test_bad_limits_files_fail_without_writing(tmp_path, mode, index_exists, raw):
+    """B4.5 — invalid JSON, schema, types or values must fail in both modes without writing or using the example."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    if not index_exists:
+        (repo / INDEX).unlink()
+    path = repo / "project-memory/start-limits.json"
+    path.write_bytes(raw if isinstance(raw, bytes) else raw.encode("utf-8"))
+    args = snapshot_args(repo, mode)
+    before = {
+        file.relative_to(repo): (file.read_bytes(), file.stat().st_mtime_ns, file.stat().st_ino)
+        for file in repo.rglob("*") if file.is_file() and ".git" not in file.relative_to(repo).parts
+    }
+    result = run_index(repo, *args)
+    assert result.returncode == 1, output(result)
+    assert "project-memory/start-limits.json: " in output(result)
+    assert "Traceback" not in output(result)
+    assert "limits: the design's example" not in output(result)
+    after = {
+        file.relative_to(repo): (file.read_bytes(), file.stat().st_mtime_ns, file.stat().st_ino)
+        for file in repo.rglob("*") if file.is_file() and ".git" not in file.relative_to(repo).parts
+    }
+    assert after == before
+
+
+@pytest.mark.parametrize("mode", ["staged", "commit"])
+@pytest.mark.parametrize("snapshot_valid", [False, True])
+def test_check_reads_limits_from_selected_snapshot(tmp_path, mode, snapshot_valid):
+    """B4.5 — staged or named-commit limits must govern despite the opposite validity in the working tree or HEAD."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    valid = json.dumps({"limits": [limit_row("lines", 200)]}).encode("utf-8")
+    invalid = b"not JSON\n"
+    path = repo / "project-memory/start-limits.json"
+    path.write_bytes(valid if snapshot_valid else invalid)
+    args = snapshot_args(repo, mode)
+    if mode == "commit":
+        args = ("--check", git(repo, "rev-parse", "HEAD").stdout.strip())
+    path.write_bytes(invalid if snapshot_valid else valid)
+    if mode == "commit":
+        git(repo, "add", "-A")
+        git(repo, "commit", "-m", "Different limits after selected snapshot")
+    before = path.read_bytes()
+    result = run_index(repo, *args)
+    assert result.returncode == (0 if snapshot_valid else 1), output(result)
+    if snapshot_valid:
+        assert "limits: project-memory/start-limits.json" in output(result).splitlines()
+    else:
+        assert "project-memory/start-limits.json: " in output(result)
+    assert "Traceback" not in output(result)
+    assert path.read_bytes() == before
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("mode", ["staged", "commit"])
+def test_check_uses_example_when_limits_are_absent_from_snapshot(tmp_path, mode):
+    """B4.2 B4.5 — a limits file only in the working tree or a later commit must not enter the selected snapshot."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    args = snapshot_args(repo, mode)
+    if mode == "commit":
+        args = ("--check", git(repo, "rev-parse", "HEAD").stdout.strip())
+    path = repo / "project-memory/start-limits.json"
+    path.write_bytes(b"not JSON\n")
+    if mode == "commit":
+        git(repo, "add", "-A")
+        git(repo, "commit", "-m", "Limits absent from selected snapshot")
+    result = run_index(repo, *args)
+    assert result.returncode == 0, output(result)
+    assert "limits: the design's example (no project-memory/start-limits.json)" in output(result).splitlines()
+    assert size_numbers(result, SINGLE_INDEX) == (200, 24_000)
+    assert path.read_bytes() == b"not JSON\n"
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("working_valid", [False, True])
+def test_write_reads_working_tree_limits(tmp_path, working_valid):
+    """B4.1 B4.5 — write mode must use working-tree limits even when the staged file has the opposite validity."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    valid = json.dumps({"limits": [limit_row("lines", 200)]}).encode("utf-8")
+    invalid = b"not JSON\n"
+    path = repo / "project-memory/start-limits.json"
+    path.write_bytes(invalid if working_valid else valid)
+    git(repo, "add", "-A")
+    path.write_bytes(valid if working_valid else invalid)
+    result = run_index(repo)
+    assert result.returncode == (0 if working_valid else 1), output(result)
+    if not working_valid:
+        assert "project-memory/start-limits.json: " in output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
 
 
 def stage_overflow(repo, limit):
