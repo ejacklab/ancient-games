@@ -15,7 +15,7 @@ import { checkSection, findInsightFiles, openFailures, parseInsight } from "./in
 import { WarningError, dismiss, settleAsFailure, warnings } from "./warnings.ts";
 import { indexMarkdown, insightIndex, loadCategories, showSections } from "./insight-index.ts";
 import { ExpectError, declareRed, runRed } from "./expect.ts";
-import { DeadlineError, deadlineEnd, deadlineStatus, endDeadline, startDeadline } from "./deadline.ts";
+import { DeadlineError, deadlineEnd, deadlineStatus, endDeadline, readDeadlines, startDeadline } from "./deadline.ts";
 import { PathError, checkPath, parents, skeleton } from "./paths.ts";
 import { rates, ratesMarkdown } from "./rates.ts";
 import { RegisterError, coverage, loadRegister, validateRegister } from "./register.ts";
@@ -228,7 +228,13 @@ function deadlineCommand(args: string[]): number {
     const at = Date.parse(status.deadline.start) + status.deadline.minutes * 60_000;
     const wait = at - Date.now();
     if (wait > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
-    out(deadlineStatus(root, session, new Date())!.line);
+    // The deadline may be ended while wait sleeps, when a run finishes early (run 20261017-insight-placement).
+    const after = readDeadlines(root).find((d) => d.id === status.deadline.id);
+    if (after?.ended !== undefined) {
+      out(`${status.deadline.id} ended before its deadline`);
+      return OK;
+    }
+    out(deadlineStatus(root, session, new Date())?.line ?? `${status.deadline.id}: no open deadline`);
     return OK;
   }
   if (verb === "end") {

@@ -1,6 +1,6 @@
 // Acceptance checks written from SPEC.md Round 10, independently of the implementation.
 import { afterEach, expect, test } from "bun:test";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -193,6 +193,26 @@ test("T3 Fails-if: CLI wait returns before the deadline", () => {
   expect(env.now().getTime()).toBeGreaterThanOrEqual(Date.parse(deadline.start) + deadline.minutes * 60_000);
   // COO, review finding 10: the default wait ends at the deadline, so its status says the time is up.
   expect(result.stdout).toMatch(/time is up/);
+}, 10_000);
+
+// Run 20261017-insight-placement, timer crash (EJ chose option 1): a deadline ended while wait sleeps is an answer, not
+// an internal error.
+test("T3: CLI wait on a deadline ended while it sleeps says so and exits 0", async () => {
+  const b = box();
+  const deadline = b.plant({ start: new Date().toISOString(), minutes: 0.05 });
+  const child = spawn(process.execPath, [CLI, "deadline", "wait"], {
+    cwd: b.root, env: { ...process.env, BUN_RUNTIME_TRANSPILER_CACHE_PATH: "0" },
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (chunk) => { stdout += chunk; });
+  child.stderr.on("data", (chunk) => { stderr += chunk; });
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  b.save({ ...deadline, ended: new Date().toISOString() });
+  const status = await new Promise<number | null>((resolve) => child.on("close", resolve));
+  expect(stderr).not.toContain("internal error");
+  expect(status).toBe(0);
+  expect(stdout).toContain(`${deadline.id} ended before its deadline`);
 }, 10_000);
 
 test("T4: progress counts distinct pieces by their latest state and derives age from the injected clock", () => {

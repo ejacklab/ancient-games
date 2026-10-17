@@ -11,7 +11,7 @@ your rules, for each piece listed; the others answer theirs.
 In "Answer", give one line per piece id: loop-ready as written / strengthen the check (how) / not loop-ready (why).
 Name a concrete failure the check would miss wherever you can; "looks fine" is not an answer.
 
-Facts (filled in by the COO):
+Facts (filled in by the COO; each with its own label and the file:line or command that checked it, else *recall*):
 - The vision and the use cases the work serves (accepted, and provisional in a time-boxed run): <paths, or paste>
 - The research for this question, run before you were asked: <runs/<run>/research/<file>.md — finding ids with their
   labels>. Rest each verdict on a finding id or a measurement from it; a point you have only from memory is labelled

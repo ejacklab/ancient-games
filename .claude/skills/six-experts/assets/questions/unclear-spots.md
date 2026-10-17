@@ -13,7 +13,7 @@ your rules; the others answer theirs.
 In "Answer", list spot ids (existing ones, or new ones you raise as N1, N2 …) with your verdict for each. Do not
 decide for EJ: a spot to drop is a question for EJ, not a removal.
 
-Facts (filled in by the COO):
+Facts (filled in by the COO; each with its own label and the file:line or command that checked it, else *recall*):
 - The vision and the use cases the work serves (accepted, and provisional in a time-boxed run): <paths, or paste>
 - The research for this question, run before you were asked: <runs/<run>/research/<file>.md — finding ids with their
   labels>. Rest each verdict on a finding id or a measurement from it; a point you have only from memory is labelled

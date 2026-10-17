@@ -38,7 +38,9 @@ python3 ~/.claude/skills/six-experts/scripts/six_experts.py run "Should we keep 
 ```
 
 - `--question-file F` for a long question. Put the facts the experts need **in the question**; they are told not to
-  invent missing ones and will list them as questions instead.
+  invent missing ones and will list them as questions instead. **Each fact carries its own label and the file:line or
+  command that checked it; a fact with neither is marked *recall*.** One "verified" label over a block of facts is
+  not allowed: in run `20261017-insight-placement` it covered a recalled fact that was wrong.
 - `--insights instruction,check` names the insight categories Dave loads — the four Source kinds: instruction ·
   check · tool · config (`guard/src/cli.ts insight index` shows them). With none named he chooses from the index. The runner copies
   the index and the sections into the run's `seats/`, so every engine can read them; `check` fails Dave when he cites

@@ -11,7 +11,7 @@ Rules for this question:
   labelled *recall*, and recall alone does not decide.
 - If the research does not answer it, say what to look up or measure, and how long that would take.
 
-Facts (filled in by the COO):
+Facts (filled in by the COO; each with its own label and the file:line or command that checked it, else *recall*):
 - The vision and the use cases the work serves (accepted, and provisional in this run): <paths, or paste>
 - The research for this decision, run before you were asked: <runs/<run>/research/<file>.md — finding ids with their
   labels>

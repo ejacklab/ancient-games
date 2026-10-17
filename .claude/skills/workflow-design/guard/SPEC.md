@@ -551,7 +551,9 @@ The agent cannot feel time pass; the guard tells it. Types in `src/types.ts`: `D
   context.
 - **T3 Wait (way 2).** `cli.ts deadline wait` sleeps until the deadline, then prints the status line and exits 0 —
   the command a harness runs in the background as a timer. `--mark` was removed with the percent marks (run
-  20261017-workflows, experts-decide `mark-q`); passing it is a usage error (2), never a silent wait.
+  20261017-workflows, experts-decide `mark-q`); passing it is a usage error (2), never a silent wait. A deadline
+  ended (`deadline end`) while wait sleeps: it prints `<id> ended before its deadline` and exits 0 (run
+  20261017-insight-placement).
 - **T4 Progress.** A worker appends one line per small piece to `<run>/nodes/<node>.progress.md`:
   `- <ISO time> · <piece id> · <planned|start|done|fail> · <short note>`. `progressSummary(file)` = `{ node, done,
   total (distinct pieces seen), last: { time, piece, state }, ageMinutes }`; a line that does not parse is skipped and
