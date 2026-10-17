@@ -1,0 +1,28 @@
+- 2026-10-17T23:47:26+08:00 · research · start · 
+- 2026-10-17T23:52:15+08:00 · research · done · 6 engines checked; agy conflict (24,000 B/20k tok official vs 12,000 chars reported); Qwen counts UTF-16 units; Claude CLAUDE.md 4 MiB
+- 2026-10-17T23:52:30+08:00 · linus · start · mcode
+- 2026-10-17T23:52:32+08:00 · dario · start · claude
+- 2026-10-17T23:52:33+08:00 · dave · start · claude
+- 2026-10-17T23:52:33+08:00 · fan-li · start · claude
+- 2026-10-17T23:52:33+08:00 · sun-tzu · start · dsh
+- 2026-10-17T23:54:02+08:00 · linus · done · mcode exit 0
+- 2026-10-17T23:54:06+08:00 · dario · done · claude exit 0
+- 2026-10-17T23:54:15+08:00 · check-linus · start · 
+- 2026-10-17T23:54:17+08:00 · check-linus · done · linus check passed, no FAIL linus lines
+- 2026-10-17T23:54:20+08:00 · check-dario · start · 
+- 2026-10-17T23:54:23+08:00 · check-dario · done · dario answer passes check, no FAIL dario lines
+- 2026-10-17T23:56:45+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-17T23:56:56+08:00 · check-sun-tzu · start · 
+- 2026-10-17T23:56:58+08:00 · check-sun-tzu · done · sun-tzu answer passes check; other experts absent as expected
+- 2026-10-17T23:57:55+08:00 · fan-li · done · claude exit 0
+- 2026-10-17T23:57:57+08:00 · dave · done · claude exit 0
+- 2026-10-17T23:58:07+08:00 · check-fan-li · start · 
+- 2026-10-17T23:58:08+08:00 · check-dave · start · 
+- 2026-10-17T23:58:10+08:00 · check-fan-li · done · fan-li answer file checks clean, no FAIL fan-li lines
+- 2026-10-17T23:58:11+08:00 · check-dave · done · dave check has no FAIL lines; only the other five show no answer file
+- 2026-10-17T23:58:19+08:00 · lao-tzu · start · opencode
+- 2026-10-17T23:59:55+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-18T00:00:08+08:00 · check-lao-tzu · start · 
+- 2026-10-18T00:00:11+08:00 · check-lao-tzu · fail · six_experts check: 2 lao-tzu citation FAIL lines (Chinese character variants 深/爲)
+- 2026-10-18T00:00:23+08:00 · compare · start · 
+- 2026-10-18T00:03:01+08:00 · compare · done · compare.md written; A unanimous (keep removal); Laozi alone on B and D; split on C location/format and E timing; 11 merged questions

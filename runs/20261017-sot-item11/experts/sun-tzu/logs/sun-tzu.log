@@ -1,0 +1,1014 @@
+dsh: reasoning:
+Let me read the two required files.
+dsh: reasoning:
+Let me read the rest of the list file (from 304).
+dsh: reasoning:
+Now I need to look at the actual source-of-truth memory design files to answer well. The brief gives facts with citations, but for good answers I should read the YAML, SOURCE_OF_TRUTH.md, tools/memory_index.py, docs/index-md/REQUIREMENTS.md relevant parts. That helps ensure accuracy. Let me check the docs/memory-system/ directory exists.
+
+Also load relevant skills? The task is to answer as an expert (Sun Tzu seat) — the brief says write exactly the format, do not write files. Skills: maybe `agent-lessons` is relevant (brief says apply lessons). But the task is answering a question, not writing briefs. Hmm, the lessons are included in the brief already. `requirement-check` applies when EJ states a rule — not here; we're advising.
+
+Should I read the memory design files? Yes, useful context, and facts in the brief cite specific records. Let me read key parts.
+dsh: reasoning:
+Let me read the YAML records relevant (W6.3a, K4.3, kit, checks, Rd3.1a/b, Rd3 group) and the tool constants, plus SOURCE_OF_TRUTH.md around line 157.
+dsh: reasoning:
+Now let me consider the five questions carefully, and form positions through Sun Tzu rules.
+
+Rules most relevant:
+- #1 Reckon before battle (compare on seven questions; measurement chain 度→量→數→稱→勝) — for C, D, E: measure before deciding; no numbers without reckoning.
+- #4 Know whether you can fight; know the other side and yourself — knowing the limit of the readers (agents) is "know the other and yourself". 
+- #2 Make yourself unbeatable first — for B: kit should be self-contained so the project can run the check without external install? Being unbeatable = having the tool. Actually "Do not rely on the enemy not coming; rely on having the means" (#2) — do not rely on the tool being installed separately; rely on the kit carrying it.
+- #3 Whole over broken; strike plans first, walled cities last — cheapest fix first, whole vs broken: B, E — keep the kit whole; prefer small edits over a rebuild.
+- #6 Mix harm into benefit — every recommendation names risk; for A, removal vs restore has harms either way.
+- #7 Deception — not much applicable. Maybe not use.
+- #8 Value victory, not duration; speed — for E: don't build a big measurement project now; do smallest step. But measurement is needed; "clumsy speed vs skilful prolongation". Hmm, for E the tool change is small and should be done in its own run; engine measurement later.
+- #9 Bring the other side to you — for C: make the owner record in one place the tool reads; the tool goes to the record rather than duplicating. "致人而不致於人" — one canonical source, others read it.
+- #10 Avoid solid, strike empty — for A? Remove stale path where it's empty; B: the gap is the tool not being installed — strike that.
+- #11 Foreknowledge from people, pay for it — for C/D/E: measured limits must come from measuring the readers (people/agents), not from docs/recall; pay for the measurement (time). This is directly applicable to E and C.
+- #12 勢 regular/irregular, choose people not blame them — for C: don't demand discipline of the reviewer; put the number where the tool reads it (change conditions, not people).
+- #13 Not every road taken / not every command accepted — maybe for B: the kit doesn't have to include the tool if a project has no Python? Hmm.
+- #14 Choose action by ratio of forces — for E: effort ratio; the tool change small vs measurement large.
+- #15 General's faults — for A: "loves the people can be harried" not applicable. Maybe C: don't let the owner's convenience (a virtue?) become a lever. Hmm.
+- #16 Orders clear first, then enforced — for A: write the merge rule so it's unambiguous; who is at fault if not followed.
+- #17 Probe and read signs — for D: which agents? Probe/measure; read signs = read the load path. For C: read signs from the actual engines.
+- #18 Spirit/heart/strength/change — maybe for E: timing; strike when flags. "avoid keen spirit, strike when it flags" — hmm, could apply to doing measurement later when engines settle? Careful not to overreach.
+- #19 Name the ground, act as prescribed — for D: name the set of agents by the ground (session-start readers) and act; for C, name where the record lives.
+- #20 Which house falls first — judge by unit/tax/what they breed: maybe for B, judge by what the kit carries (self-sufficiency) — the house that kept its old laws held. Hmm, could argue the tool fixed in the kit keeps the law (check) intact. Weak.
+
+I need to give decisions, not just rules. Let me think each carefully as a requirements-design decision.
+
+**A. Merge and stale path removal.**
+
+W6.3a says whoever merges keeps both sides: both changed: lines, both links, and every covers path either side wrote. Fails if missing a covers path one side added.
+
+K4.3: covers may be corrected after first commit, e.g. after a file is renamed, with a changed: line.
+
+Question: branch 1 removed/replaced a stale path (with changed: line presumably), branch 2 untouched. Does merge keep removal or restore stale path?
+
+Text of W6.3a: "keeps both sides … every covers path either side wrote" and fails_if "missing a … covers path that one side added". Note "added", not "wrote". So keeping both sides means union of additions. But a removal is a change on one side; if merge restores stale path, the removal is lost silently and K4.3 violation (covers changed with no changed: line? Actually the merge commit would restore the old path; a merge is not an "edit"?). The naive union of covers paths resurrects a stale path, which then points at a nonexistent file — that harms Rd5.3 mismatch semantics? K4.3 says covers correction changes where entry points, not what it claims, so not a mismatch.
+
+The right rule: merge is three-way for covers, not union. If one side removed/replaced a path and the other didn't touch it, keep the removal (take the side that changed). If both sides changed the same path differently, conflict — report to owner, don't choose. If both added different paths, keep both. Word it as: "For each `covers` path, take the side that changed it; where only one side changed it, the changed side wins; where both changed the same path differently, keep both and report the conflict to the project owner (as with two supersessions) — do not silently pick." Hmm, "keep both" for a same-path differing? If one renamed path A→B and other renamed A→C, that's a real disagreement; can't keep both without lying. Better: report and leave both entries' claims? Actually there's one entry; the merge must not invent. Should say: where both sides changed the same path, the merge stops and the project owner decides; the merge commit records it in state.md.
+
+But careful: W6.3a is MUST and the owner's rule: "whoever does the merge keeps both sides". Does my reading contradict? The brief asks which wording. I can propose W6.3a gets a sentence: "`covers` merges as a three-way change, not a union: a path one side removed or replaced stays removed unless the other side also changed it; when both sides changed the same path differently, the merge keeps both entries' claims and reports the `covers` conflict to the project owner in the task's `state.md`." And fails_if extended: "or a `covers` path one side removed is restored by the merge without a `changed:` line." Wait — "keeps both sides" is about additions; my clause is a correct reading of "added" in fails_if. Actually "keeps both sides: both changed: lines, both links, and every covers path either side wrote" — "wrote" could include removals? A removal is written as a changed: line, not as a covers path. The changed: line is kept, so the record of the removal survives. So keeping both changed: lines plus three-way covers merge satisfies "keeps both sides". Good.
+
+Alternative reading: the union reading would restore the stale path and the removal's changed: line would then contradict the covers (says renamed but old path present). That's incoherent, so three-way is needed.
+
+Which rule cites: #6 mix harm into benefit (deliberate both effects: keeping the addition vs resurrecting stale path); #16 orders clear first (word the merge so it can't be misread); #13 not every road taken? #1 reckon (compare both readings against fails_if). Maybe #4: know both sides. I'll cite #6 and #16, plus my reading for the both-sides conflict.
+
+Cost: a three-way covers merge is more work than a union, and a merge tool may flag more conflicts; the owner must decide same-path clashes.
+
+**B. What the kit carries.**
+
+YAML kit: files travel together: SOURCE_OF_TRUTH.md, YAML, CACHES.md, vision-statements/. tools/ and docs/index-md/ relative to repo root. About a dozen records check: tool; K6.2 names tool and docs/index-md/ (its requirements and design).
+
+Question: should kit include tool and docs/index-md, or say tool installed separately (and what a project without it does)?
+
+Think: a dozen MUST records have check: tool. If the kit travels without the tool, then in a new project the MUSTs have no check — the kit would be broken: the memory design promises checks that do not exist. #2: make yourself unbeatable first; do not rely on the tool turning up / being installed; rely on having it. #3 whole over broken: a kit that doesn't carry its own check is a broken kit. So the kit includes the tool and docs/index-md (the tool's requirements/design, so the tool is maintainable and its version is clear).
+
+But "travels as one kit" — should docs/index-md/ travel? It's separate design docs for the index tool; K6.2 names it. Including it keeps the tool's contract with the memory design visible. However, including all of docs/index-md might be heavy? The kit is a set of design docs, not code. The tool is a single file ~ maybe 700 lines? Check size. Also tool needs no dependencies? Let me check imports.
+
+What about a project without Python/tool? If kit carries the tool, every project gets it; a project can still say in state.md/commit message that it lacks Python and the reviewer check substitutes — SHOULD rules allow skip-with-reason, but MUST records with check: tool... Hmm. The records say check: tool; if the tool can't run, then MUST checks fail, not skip. The honest option: kit includes the tool; a project that cannot run it must still keep INDEX.md within the limit by hand and the reviewer checks it (the "reviewer" role as substitute cannot be invented by me — the YAML defines checks; changing it is EJ's). So for a project without the tool, say: it copies the tool, and if Python is unavailable, the record's check cannot run; the project owner must either install Python or record the exception in the project's state.md, and the reviewer checks the limit by hand. That's a conditional answer.
+
+But also: the kit's file list says "this file names them relative to its own folder. `tools/` and `docs/index-md/` are relative to the repository root." That's ambiguous — it says they're relative to repo root, not that they travel. My reading: the kit should include them in the travel list, with a note that they live at the repo root paths, not inside the kit folder. So wording: "These files travel together as one kit: SOURCE_OF_TRUTH.md, this file, CACHES.md, vision-statements/, tools/memory_index.py, and docs/index-md/ (the tool's requirements and design). The first four sit beside this file; `tools/memory_index.py` and `docs/index-md/` sit at the repository-root paths named."
+
+Hmm but is docs/index-md/ part of the memory kit, or the index tool's own design docs? K6.2 names it. Since about a dozen records depend on the tool, and the tool's requirements are docs/index-md/REQUIREMENTS.md, including it makes the check auditable. But does a project adopting memory need the whole index-md design? It may be more than needed. Could include a pointer: "the tool and the documents that define its check (docs/index-md/REQUIREMENTS.md and DESIGN.md)". But the YAML says docs/index-md/ entire. Ask: is it ok to include just those two files? I should not invent; propose whole folder, note the cost (kit is larger; a project must adopt docs/index-md even if it doesn't use the index for anything else). Alternative: include tool and index-md, saying the check is part of the kit because a dozen MUSTs rest on it.
+
+What does a project without the tool do? If kit includes tool, that question becomes: what if project has no Python or hasn't installed? Then the tool check is run where? memory_index.py is stdlib-only probably. Let me check imports to know whether "installed separately" would even mean dependency. If it's one stdlib file, "installed separately" is just copying it; then carrying it in the kit is cheap. That strongly supports including it.
+
+Also, version drift: if tool is installed separately at a different version, the kit's MUST checks may be checked by an older/newer tool — a real risk. Including it in the kit pins the version. #2 and #12 (choose the ground, not the people) supports it.
+
+Let me check memory_index.py imports and size.
+dsh: reasoning:
+**C. Where measured limit is recorded.**
+
+Facts: Rd3.1a MUST check: tool; who_decides project owner (which agents work on project). Tool has constants MAX_LINES=200, MAX_BYTES=24_000. docs/index-md/REQUIREMENTS.md B4.1 says values come from measuring readers' load paths, hold example until then. Numbers in three places.
+
+Question: where and in what form does owner record agents and limits so tool reads them and reviewer can see when interim example stops applying? (AGENTS.md section, small config file, or tool constants — say which and why.)
+
+Options:
+1. AGENTS.md section — human-readable, project-owned, versioned with the project; but the tool would have to parse Markdown, which is brittle; and AGENTS.md is loaded at session start, adds bytes to the very file the limit constrains (not INDEX.md though). Could be good: "Memory index limits" table: agent | file | limit | source (measured/doc) | date. A parser can read a fenced block/table maybe.
+2. Small config file, e.g. `project-memory/limits.yaml` or `.memory-index.toml` — machine-readable, one copy, tool reads it; reviewer reads it. But adds a file that must travel; does it belong in every project? It's the project's own (like AGENTS.md).
+3. Tool constants — one copy, but editing the installed tool to change project facts is wrong: tool is shared kit across projects; project-specific numbers must not live in the shared kit. #12: change conditions not people; the tool is the same for every project, so its constants can't be the place. Kill option 3.
+
+Best: one machine-readable file that the tool reads, with the source of each limit written beside it, and the interim flag explicit. Where? `project-memory/limits.yaml`? But project-memory is loaded partly at session start (INDEX.md) and entries; limits file is agent config, not memory. Could be `memory-index.toml` at repo root, or `.memory-index.json`. The design's own naming: `project-memory/` is the project's own; AGENTS.md is project's own. I'd propose `AGENTS.md`? Hmm.
+
+The requirement says "the project owner records measured limits". The record Rd3.1a is who_decides: project owner. A small config file readable by tool and human seems best: single source, exact, diffable, and can carry source/date. But the brief explicitly lists candidates: a section of AGENTS.md, a small config file, or the tool's constants. My answer: a small config file (e.g. `project-memory/limits.yaml` or repo-root `.memory-index-limits`), because it's machine-readable for the tool, diffable/versioned so a reviewer sees when the interim stops, and separate from the shared tool; AGENTS.md remains the human instruction and points to it. Include fields: per agent: name, start file(s), max_lines, max_bytes (with unit stated: bytes vs UTF-16 code units; agy tokens), where measured (command/date), and an `interim: true` marker while any row is the example. Tool computes the strictest among listed agents, with unit normalization (lines, bytes, code units) — careful: comparing 24,000 bytes to 25,000 UTF-16 code units is not apples to apples for non-ASCII; the tool can measure INDEX.md in bytes and in UTF-16 code units. That's a real design point.
+
+But should I prescribe schema? The brief: "where, and in what form, does the project owner record the agents and their limits so the tool can read them and a reviewer can see when the interim example stops applying?" I should say: one config file, read by the tool, with each limit carrying its unit, source and measured date, and an `interim` field naming the example; Rd3.1a's text changes from "the tool's limit is the example" to "the tool's limit is the strictest row in the file; when no row is measured, the file holds one row marked `interim`, the example, and the tool fails... " hmm. Reviewer can see interim marker.
+
+Should the file live in AGENTS.md instead? Argument for AGENTS.md: the owner already writes there, new projects have it, and it is the natural instruction surface; but Markdown parsing by tool is brittle, and limits are data, not instructions. Config file wins. But note the config file must also travel with the kit? No — it's the project's own, like project-memory and AGENTS.md. So kit includes tool; project includes its limits file. That's a clean split and ties B and C.
+
+What form: YAML? The project already uses YAML for requirements. A YAML file `project-memory/limits.yaml` with `agents:` list. But who reads it? tool. YAML parsing needs PyYAML? Python stdlib has no YAML; memory_index.py imports only stdlib. That's a decisive constraint: the tool must stay stdlib-only (it runs in any project with python3). So YAML would need PyYAML or hand-rolled parse. Use a small line-based format the tool can parse without dependencies, e.g. a simple table or JSON (json is stdlib). JSON is stdlib, machine-readable, diffable; comment-free though (source/date as fields). JSON config is a good pick. Or a simple `key: value` text file. JSON is exact and stdlib — recommend `project-memory/limits.json`. Hmm, does project-memory travel? No. Maybe `memory-index-limits.json` at repo root. Naming: `project-memory/limits.json` sits with the memory; project-memory is project's own. Fine.
+
+Fields: for each agent: `name`, `start_file`, `limit: {lines: 200}` or `bytes: 24000` or `utf16_code_units: 25000`, `source` (URL/path and measurement date), `measured: true/false`. And a top-level `interim` or per-row `measured: false` with `example: "Rd3.1b"`.
+
+Key: the tool's current constants stay as the fallback only when no file exists? Better: if the file is absent, the tool uses the interim example and its size report says "interim example (Rd3.1b); not measured". If file present, use strictest. If a row is marked unmeasured/interim, the tool still uses it but says so. Reviewer can see when interim stops applying: the file's `measured` flags and `source` fields; the tool's output names the limit and its source. Also the YAML Rd3.1a text changes to name the file.
+
+Cost: one more file; schema maintenance; a project can forget to update it; unit mismatch can bite (code units vs bytes) — the tool must measure the same way as each limit.
+
+**D. Which agents count.**
+
+Sources: group Rd3 title "INDEX.md fits every agent that reads it"; prose "the strictest start-file limit of the agents that read it"; Rd3.1a "among the agents that work on the project". Question: which set? agents that read INDEX.md at session start, or all agents that work on the project?
+
+Clear: only agents that read INDEX.md at session start impose a limit on INDEX.md. An agent that works on the project but never loads INDEX.md at start imposes no start-file limit on it. The prose and group title are right; Rd3.1a's "work on the project" is broader than the rationale and would let a non-reader set the limit. But careful: an agent that doesn't read INDEX.md at start might still read it on demand; start-file limits don't bind on-demand reads the same way (they're context-window/load concerns). Also, which agents "read at session start" is determined by the project's routing/instructions: if AGENTS.md tells every agent to read INDEX.md first, then they are readers. So the set = agents whose start-up instructions/load path include INDEX.md; the owner names that set; each such agent's strictest start-file limit applies.
+
+Wording: "the strictest start-file limit among the agents whose session start loads INDEX.md." who_decides: project owner (which agents those are, and so the strictest limit). Rd3.1a "work on the project" → change. Also C's file rows should be only those agents; this ties C and D: the config lists session-start readers, not all agents.
+
+Cost/risk: an agent that works but doesn't read INDEX at start may later read it mid-session where a limit still applies (context budget), but that is the agent's own budget, not the start-file limit; the narrower set can let INDEX grow past an agent that reads it on demand. If the owner routes all agents to read it at start, set is all agents anyway.
+
+Rule citations for D: #4 know the other and yourself (the limit is a property of the reader, not of the project's roster); #19 name the ground (name the set precisely and act as prescribed); #1 reckon with the actual comparison. Quote? I can quote from my list only — e.g. #4 「知彼知己，百戰不殆」 and #1 「校之以七計」. Keep quotes short and exact from the list text (traditional as list uses; list is mixed? The list's quotes are traditional for 孫子兵法 — yes, e.g. 「兵者，國之大事」 traditional). Copy exactly.
+
+**E. Build the tool change, and measure the limits?**
+
+Two questions: (1) should the tool be changed to read limits from where C records them (code change + tests, own run)? (2) should limits be measured on the engines (not only read from docs) — now, later, or not at all?
+
+Facts: research table. Verified: Claude Code MEMORY.md 200 lines/25KB; Qwen 200 lines/25,000 code units; agy 24,000 bytes + 20,000 tokens (or reported 12,000 chars); Codex 32 KiB combined; dsh 64 KiB combined; Gemini and opencode none stated. None measured on an engine. Tool interim 200/24,000 is at/under every verified per-file figure, not under reported 12,000-char agy.
+
+Decision: Yes, build the tool change — it is small, has a clear contract, and without it C's record cannot take effect; do it in its own run with tests, because it changes a check that a dozen MUSTs rest on (#16 orders clear first; #3 whole over broken — don't rebuild, one small change). Timing: the tool change need not wait for measurement; it should read the config, and when no measured row exists, use the interim example with a visible "interim" label. That way measurement can land later without another code change. This is the key sequencing: make the tool read the record now; measure later; the example stays the fallback until a measured row appears. #2: make the path ready before needing it.
+
+Should limits be measured? Yes, later, in a separate measurement run, because:
+- The record's whole basis (B4.1) is that the values come from measuring the readers' load paths; until then the design runs on an example (unmeasured).
+- The research shows documented limits conflict (agy 12k chars vs 24k bytes; Qwen bytes vs code units; Claude 25KB ambiguity) and docs may not describe installed versions — docs are not a measurement (#11 foreknowledge from people/measurement? My #11 is about spies; #1 measurement chain is the better cite).
+- Not now: measurement depends on the tool reading the file? No, measurement is independent; it could run now. But "now" costs time and may be premature if the engine set/router isn't fixed (#14 ratio of forces; #8 speed — but measurement is cheap?). Which ordering? The brief asks now/later/not at all. My advice: measure later, after the agent set is fixed and the tool reads the record, but not "not at all". Actually, the best answer may be: measure when a project actually adopts the kit and its reader set is known; the design's example remains interim until then. For the Ancient Games project itself, measure the agents that actually read its INDEX at start — which is maybe none yet, since project-memory isn't adopted? Let me check whether project-memory exists in this repo. `ls project-memory` maybe. If no project has adopted it, measuring now would measure engines for a design not yet in use — premature. Let me check.
+
+Also what does "measure" mean concretely? Fill a file with N lines/bytes, start the engine, see whether it loads it or truncates/notices; binaries can be tested headlessly with a large AGENTS.md/MEMORY.md and a prompt asking to repeat last line. Must distinguish: measured = on the installed version, by a command that shows truncation. Cost: each engine run, and the agy 20k-token demotion behavior; dsh truncation notice. This is plausible.
+
+So E answer: (1) yes, change the tool in its own run with tests — small, one source of truth, fallback when config absent; (2) measure later, on the installed versions, when a project's reader set is fixed / before relying on the limit for a real INDEX; not "now" because no project has yet adopted the memory kit? Let me verify.
+
+Let me check project-memory presence and routing in AGENTS/CLAUDE for memory.
+dsh: reasoning:
+Good: project-memory is not adopted in this repo (no project-memory dir), and CACHES table still says "25,000 bytes" for Qwen (research says code units). Also B4.1's "measures lines and UTF-8 bytes" — Qwen counts code units, so unit matters if Qwen is a reader. Important for C: config must record unit per agent.
+
+Also note the tool measures UTF-8 bytes (measure returns lines, len(rendered)); for Qwen code units, if text is non-ASCII, code units differ. So C's record should record unit and the tool compare in the right unit.
+
+Now let me check the review that left five open points — maybe in runs/20261017-sot-item11/question.md or nodes. Reading question.md might give more context (it's the same as brief's question). Let me look at run state and research briefly to know where the workflow is and whether there are other experts' answers I should not read (independence). The brief says seats are separate. I shouldn't read other experts' answers. Let me check state.md for context and the research folder maybe.
+dsh: reasoning:
+The run says "six experts" but only 5 folders (dario, dave, fan-li, linus, sun-tzu) — maybe sixth is elsewhere or named differently. Not my concern; do not read others' answers.
+
+Also Q3: "a tool build is its own later run" — EJ already decided that. So E (1) "should the tool be changed... in its own run" — EJ's default: yes, later run. My answer should align: yes, own later run. Good context; I can cite as fact? The brief doesn't include this, but state.md in run folder is inside repo. The question says "The research for this question is added below" and "decide each"; my answer can note that the run's standing answer Q3 already sets the tool build as a later run — that's an EJ decision, not recall. But the brief says answer through rules and don't invent. I can mention it as a fact read from state.md (my reading). Should I? It helps E. But the brief's question asks "should the tool be changed ... (a code change with tests, in its own run)" — EJ's Q3 answer is directly about that. I can state: the run already records Q3 = the tool build is its own later run (state.md, 2026-10-17), so the question left is whether the change is worth doing at all and when the limits get measured. That's useful and honest. But careful: the workbook may expect each expert to answer independently; referencing state.md is fine since it's in repo and factual.
+
+Wait — the brief says "Do not invent facts. If the answer depends on something you were not given..." and lessons: facts carry source. state.md is a source. I can cite "run state.md, Log 2026-10-17: Q3 a tool build is its own later run". Fine.
+
+Now, let me think about each answer more rigorously with Sun Tzu rules, and pick the best.
+
+I should frame the overall answer with a short lead: all five are one issue — the design has numbers and rules in more places than the one that decides them (C/D), and a rule that can be read two ways (A/B). The through-line: one source, the check reads it, measure before you rely. That's my reading.
+
+Let me draft decisions:
+
+**A.** Keep the removal. Merge `covers` three ways, not as a union. W6.3a's fails_if already says "a `covers` path that one side **added**", so the union reading is not required by the record; but the text "every `covers` path either side wrote" invites it. Reword:
+- W6.3a text: replace "and every `covers` path either side wrote" with "and every `covers` path either side added or corrected. `covers` merges as a three-way change, not a union: a path one side removed or replaced stays removed when the other side did not touch it, and its `changed:` line is kept; when both sides changed the same path, the merge keeps both `changed:` lines, reports the clash in the task's `state.md`, and the project owner decides."
+- fails_if add: "a `covers` path one side removed or replaced is restored by the merge without a `changed:` line, or a same-path clash is decided by the merger without reporting."
+- who_decides already project owner (for the same-path clash); good.
+Also W6.3a's first sentence "Nobody chooses between two claims" unchanged. This fits K4.3 (covers correction must carry changed: line) — if the merge restored a stale path, the removal's changed: line would be kept but contradicted; the entry would point at a path that no longer exists.
+
+Which rule? #6 mix harm into benefit: the union keeps an addition but resurrects a stale pointer; weighing both harms chooses three-way. #16 orders clear first: the current wording is unclear, so each merger decides differently; fix the order. Also #1 reckon: the fails_if comparison ("added") is the measure that shows the union reading fails. I'll cite #6 and #16, and maybe #1.
+
+Cost: three-way merge needs a git merge driver or human doing it; same-path clash costs owner time; a merge driver that only unions would be wrong.
+
+Wait: is there a simpler route? `covers` could be regenerated from the entry body? No, covers is metadata. Could require the owner to resolve all covers conflicts... but that's more hand work. Three-way is right.
+
+**B.** Kit carries the tool and docs/index-md. Why:
+- ~a dozen records are MUST with `check: tool`; a kit without the tool ships requirements whose check is absent — "a rule you cannot check is not yet a rule" (my reading, not a quote). The tool is one stdlib Python file (561 lines; imports only argparse, difflib, os, re, subprocess, sys, tempfile, pathlib) — carrying it is cheap and needs no install.
+- Version drift: an externally installed tool may differ; the kit's checks then test against a different tool. Pinning it in the kit makes the check reproducible.
+- docs/index-md/ is the tool's requirements/design, named by K6.2; carry it so the check is auditable. But the whole folder includes BACKLOG and VISION; maybe carry only REQUIREMENTS.md and DESIGN.md? The record says `docs/index-md/`; changing to two files changes K6.2. Simpler: carry the folder as named.
+- A project without the tool: impossible if the kit carries it, except no Python3. Then the project doesn't have the memory kit's check: state it as a condition — a project that cannot run python3 must record in its state.md/commit that the tool check is unavailable and the reviewer performs it by hand (check: reviewer), or not adopt the kit. But the YAML's `check` is not switchable. So: "A project without python3 cannot take the kit as written; the owner records the substitution in state.md (SHOULD's reason rule) — or the kit's check list gains 'reviewer when the tool cannot run', which is EJ's change." Careful not to invent. I'll say: the kit requires python3 (stdlib only); a project without it is not a supported case, and if EJ wants one, the record's `check: tool` must name a fallback (their decision).
+- Wording for `kit`: "These files travel together as one kit: SOURCE_OF_TRUTH.md, this file, CACHES.md, vision-statements/, `tools/memory_index.py`, and `docs/index-md/`. The first four sit beside this file; `tools/memory_index.py` and `docs/index-md/` sit at the repository-root paths named." Plus one sentence: "The tool is part of the kit, not a separate install: every `check: tool` record rests on it, and a kit without it would name a check no project has." Hmm, that's design prose; maybe put in SOURCE_OF_TRUTH.md instead. The YAML kit line should list it; the prose line at SOURCE_OF_TRUTH.md:157 already says "travel together as one kit" listing four — update both, since a kit has one copy of its list? Actually the kit is named in YAML and the prose repeats it (two copies — the problem in C again). Better: one list, in the YAML `kit`, and the prose says "travel together as one kit (see `kit` in the YAML)" — remove the duplicate list from the prose. That's consistent with the one-source theme. Good point to add: the prose line duplicates the kit list; the kit key should be the one copy. But the brief asks about what it carries; I can say: list it once, in `kit`; make SOURCE_OF_TRUTH.md:157 defer to it.
+
+Rules: #2 (make yourself unbeatable first; do not rely on the enemy not coming / rely on having the means) — carrying the check is the "means"; #3 (whole over broken) — a kit with a missing checker is broken; #12 (choose the ground, not the people) — pinning the tool removes reliance on each project installing the right version. Good.
+
+Cost: kit is bigger by ~1,000 lines; every adopting project inherits a tool it may not edit; upgrading the tool means re-copying it into each project (no package manager). Name that.
+
+**C.** One file, read by the tool: `project-memory/limits.json` (JSON because the tool is stdlib-only and Python's JSON is stdlib; YAML would need PyYAML or a parser; Markdown would need a parser and invites edits). Fields per agent: name, file, limit with unit (`lines`, `utf8_bytes`, `utf16_code_units`, `tokens`), `source` (URL/path + date), `measured: true|false`, and `example: Rd3.1b` when false. Tool computes strictest across rows; when file absent, uses the interim example and prints "interim (Rd3.1b); not measured". Reviewer sees interim stops when every row is measured: true and source is a measurement command/date; the tool prints which row bound.
+
+Should it be AGENTS.md? No: numbers are data with units and sources; AGENTS.md is instructions read at start, and parsing Markdown would make the tool brittle; AGENTS.md can point to the file in one line.
+
+Why not tool constants? The tool is shared by every project; a project fact in shared code (a) can't be right for two projects, (b) turns a measurement into a code edit, and (c) makes upgrade a merge. #12 changing conditions not people: the condition is per project, so per-project file.
+
+Rd3.1a wording: "`INDEX.md` fits the strictest start-file limit recorded for the agents that read it at session start (Rd3.1b) in `project-memory/limits.json`. Until the project owner records a measured limit, the tool uses the example in Rd3.1b: 200 lines and 24,000 bytes, and its report says the limit is the interim example." Hmm, needs "among agents that read it" per D. Align wording with D: "among the agents whose session start loads INDEX.md". And Rd3.1b: change from "`tools/memory_index.py` holds these numbers" to "the example is held in the tool as its fallback; `project-memory/limits.json` overrides it when present."
+
+Where does the file live? `project-memory/limits.json` — inside project's memory folder, which is project's own per kit. But careful: the tool's `project-memory/` scan only reads `entries/`; limits.json at project-memory root is not an entry, so no interference. Or repo root `.memory-index.json` keeps it out of the memory folder. Which is better? project-memory is "the project's own"; limits are project config. Root file `.memory-index-limits.json` is hidden and discoverable; project-memory/limits.json sits with the memory it governs. I'd choose `project-memory/limits.json` because the limit is a property of the memory's readers and travels with the memory tree (not the kit), and the tool already knows `project-memory/`. But if a project imports the memory kit into an existing repo, project-memory exists only after adoption; fine. And if the folder is absent, check mode passes "nothing to check" (C1.3), so no problem.
+
+Wait: does the tool's `entry` scan include all files in project-memory? B1.1 only entries/. Fine.
+
+Also "reviewer can see when the interim example stops applying": require the tool's size report to print e.g. `limit: 200 lines / 24000 bytes from project-memory/limits.json [interim example Rd3.1b]` and once measured `[measured 2026-10-20 on Claude Code 2.1.302]`. Then no need to read the file to know. That's a good testable observable.
+
+Rules: #9 (bring the other side to you: one canonical place the readers go to, not three copies), #1 (measurement chain: the limit is a comparison, so the record must carry unit and source), #12 (change the condition — put the number where the tool reads — not admonish the owner). Good.
+
+Cost: schema and tool parser + tests; a config file can drift from reality if nobody re-measures; JSON has no comments (sources are fields); owner must edit a data file, which is less discoverable than AGENTS.md — mitigate with one line in AGENTS.md pointing at it.
+
+**D.** The readers at session start, not all who work. Wording: group title already right ("every agent that reads it"), prose says "agents that read it"; change Rd3.1a to "among the agents whose session start loads `INDEX.md`". Why: a start-file limit is a property of the load path, not of working on the project; an agent that never loads INDEX at start places no limit on it. An agent that reads it on demand is bound by context budget but not this start-file limit; if the owner routes it to read INDEX at start (AGENTS.md/CLAUDE.md say so), it joins the set. who_decides stays the project owner (which agents, and so the strictest limit) — the record's who_decides must name "which agents load INDEX.md at session start" rather than "work on the project".
+
+Cost: a narrower set lets INDEX grow past an on-demand reader's comfort; and "reads at session start" depends on routing text that may differ per engine — the owner must read each engine's start-load rule (CACHES table), which is exactly what C's file records. Also if an agent's routing changes, the file must change; the config is the review point.
+
+Rules: #4 knowing the other and yourself: the limit belongs to the reader, not the roster; #19 name the ground: name the condition precisely; #1 compare the actual set. Cite maybe #4 and #19.
+
+**E.** (1) Build the tool change, own run (consistent with Q3, state.md). Commit to: tool reads `project-memory/limits.json` if present; falls back to constants; prints limit+source+interim flag; tests for (absent → example, present → strictest, units, over-limit fail). Don't also change C and D wording in the same run? The requirement wording change is part of the same decision; but tool run can implement after the wording lands. Sequence: settle C/D wording first (this run's majority), then tool build run reads it. Hmm: the tool needs to know the file schema; that's in C. If C's wording is decided by the majority of experts this run, P2 applies it. Then E's own run builds. Good.
+
+(2) Measure later, and only on the engines that the project's reader set uses, on the installed versions; never rely on docs as a measurement. Why later not now: no project has adopted project-memory yet (no project-memory/ in this repo); the reader set isn't fixed; measuring all six engines for a design no project uses is effort before value. But not "not at all": the record's own basis says the values come from measuring readers' load paths; until measured, the design runs on a marked example — acceptable as interim, not as the end state. Measure once, record commands+dates in the config, and re-measure when an engine upgrades or a new agent joins. The research already gives the candidates and the conflicts (agy 12k chars vs 24k bytes; Qwen code units vs bytes; Claude 25KB ambiguity) — those are the rows to test first, because they can lower the strictest limit. The agy 20,000-token budget across rules also means a file limit alone doesn't capture the binding constraint; measuring must test the whole start-load, not just one file's bytes. That's a good point: Codex/dsh combined budgets mean measuring a single file's limit is not enough; the measured value depends on the other instruction files. So a measurement protocol per engine: fill the start file (and the other instruction files) and see where truncation starts; record the condition, not just the number.
+
+Now, "now, later, or not at all": Answer: build now-ish (own run), measure later, and not "docs only". Maybe give a condition: if the next project that adopts memory is this one, measure before its first real INDEX; otherwise the example stands. Is measurement on engines needed at all if no agent reads? It's needed once a project relies on the number as a MUST.
+
+Rules for E: #8 value victory not duration — the small tool change buys a check that a dozen MUSTs rest on; timing: measure after the reader set exists, not a campaign now (skilful prolongation? careful). #1 reckon before battle: no number without a measurement; the interim example named as example. #14 ratio of forces: tool change small vs measurement larger; do small first. #2 make yourself unbeatable: don't rely on docs; rely on your own measurement/fallback. #11 foreknowledge from people who know: measure the engines, don't infer from docs? #11 is about spies; "foreknowledge ... must be got from people who know the enemy's situation" maps to measuring the actual engines rather than reading pages. Maybe cite #11 as my reading/analogy — better #1 measurement chain and #17 (probe and read signs: probe the engine, read its truncation notice). #17 is a nice fit: "reckon, stir, make it take form, test it in contact" — measure the engine by acting on it. Cite #17 for the measurement method: run the engine with a known oversized file and read the truncation notice; don't infer from a doc. Good.
+
+Cost for E: a tool schema + parser + tests (a day?), re-copy to projects; measurement runs each engine once per version, plus non-determinism (version drift, budget shared with other files); the 12k-char agy row may force the interim 24,000 bytes down to 12,000 chars, i.e. the tool would fail existing indexes — good, but it may block a project, so measure before relying.
+
+Now the format. Exactly:
+
+# 孫子 (Sun Tzu) — <the question in a few words>
+
+## Answer
+<recommendation in one or two sentences; conditional if it must be>
+
+## How I decided
+<numbered steps; each cites "my #n" or says "my reading">
+
+## What I need to know
+<questions whose answers would change the answer; "none" if none>
+
+## Costs and risks
+<each with the item it comes from>
+
+## How we would know I was right
+<a test, a measure, or an observable result>
+
+The five questions A–E each need a choice + wording. The Answer section says one or two sentences — but five decisions can't fit in two sentences? The template says "your recommendation in one or two sentences; conditional if it must be". I can do a two-sentence summary + a compact decision table/list for A–E. The template is strict about headers; I can put the per-item decisions under Answer as a table after the two-sentence summary? It says "Answer: your recommendation in one or two sentences". Better: keep Answer to 2 sentences summarizing the through-line and the five choices in brief clauses; then a subsection "### A–E" under Answer with each decision and wording. That may violate "exactly this" structure slightly. Hmm.
+
+Alternative: put each decision's full answer under "How I decided" as numbered steps (A–E), each citing rules, and keep Answer 2 sentences. But then the "wording if it changes the design" belongs in Answer. The template's "How I decided" is numbered steps with rule citations; the wording proposals would make it bulky but it's the natural place for detail. I think the cleanest compliant structure:
+
+## Answer
+Two sentences: "Read all five as one problem: each limit or path should have exactly one recorded home, and the check should read that home. My choices: A keep the removal by a three-way `covers` merge; B carry the tool and `docs/index-md/` in the kit; C one `project-memory/limits.json` that the tool reads; D only the agents whose session start loads `INDEX.md`; E build the reader in its own run and measure the engines later, marking any unmeasured row."
+
+Then "### A. ...", "### B. ..." subsections under Answer with "Choice:" and "Wording:". That gives clarity while the "Answer" is still the recommendation. Then "## How I decided" numbered steps A1..E2 or just 1..10 with each step citing rules. Maybe simpler: 5 numbered steps, each covering one question, with the rule citation inside, then one step for the through-line. But the wording is already in Answer; How I decided explains why.
+
+Could also fold decisions into How I decided and keep Answer short; but readers (the main agent applying majority) need explicit choices. I'll use Answer with short bold items A–E (choice + wording), then How I decided with the reasoning per item.
+
+Length: moderate; five questions, so maybe 1200-1500 words. Fine.
+
+Quotes: I must quote only from my list, exactly, keeping traditional characters. Which quotes do I want?
+- #1: 「兵者，國之大事，死生之地，存亡之道，不可不察也。」 and 「地生度，度生量，量生數，數生稱，稱生勝。」 (traditional, from list). Good for C/E: measurement chain.
+- #2: 「無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 — list writes 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 (note list has no 也 after 待之? It says 「恃吾有以待之」; identity says 「恃吾有以待也」. Use list's exact: 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」) For B.
+- #16: 「約束不明，申令不熟，將之罪也；既已明而不如法者，吏士之罪也。」 For A wording clarity.
+- #9: 「故善戰者，致人而不致於人。」 For C: one place pulls the readers/check, rather than three copies.
+- #12: 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」 For C (put the number in the ground, not in the owner's discipline) and B? #12 for C.
+- #4: 「知彼知己，百戰不殆」 — list's exact: 「故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」 For D.
+- #17: 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」 For E measurement.
+- #8: 「故兵聞拙速，未睹巧之久也。」 For E timing: do the small change, don't campaign.
+- #6: 「是故智者之慮，必雜於利害」 For A costs.
+- #3: 「不戰而屈人之兵，善之善者也」? For B whole kit? Not needed.
+
+Do not overuse quotes; each step names the item, quote only where it is evidence. Maybe 5-6 quotes.
+
+Check exactness of each quote against the list text:
+#1: list: 「兵者，國之大事，死生之地，存亡之道，不可不察也。故經之以五事，校之以七計，而索其情：一曰道，二曰天，三曰地，四曰將，五曰法。」 — I can quote the first sentence and later sentence separately with ellipsis.
+「地生度，度生量，量生數，數生稱，稱生勝。」 — yes exact.
+#2: 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 — exact from list.
+#9: 「故善戰者，致人而不致於人。」 — exact.
+#12: 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」 — exact.
+#16: 「約束不明，申令不熟，將之罪也；既已明而不如法者，吏士之罪也。」 — exact.
+#17: 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」 — exact.
+#8: 「故兵聞拙速，未睹巧之久也。」 — list has 「故兵聞拙速，未睹巧之久也。」 yes.
+#4: 「故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」 — exact.
+#6: 「是故智者之慮，必雜於利害」 — list full: 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」 Quote prefix is fine if I end at 利害? The instruction says quote exactly as written; a partial quote is okay as long as the characters match; better quote the full first clause and ellipsis.
+#1 chain: exact.
+
+Note: my brief says "Copy Chinese character by character, in the script your list uses (simplified or traditional)". The list is traditional for these. #20 is simplified (何炳棣 quote) but I won't quote it. Be careful with 爲/為: #12 quote has 「求之於勢」 no 爲. #1 has 「不可不察也」. Fine.
+
+Now, facts I cite must carry sources (lesson: facts carry their source). In the answer, I'll cite records by id and file:line where useful. The brief already gives facts; I can reference them ("W6.3a", "K4.3", "kit key", "Rd3.1a", "tools/memory_index.py:35-36", "B4.1", "state.md"). For my proposals I don't need re-citing.
+
+Do I need to read the review that left five open points? Maybe not. The brief is the question. But to be safe about what "wording" means and the review's context, could read runs/20261014-sot-yaml-review/state.md item 11. That might contain EJ's item 11 text and review. It could help align. Let me read it (it's inside repo).
+dsh: reasoning:
+Item 11 lists the five as "EJ's wording" for the first, others open. The nodes p3-*.result.md may contain the detailed findings; maybe read for context of what reviewers proposed. But expert answers may be there; independence? The run 20261015 nodes are prior run's research, not current experts' answers. They'd give context. Let me read p3 relevant files quickly.
+dsh: reasoning:
+Important: the YAML is generated by build_requirements.py — the `kit` text is in the build script's header, so changing it means editing the generator, not the YAML. Also "docs/index-md/" may be the tool's reqs. And prior finding O2: "about 24 KB" and the example tied to "when Claude Code, Qwen and agy share a project".
+
+Also E has U3/U4 deferred; let me read those lines for what was proposed.
+dsh: reasoning:
+U3/U4 are in p3-1 or another node. Let me grep across.
+dsh: reasoning:
+No U3/U4 in these nodes; maybe another node file p3-1 has sections. It doesn't matter much.
+
+Now, is my B answer right about docs/index-md/ traveling? The kit is for projects adopting the memory design; docs/index-md is this repo's design docs. If another project adopts the kit, does it need the whole index-md design (VISION, BACKLOG)? Maybe the tool and its requirements only. The record K6.2 says "Its requirements and design are in docs/index-md/." The kit's purpose is that the requirements and their checks travel. Carrying the tool + its design docs is defensible. But cost: docs/index-md contains this repo's project-specific vision and backlog. Including it means adopting another project's design history. Hmm. That's a genuine design question for B. Options:
+- B1: kit includes tool and docs/index-md — check auditable, but project inherits another project's docs.
+- B2: kit includes the tool only; says docs/index-md is this repo's tool design (optional reference); that acknowledges the tool's docs are reference, not kit.
+- B3: kit excludes tool; each project installs it — rejected because a dozen MUST checks rest on it.
+
+The question explicitly: "should the kit include the tool and docs/index-md/, or should the design say the tool is installed separately (and what a project without it does)?" So they group tool + docs/index-md. My choice: include the tool; include docs/index-md as the tool's requirements/design (or at least REQUIREMENTS.md and DESIGN.md). Maybe give a conditional: if the whole folder carries this repo's backlog/vision, include `REQUIREMENTS.md` and `DESIGN.md` only, and say K6.2's pointer is to those two. That's a reasonable refinement but adds complexity. The owner wants a decision. I'd say: include `tools/memory_index.py` and the two documents that bind it, `docs/index-md/REQUIREMENTS.md` and `docs/index-md/DESIGN.md`; leave `VISION.md` and `BACKLOG.md` out (they're this repo's history, not the check's contract). Then adjust K6.2 to say "its requirements and design are in docs/index-md/REQUIREMENTS.md and DESIGN.md." But then the `kit` line says `docs/index-md/`? Change to those two files. Is that "inventing structure"? The question lets me choose wording. But maybe simpler and safer: carry the folder as named. Hmm.
+
+Consider the "one thing/maker" lens: docs/index-md/BACKLOG.md is a tool backlog, likely this repo's. A new project doesn't need it; carrying it is harmless but confusing. The check's contract is REQUIREMENTS.md + DESIGN.md. I'll decide: kit carries the tool and the two documents; K6.2 updated. That's a sharper answer and names the cost (splitting a folder's contents into kit vs non-kit; a link to docs/index-md/VISION.md from the tool docs would dangle unless adjusted). Hmm, that cost could be annoying. Is there a link from REQUIREMENTS.md to VISION? The header says sources include (v) VISION.md. If VISION stays behind, citations still resolve only in the source repo; the kit is a copy, so in a new project `(v) VISION.md` would point to a missing file. That's a real argument for carrying the whole folder. OK: carry the whole `docs/index-md/` — it keeps every internal link resolving, and it is small (about 919 lines total with tool). The "another project's backlog" cost is real but acceptable; name it.
+
+Wait, but docs/index-md/REQUIREMENTS.md (B4.1) also states the limit numbers, which C is consolidating. Carrying the whole folder means carrying a fourth place with the numbers ("about 24 KB and 200 lines (Rd3.1)") — but B4.1 defers to Rd3.1 and is updated by C's wording (it's a requirements doc for the tool, so it must change too). C says numbers sit in three places; B4.1 is a fourth but it says "until then they hold the design's example" — it defers. It should be updated to "the value comes from `project-memory/limits.json`; the example is in Rd3.1b". So C's change touches B4.1 too. Good to mention: the wording change is not only Rd3.1a/b and the tool; B4.1 and the prose line also repeat the example, so the run that applies C must update the copies to point at the one record. That's a useful insight and fits the through-line.
+
+Now C again: Should the limit file be `project-memory/limits.json` or something at repo root? Think about "who fills it": project owner. A data file in project-memory might be mistaken for an entry or loaded; but B1.1 restricts entries to entries/. The tool already has project-memory path. But wait: the kit's `project-memory/` is the project's own; if a project adopts the design, a limits file inside project-memory is natural. However, if project-memory doesn't exist yet, check mode passes; no issue. Another candidate: `memory-index.json` at repo root. Hidden dotfile vs visible. I prefer `project-memory/limits.json` for locality: the limit governs INDEX.md, which lives in project-memory/. Good.
+
+Format JSON details:
+```json
+{
+  "agents": [
+    {
+      "name": "Claude Code",
+      "file": "MEMORY.md",
+      "limit": {"unit": "lines", "value": 200},
+      "source": "https://code.claude.com/docs/en/memory, read 2026-10-17",
+      "measured": false,
+      "example": "Rd3.1b"
+    }
+  ]
+}
+```
+But an agent can have two limits (lines AND bytes, whichever first). So limit should be a list:
+"limits": [{"unit":"lines","value":200},{"unit":"utf8_bytes","value":25000}] and the tool takes the strictest comparison. Unit naming: "utf8_bytes", "utf16_code_units", "lines", "tokens". For agy, bytes per file + tokens across all rules; the whole-start-load budget is a different measure (tokens across rules) that the tool can't compute from one file. Hmm: the tool checks INDEX.md only; if the binding constraint is a token budget across all instruction files (agy 20,000 tokens; Codex 32 KiB combined; dsh 64 KiB), then a per-file limit on INDEX alone doesn't capture it. That's a genuine limitation: for combined budgets, the measured limit for INDEX depends on the other files, so recording a single number per agent hides the condition. C's file should record the condition: `load: "combined with AGENTS.md/CLAUDE.md"` plus the budget, and the tool can only enforce the per-file part; the reviewer enforces the combined part. Or the tool could accept a `max_bytes` for the index alone derived from the budget minus the other files — that would be a number measured for that project, fine.
+
+This is an important point to include: the file must say what the limit is a limit *of* — per file or the whole start load — and for whole-load budgets, the recorded limit is INDEX.md's share, measured with the other files present. Otherwise a per-file 24,000 compared against a 32 KiB combined budget is a category error. C's question: "where and in what form ... so the tool can read them". Answer: fields include `scope` (file vs whole load) and `unit`; for whole-load rows, the value is the index's share measured in the project's actual file set. The tool warns "not enforceable alone" for scope=whole_load? That may be overengineering. Simpler: for whole-load agents, the recorded value is "max bytes for INDEX.md given the other start files, measured with them in place" — i.e. still a per-INDEX comparison, derived from measurement. That is the correct conversion. State it in wording.
+
+Also units: compare per agent, compute binding limit in each agent's own unit; the tool measures INDEX in lines, bytes, UTF-16 code units, and tokens? Tokens can't be computed without a tokenizer. So token-budget rows can't be tool-checked exactly; either record a byte/line equivalent measured on that engine (a measured proxy), or leave token budgets to the reviewer. Better: record a measured byte/line threshold that the engine actually demonstrated (the point where truncation began), not a token budget the tool can't measure. That's the measurement protocol: what the tool compares is what was measured. This resolves the unit issue elegantly: don't record "20,000 tokens"; record "INDEX.md over N bytes (with these other files) truncated" — a measured comparison the tool can enforce.
+
+This ties to C's "in what form" and E's measurement. Good.
+
+Now D: "agents that read INDEX.md at session start" — also need to handle: a project's AGENTS.md may instruct all agents to read INDEX at start; then all are readers. The set is defined by each agent's routing, which is per engine. So the limits.json row's `file` is the engine's start file (e.g. MEMORY.md, AGENTS.md) and `reads_index_at_start`: true. Hmm, maybe the config rows are just the reader agents; the owner only lists those they have routed to read INDEX at start. Wording: "the strictest start-file limit among the agents whose start-up instructions load INDEX.md (the project owner names them)." Change Rd3.1a. Group title: "`INDEX.md` fits every agent that reads it at session start". Prose: same. who_decides: "project owner: which agents load INDEX.md at session start, and so the strictest limit."
+
+Cost: if the owner later routes another agent to read INDEX at start and forgets to add it, the limit is wrong; the review point is the routing file. Could tie: the same commit that adds the routing line adds the limits row. Nice: "when a start file starts loading INDEX.md, its row is added in the same commit" — but that's a new MUST I'd be inventing. Better as advice/cost, not a record.
+
+Now E details:
+- Tool change: yes, own run, tests. Scope: read limits.json if present; fallback constants; print source+interim; compare units; maybe no token support. Test list: absent file → example; present file with measured rows → strictest; a row in code units with non-ASCII index; over-limit fails; malformed file errors (not crash). Small: ~50 lines + tests.
+- Measurement: later, on the installed versions of the agents the project actually uses, by running each engine with an oversized start file and reading its truncation/notice; record the command and date in limits.json; re-measure on upgrade/new agent. Not "now" because no project has adopted project-memory (checked: no `project-memory/` in the repo root, `ls`), so the reader set is empty; measuring six engines now spends effort on a limit no project enforces yet. But don't say "no project has adopted" too strongly — the design is for projects; this repo hasn't adopted it. Fact: no project-memory dir. I can cite `ls` checked 2026-10-17.
+- But careful: E asks "should the limits be measured on the engines (not only read from docs) — now, later, or not at all?" If the answer is "later when a project adopts", then for Ancient Games itself, maybe it should adopt memory eventually; the design needs measured limits to fulfill its basis. My answer: measure later, before the first project relies on the limits for a real INDEX, and re-measure when an engine version changes; not now, because the reader set is unset; never "docs only" as the final state, because a doc is not a measurement of the installed version (research: "Whether each docs page describes the installed version is not measured").
+
+One more nuance: if "later" means after the tool build, then the tool build can proceed with fallback. Sequence: wording (this run) → tool build (own run, reads limits.json, falls back to example) → first adopting project measures its readers and fills limits.json. That's clean.
+
+Rules for E:
+- #2 「無恃其不來，恃吾有以待之」 — don't rely on docs; have your own fallback/measure.
+- #17 probe/read signs — measurement method.
+- #8 「兵聞拙速」 — do the small tool change rather than a big measurement campaign now.
+- #14 ratio of forces — effort vs value; maybe.
+- #1 「地生度…」 — measurement chain: compare against a measured unit. Good.
+
+Now "What I need to know": questions whose answers would change the answer. Candidates:
+1. Is `limits.json` acceptable as a new project file, or must the record stay inside an existing file (AGENTS.md / YAML)? That changes C's location. But the question asks me to choose; asking back may be deflecting. The brief says list what I was not given that changes the answer. Real ones:
+   - C: whether the tool may stay stdlib-only (it affects the file format). I checked: it imports stdlib only; that's a fact, not a question. If EJ allows PyYAML, YAML could be used; but JSON is fine.
+   - B: whether a project without python3 is in scope. If yes, the `check: tool` records need a fallback; that changes B. This is a genuine open question — list it.
+   - E: whether the project will adopt project-memory in this repo; if yes, measure its readers now; if not, later. Genuine.
+   - D: which engines the project actually uses (the reader set) — that decides the strictest limit, but not my wording choice; the wording is independent. Not needed.
+   - A: who merges (a person or a `git merge` driver)? If a driver is expected, the three-way behavior needs code; if a person, wording suffices. The brief doesn't say. Genuine but maybe not answer-changing: my wording is the same; implementation differs.
+   Keep 2-3: python3 scope; adoption timing; whether a merge driver is expected. Actually "What I need to know" should be questions whose answers would change the answer. The python3 one changes B's wording ("or record the reviewer fallback"). The adoption one changes E's now/later. The merge driver one changes whether A needs code in the tool or just wording. List these three.
+
+**Costs and risks** (each with item):
+- A: three-way covers merge needs care/tooling; a wrong union leaves a stale pointer; a same-path clash costs owner time (#6 mix harm: each choice has a harm; #16 unclear orders).
+- B: kit grows (~1,000 lines) and every project carries a tool it may not edit; upgrades mean recopying; the tool becomes a shared dependency whose bugs block commits (#3 whole over broken? #8 cost). Also docs/index-md carries this repo's VISION/BACKLOG.
+- C: a config file is a second thing the owner can forget; JSON has no comments; a wrong unit or scope silently weakens the check; schema/tool must ship together (#12 ground; #1 measure).
+- D: narrower set may let INDEX grow past an on-demand reader; routing changes must update the file (#4 know the reader; #15? no).
+- E: measuring all engines costs runs and is version-fragile; the interim example may be too high for agy's reported 12,000 chars, so a measured row could fail existing indexes; the tool change is small but touches a check a dozen MUSTs rest on, so it needs tests and a separate run (#8, #1). Also risk of measuring once and trusting it after upgrades.
+
+**How we would know I was right**:
+- A: create two branches: one corrects covers P→Q with changed:, other adds a link; merge; check P absent, Q present, both changed: lines, both links; and both changed P→Q vs P→R reports to owner. Test can be a scripted git merge test or a reviewer case.
+- B: fresh clone/repo copy of the kit; run `python3 tools/memory_index.py --check` with no install; it runs; `docs/index-md/` links resolve.
+- C: delete limits.json → tool prints "interim example Rd3.1b" and uses 200/24,000; add a measured row of 150 lines → tool fails a 160-line index and prints the row's source; a non-ASCII index over the UTF-16 row fails where byte check would pass (test).
+- D: an index between the reader-set limit and a non-reader's limit passes/fails as specified; the file names exactly the readers.
+- E: after the tool run, its tests pass; after measurement, each row has a command+date and the tool prints a measured limit; before that, every size report says "interim".
+- Overall: "a reviewer can answer 'what is the limit, who set it, when was it measured, and does it hold?' by reading one file and one line of tool output." That's the observable.
+
+Now format and quote labels. The brief: "Quote only from your list, exactly as it is written there, and keep its label (`quoted`, `attributed`)." So when I quote, label `quoted` (all my quotes are from main text). I'll write e.g. `(quoted, my #2)` or "my #2's 「…」 (quoted)". Keep it simple: after the quote, "(quoted, my #2)".
+
+"Decide through your rules. Every step names the item it uses: 'my #4'. A step with no item is your own reading — say so ('my reading')." So each numbered step in How I decided should cite my #n or mark my reading. The Answer section wording can include rule names too, but the requirement applies to steps. I'll cite in How I decided; maybe also inline in Answer.
+
+Structure draft:
+
+# 孫子 (Sun Tzu) — five open points in the memory design
+
+## Answer
+
+Read A–E as one fault: the same fact — a path, a limit, a roster — is written in more than one place, so each place can overrule the other. My five choices: **A** keep the removal (three-way `covers` merge, not a union); **B** carry `tools/memory_index.py` and `docs/index-md/` in the kit; **C** one `project-memory/limits.json`, read by the tool, with unit, scope and source on each row; **D** only the agents whose session start loads `INDEX.md`; **E** build the reader in its own run, then measure the engines later, with the example marked interim until a row is measured.
+
+Then:
+
+### A. ...
+**Choice:** ...
+**Wording:** ...
+
+...
+
+Maybe the template expects only Answer + How I decided etc. Adding subsections under Answer is acceptable Markdown. But "Write exactly this (no preamble)" — the headings must be exactly those 5. Subheadings within are fine.
+
+Alternatively, put full decisions in How I decided and keep Answer genuinely 2 sentences. But then the main agent must extract choices from reasoning, which is worse. The run's step P2 applies the majority; explicit choice lines matter. I'll keep subsections under Answer but make the top of Answer 2 sentences.
+
+Hmm, "## Answer <your recommendation in one or two sentences; conditional if it must be>" — maybe subsections violate the "exactly" more than they help. A two-sentence answer could in fact carry all five: "A: keep the removal... B: ... C: ... D: ... E: ..." as one long sentence with semicolons. Then details in How I decided. That obeys the template literally: Answer is one/two sentences, and How I decided carries reasoning + wording? But wording belongs to the answer, not the reasoning. The template doesn't have a "Wording" section. The user's question says "For each of A–E, give your choice and one or two sentences of wording if it changes the design." So the answer must include wording. I'll treat "Answer" as the place for both: 2-sentence summary + a "### Decisions" list with each choice and wording. This is the most useful and still honors the headings. I think clarity for the applying agent wins.
+
+Let me now think about whether my A wording is correct re: W6.3a "keeps both sides: both `changed:` lines, both links". If branch 1 removed path P with changed: line; branch 2 added path R and link L. Merge: covers = (base - P + ...) ∪ {R} = no P, plus R; changed: lines both; links both. Yes. If branch 2 left P untouched, no second changed: line needed; the removal's changed: line survives. If both changed P differently (P→Q vs P→R): the entry can't point to both? Actually it could list both Q and R if both renames are valid? No — a path is renamed once; two differing targets means one side is wrong or the rename happened twice. Report to owner. W6.3a already has owner decides. Good.
+
+But the wording "every `covers` path either side added or corrected" — if one side removed P, that's a correction; the surviving covers shouldn't include P. "Keeps both sides" for changed: lines means the merge keeps both the "removed P" changed line and the "added R" changed line. But careful: two `changed:` lines both describing independent corrections — the entry format allows multiple changed: lines? K4.3 says "it only gains a changed: line" — likely a list. Fine.
+
+Also the `fails_if` currently "a merged entry is missing a `changed:` line, link or `covers` path that one side added". Add "or holds a `covers` path one side removed and the other did not change, or a same-path clash went unreported." That's the testable form. Good.
+
+Wait — is there a subtlety: if branch 1 removed stale P and branch 2 *also* modified the entry but didn't touch P, then P should stay removed. If branch 2 *re-added* P (e.g., it superseded something), then P stays? "the other did not touch it" condition. If both touch P (one removes, one re-adds), that's a same-path clash → report. Good.
+
+**B wording** — exact:
+
+`kit`: "These files travel together as one kit: `SOURCE_OF_TRUTH.md`, this file, `CACHES.md`, `vision-statements/`, `tools/memory_index.py`, and `docs/index-md/`. The first four sit beside this file; `tools/memory_index.py` and `docs/index-md/` sit at the repository-root paths named. The tool is part of the kit, not a separate install: every `check: tool` record rests on it, and a kit without it would name a check the project does not have."
+
+Hmm "every `check: tool` record rests on it" is a reason inside the record; fine, records can explain.
+
+And a sentence for "what a project without it does": "A project that cannot run `python3` cannot use the kit's tool check; it records that in its `state.md` and the project owner reviews the limit by hand until it can." Is that allowed given check: tool? It contradicts "check: tool". Better: ask EJ (in What I need to know) whether a no-python3 project is in scope, and provisionally: "a project without python3 is out of scope for this kit; if EJ wants it in, `check: tool` needs a named fallback." That's honest. Or say the kit requires python3 and a project without it does not adopt the kit. The question explicitly asks "(and what a project without it does)" — so an answer is expected. But "without it" might mean without the tool, not without python3. If the kit carries the tool, "a project without it" only arises if it didn't take the kit. My answer: with the kit carrying the tool, the case disappears; the remaining case is no python3, and that project should not adopt the kit (or EJ adds a reviewer fallback). I'll state that.
+
+Alternatively, B answer could be: design says the tool is installed separately with a pinned version and a check that it exists/version matches. But that adds a check and a version; carrying is simpler and matches "whole over broken". I'm confident carrying is better.
+
+**C wording** — exact:
+- Rd3.1a: "`INDEX.md` fits the strictest start-file limit recorded for the agents whose session start loads it (Rd3.1b) in `project-memory/limits.json`. The file records, for each agent, the start file, the limit and its unit, whether the limit is per file or for the whole start load, and the measurement's source and date. Until every row has a measured value, the tool uses the example in Rd3.1b — 200 lines and 24,000 bytes — and says in every size report that the limit is the interim example."
+- `fails_if`: "`INDEX.md` exceeds the strictest limit in `project-memory/limits.json`, or, with no measured row, the interim example; or the K6 check passes an `INDEX.md` that exceeds it; or a measured row names no source."
+- Rd3.1b: "Example ... The tool holds the example only as its fallback when `project-memory/limits.json` has no measured row; the record is Rd3.1a."
+- who_decides: "project owner: which agents load INDEX.md at session start, and the measured limit for each."
+
+Should the file be `project-memory/limits.json` or `project-memory/limits.yaml`? The requirements YAML already uses YAML but is hand-authored; the tool would need a parser. JSON stdlib. State why. Good.
+
+But hold on: `project-memory/limits.json` inside project-memory — if the project-memory folder is the memory, then the limits file is not memory but config. Does it get loaded at session start? No. Does the index tool ignore it? B1.1 scans entries/ only. Fine.
+
+What about "a reviewer can see when the interim example stops applying": the tool's output line. State: every run prints e.g. `size: 173 lines, 21,004 bytes; limit: 200 lines / 24,000 bytes (interim example, Rd3.1b — not measured)`. Once rows measured: `limit: 200 lines (Claude Code 2.1.302, measured 2026-11-02)`. That is observable and testable. Good.
+
+**D wording** — exact:
+- Rd3 title: "`INDEX.md` fits every agent whose session start loads it" (or "every agent that reads it at session start").
+- Prose line 157: "the strictest start-file limit of the agents whose session start loads it".
+- Rd3.1a: "among the agents whose session start loads `INDEX.md`".
+- who_decides: "project owner: which agents load `INDEX.md` at session start, and so the strictest limit".
+
+Note that the prose says "agents that read it" — reading can be mid-session, so it's not precise either. Choose "whose session start loads it" consistently. Group title: "`INDEX.md` fits every agent that loads it at session start."
+
+Cost: on-demand readers can still be constrained by their own context, so the check may pass an index that later burdens a mid-session reader; but that's not the start-file limit. Also the routing must be checked per engine (CACHES table). Fine.
+
+**E wording** — no record wording really; the run's plan:
+- "Build the reader in its own run after the wording lands: `memory_index.py` reads `project-memory/limits.json` when present, else the example; prints `limit + source + interim/measured`; tests for absent/present/units/over-limit."
+- "Measure later: before the first project's real INDEX relies on the limit, on the installed versions of that project's readers, by running each engine with an over-limit start file and reading its truncation notice; record the command and date in each row. Re-measure when an engine version changes or a reader is added. Not all engines now, and not docs-only ever."
+
+Should the tool build happen before or after measurement? Before; the reader is cheap and lets measurement land without code. Yes.
+
+One more: the "kit" key text is generated by build_requirements.py — the applying run must edit the generator, not the YAML. I can mention this in the wording note: "the kit text is generated (build_requirements.py header), so edit the generator and rebuild." Cite run 20261015 node p3-2: "kit is in the build script's header". Should I include? It's a practical warning, useful for P2. But maybe it's a fact not in the brief, sourced to `runs/20261015-sot-leftovers/nodes/p3-2.result.md` line 23. I can include one parenthetical: "(the `kit` text comes from `build_requirements.py`'s header, so change it there and rebuild — my reading of the build script)". Let me verify build_requirements.py exists and has the kit text.
+dsh: reasoning:
+Interesting: `memory_check/guidelines/SOURCE_OF_TRUTH_REQUIREMENTS.yaml` — another copy? Let me check: maybe memory_check is a package. The kit list has a second copy in memory_check/guidelines — that's a fifth place? Let me check if it's a copy of the same design (perhaps a plugin template). This matters for B/C: copies.
+dsh: reasoning:
+There's an uncommitted (?) memory_check new work copying the guidelines, with no SOURCE_OF_TRUTH.md? Only CACHES.md and YAML. This is another session's work-in-progress (git status showed untracked many dirs but not memory_check? It didn't show memory_check in the first 20 lines; maybe lower). This is relevant: the kit may already be getting copied into a package `memory_check/guidelines/`, without the tool and docs/index-md — exactly B's issue. But memory_check is not in the brief; it's untracked/uncommitted other work. Should I mention? The brief says facts carry sources; my answer can note "the same list already has a second copy in `memory_check/guidelines/`" — that's a live example of copy drift. But it may be out of scope and another session's uncommitted work; referencing it could be confusing. However it strongly supports B and the one-source theme. Let me check git status for memory_check and its dates.
+dsh: reasoning:
+The memory_check copy is slightly stale (W3.6 wording). It's untracked? `git status --short memory_check` printed nothing, meaning either ignored or tracked-clean. `ls` shows it, so maybe tracked? Let me not go down this path. It's another agent's work and not part of the brief. I might mention it as evidence in B/C: "a second copy of the kit already exists at memory_check/guidelines/ and is already behind" — but checking `git status` shows nothing, so it's tracked and unchanged? Let me check `git ls-files memory_check/guidelines`.
+dsh: reasoning:
+It's tracked and committed, but its copy is stale relative to the current YAML. This is real evidence that copies drift. I can cite it: `memory_check/guidelines/SOURCE_OF_TRUTH_REQUIREMENTS.yaml` has a kit copy and is behind at W3.6 (diff checked 2026-10-17). That supports B (the kit is copied into a package) and C (copies drift). But mentioning it may be a distraction; still, it's a strong, sourceable fact for B: a project/package already carries the kit without the tool, and its copy is behind. Let me look at memory_check/REQUIREMENTS to see if it references the guidelines or expects them.
+dsh: reasoning:
+memory_check is a checker tool that copies the guidelines and runs `tools/memory_index.py` for C3 — but its copy of guidelines doesn't include `tools/memory_index.py`, so a deployed memory_check package would fail C3 unless it points to the project's tool. This is a real instance of B's problem: the tool is not in the kit/guidelines. But memory_check is separate work and likely has its own answer. I'll mention it in one line as evidence: the guidelines folder already exists as a second copy and lacks the tool, so a checker built on it cannot run `check: tool` records. Wait, does memory_check/guidelines lack tools/? `ls` showed only CACHES.md and YAML. Yes. And memory_check C3 says it runs `tools/memory_index.py --check` — presumably the project's own. Hmm, if the project has the tool via the kit, fine. But a project adopting only the guidelines wouldn't. The point stands but is nuanced. Maybe skip memory_check to avoid overreach; my B argument from "a dozen MUST checks" is enough. I'll perhaps mention in one sentence that a second copy already exists and is behind, to support the one-source theme in C, not B. Actually, B's kit list is one of the copies that drift; citing memory_check shows the cost. But it could be seen as piling on another session's uncommitted/committed work. I'll keep it brief and source it.
+
+Hmm, but the question is answered by an expert for EJ; references to a sibling package's copy could be useful. Let me decide: include one parenthetical in C's reasoning: "A second copy of the YAML already exists (`memory_check/guidelines/SOURCE_OF_TRUTH_REQUIREMENTS.yaml`) and is behind the current one (diff checked 2026-10-17), which is what copies do." That supports "one source". But does it risk being wrong because memory_check is intentionally pinned? The diff shows it's behind at W3.6, and it's committed. It's a fair fact.
+
+Now, should I verify the exact current line numbers for citations? The brief gives SOURCE_OF_TRUTH.md:157; current file line 157 indeed has the prose. YAML lines: W6.3a 450, K4.3 522, kit 64, checks 37, Rd3 group 709, Rd3.1a 713, Rd3.1b 726. Tool constants 35-36. B4.1 around line 115? I read the requirements file; B4.1 is there. I can cite by id mostly.
+
+One more consideration: the "one thing" and "who decides" principles. A: who merges is not named in W6.3a; who_decides is project owner. Merge conflicts are resolved by whoever merges; same-path clash → owner. Fine. C: who fills limits.json = project owner (who_decides). Format: the owner writes a data file; the tool reads. The project owner may not write JSON; but it's simple. D: who decides the set = owner. E: who builds = a later run (the COO/agent). Good.
+
+Now also consider the run's time budget: 60 minutes from 23:47; it's maybe now past? My answer should be timely. No need to check clock; just answer.
+
+Let me think about whether E's "measure later" is the right Sun Tzu call. Alternative: measure now, because the design's interim example (24,000 bytes) is above the reported agy 12,000-char limit, so a MUST may currently pass INDEXes that agy truncates — a known false pass. But no project uses it; the design isn't deployed. Measuring all six now would resolve the agy conflict and the Qwen unit. The research already did web/doc reading; measuring is the missing step. How expensive? Each engine run with a big file: maybe 10-30 min per engine. Within a 60-min run? E is one of five items; probably not. The question offers "now, later, or not at all". EJ's Q3 says a tool build is its own later run; measurement wasn't mentioned. I'd say: measure later, in the same later run or a second one, because the reader set is unset and the numbers can still be recorded as interim without blocking. But "measure before the first project relies" is the key. If the project (Ancient Games) is about to adopt project-memory, then "measure now" would be right; but there's no project-memory. So later.
+
+Could measurement be done cheaply by "not all engines, only the strictest candidates"? The strictest among verified is 200 lines/24,000 bytes (tie); agy 12k chars reported could be lower. So measure Claude, Qwen, agy (the three that bind per-file), and check Codex/dsh combined budgets only if they load INDEX through their instruction files. That's a smart scoping: measure the binding three first; the others are combined budgets that a per-file limit can't bind unless INDEX is loaded via AGENTS.md — in which case their budget matters too. Hmm, Codex loads AGENTS.md chain; if INDEX.md is included via @import or copy, then 32 KiB combined binds. The design's routing may load INDEX through a project's AGENTS.md instruction "read INDEX.md" (not as a start file) — then the start-file limit is only on the engine's actual start file (MEMORY.md, AGENTS.md content). Does the design place INDEX.md into the start file? The kit's INDEX.md is `project-memory/INDEX.md`; agents are told to read it at session start (Rd3). It's not physically loaded as part of AGENTS.md; the limit analogy is "the strictest start-file limit" — the engine's start-file limit that would apply if the index were loaded at start. Hmm, this matters: if INDEX.md is read by an agent via a "read this file" instruction rather than being part of the engine's start-file load, the engine's start-file byte cap may not directly apply; instead the context window and the tool's read limit apply. The design treats the start-file limit as a proxy for "what the engine can load at session start". The measured behavior should be: put an INDEX.md of N bytes/lines where the session-start read would occur, start the session, see whether it is fully in context. For engines with instruction-file caps, if the index is loaded through an instruction file, the combined cap binds. If read on demand, the cap may not bind at all. That's a nuance the design already blurs (CACHES table "the index read at session start"). D's "agents whose session start loads INDEX.md" is the right set; E's measurement should replicate that load path per engine, not just write a big MEMORY.md for engines that don't use one.
+
+So E's measurement protocol: for each reader agent, reproduce its actual start-load path (MEMORY.md for Claude/Qwen; AGENTS.md/rule files for agy; AGENTS.md chain for Codex/dsh; none for opencode/Gemini), with a marker line at the end of a known-size index, and check whether the session start contains the marker. Record the largest size that loaded fully, per unit. That's more precise. Good; cite #17 (probe and read signs).
+
+Now let me check the exact quote text for #17 and #16 etc. from the list once more, to copy characters exactly. I have the file content above. I'll copy carefully.
+
+Quotes planned:
+1. #1: 「兵者，國之大事，死生之地，存亡之道，不可不察也。」 and 「地生度，度生量，量生數，數生稱，稱生勝。」
+2. #2: 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」
+3. #6: 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」
+4. #9: 「故善戰者，致人而不致於人。」
+5. #12: 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」
+6. #16: 「約束不明，申令不熟，將之罪也；既已明而不如法者，吏士之罪也。」
+7. #4: 「故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」
+8. #17: 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」
+9. #8: 「故兵聞拙速，未睹巧之久也。」
+
+That's a lot of quotes; maybe 6-7. Each should be labeled quoted.
+
+How I decided steps — plan 5 steps (one per question), maybe 6 with the through-line. Each step names rules. E.g.:
+
+1. **A — one merge rule, tested against both harms.** W6.3a's text says "every `covers` path either side wrote" while its `fails_if` says "that one side added" (YAML:450–462). The wider wording is the one that fails its own test: a merge that restores a path the correction removed leaves the entry pointing at a file that is gone, while its `changed:` line says it was removed (K4.3, YAML:522–534). My #6 says weigh benefit and harm together; the union's benefit (keeping an addition) is already kept by keeping both `changed:` lines and links, and its harm (a stale pointer) is new. My #16 says unclear orders are the general's fault: the merger is being asked to decide a case the text does not name, so the text must name it. Hence a three-way `covers` merge, with a same-path clash reported to the owner. [Maybe quote #6.]
+2. **B — carry what the checks rest on.** About a dozen records have `check: tool` (YAML:37–39, and e.g. K6.2 at 594–604), and the tool is 561 lines of stdlib-only Python (`tools/memory_index.py`, imports argparse/difflib/os/re/subprocess/sys/tempfile/pathlib). A kit that omits it ships MUSTs with no check. My #2 says do not rely on the other side not attacking; rely on having the means: not on each project installing the right tool, but on the kit carrying it. My #3's preference for whole over broken applies to the kit itself. Hence tool + `docs/index-md/` in `kit`; a project without python3 is out of scope unless EJ names a fallback.
+3. **C — one record the check reads.** The numbers are in three places (Rd3.1a, Rd3.1b, tool:35–36); B4.1 in docs/index-md repeats the example; two places always drift. My #9: the skilled fighter makes others come to him, not go to them — the tool should read the one record, not carry its own copy. My #12: seek it in the ground, not in people — put the number where the tool reads it, not in the owner's memory or the tool's constants. A JSON file is chosen because the tool is stdlib-only (my reading of its imports) and Python's json is stdlib; YAML would need PyYAML. Each row carries unit, scope, source, date, measured flag, because a limit is a comparison, not a number (my #1's chain 「地生度…」 and the YAML header's "no fixed numbers").
+4. **D — the limit belongs to the load path.** Rd3 title and prose say "agents that read it"; Rd3.1a says "work on the project" (YAML:709–724; SOURCE_OF_TRUTH.md:157). A start-file limit is a property of the agent's start load; an agent that never loads INDEX at start puts no start-file limit on it. My #4: know the other and yourself — the "other" here is each reader's start-file rule, not the project's roster. My #19: name the ground and act as prescribed — name the set by the condition that creates the limit. So the wording follows the readers; who_decides changes from "which agents work" to "which agents load INDEX.md at session start".
+5. **E — build the reader, measure later.** The tool change is small and makes C effective; without it C's file is another copy nobody reads. The measurement is the larger piece and depends on the reader set, so sequence them: wording (this round) → tool build (own run, after) → measurement on the first project's readers (later) → re-measure on upgrades. My #8: hear of clumsy speed, not skill prolonged — do the small certain step now, not a six-engine campaign for a project that has not adopted the memory. My #2: do not rely on docs; the fallback and the measurement are what you own. My #17: learn by acting — run each engine with an over-limit file and read its truncation notice; a docs page is not a measurement (the research says which installed version the page describes is not measured).
+
+Wait: "not have adopted" — `ls project-memory` returned nothing (empty), so no project-memory dir. State that: "there is no `project-memory/` in this repo yet (`ls`, 2026-10-17), so there is no reader set to measure for it." Is that a fair argument? The design may be adopted by other projects not in this repo. The kit is for projects; Ancient Games is designing it. Measuring before adoption is premature. Fine.
+
+But hold on: the run's state records Q3 "a tool build is its own later run" — I should cite this as a fact: "the run already records Q3: a tool build is its own later run (state.md, Log 2026-10-17)". This aligns E and avoids re-deciding EJ's call. Include.
+
+Now the "Answer" wording snippets per A–E. Let me write them tightly.
+
+**A wording**:
+"Replace `and every `covers` path either side wrote` with `and every `covers` path either side added or corrected. `covers` merges by change, not by union: a path one side removed or replaced stays removed when the other side did not change it, and its `changed:` line is kept; when both sides changed the same path, the merge reports the clash in the task's `state.md` and the project owner decides.` Add to `fails_if`: `... or the merge restores a `covers` path one side removed, or a same-path `covers` clash is decided by the merger without being reported.`"
+
+One or two sentences? That's two. Good.
+
+**B wording**:
+"`kit` becomes: `These files travel together as one kit: SOURCE_OF_TRUTH.md, this file, CACHES.md, vision-statements/, tools/memory_index.py, and docs/index-md/. The first four sit beside this file; tools/memory_index.py and docs/index-md/ sit at the repository-root paths named. The tool is part of the kit: every check: tool record rests on it, and a kit without it would name a check no project has.` The prose at SOURCE_OF_TRUTH.md:157–160 keeps no second list; it points to `kit`. A project without `python3` is not a supported case; if EJ wants one, `check: tool` needs a named fallback (see What I need to know)."
+
+Good. Note the prose currently lists the four; remove duplicate. The `kit` key is generated by build_requirements.py:62 — add a parenthetical.
+
+**C wording**:
+"Rd3.1a: `INDEX.md` fits the strictest start-file limit recorded for the agents whose session start loads it in `project-memory/limits.json`. Each row names the agent, its start file, the limit and its unit (lines, UTF-8 bytes or UTF-16 code units), what the limit is a limit of (the file, or the whole start load), and the source and date of the measurement; a row with no measured value is marked `interim: Rd3.1b`. The tool reads the strictest row; with no measured row it uses the example in Rd3.1b — 200 lines and 24,000 bytes — and every size report says the limit is the interim example.` Change Rd3.1b's last sentence from "the tool holds these numbers" to "the tool holds the example only as the fallback when the file has no measured row"; update B4.1 in docs/index-md/REQUIREMENTS.md to point at the file, not restate the numbers."
+
+That's long but one/two sentences-ish. Maybe tighten.
+
+Also who_decides: "project owner: which agents load INDEX.md at session start, the limit for each, and its measurement." Good.
+
+Would the tool need to handle `interim` rows when a measured row exists for another agent? If any row is interim and binds stricter than measured rows, the interim still governs; the report should mark it. Fine.
+
+**D wording**:
+"Rd3 title: `INDEX.md fits every agent whose session start loads it`; prose: `the strictest start-file limit of the agents whose session start loads it`; Rd3.1a: `among the agents whose session start loads INDEX.md`; who_decides: `project owner: which agents load INDEX.md at session start, and so the strictest limit`."
+
+**E wording**: not a record change, a plan:
+- "Build: in its own run, `memory_index.py` reads `project-memory/limits.json` when present and falls back to the example; every run prints the limit, its source and whether it is measured; tests for absent, present, units and over-limit."
+- "Measure: later, before the first project's real INDEX relies on the limit, on the installed versions of that project's readers, by reproducing each engine's actual start load with a marker line and reading whether it arrives; record the command and date in the row, and re-measure on an engine upgrade or a new reader. Not now (no `project-memory/` exists yet, 2026-10-17), and never docs-only (research: whether a page describes the installed version is not measured)."
+
+Good.
+
+Now "What I need to know":
+- "B: is a project with no `python3` in scope? If yes, `check: tool` needs a named fallback, and the kit wording changes."
+- "E: which project adopts the memory first, and when? If Ancient Games itself is next, measure its readers before the first real INDEX; if not, later is safe."
+- "A: is a person expected to do the merge, or should a `git` merge driver implement the three-way `covers` rule? If a driver, the wording needs a matching test/implementation."
+Maybe also "C: may the project gain a new `project-memory/limits.json`?" — I'm choosing it; but if EJ insists on AGENTS.md, the answer changes. Is that a real open shape? The question explicitly permits choosing among AGENTS.md/config/constants, so choosing is mine; no need to ask. But the location inside project-memory might be a new file the project owner must create; that's my recommendation. Not a question.
+
+**Costs and risks**:
+- A: "A three-way `covers` merge is more work than a union and can stop on a real clash; the owner pays the decision. A union is cheaper but leaves a stale pointer (my #6: the harm kept is the one you did not weigh; my #16: an unclear order becomes the merger's private rule)." 
+- B: "The kit grows by ~1,000 lines and every project carries a tool it may not edit; an upgrade means recopying into each project, and `docs/index-md/` brings this repo's VISION/BACKLOG with it. A shared tool's bug blocks every project's commit (my #3: the whole is kept only if the part that checks it is kept)." 
+- C: "A new file the owner can forget; JSON has no comments; a wrong unit or scope silently weakens the check. The schema and the tool must land together, or the tool reads nothing (my #12: the ground must be prepared; my #1: a number without its unit is not a comparison)."
+- D: "A narrower set lets INDEX grow past an on-demand reader's comfort; the routing must be re-read when an agent joins. The limit is only as good as the owner's list (my #4: you know the reader, not the roster)."
+- E: "Measurement costs a run per engine and goes stale on upgrades; the reported 12,000-character agy limit is below the interim 24,000 bytes, so the first measured row may fail indexes that pass today. The tool change touches a check a dozen MUSTs rest on, so it needs its own tests and run (my #8: speed on the small certain step, not on the campaign; my #1: the interim is marked, not believed)."
+
+**How we would know I was right**:
+- A test: two branches, one renames covers P→Q, one adds a link; merge must have Q, no P, both changed: lines, both links. A same-path P→Q vs P→R must be reported, not silently merged. Could be a scripted test (git) or a reviewer's case in W6.3a.
+- B: copy the kit into a fresh directory, run `python3 tools/memory_index.py --check` with nothing installed; it runs (stdlib-only), and every `docs/index-md/` link resolves.
+- C: with no limits.json, a 201-line index fails and the report says "interim Rd3.1b"; with a measured 150-line row, a 160-line index fails and the report names the row and date; a non-ASCII index passes the byte row and fails a 25,000-code-unit row (or vice versa), showing units are compared as recorded.
+- D: an index that fits the reader-set limit but exceeds a non-reader engine's limit passes; adding that engine's start routing makes it fail after its row is added. The record and file name the same set.
+- E: after the tool run, tests pass and no behavior change when the file is absent; after the first measurement, every row has a command+date and the size report says "measured"; before that it says "interim".
+- Overall: one reviewer, reading only `project-memory/limits.json` and the tool's report line, can say what the limit is, whose it is, when it was measured, and whether it is still the example. That is the observable.
+
+Now, "my reading" labels where I have no item:
+- "A union is not required by the fails_if" — my reading of the texts.
+- "JSON because stdlib" — my reading of the tool's imports.
+- "a project without python3 out of scope" — my reading; put under conditional.
+- "the tool's fallback should be the example" — my reading.
+- "measure later" — my #8/#14 plus reading.
+
+I need to say each step names item or "my reading". Fine.
+
+Should I mention the pre-existing second copy `memory_check/guidelines/`? It supports C. Maybe in C step: "There is already a second copy of the YAML at `memory_check/guidelines/SOURCE_OF_TRUTH_REQUIREMENTS.yaml`, and it is behind the current one at W3.6 (diff, 2026-10-17) — my reading: copies drift; one record is the fix." This is a good, sourced observation. But is it in scope? It demonstrates the exact failure. I'll include one sentence, labeled my reading.
+
+Wait, careful: the current docs YAML has the newer W3.6 wording (from 2026-10-16) while memory_check copy has the older. Which is "behind"? The docs one is newer. Yes.
+
+But the memory_check copy might be deliberately pinned to the version its tests use; it has its own version print (C1 "the tool's own, with its version printed"). So a pinned copy is intentional; still, it shows a copy diverges and must be updated when the design changes — B/C's problem. I'd phrase it as "a second copy exists and is behind; that is the cost of copies, whether or not it is deliberate."
+
+Now, is the answer too long? The brief wants decisions; 1500-2000 words is acceptable. I'll aim ~1400.
+
+Before writing, let me double-check exact YAML/line references:
+- checks key line 37; `tool` at 38-40.
+- kit at 64-66.
+- W6.3a at 450, text 455-460, fails_if 461-463.
+- K4.3 at 522, text 526-534.
+- Rd3 group title 709-710.
+- Rd3.1a 713-725.
+- Rd3.1b 726-737.
+- tool constants at 35-36.
+- SOURCE_OF_TRUTH.md line 157 (prose) and 160-162 (kit list). Let me check exact lines for the kit prose.
+dsh: reasoning:
+I have all line refs.
+
+Now, one more thought on C: the tool's `measure` function measures UTF-8 bytes; Qwen counts UTF-16 code units. In Python, `len(text)` on a str is code points, not UTF-16 code units. To measure UTF-16 code units, use `len(text.encode('utf-16-le')) // 2`. The tool change must implement that. A measured row of "25,000 UTF-16 code units" then compares correctly. For non-ASCII, a byte limit and a code-unit limit can bind differently. Good detail for the test in E/C. Also agy's 24,000 bytes is bytes; Codex 32 KiB is bytes; dsh 64 KiB bytes. Lines is simple.
+
+What unit does Claude's "25KB" mean? Not stated (research item 3): 25,000 or 25,600 bytes not stated. So a measured row would resolve it. Good: the record must carry the unit because the doc doesn't.
+
+What about "file or whole start load": Codex 32 KiB and dsh 64 KiB are combined budgets; a row for them must say "whole start load" and give INDEX's measured share with the other files present. The tool can only compare the index alone, so the share is the row value. Fine.
+
+One more point for C: who decides the measured value? The project owner, but the measurement itself may be done by an agent. The record's who_decides is the owner; the file's `source` names the command/date, not the person. Good.
+
+Should limits.json itself be validated by the tool? Yes: malformed/missing fields → error naming the row, not a crash (same spirit as B2.6). Include in the tool run scope. The owner can't silently omit `measured`.
+
+Now let me consider whether the answer should recommend not measuring at all for engines with no stated limit (opencode, Gemini). "Not at all" per engine: for a reader with no stated limit, measure anyway (the effective context limit still exists; a test tells you where it degrades), but that's a quality question, not a truncation. If no limit is stated, the row can be "no start-file limit; bounded by context" and the tool ignores it, but then the "strictest" is from others. Should the owner list such agents? Yes, with `limit: none` and a note, so the set is complete and the reviewer sees why they don't bind. Add to C wording: "an agent with no start-file limit gets a `none` row, so the set is complete." Is that adding structure? It's a natural completion; mark my reading.
+
+Now, about the "one or two sentences" of wording per A–E: I'll format each as "**Choice:** ..." then "**Wording:** ..." with 1–2 sentences. Good.
+
+Now think about the top title: "# 孫子 (Sun Tzu) — five open points, one record each" or "five decisions on the memory design". The template says "<the question in a few words>". Use "# 孫子 (Sun Tzu) — five open points in the memory design".
+
+Should I include a note on how I read the question, e.g. "I read the five as one design fault"? In Answer first sentence.
+
+Let me draft fully now, then check character-exact quotes.
+
+Draft:
+
+# 孫子 (Sun Tzu) — five open points in the memory design
+
+## Answer
+
+Read A–E as one fault: the same fact — a path, a limit, a roster — is written in two or three places, so each place can overrule the other. My choices: A keep the removal by a three-way `covers` merge; B carry the tool and `docs/index-md/` in the kit; C one `project-memory/limits.json` that the tool reads; D only the agents whose session start loads `INDEX.md`; E build the reader in its own run and measure the engines later, with the example marked interim.
+
+### A. Keep the removal
+**Choice:** keep it. ...
+**Wording:** in `W6.3a`, replace ...
+...
+(etc.)
+
+Wait: the template's "Answer <one or two sentences>" then "How I decided". Adding "### A–E" under Answer might be seen as not "exactly this". Alternative: put the choice+wording in "How I decided" as the numbered steps, and keep Answer 2 sentences. The numbered steps can be long; that's fine. The template says "numbered steps; each cites my #n". Each step can include "Choice" and "Wording" sub-lines. That keeps the heading structure exactly and puts details where the user looks for reasoning. But the choices should be prominent. Hmm.
+
+I think a good compromise: Answer = 2 sentences listing the five choices. Then "How I decided" = 5 numbered steps, each with the reasoning, the wording (quoted block), and rule citations. That satisfies "exactly this" and the user's "for each give choice and wording". The wording is in the reasoning step, but labeled. The applying agent reads all of it. This is clean.
+
+Let me restructure:
+
+## Answer
+One/two sentences with all five choices (long but one sentence).
+
+## How I decided
+1. **A — keep the removal.** ... **Wording:** ...
+2. **B — carry the tool.** ... **Wording:** ...
+...
+
+That means the "Answer" is a dense one-sentence summary; the detail follows. Good.
+
+But "each cites my #n" — each step cites. Fine.
+
+Let me now write each step with:
+- facts (with file:line/id)
+- the rule citation and quote if useful
+- choice
+- wording
+- cost mention? Costs go in the Costs section, but a brief risk mention in the step is okay.
+
+Keep the steps readable; don't overstuff with all facts (brief already has them). Focus on the decisive comparison.
+
+Step A:
+"1. **A — keep the removal.** W6.3a's text says `every \`covers\` path either side wrote`; its own `fails_if` says `a \`covers\` path that one side added` (YAML:450–463). The wider reading is the one that breaks the record: restoring a path the other branch removed leaves the entry pointing at a file that is gone, while the removal's `changed:` line says it went (K4.3, YAML:522–534). My #6 weighs benefit and harm together; the benefit of a union (keeping an addition) is already kept by the two `changed:` lines and two links, and its harm — a stale pointer — is new. My #16 puts unclear orders on the general, not on the officer: a merger should not have to invent the rule for a path only one side touched. So `covers` merges by change, not union; a same-path clash goes to the project owner, as W6.3a already does for two supersessions.
+**Wording:** in `W6.3a`, replace `and every \`covers\` path either side wrote` with `and every \`covers\` path either side added or corrected. \`covers\` merges by change, not by union: a path one side removed or replaced stays removed when the other side did not change it, and its \`changed:\` line is kept; when both sides changed the same path, the merge reports the clash in the task's \`state.md\` and the project owner decides.` Add to its `fails_if`: `or the merge restores a \`covers\` path one side removed, or a same-path \`covers\` clash is decided by the merger without being reported.`"
+
+Hmm: W6.3a's fails_if currently "or two entries superseding one go unreported." My addition should fit the list. Fine.
+
+Quote #6 exact: 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」 Use it after "My #6".
+
+Step B:
+"2. **B — carry the tool and its design.** About a dozen records have `check: tool` (YAML:37–39), and K6.2 makes `INDEX.md` itself depend on `tools/memory_index.py` (YAML:594–604). The tool is one file of 561 lines and imports only the standard library (`tools/memory_index.py:1–22`), so carrying it costs a copy, not an install. A kit that leaves it out ships MUSTs whose named check does not exist in the adopting project. My #2: `「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」` (quoted) — do not rely on each project to install the right tool; rely on the kit having it. My #3's whole-over-broken preference applies to the kit itself. I would carry the whole `docs/index-md/`, not two files, because its documents cite each other and the `(v)` source in its header would dangle otherwise (my reading).
+**Wording:** ..."
+
+Note: docs/index-md/REQUIREMENTS header cites `(v) VISION.md`; yes. Good.
+
+Also "docs/index-md/" might be this repo's project docs; carrying them to another project means another project's backlog. That's the cost to name later.
+
+Step C:
+"3. **C — one record, read by the tool.** The numbers sit in Rd3.1a, Rd3.1b and `tools/memory_index.py:35–36`; B4.1 in `docs/index-md/REQUIREMENTS.md` repeats the example as well. Three copies of a number that must agree is the same fault as A: the copies drift. (A second copy of the YAML already exists at `memory_check/guidelines/SOURCE_OF_TRUTH_REQUIREMENTS.yaml` and is behind this one at W3.6 — diff checked 2026-10-17; my reading: that is what copies do.) My #9: `「故善戰者，致人而不致於人。」` (quoted) — the tool should come to the one record, not keep three records in step by hand. My #12: `「故善戰者，求之於勢，不責於人，故能擇人而任勢。」` (quoted) — change the ground the tool reads, not the owner's diligence. My #1's chain `「地生度，度生量，量生數，數生稱，稱生勝。」` (quoted) — a limit is a comparison with a unit and a measurement, not a bare number.
+**Choice:** one JSON file, `project-memory/limits.json`, because the tool is stdlib-only and `json` is stdlib while YAML would add PyYAML or a parser (my reading of the imports). ... fields ...
+**Wording:** ..."
+
+Should I mention `memory_check`? It might be too much of a side reference, but it's a strong fact. I'll include it briefly; it's inside the repo and sourced.
+
+Step D:
+"4. **D — the readers, not the roster.** ... My #4: `「故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」` (quoted) — the limit is a fact about the reader, not about the project's headcount. My #19 names the ground by the condition that creates it ... So ..."
+Wording as above.
+
+Step E:
+"5. **E — build the reader now, measure later.** ... The run already records Q3: `a tool build is its own later run` (state.md, Log 2026-10-17). That settles the build's timing, not whether C's file gets read. The tool change is small: read the file when present, fall back to the example, print source and interim flag, compare units. My #8: `「故兵聞拙速，未睹巧之久也。」` (quoted) — hear of clumsy speed, never of skill prolonged: do the small certain step, not a six-engine campaign. My #2 again: do not rely on a docs page; keep the fallback and measure. My #17: `「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」` (quoted) — probe the engine and read the truncation, do not infer from a page. Measurement is later, before the first project's real INDEX relies on the limit, on installed versions, and again on upgrades; not now, because there is no `project-memory/` here yet (`ls`, 2026-10-17) and no reader set to measure."
+
+Wait: E's question includes "should the limits be measured ... now, later, or not at all?" My answer "later" with "not now"; good. But is "measure later" the same as "not at all" for projects that never adopt? Condition: if a project adopts, measure before its first real INDEX; otherwise no. That's precise.
+
+Should the tool change be built even before C's wording is applied? This run P2 applies the wording; then E's run builds. Good.
+
+Now "What I need to know":
+1. "B — Is a project with no `python3` in scope? If yes, `check: tool` needs a named fallback and the kit wording changes; if no, the kit's requirement of `python3` is stated once."
+2. "E — Which project adopts the memory first, and when? If Ancient Games itself is next, its readers should be measured before its first real INDEX, which moves 'later' inside this work; if not, the example stays interim."
+3. "A — Is a person expected to do the merge, or a `git` merge driver? If a driver, the three-way rule needs code and tests, not only wording."
+Maybe 4. "C — May a project carry a new data file in `project-memory/`? If the memory tree may hold only entries and INDEX.md, the file goes at the repo root instead." That is a real constraint: the tree may be reserved. But B1.1 only restricts entries/, and C1.3 passes with no project-memory; adding a file is allowed by current records. I'll skip or include as a small one. Three is enough.
+
+Note: "questions whose answers would change the answer" — B's python3 question changes the kit wording; E's adoption changes now/later; A's driver changes implementation not the wording. Maybe replace A's with "Does the project owner want the same-path clash decided by them, or by a written tie-break?" But W6.3a already says owner for two supersessions; applying the same is natural. A's driver is a real implementation question; I'll keep it.
+
+"Costs and risks" as planned.
+
+"How we would know I was right" as planned, maybe a compact table or bullets per A–E. The template says "<a test, a measure, or an observable result>". I can give one per item, concise.
+
+Now check every Chinese quote character by character against the list. Let me pull the exact substrings from the file programmatically to avoid transcription errors. Since I must copy exactly, I can extract them with sed/grep and paste. Let me extract the lines with these quotes.
+dsh: reasoning:
+Good. The list's #8 quote is 「故兵聞拙速，未睹巧之久也。」 — verify.
+dsh: reasoning:
+The #8 quote in list is inside a longer passage: 「故兵聞拙速，未睹巧之久也。夫兵久而國利者，未之有也。」 I can quote the first sentence exactly; partial is fine as long as characters match. Let me check the exact form.
+dsh: reasoning:
+Good.
+
+Now, should I quote so many? The check compares exact characters; six quotes are fine. But long quotes may clutter. I'll use short ones (one clause each) and label quoted.
+
+Let me reconsider A's rule citation: #6 and #16. #16's quote is about orders not clear → general's fault; then "if clear and not followed → officers' fault." Applying to a merge rule: the rule is unclear, so the merger is set up to fail. Good. I could also cite #1 because W6.3a fails_if is the test that decides. Keep #6 and #16, not #1.
+
+B: #2 and #3. #3's whole-over-broken fits the kit. Quote #3? 「凡用兵之法，全國為上，破國次之」 too military; skip quote, cite item.
+
+C: #9, #12, #1 chain. Maybe #9 quote and #12 quote; the chain quote supports "comparison". Three quotes in one step is heavy; use #9 quote and mention #12 without quote, or quote #12. I'll quote #9 (one line) and the chain (short). #12 cite without quote.
+
+D: #4 quote (long) — maybe shorten to 「知彼知己，百戰不殆」? The list's exact phrase is inside 「故曰：知彼知己，百戰不殆；...」. Quoting just 「知彼知己，百戰不殆」 matches characters; leading 故曰 omitted is fine. But the brief says quote exactly as written; a substring is exact. Use the full clause? I'll use 「知彼知己，百戰不殆」 (quoted, my #4).
+
+E: #8 quote, #17 quote. #2 cite without repeating quote. Good.
+
+Now the "Answer" summary. One long sentence with semicolons:
+"Treat A–E as one fault — a fact written in more than one place — and give each fact one home and one reader: A keep a removed `covers` path removed by merging `covers` by change, not union; B carry `tools/memory_index.py` and `docs/index-md/` in the kit; C record the readers' limits once in `project-memory/limits.json`, which the tool reads; D count only the agents whose session start loads `INDEX.md`; E build the tool's reader in its own run and measure the engines later, with the example marked interim until a row is measured."
+
+One sentence. Good.
+
+Wait, B says carry docs/index-md/; the tool's requirements in docs/index-md are about the tool, not the memory. Fine.
+
+Now "Costs and risks" — each with item. I'll use a bullet per A–E, citing my #n.
+
+Now, let me think about a possible counterargument to C: putting a JSON file in `project-memory/` could be captured in the entry scan? The tool's B1.1 filters `entries/` only, so no. But a reader might load the whole project-memory tree (forbidden by Rd2.3). Fine.
+
+What about a project whose owner doesn't want JSON? AGENTS.md could hold the table; but then the tool parses Markdown. My choice is defensible.
+
+One more subtlety for C: `Rd3.1a` is MUST and `check: tool`; if the file is absent, the tool uses the example. The `fails_if` "INDEX.md exceeds that strictest limit (until it is recorded, the interim numbers)" remains testable. Good. The `who_decides` currently says "which agents work on the project" — after D, change to "which agents load INDEX at session start". Good.
+
+Also the record says "until the project owner records measured limits" — with the file format, the owner records agents and limits; a row can be unmeasured. Maybe phrase: "records the agents and, once measured, each limit". The example stands only for rows not measured. Fine.
+
+Should the tool fail if a row is unmeasured and the index is over the example? Yes: the example is the limit until measured. The tool should use the strictest of all values (example rows and measured rows). If a measured row is looser than the example, does the example still bind? No — once every reader row is measured, the example drops out. But if only one row is measured and another is interim, the interim example applies to the unmeasured one. So the tool computes strictest among rows; each row has a value (measured or example). The "interim" flag is per row. That's clearer than a global flag. Wording: "Each row has a value; a row with no measurement holds the example and is marked `interim: Rd3.1b`. The tool takes the strictest value across rows and prints, for the binding row, whether it is measured or interim." Good. If all rows measured, no interim remains. Reviewer sees when the example stops: no `interim` rows.
+
+But what if a project has readers whose limits are above the example (e.g., only opencode with no limit)? The tool would still use the example because its rows are unmeasured and hold the example; once measured/has none, the example drops and the tool has no numeric limit? If a reader has no start-file limit, the strictest limit among readers is "none" — then INDEX can be any size? That can't be right; there's still the context window. The design needs a limit for such agents, perhaps the effective context. Hmm. If a reader states no limit, the project can still use the example as a safe default, or record a measured effective-context number. My C wording should cover: a row may be `limit: none` with a measured effective limit? That's getting deep. For D, the set may include opencode/Gemini with no stated limit; the "strictest" is undefined. The design's interim example covers them. Once all measured, if some have no limit, what binds? The project owner could record a measured cap chosen from the engine's observed truncation/degradation, which is a measurement. "No stated limit" doesn't mean no context limit; it means no documented start-file cap. E's measurement would find the effective one. So every reader row gets a measured value from the engine's behavior, even if no doc states one; `source` says "measured on X, date". Good.
+
+If a reader's measured effective limit is huge (1M context), the row's limit is high; the strictest is still from another. Fine.
+
+Now, should the tool measure "lines and bytes and code units"? The row unit decides which measure is compared. The tool's B4.2 prints both lines and bytes; with a code-unit row, print code units too. Fine.
+
+Let me also think: is JSON the best format for the tool given `json` is stdlib but the file is in `project-memory/`? A project owner editing JSON is okay. Alternative TOML: Python 3.11 has tomllib, but read-only and version-dependent. JSON is safest. Good.
+
+Now, the test for C: "a non-ASCII index passes a 24,000-byte row and fails a 25,000-code-unit row" — actually code units ≤ bytes for UTF-8 non-ASCII (each CJK char = 3 bytes, 1 code unit; each emoji = 4 bytes, 2 code units), so a byte limit is stricter than a code-unit limit for non-ASCII. A row in code units would let a file pass that a byte row fails. The test should show the tool compares the row's unit, not always bytes: a file of 9,000 CJK chars = 27,000 bytes, 9,000 code units → fails 24,000 bytes, passes 25,000 code units. Good.
+
+But Claude's 25KB is bytes; Qwen's 25,000 is code units. The strictest comparison across different units is not a single number; the tool must check each row's unit against the same file. E.g., file at 9,000 CJK chars: Qwen 25k code units passes, Claude 25KB bytes fails. The tool should compute, for each row, whether the index exceeds that row's limit in that row's unit, and fail if any row is exceeded. That's more correct than "strictest across units". The record's "strictest" language assumes a common unit; with mixed units, compare per row and fail on any. Good point for C/E! Wording: "The tool checks the file against every row in that row's own unit and fails if any row is exceeded; it prints the row that binds. 'Strictest' then means the first row that fails, not a converted number." This is an important correction to "strictest limit" thinking.
+
+Does that contradict Rd3.1a "fits the strictest start-file limit"? No: fitting all rows = fitting the strictest, in the sense that any breach fails. The number the tool prints is the binding row's limit, in its unit. Good.
+
+Should the example be a row too? If no file, the example row (200 lines, 24,000 bytes) is checked. Fine.
+
+This nuance also affects the config schema: rows can have one or two limits (lines and bytes); the tool checks each; a row's `limit` can be a list. Good.
+
+Now, would a measured row for Codex be "whole start load" — the tool can't check the other files; it can check INDEX's share if recorded as a byte cap for the index. The row's `scope: index_share` with a note "with the other start files at their measured sizes". The tool checks the index alone against the share. If the other files change, the share is stale; the source/date shows it. Hmm, that's a limitation to name in costs. Maybe simpler: for whole-load engines, the owner measures the largest INDEX that loads with the current other files and records that as an index cap; changing the other files requires re-measurement. State in C's wording: "A whole-load row records the index's measured share with the other start files as they were; a change to those files re-measures it." Good.
+
+Now the format of the "Wording" for C is getting long. The user asked "one or two sentences of wording if it changes the design" — perhaps they want concise replacement text, not a full schema. I can give the record text and then a short field list. Let me keep it to 2 sentences plus a parenthetical field list.
+
+Proposed C wording (final):
+"`Rd3.1a` becomes: *`INDEX.md` fits every start-file limit recorded for the agents whose session start loads it, in `project-memory/limits.json`; each row names the agent, its start file, the limit and its unit (lines, UTF-8 bytes or UTF-16 code units), whether the limit covers the index alone or the whole start load, and the measurement's source and date. A row with no measurement holds the example in Rd3.1b and is marked `interim`; the tool checks the index against every row in that row's unit, fails on the first row it exceeds, and every size report prints the binding row with its unit and whether it is measured or interim.*"
+Then: "Rd3.1b's last sentence becomes: *`tools/memory_index.py` holds the example only as the fallback for a row with no measurement.* `B4.1` in `docs/index-md/REQUIREMENTS.md` points to the file instead of restating the numbers."
+
+That's 2+ sentences total; okay.
+
+And `who_decides`: "project owner: which agents load INDEX.md at session start, and the measured limit for each."
+
+For D, the wording above.
+
+For B, the wording above. Also update SOURCE_OF_TRUTH.md:166-167 to point at `kit` instead of listing four.
+
+For A, wording above.
+
+For E, "Wording" is not a record change; label "Plan" instead of "Wording". The user says "one or two sentences of wording if it changes the design" — E changes the tool, so wording = the tool's contract + the run plan. I'll write "Plan: ...".
+
+Now, the "How we would know I was right" section: I can make it a short list A–E. The template says "a test, a measure, or an observable result" — a list is fine.
+
+Let me think about whether to include the fact that `memory_check/guidelines/` copy is behind. It's a bit of a distraction and might be another agent's active work (its timestamp 23:47, same as run start). It could change under me. But it's committed and I read it; the fact is true at check time. In a brief answer, one sentence is okay. It supports "copies drift" strongly. I'll include it as parenthetical evidence in C, labeled my reading. Hmm — the instruction says "Do not invent facts" and "a point from memory alone is recall and does not decide". This is a read fact with a path and date. Fine.
+
+Also, the brief's lesson "facts-carry-their-source" — I'll put file:line for facts I add beyond the brief. Good.
+
+Now check the question's specific sub-questions:
+A: "does the merge keep the removal, or bring the stale path back? Which wording?" → keep removal, wording given. ✓
+B: "should the kit include the tool and docs/index-md/, or should the design say the tool is installed separately (and what a project without it does)?" → include; a project without python3 not supported (conditional on EJ). ✓
+C: "where, and in what form ... (AGENTS.md, small config file, or tool constants — say which and why)" → small JSON file, why. ✓
+D: "which set is right ... and which wording?" → session-start readers, wording. ✓
+E: "should the tool be changed ... and should the limits be measured ... now, later, or not at all?" → yes own run; measure later; why. ✓
+
+One more thought on B: "docs/index-md/" — the tool's requirements/design. If the kit carries it, then the kit has this repo's `docs/index-md/VISION.md` and `BACKLOG.md`, which are tool-project docs, not memory. The cost is named. Could the alternative be better: carry `tools/memory_index.py` and `docs/index-md/REQUIREMENTS.md` + `DESIGN.md` only; update K6.2's pointer; the header's `(v) VISION.md` references would need a copy or rewrite. That's more surgery. Carrying the folder is simpler and keeps links. Good.
+
+Also B: the tool is at `tools/memory_index.py`; the kit is relative to the repo root; a project adopting the kit may already have a `tools/` dir with its own tools. Copying into `tools/` could collide. Name the cost: the kit's tool sits at a fixed path; a project with an existing `tools/memory_index.py` must merge or rename. That's a risk. Good.
+
+Does the kit include tests? The tool has `tests/test_memory_index.py`; the C2 requirement says tests must run. Should the kit carry the test file too? If the tool is in the kit, its tests should travel to prove it works and to catch local changes. The B question says "tool and docs/index-md"; tests are a third thing. If the kit carries the tool but not its tests, a project can't verify the tool after copying; but the check still runs. My #3 whole-over-broken: carry the test too? Hmm. The kit's purpose is the memory design; the tool's tests are dev artifacts. A project doesn't modify the tool, so it doesn't need the tests. But upgrades need tests. I'd say: carry the test file with the tool (`tests/test_memory_index.py`) or at least keep it in the tool's home copy; the project's own pytest would then run the tool's tests, which may be unwanted. Don't add; mention in costs that the kit's tool is unverified in the adopting project, or recommend tests travel only if the project may edit the tool. The question didn't ask; skip, but maybe one clause: "the test file can stay with the tool's home; the copied tool is not edited." Good.
+
+Now, "What I need to know" should perhaps ask who the "project owner" is for the kit's projects (a person adopting). Not needed.
+
+Let me also consider the pattern-improvement angle: "Your advice must fit it, and it may improve it: label such a point *proposed change to the pattern*". Do I have one? The pattern: time set at start, small pieces with checks, vision first, research not recall, workflows. My answer fits. A possible proposed change: "One record, one reader" could be a pattern rule for requirements design: every limit gets a single machine-readable record that its check reads. Label "proposed change to the pattern" — that would add a rule to how EJ designs workflows/requirements: "when a requirement's check reads a value, the value has one record, not a copy in the check." Is that worth proposing? It's a genuine improvement and directly from C. The brief invites it. I'll add a short line at the end of C or after How I decided:
+
+"**Proposed change to the pattern:** when a requirement's check reads a value, the value gets one machine-readable record and the check reads it; no constant or prose copy. This is C generalized, not a new decision."
+
+Hmm, the answers should be plain. It may be useful. But avoid adding structure not given? The pattern explicitly invites "proposed change to the pattern". I'll include one concise paragraph under How I decided step 5 or after the five steps. Maybe as step 6: "**Pattern (proposed change):** ...". But the steps are for A–E; a sixth step is fine, labeled proposed change. It should name items: #9/#12. Good.
+
+Let me now write the final answer. Keep it tight but complete. I'll write in Markdown, no preamble.
+
+Draft text:
+
+# 孫子 (Sun Tzu) — five open points in the memory design
+
+## Answer
+
+Treat A–E as one fault — a fact written in two or three places — and give each fact one home and one reader: **A** keep a removed `covers` path removed by merging `covers` by change, not union; **B** carry `tools/memory_index.py` and `docs/index-md/` in the kit; **C** record the readers' limits once in `project-memory/limits.json`, which the tool reads; **D** count only the agents whose session start loads `INDEX.md`; **E** build the tool's reader in its own run and measure the engines later, with the example marked interim until a row is measured.
+
+## How I decided
+
+1. **A — keep the removal.** W6.3a says "every `covers` path either side wrote", but its `fails_if` says "a `covers` path that one side added" (YAML:450–463). The wider phrase is the one that fails the record's own test: a merge that brings back a path the other branch removed leaves the entry pointing at a file that is gone, while the removal's `changed:` line still says it went (K4.3, YAML:522–534). My #6 weighs benefit and harm together: the benefit people want from a union — keeping both additions — is already kept by the two `changed:` lines and the two links, while the harm — a stale pointer — is new. My #16 puts an unclear order on the one who gives it, not on the one who follows: a merger should not have to invent the case for a path only one side touched. So `covers` merges by change, not by union, and a same-path clash goes to the project owner, as W6.3a already sends two supersessions of one entry.
+
+   **Wording:** in W6.3a, replace "and every `covers` path either side wrote" with "and every `covers` path either side added or corrected. `covers` merges by change, not by union: a path one side removed or replaced stays removed when the other side did not change it, and its `changed:` line is kept; when both sides changed the same path, the merge reports the clash in the task's `state.md` and the project owner decides." Add to its `fails_if`: "or the merge restores a `covers` path one side removed, or a same-path `covers` clash is decided by the merger without being reported."
+
+2. **B — carry the tool.** About a dozen records have `check: tool` (YAML:37–39), and K6.2 makes every `INDEX.md` depend on `tools/memory_index.py` (YAML:594–604). The tool is one file of 561 lines and imports only the standard library (`tools/memory_index.py:1–22`), so carrying it costs a copy, not an install. A kit that leaves it out ships MUSTs whose named check does not exist in the adopting project. My #2 says: 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 (quoted) — do not rely on each project installing the right tool; rely on the kit having it. My #3's whole-over-broken preference applies to the kit itself. I would carry the whole `docs/index-md/`, not two files, because its documents cite each other and the `(v)` source in its header would dangle otherwise (my reading).
+
+   **Wording:** `kit` becomes: "These files travel together as one kit: `SOURCE_OF_TRUTH.md`, this file, `CACHES.md`, `vision-statements/`, `tools/memory_index.py`, and `docs/index-md/`. The first four sit beside this file; `tools/memory_index.py` and `docs/index-md/` sit at the repository-root paths named. The tool is part of the kit: every `check: tool` record rests on it." The prose at `SOURCE_OF_TRUTH.md:166–167` keeps no second list; it points to `kit`. (The `kit` text is generated by `runs/20261014-sot-yaml-review/build_requirements.py:62`, so change it there and rebuild.) A project without `python3` is not supported; if EJ wants one, `check: tool` needs a named fallback.
+
+3. **C — one record the tool reads.** The numbers sit in Rd3.1a, Rd3.1b and `tools/memory_index.py:35–36`; B4.1 in `docs/index-md/REQUIREMENTS.md` repeats the example too. Three or four copies of a number that must agree is A's fault again. (A second copy of the YAML already exists at `memory_check/guidelines/SOURCE_OF_TRUTH_REQUIREMENTS.yaml` and is behind this one at W3.6 — diff checked 2026-10-17; my reading: that is what copies do.) My #9: 「故善戰者，致人而不致於人。」 (quoted) — the tool should come to the one record, not keep copies in step by hand. My #12: 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」 (quoted) — change the ground the tool reads, not the owner's diligence. My #1's chain: 「地生度，度生量，量生數，數生稱，稱生勝。」 (quoted) — a limit is a comparison with a unit and a measurement, not a bare number.
+
+   **Choice:** one JSON file, `project-memory/limits.json`, because the tool is standard-library-only and `json` is standard library, while YAML would need PyYAML or a hand-written parser (my reading of the imports). Each row: agent, start file, limit and unit (`lines`, `utf8_bytes`, `utf16_code_units`), scope (`index` or `whole_start_load`), `source` and `date` of the measurement, and `measured: true|false`; a row with no measurement holds the example and is marked `interim: Rd3.1b`. A row with no stated limit gets a measured value from the engine's behaviour, so the set is complete (my reading).
+
+   **Wording:** Rd3.1a becomes: "`INDEX.md` fits every start-file limit recorded for the agents whose session start loads it, in `project-memory/limits.json`. Each row names the agent, its start file, the limit and its unit (lines, UTF-8 bytes or UTF-16 code units), whether the limit covers the index alone or the whole start load, and the source and date of the measurement; a row with no measurement holds the example in Rd3.1b and is marked `interim`. The tool checks the index against every row in that row's own unit, fails on the first row it exceeds, and every size report prints the binding row, its unit, and whether it is measured or interim." Rd3.1b's last sentence becomes: "`tools/memory_index.py` holds the example only as the fallback for a row with no measurement." B4.1 points to the file instead of restating the numbers. `who_decides`: "project owner: which agents load `INDEX.md` at session start, and the measured limit for each."
+
+4. **D — the readers, not the roster.** Rd3's title and the prose say "agents that read it"; Rd3.1a says "agents that work on the project" (YAML:709–724; SOURCE_OF_TRUTH.md:157). A start-file limit is a property of the load path, not of being on the project: an agent that never loads INDEX at session start puts no start-file limit on it. My #4: 「知彼知己，百戰不殆」 (quoted) — know the other, and here the "other" is each reader's start-file rule, not the project's roster. My #19 says name the ground by the condition that makes it, then act as prescribed: the condition is "session start loads `INDEX.md`", so that is the set. A project that routes every agent to read INDEX at start ends with every agent in the set — the rule handles that itself.
+
+   **Wording:** Rd3 title: "`INDEX.md` fits every agent whose session start loads it"; prose at `SOURCE_OF_TRUTH.md:157`: "the strictest start-file limit of the agents whose session start loads it"; Rd3.1a: "among the agents whose session start loads `INDEX.md`"; `who_decides`: "project owner: which agents load `INDEX.md` at session start, and so the strictest limit."
+
+5. **E — build the reader, measure later.** The run already records Q3: "a tool build is its own later run" (`state.md`, Log 2026-10-17). That settles when the build runs, not whether C's file gets read. The change is small: read the file when present, fall back to the example, print the binding row and its source, compare each row's unit, and validate the file with a named error. Without it, C is another file nobody reads. My #8: 「故兵聞拙速，未睹巧之久也。」 (quoted) — do the small certain step, not a six-engine campaign. My #2 again: do not rely on a docs page; keep the fallback and measure. My #17: 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」 (quoted) — probe the engine and read the truncation notice; a page is not a measurement. Measurement is later, before the first project's real INDEX relies on the limit, on the installed versions of that project's readers, and again when an engine is upgraded or a reader is added. Not now: there is no `project-memory/` here yet (`ls`, 2026-10-17), so there is no reader set to measure.
+
+   **Plan:** the tool run adds `project-memory/limits.json` reading with tests for: absent file (example, marked interim); a measured row (reported as measured); a code-unit row against a non-ASCII index; an over-limit file failing; a malformed row failing with its name, not a traceback. The measurement run reproduces each engine's actual start load with a marker line at the end of a known-size index, records the largest size that arrives, and writes the command and date in the row.
+
+6. **Proposed change to the pattern.** Generalize C: when a requirement's check reads a value, the value gets one machine-readable record and the check reads that record; no constant, prose copy, or second table. This is #9 and #12 applied to requirements, and it would have caught B, C and D before this review.
+
+## What I need to know
+
+- **B:** is a project without `python3` in scope? If yes, `check: tool` needs a named fallback and the kit wording changes; if no, the kit states `python3` once as a requirement.
+- **E:** which project adopts the memory first, and when? If Ancient Games is next, its readers must be measured before its first real INDEX, which moves "later" into this work; if not, the example stays interim.
+- **A:** is a person expected to merge, or should a `git` merge driver implement the three-way `covers` rule? If a driver, the rule needs code and tests, not only wording.
+
+## Costs and risks
+
+- **A** — a three-way `covers` merge is more work than a union and can stop on a real clash; the owner pays the decision. The union is cheaper but keeps a stale pointer (my #6: the harm you did not weigh is the one you keep; my #16: an unclear order becomes each merger's private rule).
+- **B** — the kit grows by about 1,000 lines, every project carries a tool it may not edit, an upgrade means recopying it into each project, `docs/index-md/` brings this repo's VISION and BACKLOG along, and a project with an existing `tools/memory_index.py` must merge or rename (my #3: the whole is kept only if the part that checks it is kept).
+- **C** — a new file the owner can forget; JSON has no comments; a wrong unit or scope silently weakens the check; the schema and the tool must land together, or the tool reads nothing. A whole-load row is only true for the other start files as they were when measured (my #12: prepare the ground; my #1: a number without its unit is not a comparison).
+- **D** — a narrower set lets INDEX grow past an on-demand reader's comfort, and the routing must be re-read when an agent joins. The limit is only as good as the owner's list of readers (my #4: know the reader, not the roster).
+- **E** — measurement costs a run per engine and goes stale on upgrades; the reported 12,000-character agy limit is below the interim 24,000 bytes, so the first measured row may fail an index that passes today. The tool change touches a check a dozen MUSTs rest on, so it needs its own tests and run (my #8: speed on the small certain step; my #1: the interim is marked, not believed).
+
+## How we would know I was right
+
+- **A:** two branches — one corrects `covers` P→Q with a `changed:` line, one adds a link; after the merge, Q is present, P is absent, both `changed:` lines and both links are kept. A P→Q against P→R on the two branches is reported in `state.md`, not silently merged.
+- **B:** copy the kit into a fresh directory with nothing installed; `python3 tools/memory_index.py --check` runs, and every link inside `docs/index-md/` resolves.
+- **C:** with no `limits.json`, a 201-line index fails and the report says "interim, Rd3.1b"; with a measured 150-line row, a 160-line index fails and the report names that row and its date; a 9,000-CJK-character index (27,000 UTF-8 bytes, 9,000 UTF-16 code units) fails a 24,000-byte row and passes a 25,000-code-unit row, so the unit is compared as recorded.
+- **D:** an index that fits the session-start readers' limit but exceeds a non-reader engine's documented limit passes; routing that engine to load INDEX at start and adding its row makes the same index fail. The record and the file name the same set.
+- **E:** the tool's tests pass; with the file absent every report says "interim"; after the first measurement every binding row has a command and date and the report says "measured"; on an engine upgrade the row is re-measured, not assumed.
+- **Overall:** a reviewer reading only `project-memory/limits.json` and the tool's one report line can say what the limit is, whose it is, when it was measured, and whether it is still the example.
+
+That's long (~1800 words). Acceptable? The brief asks five decisions; dense but useful. Maybe trim some. The user is an expert seat; the main agent needs decisions and wording. I'd keep it.
+
+But check the template: "## How I decided <numbered steps; each cites "my #n" or says "my reading">". Step 6 is a pattern proposal, fine. "## What I need to know" — three. "## Costs and risks" — five. "## How we would know I was right" — six. Good.
+
+Check for any unsourced claims:
+- "561 lines" — verified wc.
+- "imports only stdlib" — verified imports list (argparse, difflib, os, re, subprocess, sys, tempfile; pathlib, dataclasses, typing? Let me re-check top: from __future__, import argparse, difflib, os, re, subprocess, sys, tempfile, urllib.parse, from dataclasses import..., from pathlib import Path. All stdlib. Good.)
+- "about a dozen `check: tool`" — from brief (fact). I say about a dozen; fine.
+- "docs/index-md header cites (v) VISION.md" — verified header: `(v) VISION.md`.
+- "memory_check copy behind at W3.6" — verified diff shows W3.6 wording missing. Good; say "behind this one at W3.6" — accurate.
+- "no project-memory here" — verified `ls -d project-memory` failed. Good.
+- "state.md Q3" — verified log.
+- "build_requirements.py:62" — verified kit string at line 62. Good.
+- "B4.1 repeats the example" — verified. 
+- "SOURCE_OF_TRUTH.md:166–167" — the kit list is at 166-167. Good.
+- "YAML:594–604 K6.2" — verified K6.2 starts 594, links 604? I saw text 594-604; fine.
+- "W6.3a YAML:450–463" — verified.
+- "K4.3 YAML:522–534" — verified start 522; text ends around 534. Good.
+- "Rd3 YAML:709–724" — verified.
+- "tool:35–36" — verified.
+
+One concern: I wrote "My #6 says..." and "My #16..." but don't quote them. That's allowed; only quotes must be exact. Each step cites items. Step 6 cites #9/#12.
+
+Another concern: the phrase "a project without `python3` is not supported" is my reading; flag it? In the wording paragraph, I say "A project without python3 is not supported; if EJ wants one..." That's my reading, but it's in the Wording line, not a step. The step B should say "my reading" for that. Add "(my reading)" there.
+
+Also "a row with no stated limit gets a measured value from the engine's behaviour" — my reading. Add label.
+
+Also "the tool should come to the one record" — my reading of #9; okay.
+
+Also "A start-file limit is a property of the load path" — my reading; label or it's obvious. Add "my reading" perhaps.
+
+The brief's rule: "If the answer depends on something you were not given ... list it under What I need to know and answer conditionally." My B answer is conditional on python3 scope; I list it. My E is conditional on adoption; listed. A conditional on driver; listed. Good.
+
+Do I need to state conditional answers explicitly in Answer? The Answer currently says "a project without python3..." not; the What I need to know covers it. Maybe add "conditional" sentence? The template allows conditional. My Answer is unconditional for the main choices; the conditions are in What I need to know. Fine.
+
+Now, a critical check: the brief says "Do not write files; your final message is the answer." I haven't written files. Good.
+
+One more: the brief says "Refer to EJ as they/them." I use "EJ" without pronouns; fine. Avoid "his".
+
+Now, is my A reading actually aligned with W6.3a's "Nobody chooses between two claims"? My merge rule has the owner deciding a covers clash; that's not choosing between claims. Good.
+
+Could there be a simpler wording for A: "keep both sides" means keep both changes; a removal is a change, so keep it; a union of paths contradicts "keep both sides" because it undoes one side's change. That's a strong argument: the union actually loses one side's change (the removal). I should lead with that: "W6.3a says keep both sides; a union of the paths does not keep both sides — it keeps one side's addition and discards the other's removal." That's a better textual argument than only fails_if. Add it. Then the fails_if's "added" confirms. Good.
+
+Similarly, K4.3's `covers` correction is a change that must survive. Yes.
+
+Now, B: Is `docs/index-md/` really "the tool's design" and not "the memory design"? K6.2 says "Its requirements and design are in docs/index-md/". So yes.
+
+Could carrying docs/index-md create a circular kit dependency? docs/index-md/REQUIREMENTS.md cites the memory design (d) and is about the tool; the tool is in the kit. Fine.
+
+Now, C: Is it acceptable for the config file to live inside `project-memory/` when the kit's `project-memory/` is "the project's own"? Yes. But maybe the config should be at the repo root to be visible, not buried. I'll mention the alternative in one clause: "It lives at `project-memory/limits.json` so it sits with the file it governs; if the memory tree must hold only entries and INDEX.md, the same file at the repo root works (my reading)." Hmm, that weakens the decision. The question asks to say where; be decisive. Keep project-memory/limits.json.
+
+Wait: does the tool's `repo_root` and `project-memory` constant allow a limits file? Yes, path join.
+
+Now consider whether the tool's `--check <rev>` mode can read the limits file from the worktree or the rev. It reads git objects; the limits file should be read from the working tree or the checked rev? If check mode checks a commit, it should use the limits file at that commit (so a historical check uses the limits then). That's a real design detail: the tool's `--check <rev>` must read `project-memory/limits.json` from the same snapshot, not the working tree, or results differ. Add to the E plan: "check mode reads the row from the same rev it checks, so a past commit is judged by the limit then" (my reading). Is that necessary? It's a good catch. The tool currently gets entries from git objects; the limits file should follow. But if the limits file is a project config, a past commit's check should perhaps use the current limit? The purpose of `--check <rev>` is to see if that rev's INDEX fits its limits at that time. Using the current limits could fail old commits after a stricter measurement. Hmm, either is defensible; but consistency with the entries (read the snapshot) is better. Add a short clause. It adds complexity to E; maybe put under Plan: "check mode reads `limits.json` from the same rev, so a past commit is judged by the record it had." That's a design choice I should flag as my reading, and it changes the tool. Is it necessary to answer E? Not strictly, but it's a real implementation point. Include one clause.
+
+Now, the "How we would know" for C uses a 9,000-CJK-character index: 9,000 chars * 3 bytes = 27,000 bytes; UTF-16 code units = 9,000 (BMP); good. For emoji, 2 code units; not needed.
+
+The line limit: 201 lines vs example 200. Fine.
+
+Now, one more possible issue: `limits.json` is a new file in `project-memory/`, but K4.1 says an entry is never deleted; this isn't an entry. Fine.
+
+Let me consider the "one thing" rule for the file's fields: it mixes agent identity, limits, measurement metadata. That's one thing: "the reader limit record". Fine.
+
+Now, "who fills it": project owner. The tool reads it. The reviewer reads it. Good; the answer names who.
+
+For B, "who fills it": the kit maker (this repo) copies the tool; the adopting project copies the kit. Good.
+
+For A, "who fills it": the merger writes the merge; the owner decides clashes. Good.
+
+For D, "who fills it": the owner names the readers; routing text is written by the project. Good.
+
+For E, "who fills it": a later run builds; the owner/agent measures. Good.
+
+Now, should I mention that `memory_check/guidelines/` is a second copy and behind at W3.6, given the run's brief didn't mention it? It is a fact from the repo and supports C. I'll keep it but perhaps phrase carefully: "another copy of the YAML already sits at ... and its W3.6 text is the older one (diff, 2026-10-17)" — this is true. It might be a live worktree from another session, but it's committed. Fine.
+
+Let me verify the diff direction: docs has the longer W3.6 text; memory_check has the shorter older text. The docs file's mtime Oct 17 23:35, memory_check copy 17:42. So yes, memory_check is older. Good.
+
+Now, one more thought on B: if the kit includes `docs/index-md/`, that folder is the index tool's requirements/design, which may be a *different* project's docs and may itself refer to `tools/memory_index.py`; carrying it is coherent. The kit's `tools/` and `docs/index-md/` are "relative to the repository root" — a new project that already has docs/index-md for something else collides. Name the cost. Good.
+
+Let me now check the exact text of `SOURCE_OF_TRUTH.md:166-167`:
+"This document, the YAML, `CACHES.md` and `vision-statements/` travel together as one kit." I'll say "the prose list at 166–167". Good.
+
+Also "the YAML's kit names the four" at 64-66. Good.
+
+Now, the Answer's E phrasing "measure the engines later" — the question says "the limits be measured on the engines (not only read from docs) — now, later, or not at all?" My answer "later" is clear. Should I say "not 'not at all'"? Yes: "later, not never". Add.
+
+Let me also think about whether "measure later" could be seen as dodging the unknown-number rule. The record's interim example is explicitly allowed by the owner's rule ("Until the project owner records measured limits, the tool's limit is the example"). So the design accepts an interim. My answer keeps the interim marked, which is honest. Good.
+
+One more nuance: the design's example (200 lines, 24,000 bytes) is "at or under every verified per-file figure, and not under the reported 12,000-character agy figure" (research). If a project uses agy and the 12,000-char report is true, the interim example is unsafe. My E says the first measured row may fail an index that passes today. Good. But should the design lower the example to 12,000 characters now, to be safe? That's a conservative option; the rule says no invented numbers, and 12,000 is reported, not verified. Lowering the example to a reported number would be inventing a limit. Keep the example, mark it interim. Good — mention in costs.
+
+Now let me think about the "proposed change to the pattern" wording. The pattern includes "Small pieces, timestamped... every worker writes a timestamped progress line per piece." My proposal is about requirements design, not the run pattern. Is it a change to the pattern? The pattern is how EJ's runs work; a requirements-design rule is a method change, not a run-pattern change. The brief says "Your advice must fit it, and it may improve it: label such a point proposed change to the pattern". My C generalization is a design rule, could be a pattern rule for how requirements get written. It's a stretch. Alternatively, no pattern change needed; the advice fits. I can say "No change to the pattern is needed" — but the template doesn't ask. I think adding step 6 is okay, but if it's not really a pattern change, it may look like padding. Maybe phrase: "**Proposed change to the pattern (if it counts as one):** ..." Hmm.
+
+The pattern's bullet "Research and data, not recall" already covers C's one-record idea partly. The new rule would be "a check reads a record, not a constant". It's a workflow-design principle (requirements with checks). I'll keep it but label it as a method improvement, not a run-pattern change: "**Proposed change to the pattern:** ..." is what the brief asks if I propose. Fine, one line.
+
+Now, the quote labels: I write (quoted) after each Chinese quote, and cite "my #n". The brief says "keep its label (`quoted`, `attributed`)". My quotes are all `quoted`. Good. I don't use `attributed` quotes.
+
+Check the quotes again for exact punctuation: The list uses full-width punctuation. My quotes:
+- 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 exact (copy).
+- 「故善戰者，致人而不致於人。」 exact.
+- 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」 exact.
+- 「地生度，度生量，量生數，數生稱，稱生勝。」 exact (list has no 。 inside? It's 「地生度，度生量，量生數，數生稱，稱生勝。」 — check list: '「地生度，度生量，量生數，數生稱，稱生勝」' in Changes, but in Final list #1 it's 「地生度，度生量，量生數，數生稱，稱生勝。」 with a period? The text: "「兵法：一曰度，二曰量，三曰數，四曰稱，五曰勝。地生度，度生量，量生數，數生稱，稱生勝。故勝兵若以鎰稱銖...」" — yes, period after 勝. My quote includes 。 — exact.
+- 「知彼知己，百戰不殆」 — list: 「故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」 My substring matches. Good.
+- 「故兵聞拙速，未睹巧之久也。」 — list includes 。 then next sentence; my quote ends with 。 exact.
+- 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」 exact.
+
+I should not include Chinese without a translation? The brief doesn't require translation; the list has translations. Plain English answer with quotes; fine. Maybe add a short gloss in parentheses? Not necessary; the list is nearby. But for readability, one or two glosses could help. The brief says plain English Markdown. I'll add a brief English gloss after the first quote? That adds length. The list's translations are available; the expert answer can rely on the item's rule statement. Skip glosses, except maybe #2: after the quote, the sentence explains. Good.
+
+Now, "My #6 weighs benefit and harm together" — the item's rule; fine. But I don't quote it; could quote 「是故智者之慮，必雜於利害」 to show. Add? The step already has one quote? A has no quote. Maybe add #6's short quote to A to ground it: "My #6: 「是故智者之慮，必雜於利害」 (quoted) — weigh benefit and harm together; ...". Then A has one. Good.
+
+Step A also cites #16 without quote. Fine.
+
+Now, the "Costs" bullets reference items but don't quote; fine.
+
+Let me reconsider step D's "A project that routes every agent to read INDEX at start ends with every agent in the set — the rule handles that itself." Is that true? If every agent loads INDEX at start, then every agent is a reader, yes. Good.
+
+Step D wording "Rd3 title" — the group title is `'\`INDEX.md\` fits every agent that reads it'`; my replacement is "every agent whose session start loads it". Good.
+
+Step C's `who_decides` includes D's wording too; I put it in C's wording. That's okay but maybe confusing; D's wording also includes it. Remove from C to avoid duplication; D owns it. In C, the record's who_decides should change to "which agents load INDEX.md at session start" per D. I'll mention in D only. C's wording ends with Rd3.1b/B4.1.
+
+Now, the "Answer" says "record the readers' limits once in project-memory/limits.json" — good.
+
+Let me think about the order: A, B, C, D, E as given. Good.
+
+One more: the run's brief says "The research for this question is added below by the workflow before you are asked." I use the research facts (e.g., agy 12,000 chars reported; Qwen code units; Claude 25KB ambiguity) in costs and E. Should I cite research IDs? The research section labels W-1, W-2, W-4 etc. In my answer, I can say "the research's agy 12,000-character row (W-4, reported)" to be precise. Good: costs E "the research's reported 12,000-character agy figure (W-4, reported)". And C's unit choice is grounded in the research's Qwen code-units finding. Add one clause: "Qwen's limit is code units, not bytes (research, Qwen row; installed 0.21.8)". This justifies the unit field. In C step: "The research found Qwen's 25,000 is UTF-16 code units, not bytes, so a single byte constant cannot express the readers' limits (research, Qwen Code row)." Good.
+
+Now, is `project-memory/limits.json` read by `memory_index.py --check` in `--check <rev>` mode from that rev? I'll add to Plan: "In `--check <rev>`, read the file from that rev, so a past commit is judged by the record it had (my reading)." Good.
+
+Now, the "How we would know" for B: `python3 tools/memory_index.py --check` in a fresh copy — but check mode with no project-memory passes "nothing to check"; to test the tool runs, use `--help` or write a sample entry. Say "`python3 tools/memory_index.py --help` runs and `--check` gives its 'nothing to check' answer with no install" — better, because a fresh copy may have no project-memory. Use `--help` plus a sample entry? Simplest: "run `python3 tools/memory_index.py --check` in a fresh copy with a sample `project-memory/entries/` and no install; it builds/checks." Good.
+
+For B, "every link inside docs/index-md/ resolves" — test with a link checker or grep for relative paths; fine.
+
+Now, the output format: no preamble. Start directly with the H1. Good.
+
+Let me write the final answer now. I'll keep the formatting clean and not overly verbose. Before finalizing, re-read the list's #4, #6, #8, #9, #12, #16, #17, #19 rules to ensure my citations are fair:
+- #4: knowing when to fight, five ways, know other/self. D's use (know the reader) is analogical; label "my reading" for the application. The brief allows applying rules; each step cites the item. It's a fair analogy but not a direct rule about limits. Say "My #4's know-the-other rule, applied to a load path (my reading)". Good.
+- #6: weigh benefit and harm; A's use is direct.
+- #8: value victory not duration, speed; E's "do the small step" is a fair application (clumsy speed line means speed over prolonged sophistication). Label as applied.
+- #9: bring others, don't be brought; C's "tool reads the one record" is analogical; label.
+- #12: seek in 勢 not people; C's "change the ground" is direct-ish.
+- #16: clear orders; A's direct.
+- #17: probe/signs; E's measurement method direct.
+- #19: name the ground; D's direct-ish.
+- #1: measurement chain; C's direct.
+- #2: readiness/means; B and E direct.
+- #3: whole over broken; B direct.
+
+Good.
+
+One more consideration: the brief says "Do not invent numbers: a limit is a comparison or a measured value with its source (the owner's rule, recall: house memory 'comparisons, not numbers')." My answer avoids inventing numbers; 561 lines is a measured count (wc) with source; 1,000 lines is approximate ("about 1,000" — is that inventing a number? It's an approximate size of tool+docs: 561 + 919 = 1,480, so "about 1,000" is wrong-ish; say "about 1,500 lines" or "the tool plus its docs (1,480 lines, wc)" — better to avoid a number: "the kit grows by the tool and its design docs". In costs B, remove "about 1,000 lines" and say "by the tool and its docs (1,480 lines, `wc -l`, 2026-10-17)". That's a measured number with source. Or no number: "the kit grows by the tool and its docs". Keep a measured count with source, per the rule. Let me compute: tools 561 + docs/index-md 63+118+132+45 = 358; total 919? Wait wc showed tools 561, docs files 63+118+132+45 = 358; then "919 total" — that total is docs only? The wc output: `561 tools/memory_index.py`, then 63, 118, 132, 45, `919 total`. 63+118+132+45 = 358, not 919; the total includes tools? 561+358=919. Yes, total 919 includes the tool. So the kit grows by 919 lines (561 tool + 358 docs). Use "919 lines (`wc -l`, 2026-10-17)". Good.
+
+Similarly "about a dozen `check: tool`" — the brief says "about a dozen", okay. Could count: `grep -c "check: tool"` is ~? Not needed; say "the records with `check: tool` (about a dozen, per the brief)". Fine.
+
+"about 1,000" removed.
+
+Now, "one file of 561 lines" is a measured count; source: `wc -l tools/memory_index.py`. Good.
+
+Now, "a second copy of the YAML ... behind at W3.6" — use "diff shows its W3.6 text is the older one", not "behind" maybe. Fine.
+
+Now, the "Answer" one sentence uses "E build the tool's reader in its own run and measure the engines later" — good.
+
+Let me finalize. I'll ensure the headings exactly:
+# 孫子 (Sun Tzu) — five open points in the memory design
+## Answer
+## How I decided
+## What I need to know
+## Costs and risks
+## How we would know I was right
+
+No extra top-level sections. Subsections? I use bold "Wording" within numbered list items, not headings. Good.
+
+Let me write it.

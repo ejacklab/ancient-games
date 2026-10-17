@@ -59,9 +59,9 @@ HEADER = {
         "d": "this design's text, SOURCE_OF_TRUTH.md (the section named)",
     },
     "retired_ids": "K2 and K3 are not used. Other text cites K4 to K6, so the numbers stay.",
-    "kit": "These files travel together as one kit: SOURCE_OF_TRUTH.md, this file, CACHES.md and "
-           "vision-statements/; this file names them relative to its own folder. `tools/` and `docs/index-md/` are "
-           "relative to the repository root. `project-memory/`, `AGENTS.md`, `CLAUDE.md` and `runs/` are the "
+    "kit": "These travel together as one kit: SOURCE_OF_TRUTH.md, this file, CACHES.md and vision-statements/, "
+           "which this file names relative to its own folder; and the tool `tools/memory_index.py` with its "
+           "requirements and design in `docs/index-md/`, which are relative to the repository root. `project-memory/`, `AGENTS.md`, `CLAUDE.md` and `runs/` are the "
            "project's own.",
 }
 
@@ -202,11 +202,12 @@ CATEGORIES = [
               "an edit to an entry is lost without a conflict, with no written reason.", "git"),
             r("W6.3a", "MUST", "A claim is never rewritten (K4.3), so a merge conflict in an entry is never in its claim: "
               "only in its header (`covers`, `status`, the links) and the lines added to it. Whoever does the merge keeps both sides: both `changed:` lines, both links, and every `covers` "
-              "path either side wrote. Nobody "
+              "path either side wrote. A `covers` path one side removed or replaced, and the other left alone, stays "
+              "removed: its `changed:` line records the removal (K4.3). Nobody "
               "chooses between two claims. Two entries that each supersede the same entry are reported in the task's "
               "`state.md` and to the project owner, as in Rd5.3.",
-              "a merged entry is missing a `changed:` line, link or `covers` path that one side added, or two "
-              "entries superseding "
+              "a merged entry is missing a `changed:` line, link or `covers` path that one side added, brings back a "
+              "`covers` path one side removed, or two entries superseding "
               "one go unreported.", "git; reviewer", who_decides=PO, part_of="W6.3"),
             r("W6.3b", "SHOULD", "A conflict in `INDEX.md` is resolved by regenerating it (K6.3).",
               "as K6.3b.", "reviewer", part_of="W6.3"),
@@ -305,17 +306,20 @@ CATEGORIES = [
               "entry passes.", "reviewer", part_of="Rd2.3"),
         ]),
         ("Rd3", "`INDEX.md` fits every agent that reads it", "d: the size check; CACHES.md § Example numbers by case", [
-            r("Rd3.1a", "MUST", "`INDEX.md` fits the strictest start-file limit among the agents that work on the "
-              "project. The check that keeps it in step with its entries (K6) also fails when it does not fit. Until "
-              "the project owner records measured limits, the tool's limit is the example in Rd3.1b: 200 lines and "
-              "24,000 bytes.",
-              "`INDEX.md` exceeds that strictest limit (until it is recorded, the interim numbers), or the K6 check "
+            r("Rd3.1a", "MUST", "`INDEX.md` fits the strictest start-file limit among the agents whose session start "
+              "loads it. The check that keeps it in step with its entries (K6) also fails when it does not fit. The "
+              "project owner records those agents and each one's limit, with its unit and its basis (measured, "
+              "documented, or an example), in one file the tool reads; this requirement does not repeat the numbers. "
+              "A documented figure is not a measurement of the installed engine. Until the tool reads that file, it "
+              "holds the example in Rd3.1b.",
+              "`INDEX.md` exceeds that strictest limit (until the tool reads the file, the example), or the K6 check "
               "passes an `INDEX.md` that exceeds it.",
-              "tool", who_decides="project owner: which agents work on the project, and so the strictest limit",
+              "tool", who_decides="project owner: which agents load `INDEX.md` at session start, and so the strictest "
+                                  "limit",
               part_of="Rd3.1"),
             r("Rd3.1b", "guidance", "Example, from `CACHES.md`: about 24 KB and 200 lines when Claude Code, Qwen and "
-              "agy share a project. `tools/memory_index.py` holds these numbers until measured limits are "
-              "recorded (Rd3.1a).", "nothing: an example.", "none", part_of="Rd3.1"),
+              "agy share a project. Until it reads the project owner's file (Rd3.1a), `tools/memory_index.py` holds "
+              "200 lines and 24,000 bytes.", "nothing: an example.", "none", part_of="Rd3.1"),
         ]),
         ("Rd4", "On demand", "d: When it will be used", [
             r("Rd4.1", "MUST", "Before editing a file, an agent reads the entries whose `covers` include it.",

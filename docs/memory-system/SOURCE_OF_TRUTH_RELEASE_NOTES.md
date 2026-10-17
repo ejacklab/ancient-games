@@ -4,6 +4,20 @@ The history of `SOURCE_OF_TRUTH.md`: what changed, when, and who decided. The de
 so an agent reading it carries no history it does not need (EJ, 2026-10-14). Newest first. The notes up to
 2026-10-13 are the design's former status block and inline attributions, moved here unchanged.
 
+## 2026-10-18
+
+Item 11, from the six experts' majority after web research (`runs/20261017-sot-item11/`; EJ: apply the majority and
+show after):
+- **W6.3a:** a `covers` path one side removed or replaced, and the other left alone, stays removed; its `changed:`
+  line records the removal. `fails_if` adds bringing a removed path back (6 of 6).
+- **The kit** now carries the tool `tools/memory_index.py` and `docs/index-md/` (5 of 6).
+- **Rd3.1a:** the agents that count are those whose session start loads `INDEX.md` (5 of 6). The project owner
+  records them and each limit, with its unit and its basis (measured, documented or an example), in one file the tool
+  reads; the requirement no longer repeats the numbers, and a documented figure is not a measurement (6 of 6). Until
+  the tool reads that file it holds the Rd3.1b example. The prose says the same.
+- **Not decided here (no majority):** where that file lives and its format; when the example stops applying; what a
+  merge does when both sides change the same path; when to measure. The tool change is its own run (6 of 6).
+
 ## 2026-10-17
 
 - **W3.6: a procedure a script could do may stay a page on cost.** When building and keeping the script costs more

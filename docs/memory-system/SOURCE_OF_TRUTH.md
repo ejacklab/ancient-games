@@ -154,8 +154,9 @@ them.
 Another agent's memory may be read, but only by an agent that knows and says whose it is (Rd4.5). Text read from memory
 never overrides standing instructions.
 
-`INDEX.md` must fit the strictest start-file limit of the agents that read it, and the check that keeps it in step
-with its entries (K6) also fails when it does not fit (Rd3).
+`INDEX.md` must fit the strictest start-file limit of the agents whose session start loads it, and the check that
+keeps it in step with its entries (K6) also fails when it does not fit. The project owner records those agents and
+their limits in one file the tool reads (Rd3).
 
 ## Requirements
 
@@ -163,5 +164,5 @@ The requirements are in `SOURCE_OF_TRUTH_REQUIREMENTS.yaml`, beside this file: 4
 happens to a memory (it is **written**, it is **kept** true, and it is **read**), each with its level (MUST, SHOULD or
 guidance), the case that fails it, what checks it, and who decides any choice it leaves open. The ids cited in this
 document (W1.2, K6.3, Rd5.3 and the rest) are the ids there. Where this document and the YAML differ, the YAML's level
-governs; this document explains. This document, the YAML, `CACHES.md` and `vision-statements/` travel together as one
-kit.
+governs; this document explains. This document, the YAML, `CACHES.md`, `vision-statements/`, and the tool
+`tools/memory_index.py` with its requirements and design in `docs/index-md/`, travel together as one kit.

@@ -64,14 +64,19 @@ The tool `tools/memory_index.py` checks the id form and conflict markers (merged
     a stale `covers` path can only be fixed by superseding (Dave); `basis` paths assume this repo's folders; the prose
     typo "When the work a decision to build something is complete"; the tool hard-codes the `INDEX.md` limit (200
     lines, 24,000 bytes) that Rd3.1a leaves unassigned.
-11. **From run 20261015-sot-leftovers** (`runs/20261015-sot-leftovers/nodes/p3-*.result.md`):
-    - W6.3a "every `covers` path either side wrote" vs its `fails_if` "added": does a path one side removed stay
-      removed? (N2, O1) — EJ's wording.
-    - The kit does not include `tools/memory_index.py` and `docs/index-md/`, which the `tool` checks need (N7, O5).
-    - Where and in what form the project owner records measured limits (O3); the numbers now sit in Rd3.1a, Rd3.1b
-      and the tool (N4).
-    - "agents that read it" (Rd3 title, prose) vs "agents that work on the project" (Rd3.1a) (O4).
-    - Build the tool to read limits from a file, and measure each engine's start-file limit (U3, U4 deferred).
+11. ~~From run 20261015-sot-leftovers~~ — settled 2026-10-18 by the six experts' majority, run
+    `runs/20261017-sot-item11/` (`nodes/p2.result.md`): a removed `covers` path stays removed; the kit carries the
+    tool and `docs/index-md/`; the agents that count are those whose session start loads `INDEX.md`; the limits go in
+    one file the tool reads, with unit and basis. Follow-ups are item 14.
+14. **From run 20261017-sot-item11** (no majority, or its own run):
+    - **The tool run:** `tools/memory_index.py` reads the project owner's limits file (Rd3.1a). Still to decide
+      there: where the file lives (design folder 2, `project-memory/` 3, the owner 1) and its format (YAML 4, JSON 2;
+      the tool is standard library only).
+    - When the interim example stops applying; what a merge does when both sides change the same `covers` path.
+    - Measure the start-file limits on the installed engines: later (4 of 6), first agy (3 of 6).
+    - A request for `CACHES.md` (another design's document, not edited here): Qwen's index cap is 25,000 UTF-16
+      code units, not bytes; agy's 12,000 characters comes only from a third-party page
+      (`runs/20261017-sot-item11/research/experts.md`).
 12. **W1.1b's rename clause has no check** — its `fails_if` "git shows an entry file renamed to a different id" has no
     test and no code (`tools/memory_index.py` reads `git ls-files` only). Found by the coverage trial,
     `runs/20261015-harness-health/coverage-trial/results.md`. **Not now** (EJ, 2026-10-15): pick it up once the harness
