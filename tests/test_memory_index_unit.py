@@ -181,10 +181,10 @@ CREDENTIALS = [
     ("github token", "ghr_" + "z09A" * 9),
     ("github token", "github_pat_" + "aZ09_" * 16 + "ab"),
     ("gitlab token", "glpat-" + "aZ09-_" * 3 + "ab"),
-    ("slack token", "xoxb-1"),
-    ("slack token", "xoxp-7"),
-    ("slack token", "xoxe-3"),
-    ("anthropic key", "sk-ant-api03-"),
+    ("slack token", "xoxb-" + "1"),
+    ("slack token", "xoxp-" + "7"),
+    ("slack token", "xoxe-" + "3"),
+    ("anthropic key", "sk-ant-api03" + "-"),
     ("google api key", "AIza" + "aZ09-_" * 5 + "abcde"),
 ]
 
@@ -214,7 +214,7 @@ def test_a_credential_is_an_error_in_every_status_without_its_text(status):
     value = "ghp_" + "aZ09" * 9
     raw = ENTRY_TEXT.replace("status: active", f"status: {status}").replace("Use code-point order.", f"Key: {value}")
     entry = memory_index.parse_entry("D-one.md", raw)
-    assert entry.errors == [f"possible credential (github token) on line 6"], entry.errors
+    assert entry.errors == ["possible credential (github token) on line 6"], entry.errors
     assert entry.warnings == []
     assert value not in "".join(entry.errors)
 
