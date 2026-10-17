@@ -669,6 +669,18 @@ The guard holds such a command before it runs.
 - **N3 Not held.** The read is not held when:
   - an earlier segment that is not itself a read names the operand or its file name (it may write or test it:
     `[ -f f ] &&`, `-o f && head f`) — an earlier read of the same file proves nothing;
+  - an earlier segment writes the operand's file by a stdout redirect (`>`, `>>`, `&>`, `&>>`), whatever its command
+    word, a reader included (`grep x a > f; cat f`, `cat > f <<'EOF'` … then `cat f`; F-cc665076). The target,
+    resolved in the folder its segment runs in, must be the read's file exactly — a target with the same file name
+    elsewhere does not count, and its folder must exist (a redirect into a missing folder makes no file; the folder
+    rule below may still excuse the read: `mkdir -p out && grep x a > out/f && cat out/f`). The writer must have
+    finished: one in the read's own pipeline (`grep x a > f | cat f`) or sent to the background (`… > f & cat f`)
+    does not count, nor does a descriptor copy (`>&2`) or a target holding a `$`, a backtick or a glob character.
+    Not covered, so a read of the file is still held: `2> f`, `1> f` and `>& f` (no measured use), and a redirect
+    joined to the word before it (`a>f`). `>| f` is split at its `|`, so the older text match lets its read through
+    by the name alone. Known misses of this exemption, each rare: a writer that `false &&` skips, a redirect inside
+    a `#` comment, a writer in a `|&` pipeline or in a pipeline sent to the background, and a target the shell
+    cannot write (`f/`, `absent/../f`, a parent that is a file);
   - an earlier segment whose command can make files (any command but `ls cat head tail grep wc echo printf cd test [
     stat pwd true`) names the operand's folder (`build.py structure && head structure/a.md`);
   - it is followed by `||` (the error is handled), or it is a probe: stderr goes to `/dev/null` and `;`, a newline or
@@ -690,7 +702,11 @@ read of an existing file, a read whose file an earlier non-read segment names, a
 read of a folder an earlier writer names, a `cat > f <<EOF` write, a word inside a heredoc body, a grep pattern or sed
 script, a pattern holding an escaped quote, a path holding `$`, a read after a subshell `cd`, or a reader with no file
 operand is held; `head -n 5 missing`, `sed -n 1p missing`, `cd sub && cat missing` (missing in `sub`), `cat missing
-2>/dev/null` ending the command, or `ls dir/ && head dir/missing` runs.
+2>/dev/null` ending the command, or `ls dir/ && head dir/missing` runs. Also fails if F-cc665076's command (planted as
+written) or a read of a file an earlier finished segment wrote by `>`, `>>`, `&>` or `&>>` is held; or a read is let
+through by a redirect to another file with the same name, by a redirect into a folder that does not exist, by a
+writer joined to the read by `|` or followed by `&`, by `<`, `2>`, `2>&1` or `>&2`, or by an earlier read of the file
+without a redirect to it.
 
 ## Round 14 — the tests item of a code change (R12.7; F-8243a18f/F-96578c5b option 2, chosen 2026-10-17)
 

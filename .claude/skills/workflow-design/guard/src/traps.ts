@@ -674,6 +674,27 @@ function probe(text: string, after: string): boolean {
   return silent && /^\s*(?:;|\n|\|(?!\|))/.test(after);
 }
 
+// N3: the files that earlier segments have written by a stdout redirect (`>`, `>>`, `&>`, `&>>`) when the segment at
+// `index` starts, whatever their command, a reader included (F-cc665076): each target resolved in the folder its
+// segment runs in. A segment in the same pipeline runs at the same time, and one sent to the background may not have
+// finished, so neither counts; a descriptor copy (`>&2`) and a target the text cannot know write no file named here.
+function redirectWrites(parts: Segment[], index: number, cwd: string, home: string): Set<string> {
+  const written = new Set<string>();
+  for (let writer = 0; writer < index; writer++) {
+    if (parts[writer]!.background) continue;
+    if (parts.slice(writer + 1, index + 1).every((segment) => segment.piped)) continue;
+    const folder = folderBefore(parts, writer, cwd);
+    for (const word of shellWords(parts[writer]!.text)) {
+      if (!word.redirectTarget || !word.stdout) continue;
+      const target = unquote(word.value);
+      if (target === "" || target.startsWith("&") || unknowablePath(target)) continue;
+      if (target.startsWith("~") && !(target.startsWith("~/") && target === word.value)) continue;
+      written.add(path.resolve(folder, target.startsWith("~/") ? path.join(home, target.slice(2)) : target));
+    }
+  }
+  return written;
+}
+
 // N2–N3: the files a command reads that do not exist now, in the folder each read runs in. A file an earlier segment
 // names may be made or tested there, a folder an earlier writing command names may be filled there, a read followed
 // by `||` handles its own error, and a probe cannot fail; none is reported.
@@ -694,6 +715,7 @@ export function missingReads(command: string, cwd: string, exists: (file: string
     if (/^\s*\|\|/.test(after) || probe(part.text, after)) continue;
     if (unknownCdBefore(command, Math.max(at, 0)) || /\(\s*cd\s/.test(command.slice(0, Math.max(at, 0)))) continue;
     const folder = folderBefore(parts, index, cwd);
+    const written = redirectWrites(parts, index, cwd, home);
     const before = parts.slice(0, index).map((segment) => ({ text: segment.text, word: wrapperName(words(stripWrappers(segment.text))[0]?.text ?? "") }));
     // An earlier read of the same file proves nothing about it; a command that makes or tests it does.
     const earlier = before.filter((segment) => !READERS.has(segment.word)).map((segment) => segment.text).join("\n");
@@ -702,6 +724,8 @@ export function missingReads(command: string, cwd: string, exists: (file: string
       if (unknowablePath(operand) || (operand.startsWith("~") && !operand.startsWith("~/"))) continue;
       const resolved = path.resolve(folder, operand.startsWith("~/") ? path.join(home, operand.slice(2)) : operand);
       if (exists(resolved)) continue;
+      // A redirect into a folder that is not there makes no file; N3's folder rule may still excuse the read.
+      if (written.has(resolved) && exists(path.dirname(resolved))) continue;
       if (earlier.includes(operand) || earlier.includes(path.basename(operand))) continue;
       const parent = path.dirname(operand);
       if (parent !== "." && writers.includes(parent)) continue;

@@ -37,6 +37,23 @@ whole when its command is itself a reader (`cat`, `head`, `grep`, `sed`), so the
 as making F, and a later `cat F` in the same command is denied although F will exist by then. Seen 2026-10-17
 (F-cc665076; the command is in `runs/20261016-four-experts-what-counts-as-change/read-missing-false-hold.txt`).
 
-Proposed fix, not yet chosen: N3 counts an earlier segment's stdout redirect target (`> F`, `>> F`, `tee F`) as making
-F, whatever its command word. A planted repeat of this command must run, and F-4981093a's repeat must stay held (its
-reads had no redirect). Until then: write the file in one call and read it in the next.
+**Fixed 2026-10-17** (run `runs/20261017-read-missing-false-hold/`, decided provisionally from the six experts in a
+60-minute box; EJ accepts or declines): N3 now counts an earlier, finished segment's stdout redirect (`>`, `>>`, `&>`,
+`&>>`) as making exactly that file, whatever its command word, when the file's folder exists. Still open from it:
+
+- **A `cd` after `&&` is never seen as unknowable** (found by Dave, confirmed in the run's `cd-after-and.txt`):
+  `mkdir -p a && cd $D && cat missing.md` is held, though N2 says a read after an unknowable `cd` is not checked. Each
+  piece after `&&` in `coarsePieces` starts with `& `, so `unknownCdBefore` sees `&`, not `cd`. The same function
+  feeds engine calls' `cwdKnown`. A false hold of its own, and a second cause of F-cc665076's.
+- **N3's older text match lets reads through** (measured by 老子): `echo F; cat F` runs (an earlier segment only names
+  F), and `grep x a >| other/linus.md; cat linus.md` runs (`>|` is split at its `|`, and the base name matches). All
+  past holds were measured with this match, so a change needs its own replay.
+- **`2> f`, `1> f` and `>& f` are not counted** as making `f`, though the shell creates it (Linus and Dave would
+  count `2>`; 0 of 1,873 past commands need it). The next step if one is seen held: a `writes` field in `shellWords`.
+- **The new exemption's known misses** (the dsh review, `runs/20261017-read-missing-false-hold/review-answers.md`),
+  each rare and written into SPEC N3: a writer in a `|&` pipeline (`tokenize` splits `|&`), a writer in a pipeline
+  sent to the background (only the last segment is marked), and a target the shell cannot write (`f/`, `absent/../f`,
+  a parent that is a file — the folder is tested after `path.resolve` and not as a directory). Each fix needs its
+  own crossed tests.
+- **Two pins test less than their names say:** the `||` and probe pins in both `round13-reader-writes-*.test.ts`
+  files have their own writer, so those exemptions are never exercised there.
