@@ -35,4 +35,4 @@ prints `memory-check: AGENTS.md is missing — file: …/AGENTS.md (it is requir
 session start; its output becomes session context in Claude Code. The method does not depend on it (3.1 runs the tool
 itself).
 
-Yes recorded: (not yet)
+Yes recorded: EJ, 2026-10-17 — "yes to the hook settings". Applied by the agent: one SessionStart entry added to ~/.claude/settings.json (9 lines added, nothing else changed; backup ~/.claude/settings.json.bak-20261017-memory-check); the saved command run from the JSON prints the AGENTS.md line in a fixture with project-memory/ and nothing in this repo, exit 0 both.
