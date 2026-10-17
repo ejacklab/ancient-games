@@ -53,7 +53,7 @@
   digits or `_`); a GitLab token (`glpat-` then 20 letters, digits, `-` or `_`); a Slack token (`xoxb-`, `xoxp-` or
   `xoxe-`, then a run of digits); an Anthropic key (`sk-ant-api03-`); a Google API key (`AIza` then 35 letters,
   digits, `-` or `_`). It is an error in every status, in both modes, reported as `<file>: possible credential
-  (<kind>) on line <n>`, without printing the matched text. No other report prints it either: wherever an error
+  (<kind>) on line <n>` (for a private key block, the line of its BEGIN marker), without printing the matched text. No other report prints it either: wherever an error
   message would quote an entry's text (a conflict-marker line, a `kind`, an `id`, a `status`), text holding a known
   credential is shown as `<withheld>`. There is no entropy or keyword rule and no waiver: an example key in an entry
   is shortened so it no longer matches. Everything else W3.2 covers stays the reviewer's.
