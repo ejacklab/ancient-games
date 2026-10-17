@@ -275,30 +275,35 @@ function ownFailureSpec(payload: Record<string, unknown>, command: string, faile
     const ownsStdout = testRunOwnsStdout(command);
     const summary = failed ? FAILED_SUMMARY.exec(stderr) : ownsStdout ? FAILED_SUMMARY.exec(stdout) : null;
     if (!failed && summary === null) return null;
-    const exitCode = failed ? exitCodeOf(payload, true) : null;
-    const failedCount = summary === null ? null : Number(summary[1]);
-    const actual = summary === null ? `exit ${exitCode}` : `${summary[1]} ${summary[2]}`;
-    return {
-      finding: {
-        rule: "R12.2-test-failed",
-        severity: "fail",
-        message: summary === null
-          ? `the ${runner} run exited with code ${exitCode}`
-          : `the ${runner} run reported ${actual}`,
-        fix: "read which tests failed, fix the cause, run them again",
-      },
-      input: `${runner} run`,
-      expected: "all tests pass",
-      actual,
-      facts: {
-        runner,
-        failedCount,
-        exitCode,
-        stdoutLength: stdout.length,
-        stderrLength: stderr.length,
-        interrupted,
-      },
-    };
+    // Round 17 (F-bdea5631 option 1): with no summary, a failed call is the test run's only when the runner made the
+    // exit — it is the last command, but for its own pipeline. Otherwise the exit may be a later command's, and the
+    // call is the command error below, a guess.
+    if (summary !== null || testRunMadeExit(command)) {
+      const exitCode = failed ? exitCodeOf(payload, true) : null;
+      const failedCount = summary === null ? null : Number(summary[1]);
+      const actual = summary === null ? `exit ${exitCode}` : `${summary[1]} ${summary[2]}`;
+      return {
+        finding: {
+          rule: "R12.2-test-failed",
+          severity: "fail",
+          message: summary === null
+            ? `the ${runner} run exited with code ${exitCode}`
+            : `the ${runner} run reported ${actual}`,
+          fix: "read which tests failed, fix the cause, run them again",
+        },
+        input: `${runner} run`,
+        expected: "all tests pass",
+        actual,
+        facts: {
+          runner,
+          failedCount,
+          exitCode,
+          stdoutLength: stdout.length,
+          stderrLength: stderr.length,
+          interrupted,
+        },
+      };
+    }
   }
   if (!failed) return null;
   const word = failingCommandWord(command);
@@ -885,6 +890,15 @@ export function handleHook(payload: unknown, env: HookEnv): HookResult {
 function testRunOwnsStdout(command: string): boolean {
   const list = segments(command);
   const at = list.findIndex((segment) => recognizeTestRun(segment.text) !== null);
+  if (at < 0) return false;
+  return list.slice(at + 1).every((segment) => segment.piped);
+}
+
+// True when every segment after the last test-run segment is piped from the one before it: the call's exit is the
+// runner's (Round 17).
+function testRunMadeExit(command: string): boolean {
+  const list = segments(command);
+  const at = list.findLastIndex((segment) => recognizeTestRun(segment.text) !== null);
   if (at < 0) return false;
   return list.slice(at + 1).every((segment) => segment.piped);
 }

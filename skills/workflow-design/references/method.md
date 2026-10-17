@@ -540,8 +540,8 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
      with every piece that does not rest on it.
    - The limit is the owner's go-ahead for the engine calls the run needs inside it, the experts' included.
    - At the start the agent writes the deadline (start time plus the limit, or the last round) into the state file,
-     checks it before every step, and stops at the last checkpoint that leaves time for the report: what was built,
-     every provisional decision, every failure and insight, and what is left open.
+     checks it before every step, and works until the time is up or the run times out; then it stops trying and
+     writes the report: what was built, every provisional decision, every failure and insight, and what is left open.
    - **The agent is told the time; it does not keep it.** It cannot feel time pass, so the guard keeps a time limit:
      `guard/src/cli.ts deadline start --minutes N --run runs/<run>` at the start (a limit in rounds has no clock: the
      state file holds the last round and the agent checks it before each round); after that the hooks add a one-line

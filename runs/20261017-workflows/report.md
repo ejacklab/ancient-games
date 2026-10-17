@@ -37,12 +37,12 @@ All of it went through the workflow `integrate-decisions`:
 ## Checks
 Guard 1351/1351, tsgo clean, Python 1133, three workflow harnesses all passed. Pushed.
 
-## Yours to decide
+## Your decisions at the end
 - **D-mark — accepted:** `--mark` removed; no fixed percentage anywhere in the deadline. 孫子's dissent: "the defect is the fixed percentage".
-- **From the experts:**
-  - Dave's wake a set number of minutes before the deadline (you'd pick the number);
-  - whether the report is due before the deadline or after the time-up line.
-- **The fix for F-bdea5631** (below).
+- **Dave's wake before the deadline — dropped.** Nothing had been built.
+- **The report — at the end of the time or a timeout.** Method 3.8 item 14: work until the time is up or the run
+  times out, then stop trying and write the report.
+- **F-bdea5631 — option 1**, built as guard Round 17 (below).
 
 ## Failures and insights (`insight.md`)
 - **F-3caba088:** I parsed a workflow's output file by an assumed structure. Your pick: print the keys first, now a
@@ -51,3 +51,7 @@ Guard 1351/1351, tsgo clean, Python 1133, three workflow harnesses all passed. P
   - My first insight blamed the planned red run; the workflow's own report corrected me.
   - Options: the guard records a test failure only when the test runner made the exit; planned red runs as their
     own call; the workflow runs them through `expect-fail --run`.
+  - Chosen: option 1 (mine). Guard Round 17: a failed call is a failed test run only when the runner's summary
+    shows failures, or the runner is last but for its own pipeline; otherwise a command-error warning. The cost: a
+    runner followed by `&&` with no summary is now a warning the agent settles, since its exit may be either
+    command's. Guard 1357/1357 (6 new, 2 of them failing on the old code), tsgo clean.

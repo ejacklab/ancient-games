@@ -767,3 +767,21 @@ that is not a test run, one naming no test file, a FILE outside the root, or no 
 record; `--tests` alone runs anything.
 
 **Round 10, after the second review** (run 20261017-workflows, `nodes/review.result.md`): `deadline start --marks` is a usage error (2), as `deadline wait --mark` is; the minutes used are rounded down, so the clock never reads "10/10" while time is left; only a segment whose command word is `bun` running this guard's `cli.ts deadline start` claims a deadline — a quoted path in an `echo` does not. Tests cover the clock after Write, Edit and MultiEdit calls, and an old deadline file that still carries `marks`.
+
+## Round 17 — a test failure only when the runner made the exit (R12.2; F-bdea5631 option 1, chosen 2026-10-17)
+
+A planned base-commit test run was followed by an `ls` that exited 2 because the worktree was gone, as planned; D1
+saw `bun test` in the call and recorded the `ls`'s exit as a failed test run.
+
+- **V1 The runner's exit.** A failed call that holds a test run is `R12.2-test-failed` only when the runner's own
+  summary (FAILED_SUMMARY) shows failures, or the last test-run segment is followed by nothing but its own pipeline
+  (`pytest -q 2>&1 | tail -3`), so the call's exit is the runner's.
+- **V2 Otherwise a guess.** Any other failed call is D2's `R12.2-command-error` warning naming the last command word.
+  After `&&` the exit may still be the runner's (`pytest && echo done`, the runner failing); the guard cannot tell
+  which, so it warns (Round 9) and the agent settles it with `warning <id> fail|dismiss`.
+- A declared red run (Round 12) chained before another command is then not a red record; `expect-fail --run`
+  (Round 16) runs it as one command.
+
+Fails-if: F-bdea5631's shape (`… bun test …; ls <gone>`, exit 2, no summary) is a failure; a runner followed by `&&`
+with no summary is a failure; a non-last runner whose summary shows failures, a last runner, a runner piped to
+`tail`, or a second runner last is not `R12.2-test-failed`.
