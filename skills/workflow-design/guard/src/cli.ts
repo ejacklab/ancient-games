@@ -219,7 +219,7 @@ function deadlineCommand(args: string[]): number {
     return status.up ? FINDINGS : OK;
   }
   if (verb === "wait") {
-    // --mark went with the 50/80/100% marks (run 20261017-workflows, experts-decide mark-q, provisional): asking for it
+    // --mark went with the 50/80/100% marks (run 20261017-workflows, experts-decide mark-q, accepted by EJ): asking for it
     // fails loudly, never waits silently to the deadline.
     if (args.includes("--mark")) usageError("deadline wait: --mark was removed with the percent marks; wait runs to the deadline");
     const session = flagValue(args, "--session");

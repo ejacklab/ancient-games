@@ -38,7 +38,7 @@ All of it went through the workflow `integrate-decisions`:
 Guard 1351/1351, tsgo clean, Python 1133, three workflow harnesses all passed. Pushed.
 
 ## Yours to decide
-- **D-mark** (provisional): `--mark` removed. 孫子's dissent: "the defect is the fixed percentage".
+- **D-mark — accepted:** `--mark` removed; no fixed percentage anywhere in the deadline. 孫子's dissent: "the defect is the fixed percentage".
 - **From the experts:**
   - Dave's wake a set number of minutes before the deadline (you'd pick the number);
   - whether the report is due before the deadline or after the time-up line.
