@@ -1,10 +1,20 @@
 // The clauses the tool judges itself, from the staged snapshot or from git history: the entry-name prefix W1.1a
 // does not reach, one file per entry (W6.1a), an entry file is never deleted and says what replaced it (K4.1),
-// an entry's claim, `source`, `depends_on` and `covers` never change silently (K4.3), and the git half of W1.1a
-// and W1.1b (an entry file renamed to another prefix or another id). Every break carries its file and line, or the
-// command and its output (C2).
+// an entry's claim, `source`, `depends_on` and `covers` never change silently (K4.3), a merge keeps what both sides
+// wrote (W6.3a), and the git half of W1.1a and W1.1b (an entry file renamed to another prefix or another id). Every
+// break carries its file and line, or the command and its output (C2).
 import { nameParts, parseEntry, type Entry } from "./entry.ts";
-import { catFileBatch, entryDeletions, entryRenames, firstVersionOf, type SnapshotInfo, type StagedEntry } from "./gitchecks.ts";
+import {
+  blobIdAt,
+  catFileBatch,
+  entryDeletions,
+  entryFilesAt,
+  entryRenames,
+  firstVersionOf,
+  mergeCommits,
+  type SnapshotInfo,
+  type StagedEntry,
+} from "./gitchecks.ts";
 
 export interface ClauseOutcome {
   /** One evidence line per break found. Empty when nothing broke. */
@@ -101,10 +111,16 @@ export function checkK41(staged: readonly StagedEntry[], snapshot: SnapshotInfo)
   };
 }
 
+/** A field that says "nothing here": an empty value, or the empty list the format's own examples use. */
+function linksNothing(value: string | undefined): boolean {
+  const one = (value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  return one === "" || one === "[]" || one === "- none" || one === "none" || one === "(none)";
+}
+
 function checkHeader(path: string, entry: Entry, breaks: string[]): void {
   const status = entry.fields.get("status");
   const statusValue = status?.full ?? "";
-  if (statusValue === "superseded" && (entry.fields.get("superseded_by")?.full ?? "") === "") {
+  if (statusValue === "superseded" && linksNothing(entry.fields.get("superseded_by")?.full)) {
     breaks.push(`${path}:${status?.line ?? 1} — status: superseded with no superseded_by link`);
   }
   if (statusValue === "retired") {
@@ -132,12 +148,14 @@ export function checkK43(staged: readonly StagedEntry[], snapshot: SnapshotInfo)
   }
   const blobs = catFileBatch(snapshot.root, shas);
   const breaks: string[] = [];
+  const comparedAt: string[] = [];
   let compared = 0;
   for (const { staged: one, entry } of withHeader) {
     const first = firstVersions.get(one.path);
     const text = first ? blobs.get(first.sha) : undefined;
     if (!first || text === undefined) continue;
     compared += 1;
+    comparedAt.push(`${one.path}:${entry.claimLine}`); // where the compared claim is, so a pass names file and line (C2)
     const was = parseEntry(one.name, text);
     if (entry.claim !== was.claim) {
       breaks.push(
@@ -166,8 +184,70 @@ export function checkK43(staged: readonly StagedEntry[], snapshot: SnapshotInfo)
   return {
     breaks: [],
     clean:
-      `${compared} entry file(s) compared with their first version in ${snapshot.range}: claim, source, depends_on ` +
-      "unchanged, and every covers change has a changed: line",
+      `${compared} entry file(s) compared with their first version in ${snapshot.range} (git log --diff-filter=A ` +
+      `-- <entry file>): claim at ${comparedAt.join(", ")}, source and depends_on unchanged, and every covers ` +
+      "change has a changed: line",
+    couldNotRun: null,
+  };
+}
+
+/** The header fields and the log line a merge must keep from both sides (W6.3a). */
+const KEPT_ON_BOTH_SIDES = ["covers", "supersedes", "superseded_by", "depends_on", "changed"] as const;
+
+/** The items of one header field, with the empty list forms read as no items. */
+function itemsOf(entry: Entry, key: string): readonly string[] {
+  const items = (entry.fields.get(key)?.items ?? []).map((one) => one.replace(/^-\s*/, "").trim());
+  return items.filter((one) => one !== "" && one !== "[]" && one !== "none");
+}
+
+/**
+ * W6.3a's git half: a merge keeps both sides. For every merge in the range and every parent, each `covers` path,
+ * link and `changed:` line the parent holds must be in the merge result. A file the merge does not hold is left to
+ * K4.1's deletion clause, so one break is reported once.
+ */
+export function checkMerges(snapshot: SnapshotInfo): ClauseOutcome {
+  const root = snapshot.root;
+  if (snapshot.shallow) return { breaks: [], clean: "", couldNotRun: SHALLOW };
+  const merges = mergeCommits(root, snapshot.range);
+  const breaks: string[] = [];
+  const comparedAt: string[] = [];
+  let compared = 0;
+  for (const merge of merges) {
+    const merged = new Set(entryFilesAt(root, merge.commit));
+    for (const parent of merge.parents) {
+      const paths = entryFilesAt(root, parent).filter((path) => merged.has(path));
+      const mergedShas = paths.map((path) => blobIdAt(root, merge.commit, path));
+      const parentShas = paths.map((path) => blobIdAt(root, parent, path));
+      const blobs = catFileBatch(root, [...mergedShas, ...parentShas]);
+      for (const [offset, path] of paths.entries()) {
+        const after = blobs.get(mergedShas[offset] ?? "");
+        const before = blobs.get(parentShas[offset] ?? "");
+        if (after === undefined || before === undefined || after === before) continue;
+        compared += 1;
+        const result = parseEntry(path, after);
+        const side = parseEntry(path, before);
+        const line = (result.fields.get("changed")?.line ?? 1);
+        comparedAt.push(`${path}:${line}`);
+        for (const key of KEPT_ON_BOTH_SIDES) {
+          const kept = itemsOf(result, key);
+          for (const item of itemsOf(side, key)) {
+            if (kept.includes(item)) continue;
+            breaks.push(
+              `${path}:${result.fields.get(key)?.line ?? line} — merge ${short(merge.commit)} holds no ${key} ` +
+                `"${truncate(item)}" that parent ${short(parent)} holds (git show ${merge.commit}:${path})`,
+            );
+          }
+        }
+      }
+    }
+  }
+  if (breaks.length > 0) return { breaks, clean: "", couldNotRun: null };
+  return {
+    breaks: [],
+    clean:
+      `${merges.length} merge commit(s) in ${snapshot.range} (git log --format=%H %P), ${compared} parent(s) of an ` +
+      `entry file compared with the merge result${compared === 0 ? "" : ` (${comparedAt.join(", ")})`}: every ` +
+      "covers path, link and changed: line either side holds is in the merge result",
     couldNotRun: null,
   };
 }

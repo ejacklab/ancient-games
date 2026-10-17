@@ -94,7 +94,10 @@ export function runMemoryIndex(root: string): IndexToolRun {
       mismatch = true;
     }
     if (/INDEX\.md in .* is over the limit/.test(message)) {
+      // The index's own size limit: the clause memory_index.py judges (Rd3.1a), reported as its own failure.
       overLimit = true;
+      add("Rd3.1a", message);
+      continue;
     }
     // The two index clauses share memory_index.py's one comparison: K6.1a and K6.2 are reported together (C3).
     if (/INDEX\.md in .* does not match what these entries build/.test(message)) {

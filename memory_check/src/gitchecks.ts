@@ -152,6 +152,27 @@ export function entryDeletions(root: string, range: string | null): Deletion[] {
   return nameStatus(root, range).deletions;
 }
 
+/** The merge commits in the range with their parents: `git log --format=%H %P`, the commits with two parents or more. */
+export function mergeCommits(root: string, range: string | null): { commit: string; parents: string[] }[] {
+  const args = ["log", ...(range ? [range] : []), "--format=%H %P"];
+  const merges: { commit: string; parents: string[] }[] = [];
+  for (const line of lines(gitOut(root, args))) {
+    const parts = line.split(" ").filter((one) => one !== "");
+    if (parts.length > 2) merges.push({ commit: parts[0] ?? "", parents: parts.slice(1) });
+  }
+  return merges;
+}
+
+/** The entry files a revision holds: `git ls-tree -r --name-only <rev> -- project-memory/entries`. */
+export function entryFilesAt(root: string, rev: string): string[] {
+  return lines(gitOut(root, ["ls-tree", "-r", "--name-only", rev, "--", ENTRIES]));
+}
+
+/** The blob id a revision holds for a path, or an empty string when it holds none. */
+export function blobIdAt(root: string, rev: string, path: string): string {
+  return gitOut(root, ["rev-parse", "--verify", "--quiet", `${rev}:${path}`]);
+}
+
 /** The commit that added a file, and the blob id of that first version. */
 export function firstVersionOf(
   root: string,

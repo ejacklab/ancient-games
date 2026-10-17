@@ -1,0 +1,19 @@
+- 2026-10-17T18:10:46+08:00 · bunhome · planned · item 1: F3/U5 — stop bun writing under the fixture home (2 tests)
+- 2026-10-17T18:10:46+08:00 · evidence · planned · item 2: C2 — file:line or command+output on every pass/fail
+- 2026-10-17T18:10:46+08:00 · cacheabsent · planned · item 3: C4/C6 — no cache folder means B2.2 not applicable
+- 2026-10-17T18:10:46+08:00 · k41superseded · planned · item 4: U2 SoT:K4.1 — superseded without superseded_by fails
+- 2026-10-17T18:10:46+08:00 · b2evidence · planned · item 5: U2 CACHES:B2 — the fail names the .gitignore files it looked in
+- 2026-10-17T18:10:46+08:00 · rd31size · planned · item 6: U2 SoT:Rd3.1a — oversized INDEX.md fails on size
+- 2026-10-17T18:10:46+08:00 · merge63a · planned · item 7: U2 SoT:W6.3a — a merge that drops covers/changed fails
+2026-10-17T18:15:47+08:00 · bunhome · start · bun runtime transpiler cache; launcher re-exec
+- 2026-10-17T18:15:47+08:00 · bunhome · done · cli.ts is a 1.4 KB launcher that re-runs the command with BUN_RUNTIME_TRANSPILER_CACHE_PATH=0; 0 pile files under the fixture home
+- 2026-10-17T18:16:38+08:00 · evidence · start · C2 passes need file:line
+- 2026-10-17T18:16:38+08:00 · evidence · done · K4.3 names each compared claim path:line; Rd1 names each scanned file with its line range
+- 2026-10-17T18:16:38+08:00 · cacheabsent · start · C4 absent cache
+- 2026-10-17T18:16:38+08:00 · cacheabsent · done · cachesResult returns not applicable for every cache id when project-memory/.cache/ is absent (C4, C6)
+- 2026-10-17T18:16:38+08:00 · k41superseded · start · K4.1 superseded link
+- 2026-10-17T18:16:38+08:00 · k41superseded · done · linksNothing() treats [], none and empty as no superseded_by link
+- 2026-10-17T18:16:38+08:00 · b2evidence · start · CACHES:B2 evidence
+- 2026-10-17T18:16:38+08:00 · b2evidence · done · checkB22 names every .gitignore and .git/info/exclude git reads, and checkRd1 gives line ranges
+- 2026-10-17T18:16:38+08:00 · rd31size · start · Rd3.1a over-limit
+- 2026-10-17T18:16:38+08:00 · rd31size · done · indextool.ts maps memory_index.py "is over the limit" to the Rd3.1a finding

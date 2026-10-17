@@ -8,6 +8,7 @@ import {
   checkEntryPrefixes,
   checkK41,
   checkK43,
+  checkMerges,
   checkOneEntryPerFile,
   checkRenames,
 } from "./gitrequirements.ts";
@@ -64,9 +65,6 @@ const REVIEWER_REASON: Record<string, string> = {
   "K5.1":
     "its fails_if ends \"with no written reason\", and raw notes kept elsewhere are not in the repository " +
     "(research-q/compare.md, Where they agree)",
-  "W6.3a":
-    "check: git; reviewer — whether a merge kept both sides is judged at the merge commit " +
-    "(who_decides: project owner)",
   "W3.5a": "check: reviewer — whether the project holds user memory or agent memory is the owner's call (F1 reports the locations; it does not judge what is in them)",
   "W3.5b": "check: reviewer — where user and agent memory live, and whether a reason is written, is the owner's",
   "Rd1.1": "check: reviewer — user and agent memory live in the home folder, and whether that layout has a written reason is the owner's",
@@ -100,7 +98,8 @@ export function runChecks(options: CheckOptions): CheckRun {
   const onePerFile = checkOneEntryPerFile(staged);
   const k41 = checkK41(staged, snapshot);
   const k43 = checkK43(staged, snapshot);
-  for (const outcome of [renames.prefixes, renames.ids, prefixes, onePerFile, k41, k43]) {
+  const merges = checkMerges(snapshot);
+  for (const outcome of [renames.prefixes, renames.ids, prefixes, onePerFile, k41, k43, merges]) {
     for (const note of outcome.notes ?? []) notes.push(note);
   }
 
@@ -136,9 +135,9 @@ export function runChecks(options: CheckOptions): CheckRun {
     failsIf: "a run changes, creates or deletes any file, ignored files included, other than the report",
   });
 
-  // --- the records of SOURCE_OF_TRUTH_REQUIREMENTS.yaml -----------------------------------------------------------
+  // --- the records of SOURCE_OF_TRUTH_REQUIREMENTS.yaml ----------------------------------------------------------
 
-  const context: SotContext = { projectMemory, indexTool, prefixes, onePerFile, k41, k43, renames };
+  const context: SotContext = { projectMemory, indexTool, prefixes, onePerFile, k41, k43, merges, renames };
   for (const record of guidelines.sot) {
     results.push(sotResult(record, context));
   }
@@ -178,6 +177,7 @@ interface SotContext {
   readonly onePerFile: ClauseOutcome;
   readonly k41: ClauseOutcome;
   readonly k43: ClauseOutcome;
+  readonly merges: ClauseOutcome;
   readonly renames: { prefixes: ClauseOutcome; ids: ClauseOutcome };
 }
 
@@ -242,6 +242,22 @@ function decidedByTool(record: SotRecord, context: SotContext): RequirementResul
       return fromOutcome(base, context.k41);
     case "K4.3":
       return fromOutcome(base, context.k43);
+    case "W6.3a": {
+      // C2: checked by the tool and by a reviewer — a break the tool finds fails, else it stays the reviewer's.
+      if (context.merges.breaks.length > 0) {
+        return { ...base, verdict: "fail", evidence: context.merges.breaks.join("; ") };
+      }
+      if (context.merges.couldNotRun) {
+        return { ...base, verdict: "could not run", evidence: context.merges.couldNotRun };
+      }
+      return {
+        ...base,
+        verdict: "needs a reviewer",
+        evidence:
+          `${context.merges.clean}; whether the two entries that supersede one go unreported (the other half of ` +
+          "W6.3a) is judged with the project owner (C2: checked by the tool and by a reviewer)",
+      };
+    }
     case "W6.1a":
       if (context.onePerFile.breaks.length > 0) {
         return { ...base, verdict: "fail", evidence: context.onePerFile.breaks.join("; ") };
@@ -318,9 +334,7 @@ function fromOutcome(
 
 function cachesResult(id: string, failsIf: string, cachePresent: boolean, root: string): RequirementResult {
   const base = { id: `CACHES:${id}`, level: "not stated in CACHES.md", failsIf };
-  // C6, v1: of the Core requirements only B2 (its clause B2.2) and Rd1 (its clause Rd1.1) are checked.
-  if (id === "B2") return named(base, "B2.2", fromOutcome(base, checkB22(root)));
-  if (id === "Rd1") return named(base, "Rd1.1", fromOutcome(base, checkRd1(root)));
+  // C4, C6 as changed: with no cache folder every cache requirement is "not applicable", B2.2 included.
   if (!cachePresent) {
     return {
       ...base,
@@ -328,6 +342,9 @@ function cachesResult(id: string, failsIf: string, cachePresent: boolean, root: 
       evidence: "project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)",
     };
   }
+  // C6, v1: of the Core requirements only B2 (its clause B2.2) and Rd1 (its clause Rd1.1) are checked.
+  if (id === "B2") return named(base, "B2.2", fromOutcome(base, checkB22(root)));
+  if (id === "Rd1") return named(base, "Rd1.1", fromOutcome(base, checkRd1(root)));
   return {
     ...base,
     verdict: "needs a reviewer",

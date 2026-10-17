@@ -98,14 +98,14 @@ Records: 64 from SOURCE_OF_TRUTH_REQUIREMENTS.yaml (SoT:), 11 Core requirements 
 ## Results — CACHES.md Core requirements (no level in CACHES.md)
 
 - **CACHES:B1** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
-- **CACHES:B2** (not stated in CACHES.md) — fail — clause B2.2: git check-ignore -v project-memory/.cache   (in /home/smoke01/dev/ancient-games) → exit 1, no output: no ignore rule reports project-memory/.cache
+- **CACHES:B2** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
 - **CACHES:B3** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
 - **CACHES:B4** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
 - **CACHES:B5** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
 - **CACHES:K1** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
 - **CACHES:K2** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
 - **CACHES:K3** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
-- **CACHES:Rd1** (not stated in CACHES.md) — pass — clause Rd1.1: 3 session-start file(s) scanned (/home/smoke01/dev/ancient-games/AGENTS.md, /home/smoke01/dev/ancient-games/CLAUDE.md, /home/smoke01/dev/ancient-games/.git/hooks/pre-commit): no line opens a file under project-memory/.cache/. A hook outside the repository is not visible here.
+- **CACHES:Rd1** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
 - **CACHES:Rd2** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
 - **CACHES:Rd3** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
 
@@ -125,5 +125,5 @@ Records: 64 from SOURCE_OF_TRUTH_REQUIREMENTS.yaml (SoT:), 11 Core requirements 
 - Read only: nothing was created, changed or deleted except the report; every git call used GIT_OPTIONAL_LOCKS=0 (F3)
 - The session-start hook is not installed: R2 leaves that harness change to the owner (R12.3)
 - Not calibrated on a real project: no project has been named to calibrate against (design-decisions.md 15)
-- Counts: 1 fail, 4 pass, 3 needs a reviewer, 70 not applicable, 0 could not run
+- Counts: 0 fail, 3 pass, 3 needs a reviewer, 72 not applicable, 0 could not run
 - CACHES.md gives its requirements no level, so none of them gates the exit code (R3 counts MUSTs only)
