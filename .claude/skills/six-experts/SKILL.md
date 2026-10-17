@@ -109,6 +109,10 @@ Do not pick a winner by vote count — five engines answering one brief still sh
 
 ## Used by workflow-design (method 3.3 and 3.5)
 
+In a time-boxed run, ask them through the saved workflow `.claude/workflows/experts-decide.js` (each expert in its
+own subfolder, each answer checked, one rerun for a missing answer, `compare.md` written, the decision left to the
+main agent); its `whenToUse` gives the args.
+
 The workflow-design method calls this skill at two steps (EJ, 2026-10-13), each with only the experts who named it
 as where their rules are reliable (`runs/20261013-four-experts-where-in-ej-s-workflow/compare.md`):
 

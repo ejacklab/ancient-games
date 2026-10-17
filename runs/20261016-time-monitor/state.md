@@ -31,9 +31,11 @@ Start 2026-10-16 10:22:01 +0800 · **deadline 11:22:01 +0800** · background tim
 - 10:22 start; criteria written.
 - 10:2x research F1–F8 saved; experts 4/5 answered B; Dave's claude call empty (runner bug, fixed, rerunning); round 10 code + Codex tests 42/42 after integration; guard 1257/1257.
 - 10:3x review: 10 findings, all fixed or answered (review-answers.md, 6105656); deadline end added; guard 1264/1264, Python 1083; report written.
+- 2026-10-17T01:32Z D1 accepted as clock only, marks removed. Question (main agent's, above): how often the guard adds the time; option (B), written by the main agent from the experts' advice: a one-line clock after every call plus a fuller block with the workers' progress at 50/80/100%, time-up after the deadline. EJ, during run 20261017-workflows: "I prefer clock more than the 50% 80% and 100%", the marks being "not able to well predict, specific when exploring solutions". The clock line and the time-up line stay; the 50/80/100% block, `--marks` and the raised mark records were removed in guard commit 07b67a9; workers' progress is read with `deadline status`.
+- 2026-10-17T01:32Z D2 declined. Question (main agent's, above): which tools carry the clock; the main agent's choice: every tool (no matcher). EJ, during run 20261017-workflows: "guard watches back to bash and file writes only" — the after-call hooks stay on PostToolUse "Bash|Write|Edit|MultiEdit" and PostToolUseFailure "Bash". The owner TODO below is closed: the installed `~/.claude/settings.json` already has those matchers (read 2026-10-17T01:32Z).
 
 ## TODO (owner)
-- [ ] **Update the installed hooks in `~/.claude/settings.json`** so the clock reaches every tool: replace the
+- [x] (closed 2026-10-17: D2 declined, the installed matchers stay) **Update the installed hooks in `~/.claude/settings.json`** so the clock reaches every tool: replace the
   harness-guard hooks with the output of `bun .claude/skills/workflow-design/guard/src/cli.ts install --print
   claude-code` (PostToolUse and PostToolUseFailure lose their `matcher`). Back up the file first. Parked by the owner
   2026-10-16 to brainstorm a new idea first.

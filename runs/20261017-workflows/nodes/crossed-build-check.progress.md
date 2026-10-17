@@ -1,0 +1,12 @@
+- 2026-10-17T09:30:14+08:00 · read-design · planned · 
+- 2026-10-17T09:30:14+08:00 · write-script · planned · 
+- 2026-10-17T09:30:14+08:00 · write-harness · planned · 
+- 2026-10-17T09:30:14+08:00 · run-harness · planned · 
+- 2026-10-17T09:30:14+08:00 · read-design · start · design section, intake harness
+- 2026-10-17T09:32:58+08:00 · read-design · done · read design, intake harness, workflow API
+- 2026-10-17T09:32:58+08:00 · write-script · start · .claude/workflows/crossed-build-check.js
+- 2026-10-17T09:33:49+08:00 · write-script · done · script written
+- 2026-10-17T09:33:49+08:00 · write-harness · start · tests/workflows/crossed_build_check_harness.mjs
+- 2026-10-17T09:34:53+08:00 · write-harness · done · 6 checks with plants + 5 good-path checks
+- 2026-10-17T09:34:53+08:00 · run-harness · start · node harness
+- 2026-10-17T09:34:53+08:00 · run-harness · done · 21 ok, all passed, exit 0

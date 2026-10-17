@@ -248,7 +248,8 @@ joining step compares the answers. A contradiction is a stop: pick one and say w
 **Ask the experts once the list is written** (EJ, 2026-10-13; SHOULD; n=0). In a workflow design — not a prompt
 file — after every spot is listed and before the questions go to EJ, the COO runs the `six-experts` skill with
 `--only linus,sun-tzu,lao-tzu,dave` on the algorithm and the spot list (question template
-`.claude/skills/six-experts/assets/questions/unclear-spots.md`). Each answers its own question:
+`.claude/skills/six-experts/assets/questions/unclear-spots.md`; run it as `.claude/workflows/experts-decide.js`,
+3.8 item 14). Each answers its own question:
 
 - **Linus** (Codex): which choices depend on missing technical facts, and what would make a mistaken choice reversible?
 - **孫子** (dsh): for each piece, do we know that our engines and tools can do it, that the task as posed can be done,
@@ -322,7 +323,8 @@ three rounds, 6 → 5 → 4 problems, and never closed. See `20260919-plan-criti
 **Ask the experts before calling a piece loop-ready** (EJ, 2026-10-13; SHOULD; n=0). In a workflow design, before
 a piece runs as a loop, the COO runs the `six-experts` skill with `--only linus,fan-li,sun-tzu,dave` on the piece,
 its check (conditions 1 and 5) and its attempt limit (condition 2); several pieces may go in one call (question
-template `.claude/skills/six-experts/assets/questions/loop-check.md`). Each answers its own question:
+template `.claude/skills/six-experts/assets/questions/loop-check.md`; run it as `.claude/workflows/experts-decide.js`,
+3.8 item 14). Each answers its own question:
 
 - **Linus** (Codex): could this check pass while the requested result is wrong or an existing user workflow breaks?
 - **孫子** (dsh): what is left to the worker's good character rather than to a check it cannot edit?
@@ -512,12 +514,14 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    starts, the agent asks the owner, with the task's details, how much time it has to try to find a solution — a time,
    or a number of rounds — unless the owner already gave it. When the project owner gives a task a limit —
    a time, or a number of rounds (a round is one pass from the criteria to the score and the path, R12.7; each round
-   after the first borrows the previous round's path) — the run settles its own questions before the limit, and asks
+   after the first borrows the previous round's path; given both, the run ends at whichever comes first) — the run
+   settles its own questions before the limit, and asks
    the owner only about one it could not settle:
    - Every question that would go to the owner — an unclear spot of kind *decision* (3.3), a suggested use case or
      requirement to accept (R13.1, R13.5), a blueprint question, a choice between options — goes to the experts
-     (the `six-experts` skill: the experts 3.3 or 3.5 names for that step, or all five where no step names them).
-     The main agent decides from their advice and writes the decision into the state file as **provisional**: the
+     (the `six-experts` skill: the experts 3.3 or 3.5 names for that step, or all five where no step names them),
+     run as the saved workflow `.claude/workflows/experts-decide.js`. The main agent decides from their advice and
+     writes the decision into the state file as **provisional**: the
      question, the choice, the reason, and the experts' run folder.
    - **Vision and use cases first.** Every question to the experts carries the vision and the use cases the work
      serves (the question templates have the slots; `time-boxed-decision.md` for a decision no step names). With no
@@ -541,16 +545,22 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    - **The agent is told the time; it does not keep it.** It cannot feel time pass, so the guard keeps a time limit:
      `guard/src/cli.ts deadline start --minutes N --run runs/<run>` at the start (a limit in rounds has no clock: the
      state file holds the last round and the agent checks it before each round); after that the hooks add a one-line
-     clock after every tool call and a fuller block with the workers' progress at 50%, 80% and 100%, then time-up on
-     every call (guard Round 10). `deadline status` is the check the agent can run; `deadline wait`, run in the
-     background, is a timer that returns at the deadline; `deadline end` stops the clock when the task finishes early.
+     clock after every Bash or file-write call (the calls the guard watches), and after the deadline the time-up line
+     on every such call. There is no fuller block at set points — those marks were removed (EJ: "not able to well
+     predict, specific when exploring solutions"). The workers' progress is read with `deadline status`, not shown in
+     the hook's context. `deadline status` is the check the agent can run; `deadline wait`, run in the background, is
+     a timer that returns at the deadline; `deadline end` stops the clock when the task finishes early.
    - **Workers report while they work.** Every brief tells the worker to divide its task into small pieces, list them
      first, and append a timestamped line as each starts and ends (`docs/workflow-templates/node-brief.md`, "Pieces and
      progress"); the six-experts runner writes the same lines per expert (`--progress`). The main agent sees progress
      and duration during the run, not only the end.
    - **Workflows when possible.** Work with more than one node runs as a workflow — a script that orchestrates the
      agents in phases with visible progress (`.claude/workflows/`, the harness's Workflow tool where it has one) —
-     rather than as hand-dispatched calls or one long prompt.
+     rather than as hand-dispatched calls or one long prompt. Two are saved for a time-boxed run; each script's
+     `whenToUse` gives its args (the one copy): `experts-decide.js` asks the experts one question, reruns an expert
+     with no usable answer once, checks each answer and writes the comparison; the main agent still decides.
+     `crossed-build-check.js` has tests written on another engine than the code's, shows each new test failing on the
+     base commit, runs them on the head and has the work reviewed. They replace running those rounds by hand.
    - Safety bounds still wait for the owner (MUST), limit or not: a push, a message sent, a deletion outside the run's
      branch and folder, a harness's config, `SPEC.md` or `DECISIONS.md`, spend beyond the limit. The run works around
      it (a branch, a draft) and lists it in the report.

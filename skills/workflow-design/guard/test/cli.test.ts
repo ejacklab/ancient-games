@@ -117,10 +117,9 @@ describe("installSnippet", () => {
       for (const hook of hooks) expect(hook).toEqual({ type: "command", command: `bun ${guardDir}/src/cli.ts hook claude` });
     }
     expect(settings.hooks.PreToolUse).toContainEqual(expect.objectContaining({ matcher: "Bash" }));
-    // Round 10 (review finding 3): after a call, every tool — the clock must reach Read, Grep and web calls too.
-    for (const event of ["PostToolUse", "PostToolUseFailure"]) {
-      for (const entry of settings.hooks[event]) expect(entry).not.toHaveProperty("matcher");
-    }
+    // After a call the guard watches Bash and file writes only (EJ, 2026-10-17).
+    expect(settings.hooks.PostToolUse).toEqual([expect.objectContaining({ matcher: "Bash|Write|Edit|MultiEdit" })]);
+    expect(settings.hooks.PostToolUseFailure).toEqual([expect.objectContaining({ matcher: "Bash" })]);
     if (harness === "codex" || harness === "qwen") {
       expect(snippet).toMatch(/reported/i);
       expect(snippet).toMatch(/not verified|unverified/i);

@@ -7,11 +7,12 @@
   1. *A check:* `guard/src/cli.ts deadline status` — used/left, the deadline, and each worker's progress.
   2. *A timer:* `deadline wait [--mark P]`, run in the background, returns at the deadline (or a mark).
   3. *The guard tells you:* after every tool call a one-line `harness-guard clock: 9/57 min (16%), 48 left`; at 50%,
-     80% and 100% a fuller block with the workers' progress; after the deadline, time-up on every call. `deadline
+     80% and 100% a fuller block with the workers' progress (removed 2026-10-17, 07b67a9: clock only); after the
+     deadline, time-up on every call. `deadline
      start --minutes N --run runs/<run>` begins it (claimed by the call that ran it); `deadline end` stops it early.
      The first prompt of a session asks for the time if none is set.
 - **Workers report while they work:** every brief (`docs/workflow-templates/node-brief.md`) asks for small pieces
-  listed first and a timestamped line as each starts and ends; `deadline status` and the 50/80/100% blocks show them.
+  listed first and a timestamped line as each starts and ends; `deadline status` shows them (the 50/80/100% blocks did too, until 2026-10-17).
   The four-experts runner writes the same lines (`--progress`) and records each expert's start and finish.
 - **The experts know the pattern:** their brief has "How we work — the pattern you adapt and improve" (time set at
   the start, small timestamped pieces, vision and use cases first, research not recall, workflows when possible).
@@ -32,13 +33,14 @@ files are read only for a mark block, the journal only after the first mark). Pa
 ## Provisional decisions — yours to accept or decline (state.md)
 - **D1** the clock after every tool call, not only at 50/80/100% — research F1–F8 (`research/reminders.md`: every
   tested design shows the budget at every step; a budget given once fails) and 5/5 experts (`experts/`).
+  Outcome (EJ, 2026-10-17): accepted as clock only — the 50/80/100% marks removed (guard commit 07b67a9); EJ: "I prefer clock more than the 50% 80% and 100%".
 - **D2** the guard runs after every tool, not only Bash and writes — the review showed Read/Grep/web calls would never
   see the clock; one hook run is 0.02 s.
+  Outcome (EJ, 2026-10-17): declined — the guard watches Bash and file writes only, as installed; EJ: "guard watches back to bash and file writes only".
 
 ## Waiting for you (safety bounds)
-- **Your installed hooks still use the old matchers**, so the clock reaches only Bash, Write and Edit calls. To get it
-  on every tool, update `~/.claude/settings.json` from `bun .claude/skills/workflow-design/guard/src/cli.ts install
-  --print claude-code` (the PostToolUse and PostToolUseFailure entries lose their `matcher`). I did not edit it.
+- ~~Your installed hooks still use the old matchers~~ — closed 2026-10-17: D2 declined, so the installed matchers
+  (Bash and file writes) are the intended ones and nothing needs updating.
 - **Push:** committed on master, not pushed.
 
 ## Failures and insights (`insight.md`)

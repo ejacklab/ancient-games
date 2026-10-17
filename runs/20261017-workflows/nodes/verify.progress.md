@@ -1,0 +1,18 @@
+- 2026-10-17T09:35:19+08:00 · export-skills · planned · python3 tools/export_skills.py
+- 2026-10-17T09:35:19+08:00 · bun-test · planned · guard bun test
+- 2026-10-17T09:35:19+08:00 · tsgo · planned · guard type check
+- 2026-10-17T09:35:19+08:00 · pytest · planned · repo pytest
+- 2026-10-17T09:35:19+08:00 · harnesses · planned · three workflow harnesses
+- 2026-10-17T09:35:19+08:00 · grep-leftovers · planned · removed-thing leftovers in live files
+- 2026-10-17T09:35:19+08:00 · export-skills · start · 
+- 2026-10-17T09:38:16+08:00 · export-skills · done · exit 0, skills/ rewritten (5 files show M)
+- 2026-10-17T09:38:16+08:00 · bun-test · start · 
+- 2026-10-17T09:38:16+08:00 · bun-test · done · 1325 pass 0 fail
+- 2026-10-17T09:38:16+08:00 · tsgo · start · 
+- 2026-10-17T09:38:16+08:00 · tsgo · done · exit 0
+- 2026-10-17T09:38:16+08:00 · pytest · start · 
+- 2026-10-17T09:38:16+08:00 · pytest · done · 1133 passed
+- 2026-10-17T09:38:16+08:00 · harnesses · start · 
+- 2026-10-17T09:38:16+08:00 · harnesses · done · all three: all passed
+- 2026-10-17T09:38:16+08:00 · grep-leftovers · start · 
+- 2026-10-17T09:38:16+08:00 · grep-leftovers · done · 3 leftovers, 1 borderline

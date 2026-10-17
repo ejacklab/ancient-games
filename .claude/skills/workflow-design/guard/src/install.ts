@@ -26,9 +26,9 @@ function entry(matcher: string | null, guardDir: string): Record<string, unknown
 // The event list the handler dispatches on, with the tools each event watches.
 const EVENTS: [string, string | null][] = [
   ["PreToolUse", "Bash"],
-  // Round 10: every tool, so the clock reaches Read, Grep and web calls too; the older checks filter by tool inside.
-  ["PostToolUse", null],
-  ["PostToolUseFailure", null],
+  // After a call the guard watches Bash and file writes only (EJ, 2026-10-17, declining the time-monitor run's D2).
+  ["PostToolUse", "Bash|Write|Edit|MultiEdit"],
+  ["PostToolUseFailure", "Bash"],
   ["Stop", null],
   ["SubagentStop", null],
   ["SessionStart", null],

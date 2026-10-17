@@ -799,8 +799,8 @@ function handleUserPromptSubmit(payload: Record<string, unknown>, root: string, 
 
 // ---- the time (round 10, T1 and T5) ------------------------------------------------------------------------------
 
-// The call that ran `deadline start` claims its deadline; then, for the session's deadline, a passed mark is said once
-// and time-up after every call — added to the call's own context, never replacing it.
+// The call that ran `deadline start` claims its deadline; then, for the session's deadline, the clock line on every call the
+// hooks see (Bash and file writes) and the time-up line after the deadline — added to the call's own context, never replacing it.
 function withTime(payload: Record<string, unknown>, root: string, env: HookEnv, result: HookResult): HookResult {
   const session = sessionOf(payload);
   // Only a call that ran this guard's `deadline start` and succeeded claims (review finding 2): a command that merely

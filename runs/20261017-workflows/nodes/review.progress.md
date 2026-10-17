@@ -1,0 +1,15 @@
+- 2026-10-17T09:38:44+08:00 · read-diff · planned · git diff 07b67a9 and design.md
+- 2026-10-17T09:38:44+08:00 · d-clock · planned · grep marks/50/80/100 leftovers
+- 2026-10-17T09:38:44+08:00 · d-watch · planned · matchers and D2 records
+- 2026-10-17T09:38:44+08:00 · d-categories · planned · six categories / flags leftovers
+- 2026-10-17T09:38:44+08:00 · d-workflows · planned · D3 records, P0, workflow rules check
+- 2026-10-17T09:38:44+08:00 · read-diff · start · 
+- 2026-10-17T09:39:13+08:00 · read-diff · done · 18 files, 3 unrelated (CODE_GRAPH, index-md-build, CLAUDE.md who-decides, ledger rows)
+- 2026-10-17T09:39:13+08:00 · d-clock · start · 
+- 2026-10-17T09:40:01+08:00 · d-clock · done · 4 leftovers (report.md, hooks.ts comment, cli.ts help)
+- 2026-10-17T09:40:01+08:00 · d-watch · start · 
+- 2026-10-17T09:40:01+08:00 · d-watch · done · installed matchers verified; report.md waiting-for-you live
+- 2026-10-17T09:40:01+08:00 · d-categories · start · 
+- 2026-10-17T09:40:38+08:00 · d-categories · done · code/SPEC/skill clean; six-experts report.md stale
+- 2026-10-17T09:40:38+08:00 · d-workflows · start · 
+- 2026-10-17T09:43:16+08:00 · d-workflows · done · progress-line piece with a space unparsed (verified); method args miss code_engine; criteria C3 vs design

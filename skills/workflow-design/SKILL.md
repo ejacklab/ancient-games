@@ -22,8 +22,10 @@ the cheap discoveries first.
 solution (a time, or a number of rounds), unless they gave it; the answer makes the run time-boxed (method 3.8 item 14).
 Record a time with `guard/src/cli.ts deadline start --minutes N --run runs/<run>` (rounds: the last round in the state
 file) — you cannot feel time pass; the guard
-tells you after every tool call. Briefs ask for small pieces and timestamped progress lines; work with more than one
-node runs as a workflow when possible (method 3.8 item 14).
+adds a one-line clock after every Bash or file-write call, and the time-up line after the deadline (no marks at set
+points). Briefs ask for small pieces and timestamped progress lines, which you read with `deadline status`; work with
+more than one node runs as a workflow when possible — for the experts and for crossed test-and-review rounds, the
+saved `.claude/workflows/experts-decide.js` and `.claude/workflows/crossed-build-check.js` (method 3.8 item 14).
 
 From the challenge text alone — no tools, no agents — state the **objective**, what is **in scope** and what is
 **out of scope**, answer the **six whys** (stop when an answer no longer changes the design), and end with a

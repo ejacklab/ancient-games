@@ -9,8 +9,10 @@ the script API has no plain shell step (workflow-authoring reference). A step th
 `{time_up: true}` and does nothing; the script then starts no further step and returns what it has, with
 `stopped: "time is up"`. With no deadline recorded (exit 2), the step proceeds.
 
-**Progress.** The six-experts runner writes `--progress` lines per expert; every other step appends one line to
-`<run>/nodes/<workflow>.progress.md` as it starts and ends (the node-brief format), so `deadline status` shows it.
+**Progress.** The six-experts runner writes `--progress` lines per expert; every other step appends one line as it
+starts and ends (the node-brief format), so `deadline status` shows it — experts-decide to
+`<run>/nodes/<out>.progress.md` (the same file as the runner), crossed-build-check to
+`<run>/nodes/crossed-build-check.progress.md`. A piece id is one word (corrected after the integrate-decisions review).
 
 ## experts-decide
 

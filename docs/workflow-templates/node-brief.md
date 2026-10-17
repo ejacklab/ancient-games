@@ -31,7 +31,8 @@ like; the sabotage the check is known to catch. For a judged check: the fixed ch
 ## Pieces and progress
 <Divide the task into small pieces, each with its own check. Before starting, append one `planned` line per piece to
 runs/<id>/nodes/<node>.progress.md, then a line when each piece starts and when it is done or fails, in this form
-(time from `date -Iseconds`): `- <ISO time> · <piece id> · <planned|start|done|fail> · <short note>`. The COO reads
+(time from `date -Iseconds`): `- <ISO time> · <piece id> · <planned|start|done|fail> · <short note>`; the piece id is one
+word (no spaces: `deadline status` reads it as one token and skips a line it cannot read). The COO reads
 these while the work runs (`guard/src/cli.ts deadline status`).>
 
 ## Limits

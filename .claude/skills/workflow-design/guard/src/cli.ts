@@ -41,7 +41,7 @@ const USAGE = [
   "  expect-fail --run COMMAND --out FILE [--session S]   run a planned red run: the guard runs it and records the result",
   "  warning <W-id> fail|dismiss --reason TEXT   settle a warning the guard could not judge",
   "  warnings [--session S]          every warning and how it was settled",
-  "  deadline start --minutes N [--run DIR]   record the owner's time limit (a clock line after every call)",
+  "  deadline start --minutes N [--run DIR]   record the owner's time limit (a clock line after every Bash or file-write call)",
   "  deadline status | wait [--mark P] | end   time used and left, workers' progress; wait = a background timer; end = the task is done",
   "  register <file>                 validate a register and report its coverage",
   "  install --print <harness>       print the hook settings for a harness",
@@ -201,7 +201,7 @@ function deadlineCommand(args: string[]): number {
     try {
       const deadline = startDeadline(root, { minutes, run: flagValue(args, "--run") }, new Date());
       const end = new Date(deadlineEnd(deadline));
-      out(`${deadline.id}: ${deadline.minutes} min, deadline ${end.toTimeString().slice(0, 5)}; a clock line after every call`);
+      out(`${deadline.id}: ${deadline.minutes} min, deadline ${end.toTimeString().slice(0, 5)}; a clock line after every Bash or file-write call`);
       return OK;
     } catch (error) {
       if (error instanceof DeadlineError) usageError(`deadline start: ${error.message}`);

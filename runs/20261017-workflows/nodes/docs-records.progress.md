@@ -1,0 +1,18 @@
+- 2026-10-17T09:30:06+08:00 · method-item14 · planned · 3.8 item 14 clock bullet, pointers in 3.3/3.5/item 14
+- 2026-10-17T09:30:06+08:00 · skill-md · planned · SKILL.md clock and experts lines
+- 2026-10-17T09:30:06+08:00 · changelog · planned · four Added lines
+- 2026-10-17T09:30:06+08:00 · tm-state · planned · time-monitor state.md log line + TODO done
+- 2026-10-17T09:30:06+08:00 · tm-report · planned · time-monitor report.md D1/D2 outcomes
+- 2026-10-17T09:30:06+08:00 · grep-check · planned · marks/every-tool grep
+- 2026-10-17T09:30:31+08:00 · method-item14 · start · workflow files not on disk yet (sibling nodes build them)
+- 2026-10-17T09:31:06+08:00 · method-item14 · done · clock bullet rewritten; experts-decide pointer in item 14, 3.3, 3.5; both workflows with args in "Workflows when possible"
+- 2026-10-17T09:31:06+08:00 · skill-md · start · 
+- 2026-10-17T09:31:25+08:00 · skill-md · done · clock line + both workflows named once (step 0 time paragraph)
+- 2026-10-17T09:31:25+08:00 · changelog · start · 
+- 2026-10-17T09:31:59+08:00 · changelog · done · four Added lines + one Removed-or-changed line quoting the replaced clock text
+- 2026-10-17T09:31:59+08:00 · tm-state · start · 
+- 2026-10-17T09:32:39+08:00 · tm-state · done · D1 and D2 log lines (one event each, state-entry skill), TODO marked closed; installed matchers verified
+- 2026-10-17T09:32:39+08:00 · tm-report · start · 
+- 2026-10-17T09:32:39+08:00 · tm-report · done · one outcome line under D1 and D2
+- 2026-10-17T09:32:39+08:00 · grep-check · start · 
+- 2026-10-17T09:32:50+08:00 · grep-check · done · 3 lines, all about files as memory (every tool can read them), none about the guard

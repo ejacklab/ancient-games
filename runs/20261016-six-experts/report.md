@@ -16,7 +16,8 @@ released it: the mcode try-out failed, and that change is kept as a patch in its
   - The index gives one line per insight with its ids, check, source, option kinds and category, and never the
     author's text. `show` prints whole sections for an expert who loads them.
   - **Six categories** live as data (`guard/data/insight-categories.yaml`): config · tool · test · guard-check · spec ·
-    own-work. A section's own `Category:` line overrides the rules.
+    own-work. A section's own `Category:` line overrides the rules. (Replaced 2026-10-17 by the four Source kinds;
+    the title rules and the override removed — see D1.)
   - The index reads `runs/<run>/insight*.md` and `.harness-guard/insights/` only. In the main checkout that is 37
     sections; the trial showed that 27 more came from experiment fixtures nested in run folders.
 
@@ -49,10 +50,15 @@ experts instead of the owner, and no question went to the owner.
 - **D1** The 6 categories (config, tool, test, guard-check, spec, own-work). The main agent names them in the question,
   and Dave picks from the index too. Linus: "six is EJ's number … not something today's corpus supports". 老子 would
   sort by the moment a fix belongs.
+  Outcome (EJ, 2026-10-17, after `rerun/compare.md`): four categories, the Source kinds — "we stay with 4 categories".
 - **D2** Dave and Dario on Claude Sonnet 5.5 (3 of 4 experts; 范蠡 said Opus). Revisit when one question's load passes
   100k tokens.
+  Outcome (EJ, 2026-10-16): Dave on Opus 5.5, Dario stays on Sonnet — "change dave to Using Opus 5.5".
 - **D3** No Workflow script for these rounds. Every node was an outside CLI already orchestrated by the runner.
+  Outcome (EJ, 2026-10-17): declined — built as `.claude/workflows/experts-decide.js` and `crossed-build-check.js`
+  (run `runs/20261017-workflows/`).
 - **P0** "4 hours, 6 rounds" read as whichever comes first.
+  Outcome (EJ, 2026-10-17): accepted — "4 hours, 6 rounds is whichever come first"; now in method 3.8 item 14.
 
 ## Conflict named
 Dario goes against your 2026-10-13 removal of the plain control ("don't want the control with no persona"). Your

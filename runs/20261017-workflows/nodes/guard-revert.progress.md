@@ -1,0 +1,11 @@
+- 2026-10-17T09:30:11+08:00 · install.ts matchers · planned · Bash|Write|Edit|MultiEdit and Bash
+- 2026-10-17T09:30:11+08:00 · cli.test.ts install test · planned · assert the two matchers
+- 2026-10-17T09:30:11+08:00 · SPEC.md Round 10 · planned · clock, no marks, Bash+writes
+- 2026-10-17T09:30:11+08:00 · checks · planned · bun test + tsgo
+- 2026-10-17T09:30:11+08:00 · install.ts matchers · start · 
+- 2026-10-17T09:30:36+08:00 · install.ts matchers · done · EVENTS matchers set, comment replaced
+- 2026-10-17T09:30:36+08:00 · cli.test.ts install test · done · asserts the two matchers
+- 2026-10-17T09:30:36+08:00 · SPEC.md Round 10 · start · 
+- 2026-10-17T09:31:01+08:00 · SPEC.md Round 10 · done · T1/T2/T3/T5, fails-if, notes rewritten
+- 2026-10-17T09:31:01+08:00 · checks · start · 
+- 2026-10-17T09:31:14+08:00 · checks · done · bun test 1325 pass 0 fail; tsgo exit 0

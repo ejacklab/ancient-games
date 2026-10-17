@@ -193,9 +193,9 @@ def test_daves_insight_files_are_written_into_the_runs_seats_folder(tmp_path, mo
         seen.append(args)
         return INDEX_TEXT if args == ["index"] else SECTIONS_TEXT
 
-    out, _calls, _rc = run_seats(tmp_path, monkeypatch, "dave", insights="spec,own-work", guard=fake_guard)
+    out, _calls, _rc = run_seats(tmp_path, monkeypatch, "dave", insights="instruction,check", guard=fake_guard)
     assert seen[0] == ["index"]
-    assert seen[1] == ["show", "--category", "spec", "--category", "own-work"]
+    assert seen[1] == ["show", "--category", "instruction", "--category", "check"]
     assert (out / "seats" / "dave-insight-index.md").read_text(encoding="utf-8") == INDEX_TEXT
     assert (out / "seats" / "dave-insights.md").read_text(encoding="utf-8") == SECTIONS_TEXT
 
@@ -215,7 +215,7 @@ def test_with_no_category_named_dave_is_told_to_choose_from_the_index(tmp_path, 
 
 
 def test_an_empty_index_from_the_guard_is_recorded_not_left_out(tmp_path, monkeypatch):
-    out, _calls, _rc = run_seats(tmp_path, monkeypatch, "dave", insights="spec",
+    out, _calls, _rc = run_seats(tmp_path, monkeypatch, "dave", insights="instruction",
                                          guard=lambda args, cwd: "")
     assert "no index" in (out / "seats" / "dave-insight-index.md").read_text(encoding="utf-8")
     assert str(out / "seats" / "dave-insight-index.md") in (out / "briefs" / "dave.md").read_text(encoding="utf-8")

@@ -20,3 +20,4 @@ Request: build the plan-B pattern as workflows ("better build a workflow"). Star
 ## Log
 - 09:23 start; deadline D-a4ab637c.
 - 09:2x the guard denied a python heredoc holding a backslash (a new trap); files written with the Write tool instead.
+- 09:3x EJ mid-run: "I prefer clock more than the 50% 80% and 100%" (D1 of run 20261016-time-monitor accepted as clock only; marks removed, 07b67a9) and "guard watches back to bash and file writes only" (D2 declined); then "Design and execute a workflow to integrate all the above decisions" — workflow integrate-decisions (run wf_ba186582-4eb): Build (guard revert, docs and records, experts-decide, crossed-build-check) → Verify → Review. The owner TODO for the hook matchers closed (memory removed).

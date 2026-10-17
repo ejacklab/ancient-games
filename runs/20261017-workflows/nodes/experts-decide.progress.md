@@ -1,0 +1,13 @@
+- 2026-10-17T09:31:09+08:00 · read-sources · planned · design, skill, runner, intake harness
+- 2026-10-17T09:31:09+08:00 · write-script · planned · .claude/workflows/experts-decide.js
+- 2026-10-17T09:31:09+08:00 · write-harness · planned · tests/workflows/experts_decide_harness.mjs
+- 2026-10-17T09:31:09+08:00 · plant-checks · planned · show each case failing on a planted input
+- 2026-10-17T09:31:09+08:00 · run-harness · planned · node tests/workflows/experts_decide_harness.mjs
+- 2026-10-17T09:31:09+08:00 · read-sources · start · 
+- 2026-10-17T09:31:54+08:00 · read-sources · done · check lines are '<sid>: ...'; a per-expert folder lists the other five as 'no answer file'
+- 2026-10-17T09:31:54+08:00 · write-script · start · 
+- 2026-10-17T09:33:09+08:00 · write-script · done · 141 lines; validation, per-expert chains, 老子 after, compare
+- 2026-10-17T09:33:09+08:00 · write-harness · start · 
+- 2026-10-17T09:34:20+08:00 · write-harness · done · 8 groups of cases
+- 2026-10-17T09:34:20+08:00 · plant-checks · done · each of the six cases fails on its planted script (string-replaced copy)
+- 2026-10-17T09:34:20+08:00 · run-harness · done · all passed, exit 0
