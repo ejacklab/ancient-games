@@ -694,6 +694,147 @@ def test_credential_prefix_mentions_are_accepted(tmp_path, mode, prefix):
     assert (repo / INDEX).read_bytes() == expected
 
 
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("preceding", ["x", "Z", "7", "_"])
+@pytest.mark.parametrize("prefix,alphabet,length", CREDENTIAL_FORMS)
+def test_credential_forms_after_word_characters_are_accepted(tmp_path, mode, preceding, prefix, alphabet, length):
+    """B2.8 — a form immediately after a letter, digit or underscore is not a whole-token credential."""
+    repo = make_repo(tmp_path)
+    value = preceding + prefix + (alphabet * length)[:length]
+    claim = f"Document {value} here."
+    write_entry(repo, claim=claim)
+    expected = HEADER + f"- [14-10-a1b2c3-2026](entries/D-one.md) decision: {claim}\n".encode("utf-8")
+    (repo / INDEX).write_bytes(expected)
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    assert "possible credential" not in output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == expected
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("preceding", ["", " ", "(", ":"])
+@pytest.mark.parametrize("prefix,alphabet,length", CREDENTIAL_FORMS)
+def test_credentials_after_token_separators_fail(tmp_path, mode, preceding, prefix, alphabet, length):
+    """B2.8 — a credential at line start or immediately after a space, parenthesis or colon must fail."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    value = prefix + (alphabet * length)[:length]
+    path = write_entry(repo, "D-credential.md", id="14-10-secret-2026")
+    line = insert_entry_text(path, preceding + value, "after-why")
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert value not in output(result)
+    assert result.returncode == 1, output(result)
+    assert re.search(rf"D-credential\.md: possible credential \([^\n)]+\) on line {line}\b", output(result))
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("begin_format", ["{}", "   {}", "> {}", "- {}", "{}   "])
+@pytest.mark.parametrize("end_format", ["{}", "   {}", "> {}", "- {}", "{}   "])
+def test_private_key_markers_inside_lines_are_detected(tmp_path, mode, begin_format, end_format):
+    """B2.8 — indented, quoted, listed or trailing-space BEGIN and END lines still delimit a private key."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    body = "A" * 64
+    value = (
+        begin_format.format("-----BEGIN " + "RSA PRIVATE KEY-----")
+        + "\n" + body + "\n"
+        + end_format.format("-----END " + "RSA PRIVATE KEY-----")
+    )
+    path = write_entry(repo, "D-credential.md", id="14-10-secret-2026")
+    line = insert_entry_text(path, value, "after-why")
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert body not in output(result)
+    assert result.returncode == 1, output(result)
+    assert re.search(rf"D-credential\.md: possible credential \([^\n)]+\) on line {line}\b", output(result))
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("body_length", [63, 64, 65])
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_private_key_body_count_excludes_line_breaks_and_surrounding_spaces(tmp_path, mode, body_length, wrapped):
+    """B2.8 — count the trimmed body without line breaks: 63 characters pass, 64 or more fail."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    body = "A" * body_length
+    body_lines = [body[:32], body[32:]] if wrapped else [body]
+    value = (
+        "-----BEGIN " + "RSA PRIVATE KEY-----\n"
+        + "\n".join("  " + part + "  " for part in body_lines)
+        + "\n-----END " + "RSA PRIVATE KEY-----"
+    )
+    line = insert_entry_text(repo / ENTRIES / "D-one.md", value, "after-why")
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    if body_length >= 64:
+        for part in body_lines:
+            assert part not in output(result)
+        assert result.returncode == 1, output(result)
+        assert re.search(rf"D-one\.md: possible credential \([^\n)]+\) on line {line}\b", output(result))
+    else:
+        assert result.returncode == 0, output(result)
+        assert "possible credential" not in output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("body_length", [64, 128])
+def test_private_key_begin_without_end_is_accepted(tmp_path, mode, body_length):
+    """B2.8 — a BEGIN and a long body without an END do not form a private-key block."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    value = "-----BEGIN " + "RSA PRIVATE KEY-----\n" + "A" * body_length
+    insert_entry_text(repo / ENTRIES / "D-one.md", value, "after-why")
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    assert result.returncode == 0, output(result)
+    assert "possible credential" not in output(result)
+    assert "Traceback" not in output(result)
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
+@pytest.mark.parametrize("location", ["conflict-start", "conflict-end", "kind", "id", "status"])
+@pytest.mark.parametrize("prefix,alphabet,length", CREDENTIAL_FORMS)
+def test_other_entry_diagnostics_withhold_credentials(tmp_path, mode, status, location, prefix, alphabet, length):
+    """B2.8 B2.7 B2.3 B2.4 B2.5 — conflict and field problems must still be reported with credentials withheld."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    value = prefix + (alphabet * length)[:length]
+    fields = {"id": "14-10-secret-2026", "status": status}
+    if location in {"kind", "id", "status"}:
+        fields[location] = value
+    path = write_entry(repo, "D-credential.md", **fields)
+    if location.startswith("conflict-"):
+        marker = "<<<<<<<" if location == "conflict-start" else ">>>>>>>"
+        line = insert_entry_text(path, f"{marker} {value}", "after-why")
+    else:
+        line = next(number for number, text in enumerate(path.read_text().splitlines(), 1) if value in text)
+    git(repo, "add", "-A")
+    result = run_index(repo, *snapshot_args(repo, mode))
+    message = output(result)
+    assert value not in message
+    assert result.returncode == 1, message
+    assert re.search(rf"D-credential\.md: possible credential \([^\n)]+\) on line {line}\b", message)
+    other_reports = [
+        text for text in message.splitlines()
+        if "D-credential.md: " in text
+        and "D-credential.md: possible credential (" not in text
+    ]
+    assert any("<withheld>" in text for text in other_reports), message
+    assert "Traceback" not in message
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+
+
 def test_all_validation_problems_are_reported(tmp_path):
     """B2.3 B2.4 B2.6 — one invalid file must not hide problems in other files."""
     repo = make_repo(tmp_path)
@@ -1020,6 +1161,200 @@ def test_bad_limits_files_fail_without_writing(tmp_path, mode, index_exists, raw
     }
     result = run_index(repo, *args)
     assert result.returncode == 1, output(result)
+    assert "project-memory/start-limits.json: " in output(result)
+    assert "Traceback" not in output(result)
+    assert "limits: the design's example" not in output(result)
+    after = {
+        file.relative_to(repo): (file.read_bytes(), file.stat().st_mtime_ns, file.stat().st_ino)
+        for file in repo.rglob("*") if file.is_file() and ".git" not in file.relative_to(repo).parts
+    }
+    assert after == before
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("index_exists", [False, True])
+@pytest.mark.parametrize("field,value", [
+    pytest.param("limit", 1.0, id="integral-float"),
+    *[
+        pytest.param(field, value, id=f"{field}-{label}")
+        for field in ("agent", "unit", "basis", "source")
+        for label, value in (("empty", ""), ("blank", " \t\r\n "))
+    ],
+])
+def test_limits_reject_noninteger_or_empty_fields(tmp_path, mode, index_exists, field, value):
+    """B4.1 B4.5 — 1.0 is not a JSON integer, and all four text fields must contain non-whitespace text."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    if not index_exists:
+        (repo / INDEX).unlink()
+    row = limit_row("lines", 200)
+    row[field] = value
+    write_limits(repo, [row])
+    args = snapshot_args(repo, mode)
+    before = {
+        file.relative_to(repo): (file.read_bytes(), file.stat().st_mtime_ns, file.stat().st_ino)
+        for file in repo.rglob("*") if file.is_file() and ".git" not in file.relative_to(repo).parts
+    }
+    result = run_index(repo, *args)
+    assert result.returncode == 1, output(result)
+    assert "project-memory/start-limits.json: " in output(result)
+    assert "Traceback" not in output(result)
+    assert "limits: the design's example" not in output(result)
+    after = {
+        file.relative_to(repo): (file.read_bytes(), file.stat().st_mtime_ns, file.stat().st_ino)
+        for file in repo.rglob("*") if file.is_file() and ".git" not in file.relative_to(repo).parts
+    }
+    assert after == before
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("index_exists", [False, True])
+def test_deeply_nested_limits_report_file_without_traceback(tmp_path, mode, index_exists):
+    """B4.5 — JSON nested too deeply to read must fail with the limits filename, without a crash or writes."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    if not index_exists:
+        (repo / INDEX).unlink()
+    path = repo / "project-memory/start-limits.json"
+    raw = b'{"limits": ' + b"[" * 100_000 + b"0" + b"]" * 100_000 + b"}"
+    path.write_bytes(raw)
+    args = snapshot_args(repo, mode)
+    before = {
+        file.relative_to(repo): (file.read_bytes(), file.stat().st_mtime_ns, file.stat().st_ino)
+        for file in repo.rglob("*") if file.is_file() and ".git" not in file.relative_to(repo).parts
+    }
+    result = run_index(repo, *args)
+    assert result.returncode == 1, output(result)
+    assert "project-memory/start-limits.json: " in output(result)
+    assert "Traceback" not in output(result)
+    assert "limits: the design's example" not in output(result)
+    after = {
+        file.relative_to(repo): (file.read_bytes(), file.stat().st_mtime_ns, file.stat().st_ino)
+        for file in repo.rglob("*") if file.is_file() and ".git" not in file.relative_to(repo).parts
+    }
+    assert after == before
+
+
+@pytest.mark.parametrize("index_exists", [False, True])
+@pytest.mark.parametrize("path_kind", ["dangling-symlink", "directory"])
+def test_write_rejects_unreadable_limits_paths(tmp_path, index_exists, path_kind):
+    """B4.5 — a dangling link or folder at the limits path must fail write mode instead of using the example."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    if not index_exists:
+        (repo / INDEX).unlink()
+    path = repo / "project-memory/start-limits.json"
+    if path_kind == "dangling-symlink":
+        path.symlink_to("missing-limits.json")
+        assert path.is_symlink() and not path.exists()
+    else:
+        path.mkdir()
+    path_before = path.lstat()
+    before = {
+        file.relative_to(repo): (file.read_bytes(), file.stat().st_mtime_ns, file.stat().st_ino)
+        for file in repo.rglob("*") if file.is_file() and ".git" not in file.relative_to(repo).parts
+    }
+    result = run_index(repo)
+    assert result.returncode == 1, output(result)
+    assert "project-memory/start-limits.json: " in output(result)
+    assert "Traceback" not in output(result)
+    assert "limits: the design's example" not in output(result)
+    after = {
+        file.relative_to(repo): (file.read_bytes(), file.stat().st_mtime_ns, file.stat().st_ino)
+        for file in repo.rglob("*") if file.is_file() and ".git" not in file.relative_to(repo).parts
+    }
+    assert after == before
+    path_after = path.lstat()
+    assert (path_after.st_mode, path_after.st_ino, path_after.st_mtime_ns) == (
+        path_before.st_mode, path_before.st_ino, path_before.st_mtime_ns,
+    )
+    if path_kind == "dangling-symlink":
+        assert path.is_symlink() and not path.exists()
+        assert path.readlink() == Path("missing-limits.json")
+    else:
+        assert path.is_dir() and not list(path.iterdir())
+
+
+def test_check_rejects_unmerged_limits_without_stage_zero(tmp_path):
+    """B4.5 — an actual two-branch limits conflict with stages 1–3 and no stage 0 is an error, not absence."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    path = write_limits(repo, [limit_row("lines", 200)])
+    git(repo, "add", "-A")
+    git(repo, "commit", "-m", "Common limits")
+    git(repo, "checkout", "-b", "other")
+    write_limits(repo, [limit_row("lines", 201)])
+    git(repo, "add", "-A")
+    git(repo, "commit", "-m", "Other branch limits")
+    git(repo, "checkout", "main")
+    write_limits(repo, [limit_row("lines", 202)])
+    git(repo, "add", "-A")
+    git(repo, "commit", "-m", "Main branch limits")
+    merge = git(repo, "merge", "--no-commit", "other", check=False)
+    assert merge.returncode == 1, output(merge)
+    stages = git(repo, "ls-files", "--stage", "--", "project-memory/start-limits.json").stdout.splitlines()
+    assert sorted(int(record.split("\t", 1)[0].split()[2]) for record in stages) == [1, 2, 3]
+    assert "project-memory/start-limits.json" in git(repo, "diff", "--name-only", "--diff-filter=U").stdout
+    # A valid working-tree file cannot resolve the unmerged staging area.
+    write_limits(repo, [limit_row("lines", 200)])
+    limits_before = path.read_bytes()
+    index_before = (repo / INDEX).stat()
+    git_index_before = (repo / ".git/index").read_bytes()
+    result = run_index(repo, "--check")
+    assert result.returncode == 1, output(result)
+    assert "project-memory/start-limits.json: " in output(result)
+    assert "Traceback" not in output(result)
+    assert "limits: the design's example" not in output(result)
+    assert path.read_bytes() == limits_before
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+    assert (repo / INDEX).stat().st_mtime_ns == index_before.st_mtime_ns
+    assert (repo / ".git/index").read_bytes() == git_index_before
+
+
+@pytest.mark.parametrize("mode", ["staged", "commit"])
+def test_check_reports_missing_limits_blob(tmp_path, mode):
+    """B4.5 — a selected limits path whose blob is missing must report a file error, never use the example."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    path = write_limits(repo, [limit_row("lines", 200)])
+    args = snapshot_args(repo, mode)
+    object_name = ":project-memory/start-limits.json" if mode == "staged" else "HEAD:project-memory/start-limits.json"
+    blob = git(repo, "rev-parse", object_name).stdout.strip()
+    (repo / ".git/objects" / blob[:2] / blob[2:]).unlink()
+    assert git(repo, "cat-file", "-e", blob, check=False).returncode != 0
+    limits_before = path.read_bytes()
+    index_before = (repo / INDEX).stat()
+    git_index_before = (repo / ".git/index").read_bytes()
+    result = run_index(repo, *args)
+    assert result.returncode == 1, output(result)
+    assert "project-memory/start-limits.json: " in output(result)
+    assert "Traceback" not in output(result)
+    assert "limits: the design's example" not in output(result)
+    assert path.read_bytes() == limits_before
+    assert (repo / INDEX).read_bytes() == SINGLE_INDEX
+    assert (repo / INDEX).stat().st_mtime_ns == index_before.st_mtime_ns
+    assert (repo / ".git/index").read_bytes() == git_index_before
+
+
+@pytest.mark.parametrize("mode", ["write", "staged", "commit"])
+@pytest.mark.parametrize("index_exists", [False, True])
+def test_entry_and_limits_errors_are_both_reported(tmp_path, mode, index_exists):
+    """B4.5 B2.4 — a bad entry and a bad limits file in one run must both be reported without writing."""
+    repo = make_repo(tmp_path)
+    stage_single_entry(repo)
+    if not index_exists:
+        (repo / INDEX).unlink()
+    write_entry(repo, "D-bad.md", id="14-10-bad000-2026", kind="unknown")
+    (repo / "project-memory/start-limits.json").write_bytes(b"not JSON\n")
+    git(repo, "add", "-A")
+    args = snapshot_args(repo, mode)
+    before = {
+        file.relative_to(repo): (file.read_bytes(), file.stat().st_mtime_ns, file.stat().st_ino)
+        for file in repo.rglob("*") if file.is_file() and ".git" not in file.relative_to(repo).parts
+    }
+    result = run_index(repo, *args)
+    assert result.returncode == 1, output(result)
+    assert "D-bad.md: " in output(result)
     assert "project-memory/start-limits.json: " in output(result)
     assert "Traceback" not in output(result)
     assert "limits: the design's example" not in output(result)
