@@ -865,3 +865,37 @@ in the code's own folder. The guard gives the main agent the ones that match wha
 Fails-if: a lesson that does not match is given, or a matching one is not; the retry after a hold is held again; a lesson or fact is given twice in one
 session; a hook without a store gives anything; an invalid lesson file breaks a reader instead of being skipped; a
 project fact reaches an edit of a file of another name or folder; `lessons for` with an unknown agent exits 0.
+
+## Round 19 — the evaluator's verdict reaches the guard (R12.2; run 20261017-evaluator-wiring)
+
+The requirements evaluator (`build/evaluator`, `tools/evaluator/verdict.py`) writes `verdict.json`:
+`{"meets", "counts", "cases": [{"case", "kind", "verdict", "reason", "repro"}], "requirements": [{"id", "group",
+"verdict", "reason"}], "out_of_scope", "manifest"}`, or a blocked run writes none.
+
+- **V1 `evaluation ingest <verdict.json> --run DIR [--session S]`.** For each requirement whose `verdict` is `FAIL`:
+  one failure record, `found_by: evaluator`, check `evaluator:<id>`, input the requirement id, expected `PASS`,
+  actual `FAIL`, reason its `reason` (or "the evaluator judged it FAIL"), evidence a JSON file holding the id and
+  the repro of every FAIL case of its group. It is a failure under R12.2, so the stop needs its insight.
+- **V2 Notes for the owner.** Each requirement whose verdict is `UNKNOWN` is one line in `DIR/evaluator-notes.md`:
+  `- <id> · UNKNOWN · <reason>`. A PASS writes nothing.
+- **V3 Once per verdict.** Ingesting the same `verdict.json` again (same bytes) records nothing new.
+- **V4 A blocked or missing verdict.** A missing file, unreadable JSON or one without `requirements` is a note in
+  `DIR/evaluator-notes.md` (`- evaluation · could not run · <reason>`), exit 1, and no failure record.
+- **V5 Output.** One line: `evaluation ingest: <n> FAIL recorded, <m> UNKNOWN noted, <k> PASS`; exit 0 (1 for V4).
+
+Fails-if: a FAIL requirement has no `found_by: evaluator` failure; a PASS or an UNKNOWN makes a failure; an UNKNOWN
+has no note; a second ingest of the same file adds a record; a blocked verdict makes a failure or exits 0.
+
+**Round 19, after measuring (round 3).** On the evaluator's six K2 calibration verdicts (one planted fault each) V1
+recorded 3–13 failures per run, 39 in all: one fault fails every id of its requirement group, and group B1 failed in
+every run, the unfaulted ones too. So:
+- **V6 One failure per failing group.** The check is `evaluator:<group>`, the input the group's FAIL ids joined by
+  `, `, the evidence every FAIL case of the group with its repro. (V1's "per requirement" is replaced.)
+- **V7 `--baseline <verdict.json>`.** A group that is FAIL in the baseline too is a note,
+  `- <group> · FAIL in the baseline too · <ids>`, not a failure: it was there before the change being judged.
+
+Fails-if: two failure records for one group; a group failing in the baseline is recorded as a failure.
+- **V7, by case (measured on K2 run k2-4):** a group FAIL in the baseline too is a note only when every one of its
+  FAIL cases was FAIL in the baseline; a FAIL case the baseline did not fail makes it a failure. A case belongs to
+  the group its id starts with (`B1-F1` → `B1`). On the six K2 verdicts against k1d this gives 6 failures, one per
+  run but k2-2, the fault the evaluator itself missed (its calibration: 5 of 6).

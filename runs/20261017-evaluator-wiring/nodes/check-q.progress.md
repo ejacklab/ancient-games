@@ -1,0 +1,30 @@
+- 2026-10-17T23:39:06+08:00 · linus · start · mcode
+- 2026-10-17T23:39:07+08:00 · dario · start · claude
+- 2026-10-17T23:39:08+08:00 · dave · start · claude
+- 2026-10-17T23:39:08+08:00 · sun-tzu · start · dsh
+- 2026-10-17T23:39:09+08:00 · fan-li · start · agy
+- 2026-10-17T23:40:22+08:00 · linus · done · mcode exit 0
+- 2026-10-17T23:40:35+08:00 · check-linus · start · 
+- 2026-10-17T23:40:39+08:00 · check-linus · done · linus check passed, no FAIL linus lines
+- 2026-10-17T23:42:49+08:00 · dario · done · claude exit 0
+- 2026-10-17T23:43:03+08:00 · check-dario · start · 
+- 2026-10-17T23:43:06+08:00 · check-dario · done · dario check has no FAIL dario lines; other experts show no answer file (ignored)
+- 2026-10-17T23:43:15+08:00 · fan-li · done · agy exit 0
+- 2026-10-17T23:43:26+08:00 · check-fan-li · start · 
+- 2026-10-17T23:43:28+08:00 · check-fan-li · done · fan-li check passed, no FAIL fan-li lines (other experts reported no answer file, ignored)
+- 2026-10-17T23:46:30+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-17T23:46:42+08:00 · check-sun-tzu · start · 
+- 2026-10-17T23:46:44+08:00 · check-sun-tzu · fail · six_experts check: 1 citation mismatch (形之而知死地之地 not in source list)
+- 2026-10-17T23:48:10+08:00 · dave · fail · claude exit 124
+- 2026-10-17T23:48:23+08:00 · check-dave · start · 
+- 2026-10-17T23:48:26+08:00 · check-dave · fail · check reports dave cites #12 but list has 1-10
+- 2026-10-17T23:48:36+08:00 · dave · start · claude
+- 2026-10-17T23:57:38+08:00 · dave · fail · claude exit 124
+- 2026-10-17T23:57:50+08:00 · check-dave · start · 
+- 2026-10-17T23:57:52+08:00 · check-dave · failed · dave answer has no required sections and cites no item
+- 2026-10-17T23:58:02+08:00 · lao-tzu · start · opencode
+- 2026-10-18T00:00:58+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-18T00:01:15+08:00 · check-lao-tzu · start · 
+- 2026-10-18T00:01:18+08:00 · check-lao-tzu · done · lao-tzu check clean, no FAIL lao-tzu lines (other experts absent by design)
+- 2026-10-18T00:01:29+08:00 · compare · start · 
+- 2026-10-18T00:04:18+08:00 · compare · done · compare.md written; 5 usable, Dave none; spec_parse measured on 3 specs

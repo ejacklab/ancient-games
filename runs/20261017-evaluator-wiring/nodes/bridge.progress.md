@@ -1,0 +1,11 @@
+- 2026-10-18T00:07:51+08:00 · verdict · planned · read the evaluator verdict writer for the real group/repro shape and the notes separator bytes
+- 2026-10-18T00:07:51+08:00 · module · planned · src/evaluation.ts: ingestVerdict for V1-V5 (failure records, notes, once-per-verdict by sha256 of the bytes)
+- 2026-10-18T00:07:51+08:00 · cli · planned · src/cli.ts: the evaluation command, its usage line and dispatch
+- 2026-10-18T00:07:51+08:00 · verify · planned · bun test and tsgo --noEmit -p .
+- 2026-10-18T00:07:51+08:00 · report · planned · nodes/bridge.result.md
+- 2026-10-18T00:08:32+08:00 · verdict · done · cases join to a group by the case id prefix (verdict.py:256 startswith group+"-F"; the test ids are G1-c1, so the prefix group+"-" covers both); separator is U+00B7; --run resolves against root like deadline.ts
+- 2026-10-18T00:08:32+08:00 · module · start · writing src/evaluation.ts
+- 2026-10-18T00:09:56+08:00 · module · done · src/evaluation.ts: V1 failures with group repros, V2 notes, V3 sha256 once-per-verdict in .harness-guard/evaluations.jsonl, V4 could-not-run, V5 summary
+- 2026-10-18T00:09:56+08:00 · cli · done · cli.ts +25 lines: evaluationCommand, usage line, dispatch case; no other line touched
+- 2026-10-18T00:09:56+08:00 · verify · done · bun test 0 fail (1524 pass, 7 of them round19); tsgo exit 0 no output; edge paths of validateFailure and scrub checked by hand in /tmp
+- 2026-10-18T00:09:56+08:00 · report · done · nodes/bridge.result.md written

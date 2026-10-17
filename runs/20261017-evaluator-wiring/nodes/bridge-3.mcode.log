@@ -1,0 +1,24 @@
+Done. Both pieces of the brief are complete and the suite is green.
+
+**What changed**
+
+- [evaluation.ts](.claude/skills/workflow-design/guard/src/evaluation.ts:93) — added `failingCaseIds(cases, group)` (a group's FAIL case ids, grouped by the id prefix through the existing `casesOfGroup`, so `B1-F1` → `B1`) and `heldBackGroups(verdict, baseline)`. The `--baseline` branch of `ingestVerdict` now calls `heldBackGroups()` instead of reading the baseline's failing *groups* alone: a group is held back only when it failed before **and** every one of its FAIL cases was FAIL in the baseline too. `count()`, the note line and the record shape are untouched, so V1–V7 all hold.
+- [cli.ts](.claude/skills/workflow-design/guard/src/cli.ts:61) — one usage line, `--baseline F` "holds back the groups F already failed, case by case". The flag was already wired by bridge-2.
+
+**Verification** (both after the last source edit)
+
+- `bun test` → `Ran 1527 tests across 37 files. [14.46s]` — 1527 pass, 0 fail. The one red test named in the brief ("a new FAIL case in a group that already failed in the baseline is still a failure") now passes; it was the only failure before.
+- `./node_modules/.bin/tsgo --noEmit -p .` → no output, exit 0.
+
+Nothing staged or committed; no test and no `SPEC.md` touched.
+
+**Two edges the SPEC sentence and the tests leave open** (decided, not measured — flagged in the result file):
+
+1. A case the baseline says nothing about was not failed by the baseline, so it counts as new. Consequence: a baseline carrying no `cases` array holds back nothing for a group that has FAIL cases, though it still holds back a group whose verdict has none (which is how V7's own test passes). The opposite choice would silently re-record old groups as new.
+2. Both rows are asked — the group must fail in the baseline's `requirements` *and* have no new FAIL case.
+
+Per the lesson for this edit, I listed the path's early returns first and exercised the uncovered ones by hand in a scratch root: no `cases` array → failure recorded; a case the baseline judged PASS → failure recorded; every case known → no record plus `- B1 · FAIL in the baseline too · B1.1`; unreadable baseline → `- evaluation · could not run · …`, exit 1; `--baseline` with no value → exit 2. The first attempt at the second row reused the previous verdict's bytes and was a no-op via the V3 dedupe, so it was re-run with distinct bytes before counting.
+
+**No contradiction.** The one item bridge-2 recorded as decided — the note still lists the verdict's ids, not the baseline's subset — is unchanged; Round 19's last bullet refines only *which groups are held back*.
+
+Files: [bridge-3.result.md](runs/20261017-evaluator-wiring/nodes/bridge-3.result.md) · [bridge-3.progress.md](runs/20261017-evaluator-wiring/nodes/bridge-3.progress.md)

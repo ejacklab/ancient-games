@@ -19,6 +19,7 @@ import { DeadlineError, deadlineEnd, deadlineStatus, endDeadline, readDeadlines,
 import { PathError, checkPath, parents, skeleton } from "./paths.ts";
 import { rates, ratesMarkdown } from "./rates.ts";
 import { AGENTS, DEFAULT_STORE, KINDS, checkLessons, factLine, lessonLine, lessonsFor as matchLessons, readLessons } from "./lessons.ts";
+import { EvaluationError, ingestVerdict } from "./evaluation.ts";
 import { RegisterError, coverage, loadRegister, validateRegister } from "./register.ts";
 import { checkResult, lintCommand, loadEngines } from "./traps.ts";
 import type { EngineCall, Finding, HookEnv } from "./types.ts";
@@ -56,6 +57,8 @@ const USAGE = [
   "  criteria score <file>           score a criteria file: met/total and the unmarked ids",
   "  lessons for --agent A [--kinds K,…] [--paths P,…] [--commands C,…] [--dir D]   the matching agent lessons and project facts",
   "  lessons check [--dir D]         list invalid lesson files",
+  "  evaluation ingest <verdict.json> --run DIR [--session S] [--baseline F]",
+  "                                  a failing group becomes one failure, an UNKNOWN a note; --baseline F holds back the groups F already failed, case by case",
 ].join("\n");
 
 class UsageError extends Error {}
@@ -613,6 +616,29 @@ function lessonsCommand(args: string[]): number {
   }
 }
 
+// ---- evaluation (round 19) --------------------------------------------------------------------------------------
+
+// The evaluator's verdict into the journal: one line out, the counts it just recorded.
+function evaluationCommand(args: string[]): number {
+  const [verb, file] = args;
+  if (verb !== "ingest") usageError(`evaluation: needs ingest (got ${verb ?? "nothing"})`);
+  if (file === undefined || file.startsWith("--")) usageError("evaluation ingest: needs the verdict.json path");
+  const run = flagValue(args, "--run");
+  if (run === null) usageError("evaluation ingest: --run DIR is required (the owner's notes go there)");
+  const baseline = flagValue(args, "--baseline");
+  let ingested;
+  try {
+    ingested = ingestVerdict(guardRoot(process.cwd()), path.resolve(process.cwd(), file), run, flagValue(args, "--session") ?? "none", new Date(), baseline === null ? null : path.resolve(process.cwd(), baseline));
+  } catch (error) {
+    if (error instanceof EvaluationError) usageError(error.message);
+    throw error;
+  }
+  // A verdict that could not be read is the owner's to know about: stderr, and the exit code says so (V4).
+  if (ingested.problem !== null) process.stderr.write(`harness-guard: evaluation: ${ingested.problem}\n`);
+  out(`evaluation ingest: ${ingested.fails} FAIL recorded, ${ingested.unknowns} UNKNOWN noted, ${ingested.passes} PASS`);
+  return ingested.problem === null ? OK : FINDINGS;
+}
+
 // ---- dispatch ---------------------------------------------------------------------------------------------------
 
 function run(args: string[]): number {
@@ -635,6 +661,7 @@ function run(args: string[]): number {
     case "path": return pathCommand(rest);
     case "criteria": return criteriaCommand(rest);
     case "lessons": return lessonsCommand(rest);
+    case "evaluation": return evaluationCommand(rest);
     case undefined: return usageError("no command given");
     case "help":
     case "--help": return usageError("help is the usage text above");

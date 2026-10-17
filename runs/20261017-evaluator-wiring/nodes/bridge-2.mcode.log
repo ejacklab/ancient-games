@@ -1,0 +1,12 @@
+V6 and V7 are in, and the whole round-19 test file passes.
+
+**What changed** — [evaluation.ts](/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/evaluation.ts) and [cli.ts](/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts) only; no test, no `SPEC.md`, nothing staged or committed.
+
+- **V6**: the ingest groups FAIL requirements by their `group` field and writes one record per group — `check: evaluator:<group>`, `input` the group's ids joined by `", "`, evidence the group's ids and every FAIL case with its repro. A requirement with no `group` is a group of one. This also fixes V1, which failed only because it expected the per-id shape V6 replaces (`G1` has one FAIL id, so it reads the same).
+- **V7**: `--baseline <verdict.json>` is read by the same defensive reader as the verdict; a group the baseline also held as failing becomes `- B1 · FAIL in the baseline too · B1.1, B1.2` in the run's notes instead of a failure record.
+
+**Verification** — `bun test` → `Ran 1526 tests across 37 files. [17.34s]`, 0 fail (was 1523/3). `tsgo --noEmit -p .` → no output, exit 0.
+
+**Decisions no test pins** (the lesson asked me to list the path's early returns first, then exercise each; I ran the baseline's three unreadable shapes by hand in a scratch root): an unreadable baseline is a *blocked run* — note, exit 1, no records — because without it a pre-existing group would be logged as a new failure. `--baseline` with no value exits 2 via the shared `flagValue`. The summary line now counts records written rather than requirement verdicts, so a group held back by the baseline falls in none of the three buckets instead of being miscounted as a PASS; V5's pinned line is unchanged. Group matching is by group name.
+
+Result and progress files: [bridge-2.result.md](/home/smoke01/dev/ancient-games/runs/20261017-evaluator-wiring/nodes/bridge-2.result.md), [bridge-2.progress.md](/home/smoke01/dev/ancient-games/runs/20261017-evaluator-wiring/nodes/bridge-2.progress.md) — the progress file carries a note that the `start` lines were appended at the end, so its timestamps are out of order.

@@ -1,0 +1,57 @@
+# Linus Torvalds — Is the evaluator ready to judge every build?
+
+## Answer
+
+**Not ready as the sole judge of every build.** Before connecting it to the guard, it needs an explicit five-state adjudication contract, vision/requirements/use-case inputs, enforced evidence and reproduction rules, reliable crash/timeout-to-UNKNOWN handling, and an owner-adjudicated calibration with a cost budget; universal rollout can wait for that pilot. I cannot honestly give the requested EV-by-EV, `file:line` verdict: the snapshot contents were neither pasted nor readable in this session, so I do not know which EV requirements the implementation currently satisfies.
+
+## How I decided
+
+1. **my #2 — require code rather than accepting a capability claim.** The vision defines three per-requirement states, requires evidence for PASS and reproduction for FAIL, and forbids using the builder’s tests (`snapshot/docs/evaluator/VISION.md:line unavailable`). The supplied fact that 177 tests passed, plus one end-to-end calibration, proves that the code runs, but it does not prove those invariants without the test-to-EV mapping and implementation. **PASS without proof, FAIL without reproduction, and crash/timeout behavior: I don't know**; assigning EV ids or claiming compliance from the summary would be invention. Sources: `snapshot/tests/test_evaluator_*.py:line unavailable`, `snapshot/tools/evaluator/*.py:line unavailable`, and the supplied test record at `runs/20261017-evaluator-wiring/nodes/evaluator-tests.txt:line unavailable`.
+
+2. **my #7 — require critical thinking rather than confidence.** The first live calibration produced 28 FAILs, none reproduced initially; only two reproduced after repair (`snapshot/runs/20261013-calibration/report.md:line unavailable`, `snapshot/workflow-design.md:line unavailable`). That does not prove 28 false FAILs—the 28 may have been provisional findings rather than adjudicated FAIL statuses—but it does show that raw evaluator findings cannot be sent directly to the guard. Whether the report called those findings FAIL, UNKNOWN, or something else would change this conclusion.
+
+3. **my #3 — judge the user-visible result, not merely documents and tests.** The supplied input contract reads vision and requirements but not use cases (`snapshot/docs/evaluator/DATA.md:line unavailable`; `snapshot/.claude/workflows/evaluate-requirements.js:line unavailable`). That cannot satisfy R12.2’s product vision, use cases, requirements, and owner correction (`snapshot/docs/HARNESS_REQUIREMENTS.md:R12.2, line unavailable`). Without use cases, the evaluator cannot tell whether the build gives the intended result in the intended workflow.
+
+4. **my #18 — quantify the claimed win and its costs.** One evaluation consumes about 0.8–1.2 million subagent tokens and at least 20 minutes (`snapshot/workflow-design.md:line unavailable`). That makes every-build judging conditional on an owner-approved latency and token budget; correctness alone does not make the current design economically suitable.
+
+5. **my #9 — settle the data contract before wiring the gate.** The documented three-state contract is insufficient beside the five learned dispositions—pass, fail, needs a reviewer, not applicable, and could not run (`snapshot/docs/evaluator/BACKLOG.md:line unavailable`; supplied memory-check report at `runs/20261017-memory-check/report.md:line unavailable`). I do not know the actual `DATA.md` schema, whether missing artifacts block release, or how UNKNOWN maps into the guard. That ambiguity is a blocker, not an implementation detail.
+
+6. **my #5 and my #13 — make one reversible change, then pilot it.** The required order is:
+   1. **Now:** define the status/reason schema, `MEETS` rule, and owner policy for reviewer, N/A, crash, timeout, and missing output. This serves every EV state and R12.2.
+   2. **Now:** enforce proof before PASS and successful reproduction before FAIL; malformed evidence, crashes, and timeouts must become UNKNOWN. This serves the vision’s evidence/reproduction invariants.
+   3. **Now:** ingest canonical use cases and map them to requirements and evidence. This serves R12.2 and product-vision evaluation.
+   4. **Now:** add a versioned guard adapter that invokes `guard/src/cli.ts fail --found-by evaluator` only for an adjudicated evaluator FAIL; UNKNOWN and operational errors must be routed to the owner’s review policy rather than silently approving or inventing a failure. This serves the guard boundary.
+   5. **Then:** run an owner-adjudicated pilot and measure correctness, tokens, wall time, and false decisions. Universal rollout and performance optimization can wait; they cannot wait past this gate.
+
+   This is also a **proposed change to the pattern**: each timestamped evaluation progress record should include the requirement ID, current disposition, evidence/reproduction link, and cost, rather than recording activity alone. That changes progress reporting from “work happened” to “a checkable claim happened.”
+
+## What I need to know
+
+- A standard session able to read the repository (`mcode --mode standard` or `mcode exec --mode standard`) is needed to inspect the supplied snapshot copies and provide real `path:line` citations.
+- What are all 26 EV ids, and which test and implementation lines enforce each one? I need this to name compliance and non-compliance by EV id rather than by theme.
+- Does every PASS have a machine-checkable evidence reference, and what happens when that evidence is absent, stale, malformed, or unverifiable?
+- Does every FAIL require a successful reproduction, and were the first-run 28 records formally labelled FAIL or merely findings awaiting triage?
+- Where are crashes, subprocess termination, and timeouts caught, and can any of them produce PASS, FAIL, `MEETS`, a missing artifact interpreted as success, or malformed output consumed by the guard?
+- What exactly does `snapshot/docs/evaluator/DATA.md` prescribe, and can it losslessly represent N/A, needs-reviewer, could-not-run, evidence, reproduction, and overall disposition?
+- What does the owner require for UNKNOWN, N/A, could-not-run, and missing evaluator output: block, request review, retry, or approve?
+- Where are canonical use cases stored, and how should an owner correction enter the evaluator’s input?
+
+## Costs and risks
+
+- **State contract — my #5 and my #9:** adding explicit states and reasons requires changing the vision, data schema, workflow, guard adapter, and tests. The risk is changing guard semantics accidentally; mitigate it with a versioned compatibility contract.
+- **Evidence and fault gates — my #2:** validation and fault-injection tests add implementation and runtime cost. Leaving them out risks treating absence of evidence as success or an operational failure as a product defect.
+- **Use-case ingestion — my #3:** use cases increase input size and evaluation cost. Ignoring them leaves the evaluator judging stated requirements rather than actual user outcomes.
+- **Guard adapter — my #5:** another boundary can be wrong or stale. The adapter must default to no evaluator-failure command unless the report identity, verdict, evidence, and reproduction validate.
+- **Calibration before universal rollout — my #13 and my #18:** the pilot consumes substantial tokens and time and delays enforcement. That price buys evidence that automation will not launder uncertainty or unreproduced findings into rejection.
+
+## How we would know I was right
+
+- Every one of the 26 EV requirements has a traceable test and implementation path; mutation testing shows that removing required proof or reproduction changes the result away from PASS or FAIL.
+- A crash, forced termination, timeout, malformed report, missing evidence reference, and missing artifact all produce explicit UNKNOWN/could-not-run output and never invoke `fail --found-by evaluator`.
+- On an owner-labelled calibration corpus, every evaluator FAIL has a reproduced defect, every PASS has accepted evidence, and no UNKNOWN is silently treated as approval. Any missed product defect blocks universal deployment.
+- An end-to-end guard test confirms that only confirmed evaluator or owner failures increment the count, while reviewer, N/A, could-not-run, and missing-output cases follow the owner’s declared policy.
+- Median and worst-case evaluation time and tokens are measured against an owner-approved budget; optimization and every-build rollout happen only after that accuracy gate passes.
+
+**not ready because**  
+**the first live run reproduced none of 28 FAILs, while use-case coverage, five-state handling, and fault-safe UNKNOWN behavior are not demonstrated;**  
+**at 0.8–1.2M subagent tokens and 20+ minutes per run, it is not yet a reliable or economical sole gate for every build.**
