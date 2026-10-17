@@ -47,7 +47,9 @@ function childrenCount(full: string): number | null {
 /**
  * The agent memory the design places in the home folder (`docs/memory-system/SOURCE_OF_TRUTH.md`, What it is
  * for): one folder per agent name. The tool cannot know which agents work on the project, so it reports the
- * names it finds, and absent when there is no such folder.
+ * names it finds, and absent when there is no such folder. Only a child folder is one: a file that sits in the
+ * agent-memory folder is not an agent's folder, and naming it as one reported a location the guideline does not
+ * have (F1, C11).
  */
 function agentMemory(home: string): Location[] {
   const folder = path.join(home, ".claude", "agent-memory");
@@ -60,7 +62,10 @@ function agentMemory(home: string): Location[] {
   if (!isFolder(folder)) return [absent];
   let names: string[] = [];
   try {
-    names = readdirSync(folder).sort();
+    names = readdirSync(folder, { withFileTypes: true })
+      .filter((one) => one.isDirectory())
+      .map((one) => one.name)
+      .sort();
   } catch {
     return [absent];
   }

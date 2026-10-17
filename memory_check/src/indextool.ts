@@ -123,16 +123,19 @@ export function runMemoryIndex(root: string): IndexToolRun {
     const perFile = PER_FILE.exec(message);
     const problem = perFile ? perFile[2]! : message;
     const id = idOfProblem(problem);
-    if (id && !/\(warning\)$/.test(message)) {
-      // memory_index.py calls a content problem in an inactive entry a warning, and exits 0 on it: a clause it
-      // only warns about is not a break here either (C3: never report a pass the tool fails).
+    // memory_index.py calls a content problem in an inactive entry a warning and exits 0 on it, so one old entry
+    // never blocks the build (its B2.5). W1.1a's fails_if names no status, and an entry whose kind does not match
+    // its prefix breaks it whatever the entry's status is: that warning is a break here (C6). Every other warning
+    // stays a note, so a clause the tool only warns about is never reported as a break (C3).
+    const warned = /\(warning\)$/.test(message);
+    if (id && (!warned || id === "W1.1a")) {
       for (const one of id.split(",")) add(one, message);
       continue;
     }
     // A problem the tool stopped on that names no requirement id: it is not a pass and not a fail here — it is a
     // check that could not run (C2, C3). Diff lines and fix hints arrive only after the size line, once the entries
     // were read, so they are never mistaken for one.
-    if (!/\(warning\)$/.test(message) && sizeLine === null && !noMemory && !unbornHead && code !== 0) {
+    if (!warned && sizeLine === null && !noMemory && !unbornHead && code !== 0) {
       unmapped.push(message);
       continue;
     }

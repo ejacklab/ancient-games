@@ -13,10 +13,13 @@ import {
   checkRenames,
 } from "./gitrequirements.ts";
 import {
+  type GitErrors,
   type SnapshotInfo,
+  type StagedEntry,
   type UnstagedMemory,
   stagedEntries,
   stagedMemoryPaths,
+  stagedMemoryRemovals,
   snapshotInfo,
   unstagedMemoryFiles,
 } from "./gitchecks.ts";
@@ -42,6 +45,8 @@ export interface CheckRun {
   readonly snapshot: SnapshotInfo;
   /** R1: the files under `project-memory/` changed but not staged, so not checked (C5). */
   readonly unstaged: UnstagedMemory;
+  /** The entry files of the staged state, with the paths their findings are named by (R2, C12). */
+  readonly stagedEntries: readonly StagedEntry[];
   readonly locations: readonly Location[];
   readonly results: readonly RequirementResult[];
   readonly indexTool: IndexToolRun;
@@ -110,8 +115,12 @@ const snapshotGitErrors: string[] = [];
   // working tree is what F1 names, and a staged-but-deleted memory is still memory the checks must judge. The read
   // that says whether any memory is staged keeps its own reasons: a read that failed is never read as "there is no
   // memory", which would make every record "not applicable" and the run exit 0 (E-1, C2).
+  // C2: a memory staged for deletion is in no `ls-files --cached`, but its deletion is K4.1's break — read the
+  // staged diff before calling the memory absent (U2: the planted break fails).
   const memoryPathErrors: string[] = [];
-  const projectMemory = stagedMemoryPaths(root, memoryPathErrors).length > 0;
+  const stagedMemory = stagedMemoryPaths(root, memoryPathErrors);
+  const removals = stagedMemory.length === 0 ? stagedMemoryRemovals(root, memoryPathErrors) : [];
+  const projectMemory = stagedMemory.length > 0 || removals.length > 0;
   const stagedRead: StagedRead = { failed: memoryPathErrors.length > 0, reason: memoryPathErrors.join("; ") || null };
   snapshotGitErrors.push(...memoryPathErrors);
   const cachePresent = locations.some((one) => one.name === "project-memory/.cache/" && one.present);
@@ -174,13 +183,14 @@ const snapshotGitErrors: string[] = [];
   // --- the Core requirements of CACHES.md --------------------------------------------------------------------------
 
   for (const record of guidelines.caches) {
-    results.push(cachesResult(record.id, record.failsIf, cachePresent, root));
+    results.push(cachesResult(record.id, record.failsIf, cachePresent, root, snapshotGitErrors));
   }
 
   return {
     root,
     snapshot,
     unstaged,
+    stagedEntries: staged,
     locations,
     results,
     indexTool,
@@ -442,7 +452,13 @@ function fromOutcome(
   return { ...base, verdict: "pass", evidence: outcome.clean };
 }
 
-function cachesResult(id: string, failsIf: string, cachePresent: boolean, root: string): RequirementResult {
+function cachesResult(
+  id: string,
+  failsIf: string,
+  cachePresent: boolean,
+  root: string,
+  errors: GitErrors,
+): RequirementResult {
   const base = { id: `CACHES:${id}`, level: "not stated in CACHES.md", failsIf };
   // C4, C6 as changed: with no cache folder every cache requirement is "not applicable", B2.2 included. The cache
   // folder is named from the working tree and nowhere else: it is git-ignored, so it is in no snapshot.
@@ -457,7 +473,7 @@ function cachesResult(id: string, failsIf: string, cachePresent: boolean, root: 
   }
   // C6, v1: of the Core requirements only B2 (its clause B2.2) and Rd1 (its clause Rd1.1) are checked.
   if (id === "B2") return named(base, "B2.2", fromOutcome(base, checkB22(root)));
-  if (id === "Rd1") return named(base, "Rd1.1", fromOutcome(base, checkRd1(root)));
+  if (id === "Rd1") return named(base, "Rd1.1", fromOutcome(base, checkRd1(root, errors)));
   return {
     ...base,
     verdict: "needs a reviewer",

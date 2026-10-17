@@ -153,6 +153,25 @@ export function stagedMemoryPaths(root: string, errors: GitErrors): string[] {
   return raw.split("\0").filter((record) => record !== "");
 }
 
+/**
+ * The memory paths the staged state deletes or renames away. A staged `git rm` of the last memory leaves nothing in
+ * `git ls-files --cached`, so a read of the staged paths alone cannot tell "there is no memory here" from "the
+ * memory is being deleted" — and the deletion is the break K4.1 has to report (C2). Only asked when no memory is
+ * staged, since one path in the staged state is memory enough.
+ */
+export function stagedMemoryRemovals(root: string, errors: GitErrors): string[] {
+  if (gitRead(root, ["rev-parse", "--verify", "--quiet", "HEAD"], errors, true).trim() === "") {
+    return []; // nothing is staged against: with no commit there is no previous state to diff
+  }
+  const raw = gitRead(root, ["diff", "--cached", "-M", "--name-status", "--diff-filter=DR", "--", MEMORY], errors);
+  const paths: string[] = [];
+  for (const line of lines(raw)) {
+    const fields = line.split("\t");
+    paths.push(fields[fields.length - 1] ?? "");
+  }
+  return paths.filter((one) => one !== "");
+}
+
 /** The staged entry files and their staged bytes: `git ls-files -s`, then one `cat-file --batch`. */
 export function stagedEntries(root: string, errors: GitErrors): StagedEntry[] {
   const raw = gitRead(root, ["ls-files", "-s", "-z", "--", ENTRIES], errors);
@@ -167,6 +186,33 @@ export function stagedEntries(root: string, errors: GitErrors): StagedEntry[] {
   }
   const blobs = catFileBatch(root, wanted.map((entry) => entry.sha), errors);
   return wanted.map((entry) => ({ ...entry, text: blobs.get(entry.sha) ?? "" }));
+}
+
+/**
+ * The staged bytes of the given paths, keyed by path: the snapshot this run reports on (C5). One `git ls-files -s`
+ * for all of them and one `git cat-file --batch` for the blobs. A path in no staged version is absent from the map
+ * — git knows nothing of it, so there is nothing to read for it in the snapshot.
+ */
+export function stagedFiles(root: string, paths: readonly string[], errors: GitErrors): Map<string, string> {
+  // A path outside the repository is not in any snapshot, and naming it in a pathspec fails the whole call.
+  const wanted = [...new Set(paths.filter((path) => path !== "" && !path.startsWith("..") && !path.startsWith("/")))];
+  const files = new Map<string, string>();
+  if (wanted.length === 0) return files;
+  const raw = gitRead(root, ["ls-files", "-s", "-z", "--", ...wanted], errors);
+  const shas = new Map<string, string>();
+  for (const record of raw.split("\0")) {
+    if (record === "") continue;
+    const [meta, path] = record.split("\t");
+    const fields = (meta ?? "").trim().split(/\s+/);
+    if (!path || fields.length < 3 || fields[2] !== "0") continue;
+    shas.set(path, fields[1] ?? "");
+  }
+  const blobs = catFileBatch(root, [...shas.values()], errors);
+  for (const [path, sha] of shas) {
+    const text = blobs.get(sha);
+    if (text !== undefined) files.set(path, text);
+  }
+  return files;
 }
 
 /** One `git cat-file --batch` for many blobs; missing blobs come back absent, not as an error. */

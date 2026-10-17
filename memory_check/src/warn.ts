@@ -6,10 +6,13 @@
 // The lines are built from three things and nothing else: the requirement id, the category that id stands for, and the
 // file names in the evidence. No evidence prose and no part of an entry is ever copied into them, because the
 // evidence quotes the entry — a claim, a source — and a warning is read in a session's first lines (R2).
+import type { StagedEntry } from "./gitchecks.ts";
 import type { CheckRun, RequirementResult, Verdict } from "./checks.ts";
 
-/** The file names in an evidence line, and nothing else of the entry: no claim, no body, no text. */
-const FILE_NAME = /(project-memory\/entries\/[\w.\-]+|project-memory\/INDEX\.md|AGENTS\.md)/g;
+/** The file names in an evidence line, and nothing else of the entry: no claim, no body, no text. An entry file is
+ *  named by the staged paths this run parsed, not by a pattern over the evidence: memory_index.py names an entry by
+ *  its bare file name, and a name with a space or a non-ASCII character in it was cut short (C12, A5). */
+const FILE_NAME = /(project-memory\/INDEX\.md|AGENTS\.md)/g;
 
 /** What each id's failure is about, in words of the guideline rather than of the entry. */
 const CATEGORY: Record<string, string> = {
@@ -45,12 +48,18 @@ const SAYS: Record<Verdict, string> = {
   "not applicable": "",
 };
 
-function filesIn(evidence: string): string[] {
-  return [...new Set([...evidence.matchAll(FILE_NAME)].map((match) => match[1]!))];
+function filesIn(evidence: string, entries: readonly StagedEntry[]): string[] {
+  const found = [...evidence.matchAll(FILE_NAME)].map((match) => match[1]!);
+  // An entry is named by its full path, matched on the bare name the findings carry — the path it has in the staged
+  // state, so a name with a space or a non-ASCII character in it is named whole (C12, A5).
+  for (const one of entries) {
+    if (evidence.includes(one.name)) found.push(one.path);
+  }
+  return [...new Set(found)];
 }
 
-function warningFor(result: RequirementResult): string {
-  const files = filesIn(result.evidence);
+function warningFor(result: RequirementResult, entries: readonly StagedEntry[]): string {
+  const files = filesIn(result.evidence, entries);
   const where = files.length === 0 ? "" : ` — files: ${files.join(", ")}`;
   return `memory-check: ${result.id} ${SAYS[result.verdict]} — ${CATEGORY[result.id] ?? GENERIC[result.verdict]}${where}`;
 }
@@ -66,7 +75,7 @@ export function renderWarning(run: CheckRun): string {
         result.level === "MUST" &&
         (result.verdict === "fail" || result.verdict === "could not run"),
     )
-    .map(warningFor);
+    .map((result) => warningFor(result, run.stagedEntries));
   const missingAgents = run.results.find((result) => result.id === "F1" && result.verdict === "fail");
   if (missingAgents) {
     lines.push(`memory-check: AGENTS.md is missing — file: ${run.root}/AGENTS.md (it is required, F1)`);
