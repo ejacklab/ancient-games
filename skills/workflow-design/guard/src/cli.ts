@@ -18,6 +18,7 @@ import { ExpectError, declareRed, runRed } from "./expect.ts";
 import { DeadlineError, deadlineEnd, deadlineStatus, endDeadline, readDeadlines, startDeadline } from "./deadline.ts";
 import { PathError, checkPath, parents, skeleton } from "./paths.ts";
 import { rates, ratesMarkdown } from "./rates.ts";
+import { AGENTS, DEFAULT_STORE, KINDS, checkLessons, factLine, lessonLine, lessonsFor as matchLessons, readLessons } from "./lessons.ts";
 import { RegisterError, coverage, loadRegister, validateRegister } from "./register.ts";
 import { checkResult, lintCommand, loadEngines } from "./traps.ts";
 import type { EngineCall, Finding, HookEnv } from "./types.ts";
@@ -53,6 +54,8 @@ const USAGE = [
   "  criteria new [--session S] [--request TEXT] [--from-register FILE] [--code] [--out F]",
   "                                  print or write a criteria file; --code adds the tests item",
   "  criteria score <file>           score a criteria file: met/total and the unmarked ids",
+  "  lessons for --agent A [--kinds K,…] [--paths P,…] [--commands C,…] [--dir D]   the matching agent lessons and project facts",
+  "  lessons check [--dir D]         list invalid lesson files",
 ].join("\n");
 
 class UsageError extends Error {}
@@ -130,7 +133,7 @@ function hook(args: string[]): number {
       : "harness-guard: hook: stdin is not one JSON payload; nothing to check\n");
     return OK;
   }
-  const env: HookEnv = { cwd: process.cwd(), running: runningCommands(), now: () => new Date() };
+  const env: HookEnv = { cwd: process.cwd(), running: runningCommands(), now: () => new Date(), lessons: DEFAULT_STORE };
   const result = handleHook(payload, env);
   if (result.stdout !== "") out(result.stdout);
   if (result.stderr !== "") process.stderr.write(result.stderr.endsWith("\n") ? result.stderr : `${result.stderr}\n`);
@@ -567,6 +570,49 @@ function criteriaCommand(args: string[]): number {
   }
 }
 
+// ---- lessons (Round 18) -----------------------------------------------------------------------------------------
+
+function listFlag(args: string[], flag: string): string[] {
+  const value = flagValue(args, flag);
+  return value === null ? [] : value.split(",").map((item) => item.trim()).filter((item) => item !== "");
+}
+
+function lessonsFor(args: string[]): number {
+  const agent = flagValue(args, "--agent");
+  if (agent === null || !(AGENTS as readonly string[]).includes(agent) || agent === "all") {
+    usageError(`lessons for: --agent is one of ${AGENTS.filter((a) => a !== "all").join(", ")}`);
+  }
+  const kinds = listFlag(args, "--kinds");
+  const unknown = kinds.find((kind) => !(KINDS as readonly string[]).includes(kind));
+  if (unknown !== undefined) usageError(`lessons for: unknown kind ${unknown} (kinds: ${KINDS.join(", ")})`);
+  const store = flagValue(args, "--dir") ?? DEFAULT_STORE;
+  const root = guardRoot(process.cwd());
+  const found = matchLessons(store, {
+    agent, kinds, paths: listFlag(args, "--paths"), commands: listFlag(args, "--commands"), root,
+  });
+  const lines = [...found.lessons.map(lessonLine), ...found.facts.map((fact) => factLine(root, fact))];
+  if (lines.length > 0) out(lines.join("\n"));
+  return OK;
+}
+
+function lessonsCheck(args: string[]): number {
+  const store = flagValue(args, "--dir") ?? DEFAULT_STORE;
+  const bad = checkLessons(store);
+  for (const entry of bad) out(`${entry.file}: ${entry.reason}`);
+  if (bad.length === 0) out(`lessons ok: ${readLessons(store).length} in ${store}`);
+  return bad.length === 0 ? OK : FINDINGS;
+}
+
+function lessonsCommand(args: string[]): number {
+  const sub = args[0];
+  const rest = args.slice(1);
+  switch (sub) {
+    case "for": return lessonsFor(rest);
+    case "check": return lessonsCheck(rest);
+    default: return usageError(`lessons: needs for or check (got ${sub ?? "nothing"})`);
+  }
+}
+
 // ---- dispatch ---------------------------------------------------------------------------------------------------
 
 function run(args: string[]): number {
@@ -588,6 +634,7 @@ function run(args: string[]): number {
     case "rates": return ratesCommand(rest);
     case "path": return pathCommand(rest);
     case "criteria": return criteriaCommand(rest);
+    case "lessons": return lessonsCommand(rest);
     case undefined: return usageError("no command given");
     case "help":
     case "--help": return usageError("help is the usage text above");

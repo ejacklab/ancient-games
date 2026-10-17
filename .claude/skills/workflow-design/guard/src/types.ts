@@ -322,6 +322,7 @@ export interface HookEnv {
   cwd: string;
   running: string[];
   now: () => Date;
+  lessons?: string; // Round 18, L5: the agent-lessons store the PreToolUse hook reads; none in most tests
 }
 
 export interface HookResult {

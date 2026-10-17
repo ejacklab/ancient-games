@@ -14,6 +14,7 @@ import { claimDeadlines, deadlineStatus, sessionDeadline } from "./deadline.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
 import { FAILED_SUMMARY, checkResult, commandWord, engineCallSite, inlineScripts, lintCommand, missingReads, recognizeTestRun, segments, testRunFiles } from "./traps.ts";
+import { type Query, factLine, lessonLine, lessonsFor, takeUnshown } from "./lessons.ts";
 import { coveringDeclarations } from "./expect.ts";
 import type { Finding, GuardErrorRecord, HookEnv, HookResult, PromptRecord, TouchedRecord, RaisedRecord, RedRecord, SuccessRecord } from "./types.ts";
 
@@ -102,8 +103,49 @@ function fails(findings: Finding[]): Finding[] {
 
 // ---- PreToolUse --------------------------------------------------------------------------------------------------
 
+const FILE_TOOLS = new Set(["Write", "Edit", "MultiEdit"]);
+
+// Round 18, L5: the lessons and project facts for this call that this session has not been given yet, as lines.
+function lessonLines(payload: Record<string, unknown>, env: HookEnv): string[] {
+  if (env.lessons === undefined) return [];
+  const root = guardRoot(env.cwd);
+  const input = objectField(payload, "tool_input");
+  const tool = payload.tool_name;
+  const query: Query = { agent: "claude-main", root };
+  if (tool === "Bash") {
+    query.commands = segments(text(input.command)).map((part) => commandWord(part.text)).filter((word): word is string => word !== null);
+  } else if (typeof tool === "string" && FILE_TOOLS.has(tool) && text(input.file_path) !== "") {
+    query.paths = [path.resolve(env.cwd, text(input.file_path))];
+  } else {
+    return [];
+  }
+  const found = lessonsFor(env.lessons, query);
+  const keyed = [
+    ...found.lessons.map((lesson) => ({ key: `lesson:${lesson.slug}`, line: lessonLine(lesson) })),
+    ...found.facts.map((fact) => ({ key: `fact:${path.relative(root, fact.file)}:${fact.fact}`, line: factLine(root, fact) })),
+  ];
+  const fresh = new Set(takeUnshown(root, sessionOf(payload), keyed.map((entry) => entry.key)));
+  return keyed.filter((entry) => fresh.has(entry.key)).map((entry) => entry.line);
+}
+
+// Round 18, L6: the lessons are given by holding the call once (provisional, run 20261017-agent-lessons delivery-q:
+// additionalContext reaches the agent "alongside the tool result", too late for the call it is about). The shown
+// mark is already written (takeUnshown), so the retry runs.
+export const LESSON_HOLD = "harness-guard lesson — not a block for a mistake: read it, then send the call again, changed only if the lesson applies to it:";
+
+function lessonsResult(lines: string[]): HookResult {
+  if (lines.length === 0) return quiet();
+  return {
+    exitCode: 0,
+    stdout: `${JSON.stringify({
+      hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `${LESSON_HOLD}\n${lines.join("\n")}` },
+    })}\n`,
+    stderr: "",
+  };
+}
+
 function handlePreToolUse(payload: Record<string, unknown>, env: HookEnv): HookResult {
-  if (payload.tool_name !== "Bash") return quiet();
+  if (payload.tool_name !== "Bash") return lessonsResult(lessonLines(payload, env));
   const command = text(objectField(payload, "tool_input").command);
   if (command === "") return quiet();
   const findings = fails(lintCommand(command, { repoRoot: guardRoot(env.cwd), running: env.running }));
@@ -113,7 +155,8 @@ function handlePreToolUse(payload: Record<string, unknown>, env: HookEnv): HookR
   // A program read from a heredoc that the shell's quoting can change is held the same way (round 15, P4).
   const scripts = inlineScripts(command).map((script) =>
     `inline-script: ${script.interpreter} reads its program from the <<${script.delimiter} heredoc, whose body holds ${script.holds}, so what it gets depends on the shell's quoting. Fix: write the script to a file with the Write tool (in the run folder when there is one) and run that file.`);
-  if (findings.length === 0 && reads.length === 0 && scripts.length === 0) return quiet();
+  // A call denied for another reason gets the deny alone (L5); its lessons wait for a call that runs.
+  if (findings.length === 0 && reads.length === 0 && scripts.length === 0) return lessonsResult(lessonLines(payload, env));
   const reason = [...findings.map(findingText), ...reads, ...scripts].join("; ");
   return {
     exitCode: 0,

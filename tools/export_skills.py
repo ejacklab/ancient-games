@@ -147,6 +147,10 @@ def main() -> int:
             continue
         copy_deref(child, wd_dst / child.name)
 
+    # agent-lessons: full skill, so the guard in the bundle finds its lessons store beside it (guard SPEC Round 18).
+    for child in (SRC / "agent-lessons").iterdir():
+        copy_deref(child, DEST / "agent-lessons" / child.name)
+
     # Single-file skills, with their references/ folder when they have one (requirement-check keeps R13 there).
     for name in SINGLE_FILE_SKILLS:
         copy_deref(SRC / name / "SKILL.md", DEST / name / "SKILL.md")
@@ -161,7 +165,7 @@ def main() -> int:
     if links:
         print(f"ERROR: symlinks remain in the bundle: {links}")
         return 1
-    print(f"exported skills/ — workflow-design + {', '.join(SINGLE_FILE_SKILLS)}, no symlinks")
+    print(f"exported skills/ — workflow-design + agent-lessons + {', '.join(SINGLE_FILE_SKILLS)}, no symlinks")
     return 0
 
 

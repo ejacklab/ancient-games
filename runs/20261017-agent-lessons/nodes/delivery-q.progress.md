@@ -1,0 +1,29 @@
+- 2026-10-17T14:56:41+08:00 · linus · start · codex
+- 2026-10-17T14:56:42+08:00 · dave · start · claude
+- 2026-10-17T14:56:42+08:00 · dario · start · claude
+- 2026-10-17T14:56:42+08:00 · sun-tzu · start · dsh
+- 2026-10-17T14:56:43+08:00 · fan-li · start · agy
+- 2026-10-17T14:57:27+08:00 · fan-li · fail · agy exit 0
+- 2026-10-17T14:57:27+08:00 · fan-li · start · claude (fallback)
+- 2026-10-17T14:58:01+08:00 · linus · done · codex exit 0
+- 2026-10-17T14:58:13+08:00 · dario · done · claude exit 0
+- 2026-10-17T14:58:13+08:00 · check-linus · start · 
+- 2026-10-17T14:58:15+08:00 · check-linus · done · linus check passed, no FAIL linus lines
+- 2026-10-17T14:58:21+08:00 · check-dario · start · 
+- 2026-10-17T14:58:23+08:00 · check-dario · done · dario check has no FAIL lines; only the other five experts show no answer file (ignored per step)
+- 2026-10-17T14:58:35+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-17T14:58:48+08:00 · check-sun-tzu · start · 
+- 2026-10-17T14:58:51+08:00 · check-sun-tzu · done · sun-tzu check clean, no FAIL lines for sun-tzu
+- 2026-10-17T14:59:28+08:00 · fan-li · done · claude exit 0
+- 2026-10-17T14:59:41+08:00 · check-fan-li · start · 
+- 2026-10-17T14:59:44+08:00 · check-fan-li · done · fan-li answer file checked, no fan-li failures
+- 2026-10-17T14:59:59+08:00 · dave · done · claude exit 0
+- 2026-10-17T15:00:12+08:00 · check-dave · start · 
+- 2026-10-17T15:00:14+08:00 · check-dave · done · dave check passed, no FAIL dave lines (other experts' no-answer-file lines ignored)
+- 2026-10-17T15:00:23+08:00 · lao-tzu · start · opencode
+- 2026-10-17T15:01:23+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-17T15:01:34+08:00 · check-lao-tzu · start · 
+- 2026-10-17T15:01:37+08:00 · check-lao-tzu · failed · two quoted Chinese passages not found in its source list (lao-tzu)
+- 2026-10-17T15:01:54+08:00 · compare · start · 
+- 2026-10-17T15:01:54+08:00 · compare · start · 
+- 2026-10-17T15:04:01+08:00 · compare · done · compare.md written; 5 B, 1 C (Dario); lao-tzu check fail noted; start line was logged twice by a duplicated call; hooks.ts changed mid-run (A already wired, uncommitted)

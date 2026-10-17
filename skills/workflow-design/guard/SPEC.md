@@ -800,3 +800,51 @@ or piped to `tail` or `grep`, with no summary is a failure; a runner before a gu
 non-last runner whose summary shows failures, a last runner, or a second runner last is not `R12.2-test-failed`;
 `pytest -q | (cat)` with a summary in stdout is not one; a two-runner record names the first runner when the last made
 the exit.
+
+## Round 18 — agent lessons, delivered (plan `agent-lessons-version-b`; run 20261017-agent-lessons)
+
+A lesson is what an insight teaches an agent type, or every agent, in any project; a project fact is what it says about
+this project's code. Lessons live in the skill `.claude/skills/agent-lessons/lessons/`; project facts in a `LESSONS.md`
+in the code's own folder. The guard gives the main agent the ones that match what it is about to do.
+
+- **L1 A lesson file.** `lessons/<slug>.md`, `<slug>` lower-case letters, digits and dashes. Front matter between two
+  `---` lines, one `key: value` per line; lists in `[a, b]` form:
+
+  | key | value | required |
+  |---|---|---|
+  | `agents` | list of `all`, `claude-main`, `opencode`, `codex`, `agy`, `mcode`, `dsh` | yes, not empty |
+  | `kinds` | list of `test`, `code-edit`, `engine-call`, `brief`, `command` | yes, not empty |
+  | `paths` | list of globs matched against a file path relative to its git root | no (default `[]`) |
+  | `commands` | list of command words (M1's, wrappers stripped) | no (default `[]`) |
+  | `from` | `runs/<run>/insight.md#<id>` or a memory file name | yes |
+  | `enforced_by` | a check or test that now enforces it | no |
+
+  The body (after the second `---`, trimmed) is the lesson's text, not empty. A file that breaks any of these is
+  skipped by readers and reported by `lessons check`.
+- **L2 A project fact.** A line ``- `<file name>` — <fact>`` in `LESSONS.md` in the folder that holds that file; the
+  fact applies to the file of that name in that folder. Other lines are prose and ignored.
+- **L3 Which lessons match.** For an agent `A`: the lesson's `agents` holds `all` or `A`, and at least one of — a
+  path given matches one of its `paths`; a path given is a test file (a path segment `test` or `tests`, or a name
+  containing `.test.`, `_test.` or starting `test_`) and its `kinds` holds `test`; a path given is any other file and
+  its `kinds` holds `code-edit`; a command word given is in its `commands`; a kind given is in its `kinds`. A lesson
+  with `enforced_by` set matches as its pointer: "<slug>: enforced by <enforced_by>".
+- **L4 `lessons for`.** `cli.ts lessons for --agent A [--kinds K,…] [--paths P,…] [--commands C,…] [--dir D]` prints
+  one line per matching lesson, `- <text> (<slug>)`, then one line per project fact of the paths given,
+  `- <file>: <fact>`; nothing when none match; exit 0. `--dir` defaults to the store beside the guard
+  (`../../agent-lessons/lessons` from `src/`). An unknown agent or kind is a usage error (2). `lessons check [--dir D]`
+  lists each invalid lesson file with its reason; exit 1 when there is one.
+- **L5 The hook.** With a lessons store in its environment (the CLI's `hook claude` gives the default store; tests give
+  a folder or none), PreToolUse gives `claude-main` the lessons that match: for Write, Edit and MultiEdit, by
+  `tool_input.file_path` (and that file's project facts); for Bash, by the command words of its segments. Each lesson
+  and fact is given once per session (`.harness-guard/lessons-shown.json`, `{session: [keys]}`). A call the guard
+  denies for another reason gets the deny alone. How the lessons are given is L6.
+- **L6 How they are given: the call is held once** (provisional, run 20261017-agent-lessons, `delivery-q`: five of six
+  experts; `additionalContext` reaches the agent "alongside the tool result", too late for the call it is about). The
+  first call in a session that a not-yet-given lesson or fact matches is denied, `permissionDecision: "deny"`, with
+  the reason `LESSON_HOLD` (a lesson, not a block for a mistake: read it, then send the call again, changed only if it
+  applies) followed by one line per new lesson and fact — all of them in one hold. They are marked given before the
+  hold returns, so the retry runs. A hold writes no journal record.
+
+Fails-if: a lesson that does not match is given, or a matching one is not; the retry after a hold is held again; a lesson or fact is given twice in one
+session; a hook without a store gives anything; an invalid lesson file breaks a reader instead of being skipped; a
+project fact reaches an edit of a file of another name or folder; `lessons for` with an unknown agent exits 0.
