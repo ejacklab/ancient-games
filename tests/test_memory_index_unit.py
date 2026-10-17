@@ -9,6 +9,7 @@ Imported by path, not by name: `tools/` is not a package and this test must not 
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -171,6 +172,80 @@ def test_an_untracked_entry_is_an_error_in_every_status():
         assert "not known to git, git add it first" in entry.errors, status
 
 
+# --- known credentials (B2.8) -----------------------------------------------------------------------------------
+# Each value is the shortest text that matches its form, so `value[:-1]` is the one character too short.
+CREDENTIALS = [
+    ("aws key id", "AKIA" + "A2Z7" * 4),
+    ("aws key id", "ASIA" + "Z7A2" * 4),
+    ("github token", "ghp_" + "aZ09" * 9),
+    ("github token", "ghr_" + "z09A" * 9),
+    ("github token", "github_pat_" + "aZ09_" * 16 + "ab"),
+    ("gitlab token", "glpat-" + "aZ09-_" * 3 + "ab"),
+    ("slack token", "xoxb-1"),
+    ("slack token", "xoxp-7"),
+    ("slack token", "xoxe-3"),
+    ("anthropic key", "sk-ant-api03-"),
+    ("google api key", "AIza" + "aZ09-_" * 5 + "abcde"),
+]
+
+
+@pytest.mark.parametrize("kind,value", CREDENTIALS)
+def test_each_known_credential_form_is_named_by_its_kind(kind, value):
+    """B2.8 — the fixed-prefix forms are compiled once and named, so a report says what it found without saying it."""
+    assert memory_index.credential_kind(f"example: {value}") == kind
+
+
+@pytest.mark.parametrize("kind,value", CREDENTIALS)
+def test_a_value_one_character_short_is_not_a_credential(kind, value):
+    """B2.8 — there is no entropy rule and no waiver: only the exact fixed-prefix form is a credential."""
+    shortened = value[:-1]
+    assert memory_index.credential_kind(f"example: {shortened}") is None, shortened
+
+
+@pytest.mark.parametrize("prefix", ["AKIA", "ghp_", "github_pat_", "glpat-", "xoxb-", "AIza", "sk-ant-"])
+def test_a_mentioned_prefix_is_not_a_credential(prefix):
+    """B2.8 — documentation that names a prefix, and no key, is not a credential."""
+    assert memory_index.credential_kind(f"The {prefix} prefix is documented.") is None
+
+
+@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
+def test_a_credential_is_an_error_in_every_status_without_its_text(status):
+    """B2.8 B2.5 — a retired entry holds a known credential like any other, and the report never quotes it."""
+    value = "ghp_" + "aZ09" * 9
+    raw = ENTRY_TEXT.replace("status: active", f"status: {status}").replace("Use code-point order.", f"Key: {value}")
+    entry = memory_index.parse_entry("D-one.md", raw)
+    assert entry.errors == [f"possible credential (github token) on line 6"], entry.errors
+    assert entry.warnings == []
+    assert value not in "".join(entry.errors)
+
+
+@pytest.mark.parametrize("body", ["A" * 64, "A" * 32 + "\n" + "B" * 32, "A" * 65])
+def test_a_private_key_body_of_64_characters_or_more_is_a_credential(body):
+    """B2.8 — the body between BEGIN and END is counted, over one line or wrapped over several."""
+    lines = ["-----BEGIN OPENSSH PRIVATE KEY-----", *body.split("\n"), "-----END OPENSSH PRIVATE KEY-----"]
+    assert memory_index.private_key_line(lines) == 1
+
+
+@pytest.mark.parametrize("body", ["", "A" * 63, "A" * 32 + "\n" + "B" * 31])
+def test_a_private_key_header_or_a_shorter_body_is_not_a_credential(body):
+    """B2.8 — a BEGIN line alone, and a body one character short, are documentation, not a key."""
+    lines = ["-----BEGIN RSA PRIVATE KEY-----", *body.split("\n"), "-----END RSA PRIVATE KEY-----"]
+    assert memory_index.private_key_line(lines) is None
+
+
+def test_a_private_key_body_without_its_end_line_is_not_a_credential():
+    """B2.8 — the form names an END line; a snippet that never reaches one is not yet a key body."""
+    assert memory_index.private_key_line(["-----BEGIN RSA PRIVATE KEY-----", "A" * 200]) is None
+
+
+def test_the_credential_line_is_the_begin_line_of_the_block():
+    """B2.8 — the report names the line a reader has to look at, which is where the block starts."""
+    raw = ENTRY_TEXT.replace("Use code-point order.", "-----BEGIN EC PRIVATE KEY-----\n" + "A" * 64
+                             + "\n-----END EC PRIVATE KEY-----")
+    entry = memory_index.parse_entry("D-one.md", raw)
+    assert entry.errors == ["possible credential (private key) on line 6"], entry.errors
+
+
 def test_unborn_head_and_a_revision_naming_no_commit_are_told_apart(tmp_path, monkeypatch):
     """C1.2 C1.3 — HEAD before the first commit is "nothing to check"; a revision that names no commit fails."""
     for name in [name for name in os.environ if name.startswith("GIT_")]:
@@ -238,6 +313,79 @@ def test_size_is_measured_in_lines_and_utf8_bytes():
     assert memory_index.size_report(rendered) == (
         f"INDEX.md: 5/{memory_index.MAX_LINES} lines, {byte_count}/{memory_index.MAX_BYTES} bytes"
     )
+
+
+# --- the limits (B4.1 B4.2 B4.5) --------------------------------------------------------------------------------
+def limit_row(unit, limit, *, agent="test-agent", basis="measured", source="a unit test"):
+    return {"agent": agent, "unit": unit, "limit": limit, "basis": basis, "source": source}
+
+
+def limits_from(rows):
+    return memory_index.parse_limits(json.dumps({"limits": rows}).encode("utf-8"))
+
+
+def test_the_smallest_row_per_unit_applies_and_the_example_fills_the_gaps():
+    """B4.1 — one limit per unit, the smallest among its rows; a unit no row names keeps the example."""
+    limits = limits_from([
+        limit_row("lines", 120, agent="agy"), limit_row("lines", 90, agent="codex"),
+        limit_row("characters", 8_000), limit_row("bytes", 20_000, basis="documented"),
+    ])
+    assert (limits.lines, limits.bytes, limits.characters) == (90, 20_000, 8_000)
+    assert limits.from_file is True
+    assert limits.source_line == f"limits: {memory_index.LIMITS_PATH}"
+
+
+def test_the_example_limits_name_themselves_as_the_example():
+    """B4.2 — a run with no limits file says so, so a number is never mistaken for a measurement."""
+    limits = memory_index.example_limits()
+    assert (limits.lines, limits.bytes, limits.characters) == (200, 24_000, None)
+    assert limits.from_file is False
+    assert limits.source_line == "limits: the design's example (no project-memory/start-limits.json)"
+
+
+@pytest.mark.parametrize("raw", [
+    b"{not JSON", b"\xff", b"[]", b"null", b"{}", b'{"limits": []}', b'{"limits": {}}',
+    b'{"limits": "rows"}', b'{"limits": [null]}', b'{"limits": [[]]}',
+    b'{"limits": [{"agent": "a", "unit": "lines", "basis": "measured", "source": "s"}]}',
+    b'{"limits": [{"agent": "a", "unit": "tokens", "limit": 10, "basis": "measured", "source": "s"}]}',
+    b'{"limits": [{"agent": "a", "unit": "lines", "limit": 10, "basis": "guessed", "source": "s"}]}',
+    b'{"limits": [{"agent": "a", "unit": "lines", "limit": 0, "basis": "measured", "source": "s"}]}',
+    b'{"limits": [{"agent": "a", "unit": "lines", "limit": 1.0, "basis": "measured", "source": "s"}]}',
+    b'{"limits": [{"agent": "a", "unit": "lines", "limit": true, "basis": "measured", "source": "s"}]}',
+    b'{"limits": [{"agent": 1, "unit": "lines", "limit": 10, "basis": "measured", "source": "s"}]}',
+    b'{"limits": [' + json.dumps(limit_row("lines", 200)).encode() + b', "row"]}',
+])
+def test_an_unusable_limits_file_is_a_problem_not_a_fallback(raw):
+    """B4.5 — bad JSON, schema, type or value, in any row, stops the run; the example is never used silently."""
+    with pytest.raises(memory_index.LimitsError):
+        memory_index.parse_limits(raw)
+
+
+def test_a_characters_limit_is_measured_in_code_points():
+    """B4.2 — code points, not UTF-8 bytes: an accented claim has fewer characters than bytes."""
+    rendered = memory_index.render_index(
+        memory_index.active_entries(
+            [memory_index.parse_entry(
+                "F-é.md", "---\nid: 14-10-accent-2026\nkind: fact\nstatus: active\n---\nCafé.\n**Why:** r\n")]
+        )
+    )
+    limits = limits_from([limit_row("characters", 500)])
+    assert memory_index.size_report(rendered, limits) == (
+        f"INDEX.md: 5/200 lines, {len(rendered)}/24000 bytes, {len(rendered.decode('utf-8'))}/500 characters"
+    )
+    assert memory_index.over_limit(rendered, limits) is False
+    assert memory_index.over_limit(rendered, limits_from([limit_row("characters", 4)])) is True
+
+
+def test_print_size_prints_the_size_then_where_the_limits_came_from(capsys):
+    """B4.2 — one size line and one source line per run, in that order, whatever the limits are."""
+    rendered = memory_index.render_index([])
+    limits = limits_from([limit_row("characters", 500)])
+    memory_index.print_size(rendered, limits)
+    printed = capsys.readouterr().out.splitlines()
+    assert len(printed) == 2
+    assert printed[0] == memory_index.size_report(rendered, limits)
+    assert printed[1] == limits.source_line
 
 
 # --- what counts as an entry ------------------------------------------------------------------------------------
