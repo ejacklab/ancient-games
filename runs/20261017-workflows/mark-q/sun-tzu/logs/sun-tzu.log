@@ -1,0 +1,566 @@
+dsh: reasoning:
+Let me read the list and identity files.
+dsh: reasoning:
+Let me read the rest of the list (line 304 onward).
+dsh: reasoning:
+Now let's understand the question:
+
+Decision: keep `--mark P` on `deadline wait`, or remove it?
+
+Facts given:
+- Vision/use case: an agent cannot feel time pass, so the guard tells it: a one-line clock after every Bash or file-write call, and a time-up line after the deadline. The owner chose this over reminders at 50%, 80% and 100%, which "is not able to well predict, specific when exploring solutions" (2026-10-17); the reminders are removed.
+- What is left: `bun .claude/skills/workflow-design/guard/src/cli.ts deadline wait [--mark P]` — a command the agent runs in the background as a timer; it sleeps until the deadline, or until P percent of it with `--mark P`, then prints the status line. It is not a reminder: nothing fires unless the agent starts the wait. The code is `.claude/skills/workflow-design/guard/src/cli.ts` (the `wait` branch of the deadline command).
+- The two readings: (A) `--mark P` is a leftover of the removed marks and should go, leaving `deadline wait` to fire at the deadline only; (B) it is a separate timer the agent chooses for itself (for example to wake at 90% and write the report), and should stay.
+- Use in this project so far: the time-monitor run used a plain background `sleep` as its timer, not `deadline wait`; no run has used `--mark` (measured: `grep -rn "deadline wait --mark" runs/` finds none).
+
+I should inspect the code to ground my advice. The brief says don't write files; final message is the answer. Let me look at the code (the `wait` branch of the deadline command) — reading is allowed and gives a fact. The brief says facts are given, and "Do not invent facts." But inspecting the code is legitimate research — the code is named. Let me read it. Also maybe check guard docs.
+
+Let me find the CLI.
+dsh: reasoning:
+Let me read the surrounding code for accuracy: lines 190-245 of cli.ts, and deadline.ts.
+dsh: reasoning:
+Important facts from the code:
+- `deadline wait` with no `--mark` defaults to 100, i.e. fires at the deadline.
+- With `--mark P`, it sleeps until P% of the deadline (measured from the deadline's start, not from when wait is called). If P% has already passed, it prints immediately.
+- The status line printed: `deadlineStatus(...).line` — a one-line status. So the wait is a timer that prints the status line at a chosen mark.
+- Nothing fires unless the agent starts the wait; it's a background job the agent chooses.
+
+Now, the vision: the guard tells the agent the time: a one-line clock after every Bash or file-write call, and a time-up line after the deadline. The owner rejected reminders at 50%, 80%, 100% because they can't predict when exploring solutions. The marks are removed. So the question: is `--mark P` a leftover of the removed marks (A: remove) or a separate self-chosen timer (B: keep).
+
+Key distinction: The removed reminders were *automatic* — fired at fixed percentages regardless of what the agent was doing, and the owner's objection was that fixed percentages can't predict "specific when exploring solutions" (probably "can't predict the specific moment when exploring solutions"). `deadline wait --mark P` is not automatic: nothing fires unless the agent starts it. The agent choosing to wake at 90% to write the report is the agent making the prediction, not the guard imposing one. That's the crux: the defect was the *fixed automatic mark*, not the *number*.
+
+So Sun Tzu's rules: Which apply?
+
+Let me think about which numbered items are most apt:
+- #1 Reckon before battle: lay out the matter by five matters and seven comparisons; count before committing. Applied: compare the options against the use cases. More counting wins, fewer does not. So lay out the decision.
+- #2 Make yourself unbeatable first; win, then seek battle: secure what is in your own hands, don't depend on the other side's restraint. Here, the usable thing in your own hands vs. depending on the agent's judgment. Hmm.
+- #5 Move only with advantage, never from anger: "Do not move without advantage" — keep a feature only if a use case moves it; remove it if it serves none. This is strong: an option that serves no use case is wrong. Also 非利不動 — don't act without advantage. Remove what has no use.
+- #6 Mix harm into benefit: deliberate with the harm column; each option's cost must be named.
+- #8 Value victory, not duration; speed: a long campaign drains. Applied: keeping an unused option has a maintenance cost; a small unused flag compounds. But also, the measurement: no run has used `--mark`. Removing it costs nothing measured.
+- #10 Avoid the solid strike the empty; no constant form: the agent's needs vary; a fixed percentage is a constant form, while the agent adapting is 因敵變化. This supports B: the agent chooses the moment, the guard doesn't fix it.
+- #12 Seek it in 勢, not the people: change the conditions, not exhort. Hmm.
+- #13 Not every road taken, not every ruler's command accepted: the general can refuse a command when the way of battle means sure victory / no victory. Applied: keep the option even though the owner removed the marks, if the case warrants — i.e., the agent's discretion. Hmm, but the owner's decision. Actually #13's structure: the ruler's command not to fight can be overridden when the way of battle means sure victory. That's about discretion within a mandate. Might support B: the agent takes the timing decision into its own hands as the general does.
+- #14 Choose action by ratio of forces: with ten to one surround, etc. — scale of effort to the situation. Applied: the cost of keeping `--mark` is tiny (one flag); the option's value is real when the deadline is long. Hmm, maybe not.
+- #18 Meet the enemy's state with yours: avoid keen spirit, strike when it flags. Not apt.
+- #2's 「無恃其不來，恃吾有以待之」 — don't rely on the enemy not coming; rely on having means. Applied: don't rely on the agent's guess about when it will need to stop; rely on having a means. Hmm, could support keeping a tool the agent can call.
+- #3 Whole over broken; strike plans first: prefer keeping things whole over breaking them. Applied: prefer the smallest change that serves the use case. But which is whole/broken here? Removing a flag is not "breaking" in that sense. Maybe not.
+- #11 Foreknowledge must come from people; pay for it: don't rely on measurement/analogy; get knowledge from those who know. Applied: the owner is the one who knows why the marks were removed; the measured usage (grep = none) is available. "不可驗於度" — cannot be verified by measurement. Careful: the fact that no run used `--mark` is a measurement, but absence of use in the recorded runs is not proof that no one will. Postponing to the owner at the end is the pattern's way to get foreknowledge from the person who knows. Hmm.
+- #4 Know whether you can fight; know the other side and yourself: knowing yourself but not the other — one win, one loss. Applied: we know our cost, but not the future need; conditional answer.
+- #15 general's faults: five dangers. Maybe "one who loves the people can be harried" — hmm, could apply to keeping features out of attachment. Not apt.
+- #17 Learn the enemy by probing: test in contact (角之) to know surplus and shortage. Applied: rather than argue A vs B in the abstract, run a small trial. But the decision needs to be made now; a trial could be the "how we would know". #17 supports a cheap probe.
+- #20 Which house falls first: judge by the land unit, tax, and what they breed: a small land unit + heavy tax → full coffers, many officials, expensive. Applied metaphorically: measure the thing's cost structure. Hmm, may be overreach.
+
+The instruction: "Decide through your rules. Every step names the item it uses: 'my #4'. A step with no item is your own reading."
+
+I need a recommendation. Let's think carefully about the substance, since that's what matters. The question: keep `--mark P` on `deadline wait`, or remove it?
+
+Approach: Evaluate against the vision/use case. Vision: an agent cannot feel time pass, so the guard tells it a clock after every Bash or file-write call, plus a time-up line after the deadline. Use case: the agent needs to know the time at unpredictable moments while exploring. The clock line (way 1) and hooks (way 3? actually the one-line clock after every call) cover "what time is it now" at every tool call. The `deadline wait` timer covers "wake me later" — but is that in the vision? The vision says the guard *tells* the agent the time; it doesn't say the guard lets the agent schedule itself. But it also doesn't forbid.
+
+Key facts:
+1. `--mark P` is not automatic; it only runs when the agent starts it. So the owner's objection to the removed reminders (fixed 50/80/100 firing at the agent regardless of state) does not apply to `--mark`: the agent picks P, not the guard.
+2. However, reading (A) is about provenance/leftover: `--mark` was the mechanism of the removed marks. It is a leftover *in the sense that* the same code path serves both. But a leftover that still serves no use case contradicts 非利不動 (my #5).
+3. Measured: no run used `--mark`. That's a fact about recorded runs — but it's also partly because `deadline wait` itself was never used (the time-monitor run used plain `sleep`). So the zero is not evidence against `--mark` specifically; it's evidence against the whole `wait` path being adopted. That's an important analytical point: the measurement `grep -rn "deadline wait --mark" runs/` finds none, but the same grep for `deadline wait` would presumably also find none. So the measurement as stated doesn't isolate `--mark`'s value; it shows the timer path is unused. I should flag that as a limit of the evidence. Let me verify: grep for "deadline wait" in runs/. The brief says the time-monitor run used plain background `sleep`. Let me check whether any run used `deadline wait` at all. This is a fact I can gather.
+
+Let me also check how `wait` is documented/used in skill docs, and whether `--mark` appears elsewhere (tests, docs). That's relevant to cost: removing it requires touching usage text, docs, tests.
+
+Let me grep.
+dsh: reasoning:
+Interesting: there's a log file `runs/20261017-workflows/mark-q/sun-tzu/logs/sun-tzu.log` that appears to contain my own reasoning? That's odd — it seems this session has run before (perhaps a prior attempt / a log of a previous Sun Tzu seat run). It contains lines like "Key distinction: ..." which read like my own thinking. This may be a prior run's log of the same question. I should read it? It might be a trap/contamination — the brief says "Independence" concerns. Actually the log may be from a previous attempt at this same seat, and reading it would contaminate my answer. But it also might record the expected facts. Hmm. The instructions say "Read first" only the list and identity. It doesn't forbid reading other things. But good practice: the log seems to be a transcript of a prior agent's response to the same question — using it would be copying. More importantly, it might contain a *different* conclusion. My job is to answer independently from the rules.
+
+Let me check the date/time and whether this is a prior run. Actually, let me look at what's in the run folder to understand the context — but without relying on prior answers. Actually, I should be careful: the log's presence suggests a previous Sun Tzu answer existed. Let me check the folder structure quickly. But I don't want to read the log's conclusion before forming mine. I have already seen fragments: it matches my reasoning exactly (it seems to literally be my own transcript being logged live — perhaps the harness logs my session). Wait — could the log be being written live from *my* current session? The lines include "I need a recommendation. Let's think carefully..." — that is verbatim my internal reasoning from this very turn. So yes: `logs/sun-tzu.log` is a live transcript of my own reasoning, written by the harness. That explains it. So it's not prior contamination; it's my own log. Fine. Ignore it.
+
+Now the grep for "deadline wait" in runs/ found 16 files, but those are all question/brief/log copies. Let me check specifically whether any run actually *used* the command (e.g., in state files, progress, transcripts). The count 16 includes docs. Let me grep for actual command invocation patterns like "deadline wait" excluding the mark-q briefs. Also check the harness logs maybe.
+
+Actually the brief already states: "the time-monitor run used a plain background sleep as its timer, not deadline wait; no run has used --mark". So both are unused. Good — that supports my analytical point: the zero is about the whole wait path, not `--mark` specifically. This is a key finding: the stated measurement does not discriminate between A and B. I can state that as a fact derived from the given measurement plus the named code.
+
+Let me check the SPEC T3 text and the tests for `wait` to understand costs of removal.
+dsh: reasoning:
+Key: SPEC T5 says "There are no reminders at 50, 80 or 100%: no marks, no mark block, no `raised` mark record." The marks being removed refers to the hook reminders at fixed percentages. T3 keeps `--mark P` as part of the wait. So the spec itself distinguishes: the removed marks were the hook-fired reminders; the wait flag is retained as a different thing. That's a fact in the repo: SPEC T3 explicitly documents `wait [--mark P]` and T5 explicitly says no marks in hook context. So A ("leftover") is not supported by the spec; the spec treats them as different mechanisms. But "leftover" could still be true in code terms: the `--mark` flag may exist because the mark code was reused. Let me check git history/blame? Maybe. That could settle provenance: was `--mark` added with the reminders and then its hook half removed? The brief says "the reminders are removed" — and SPEC says no marks, no mark block. Let me check git log for deadline.ts/cli.ts. If `--mark` was introduced as part of the same change as the mark reminders, A gains support; if it was kept deliberately, B.
+
+Actually, provenance doesn't decide the case anyway; use does. But it's evidence for A's "leftover" claim. The brief says the decision should rest on measurement or fact given below; extra facts I gather from the code are facts, but I should label where they come from. Let me check git log quickly.
+dsh: reasoning:
+Very relevant: commit 07b67a9 "Guard: the clock after every call, no reminders at 50/80/100% ... marks, --marks and their raised records removed". Wait — "marks, --marks and their raised records removed". That sounds like the `--marks` plural flag (reminders) was removed, but `--mark` (singular, on wait) survived. So A's "leftover" has real pedigree: the same removal left the singular `--mark` in place, which could be deliberate or oversight. The message says `--marks` removed (plural, the reminder config), not `--mark`. Hmm, so the singular was kept, maybe deliberately.
+
+Let me check the actual diff of that commit for the `--mark` lines, to see whether `--mark` was modified/kept. And check the commit message body.
+dsh: reasoning:
+This is decisive on provenance: the `--marks 50,80,100` on `deadline start` (the automatic reminders) was removed, while `wait [--mark P]` was deliberately left in the same commit — the usage line was edited on both sides and `--mark P` stayed. So the removal did touch that line and kept it. That is evidence that `--mark` was not forgotten by the removal commit: it was left on purpose or at least not swept. Hmm — but the removals commit edited the usage line where `--mark` appears; so the author saw it. That weakens A ("leftover") as a factual claim: the mark plumbing on start and hooks was removed; the wait flag was retained in the same edit.
+
+But wait: maybe the `--mark` behavior on wait is still functionally tied to the removed reminder concept? Let's look: `wait` computes `at = start + minutes*(mark/100)` and sleeps. It doesn't use the marks array. It's independent code. So A's claim "leftover of the removed marks" is false as a matter of code: no shared state; the removal commit edited that very line and kept it. That's a strong factual point I found. But the brief says to rest points on "a measurement or a fact given below" — this is a fact from the repository that I gathered. The brief says points from memory alone are recall; a fact I read in the code is not memory. I should mark its provenance clearly ("from the code / the 07b67a9 diff"). The instruction "Rest each point on a measurement or a fact given below" might mean only facts given below; gathering is allowed? The brief says "Do not invent facts. If the answer depends on something you were not given ... list it". Hmm. I can cite the code lines as facts, since the code is named in the brief as "the code is ...". I think that's legitimate and valuable, and I'll label it as what I read (not "given").
+
+Now the substance: keep or remove `--mark P`?
+
+Option B (keep) seems right to me. Reasons:
+1. The owner's objection was to *automatic* fixed marks ("is not able to well predict, specific when exploring solutions") — the reminders fire regardless of the agent's state. `--mark` is not automatic: nothing fires unless the agent starts the wait. It's a self-chosen timer; the prediction is made by the agent that knows its work, not by the guard's fixed schedule. So the defect the owner named does not exist in `--mark`.
+2. Removing `--mark` would leave `deadline wait` useful only at 100%, which duplicates what the clock line already tells the agent ("time is up" after every call). The wait's unique value is the ability to sleep to a *chosen* moment and get control back while the deadline still has time left — e.g., wake at 90% to write the report. Without `--mark`, the timer only returns at the deadline, when the time-up line arrives anyway via the hook on the next call. So removing `--mark` makes `wait` largely redundant with T5's clock.
+   - Careful: a background wait at 100% would still be useful if the agent is doing a long single operation with no tool calls (a long command), where the after-call clock line can't fire. In that window, a background timer is the only signal. So `wait` without `--mark` isn't fully redundant: it wakes *when the time is up* even if no call occurs. But the mark extends the same capacity to a point before the deadline, which is exactly when a report needs writing. So keep.
+3. Cost of keeping: one flag, 10 lines of code, one usage string, documented in SPEC T3. No measured runs use it. The cost is maintenance surface and a second way to do the same thing (plain `sleep` also works). But the cost is tiny and already paid.
+4. Cost of removing: it removes the only way, inside the guard, to wake before the deadline at a chosen fraction. It would force agents back to plain `sleep` arithmetic (which the time-monitor run already did), losing the deadline-aware computation and the status line. It also breaks SPEC T3 and any user who learns the flag; and it is a one-way deletion that can be re-added but at the cost of a new decision.
+5. The measurement cuts both ways: no run used `--mark`, but no run used `deadline wait` at all (the time-monitor run used plain `sleep`). So the zero is not evidence that `--mark` is unwanted; it is evidence that the whole wait path has not been adopted. Removing `--mark` on the strength of that zero would treat an unmeasured feature's non-use as a verdict, which the evidence does not support. If anything, the fact that an agent chose plain `sleep` over `deadline wait` suggests the problem is *discoverability/usability* of the wait path, not the `--mark` flag. That's a key insight and a proposed change to the pattern maybe.
+
+Which rules support these?
+
+- #1 Reckon before battle: count both options against the five matters/seven comparisons. Applied: list the counts: the vision line, the owner's stated reason, the code, the measured use, the two options' effects. More count wins. I can structure step 1 as laying out the decision.
+- #4 Know whether you can fight; know the other and yourself: what we know (the code, the owner's reason) vs. what we don't (future need). Knowing only one side = one win, one loss → answer conditionally? Hmm, the answer can be firm but with a reversal condition.
+- #6 Mix harm into benefit: each option's harm column; I do that in Costs.
+- #5 Move only on advantage; never from anger: 「非利不動，非得不用，非危不戰」 — keep/move only where there's a use case. Applied: does keeping serve a use case? Yes: the agent can choose a wake point, which serves the vision's purpose (agent can't feel time) and the pattern's piece-timestamp/report needs. Does removing serve a use case? Only hygiene; no vision line demands deletion. So remove has no use case → by "an option that serves no use case is wrong" (brief rule, echoing #5), removal is wrong. That's a clean application.
+- #10 Avoid the solid, strike the empty; no constant form: the fixed automatic marks are a constant form; `--mark` lets the agent adapt to the situation — 因敵變化. This directly supports B: the defect was fixing the form (50/80/100 for everyone), the fix is letting the agent choose (因敵而制勝). And the owner's own words "not able to well predict, specific when exploring solutions" is exactly a complaint about a fixed form. Good.
+- #12 Seek it in 勢, not in people: hmm. The automatic reminders tried to make the agent behave by external stimulus at fixed times; the clock + self-chosen timer changes the conditions (the agent has the information and a tool) rather than prodding. Could use: the fix should be in the conditions (the clock, a timer the agent can set), not in more prompts to the agent. That supports B and suggests the pattern change: don't add reminders, add information/tools.
+- #13 Not every road taken; not every ruler's command accepted: hmm, could be used for "keep the option even though the marks removal happened in the same commit; the general's discretion". Maybe too much of a stretch. The decision is the main agent's provisional call, owner accepts at end — #13's structure (the general may act against the ruler's standing order when the way of battle says so) could justify a provisional "keep" that the owner can reverse. Actually the pattern says the main agent decides provisionally and the owner accepts/declines at the end. That's exactly #13-ish: the agent on the ground has the knowledge; the owner retains the final say. But #13 is about a general disobeying; using it here risks over-reading. Maybe use it in "What I need to know" or a step: the removal of the marks was the owner's decision; keeping `--mark` is not defiance of it because the owner's stated reason covers automatic marks, not self-set timers. Applying #13: "not every command of the ruler is accepted" — the operative command here is "remove the reminders"; `--mark` is not a reminder, so no conflict. Hmm, could be "my reading" that the owner's instruction is scoped by its reason.
+- #17 Probe and read the signs: test in contact (角之) to know surplus and shortage. Applied: the way to know is to try it on one run with a mark (e.g., wake at 90% to write the report), and measure whether the report gets written before the deadline. That's "how we would know". Also the measured `grep` is a probe of the past; it shows the whole wait path unused.
+- #8 Value victory not duration; speed: not directly about the flag, but about not prolonging a decision. Could use for "decide now, don't keep deliberating" but not central.
+- #2 Make yourself unbeatable first: the owner's stated vision is the "unbeatable" ground — build only on what serves it, don't rely on the other side's behaviour. Hmm, could apply: don't rest on the agent remembering to check the clock; the clock is automatic (the hook), that's the unbeatable part. `--mark` is not relied on — nothing depends on it. So keeping it doesn't make the system depend on it. Right: the design is safe either way because nothing is automatic; the reminder removal is complete regardless.
+- #3 Whole over broken: prefer the minimal change that keeps things whole. Removing `--mark` breaks the documented T3 and removes capability; keeping is the smaller change. #3 could support B ("whole over broken").
+- #15 General's faults: "one who loves the people can be harried" — attachment to a feature can be used against you. Hmm, could be the counter-argument: keeping a feature because it's nice is a fault? But 愛民 is about loving the people; not apt.
+- #19 Name the ground: "broken ground: keep moving" — hmm. The ground here is "the marks have been removed; what's left is a self-chosen timer". Name the ground and act as prescribed. Could use: this is not "contested ground" (a fight over the owner's decision), it's a different ground (a tool, not a reminder) — so act by its prescription, keep it. That's a bit forced.
+- #14 ratio of forces: with ten to one surround... numbers not valued for their own sake. Applied: don't decide by how many lines the feature costs; decide by fit. Could support not removing for tidiness. Hmm.
+
+I should keep the answer tight: maybe 6-8 steps, each with a named item. Cite quotes exactly from the list. The list uses traditional characters. Quotes I might use:
+- #5: 「非利不動，非得不用，非危不戰。」 and 「合於利而動，不合於利而止。」
+- #6: 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」
+- #10: 「故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」 (list writes 恒 not 恆 — must copy exactly: 「故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」)
+- #1: 「多算勝，少算不勝，而況於無算乎？」
+- #17: 「角之而知有餘不足之處。」
+- #4: 「知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」
+- #2: 「無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 (list #2 has 「故用兵之法，無恃其來，恃吾有以待之」 — wait, check exact: line 61: 「故用兵之法，無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 Yes, "無恃其不來".)
+- #8: 「故兵貴勝，不貴久。」
+- #13: 「君命有所不受。」
+
+Need to be careful with exactness. Let me re-check each quote character by character against the list file when I write. I'll copy from the read output.
+
+Now the recommendation. I think: keep `--mark P`, and make the reason explicit in the SPEC/usage so it doesn't look like a leftover (rename or document as "the agent's own wake point"). The answer's one-two sentences: Keep it; the defect the owner named is the automatic fixed reminder, not a self-chosen timer. Nothing fires unless the agent starts it, and no run has shown the timer path used at all, so the measured zero is about the whole wait path, not about `--mark`. Cost: one extra flag and a second way to time a wait; if we want the surface smaller, the honest move is to test the wait path once (a 90% wake to write the report) and then decide, not to delete it on a zero that also applies to `deadline wait` itself.
+
+Should I recommend "keep + document" as a proposed change to the pattern? The pattern improvement: "small pieces, timestamped" — maybe the pattern should use `deadline wait --mark` as the timer instead of plain `sleep`, and the guard should record when a timer was set (so its use is measurable). That's a proposed change to the pattern: "the pattern's timer is `deadline wait --mark`, not plain sleep, and the run records the mark it chose" — that would make the next decision measurable. Good: it addresses the evidence gap. Label it *proposed change to the pattern*.
+
+Also maybe propose: if kept, print the chosen wake point in the status line or accept `--in Nm` (absolute remaining time) — no, don't add structure/features beyond what's needed. Keep it minimal: document that `--mark` is the agent's timer, not a reminder, and use it once.
+
+What I need to know (questions whose answers change the answer):
+- Did the owner intend the removal to cover every percentage trigger, including one the agent chooses? If yes → remove. If the objection is only to automatic fixed marks → keep (my assumption).
+- Is `deadline wait` itself going to stay? If the whole timer path (way 2) is being retired in favour of the clock + plain `sleep`, then `--mark` goes with it — but that's a bigger decision than this one.
+- Does the harness kill or fail background jobs at the deadline? If a background wait is killed when the session/turn ends, then the 90% wake may never arrive, and keeping it costs more than it gives. Hmm, that's a real question; I don't know. Actually the wait prints to stdout of a background job; if the harness only surfaces job output to the agent at a tool call, then the timer is only useful insofar as the agent polls — but the notification system may deliver it. The time-monitor run used `sleep`, so the mechanism (background job notification) presumably exists. I could list it as a question.
+- Is the zero-use measurement limited to `runs/` (which are project runs), and does it include harness logs? The brief's grep is over runs/, and it finds none; `deadline wait` also unused. I know from my grep that "deadline wait" appears in runs/ only in the question/brief/log copies, not as a command in a run's state or progress. Let me confirm by listing the 16 files... Actually the first grep output was cut at 20 lines and showed only mark-q files? It said 16 files total; likely all are the question/brief/log copies (mark-question.md, mark-q/..., maybe earlier sessions' briefs). Let me check quickly with a filter excluding mark-q and briefs to make sure no run used it. This matters for my claim "no run used deadline wait either" — already stated in the brief as a fact ("the time-monitor run used a plain background sleep as its timer, not deadline wait"). So I can rest on the given fact: the only run that needed a timer used sleep. That's given. I don't need to over-verify.
+
+Now, should the answer be conditional? The brief says answer conditionally if it depends on something not given. My recommendation can be firm under the stated reading of the owner's reason, with a condition: "if the owner's objection was to any percentage trigger at all, remove it; on the reason as given, keep it."
+
+Let me also weigh the counter-case seriously. A reasonable A case:
+- The vision has exactly two outputs: a clock line after every call and a time-up line at the deadline. `deadline wait` with `--mark` produces a status line at an arbitrary time, which is not part of the vision. Any feature not serving a vision line is wrong (the brief's own rule). Does `--mark` serve a use case? The use case is "agent cannot feel time pass; guard tells it." A timer that the agent sets serves that only if the agent uses it to get the time at a moment it chooses. Is that a use case in the vision? The brief's vision statement says the guard tells the agent the clock after every call and time-up after the deadline. It doesn't mention "the agent can schedule a wake-up". So strictly, `--mark` serves no stated use case. Hmm. But the same is true of `deadline wait` at all (even without --mark) — a background timer is not "after every call" or "after the deadline"; well, at 100% it does produce the time-up line, possibly before the next tool call. So `wait` at 100% serves "time-up line after the deadline" in the case where no tool call happens (long-running command). `--mark` at 90% produces a status line *before* the deadline, which is neither of the two vision outputs. So strictly, A has a point: `--mark` is outside the two stated behaviors.
+
+But the brief's pattern says "Vision and use cases first. An option that serves no use case or vision line is wrong." If we interpret the vision narrowly, `--mark` serves no vision line. However, the use case behind the vision is broader: the agent must know the time while it works. The owner's complaint was about prediction during exploration. A self-chosen timer is a way for the agent to *not lose* the deadline while it is deep in a long operation with no tool calls. Is that a use case? The pattern says "Small pieces, timestamped... so progress and time are seen while the work runs, not only at the end." Ah — that's a use case in the pattern: time seen *while the work runs*, not only at the end. A 90% wake to write the report is exactly "time seen while the work runs". So B serves the pattern's use case even if not a narrow vision line. And the brief says my advice must fit the pattern and may improve it. Good: I can cite the pattern's "progress and time are seen while the work runs, not only at the end" as the use case that `--mark` serves. That's strong.
+
+Hold on — the pattern's timestamped progress lines are written by workers; the agent's clock line after every call already shows time during work. The `--mark` timer adds "time seen when no call is happening". The time-monitor run's use of `sleep` proves the need: it needed a timer because it couldn't feel time during a long stretch without calls? Let me check the time-monitor run to see why it used sleep and whether it worked. The brief mentions "the time-monitor run used a plain background sleep as its timer". Let me look at that run's report/state for the fact — it could be strong evidence for what a timer is for and whether `--mark` would have helped. This is relevant: the one actual use of a timer in the project. Let me read `runs/20261016-time-monitor/`.
+dsh: reasoning:
+This is very informative. The time-monitor run's state line: "**deadline 11:22:01 +0800** · background timer fires 11:17 (way 2, dogfooded)." So it set a timer to fire at 11:17, 5 minutes before the 11:22 deadline — i.e., a *mark* at ~90%! Let me check: start 10:22, deadline 11:22 (60 min). Firing at 11:17 = 90.8% — essentially `--mark 92`? Actually 55 min of 60 = 91.7%. Hmm. So the run *did* use a timer before the deadline, to wake and finish/write the report. But the brief says it used a plain background `sleep`, not `deadline wait`. So the behavior that `--mark` would serve actually happened — with `sleep`. That is strong evidence that the use case exists and was needed: an agent set a timer to wake before the deadline to write the report. It did not use `--mark` because it used `sleep` (maybe because `deadline wait` wasn't known/available at the time, or it was written before that feature). Wait, the report lists `deadline wait [--mark P]` as the timer. Yet the state says plain sleep. Let me verify what the command was — check the state/log for the exact sleep command. The run's state.md may have the command. Let me look at the state and the report section.
+
+This changes the "use in this project so far" fact: "no run has used --mark" is true; but the *need* that `--mark` serves was exercised (background sleep to wake at 11:17, 5 minutes before the deadline). That is measured evidence for B, not just recall. Excellent. But careful: the brief asserts the time-monitor run used plain `sleep` "as its timer" — it doesn't say when it fired. The state.md gives "background timer fires 11:17". So the timer was set to fire before the deadline. That's exactly reading B's example ("wake at 90% and write the report").
+
+Let me confirm the exact command and timing from files.
+dsh: reasoning:
+The exact sleep command isn't in the files, but the state line is a measured record: the run's own state declares a background timer firing at 11:17 against a deadline of 11:22 — a pre-deadline wake, roughly 55 minutes after the start (91.7% of 60 minutes). This is a fact from the run's state file, and it directly shows the use case for a pre-deadline timer. It used `sleep`, per the brief. So:
+
+- The vision/use case: agent can't feel time; guard tells it. The owner rejected *automatic fixed reminders*, not pre-deadline awareness.
+- The project's one timer use was set to fire 5 minutes before the deadline, i.e., exactly `--mark`'s use case. No run used `--mark` only because that timer was a plain `sleep`.
+- Therefore the zero-use measurement does not support removal; it shows the agent working around the absence/friction of the wait path. The better change is to make `deadline wait --mark` the timer the pattern uses, and record the mark it chose (so next time the decision is measurable).
+
+Wait — why did the run use `sleep` rather than `deadline wait --mark`? The run built the `deadline wait` feature itself (P2: deadline module + CLI; dogfooded way 2). It says "background timer fires 11:17 (way 2, dogfooded)". Maybe it did use `deadline wait --mark`? Let me check the transcript/log of that run. Maybe the guard's `wait` was implemented later in the run than the timer start. The report says "2. A timer: deadline wait [--mark P], run in the background". The brief says it used plain `sleep` — so trust the brief, but let me see if there's evidence. The run's logs may exist under `runs/20261016-time-monitor/`? No logs dir listed. The state's line is written at 10:22; the wait feature may not have existed at that moment (P2 pending). So the agent used `sleep` because its own timer tool wasn't built yet. That's a plausible and important point: the only time a timer was needed, `deadline wait` did not exist yet; today it does. So the non-use is chronological, not a verdict on `--mark`.
+
+That strengthens B: the use case is attested (wake 5 min before deadline), the tool postdates the need, and the flag is the parameter that expresses "wake 5 min before". Removing it would delete the parameter that matches the one recorded use.
+
+Let me verify the timeline: commit 6105656 "Run 20261016-time-monitor: deadline end ..." — the run built the deadline feature. The state start line says 10:22:01 and the timer fires 11:17. The `wait` branch and `--mark` may have been written after 10:22 (P2), so at 10:22 the agent set a `sleep`. Let me check the run's state Steps table to see when P2 was done.
+dsh: reasoning:
+Great context. The timer at 11:17 was set at the start (10:22), before the wait feature existed (P2 pending). So `sleep` was used because the tool did not exist yet; the same run then built `deadline wait --mark` and dogfooded it as "way 2". So the 11:17 timer was the use case; the tool was built later in the same run.
+
+Now I have a genuinely strong, measured argument:
+
+Facts:
+F1. The only recorded timer use (time-monitor run) was set to fire at 11:17 for an 11:22 deadline — 5 minutes early, ~92% — to leave time to write the report. (state.md line 5, measured record)
+F2. That timer was a plain `sleep`, because `deadline wait` was still being built (P2 in the same run; start line at 10:22, code by 10:3x). So `grep "deadline wait --mark" runs/ = none` measures the tool's absence during the only occasion it was needed, not its disuse.
+F3. The owner's objection was to automatic reminders at fixed 50/80/100 ("not able to well predict, specific when exploring solutions"). `--mark` is not a reminder: nothing fires unless the agent starts it (given in brief + code). The prediction is the agent's, made when it starts the wait.
+F4. The removal commit (07b67a9) deleted `--marks` from `deadline start` but edited the very usage line that contains `wait [--mark P]` and kept it. So it was not swept out by the removal; A's "leftover" reading is not supported by the diff. (Fact from git; I should mention it.)
+F5. `--mark` defaults to 100; `wait` without it fires at the deadline. So `--mark` is the only way to have `wait` return before the deadline; without it, the only pre-deadline signal is the after-call clock — which cannot fire during a long single call (the exact moment a timer is needed).
+
+What each choice costs:
+- Keep: one flag + the validation branch + usage/SPEC lines (small, already tested?). Does the test cover `--mark`? Let me check the test file for an explicit --mark test. If not, keeping an untested flag has a risk. Let me grep test.
+- Keep also keeps two ways to time a wait (plain `sleep` and `deadline wait --mark`), so an agent may pick `sleep` and lose the deadline-aware arithmetic; the non-use shows that happened. Cost: discoverability, not correctness.
+- Remove: loses the pre-deadline return (only 100%), forces agents back to `sleep` arithmetic (which produced the deadline-epoch-from-memory bug F-a03fa5b3 in the same run? No, that bug was `deadline start --minutes` with an epoch from memory; still, arithmetic by the agent is a known failure mode in this project); requires editing SPEC T3 (a contract document? SPEC is the referee's contract, only EJ changes it — wait, that's for the ancient_games referee SPEC. But this guard SPEC is `.claude/skills/workflow-design/guard/SPEC.md`; is it "only EJ changes"? The CLAUDE.md says `SPEC.md`, `DECISIONS.md` — the referee's contract, only EJ changes. That refers to the root SPEC.md of ancient_games, not the guard SPEC. Careful. The guard SPEC is the guard's spec; the guard was built under EJ's run and changed by agents (commit messages show). So removal is a code+SPEC change.
+- Remove also makes the usage/README simpler; that's the benefit A claims.
+
+How would we know:
+- Keep: the next time-boxed run sets `deadline wait --mark` (say 90) as its timer; observe (a) the timer fires before the deadline, (b) the report is written before the time-up line, (c) `grep` of the run shows both the mark chosen and its use. If no run uses it within N runs, or if the timer is never what prompts the report, remove it.
+- Remove: the next run that needs a pre-deadline wake will use `sleep` and compute the interval itself; if that works as well (as it did at 11:17), removal was fine. The observable: how the timer is set and whether the report lands before the deadline.
+- The decisive measure for A vs B: of the time-boxed runs after this date, how many set a pre-deadline timer; and whether `--mark` is used when available. If pre-deadline timers recur and `--mark` is used, B. If no pre-deadline timer recurs, A (the whole wait path can go too).
+- Note: "no run has used --mark" cannot be the test while the tool's own path is unused; the test must be "when a run needs a timer, does it use `deadline wait --mark`?" — and that requires making `wait` the pattern's timer, i.e. the proposed change.
+
+Proposed change to the pattern:
+- "The pattern's timer is `deadline wait --mark P`, started in the background when the time is set, with the mark chosen for the point the run needs (e.g. 90% to write the report) — not a plain `sleep`. The run's state records the command and the mark. That makes the next decision on `--mark` measurable, and removes the agent's arithmetic from the timer." Hmm, but the pattern's current text says "every worker writes a timestamped progress line per piece." The proposal fits under "small pieces, timestamped" and "the time is set at the start". I'll label it.
+
+Now, the rules to use. Let me pick and order them for a coherent decision:
+
+Step 1 — Count the decision, both readings, against the vision (my #1). Lay out the five matters equivalent: the vision line, the owner's reason, the two options, the measurement. The count is the seven comparisons analog: which option serves which use case. Conclude: the reckoning is not close once the owner's reason is scoped to *automatic* marks.
+
+Actually #1's rule: "Before fighting, lay the war out by five matters ... and compare the two sides on seven questions. Whoever comes out ahead in the reckoning before battle wins..." I can use it as the frame: I count each option on the facts (vision, owner's reason, measured use, code, cost). That's a step.
+
+Step 2 — Separate what we know from what we don't (my #4). We know the code and the owner's reason; we do not know whether "remove the reminders" extends to self-chosen marks. Knowing one side = one win, one loss; hence condition the answer on that scoping. Hmm, but I want a firm recommendation. I can say: on the facts, the owner's reason is about prediction; `--mark` moves the prediction to the agent. If the owner meant "no percentage trigger at all", then A. That's the condition.
+
+Step 3 — Test the "leftover" claim against the record (my #17: 角之而知有餘不足之處 — test in contact). The record: the removal commit kept `--mark` on the line it edited; the only timer use was a 5-minute-early wake, set with sleep because the wait tool was still being built. So the measured zero is not a test of `--mark`; it is a test of the whole wait path in the only run that needed it. This is the key evidential step. Under #17, probing gives the surplus/shortage: what is missing is not the flag but the habit of using `deadline wait`. I should be careful: #17 is about probing the *enemy*; here the "enemy" is our uncertainty. Fine as an analogy, label it.
+
+Step 4 — Weigh the two costs with harm mixed in (my #6). List harm columns. Removal's harm: only pre-deadline wake is lost, agents return to `sleep` arithmetic, T3 rewritten; its benefit: one less flag. Keep's harm: one unused flag, a second timer idiom, discoverability. #6 says with harm mixed in, trouble can be resolved. Then recommend keep.
+
+Step 5 — Apply the gate: move only with advantage (my #5). Both options have a use case? Keep serves the recorded need (wake before deadline to write the report). Remove serves only tidiness; no vision line or use case demands it. 「非利不動」. A feature removal must also move on advantage. Since no use case requires deletion, don't move. Hmm — careful: this cuts both ways. A's advantage is a smaller surface, which is a real (if small) benefit. But the brief's rule "an option that serves no use case is wrong, however good" applies to options; here the *decision* is between keep and remove. Does removal serve a use case? If "no dead code" is a use case, yes. But the vision/use cases given are about the clock, not code hygiene. So removal serves no *use case in view*. That's the clean application. And keeping serves a use case: the pre-deadline wake.
+
+Step 6 — No constant form (my #10): the fixed percentage *is* the constant form; the agent choosing P is adapting to the situation. The owner's own words are a complaint about a fixed form ("not able to well predict, specific when exploring solutions"). So the fix is to let the form vary with the agent's work, which `--mark` does; deleting it would restore one fixed form (100%) and remove adaptation. 「故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」 This is the decisive argument for B, I think.
+
+Step 7 — Decide, and set the test (my #17 again or #1's measure). Keep `--mark`, document it as the agent's timer (not a reminder), and use it in the pattern. How we'd know: the next time-boxed run sets `deadline wait --mark` at, say, 90% and the report is written before time-up; if after a few runs no one sets a pre-deadline timer, remove it then — that would be a measurement that isolates the flag.
+
+That's 7 steps. Maybe trim to 6. Each with an item. Also include a "my reading" step where no item fits (e.g., the git-diff provenance). The brief expects "each cites my #n or says my reading". Good.
+
+Quotes: I should quote only from the list exactly. Let me plan quotes:
+- #1: 「多算勝，少算不勝，而況於無算乎？」
+- #5: 「非利不動，非得不用，非危不戰。」 and 「合於利而動，不合於利而止。」
+- #6: 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」
+- #10: 「故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」
+- #17: 「角之而知有餘不足之處。」
+- #4: 「知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」
+- #2: 「無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 — maybe for the "don't rely on the agent remembering" point. Actually I can use #2 for: the design should not depend on a reminder firing; the clock is automatic, and `--mark` is opt-in, so nothing rests on it. Hmm, maybe not needed.
+- #8: 「故兵貴勝，不貴久。」 — maybe for deciding now rather than testing forever. Could use in "how we would know": bound the test.
+- #13: 「君命有所不受。」 — maybe not; risky.
+
+I must verify exact characters. Let me copy from the list:
+- #1 line 50: 「夫未戰而廟算勝者，得算多也；未戰而廟算不勝者，得算少也。多算勝，少算不勝，而況於無算乎？」 ✓
+- #5 line 97: 「...非利不動，非得不用，非危不戰。...合於利而動，不合於利而止。...」 ✓
+- #6 line 108: 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」 ✓
+- #10 line 154: 「...故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」 ✓ (note 恒, not 恆)
+- #17 line 243: 「故策之而知得失之計，作之而知動靜之理，形之而知死生之地，角之而知有餘不足之處。」 ✓
+- #4 line 87: 「故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」 ✓
+- #8 line 131: 「故兵貴勝，不貴久。」 ✓
+
+Now, the answer must follow the exact template:
+# 孫子 (Sun Tzu) — <the question in a few words>
+## Answer
+## How I decided
+## What I need to know
+## Costs and risks
+## How we would know I was right
+
+No preamble.
+
+Answer: Keep `--mark P`. One or two sentences, conditional if needed. E.g.:
+
+"Keep `--mark P`. The marks the owner removed were automatic reminders at fixed percentages; `--mark` is a timer the agent starts and sets itself, so it does not repeat the defect the owner named — and the one recorded timer use in this project was a wake five minutes before the deadline, which is exactly what `--mark` is for. If the owner's decision was meant to forbid every percentage trigger, even one the agent chooses, then remove it; on the reason as given, keep it."
+
+That's 3 sentences. Maybe fine ("one or two sentences; conditional if it must be"). Let me tighten to two:
+"Keep `--mark P`: the removed marks were automatic reminders at fixed percentages, while `--mark` is a timer the agent starts and sets itself, and the one recorded timer use in this project woke five minutes before the deadline — exactly this flag's job. If the owner's decision was meant to forbid every percentage trigger, even one the agent chooses, then remove it; on the reason as given, keep it."
+
+Good.
+
+How I decided — numbered steps, each named:
+
+1. **Laid the decision out before choosing** (my #1). Count each side on the facts in view: the vision line (clock after every call, time-up after the deadline), the owner's reason (fixed reminders "not able to well predict, specific when exploring solutions"), the code, the measured use. 「多算勝，少算不勝，而況於無算乎？」 On the count, the question is not "is `--mark` a percentage?" but "who fixes the percentage?" The removed reminders fixed 50/80/100 for every agent and fired without being asked; `--mark` fixes nothing — the agent picks P when it starts the wait, and nothing fires otherwise. The owner's complaint is about prediction, and this moves the prediction to the party that knows the work.
+
+Careful: the owner's words quoted in the brief are in English; I can quote them (not from the list — but rule 3 says quote only from your list, exactly as written, and keep its label. Hmm! "Quote only from your list, exactly as it is written there... Never put words in 孫子's mouth that your list does not contain." Does that forbid quoting the owner's reason? The instruction says quote only from your list — probably meaning any quotation of Sun Tzu must come from the list. The owner's quote is a fact given in the brief; quoting it is not putting words in Sun Tzu's mouth. But to be safe, I can paraphrase the owner's reason: the owner found the fixed marks unable to predict the specific moment when exploring solutions. I'll paraphrase rather than quote, except the brief's fact. Actually the brief's Facts section itself quotes the owner. I can reference it as "the owner's reason as given: fixed marks cannot well predict the specific moment when exploring solutions" — that's a paraphrase, safe.
+
+2. **Separated the record from the claim** (my #17). 「角之而知有餘不足之處。」 Test the "leftover" claim in contact with the record: the code's `wait` branch computes the wake point from the deadline start and the mark; it shares no state with the removed mark reminders (the removed `--marks` was a field on the deadline, written by `deadline start`, and the hooks read it; the wait branch never reads it). And the commit that removed the marks (07b67a9) edited the very usage line containing `wait [--mark P]` and kept it, while deleting `deadline start ... [--marks 50,80,100]`. So on the record it is not an unswept leftover; it was kept in the same edit. Hmm — is "it was kept in the same edit" strong? The commit edited the line and kept the flag. Yes. But one could say the author simply changed the start part and didn't notice the wait part. The diff shows the wait part unchanged on that line. The author edited the whole line (it's a single string), so they rewrote the string, and `wait [--mark P]` remained. That's evidence, not proof. I'll phrase: "the removal rewrote that line and left `--mark` in place — not proof of intent, but it is not a leftover nobody saw."
+
+Wait, I need to double check the diff: the diff line 29 shows the usage line context (unchanged, no +/-), meaning the line was NOT rewritten — it's context, not a changed line. Let me look: in the diff output, line 29 is prefixed by a space (context), not + or -. So the usage line containing "status | wait [--mark P]" was not edited; it appears as context around the `deadline start` usage line change. So my claim "the removal edited that line" is wrong! The line was context. The changed line was the previous line (`deadline start ... --marks`). So `--mark` was not touched — neither removed nor edited. That weakens the "deliberately kept" claim. It is closer to "the removal did not touch it", which is neutral/slightly favors A (it was left alone, possibly overlooked). I must correct this. Good catch — accuracy matters.
+
+Let me re-check the diff hunk carefully: the output showed lines 27-29 with prefixes? The grep output stripped the diff prefixes? Let me run the diff for that region to see exact +/- markers.
+dsh: reasoning:
+Confirmed: the last usage-error line WAS edited (line 242) and kept `wait [--mark P]`, while removing `--marks`. So the removal did touch a line containing both and kept `--mark`. So my claim is supported, with precision: the final usage error line was rewritten, deleting `[--marks 50,80,100]` from `start` while leaving `wait [--mark P]`. That is not proof of deliberate retention, but it shows the removal did not sweep it away. Good — I'll state it carefully: "the commit rewrote the usage error line that names both flags; the `--marks` half went and the `wait [--mark P]` half stayed. That is not proof it was kept on purpose, but it is not an unnoticed leftover either — the line was edited and the flag survived."
+
+Hmm, "not an unnoticed leftover" — the author could have focused on the start half while rewriting. Still, the evidence is: the flag survived an edit of the line that names it. I'll phrase as "it survived the edit; whether that was deliberate is my reading."
+
+3. **Counted the one recorded timer use** (my reading, grounded in the run's state). The time-monitor run started 10:22:01 with a deadline of 11:22:01 and set a background timer to fire at 11:17 — five minutes before the deadline. Its state file records it. That is a pre-deadline wake, the exact use reading B names. It used a plain `sleep` because `deadline wait` was still being built in that run (P2 of the same run). So the measured `grep` zero is not evidence that the need is absent; it is evidence that the tool was not there at 10:22 when the timer was set. This is a measured fact from the run's state, not recall. Label: my reading of a fact I read in `runs/20261016-time-monitor/state.md`.
+
+Wait: the brief says "the time-monitor run used a plain background sleep as its timer, not deadline wait". So the fact that it was `sleep` is given. The firing time 11:17 is from state.md. I infer why: `deadline wait` was built later in the same run (P2). Is that certain? The state's start line was 10:22 and P2 is listed with state "—" (not started) at the time the state file's Pieces table was written; the log says round 10 code done at 10:2x-10:3x. The timer at 11:17 was set in the start line at 10:22 presumably. Actually, the start line says "background timer fires 11:17 (way 2, dogfooded)" — that line may have been edited later. The phrase "dogfooded" suggests the timer was the guard's own way 2. Hmm! Maybe the state line was updated when the timer was started later. If the agent started `deadline wait --mark` at some point, the brief would be wrong that it used plain sleep. The brief is authoritative for this question's facts: it says plain background `sleep`. So I'll take that. But when was the sleep started? If at 10:22, the wait tool didn't exist. If later, maybe the agent chose sleep anyway. I don't know. Let me not overclaim the reason. I can say: the timer fired at 11:17; the brief records it as a plain `sleep`, and `deadline wait` is listed in the same run's report as the timer the run built — so the zero use of `--mark` is at most one data point about that run's habit, not a test of the flag. The safer claim: the one recorded timer use was set for five minutes before the deadline, so the use case B names is attested; the zero-use grep does not test it, because the timer that did the job was a different command.
+
+Actually this is enough: need attested; use of `--mark` not tested. Whether the tool existed is secondary. I can mention "the run was building `deadline wait` itself (P2 in the same run), so a `sleep` at that moment is not a rejection of `--mark`" — carefully hedged: "its own timer was still a piece of that run".
+
+4. **Mixed harm into both sides** (my #6). State each option's harm:
+   - Keep: a flag almost no one has used; two timer idioms (`sleep` and `deadline wait --mark`); an untested-by-use path; if an agent sets a mark too early it wakes, sees time left, and must re-set (the command exits after one line). That's a real cost: `wait` is one-shot. Hmm, does the code exit after one print? Yes, it prints and returns. So a mark at 50% requires the agent to start another wait. That's a cost of the design, not of `--mark` per se. Could mention.
+   - Remove: loses the only pre-deadline return; pushes agents to `sleep` arithmetic (the project has a recorded failure from the agent computing a time from memory: F-a03fa5b3, the epoch a year off — that was `--minutes` from a typed epoch; the insight's fix was `--until HH:MM`). Hmm, that bug is about `deadline start`, not the timer. Still, it shows the class of error: agent-computed times. A `sleep` interval is also agent-computed. But careful not to overreach. I can say removal makes the timer a number the agent computes and `sleep`s on, outside the guard; the guard then cannot see it, and the status line at the wake is lost. That's a real cost, no need for the bug.
+   - Keep's benefit: deadline-aware wake at a chosen point, one command, the status line printed by the guard.
+   - Remove's benefit: one fewer flag, one fewer branch, a smaller surface; and it makes the vision exactly two behaviors (clock line, time-up line).
+
+5. **Applied the gate: act only on advantage** (my #5). 「非利不動，非得不用，非危不戰。」 A removal also has to move on advantage. Removal's only advantage is a smaller surface; no vision line or use case in view is served by deletion. Keeping serves the attested use case. So do not move. And "an option that serves no use case is wrong": removal serves no use case *in view*. Careful: this is the brief's rule, which I should treat as given. Good.
+
+6. **Avoided a fixed form** (my #10). The owner's objection is to a fixed form that cannot predict the specific moment. 50/80/100 are constant forms; `--mark P` lets the form vary with the work — the agent, at the moment it starts the wait, says when it needs to be back. 「故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」 Deleting the flag would leave `wait` with one fixed form, 100%, which is the same defect in smaller size. Hmm, is that fair? At 100% the fixed form is the deadline itself, which is not a prediction — it's the fact. So it's not the same defect. Better: deleting the flag leaves only 100%, and 100% is not a prediction at all; the defect the owner named (bad prediction) is avoided by taking the prediction away from the guard. The flag is the mechanism that lets the prediction be made by the party that can make it. If removed, any agent that needs a pre-deadline wake is back to `sleep` and its own arithmetic — the prediction returns, just outside the guard. That's the sharp point: removal doesn't remove the prediction; it moves it out of the guard, where it is less visible and less grounded in the recorded deadline. Good.
+
+7. **Decide and bound the test** (my #8 「故兵貴勝，不貴久。」 — value the result, not the duration; and my #17). Keep now; measure next. How: the next time-boxed run starts `deadline wait --mark P` (P chosen, e.g. 90) in the background at the start; record the command in the state's start line (as the time-monitor run recorded its timer). Then check: did the timer fire before the deadline? Was the report written before the time-up line? If the next two time-boxed runs set no pre-deadline timer, then the need itself is not recurring and `--mark` (and possibly the whole wait path) can go. If they set a pre-deadline timer with `sleep` instead, the flag is not discoverable enough — fix the docs, not the flag. That's a good observable set. #17's 角之 is the probe; #8 bounds it: don't test forever.
+
+Wait, the instruction: "How we would know I was right: a test, a measure, or an observable result." I should make it one clear test, not a menu. But I can give the measure with a stopping rule. Good.
+
+What I need to know:
+- Whether the owner's decision "remove the reminders" was scoped to automatic reminders or to every percentage-based timer, including one the agent chooses. This changes the answer: if the latter, remove.
+- Whether `deadline wait` itself is to stay. If the whole way-2 timer path is being retired (agents use the clock and plain `sleep`), then `--mark` should go with it — that is a larger decision than this one, and I was not given it.
+- Whether a background job's output reliably reaches the agent when the timer fires (does the harness surface it as a notification, or only when the agent next calls a tool?). If it does not, a pre-deadline mark gives no more than the next clock line, and the case for keeping weakens. This is a real dependency; I don't have it. Hmm, the time-monitor run's state says the timer fired at 11:17 and it was "dogfooded"; presumably it worked. But "fires" in the state is the plan. I'll include it as a question, maybe. The brief says list questions whose answers would change the answer. The first two clearly would. The third would weaken but maybe not flip. I'll list the first two and the third as a check.
+
+Costs and risks (each with the item it comes from):
+- Keep: the flag stays nearly unused (measured zero), and an unused branch is code that can rot; its test coverage — let me check if a test uses `--mark`. If no test, that's a concrete risk: the flag's one distinct behavior (returning before the deadline) is untested. Let me check the test file for `--mark`.
+
+Let me grep tests for "--mark". Earlier grep over test* found only the default wait test. Let me confirm.
+dsh: reasoning:
+So no test uses `--mark`. Only the default 100% wait test exists. That's a concrete cost for keeping: the flag's distinct behavior (return before the deadline) is untested; a bug in the mark branch would ship. And the review log shows the mark validation was added ("--mark is a percent from 1 to 100"). Let me check whether a test was removed in the removal commit (82 lines changed in round10-deadline.test.ts, 82 changed = 41 additions/deletions roughly). Possibly the mark tests were deleted with the reminders. That's a fact: the removal commit changed the test file; if mark-wait tests were removed, keeping the flag without tests is a gap. Let me check the removed test lines for `--mark`.
+dsh: reasoning:
+Only `--marks` tests were removed; no `--mark` test existed before either. So the wait mark branch has never had a test. That's a concrete risk of keeping: an untested branch. But it's ~10 lines, and the default path is tested. It also validates P range.
+
+Wait — is there a test that calls `deadline wait` with `--mark`? The grep for "--mark" in test dir returned nothing (exit 0 but no output? Actually `grep ... | head -20; echo "exit=$?"` — exit was head's, 0 even with no matches; so no output means no matches). Confirmed no test.
+
+This is useful for "Costs and risks": keeping costs an untested branch (my reading of the test tree); the fix is a test that a 50% mark returns before the deadline, not removal. That's a concrete, cheap action. And the brief asks "Say what each choice costs and how we would know." I can propose: if kept, add one test for the mark path (or at least know it's untested). But the brief says "Do not write files; your final message is the answer." So I recommend it, not do it.
+
+Now let me also consider: does `wait` with `--mark` correctly handle a mark already passed? `wait = at - now`; if negative, no sleep, prints status. So an agent starting at 95% with `--mark 90` gets an immediate status — useful, no harm. Fine.
+
+Another cost of keeping: `--mark` requires the agent to know the *percentage*, but the natural unit is remaining minutes ("wake 5 minutes before"). The time-monitor run's timer was "5 minutes before", which is a duration, not a percent. `--mark` expresses that as a percentage the agent must compute: for a 60-minute deadline, 5 min before = 91.67%; `--mark 92` wakes ~11:17:12. So in the one recorded use, the natural input was "5 minutes before", and `--mark P` makes the agent do arithmetic — the exact class of error the project has recorded (F-a03fa5b3: a time typed from memory, a year off; the fix was `--until HH:MM`). Hmm! This is a strong point *against* keeping `--mark` as-is: the flag's unit may be wrong for the attested need. It doesn't necessarily mean remove; it means the unit should perhaps be "wake N minutes before the deadline" rather than a percentage. But the question is binary: keep or remove. I can recommend keep, and note that if kept, the unit should be tested; a percent is fine for a rough wake (the agent can re-wait). But the "5 minutes before" need maps poorly to a percent for variable deadlines. Should I propose a change? The brief allows a *proposed change to the pattern* only for the pattern, not for the code. I can note under costs: the attested use was "five minutes before", and `--mark` makes the agent convert that to a percent; if the next run uses it, prefer setting the mark from the remaining time (e.g. `--mark 90` for a rough last tenth) or keep the wake coarse. Hmm.
+
+Actually, this strengthens a nuanced answer: keep `--mark` (the capability to wake before the deadline is needed and is not a reminder), but don't pretend the current unit is proven; the one recorded need was a duration ("five minutes before"), not a percentage. If the next test shows agents stumble on the percentage, the fix is a `--before MIN` argument or documentation, not deletion. That's honest and useful.
+
+But the brief says "Do not invent facts" and "an option that serves no use case is wrong." The use case served is "wake before the deadline"; `--mark P` serves it, albeit with an awkward unit. Fine.
+
+Now, is there an argument that `--mark` is dangerous because it can be mistaken for the reminder system (the owner might see `--mark` in usage and think the reminders are back)? That's a communication cost. Mitigation: rename/document. Keeping the flag with a clearer name (`--at P` or `--wake P`) would address A's worry without losing the capability. But renaming is a change to the interface; the question is keep/remove. I could say: keep the capability; if the word "mark" is what makes it look like the removed reminders, rename it. That's my reading, not a rule. Hmm, the brief says "keep `--mark P` or remove it" — a rename is not one of the two options. But I can mention it as a risk/mitigation, not as the recommendation. Actually it might be a good third path, but the brief demands a decision between the two. I'll keep the recommendation "keep", and mention rename only if needed under costs. Better not muddy.
+
+Now: the "rest each point on a measurement or a fact given below" instruction. My step 2 uses the git diff — a fact I read, not given. That's okay if labelled? The brief says "a point you have only from memory is labelled *recall*, and recall alone does not decide." Reading the code/diff is not memory. I'll be explicit: "read in the code at ...", "read in 07b67a9", "read in runs/20261016-time-monitor/state.md". That satisfies the spirit: no point rests on recall alone. I should avoid calling these "measured" when they're read; say "read". For the grep zero, it's measured per the brief.
+
+Also the answer should call out that the stated measurement (`grep ... --mark` finds none) is not the right test: the same grep for `deadline wait` finds no command use either (the brief says the time-monitor run used sleep, and no run used `deadline wait`). Wait, the brief doesn't say "no run used deadline wait" explicitly; it says "the time-monitor run used a plain background sleep as its timer, not deadline wait; no run has used --mark". Combined: the only run that used a timer did not use `deadline wait`. Does any other run use it? My grep of runs/ found "deadline wait" only in question/brief/log files (the 16 files were copies of this question). Let me verify precisely: grep for lines that look like a command, e.g. "cli.ts deadline wait", across runs/, excluding the mark-q/briefs and logs. If none, I can state "no run has used `deadline wait` either" as a fact read from the run tree. Let me check.
+dsh: reasoning:
+Those are build/test logs (spec text pasted), not invocations. So no recorded run invoked `deadline wait` at all. Good — fact: the timer path is unused as a whole in the runs tree; the one timer was `sleep`. That makes the `--mark` zero non-discriminating.
+
+Now, I want to double-check the exact quote characters from the list by copying from the read output. I'll be careful with punctuation: the list uses full-width commas and periods. When I quote, I'll copy the exact substring including the final 。 inside the quote marks. The brief says the check compares exactly, character by character. I'll make quotes short to reduce risk.
+
+Quotes:
+1. #1: 「多算勝，少算不勝，而況於無算乎？」 — from line 50, exact substring "多算勝，少算不勝，而況於無算乎？" (the list has a space after 乎? "而況於無算乎？" then 」 — line 50: 「多算勝，少算不勝，而況於無算乎？」 — yes).
+2. #4: 「知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」 — line 87: "故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。" ✓
+3. #5: 「非利不動，非得不用，非危不戰。」 — line 97 ✓. And 「合於利而動，不合於利而止。」 — line 97 (and line 98) ✓.
+4. #6: 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」 — line 108 ✓.
+5. #8: 「故兵貴勝，不貴久。」 — line 131 ✓.
+6. #10: 「故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」 — line 154: "故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。" ✓
+7. #17: 「角之而知有餘不足之處。」 — line 243: "角之而知有餘不足之處" within the longer quote, followed by 。 ✓
+
+Need to make sure the list's characters: 恒 (U+6052) — yes the list writes 無恒形. 勢 traditional. 變 traditional. 謂 traditional. Good.
+
+Maybe use #2: 「無恃其不來，恃吾有以待之；無恃其不攻，恃吾有所不可攻也。」 (line 61) — for "don't rely on the reminder; rely on the clock you own". Could apply: the owner's fix should not rely on the agent remembering to set a timer; the after-call clock is the automatic part. `--mark` is optional and nothing depends on it. This supports keep because the design is safe whether or not it's used: keeping it does not make the clock depend on it. Hmm, that's more of a "keep is harmless" argument, and #2 is about not relying on the enemy's restraint. Maybe skip to keep the answer tight.
+
+Maybe use #13 for the final provisional decision: the agent decides provisionally now, the owner accepts or declines at the end (the pattern's item 14). #13 is about the general not accepting a ruler's command when the way of battle says otherwise. In this pattern, the main agent is empowered to decide provisionally; the owner reviews at the end. That's structurally #13's separation: the person on the ground decides within the mandate; the owner retains the end. But is that a good use? It might read as justifying overriding the owner, which is not what's happening. The owner gave a reason; the question is its scope. I'd rather use #4 to say "know what we know and what we don't; answer conditionally." 
+
+Let me settle the steps (6 steps + decision):
+
+1. (my #1) Count the two readings against the vision and the owner's reason. The count: removal has no use case in view; keep has one. But #1's rule is about counting before battle, not "no use case". The brief's own rule supplies "an option that serves no use case is wrong". I can say: by my #1 I laid out the five matters — the vision, the owner's reason, the code, the measured use, the two readings — and compared them. The deciding comparison is whose prediction sets the time. Then note the count.
+
+2. (my #4) Know what is known and what is not: the code's behavior and the owner's reason are known; whether the owner meant to forbid every percentage trigger is not. On what is known, the answer is keep; the missing piece is the scope of the owner's decision. This is the conditional part. Maybe this belongs later. Hmm.
+
+3. (my #17) Test the "leftover" claim in contact with the record. Three facts: (a) the wait branch is independent of the removed `--marks` field; (b) the removal commit rewrote the usage-error line and left `wait [--mark P]`; (c) no run used `deadline wait` at all, and the one timer use was a 5-minutes-before wake set with `sleep`. So "no use" measures the whole timer path, not the flag, and the need the flag serves is attested. This is the strongest evidence step. Quote 角之.
+
+4. (my #6) Put the harm beside the benefit for each choice. Keep: tiny unused surface + untested mark branch + two timer idioms + percent conversion; benefit: deadline-aware pre-deadline wake, status line from the guard. Remove: smaller surface + exactly two behaviors; harm: loses the only pre-deadline wake inside the guard, returns the agent to `sleep` arithmetic, requires rewriting SPEC T3, and the next run that needs a 11:17-style wake does it outside the guard. Quote the deliberation line.
+
+5. (my #5) Apply the gate: don't move without advantage. Removal's advantage is tidiness; no vision line or use case in view asks for it; keeping serves the recorded need. Quote 非利不動 and 合於利而動.
+
+6. (my #10) The owner's objection is to a fixed form that can't predict the moment; `--mark` is the form that varies with the agent's own work, and removing it would push the prediction back outside the guard (to `sleep`), not eliminate it. Quote 無恒形. This is the "why keep, not just why not remove" step.
+
+7. (my #8) Decide now and bound the test: keep provisionally; the test is the next time-boxed run. Quote 兵貴勝，不貴久 — don't stretch the deliberation; the trial decides.
+
+That's 7 steps. A bit long but okay. Each names an item. Maybe merge 6 into 1 or 3. The brief wants "numbered steps; each cites my #n or says my reading". 6-7 steps is fine.
+
+The final recommendation should also mention: if kept, add the missing test for the mark branch (a cost/mitigation). And the pattern change: the timer in the pattern is `deadline wait --mark`, with the mark recorded in the state's start line, so the next decision has a measurement. Label it *proposed change to the pattern*.
+
+Where to put the proposed change? The brief's "How we work" says "Your advice must fit it, and it may improve it: label such a point *proposed change to the pattern* and say what it would change." I can put one in "How I decided" step 7 or in "How we would know". I'll put it in step 7 as the test mechanism: *proposed change to the pattern* — the pattern's start line records the timer command and its mark, and the timer is `deadline wait --mark`, not a plain `sleep`; this changes "the time is set at the start" by adding that the timer is set then too, and makes the flag's use measurable.
+
+Hmm, is that a change to the pattern or to the run? The pattern currently says "the time is set at the start" and "every worker writes a timestamped progress line per piece". The change: set the timer at the start, using `deadline wait --mark`, and record it. That's an improvement consistent with the pattern. Good.
+
+What I need to know:
+1. Did the owner's "remove the reminders" mean "no automatic percentage reminders" or "no percentage trigger at all, even one the agent starts"? If the latter, my answer flips to remove.
+2. Is `deadline wait` (way 2) staying at all? If the guard is moving to clock-only and plain `sleep` for timers, then `--mark` goes with the whole branch; that is a different, larger decision I was not given.
+3. Does a background timer's output actually reach the agent when it fires, without the agent calling a tool? If not, a pre-deadline wake buys nothing the next clock line doesn't, and the case weakens. (The time-monitor run's state says its timer fired at 11:17; I did not verify what the agent saw at that moment.)
+Maybe 3 is too much; but it's a genuine dependency. The brief says "questions whose answers would change the answer". 3 would weaken but not necessarily flip. I'll include it as a check, clearly third.
+
+Costs and risks:
+- If kept: (my #6's harm side) one more flag and branch than the vision needs; the mark path has no test (I read the test tree: the only `wait` test uses the default 100%); and the natural need is "five minutes before", while the flag takes a percent, so the agent must convert — a place for the same class of error as the run's typed-epoch bug. Mitigation: one test and a documented example (90 for the last tenth; or the state line records "5 min before" and the command's mark). This cost is small and payable.
+- If removed: (my #5 / #10) the pre-deadline wake leaves the guard; agents go back to `sleep` and their own arithmetic, invisible to the guard and without the status line; SPEC T3 and the usage text must be rewritten; the next 11:17-style need is served worse. And removal does not restore "no percentage" — it just moves the number out of sight.
+- Risk common to both: the decision is being made on one recorded timer use and a zero that measures the wrong thing; either choice can be reversed, but a deletion is the one that loses the tested-in-practice path. Hmm, neither is "tested in practice" — `--mark` was never used. Say: deletion is the one that cannot be measured afterwards, because the flag will no longer be there to use; keeping it can still be removed later on evidence.
+
+That last point is good: asymmetric reversibility. Keeping preserves the option and the ability to measure; removing forecloses it. Under uncertainty, prefer the reversible choice. Which rule? #2: make yourself unbeatable first; don't rely on the other side. Hmm, or #13? There isn't a "reversibility" item explicitly. #1's "more count wins" and #6's harm. I can present it as "my reading" and tie to #6 (the harm of an irreversible deletion is greater than the harm of a small unused flag). Or #2: 「勝兵先勝而後求戰」 — win first, then seek battle; keep the position from which the test can be run. Maybe use #2: the safe ground is to keep the ability and decide on evidence; do not seek the decision before the ground is prepared. Hmm, a bit of a stretch but defensible: "First make yourself unbeatable, then wait for the enemy to become beatable" → make the measurement possible first (keep the flag), then decide. I might use #2 in the costs or "how we would know".
+
+Let me not over-cite. Quality over quantity.
+
+How we would know I was right:
+- Test: the next time-boxed run starts `deadline wait --mark` in the background at the start, with the mark set for when the report must begin (e.g. 90), and records the command in the state's start line. Right = the timer fires before the deadline, the agent writes the report before the time-up line, and the run's record shows which mark was chosen and why. Wrong = either no run sets a pre-deadline timer in the next two time-boxed runs (then the need is not recurring; remove `--mark`, and consider retiring the wait path), or a run sets one with plain `sleep` while `--mark` exists (then the problem is discoverability, fix the docs, not the flag).
+- Also a one-off check now: `bun ... deadline wait --mark 50` against a short planted deadline returns at ~50% and prints the status line. That's the missing test, and it verifies the flag does what B says. I could say: "the cheapest check is a test: plant a 2-minute deadline, run `--mark 50`, see it return at ~1 minute with `used 1 of 2 min`." That is a test anyone can run. But the "how we would know I was right" should be about the decision, not the code. I can include both: immediate code check, then the run measure.
+
+Actually, a clean test: does a pre-deadline wake help? In the next run, at the start set `--mark 90`; when it fires, the agent has ~10% left. If the report is written before the deadline and the time-up line never catches an unfinished report, keep. Compare with the time-monitor run, which set a 5-minutes-before timer with `sleep` and (presumably) finished. The baseline exists: 11:22 deadline, timer 11:17, report at 10:3x — wait, the report was written at 10:3x, long before 11:17. So the timer at 11:17 was never actually needed; the run finished early at 10:3x. Hmm! The log says "10:3x review... report written" — so the run finished in ~15 minutes, and the 11:17 timer would have fired after the work was already done (and `deadline end` would stop it). So the one recorded timer use was set but not tested by events. That weakens the claim that the need was *exercised*; it was *anticipated*, not exercised. Important correction!
+
+So the fact is: the time-monitor run set a timer for 11:17, five minutes before its 11:22 deadline, but finished its report around 10:3x, so the timer's fire was moot. Was the timer ever fired? The run ended early (`deadline end` added). The state line says "background timer fires 11:17 (way 2, dogfooded)" — a plan, not an observed event. So I cannot say "the one recorded timer use woke the agent five minutes before the deadline"; I can only say "the one recorded timer was set to fire five minutes before the deadline". The need was anticipated, not measured. That's still evidence that an agent, at the start of a time-boxed run, chose a pre-deadline wake; but not evidence that it helped.
+
+This matters for honesty. The brief says rest on measurement or fact; "set to fire 11:17" is a recorded fact. "The need is attested" — anticipated by the agent, yes; exercised, no. I'll phrase precisely: "the only recorded timer was set to fire at 11:17 against an 11:22 deadline — a pre-deadline wake; the run then finished early, so we do not know from it whether the wake helped." That's the accurate reading and still supports the point: the zero-use measurement does not test the flag; the one timer that would have been the flag's use case was set with `sleep`.
+
+Hmm, wait: if the run finished early at 10:3x, why was the timer set for 11:17? Because at 10:22 the plan was an hour; it finished in 15 min. The timer was set at the start and then `deadline end` stopped the deadline. Did it stop the sleep? A background `sleep` would still fire at 11:17 (or the harness may kill it at session end). This is a risk of the timer design: a stale timer fires after the task is done. `deadline wait` computes from the deadline; `deadline end` marks the deadline ended, but the wait branch already computed its wake time and sleeps; it would still print at 11:17. Unless the session ends and the job is killed. So both have the stale-timer issue. Not central.
+
+Actually, a real cost of `--mark`: if the task ends early, a background wait still fires later and prints a stale status line into the session (unless killed). The same is true of `sleep`. Not a differentiator.
+
+Let me reconsider the whole decision with the corrected evidence. Is B still right?
+
+Core: the owner removed automatic reminders. `--mark` is not a reminder; it's a self-set timer. The vision's use case is the agent knowing the time. A self-set timer serves the same purpose at a moment the agent chooses. The owner's objection to fixed marks was that they fire at moments that don't fit the work; a self-set mark is chosen to fit the work, so it doesn't repeat the objection. Costs are small; the capability is distinct (only pre-deadline return). No evidence it's harmful. Keep.
+
+The only serious case for A is: the vision specifies only two behaviors, and `--mark` adds a third that no use case in the vision asks for; the code surface and the risk of confusion with the removed reminders are real. Also, the zero use is a signal. But the zero is non-discriminating (the whole wait path is unused), and the one recorded timer was aimed 5 minutes before the deadline, which is B's use case. On balance: keep, with a test and a pattern change to use it; revisit on evidence.
+
+Counter: maybe the cleanest decision is "remove `--mark`, keep `wait` at the deadline only, because the clock after every call already covers pre-deadline awareness, and the 11:17 timer was a workaround from before the clock existed." Hmm! That's a strong A argument: the after-call clock line tells the agent the time on *every* Bash/file-write call, so during active work the agent already sees the time and can decide to stop and write the report. The pre-deadline timer matters only when the agent is doing something long with no tool calls (a long-running command, a long generation). The vision's chosen mechanism is the after-call clock, not a timer. So the pre-deadline mark is redundant in the common case and only useful in the no-call window. Is that enough of a use case? The time-monitor run's timer was set at the very start, before any clock existed; its purpose was probably to guarantee a wake even if the agent got absorbed. With the clock after every call, absorption is less likely: every call shows the time. So the 11:17 timer may be a leftover of the pre-clock design — which would support A! Hmm.
+
+But the brief's "What is left" says the `wait` command is a timer the agent runs in the background; "it is not a reminder: nothing fires unless the agent starts the wait." The two readings are A (leftover) and B (separate timer the agent chooses). The brief frames it as a genuine choice. The facts: the owner removed reminders at 50/80/100; the clock after every call stays. Does the clock make a pre-deadline timer unnecessary? Only when calls happen. During a long single operation (a big build, a long web fetch, a long generation), no call fires, so no clock line. The clock is reactive; a timer is proactive. The vision says "a time-up line after the deadline" — that's also reactive; if no call occurs, it waits. A timer covers the no-call window. That's a genuine use case, and it is the one the 11:17 timer served: a guaranteed wake independent of calls. Note the owner's objection to the fixed marks: those fired at fixed percentages *in the hook context after calls* — so they weren't even independent of calls! The marks were hooked reminders at 50/80/100 after tool calls. The `wait` timer is the only mechanism that fires without a call. So `--mark` isn't redundant with the clock; it's the only pre-deadline signal that doesn't require a call. That's a strong B point, grounded in SPEC T5 (the marks were hook context) and T3 (wait = background timer).
+
+Hmm, but the removed marks were "after tool calls" per T5 ("PostToolUse ... on every call... There are no reminders at 50, 80 or 100%"). The owner's complaint "not able to well predict, specific when exploring solutions" — because they depend on tool calls and fixed fractions. The `wait` timer fires on wall-clock, no call needed. Good.
+
+So the strongest B argument:
+- The clock is call-driven. In a long no-call stretch, the agent is blind. `deadline wait` is the only wall-clock-driven signal. `--mark` chooses the point. So the flag serves a use case the clock cannot: a wake when no call is happening.
+- The removed reminders were call-driven too, and fixed; `--mark` is neither. So A's "leftover" conflates two different defects: the removal killed call-driven fixed reminders, not wall-clock timers.
+
+Counter: if the harness always notifies on background job completion, then a background `sleep` can do the same. True — but then the agent must compute the sleep interval and loses the guard's status line; and the project's own record used `sleep` and the question exists because the guard offers `wait` instead. Keeping `--mark` makes the guard's timer express the wake point in deadline terms.
+
+OK, I'm confident: keep.
+
+Now the "cost" of keeping includes: the percent unit. The 11:17 wake on an 11:22 deadline = 91.67%; `--mark 92`. The agent would have to compute it. Alternatively `--mark 90` wakes at 11:16 — 6 minutes before. Close enough. So the unit is workable for a coarse wake; the exact 5-minute point needs arithmetic. Cost: small. If we wanted exactness, `--before 5` would be better; not the question. I can note it as a cost and say the coarse mark is enough for the purpose (wake with time to write), so it doesn't decide.
+
+Now the claim "no test for --mark": that's a concrete cost. Add as risk with mitigation: one test (plant a 2-minute deadline; `--mark 50` returns at ~half, prints `used 1 of 2 min`, exit 0). Note that the default wait test exists (T3 fails-if), so the branch's shared logic is covered; only the mark offset isn't.
+
+Now, should I quote the owner's reason? The brief gives it in quotes: "is not able to well predict, specific when exploring solutions". I'll paraphrase to avoid confusion with the "quote only from your list" rule: "the owner's reason as given: the fixed marks cannot well predict the specific moment when exploring solutions." That's a paraphrase, not a quote. Good.
+
+Do I need to mention that I read the code? Yes, briefly, for the factual points: "read in `cli.ts`", "read in `deadline.ts`", "read in the removal commit", "read in the time-monitor run's state". The brief says don't write files; reading is fine. It also says the code is at that path, inviting the check.
+
+One more check: the wait branch reads `status.deadline.start` from the stored deadline. If the deadline was restarted, the newest unexpired is used. Fine. `--mark P` after the deadline prints immediately with "time is up". Fine.
+
+Let me also consider whether `--mark` could conflict with the "no marks" SPEC T5 statement: T5 says "no marks, no mark block, no `raised` mark record" — but T3 still documents `--mark`. A reader could see an inconsistency: "no marks" vs `wait [--mark P]`. That's a real documentation cost and probably the source of reading A. The fix: T5 should say "no automatic mark reminders; `deadline wait --mark` is the agent's own timer" and T3 should call it that. If kept, clarify the wording so the two sections don't contradict. This is important and practical. I read T5: "There are no reminders at 50, 80 or 100%: no marks, no mark block, no `raised` mark record." The phrase "no marks" literally contradicts `wait [--mark P]`. So A's reading has a textual basis: the SPEC says "no marks" while the CLI has `--mark`. That's likely why the question exists. Recommendation: keep the capability, but change the words: T5 should say no *automatic* marks; T3 names `--mark` as the agent's chosen wake. That resolves the appearance of a leftover. Excellent point for "costs and risks" and for the answer's practicality.
+
+Hmm, does that mean the answer is "keep, but rename to avoid the word mark"? The word "mark" is the source of the confusion. A rename (`--wake P`) would make T5's "no marks" true and keep the capability. But the brief asks keep or remove `--mark P`. I can recommend keep the capability and, if the word is the problem, say so under costs: "the word `mark` is what makes it read as a leftover; the SPEC's 'no marks' should be scoped to automatic marks, or the flag renamed. Either is a wording change, not a deletion." That's a strong, actionable answer.
+
+Now, the decision is provisional; the owner accepts/declines at the end. My answer can say: "Keep it provisionally; if the owner meant to forbid every percentage trigger, remove it."
+
+Let me draft the final answer now, keeping it tight and in plain English. Format exactly:
+
+# 孫子 (Sun Tzu) — whether `deadline wait --mark` stays
+
+## Answer
+...
+
+## How I decided
+1. ...
+...
+
+## What I need to know
+...
+
+## Costs and risks
+...
+
+## How we would know I was right
+...
+
+Length: moderate. Sun Tzu style: terse, concrete. Avoid flowery voice; the brief says value is rules applied, not voice.
+
+Draft steps:
+
+1. **Laid the choice out before choosing (my #1).** The five matters here are the vision, the owner's reason, the code, the use so far, and the two readings. 「多算勝，少算不勝，而況於無算乎？」 The count turns on one question: who sets the moment? The removed reminders set 50/80/100 themselves and fired on tool calls. `--mark` sets nothing until the agent starts a wait and names the point. Read in `cli.ts`, nothing fires unless `deadline wait` is run.
+
+2. **Told the two defects apart (my reading).** The owner's reason is about prediction: fixed percentages cannot well predict the specific moment when exploring solutions. A fixed percentage is the defect, not a percentage as such. A number the agent chooses at the moment it starts the wait is the agent's prediction, made with the work in front of it. A's case needs the stronger claim — that any percentage is a leftover — and the facts given do not carry it.
+
+3. **Tested the "leftover" claim against the record (my #17).** 「角之而知有餘不足之處。」 Three facts from the repo:
+   - the `wait` branch takes only the deadline's start and minutes; it never reads the removed marks field (read in `deadline.ts` / `cli.ts`);
+   - the removal commit rewrote the usage-error line, deleting `deadline start ... [--marks 50,80,100]` and leaving `wait [--mark P]` (read in `07b67a9`); the flag is not part of the removed reminder code, though I cannot tell from the diff whether it was kept on purpose;
+   - no recorded run has invoked `deadline wait` at all; the one timer in the runs tree was set for 11:17 against an 11:22 deadline (read in `runs/20261016-time-monitor/state.md`), and it was a plain `sleep` (given). That is a pre-deadline wake aimed five minutes before the deadline — B's use case, done without the flag because the flag's command was not what the run used.
+   So the measured zero, `grep ... --mark` finds none, measures the whole timer path, not the flag. It cannot decide between A and B.
+
+4. **Put the harm beside the benefit on both sides (my #6).** 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」
+   - Keep: an unused branch, a second timer idiom beside `sleep`, a percent the agent must derive (11:17 on an 11:22 deadline is about 92%), and no test that exercises the flag (the only `wait` test uses the default 100% — read in `round10-deadline.test.ts`). Benefit: the only wall-clock wake that can return before the deadline without a tool call, and it prints the guard's status line.
+   - Remove: a smaller surface and one behavior fewer. Harm: the pre-deadline wake leaves the guard for `sleep` and the agent's own arithmetic, invisible to the guard; SPEC T3 and the usage text must be rewritten; and the next run that wants an 11:17-style wake does it outside the guard. The clock line cannot cover this: it is written after a call, so a long call leaves the agent blind until it ends.
+
+5. **Applied the gate: move only with advantage (my #5).** 「非利不動，非得不用，非危不戰。」 and 「合於利而動，不合於利而止。」 A removal is also a move and needs a use case. The removal's only gain is tidiness; no vision line or use case in view asks for the deletion, while keeping serves the pre-deadline wake. The option that serves no use case here is removal.
+
+6. **Refused the fixed form the owner objected to (my #10).** 「故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」 The fixed 50/80/100 is a constant form. Deleting `--mark` does not remove the prediction from the system; it moves it to `sleep`, where the guard cannot see it. Keeping the flag keeps the prediction where the deadline is known.
+
+7. **Decided provisionally and bounded the test (my #8, my #17).** 「故兵貴勝，不貴久。」 Keep now; do not argue it longer than the trial needs. The trial is the next time-boxed run (below). *Proposed change to the pattern:* set the timer at the start with `deadline wait --mark`, and record the command and the chosen mark in the state's start line, as the time-monitor run recorded "background timer fires 11:17". That changes "the time is set at the start" by adding that the timer is set there too, and it makes the next decision on the flag measurable instead of a grep over runs that never invoked the command.
+
+Hmm, step 3's bullet about the removal commit: I should be precise that the commit rewrote the last usage-error line. Yes: `- return usageError("deadline: start ... [--marks 50,80,100] | status | wait [--mark P] | end")` → `+ ... | status | wait [--mark P] | end`. So the line was rewritten and the flag kept. Good.
+
+Also, step 3 says "it was a plain `sleep` (given)". And the state line's 11:17. The run finished early, so the timer's fire was moot; should I say that? For honesty: "the run finished early (report at 10:3x by its log), so that timer was never the thing that saved it — the record shows the intent, not the benefit." That's important: don't overclaim. I'll add a clause: "the run finished early, so the record shows the intent, not that the wake helped." Then the claim is: the use case was anticipated by an agent at the start of a time-boxed run; whether it pays is untested. That's exactly what the trial should test.
+
+Does this weaken the case for keeping? Yes, but the asymmetry remains: keep to test, remove forecloses. And the cost of keeping is tiny. So the answer stands, with the trial doing the work. Good—this is an honest, non-overclaiming answer.
+
+What I need to know:
+- "Did the owner's decision cover every percentage trigger, including one the agent starts, or only the automatic 50/80/100 reminders?" If every, remove; my answer is conditional on the narrower reading.
+- "Is `deadline wait` itself staying?" If way 2 is being retired and timers are to be plain `sleep`, then `--mark` goes with the branch; that is a larger decision than the flag.
+- "Does a background timer's output reach the agent when it fires, without the agent making a call?" If it does not, a pre-deadline wake buys nothing until the next call, and the case for keeping weakens. The time-monitor run did not test this (it finished early).
+
+Costs and risks: I have them in step 4, but the template requires a separate section. Keep step 4 shorter (the deliberation), and put the full cost list in "Costs and risks". Avoid duplication:
+- Keep, cost 1: an unused branch, untested (the only wait test is the default 100%). Risk: the mark offset can regress silently. Cheap fix: one test (2-minute deadline, `--mark 50` returns at ~1 minute with `used 1 of 2 min`). (my #6 harm)
+- Keep, cost 2: the word "mark" contradicts SPEC T5's "no marks". Risk: the next reader repeats A's reading and deletes it. Fix: scope T5 to automatic marks, and call `--mark` the agent's own wake point in T3 and the usage text. (my reading)
+- Keep, cost 3: the percent unit. The recorded intent was "five minutes before"; a percent forces arithmetic (11:17 against 11:22 is ~92%). Risk: a mis-set mark wakes too early or too late. Not decisive: a coarse mark (90) is enough to leave time to write. (my reading)
+- Remove, cost 1: the only pre-deadline wake inside the guard is lost; the agent returns to `sleep` and its own arithmetic, invisible to the guard, with no status line. (my #5 / my #10)
+- Remove, cost 2: SPEC T3 and the usage text change, and the next reader cannot tell what the removal decided: if it was meant to remove a leftover, that is fine; if it was meant to remove a capability, the reason should be written down. (my #6)
+- Remove, cost 3: deletion is the less reversible choice. Keeping can be removed later on evidence; removing cannot be tested. (my #2: 「勝兵先勝而後求戰」? Hmm. Maybe leave this as "my reading".)
+- Common risk: the evidence is thin — one anticipated timer, zero invocations of the wait path. Either choice is provisional. That's the honest note.
+
+How we would know:
+- The trial: next time-boxed run, at the start, run `deadline wait --mark P` in the background, with P at the point the report must begin (e.g. 90 for the last tenth), and record the command and P in the start line.
+- Right if: the timer fires before the deadline; the agent sees it; the report is written before the time-up line; and the state shows the mark chosen and why. Repeat for two runs. 
+- Wrong if: a run needs a pre-deadline wake but reaches for `sleep` while `--mark` exists → the flag is not discoverable, fix the docs, not the flag; or two time-boxed runs need no pre-deadline timer at all → the need is not recurring, remove `--mark` (and consider whether `wait` itself earns its place).
+- A code check now: plant a 2-minute deadline and run `--mark 50`; it should return at about one minute with `used 1 of 2 min`, exit 0. This is the test the branch lacks.
+
+That's a clear "how we'd know".
+
+One more consideration: the brief says "Do not write files; your final message is the answer." I have not written files; I've only read/grepped. Good. I did run bash commands (grep/git), which is allowed. The final answer must be the exact template with no preamble.
+
+Let me double-check the quotes one final time by grepping the list for the exact substrings, so I don't misquote.
+dsh: reasoning:
+All quotes verified verbatim. Note "合於利而動，不合於利而止。" appears twice (item #5 twice).
+
+Now write the final answer in the exact template. Keep plain English, terse, each step cites "my #n". Use "my reading" where no item fits.
+
+Let me ensure the answer's first line is exactly `# 孫子 (Sun Tzu) — <the question in a few words>`.
+
+Title: `# 孫子 (Sun Tzu) — keep or remove `deadline wait --mark``
+
+Answer (2 sentences): 
+"Keep `--mark P`. The marks the owner removed were automatic reminders at fixed percentages; `--mark` is a timer the agent starts and sets itself, and the only recorded timer in this project was aimed five minutes before the deadline — that is this flag's job, not the removed reminder's. If the owner meant to forbid every percentage trigger, even one the agent starts, then remove it; on the reason as given, keep it."
+
+That's 3 sentences, but the third is the conditional. The template says "one or two sentences; conditional if it must be". I can combine: "Keep `--mark P`: the removed marks were automatic reminders at fixed percentages, while `--mark` is a timer the agent starts and sets itself — the only recorded timer here was aimed five minutes before the deadline, which is this flag's job. If the owner meant to forbid every percentage trigger, even one the agent starts, then remove it; on the reason as given, keep it." Two sentences. Good.
+
+"How I decided": 7 numbered steps. Each starts with a bold claim, then cites the item and quotes. Keep step 4 focused on the deliberation (brief), with the full costs in the Costs section. Maybe reduce duplication by making step 4 about the harm column and pointing to "Costs and risks". 
+
+Step 2 says "A's case needs the stronger claim — that any percentage is a leftover — and the facts given do not carry it." Good.
+
+Step 3 bullet about the commit: "the commit that removed the reminders rewrote the final usage-error line, taking out `deadline start ... [--marks 50,80,100]` and leaving `wait [--mark P]` (read in 07b67a9)." That is accurate.
+
+One risk: the brief says "Quote only from your list, exactly as it is written there, and keep its label (`quoted`, `attributed`)." I should label the quotes as quoted? The list has "Words are: quoted" for these items. I can say "quoted" in the text or just present the quote. The instruction "keep its label" likely means don't quote an `attributed` line as `quoted`. All my quotes are from `quoted` items. I'll note at first use "(quoted, my #1)" or just "my #1 quotes". To be safe, I'll write `「...」 (quoted)` occasionally, but it may clutter. The template's steps just cite the item. I'll put "(quoted)" after the first quote and rely on the named items thereafter. Hmm. The check may look for "quoted"/"attributed" labels. The brief says "keep its label (quoted, attributed)" — I'll explicitly mark each Chinese quote as (quoted) or note that all are quoted. Simpler: in step 1, "(quoted)" once; then say "the quotes below are `quoted` in my list" — but that's meta. Better: label each quote with "(quoted)" at the end. It's a bit repetitive but compliant and shows the label.
+
+Now, "What I need to know": 3 questions, each with the flip. Keep it crisp.
+
+"Costs and risks": bullets, each with the item or "my reading". Include the keep costs and remove costs, plus common risk.
+
+"How we would know I was right": the trial + the immediate code check + the wrong-signals.
+
+Let me write it. Avoid em dashes? No constraint. Plain English. No preamble. Make sure no file writes.
+
+One more thing: the brief says "Refer to EJ as they/them." I do. I might refer to "the owner" mostly.
+
+Let me compose carefully.
+
+Potential issue: step 3 says "the only timer in the runs tree was set for 11:17 against an 11:22 deadline (read in state.md)". The state line says "background timer fires 11:17" and deadline 11:22:01. Accurate. "and it was a plain `sleep` (given)." Good. "The run finished early, so the record shows the intent, not that the wake helped." The log says report written 10:3x, yes. This honesty is good.
+
+"no recorded run has invoked `deadline wait` at all" — I verified via grep for "cli.ts deadline wait" excluding logs/briefs; the hits are spec text in build logs. I'll phrase "no run's record shows the command being run (the only occurrences are the spec and test text)". Fine.
+
+Also, the claim "the `wait` branch takes only the deadline's start and minutes; it never reads the removed marks field" — from deadline.ts: `sessionDeadline` returns a Deadline; `status.deadline.start` and `status.deadline.minutes`. `Deadline` type no longer has marks. Accurate.
+
+The "untested branch" claim: no `--mark` in tests; only the default wait test. Verified. Phrase: "no test exercises `--mark`; the one `wait` test runs the default 100% (read in the test tree)." Accurate.
+
+The "word mark contradicts T5" claim: SPEC T5 says "no marks, no mark block, no raised mark record" while T3 has `wait [--mark P]`. Accurate. This is a documentation inconsistency worth fixing either way. If they remove the flag, the contradiction goes; if they keep it, scope T5. Good.
+
+Could the T5 "no marks" phrase be read as "no mark reminders"? It says "There are no reminders at 50, 80 or 100%: no marks, no mark block, no `raised` mark record." The colon scopes it to reminders. So it's not literally contradictory, but the word collision is real. I'll phrase it as "the two sections use the same word for two things", which is accurate and less accusatory.
+
+Now the answer.
+
+Length check: maybe 900-1100 words. Fine.
+
+Let me make sure each step "names the item it uses". Steps:
+1. my #1
+2. my reading
+3. my #17
+4. my #6
+5. my #5
+6. my #10
+7. my #8 (and #17 for the trial; I can cite my #8 for "decide, don't prolong" and my reading for the pattern change).
+
+The pattern change must be labelled exactly "*proposed change to the pattern*". I'll embolden/italicize: **Proposed change to the pattern:** and say what it changes.
+
+Let me write.

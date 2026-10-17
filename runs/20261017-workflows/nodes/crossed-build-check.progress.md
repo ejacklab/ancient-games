@@ -10,3 +10,11 @@
 - 2026-10-17T09:34:53+08:00 · write-harness · done · 6 checks with plants + 5 good-path checks
 - 2026-10-17T09:34:53+08:00 · run-harness · start · node harness
 - 2026-10-17T09:34:53+08:00 · run-harness · done · 21 ok, all passed, exit 0
+- 2026-10-17T09:51:19+08:00 · write:tests-clock · start · opencode writes tests-clock tests from brief
+- 2026-10-17T09:52:25+08:00 · write:tests-clock · done · opencode exit 0; round10-clock-only.test.ts written
+- 2026-10-17T09:52:44+08:00 · failfirst:tests-clock · start · base 2802e6f, round10-clock-only.test.ts
+- 2026-10-17T09:53:04+08:00 · failfirst:tests-clock · done · base 2802e6f: 10 fail, 7 pass; worktree removed
+- 2026-10-17T09:53:41+08:00 · head:tests-clock · start · run tests-clock brief tests on current code
+- 2026-10-17T09:53:44+08:00 · head:tests-clock · done · round10-clock-only.test.ts on current code: 17 pass, 0 fail, exit 0
+- 2026-10-17T09:53:52+08:00 · review · start · dsh read-only review of clock briefs
+- 2026-10-17T10:02:10+08:00 · review · done · dsh review returned 6 numbered findings

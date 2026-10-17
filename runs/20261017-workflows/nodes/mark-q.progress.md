@@ -1,0 +1,18 @@
+- 2026-10-17T09:51:21+08:00 · linus · start · codex
+- 2026-10-17T09:51:23+08:00 · dave · start · claude
+- 2026-10-17T09:51:23+08:00 · dario · start · claude
+- 2026-10-17T09:51:23+08:00 · sun-tzu · start · dsh
+- 2026-10-17T09:52:01+08:00 · linus · done · codex exit 0
+- 2026-10-17T09:52:12+08:00 · check-linus · start · 
+- 2026-10-17T09:52:13+08:00 · check-linus · done · linus answer file checks clean (other experts absent, ignored)
+- 2026-10-17T09:53:10+08:00 · dario · done · claude exit 0
+- 2026-10-17T09:53:19+08:00 · check-dario · start · 
+- 2026-10-17T09:53:21+08:00 · check-dario · done · dario check passed, no FAIL dario lines
+- 2026-10-17T09:54:43+08:00 · dave · done · claude exit 0
+- 2026-10-17T09:54:52+08:00 · check-dave · start · 
+- 2026-10-17T09:54:54+08:00 · check-dave · done · dave answer file checks clean; other experts have no answer file (not this step)
+- 2026-10-17T09:55:01+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-17T09:55:12+08:00 · check-sun-tzu · start · 
+- 2026-10-17T09:55:15+08:00 · check-sun-tzu · done · sun-tzu check has no FAIL lines; other experts absent from folder as expected
+- 2026-10-17T09:55:27+08:00 · compare · start · 
+- 2026-10-17T09:56:43+08:00 · compare · done · compare.md written: 3 remove (linus, dave, dario), 1 keep (sun-tzu); 7 questions merged; fan-li and lao-tzu not asked

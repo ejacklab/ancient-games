@@ -145,7 +145,7 @@ export function deadlineStatus(root: string, session: string | null, now: Date, 
   const deadline = sessionDeadline(root, session, now);
   if (deadline === null) return null;
   const usedMs = now.getTime() - Date.parse(deadline.start);
-  const usedMinutes = Math.max(0, Math.round(usedMs / 60_000));
+  const usedMinutes = Math.max(0, Math.floor(usedMs / 60_000)); // floored: never "10/10" while time is left (review 3)
   const percent = Math.max(0, Math.floor((usedMs / (deadline.minutes * 60_000)) * 100));
   const up = now.getTime() >= endOf(deadline);
   const leftMinutes = Math.max(0, Math.ceil((endOf(deadline) - now.getTime()) / 60_000));

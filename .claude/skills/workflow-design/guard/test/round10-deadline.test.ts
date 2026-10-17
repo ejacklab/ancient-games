@@ -412,3 +412,63 @@ test("deadline end stops the clock and the time-up line", () => {
   expect(context(b.post({ hook_event_name: "PostToolUse" }))).toBe("");
   expect(deadlineStatus(b.root, "s", new Date(EPOCH + 20 * 60_000))).toBeNull();
 });
+
+// COO, run 20261017-workflows (experts-decide, mark-q): --mark is removed with the marks; asking for it fails loudly.
+test("deadline wait --mark is a usage error, never a silent wait to 100%", () => {
+  const b = box();
+  b.plant();
+  const result = b.cli("deadline", "wait", "--mark", "50");
+  expect(result.status).toBe(2);
+  expect(result.stderr).toContain("--mark was removed");
+});
+
+// COO, after the dsh review in run 20261017-workflows (nodes/review.result.md), findings 1-6.
+test.each([["Write"], ["Edit"], ["MultiEdit"]])("review 1: a %s call gets the clock before the deadline and time-up after", (tool: string) => {
+  const b = box();
+  b.plant();
+  b.at(3);
+  const before = context(b.post({ tool_name: tool, tool_input: { file_path: "notes.md" }, tool_response: {} }));
+  expect(before).toMatch(/^harness-guard clock: 3\/10 min \(30%\), 7 left$/);
+  b.at(11);
+  expect(context(b.post({ tool_name: tool, tool_input: { file_path: "notes.md" }, tool_response: {} }))).toContain("harness-guard time is up");
+});
+
+test("review 2: a deadline file written before the marks were removed still counts", () => {
+  const b = box();
+  b.write(".harness-guard/deadlines/D-00000001.json", JSON.stringify({ id: "D-00000001", start: new Date(EPOCH).toISOString(), minutes: 10, run: null, marks: [50, 80, 100], session: "s" }));
+  b.at(6);
+  expect(deadlineStatus(b.root, "s", b.env.now())).not.toBeNull();
+  expect(context(b.post())).toBe("harness-guard clock: 6/10 min (60%), 4 left");
+});
+
+test("review 3: the clock never says every minute is used while time is left", () => {
+  const b = box();
+  b.plant();
+  for (const at of [9.5, 9.9]) {
+    b.at(at);
+    expect(context(b.post())).toMatch(/^harness-guard clock: 9\/10 min/);
+  }
+});
+
+test("review 4: no raised record for any mark of the deadline, at any point", () => {
+  const b = box();
+  b.plant();
+  for (const at of [5, 8, 9.9, 10, 11]) { b.at(at); b.post(); }
+  const raisedIds = readJournal(b.root).records.flatMap((r) => (r.kind === "raised" ? r.ids : []));
+  expect(raisedIds.filter((id) => id.startsWith("deadline:"))).toEqual([]);
+});
+
+test("review 5: deadline start --marks is a usage error", () => {
+  const result = box().cli("deadline", "start", "--minutes", "10", "--marks", "50,80,100");
+  expect(result.status).toBe(2);
+  expect(result.stderr).toContain("--marks was removed");
+});
+
+test("review 6: a quoted full path in an echo claims nothing; the guard command itself does", () => {
+  const b = box();
+  b.plant({ session: null });
+  b.post({ tool_input: { command: 'echo "bun x/src/cli.ts deadline start --minutes 5"' } }, "other");
+  expect(JSON.parse(fs.readFileSync(path.join(b.root, ".harness-guard/deadlines/D-00000001.json"), "utf8")).session).toBeNull();
+  b.post({ tool_input: { command: "bun x/src/cli.ts deadline start --minutes 5" } }, "s");
+  expect(JSON.parse(fs.readFileSync(path.join(b.root, ".harness-guard/deadlines/D-00000001.json"), "utf8")).session).toBe("s");
+});

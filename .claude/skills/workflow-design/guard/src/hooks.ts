@@ -807,7 +807,7 @@ function withTime(payload: Record<string, unknown>, root: string, env: HookEnv, 
   // mentions the words, or failed, does not.
   const ran = text(objectField(payload, "tool_input").command);
   if (payload.tool_name === "Bash" && payload.hook_event_name === "PostToolUse"
-    && segments(ran).some((part) => /\/src\/cli\.ts\s+deadline\s+start\b/.test(part.text))) {
+    && segments(ran).some((part) => commandWord(part.text) === "bun" && /\/src\/cli\.ts\s+deadline\s+start\b/.test(part.text))) {
     claimDeadlines(root, session);
   }
   const now = env.now();

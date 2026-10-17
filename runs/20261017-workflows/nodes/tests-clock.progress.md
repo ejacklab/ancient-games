@@ -1,0 +1,11 @@
+- 2026-10-17T10:02:11+08:00 · read-spec · planned · SPEC Round 10 T5, src/hooks.ts, src/deadline.ts, temp-root setup
+- 2026-10-17T10:02:11+08:00 · write-tests · planned · test/round10-clock-only.test.ts, percentage points, no marks, time-up, other session
+- 2026-10-17T10:02:11+08:00 · run-tests · planned · bun test test/round10-clock-only.test.ts, report counts
+- 2026-10-17T10:02:11+08:00 · write-result · planned · nodes/tests-clock.result.md
+- 2026-10-17T10:02:11+08:00 · read-spec · start · reading SPEC T5 and the clock in src/hooks.ts- 2026-10-17T09:52:01+08:00 · read-spec · done · SPEC T5 lines read; clock built in withTime()
+- 2026-10-17T09:52:01+08:00 · write-tests · start · test/round10-clock-only.test.ts
+- 2026-10-17T09:52:14+08:00 · write-tests · done · 17 checks written; first run 8 failed on the non-zero-exit warning, isolated
+- 2026-10-17T09:52:14+08:00 · run-tests · start · bun test test/round10-clock-only.test.ts
+- 2026-10-17T09:52:17+08:00 · run-tests · done · 17 pass, 0 fail, 189 expects
+- 2026-10-17T09:52:17+08:00 · write-result · start · nodes/tests-clock.result.md
+- 2026-10-17T09:52:17+08:00 · write-result · done · status done, CONTRADICTS none

@@ -42,7 +42,7 @@ const USAGE = [
   "  warning <W-id> fail|dismiss --reason TEXT   settle a warning the guard could not judge",
   "  warnings [--session S]          every warning and how it was settled",
   "  deadline start --minutes N [--run DIR]   record the owner's time limit (a clock line after every Bash or file-write call)",
-  "  deadline status | wait [--mark P] | end   time used and left, workers' progress; wait = a background timer; end = the task is done",
+  "  deadline status | wait | end   time used and left, workers' progress; wait = a background timer to the deadline; end = the task is done",
   "  register <file>                 validate a register and report its coverage",
   "  install --print <harness>       print the hook settings for a harness",
   "  doctor [--health PATH] [--json] report where the guard is installed",
@@ -196,6 +196,7 @@ function deadlineCommand(args: string[]): number {
   const [verb] = args;
   const root = guardRoot(process.cwd());
   if (verb === "start") {
+    if (args.includes("--marks")) usageError("deadline start: --marks was removed with the percent marks; the clock shows after every call");
     const minutesText = flagValue(args, "--minutes");
     const minutes = minutesText === null ? Number.NaN : Number(minutesText);
     try {
@@ -218,13 +219,13 @@ function deadlineCommand(args: string[]): number {
     return status.up ? FINDINGS : OK;
   }
   if (verb === "wait") {
-    const markText = flagValue(args, "--mark");
-    const mark = markText === null ? 100 : Number(markText);
-    if (!Number.isFinite(mark) || mark <= 0 || mark > 100) usageError("deadline wait: --mark is a percent from 1 to 100");
+    // --mark went with the 50/80/100% marks (run 20261017-workflows, experts-decide mark-q, provisional): asking for it
+    // fails loudly, never waits silently to the deadline.
+    if (args.includes("--mark")) usageError("deadline wait: --mark was removed with the percent marks; wait runs to the deadline");
     const session = flagValue(args, "--session");
     const status = deadlineStatus(root, session, new Date());
     if (status === null) usageError("deadline wait: no deadline");
-    const at = Date.parse(status.deadline.start) + status.deadline.minutes * 60_000 * (mark / 100);
+    const at = Date.parse(status.deadline.start) + status.deadline.minutes * 60_000;
     const wait = at - Date.now();
     if (wait > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
     out(deadlineStatus(root, session, new Date())!.line);
@@ -239,7 +240,7 @@ function deadlineCommand(args: string[]): number {
     out(`${ended.id} ended`);
     return OK;
   }
-  return usageError("deadline: start --minutes N [--run DIR] | status | wait [--mark P] | end");
+  return usageError("deadline: start --minutes N [--run DIR] | status | wait | end");
 }
 
 // ---- warnings (round 9) -----------------------------------------------------------------------------------------

@@ -549,8 +549,9 @@ The agent cannot feel time pass; the guard tells it. Types in `src/types.ts`: `D
   deadline <HH:MM>` (or `time is up, <m> min over`) and, when `run` is set, one line per worker (T4). Exit 0 while time
   is left, 1 once it is up, 2 when there is no deadline. This is where workers' progress is read — never in hook
   context.
-- **T3 Wait (way 2).** `cli.ts deadline wait [--mark P]` sleeps until the deadline (or until P percent of it), then
-  prints the status line and exits 0 — the command a harness runs in the background as a timer.
+- **T3 Wait (way 2).** `cli.ts deadline wait` sleeps until the deadline, then prints the status line and exits 0 —
+  the command a harness runs in the background as a timer. `--mark` was removed with the percent marks (run
+  20261017-workflows, experts-decide `mark-q`); passing it is a usage error (2), never a silent wait.
 - **T4 Progress.** A worker appends one line per small piece to `<run>/nodes/<node>.progress.md`:
   `- <ISO time> · <piece id> · <planned|start|done|fail> · <short note>`. `progressSummary(file)` = `{ node, done,
   total (distinct pieces seen), last: { time, piece, state }, ageMinutes }`; a line that does not parse is skipped and
@@ -764,3 +765,5 @@ Fails-if: a failing run is not a red record, or a passing one not exactly one `R
 evidence; stderr or stdout is missing from FILE; the hook logs the CLI's exit 1 again; a compound command, a command
 that is not a test run, one naming no test file, a FILE outside the root, or no `--out` runs anything or writes a
 record; `--tests` alone runs anything.
+
+**Round 10, after the second review** (run 20261017-workflows, `nodes/review.result.md`): `deadline start --marks` is a usage error (2), as `deadline wait --mark` is; the minutes used are rounded down, so the clock never reads "10/10" while time is left; only a segment whose command word is `bun` running this guard's `cli.ts deadline start` claims a deadline — a quoted path in an `echo` does not. Tests cover the clock after Write, Edit and MultiEdit calls, and an old deadline file that still carries `marks`.
