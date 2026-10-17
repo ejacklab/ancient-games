@@ -61,12 +61,16 @@ export function checkRd1(root: string): ClauseOutcome {
   const scanned: string[] = [];
   const breaks: string[] = [];
   const unresolved: string[] = [];
+  const unreadable: string[] = [];
   for (const file of files) {
     let text = "";
     try {
       text = readFileSync(file, "utf8");
-    } catch {
+    } catch (error) {
+      // E-1: a file the scan could not read is a clause it did not check, not a clause with nothing in it (C2).
+      const reason = error instanceof Error ? error.message : String(error);
       scanned.push(`${file} (unreadable)`);
+      unreadable.push(`${file} (unreadable: ${reason})`);
       continue;
     }
     scanned.push(`${file}:1-${text.split("\n").length}`); // the lines the scan covered, so a pass names file and line (C2)
@@ -86,6 +90,16 @@ export function checkRd1(root: string): ClauseOutcome {
   }
   const scannedNote = [`scanned: ${scanned.join(", ") || "nothing"}`];
   if (breaks.length > 0) return { breaks, clean: "", couldNotRun: null, notes: scannedNote };
+  if (unreadable.length > 0) {
+    return {
+      breaks: [],
+      clean: "",
+      couldNotRun:
+        `${unreadable.join("; ")}: this scan could not read every session-start file, so it did not cover the ` +
+        "whole surface Rd1 is about and cannot call it clean (C2, E-1)",
+      notes: scannedNote,
+    };
+  }
   if (unresolved.length > 0) {
     return {
       breaks: [],

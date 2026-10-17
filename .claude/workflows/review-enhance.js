@@ -174,19 +174,23 @@ const ready = await readiness()
 if (usable(ready) && !ready.pass) problems.push(`baseline not passing before the run: ${ready.summary}`)
 
 const rounds = []
+let judgeFailed = false
 for (let round = 1; round <= a.rounds && !stopped; round++) {
   log(`round ${round} of at most ${a.rounds}`)
   const reviews = (await parallel(['codex', 'agy'].map(engine => () => review(engine, round)))).filter(usable)
   if (!reviews.length) { problems.push(`round ${round}: no review came back`); break }
-  const j = await judge(round, reviews.map(r => r.file))
-  if (!usable(j)) break
+  // A judge that returns nothing (an API error, a refused call) is retried once, then the run stops its rounds with a
+  // problem: findings are never fixed or enhanced around an unjudged review (run 20261017-memory-check-review).
+  let j = await judge(round, reviews.map(r => r.file))
+  if (!j && !stopped) j = await judge(round, reviews.map(r => r.file))
+  if (!usable(j)) { if (!stopped) { problems.push(`round ${round}: the judge returned nothing twice; ${reviews.length} review(s) left unjudged`); judgeFailed = true } break }
   if (!(j.accepted || []).length) { rounds.push({ round, accepted: 0, dropped: j.dropped, dry: true }); log(`round ${round}: nothing accepted — the review is dry`); break }
   const pass = await buildPass(`r${round}`, j.accepted, j.file)
   rounds.push({ round, accepted: j.accepted.length, dropped: j.dropped, ...pass })
 }
 
 let enhance = null
-if (!stopped) {
+if (!stopped && !judgeFailed) {
   phase('Enhance')
   const ex = await workflow('experts-decide', { run: RUN, question: a.enhance_question, out: 'enhance-q' })
   if (ex && ex.status === 'done') {

@@ -1,0 +1,18 @@
+- 2026-10-17T22:59:56+08:00 · readiness · start · baseline before any change
+- 2026-10-17T23:00:28+08:00 · readiness · done · baseline recorded: bun 74 pass, pytest 465 pass, tsgo exit 0
+- 2026-10-17T23:00:40+08:00 · review-r1-codex · start · codex read-only review r1 of memory_check + tools/memory_index.py
+- 2026-10-17T23:00:42+08:00 · review-r1-agy · start · agy read-only review round 1
+- 2026-10-17T23:04:38+08:00 · review-r1-codex · done · codex exit 0; r1-codex.md has ## Findings with 12 numbered findings (11 P1, 1 P2)
+- 2026-10-17T23:11:14+08:00 · review-r1-agy · done · agy exit 0, 5 findings under ## Findings; output starts with leaked thought text that cites Codex's review
+- 2026-10-17T23:11:34+08:00 · judge-r1 · start · judging r1-codex and r1-agy against memory_check vision/use cases/requirements
+- 2026-10-17T23:23:45+08:00 · pick · start · reading compare.md and six answers
+- 2026-10-17T23:26:17+08:00 · pick · done · enhance.md written: E-1 fail-open rule + fault table (5 of 6), E-2 --out guard (2 of 6, measured); 8 proposals not picked with reasons
+- 2026-10-17T23:26:48+08:00 · reproduce-enh · start · writing E-1 E-2 tests
+- 2026-10-17T23:29:19+08:00 · reproduce-enh · done · E-1 (4 rows) and E-2 (5 targets) red on HEAD, 4 controls green; red run E-009740ad
+- 2026-10-17T23:29:44+08:00 · fix-enh · start · writing brief from fix-template, then opencode fix against review-enh.test.ts
+- 2026-10-17T23:44:30+08:00 · fix-enh · done · opencode exit 0, result status done; review-enh.test.ts 13 pass 0 fail on rerun
+- 2026-10-17T23:44:53+08:00 · verify-enh · start · run the three verification commands and the read-only smoke check
+- 2026-10-17T23:45:40+08:00 · verify-enh · done · all four checks held
+- 2026-10-17T23:45:52+08:00 · report · start · writing report.md (judge-r1 returned nothing; no findings.md present)
+- 2026-10-17T23:46:07+08:00 · report · done · report.md written; judge-r1 gap and open decisions recorded
+- 2026-10-17T23:46:11+08:00 · report · fail · Write of report.md refused (subagents return findings as text); report text returned in the step result instead; the earlier 'done' line is wrong

@@ -1,0 +1,30 @@
+- 2026-10-17T23:12:00+08:00 · linus · start · codex
+- 2026-10-17T23:12:03+08:00 · sun-tzu · start · dsh
+- 2026-10-17T23:12:03+08:00 · dave · start · claude
+- 2026-10-17T23:12:03+08:00 · fan-li · start · agy
+- 2026-10-17T23:12:05+08:00 · dario · start · claude
+- 2026-10-17T23:12:35+08:00 · dave · fail · claude exit 1
+- 2026-10-17T23:12:46+08:00 · check-dave · start · 
+- 2026-10-17T23:12:48+08:00 · check-dave · fail · dave answer has 5 missing sections, no citations; check reports 12 failures
+- 2026-10-17T23:12:58+08:00 · dave · start · claude
+- 2026-10-17T23:13:40+08:00 · linus · done · codex exit 0
+- 2026-10-17T23:13:52+08:00 · check-linus · start · 
+- 2026-10-17T23:13:54+08:00 · check-linus · done · linus check passed, no FAIL linus lines
+- 2026-10-17T23:15:03+08:00 · dario · done · claude exit 0
+- 2026-10-17T23:15:16+08:00 · check-dario · start · 
+- 2026-10-17T23:15:18+08:00 · check-dario · done · dario answer file checked, no dario failures (other experts absent, as expected)
+- 2026-10-17T23:15:47+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-17T23:16:00+08:00 · check-sun-tzu · start · 
+- 2026-10-17T23:16:03+08:00 · check-sun-tzu · done · sun-tzu answer checked, no FAIL sun-tzu lines
+- 2026-10-17T23:16:38+08:00 · dave · done · claude exit 0
+- 2026-10-17T23:16:48+08:00 · check-dave · start · 
+- 2026-10-17T23:16:50+08:00 · check-dave · done · dave answer passes check; other experts no answer file (expected)
+- 2026-10-17T23:17:13+08:00 · fan-li · done · agy exit 0
+- 2026-10-17T23:17:25+08:00 · check-fan-li · start · 
+- 2026-10-17T23:17:28+08:00 · check-fan-li · done · fan-li answer file checks clean, no FAIL fan-li lines
+- 2026-10-17T23:17:39+08:00 · lao-tzu · start · opencode
+- 2026-10-17T23:20:05+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-17T23:20:16+08:00 · check-lao-tzu · start · 
+- 2026-10-17T23:20:19+08:00 · check-lao-tzu · done · lao-tzu answer checked, no FAIL lines for lao-tzu
+- 2026-10-17T23:20:31+08:00 · compare · start · 
+- 2026-10-17T23:23:00+08:00 · compare · done · compare.md written: 6/6 usable; top picks split --out guard (Linus, Sun Tzu) / fail-open class (Lao Tzu, Dave, Dario) / real-repo calibration (Fan Li); 10 questions

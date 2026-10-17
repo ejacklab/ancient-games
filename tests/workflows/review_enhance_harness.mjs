@@ -91,6 +91,13 @@ check('no usable review ends the rounds with a problem', async wf => {
   return !labels.includes('judge-r1') && out.problems.some(p => p.includes('no review came back'))
 }, [["if (!reviews.length) { problems.push(`round ${round}: no review came back`); break }", "if (false) {}"]])
 
+check('a judge that returns nothing is retried once, then the rounds stop with a problem and nothing is fixed or enhanced', async wf => {
+  let calls = 0
+  const { out, labels, nested } = await runCase(wf, ARGS, { 'judge-r1': () => { calls++; return null } })
+  return calls === 2 && !labels.some(l => l.startsWith('reproduce') || l.startsWith('fix')) && nested.length === 0
+    && out.problems.some(p => p.includes('the judge returned nothing twice'))
+}, [['if (!stopped && !judgeFailed) {', 'if (!stopped) {']])
+
 let failed = 0
 for (const c of checks) {
   const real = await c.fn(load()).catch(e => { console.log(`  error: ${e.message}`); return false })

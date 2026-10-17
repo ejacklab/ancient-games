@@ -1,0 +1,193 @@
+bun test v1.4.3 (c6da4a4d3)
+
+test/review-enh.test.ts:
+34 |   test("E-1a: a failed git ls-files is could not run, never every SoT record not applicable with exit 0", () => {
+35 |     const p = fixture();
+36 |     failingGit(p, `*" ls-files "*" --cached "*`);
+37 |     const r = p.run();
+38 |     const w12a = result(r.stdout, "SoT:W1.2a"); // the final pass (checks.ts:282) behind the early return at :212
+39 |     expect(unread).not.toContain(w12a.state);
+                            ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "not applicable"
+Received: [ "pass", "not applicable" ]
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:39:24)
+(fail) E-1: a pass or not applicable needs a read that worked > E-1a: a failed git ls-files is could not run, never every SoT record not applicable with exit 0 [120.39ms]
+44 | 
+45 |   test("E-1b: an unreadable session-start file is not an Rd1 pass", () => {
+46 |     const p = fixture(); p.write("project-memory/.cache/index.sqlite", "cache");
+47 |     p.write("CLAUDE.md", "At session start, open project-memory/.cache/index.sqlite.\n");
+48 |     chmodSync(join(p.project, "CLAUDE.md"), 0o000);
+49 |     expect(unread).not.toContain(result(p.run().stdout, "CACHES:Rd1").state);
+                            ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "pass"
+Received: [ "pass", "not applicable" ]
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:49:24)
+(fail) E-1: a pass or not applicable needs a read that worked > E-1b: an unreadable session-start file is not an Rd1 pass [161.82ms]
+52 |   test("E-1c: with an unborn HEAD memory_index.py reads no staging area, so a staged break is not a pass", () => {
+53 |     const p = fixture();
+54 |     p.git("checkout", "-q", "--orphan", "fresh"); // HEAD names no commit; the index still holds the memory
+55 |     breakHeader(p);
+56 |     const r = p.run();
+57 |     expect(unread).not.toContain(result(r.stdout, "SoT:W1.2a").state);
+                            ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "pass"
+Received: [ "pass", "not applicable" ]
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:57:24)
+(fail) E-1: a pass or not applicable needs a read that worked > E-1c: with an unborn HEAD memory_index.py reads no staging area, so a staged break is not a pass [159.99ms]
+65 |     p.git("config", "core.hooksPath", "/dev/null");
+66 |     p.commit("Initial fixture, SHA-256");
+67 |     expect(p.git("rev-parse", "HEAD")).toHaveLength(64);
+68 |     breakHeader(p);
+69 |     const r = p.run();
+70 |     expect(unread).not.toContain(result(r.stdout, "SoT:W1.2a").state);
+                            ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "pass"
+Received: [ "pass", "not applicable" ]
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:70:24)
+(fail) E-1: a pass or not applicable needs a read that worked > E-1d: in a SHA-256 repository a staged break is not a pass [143.59ms]
+101 |   test.each(targets)("%s is a usage error and no byte changes", (_name, target) => {
+102 |     const p = fixture();
+103 |     const out = target(p);
+104 |     const status = p.git("status", "--short"); const before = p.hashes();
+105 |     const r = p.run(["--out", out]);
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -37,3 +37,3 @@
+      "project/AGENTS.md": "a307d29cd0cbe3a07e2ae2c8880e42965e64295f37a889d033cadb92ba73ecf6",
+-     "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "project/project-memory/INDEX.md": "08f6350ba881b94caa15aa66c57dcc8c6b4727a6e63b3960cc71b17961c316fb",
+      "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "239d971bcf89152b244854d12502e9b2e0112f3975f3164d4fab2c27ffd3272c",
+@@ -41,3 +41,3 @@
+    },
+-   "status": "",
++   "status": "M project-memory/INDEX.md",
+  }
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2a: project-memory/INDEX.md is a usage error and no byte changes [132.59ms]
+101 |   test.each(targets)("%s is a usage error and no byte changes", (_name, target) => {
+102 |     const p = fixture();
+103 |     const out = target(p);
+104 |     const status = p.git("status", "--short"); const before = p.hashes();
+105 |     const r = p.run(["--out", out]);
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -38,6 +38,6 @@
+      "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
+-     "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "239d971bcf89152b244854d12502e9b2e0112f3975f3164d4fab2c27ffd3272c",
++     "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "30951ddd9543e02a3e1d394720138f4a06e1d097da3615ef3116c89a83f866f0",
+      "project/tools/memory_index.py": "6817e7db6fcd75d8a9bc83367dfab440ee5d8385ed26ab764cc250ae4d51cbbf",
+    },
+-   "status": "",
++   "status": "M project-memory/entries/D-17-10-abc123-2026-choice.md",
+  }
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2b: an entry is a usage error and no byte changes [137.44ms]
+101 |   test.each(targets)("%s is a usage error and no byte changes", (_name, target) => {
+102 |     const p = fixture();
+103 |     const out = target(p);
+104 |     const status = p.git("status", "--short"); const before = p.hashes();
+105 |     const r = p.run(["--out", out]);
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -36,3 +36,3 @@
+      "project/.gitignore": "c9374dbf4cc24504b94b42cfc0e86dd72db313ad353ba3caab3ecd3ab1b0fe2d",
+-     "project/AGENTS.md": "a307d29cd0cbe3a07e2ae2c8880e42965e64295f37a889d033cadb92ba73ecf6",
++     "project/AGENTS.md": "25b8d1fc42fd82d1fef396720e3a462a3e721a690043c8f4e3bf343fc860d760",
+      "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
+@@ -41,3 +41,3 @@
+    },
+-   "status": "",
++   "status": "M AGENTS.md",
+  }
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2c: AGENTS.md is a usage error and no byte changes [176.89ms]
+101 |   test.each(targets)("%s is a usage error and no byte changes", (_name, target) => {
+102 |     const p = fixture();
+103 |     const out = target(p);
+104 |     const status = p.git("status", "--short"); const before = p.hashes();
+105 |     const r = p.run(["--out", out]);
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -37,3 +37,3 @@
+      "project/AGENTS.md": "a307d29cd0cbe3a07e2ae2c8880e42965e64295f37a889d033cadb92ba73ecf6",
+-     "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "project/project-memory/INDEX.md": "759546e3efaba27a3b5597e238a1474c9ea87e6fb59c1207e86af851cc6db811",
+      "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "239d971bcf89152b244854d12502e9b2e0112f3975f3164d4fab2c27ffd3272c",
+@@ -41,3 +41,3 @@
+    },
+-   "status": "",
++   "status": "M project-memory/INDEX.md",
+  }
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2d: INDEX.md through '..' is a usage error and no byte changes [142.63ms]
+101 |   test.each(targets)("%s is a usage error and no byte changes", (_name, target) => {
+102 |     const p = fixture();
+103 |     const out = target(p);
+104 |     const status = p.git("status", "--short"); const before = p.hashes();
+105 |     const r = p.run(["--out", out]);
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -2,3 +2,3 @@
+    "hashes": {
+-     "link.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "link.md": "7f15fcbc6753e9a369f790585ab999c3773cb0b4d5efb87626942cee022ea3ef",
+      "project/.git/COMMIT_EDITMSG": "633221e214f2d306f3d11a2f2ebf94c0361cdd201f66b7dffdf43dea2eeae0a1",
+@@ -38,3 +38,3 @@
+      "project/AGENTS.md": "a307d29cd0cbe3a07e2ae2c8880e42965e64295f37a889d033cadb92ba73ecf6",
+-     "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "project/project-memory/INDEX.md": "7f15fcbc6753e9a369f790585ab999c3773cb0b4d5efb87626942cee022ea3ef",
+      "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "239d971bcf89152b244854d12502e9b2e0112f3975f3164d4fab2c27ffd3272c",
+@@ -42,3 +42,3 @@
+    },
+-   "status": "",
++   "status": "M project-memory/INDEX.md",
+  }
+
+- Expected  - 3
++ Received  + 3
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2e: INDEX.md through a symlink is a usage error and no byte changes [162.22ms]
+
+ 4 pass
+ 9 fail
+ 35 expect() calls
+Ran 13 tests across 1 file. [1.98s]

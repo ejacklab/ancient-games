@@ -39,8 +39,8 @@ command and its output. Who decides: none. Fails if: a result has no evidence, o
 five.
 
 **C3 (MUST) The existing tool.** The index and entry-format checks are `tools/memory_index.py --check`, run and parsed
-(its output pinned by tests); the tool adds only the format clauses `memory_index.py` does not check, and never
-changes `memory_index.py`. Who decides: none. Fails if: the tool reports a pass that `memory_index.py --check` fails,
+(its output pinned by tests); the tool adds only the format clauses `memory_index.py` does not check. A defect found
+in `memory_index.py` is fixed there, with its own tests, not worked around in this tool. Who decides: none. Fails if: the tool reports a pass that `memory_index.py --check` fails,
 or checks a clause `memory_index.py` already checks a second way.
 
 **C4 (MUST) Absent memory.** With no `project-memory/`, its requirements are "not applicable", with the absent location

@@ -1,0 +1,1187 @@
+[0m
+> build · MiniMax-M3.1-Flash-Preview
+[0m
+I'll read that brief first.
+[0m→ [0mRead runs/20261017-memory-check-review/briefs/fix-enh.md
+[0m
+[0m$ [0mls -la runs/20261017-memory-check-review/ runs/20261017-memory-check-review/nodes/ runs/20261017-memory-check-review/briefs/ 2>&1; echo ---; ls memory_check memory_check/src memory_check/test tools 2>&1
+runs/20261017-memory-check-review/:
+total 60
+drwxr-xr-x   6 smoke01 smoke01  4096 Oct 17 23:26 .
+drwxr-xr-x 120 smoke01 smoke01 12288 Oct 17 23:36 ..
+drwxr-xr-x   2 smoke01 smoke01  4096 Oct 17 23:29 briefs
+-rw-r--r--   1 smoke01 smoke01  5903 Oct 17 22:53 design.md
+drwxr-xr-x   8 smoke01 smoke01  4096 Oct 17 23:23 enhance-q
+-rw-r--r--   1 smoke01 smoke01  1391 Oct 17 22:57 enhance-question.md
+-rw-r--r--   1 smoke01 smoke01 12075 Oct 17 23:26 enhance.md
+drwxr-xr-x   2 smoke01 smoke01  4096 Oct 17 23:40 nodes
+drwxr-xr-x   2 smoke01 smoke01  4096 Oct 17 23:04 review
+-rw-r--r--   1 smoke01 smoke01   305 Oct 17 23:00 state.md
+
+runs/20261017-memory-check-review/briefs/:
+total 20
+drwxr-xr-x 2 smoke01 smoke01 4096 Oct 17 23:29 .
+drwxr-xr-x 6 smoke01 smoke01 4096 Oct 17 23:26 ..
+-rw-r--r-- 1 smoke01 smoke01 1797 Oct 17 23:29 fix-enh.md
+-rw-r--r-- 1 smoke01 smoke01 1793 Oct 17 22:57 fix-template.md
+-rw-r--r-- 1 smoke01 smoke01 1726 Oct 17 22:57 review.md
+
+runs/20261017-memory-check-review/nodes/:
+total 32
+drwxr-xr-x 2 smoke01 smoke01  4096 Oct 17 23:40 .
+drwxr-xr-x 6 smoke01 smoke01  4096 Oct 17 23:26 ..
+-rw-r--r-- 1 smoke01 smoke01  2278 Oct 17 23:23 enhance-q.progress.md
+-rw-r--r-- 1 smoke01 smoke01   145 Oct 17 23:40 fix-enh.opencode.log
+-rw-r--r-- 1 smoke01 smoke01 10200 Oct 17 23:29 reproduce-enh.red.txt
+-rw-r--r-- 1 smoke01 smoke01  1450 Oct 17 23:29 review-enhance.progress.md
+---
+memory_check:
+AGENTS.md
+REQUIREMENTS.md
+USE_CASES.md
+VISION.md
+bun.lock
+guidelines
+node_modules
+package.json
+src
+test
+tsconfig.json
+
+memory_check/src:
+cachechecks.ts
+checks.ts
+cli.ts
+command.ts
+entry.ts
+git.ts
+gitchecks.ts
+gitrequirements.ts
+guidelines.ts
+indextool.ts
+locations.ts
+report.ts
+warn.ts
+
+memory_check/test:
+acceptance.test.ts
+enhance.test.ts
+fixtures
+review-enh.test.ts
+review.test.ts
+
+tools:
+__pycache__
+bun.lock
+export_skills.py
+git-hooks
+memory_index.py
+node_modules
+package.json
+tsconfig.base.json
+why-chain-hook
+[0m
+[0m→ [0mRead runs/20261017-memory-check-review/enhance.md
+[0m→ [0mRead memory_check/test/review-enh.test.ts
+[0m→ [0mRead runs/20261017-memory-check-review/nodes/review-enhance.progress.md
+[0m→ [0mRead memory_check/src/checks.ts
+[0m→ [0mRead memory_check/src/command.ts
+[0m→ [0mRead memory_check/src/gitchecks.ts
+[0m→ [0mRead memory_check/src/indextool.ts
+[0m→ [0mRead memory_check/src/cachechecks.ts
+[0m
+[0m$ [0mls memory_check/test/fixtures/; echo ---; head -80 runs/20261017-memory-check-review/nodes/reproduce-enh.red.txt
+oversized-entry.md
+oversized-index.md
+project.ts
+---
+bun test v1.4.3 (c6da4a4d3)
+
+test/review-enh.test.ts:
+34 |   test("E-1a: a failed git ls-files is could not run, never every SoT record not applicable with exit 0", () => {
+35 |     const p = fixture();
+36 |     failingGit(p, `*" ls-files "*" --cached "*`);
+37 |     const r = p.run();
+38 |     const w12a = result(r.stdout, "SoT:W1.2a"); // the final pass (checks.ts:282) behind the early return at :212
+39 |     expect(unread).not.toContain(w12a.state);
+                            ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "not applicable"
+Received: [ "pass", "not applicable" ]
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:39:24)
+(fail) E-1: a pass or not applicable needs a read that worked > E-1a: a failed git ls-files is could not run, never every SoT record not applicable with exit 0 [120.39ms]
+44 | 
+45 |   test("E-1b: an unreadable session-start file is not an Rd1 pass", () => {
+46 |     const p = fixture(); p.write("project-memory/.cache/index.sqlite", "cache");
+47 |     p.write("CLAUDE.md", "At session start, open project-memory/.cache/index.sqlite.\n");
+48 |     chmodSync(join(p.project, "CLAUDE.md"), 0o000);
+49 |     expect(unread).not.toContain(result(p.run().stdout, "CACHES:Rd1").state);
+                            ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "pass"
+Received: [ "pass", "not applicable" ]
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:49:24)
+(fail) E-1: a pass or not applicable needs a read that worked > E-1b: an unreadable session-start file is not an Rd1 pass [161.82ms]
+52 |   test("E-1c: with an unborn HEAD memory_index.py reads no staging area, so a staged break is not a pass", () => {
+53 |     const p = fixture();
+54 |     p.git("checkout", "-q", "--orphan", "fresh"); // HEAD names no commit; the index still holds the memory
+55 |     breakHeader(p);
+56 |     const r = p.run();
+57 |     expect(unread).not.toContain(result(r.stdout, "SoT:W1.2a").state);
+                            ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "pass"
+Received: [ "pass", "not applicable" ]
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:57:24)
+(fail) E-1: a pass or not applicable needs a read that worked > E-1c: with an unborn HEAD memory_index.py reads no staging area, so a staged break is not a pass [159.99ms]
+65 |     p.git("config", "core.hooksPath", "/dev/null");
+66 |     p.commit("Initial fixture, SHA-256");
+67 |     expect(p.git("rev-parse", "HEAD")).toHaveLength(64);
+68 |     breakHeader(p);
+69 |     const r = p.run();
+70 |     expect(unread).not.toContain(result(r.stdout, "SoT:W1.2a").state);
+                            ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "pass"
+Received: [ "pass", "not applicable" ]
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:70:24)
+(fail) E-1: a pass or not applicable needs a read that worked > E-1d: in a SHA-256 repository a staged break is not a pass [143.59ms]
+101 |   test.each(targets)("%s is a usage error and no byte changes", (_name, target) => {
+102 |     const p = fixture();
+103 |     const out = target(p);
+104 |     const status = p.git("status", "--short"); const before = p.hashes();
+105 |     const r = p.run(["--out", out]);
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -37,3 +37,3 @@
+      "project/AGENTS.md": "a307d29cd0cbe3a07e2ae2c8880e42965e64295f37a889d033cadb92ba73ecf6",
+-     "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "project/project-memory/INDEX.md": "08f6350ba881b94caa15aa66c57dcc8c6b4727a6e63b3960cc71b17961c316fb",
+      "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "239d971bcf89152b244854d12502e9b2e0112f3975f3164d4fab2c27ffd3272c",
+@@ -41,3 +41,3 @@
+    },
+-   "status": "",
++   "status": "M project-memory/INDEX.md",
+  }
+
+- Expected  - 2
+[0m
+[0m→ [0mRead memory_check/test/fixtures/project.ts
+[0m
+[0m$ [0msed -n 80,220p runs/20261017-memory-check-review/nodes/reproduce-enh.red.txt
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2a: project-memory/INDEX.md is a usage error and no byte changes [132.59ms]
+101 |   test.each(targets)("%s is a usage error and no byte changes", (_name, target) => {
+102 |     const p = fixture();
+103 |     const out = target(p);
+104 |     const status = p.git("status", "--short"); const before = p.hashes();
+105 |     const r = p.run(["--out", out]);
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -38,6 +38,6 @@
+      "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
+-     "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "239d971bcf89152b244854d12502e9b2e0112f3975f3164d4fab2c27ffd3272c",
++     "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "30951ddd9543e02a3e1d394720138f4a06e1d097da3615ef3116c89a83f866f0",
+      "project/tools/memory_index.py": "6817e7db6fcd75d8a9bc83367dfab440ee5d8385ed26ab764cc250ae4d51cbbf",
+    },
+-   "status": "",
++   "status": "M project-memory/entries/D-17-10-abc123-2026-choice.md",
+  }
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2b: an entry is a usage error and no byte changes [137.44ms]
+101 |   test.each(targets)("%s is a usage error and no byte changes", (_name, target) => {
+102 |     const p = fixture();
+103 |     const out = target(p);
+104 |     const status = p.git("status", "--short"); const before = p.hashes();
+105 |     const r = p.run(["--out", out]);
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -36,3 +36,3 @@
+      "project/.gitignore": "c9374dbf4cc24504b94b42cfc0e86dd72db313ad353ba3caab3ecd3ab1b0fe2d",
+-     "project/AGENTS.md": "a307d29cd0cbe3a07e2ae2c8880e42965e64295f37a889d033cadb92ba73ecf6",
++     "project/AGENTS.md": "25b8d1fc42fd82d1fef396720e3a462a3e721a690043c8f4e3bf343fc860d760",
+      "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
+@@ -41,3 +41,3 @@
+    },
+-   "status": "",
++   "status": "M AGENTS.md",
+  }
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2c: AGENTS.md is a usage error and no byte changes [176.89ms]
+101 |   test.each(targets)("%s is a usage error and no byte changes", (_name, target) => {
+102 |     const p = fixture();
+103 |     const out = target(p);
+104 |     const status = p.git("status", "--short"); const before = p.hashes();
+105 |     const r = p.run(["--out", out]);
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -37,3 +37,3 @@
+      "project/AGENTS.md": "a307d29cd0cbe3a07e2ae2c8880e42965e64295f37a889d033cadb92ba73ecf6",
+-     "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "project/project-memory/INDEX.md": "759546e3efaba27a3b5597e238a1474c9ea87e6fb59c1207e86af851cc6db811",
+      "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "239d971bcf89152b244854d12502e9b2e0112f3975f3164d4fab2c27ffd3272c",
+@@ -41,3 +41,3 @@
+    },
+-   "status": "",
++   "status": "M project-memory/INDEX.md",
+  }
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2d: INDEX.md through '..' is a usage error and no byte changes [142.63ms]
+101 |   test.each(targets)("%s is a usage error and no byte changes", (_name, target) => {
+102 |     const p = fixture();
+103 |     const out = target(p);
+104 |     const status = p.git("status", "--short"); const before = p.hashes();
+105 |     const r = p.run(["--out", out]);
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -2,3 +2,3 @@
+    "hashes": {
+-     "link.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "link.md": "7f15fcbc6753e9a369f790585ab999c3773cb0b4d5efb87626942cee022ea3ef",
+      "project/.git/COMMIT_EDITMSG": "633221e214f2d306f3d11a2f2ebf94c0361cdd201f66b7dffdf43dea2eeae0a1",
+@@ -38,3 +38,3 @@
+      "project/AGENTS.md": "a307d29cd0cbe3a07e2ae2c8880e42965e64295f37a889d033cadb92ba73ecf6",
+-     "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "project/project-memory/INDEX.md": "7f15fcbc6753e9a369f790585ab999c3773cb0b4d5efb87626942cee022ea3ef",
+      "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "239d971bcf89152b244854d12502e9b2e0112f3975f3164d4fab2c27ffd3272c",
+@@ -42,3 +42,3 @@
+    },
+-   "status": "",
++   "status": "M project-memory/INDEX.md",
+  }
+
+- Expected  - 3
++ Received  + 3
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2e: INDEX.md through a symlink is a usage error and no byte changes [162.22ms]
+
+ 4 pass
+ 9 fail
+ 35 expect() calls
+Ran 13 tests across 1 file. [1.98s]
+[0m
+[0m→ [0mRead memory_check/src/locations.ts
+[0m
+[0m$ [0mcd memory_check && rg -n '\-\-out' test/ src/ | head -40
+test/review-enh.test.ts:93:describe("E-2: --out never writes over a memory location", () => {
+test/review-enh.test.ts:105:    const r = p.run(["--out", out]);
+test/review-enh.test.ts:110:  test("E-2 control: --out report.md still writes", () => {
+test/review-enh.test.ts:113:    const r = p.run(["--out", out]);
+test/acceptance.test.ts:49:    const r = p.run(out ? ["--out", join(p.project, "report.md")] : []); const after = p.hashes();
+test/acceptance.test.ts:117:  test("R1: --out writes one Markdown report, MUST results first", () => {
+test/acceptance.test.ts:118:    const p = fixture(); const path = join(p.project, "report.md"); const r = p.run(["--out", path]); expect(r.status).toBe(0);
+src/report.ts:99:    `- Report ${outFile ? `written to ${outFile}` : "printed to stdout (no --out)"}`,
+src/command.ts:1:// The command itself: `bun src/cli.ts [--project <repo root>] [--home <dir>] [--since <rev>] [--out <file>]
+src/command.ts:4:// `--out`'s file (F3, U5).
+src/command.ts:20:  --out <file>       write the report here instead of printing it
+src/command.ts:58:      case "--out":
+[0m
+[0m$ [0mcd tools && sed -n 330,400p memory_index.py; echo === ; sed -n 460,520p memory_index.py
+def snapshot_paths(repo: Path, rev: str | None) -> dict[str, str]:
+    """Every path under `project-memory/` in the snapshot with its blob id — the staging area by default, or a
+    commit. NUL-separated, so names with spaces and non-ASCII characters survive (B1.3)."""
+    blobs: dict[str, str] = {}
+    if rev:
+        for meta, path in records(git(["ls-tree", "-r", "-z", rev, "--", MEMORY_DIR], cwd=repo)):
+            fields = meta.split()  # <mode> <type> <sha>
+            if len(fields) == 3 and is_object_id(fields[2]):
+                blobs[path] = fields[2]
+    else:
+        for meta, path in records(git(["ls-files", "-s", "-z", "--", MEMORY_DIR], cwd=repo)):
+            fields = meta.split()  # <mode> <sha> <stage>
+            # Stage 0 is what a commit would take, and the only stage a tree without conflicts has.
+            if len(fields) == 3 and fields[2] == "0" and is_object_id(fields[1]):
+                blobs[path] = fields[1]
+    return blobs
+
+
+def records(raw: bytes) -> list[tuple[str, str]]:
+    """Split `<meta>\\t<path>\\0` listing output into its meta part and its path."""
+    return [record.partition("\t")[::2] for record in split_nul(raw)]
+
+
+def is_object_id(value: str) -> bool:
+    return len(value) == 40 and all(character in "0123456789abcdef" for character in value)
+
+
+def cat_file_batch(repo: Path, shas: list[str]) -> dict[str, bytes]:
+    """Read every blob with one `git cat-file --batch` call. One call per file is about 20 times slower."""
+    if not shas:
+        return {}
+    raw = git(["cat-file", "--batch"], cwd=repo, stdin=("\n".join(shas) + "\n").encode("ascii"))
+    blobs: dict[str, bytes] = {}
+    position = 0
+    while position < len(raw):
+        newline = raw.index(b"\n", position)
+        header = raw[position:newline].split()
+        position = newline + 1
+        if len(header) < 3:  # "<sha> missing" — the blob is gone
+            continue
+        size = int(header[2])
+        blobs[header[0].decode("ascii")] = raw[position:position + size]
+        position += size + 1
+    return blobs
+
+
+# --- the two modes -----------------------------------------------------------------------------------------------
+
+
+def gather(entries: list[Entry]) -> None:
+    """Sort by file name (code points, never locale collation), find duplicate ids and report every problem."""
+    entries.sort(key=lambda entry: entry.name)
+    flag_duplicate_ids(entries)
+    for entry in entries:
+        for problem in entry.errors:
+            report(f"{entry.name}: {problem}")
+        for problem in entry.warnings:
+            report(f"{entry.name}: {problem} (warning)")
+
+
+def working_tree_entries(repo: Path) -> list[Entry]:
+    """Read every entry file in the working tree: the ones git knows about, and the ones it does not yet.
+
+    Write mode reads the working tree, not the index: a tracked or newly staged entry always gets its current
+    content. A file git does not know yet is parsed like any other and is an error whatever its status (B1.2) —
+    it is named, with the `git add` that fixes it, and nothing is written.
+    """
+    tracked, untracked = working_tree_paths(repo)
+    entries: list[Entry] = []
+    for path in sorted(tracked):
+        name = entry_name(path)
+===
+    else:
+        write_atomically(index, rendered)
+        print(f"wrote {INDEX_PATH}")
+    if over_limit(rendered):
+        print_over_limit()
+    return 0
+
+
+def write_atomically(path: Path, rendered: bytes) -> None:
+    """Write a temporary file in the same folder and rename it over the target, so a reader never sees half a
+    file. Nothing is ever truncated to fit (B4.3): the whole file is written."""
+    handle, temporary = tempfile.mkstemp(dir=path.parent, prefix=".INDEX.md.", suffix=".tmp")
+    try:
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(rendered)
+        os.replace(temporary, path)
+    except BaseException:
+        os.unlink(temporary)
+        raise
+
+
+def check_index(repo: Path, rev: str | None) -> int:
+    where = rev or "the staging area"
+    if head_is_unborn(repo):
+        print(f"nothing to check: HEAD names no commit yet, so {where} holds no snapshot")
+        return 0
+    if rev and not rev_is_commit(repo, rev):
+        report(f"{rev}: names no commit in this repository, so {INDEX_PATH} cannot be checked against it")
+        return 1
+    snapshot = snapshot_memory(repo, rev)
+    if snapshot is None:
+        print(f"nothing to check: no {MEMORY_DIR}/ in {where}")
+        return 0
+    entries, current = snapshot
+    gather(entries)
+    if any(entry.errors for entry in entries):
+        return 1
+    rendered = render_index(active_entries(entries))
+    print(size_report(rendered))
+    if current != rendered:
+        report(f"{INDEX_PATH} in {where} does not match what these entries build. To fix it: {HOW_TO_FIX}")
+        print_diff(current or b"", rendered)
+        return 1
+    if over_limit(rendered):
+        report(f"{INDEX_PATH} in {where} is over the limit. Nothing is cut to fit: retire or merge entries "
+               f"until it fits ({HOW_TO_FIX})")
+        return 1
+    print(f"{INDEX_PATH} in {where} is up to date")
+    return 0
+
+
+def git_succeeds(repo: Path, args: list[str]) -> bool:
+    """Whether a read-only git command succeeds. The two calls below are how HEAD and a rev are told apart."""
+    try:
+        git(args, cwd=repo)
+    except GitError:
+        return False
+    return True
+
+
+def head_is_unborn(repo: Path) -> bool:
+[0m
+[0m$ [0mcd memory_check && rg -n 'unreadable|could not run' test/*.ts | head -30; echo ===; rg -n 'W3.5a|W1.2a|K6.1a|Rd1.1' ../docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml | head
+test/enhance.test.ts:14:const ROW = /^- \*\*((?:SoT|CACHES):[^*]+)\*\* \(([^)]+)\) — (pass|fail|needs a reviewer|not applicable|could not run) — (.*)$/;
+test/enhance.test.ts:42:  test("R2/U3: a MUST that could not run is in the warning", () => {
+test/enhance.test.ts:50:    const notRun = report.split("\n").map((l) => ROW.exec(l)).filter((m) => m && m[2] === "MUST" && m[3] === "could not run").map((m) => m![1]);
+test/acceptance.test.ts:13:  return [...report.matchAll(/^- \*\*((?:SoT|CACHES):[^*]+)\*\* \(([^)]+)\) — (pass|fail|needs a reviewer|not applicable|could not run) — (.*)$/gm)]
+test/acceptance.test.ts:79:    for (const row of all) expect(["pass", "fail", "needs a reviewer", "not applicable", "could not run"]).toContain(row.state);
+test/acceptance.test.ts:108:  test("C5/R3: shallow history could not run exits 1", () => {
+test/acceptance.test.ts:110:    expect(p.git("rev-parse", "--is-shallow-repository")).toBe("true"); const r = p.run(); expect(r.status).toBe(1); const row = result(r.stdout, "SoT:K4.3"); expect(row.state).toBe("could not run"); expect(row.evidence).toMatch(/shallow/i);
+test/review.test.ts:15:  return [...report.matchAll(/^- \*\*((?:SoT|CACHES):[^*]+)\*\* \(([^)]+)\) — (pass|fail|needs a reviewer|not applicable|could not run) — (.*)$/gm)]
+test/review.test.ts:123:  test("12: a git failure is could not run, never an empty pass", () => {
+test/review-enh.test.ts:15:  return [...report.matchAll(/^- \*\*((?:SoT|CACHES):[^*]+)\*\* \(([^)]+)\) — (pass|fail|needs a reviewer|not applicable|could not run) — (.*)$/gm)]
+test/review-enh.test.ts:34:  test("E-1a: a failed git ls-files is could not run, never every SoT record not applicable with exit 0", () => {
+test/review-enh.test.ts:45:  test("E-1b: an unreadable session-start file is not an Rd1 pass", () => {
+===
+114:          - id: W1.2a
+263:          - id: W3.5a
+572:          - id: K6.1a
+635:          - id: Rd1.1
+[0m
+[0m→ [0mRead memory_check/src/guidelines.ts
+[0m
+[0m$ [0mcd memory_check && sed -n 108,125p guidelines/SOURCE_OF_TRUTH_REQUIREMENTS.yaml; sed -n 258,275p guidelines/SOURCE_OF_TRUTH_REQUIREMENTS.yaml; sed -n 566,580p guidelines/SOURCE_OF_TRUTH_REQUIREMENTS.yaml
+The file is `project-memory/entries/<prefix>-<id>-<slug>.md`.
+            fails_if: >-
+              an entry file has another folder or name, with no written reason.
+            check: reviewer
+            who_decides: none
+            links: []
+          - id: W1.2a
+            part_of: W1.2
+            level: MUST
+            text: >-
+              The header starts on the file's first line, which is exactly `---`, and ends at the next line that is
+              exactly `---`.
+            fails_if: >-
+              a header is not between two `---` lines.
+            check: tool
+            who_decides: none
+            links: []
+          - id: W1.2b
+            fails_if: >-
+              an entry calls work verified that was only implemented, with no written reason.
+            check: reviewer
+            who_decides: none
+            links: []
+          - id: W3.5a
+            part_of: W3.5
+            level: MUST
+            text: >-
+              No user memory (one person, across projects) and no agent memory (one agent name).
+            fails_if: >-
+              the project holds user memory or agent memory.
+            check: reviewer
+            who_decides: none
+            links: []
+          - id: W3.5b
+            part_of: W3.5
+            level: SHOULD
+        basis: 'd: Where it is put; When to write'
+        requirements:
+          - id: K6.1a
+            part_of: K6.1
+            level: MUST
+            text: >-
+              `INDEX.md` is generated from `entries/`: one line per active entry, showing its id, kind and one-line
+              claim.
+            fails_if: >-
+              a commit's `INDEX.md` differs from what the tool builds from that commit's entries, or lists a
+              superseded or retired entry as active.
+            check: tool
+            who_decides: none
+            links: []
+          - id: K6.1b
+[0m
+Now I'll record the plan and start on E-1.
+[0m$ [0mcd runs/20261017-memory-check-review/nodes && touch fix-enh.progress.md && date -Iseconds
+2026-10-17T23:41:27+08:00
+[0m
+[0m→ [0mRead runs/20261017-memory-check-review/nodes/fix-enh.progress.md
+[0m
+[0m← [0mWrite runs/20261017-memory-check-review/nodes/fix-enh.progress.md
+Wrote file successfully.
+[0m
+[0m$ [0mcd runs/20261017-memory-check-review/nodes && date -Iseconds
+2026-10-17T23:41:31+08:00
+[0m
+[0m← [0mEdit runs/20261017-memory-check-review/nodes/fix-enh.progress.md
+Index: /home/smoke01/dev/ancient-games/runs/20261017-memory-check-review/nodes/fix-enh.progress.md
+===================================================================
+--- /home/smoke01/dev/ancient-games/runs/20261017-memory-check-review/nodes/fix-enh.progress.md
++++ /home/smoke01/dev/ancient-games/runs/20261017-memory-check-review/nodes/fix-enh.progress.md
+@@ -1,2 +1,3 @@
+ - 2026-10-17T23:41:27+08:00 · e1 · planned · E-1: a pass or not applicable needs a read that worked (checks.ts, cachechecks.ts)
+-- 2026-10-17T23:41:27+08:00 · e2 · planned · E-2: --out must never resolve to a memory location (command.ts)
+\ No newline at end of file
++- 2026-10-17T23:41:27+08:00 · e2 · planned · E-2: --out must never resolve to a memory location (command.ts)
++- 2026-10-17T23:41:31+08:00 · e1 · start · guard the staged read, the tool-vs-staged contradiction and Rd1's unreadable file
+\ No newline at end of file
+
+[0m
+[0m← [0mEdit memory_check/src/checks.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
+@@ -104,12 +104,20 @@
+   const snapshot = snapshotInfo(root, since);
+   // R1: named in the report, because no check reads the working tree (C5).
+   const unstaged = unstagedMemoryFiles(root);
+   const locations = findLocations(root, home);
+-  const snapshotGitErrors: string[] = [];
+-  // C5: the snapshot this run reports on is the staged state, so its presence is the staged state's presence. The
++const snapshotGitErrors: string[] = [];
++  // C5: the snapshot this run reports on is the staged state's presence. The
+   // working tree is what F1 names, and a staged-but-deleted memory is still memory the checks must judge.
+-  const projectMemory = stagedMemoryPaths(root, snapshotGitErrors).length > 0;
++  // The read that says whether any memory is staged keeps its own errors: a read that failed must never be read as
++  // "there is no memory", which would make every record "not applicable" (E-1, C2).
++  const memoryPathErrors: string[] = [];
++  const projectMemory = stagedMemoryPaths(root, memoryPathErrors).length > 0;
++  const stagedRead: StagedRead = {
++    failed: memoryPathErrors.length > 0,
++    reason: memoryPathErrors.join("; ") || null,
++  };
++  snapshotGitErrors.push(...memoryPathErrors);
+   const cachePresent = locations.some((one) => one.name === "project-memory/.cache/" && one.present);
+   const staged = projectMemory ? stagedEntries(root, snapshotGitErrors) : [];
+   const indexTool = runMemoryIndex(root);
+   const notes: string[] = [];
+
+[0m
+[0m→ [0mRead memory_check/src/checks.ts[90m [offset=102, limit=30][0m
+[0m
+[0m← [0mEdit memory_check/src/checks.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
+@@ -105,18 +105,15 @@
+   // R1: named in the report, because no check reads the working tree (C5).
+   const unstaged = unstagedMemoryFiles(root);
+   const locations = findLocations(root, home);
+ const snapshotGitErrors: string[] = [];
+-  // C5: the snapshot this run reports on is the staged state's presence. The
+-  // working tree is what F1 names, and a staged-but-deleted memory is still memory the checks must judge.
+-  // The read that says whether any memory is staged keeps its own errors: a read that failed must never be read as
+-  // "there is no memory", which would make every record "not applicable" (E-1, C2).
++  // C5: the snapshot this run reports on is the staged state, so its presence is the staged state's presence. The
++  // working tree is what F1 names, and a staged-but-deleted memory is still memory the checks must judge. The read
++  // that says whether any memory is staged keeps its own reasons: a read that failed is never read as "there is no
++  // memory", which would make every record "not applicable" and the run exit 0 (E-1, C2).
+   const memoryPathErrors: string[] = [];
+   const projectMemory = stagedMemoryPaths(root, memoryPathErrors).length > 0;
+-  const stagedRead: StagedRead = {
+-    failed: memoryPathErrors.length > 0,
+-    reason: memoryPathErrors.join("; ") || null,
+-  };
++  const stagedRead: StagedRead = { failed: memoryPathErrors.length > 0, reason: memoryPathErrors.join("; ") || null };
+   snapshotGitErrors.push(...memoryPathErrors);
+   const cachePresent = locations.some((one) => one.name === "project-memory/.cache/" && one.present);
+   const staged = projectMemory ? stagedEntries(root, snapshotGitErrors) : [];
+   const indexTool = runMemoryIndex(root);
+
+[0m
+Now the context type, the two guards:
+[0m← [0mEdit memory_check/src/checks.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
+@@ -201,8 +201,10 @@
+ }
+ 
+ interface SotContext {
+   readonly projectMemory: boolean;
++  /** Whether the staged read that decided `projectMemory` worked, and why it did not when it did not (E-1). */
++  readonly stagedRead: StagedRead;
+   readonly indexTool: IndexToolRun;
+   readonly prefixes: ClauseOutcome;
+   readonly onePerFile: ClauseOutcome;
+   readonly k41: ClauseOutcome;
+@@ -210,12 +212,28 @@
+   readonly merges: ClauseOutcome;
+   readonly renames: { prefixes: ClauseOutcome; ids: ClauseOutcome };
+ }
+ 
++/** The read every SoT record about project memory is judged on: did it work? */
++interface StagedRead {
++  readonly failed: boolean;
++  readonly reason: string | null;
++}
++
+ function sotResult(record: SotRecord, context: SotContext): RequirementResult {
+   const level: Level = record.level;
+   const base = { id: `SoT:${record.id}`, level, failsIf: record.failsIf };
+   if (!context.projectMemory && !OUTSIDE_PROJECT_MEMORY.has(record.id)) {
++    // E-1: the read that would have found the memory failed, so its absence says nothing about this record (C2).
++    if (context.stagedRead.failed && level !== "guidance") {
++      return {
++        ...base,
++        verdict: "could not run",
++        evidence:
++          `the staged state this record is judged on could not be read (${context.stagedRead.reason}), so whether ` +
++          "this memory is there is unknown, not absent (C2, E-1)",
++      };
++    }
+     return {
+       ...base,
+       verdict: "not applicable",
+       evidence:
+
+[0m
+[0m← [0mEdit memory_check/src/checks.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
+@@ -165,9 +165,9 @@
+ });
+ 
+ // --- the records of SOURCE_OF_TRUTH_REQUIREMENTS.yaml ----------------------------------------------------------
+ 
+-const context: SotContext = { projectMemory, indexTool, prefixes, onePerFile, k41, k43, merges, renames };
++const context: SotContext = { projectMemory, stagedRead, indexTool, prefixes, onePerFile, k41, k43, merges, renames };
+ for (const record of guidelines.sot) {
+   results.push(sotResult(record, context));
+ }
+ 
+
+[0m
+[0m← [0mEdit memory_check/src/checks.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/checks.ts
+@@ -280,8 +280,20 @@
+ const mine = myClauseOf(record, context);
+ const breaks = [...findings, ...(mine?.breaks ?? [])];
+ if (breaks.length > 0) return { ...base, verdict: "fail", evidence: `${toolEvidence}; ${breaks.join("; ")}` };
+ if (mine?.couldNotRun) return { ...base, verdict: "could not run", evidence: `${toolEvidence}; ${mine.couldNotRun}` };
++// E-1: this run's own staged read found memory and memory_index.py says it has no snapshot to check it — an
++// unborn HEAD, or object ids it does not read. One of the two reads is wrong about the same files, so no clause
++// the tool checks ran: "could not run", never a pass (C2, C3).
++if ((run.noMemory || run.unbornHead) && context.projectMemory) {
++  return {
++    ...base,
++    verdict: "could not run",
++    evidence:
++      "git ls-files --cached -- project-memory found memory in the staged state this run checked, but " +
++      `${indexChecksNotReached(run)}`,
++  };
++}
+ // The clauses memory_index.py only reaches after every entry parsed: not reaching them is never a pass (C2).
+ if (AFTER_ENTRIES.has(record.id) && !run.compared) {
+   return { ...base, verdict: "could not run", evidence: `${toolEvidence}; ${indexChecksNotReached(run)}` };
+ }
+
+[0m
+Now the unreadable session-start file in `cachechecks.ts`:
+[0m← [0mEdit memory_check/src/cachechecks.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/cachechecks.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/cachechecks.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/cachechecks.ts
+@@ -60,14 +60,18 @@
+ const files = sessionStartFiles(root).filter((file) => existsSync(file));
+ const scanned: string[] = [];
+ const breaks: string[] = [];
+ const unresolved: string[] = [];
++const unreadable: string[] = [];
+ for (const file of files) {
+   let text = "";
+   try {
+     text = readFileSync(file, "utf8");
+-  } catch {
++  } catch (error) {
++    // E-1: a file the scan could not read is a clause it did not check, not a clause with nothing in it (C2).
++    const reason = error instanceof Error ? error.message : String(error);
+     scanned.push(`${file} (unreadable)`);
++    unreadable.push(`${file} (unreadable: ${reason})`);
+     continue;
+   }
+   scanned.push(`${file}:1-${text.split("\n").length}`); // the lines the scan covered, so a pass names file and line (C2)
+   text.split("\n").forEach((line, offset) => {
+
+[0m
+[0m← [0mEdit memory_check/src/cachechecks.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/cachechecks.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/cachechecks.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/cachechecks.ts
+@@ -89,8 +89,18 @@
+   });
+ }
+ const scannedNote = [`scanned: ${scanned.join(", ") || "nothing"}`];
+ if (breaks.length > 0) return { breaks, clean: "", couldNotRun: null, notes: scannedNote };
++if (unreadable.length > 0) {
++  return {
++    breaks: [],
++    clean: "",
++    couldNotRun:
++      `${unreadable.join("; ")}: this scan could not read every session-start file, so it did not cover the ` +
++      "whole surface Rd1 is about and cannot call it clean (C2, E-1)",
++    notes: scannedNote,
++  };
++}
+ if (unresolved.length > 0) {
+   return {
+     breaks: [],
+     clean: "",
+
+[0m
+[0m$ [0mcd memory_check && bun test test/review-enh.test.ts 2>&1 | tail -40
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2d: INDEX.md through '..' is a usage error and no byte changes [106.21ms]
+101 |   test.each(targets)("%s is a usage error and no byte changes", (_name, target) => {
+102 |     const p = fixture();
+103 |     const out = target(p);
+104 |     const status = p.git("status", "--short"); const before = p.hashes();
+105 |     const r = p.run(["--out", out]);
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -2,3 +2,3 @@
+    "hashes": {
+-     "link.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "link.md": "56c0b207bbb565b1babd48d24b0199119272071984d18a8b9883e6aae6ce5c98",
+      "project/.git/COMMIT_EDITMSG": "633221e214f2d306f3d11a2f2ebf94c0361cdd201f66b7dffdf43dea2eeae0a1",
+@@ -38,3 +38,3 @@
+      "project/AGENTS.md": "a307d29cd0cbe3a07e2ae2c8880e42965e64295f37a889d033cadb92ba73ecf6",
+-     "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "project/project-memory/INDEX.md": "56c0b207bbb565b1babd48d24b0199119272071984d18a8b9883e6aae6ce5c98",
+      "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "239d971bcf89152b244854d12502e9b2e0112f3975f3164d4fab2c27ffd3272c",
+@@ -42,3 +42,3 @@
+    },
+-   "status": "",
++   "status": "M project-memory/INDEX.md",
+  }
+
+- Expected  - 3
++ Received  + 3
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2e: INDEX.md through a symlink is a usage error and no byte changes [106.05ms]
+
+ 8 pass
+ 5 fail
+ 41 expect() calls
+Ran 13 tests across 1 file. [1450.00ms]
+[0m
+[0m$ [0mcd memory_check && bun test 2>&1 | tail -30
+106 |     expect({ hashes: p.hashes(), status: p.git("status", "--short") }).toEqual({ hashes: before, status });
+                                                                             ^
+error: expect(received).toEqual(expected)
+
+@@ -2,3 +2,3 @@
+    "hashes": {
+-     "link.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "link.md": "7cd97ac0d6a4b201cecca0c8b5665dcb2120faa43497996607431b18dbcaee1b",
+      "project/.git/COMMIT_EDITMSG": "633221e214f2d306f3d11a2f2ebf94c0361cdd201f66b7dffdf43dea2eeae0a1",
+@@ -38,3 +38,3 @@
+      "project/AGENTS.md": "a307d29cd0cbe3a07e2ae2c8880e42965e64295f37a889d033cadb92ba73ecf6",
+-     "project/project-memory/INDEX.md": "47698a1e6f8541bd30b45bae2b96ab3058d467a0b8a3d566837ed59aeb0428cb",
++     "project/project-memory/INDEX.md": "7cd97ac0d6a4b201cecca0c8b5665dcb2120faa43497996607431b18dbcaee1b",
+      "project/project-memory/entries/D-17-10-abc123-2026-choice.md": "239d971bcf89152b244854d12502e9b2e0112f3975f3164d4fab2c27ffd3272c",
+@@ -42,3 +42,3 @@
+    },
+-   "status": "",
++   "status": "M project-memory/INDEX.md",
+  }
+
+- Expected  - 3
++ Received  + 3
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review-enh.test.ts:106:72)
+(fail) E-2: --out never writes over a memory location > E-2e: INDEX.md through a symlink is a usage error and no byte changes [128.69ms]
+
+ 82 pass
+ 5 fail
+ 1042 expect() calls
+Ran 87 tests across 4 files. [11.52s]
+[0m
+[0m$ [0mcd runs/20261017-memory-check-review/nodes && date -Iseconds
+2026-10-17T23:42:11+08:00
+[0m
+[0m← [0mEdit runs/20261017-memory-check-review/nodes/fix-enh.progress.md
+Index: /home/smoke01/dev/ancient-games/runs/20261017-memory-check-review/nodes/fix-enh.progress.md
+===================================================================
+--- /home/smoke01/dev/ancient-games/runs/20261017-memory-check-review/nodes/fix-enh.progress.md
++++ /home/smoke01/dev/ancient-games/runs/20261017-memory-check-review/nodes/fix-enh.progress.md
+@@ -1,3 +1,5 @@
+ - 2026-10-17T23:41:27+08:00 · e1 · planned · E-1: a pass or not applicable needs a read that worked (checks.ts, cachechecks.ts)
+ - 2026-10-17T23:41:27+08:00 · e2 · planned · E-2: --out must never resolve to a memory location (command.ts)
+-- 2026-10-17T23:41:31+08:00 · e1 · start · guard the staged read, the tool-vs-staged contradiction and Rd1's unreadable file
+\ No newline at end of file
++- 2026-10-17T23:41:31+08:00 · e1 · start · guard the staged read, the tool-vs-staged contradiction and Rd1's unreadable file
++- 2026-10-17T23:42:11+08:00 · e1 · done · E-1a-E-1d and 4 controls green, 82 pass / 5 fail (only E-2 left)
++- 2026-10-17T23:42:11+08:00 · e2 · start · refuse an --out that resolves to a memory location
+\ No newline at end of file
+
+[0m
+Now E-2 in `command.ts`:
+[0m← [0mEdit memory_check/src/command.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/command.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/command.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/command.ts
+@@ -84,8 +84,52 @@
+   if (path.resolve(top) !== root) throw new UsageError(`${root} is not the root of its git repository (${top} is)`);
+   return root;
+ }
+ 
++/**
++ * The path as the file system will read it: every `..` resolved and every symlink along the way followed, for a file
++ * that is not there yet as well. The deepest folder that exists is resolved, and the rest is joined onto it.
++ */
++function realTarget(target: string): string {
++  const tail: string[] = [];
++  let existing = path.resolve(target);
++  while (!existsSync(existing)) {
++    const parent = path.dirname(existing);
++    if (parent === existing) return path.resolve(target);
++    tail.unshift(path.basename(existing));
++    existing = parent;
++  }
++  try {
++    return path.join(realpathSync(existing), ...tail);
++  } catch {
++    return path.resolve(target);
++  }
++}
++
++/**
++ * The memory locations F1 names, as paths the file system would write to: the files themselves, and the folders
++ * every path inside which is memory.
++ */
++function memoryTargets(root: string, home: string): { readonly file: string; readonly folder: string } {
++  const inside = (prefix: string) => path.join(root, prefix);
++  return {
++    file: [inside(AGENTS_MD), inside("CLAUDE.md"), inside("project-memory/INDEX.md")].map(realTarget),
++    folder: [inside("project-memory/entries"), inside("project-memory/work"), inside("project-memory/journal"), inside("project-memory/.cache")].map(realTarget),
++  };
++}
++
++/** E-2: `--out` may never point at memory — the tool writes only its own report (F3, U5). Resolved through `..` and
++ *  symlinks first, so the check cannot be walked around. Usage error, and nothing written. */
++function outMustNotBeMemory(root: string, home: string, out: string | null): void {
++  if (out === null) return;
++  const target = realTarget(out);
++  const memory = memoryTargets(root, home);
++  const named = memory.file.find((one) => one === target);
++  if (named !== undefined) throw new UsageError(`--out ${target} is a memory file; memory-check writes only its own report (F3)`);
++  const folder = memory.folder.find((one) => target === one || target.startsWith(`${one}${path.sep}`));
++  if (folder !== undefined) throw new UsageError(`--out ${target} is inside ${folder}, which is memory; memory-check writes only its own report (F3)`);
++}
++
+ export function main(argv: readonly string[]): number {
+   let options: Options;
+   let root: string;
+   let home: string;
+
+[0m
+[0m← [0mEdit memory_check/src/command.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/command.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/command.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/command.ts
+@@ -110,11 +110,12 @@
+  * every path inside which is memory.
+  */
+ function memoryTargets(root: string, home: string): { readonly file: string; readonly folder: string } {
+   const inside = (prefix: string) => path.join(root, prefix);
++  const agentMemory = path.join(home, ".claude", "agent-memory");
+   return {
+     file: [inside(AGENTS_MD), inside("CLAUDE.md"), inside("project-memory/INDEX.md")].map(realTarget),
+-    folder: [inside("project-memory/entries"), inside("project-memory/work"), inside("project-memory/journal"), inside("project-memory/.cache")].map(realTarget),
++    folder: [inside("project-memory/entries"), inside("project-memory/work"), inside("project-memory/journal"), inside("project-memory/.cache"), agentMemory].map(realTarget),
+   };
+ }
+ 
+ /** E-2: `--out` may never point at memory — the tool writes only its own report (F3, U5). Resolved through `..` and
+
+[0m
+[0m← [0mEdit memory_check/src/command.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/command.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/command.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/command.ts
+@@ -1,14 +1,15 @@
+ // The command itself: `bun src/cli.ts [--project <repo root>] [--home <dir>] [--since <rev>] [--out <file>]
+ // [--warn]` — `cli.ts` launches it, `command.ts` is it.
+ // R3: exit 0 when no MUST fails or could not run, 1 when one does, 2 on a usage error. Nothing is written but
+ // `--out`'s file (F3, U5).
+-import { existsSync, statSync, writeFileSync } from "node:fs";
++import { existsSync, realpathSync, statSync, writeFileSync } from "node:fs";
+ import { homedir } from "node:os";
+ import path from "node:path";
+ import { runChecks } from "./checks.ts";
+ import { loadGuidelines } from "./guidelines.ts";
+ import { gitOut } from "./git.ts";
++import { AGENTS_MD } from "./locations.ts";
+ import { renderReport } from "./report.ts";
+ import { renderWarning } from "./warn.ts";
+ 
+ const USAGE = `memory-check — check a project's memory against docs/memory-system's two guidelines
+
+[0m
+Now wire the check into `main`:
+[0m← [0mEdit memory_check/src/command.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/command.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/command.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/command.ts
+@@ -142,8 +142,9 @@
+   if (!existsSync(home)) throw new UsageError(`${home} does not exist`);
+   if (options.since !== null && gitOut(root, ["rev-parse", "--verify", "--quiet", `${options.since}^{commit}`]) === "") {
+     throw new UsageError(`--since ${options.since} names no commit in ${root}`);
+   }
++  outMustNotBeMemory(root, home, options.out);
+ } catch (error) {
+   const message = error instanceof UsageError ? error.message : String(error);
+   process.stderr.write(`memory-check: ${message}\n${USAGE}\n`);
+   return 2;
+
+[0m
+[0m$ [0mcd memory_check && bun test test/review-enh.test.ts 2>&1 | tail -20
+bun test v1.4.3 (c6da4a4d3)
+
+ 13 pass
+ 0 fail
+ 46 expect() calls
+Ran 13 tests across 1 file. [1194.00ms]
+[0m
+[0m$ [0mcd memory_check && bun test 2>&1 | tail -8; echo "=== typecheck ==="; ./node_modules/.bin/tsgo --noEmit -p . 2>&1 | tail -10; echo "tsgo exit $?"
+bun test v1.4.3 (c6da4a4d3)
+
+ 87 pass
+ 0 fail
+ 1047 expect() calls
+Ran 87 tests across 4 files. [11.20s]
+=== typecheck ===
+src/command.ts(117,5): error TS2322: Type 'string[]' is not assignable to type 'string'.
+src/command.ts(118,5): error TS2322: Type 'string[]' is not assignable to type 'string'.
+src/command.ts(128,29): error TS2339: Property 'find' does not exist on type 'string'.
+src/command.ts(128,35): error TS7006: Parameter 'one' implicitly has an 'any' type.
+src/command.ts(130,32): error TS2339: Property 'find' does not exist on type 'string'.
+src/command.ts(130,38): error TS7006: Parameter 'one' implicitly has an 'any' type.
+tsgo exit 0
+[0m
+[0m← [0mEdit memory_check/src/command.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/command.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/command.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/command.ts
+@@ -109,9 +109,9 @@
+ /**
+  * The memory locations F1 names, as paths the file system would write to: the files themselves, and the folders
+  * every path inside which is memory.
+  */
+-function memoryTargets(root: string, home: string): { readonly file: string; readonly folder: string } {
++function memoryTargets(root: string, home: string): { readonly file: readonly string[]; readonly folder: readonly string[] } {
+   const inside = (prefix: string) => path.join(root, prefix);
+   const agentMemory = path.join(home, ".claude", "agent-memory");
+   return {
+     file: [inside(AGENTS_MD), inside("CLAUDE.md"), inside("project-memory/INDEX.md")].map(realTarget),
+
+[0m
+[0m$ [0mcd memory_check && ./node_modules/.bin/tsgo --noEmit -p . && echo "typecheck clean"
+typecheck clean
+[0m
+[0m$ [0mcd memory_check && bun test 2>&1 | tail -6
+bun test v1.4.3 (c6da4a4d3)
+
+ 87 pass
+ 0 fail
+ 1047 expect() calls
+Ran 87 tests across 4 files. [11.65s]
+[0m
+[0m$ [0mpython3 -m pytest -q tests/test_memory_index.py tests/test_memory_index_unit.py 2>&1 | tail -3
+........................................................................ [ 92%]
+.................................                                        [100%]
+465 passed in 29.85s
+[0m
+[0m$ [0mcd memory_check && bun src/cli.ts --project .. --home /home/smoke01 --out /tmp/opencode/mc-self.md; echo "exit $?"; grep -c 'could not run' /tmp/opencode/mc-self.md; grep -n 'SoT:W1.2a\|SoT:W3.5a\|CACHES:Rd1\|SoT:K6.1a' /tmp/opencode/mc-self.md
+/tmp/opencode/mc-self.md
+exit 0
+1
+32:- **SoT:W3.5a** (MUST) — needs a reviewer — check: reviewer — whether the project holds user memory or agent memory is the owner's call (F1 reports the locations; it does not judge what is in them)
+41:- **SoT:W3.5a** (MUST) — fails if: the project holds user memory or agent memory. — why not the tool: check: reviewer — whether the project holds user memory or agent memory is the owner's call (F1 reports the locations; it does not judge what is in them)
+62:- **SoT:K6.1a** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
+75:- **SoT:W1.2a** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
+129:- **CACHES:Rd1** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent in the working tree (F1 names it; a git-ignored folder is in no snapshot), so the cache requirements are not applicable (C4, C6)
+[0m
+[0m$ [0mgrep -n 'could not run' /tmp/opencode/mc-self.md; echo ===; ls runs/20261017-memory-check*/ 2>/dev/null | head -30
+55:- Counts: 0 fail, 3 pass, 3 needs a reviewer, 72 not applicable, 0 could not run
+===
+runs/20261017-memory-check-review/:
+briefs
+design.md
+enhance-q
+enhance-question.md
+enhance.md
+nodes
+review
+state.md
+
+runs/20261017-memory-check/:
+briefs
+criteria.yaml
+design-decisions.md
+enhance-q
+enhance-question.md
+nodes
+placement-q
+placement-question.md
+report.md
+research-q
+research-question.md
+settings-diff.md
+sot-requirements.txt
+[0m
+[0m$ [0mgrep -n 'Counts:' runs/20261017-memory-check/report.md
+(no output)
+[0m
+[0m$ [0mgrep -n -i 'counts\|not applicable' runs/20261017-memory-check/report.md | head
+19:| Enhance | six experts (`enhance-q/`) | picks applied: could-not-run MUSTs in the warning, unstaged count, final Not applicable section (`test/enhance.test.ts`, `fix-3`); the hook speaks only where `project-memory/` exists |
+23:`nodes/smoke-report.md`: 0 fail, 3 pass, 3 needs a reviewer, 72 not applicable (no `project-memory/`), 0 could not run;
+[0m
+[0m$ [0mgit status --short; echo ===; git diff --stat
+M CLAUDE.md
+ M docs/TASK_TYPES_LEDGER.md
+ M docs/code-graph/CODE_GRAPH.md
+ M memory_check/src/cachechecks.ts
+ M memory_check/src/checks.ts
+ M memory_check/src/command.ts
+ M runs/20261012-index-md-build/state.md
+?? .claude/skills/state-entry/
+?? .claude/skills/why-chain/
+?? TODO-2.0.md
+?? code_map/
+?? docs/code-graph/vision-statements/
+?? docs/evaluator/
+?? docs/research/20261011-agent-memory-graph-r2/
+?? docs/research/20261011-agent-memory-graph/
+?? docs/research/20261014-code-map/
+?? memory_check/test/review-enh.test.ts
+?? runs/20261011-agent-memory-graph-r2/
+?? runs/20261011-agent-memory-graph/
+?? runs/20261011-project-memory-engines/
+?? runs/20261012-caches-enhance/
+?? runs/20261012-caches-routing/cov/.coverage
+?? runs/20261013-code-graph-blueprint-eval/
+?? runs/20261013-four-experts-clean-up-the-code-graph/
+?? runs/20261013-four-experts-review-the-ancients-page-what/
+?? runs/20261013-four-experts-round-2-approve-the-merged/
+?? runs/20261013-four-experts-round-3-approve-the-final/
+?? runs/20261013-four-experts-two-open-decisions-in-the/
+?? runs/20261013-four-experts-write-a-skill-how-to/
+?? runs/20261013-requirements-evaluator/
+?? runs/20261013-requirements-relay/
+?? runs/20261014-call-chain-vision/
+?? runs/20261014-code-graph-fix-loop/
+?? runs/20261014-code-map-build/
+?? runs/20261014-code-map-vision-relay/
+?? runs/20261014-code-mapping-research/
+?? runs/20261014-four-experts-question-for-the-four-experts/
+?? runs/20261014-four-experts-review-the-cleaned-code-map/
+?? runs/20261014-four-experts-review-the-draft-the-call/
+?? runs/20261014-opencode-code-map/
+?? runs/20261014-why-chain-hook/
+?? runs/20261015-long-session/r4-mutants.txt
+?? runs/20261015-long-session/run_r5.sh
+?? runs/20261015-long-session/runs-r2/
+?? runs/20261015-long-session/runs-r5/
+?? runs/20261015-long-session/runs/
+?? runs/20261015-ts-hybrid/evidence/n1b/
+?? runs/20261016-four-experts-what-counts-as-change/
+?? runs/20261017-agent-lessons/r12.2-stop.patch
+?? runs/20261017-agent-lessons/r12.3.patch
+?? runs/20261017-evaluator-wiring/
+?? runs/20261017-memory-check-review/briefs/fix-enh.md
+?? runs/20261017-memory-check-review/enhance-q/
+?? runs/20261017-memory-check-review/enhance.md
+?? runs/20261017-memory-check-review/nodes/
+?? runs/20261017-memory-check-review/review/
+?? runs/20261017-memory-check-review/state.md
+?? runs/20261017-read-missing-false-hold/
+?? runs/20261017-sot-item11/
+?? tools/.gitignore
+?? tools/bun.lock
+?? tools/package.json
+?? tools/tsconfig.base.json
+?? tools/why-chain-hook/
+===
+ CLAUDE.md                             |   2 +-
+ docs/TASK_TYPES_LEDGER.md             |   8 ++
+ docs/code-graph/CODE_GRAPH.md         | 148 +++++++++++++++++++++++++++++++---
+ memory_check/src/cachechecks.ts       |  16 +++-
+ memory_check/src/checks.ts            |  43 +++++++++-
+ memory_check/src/command.ts           |  49 ++++++++++-
+ runs/20261012-index-md-build/state.md |   1 +
+ 7 files changed, 251 insertions(+), 16 deletions(-)
+[0m
+[0m$ [0mcd memory_check && bun test 2>&1 | tail -4 > /tmp/opencode/bun.txt; cat /tmp/opencode/bun.txt; date -Iseconds
+87 pass
+ 0 fail
+ 1047 expect() calls
+Ran 87 tests across 4 files. [10.17s]
+2026-10-17T23:43:55+08:00
+[0m
+[0m← [0mEdit runs/20261017-memory-check-review/nodes/fix-enh.progress.md
+Index: /home/smoke01/dev/ancient-games/runs/20261017-memory-check-review/nodes/fix-enh.progress.md
+===================================================================
+--- /home/smoke01/dev/ancient-games/runs/20261017-memory-check-review/nodes/fix-enh.progress.md
++++ /home/smoke01/dev/ancient-games/runs/20261017-memory-check-review/nodes/fix-enh.progress.md
+@@ -1,5 +1,6 @@
+ - 2026-10-17T23:41:27+08:00 · e1 · planned · E-1: a pass or not applicable needs a read that worked (checks.ts, cachechecks.ts)
+ - 2026-10-17T23:41:27+08:00 · e2 · planned · E-2: --out must never resolve to a memory location (command.ts)
+ - 2026-10-17T23:41:31+08:00 · e1 · start · guard the staged read, the tool-vs-staged contradiction and Rd1's unreadable file
+ - 2026-10-17T23:42:11+08:00 · e1 · done · E-1a-E-1d and 4 controls green, 82 pass / 5 fail (only E-2 left)
+-- 2026-10-17T23:42:11+08:00 · e2 · start · refuse an --out that resolves to a memory location
+\ No newline at end of file
++- 2026-10-17T23:42:11+08:00 · e2 · start · refuse an --out that resolves to a memory location
++- 2026-10-17T23:43:55+08:00 · e2 · done · realTarget + outMustNotBeMemory in command.ts; review-enh 13 pass, bun 87 pass, pytest 465 pass, tsgo clean
+\ No newline at end of file
+
+[0m
+[0m← [0mWrite runs/20261017-memory-check-review/nodes/fix-enh.result.md
+Wrote file successfully.
+[0m
+Done. Both findings in `enhance.md` are fixed, with `test/review-enh.test.ts` green (13 pass) and nothing else changed.
+
+- **E-1** (`memory_check/src/checks.ts` `runChecks`/`sotResult`/`decidedByTool`, `src/cachechecks.ts` `checkRd1`): a failed staged read, a `noMemory`/`unbornHead` report contradicting a staged read that found memory, and an unreadable session-start file each yield `could not run` instead of `pass`/`not applicable`; the `OUTSIDE_PROJECT_MEMORY` exemption, guidance records, `AFTER_ENTRIES` and the final pass keep their own results.
+- **E-2** (`memory_check/src/command.ts` `realTarget`/`memoryTargets`/`outMustNotBeMemory`): `--out` resolved through `..` and symlinks against every F1 location is a usage error, exit 2, nothing written.
+
+Checks: `bun test` 87 pass / 0 fail; pytest 465 passed; `tsgo --noEmit` clean; this repo's own report unchanged. Progress in `nodes/fix-enh.progress.md`, result in `nodes/fix-enh.result.md`.

@@ -1,0 +1,2 @@
+- 2026-10-17T23:00:28+08:00 baseline: cd memory_check && bun test → 74 pass, 0 fail, exit 0; env -u NO_COLOR python3 -m pytest -q tests/test_memory_index.py tests/test_memory_index_unit.py → 465 passed, exit 0; cd memory_check && ./node_modules/.bin/tsgo --noEmit -p . → exit 0 (no output) → pass
+- 2026-10-17T23:45:40+08:00 verify-enh: pass · bun test 87 pass 0 fail; pytest 465 passed; tsgo --noEmit exit 0; smoke CLI exit 0 wrote nodes/smoke-enh.md; git status --short identical before and after (report sits in already-untracked runs/20261017-memory-check-review/)

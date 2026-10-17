@@ -105,10 +105,15 @@ export function runChecks(options: CheckOptions): CheckRun {
   // R1: named in the report, because no check reads the working tree (C5).
   const unstaged = unstagedMemoryFiles(root);
   const locations = findLocations(root, home);
-  const snapshotGitErrors: string[] = [];
+const snapshotGitErrors: string[] = [];
   // C5: the snapshot this run reports on is the staged state, so its presence is the staged state's presence. The
-  // working tree is what F1 names, and a staged-but-deleted memory is still memory the checks must judge.
-  const projectMemory = stagedMemoryPaths(root, snapshotGitErrors).length > 0;
+  // working tree is what F1 names, and a staged-but-deleted memory is still memory the checks must judge. The read
+  // that says whether any memory is staged keeps its own reasons: a read that failed is never read as "there is no
+  // memory", which would make every record "not applicable" and the run exit 0 (E-1, C2).
+  const memoryPathErrors: string[] = [];
+  const projectMemory = stagedMemoryPaths(root, memoryPathErrors).length > 0;
+  const stagedRead: StagedRead = { failed: memoryPathErrors.length > 0, reason: memoryPathErrors.join("; ") || null };
+  snapshotGitErrors.push(...memoryPathErrors);
   const cachePresent = locations.some((one) => one.name === "project-memory/.cache/" && one.present);
   const staged = projectMemory ? stagedEntries(root, snapshotGitErrors) : [];
   const indexTool = runMemoryIndex(root);
@@ -161,7 +166,7 @@ export function runChecks(options: CheckOptions): CheckRun {
 
   // --- the records of SOURCE_OF_TRUTH_REQUIREMENTS.yaml ----------------------------------------------------------
 
-  const context: SotContext = { projectMemory, indexTool, prefixes, onePerFile, k41, k43, merges, renames };
+  const context: SotContext = { projectMemory, stagedRead, indexTool, prefixes, onePerFile, k41, k43, merges, renames };
   for (const record of guidelines.sot) {
     results.push(sotResult(record, context));
   }
@@ -197,6 +202,8 @@ function exitCodeOf(results: readonly RequirementResult[]): number {
 
 interface SotContext {
   readonly projectMemory: boolean;
+  /** Whether the staged read that decided `projectMemory` worked, and why it did not when it did not (E-1). */
+  readonly stagedRead: StagedRead;
   readonly indexTool: IndexToolRun;
   readonly prefixes: ClauseOutcome;
   readonly onePerFile: ClauseOutcome;
@@ -206,10 +213,26 @@ interface SotContext {
   readonly renames: { prefixes: ClauseOutcome; ids: ClauseOutcome };
 }
 
+/** The read every SoT record about project memory is judged on: did it work? */
+interface StagedRead {
+  readonly failed: boolean;
+  readonly reason: string | null;
+}
+
 function sotResult(record: SotRecord, context: SotContext): RequirementResult {
   const level: Level = record.level;
   const base = { id: `SoT:${record.id}`, level, failsIf: record.failsIf };
   if (!context.projectMemory && !OUTSIDE_PROJECT_MEMORY.has(record.id)) {
+    // E-1: the read that would have found the memory failed, so its absence says nothing about this record (C2).
+    if (context.stagedRead.failed && level !== "guidance") {
+      return {
+        ...base,
+        verdict: "could not run",
+        evidence:
+          `the staged state this record is judged on could not be read (${context.stagedRead.reason}), so whether ` +
+          "this memory is there is unknown, not absent (C2, E-1)",
+      };
+    }
     return {
       ...base,
       verdict: "not applicable",
@@ -258,6 +281,18 @@ function decidedByTool(record: SotRecord, context: SotContext): RequirementResul
     const breaks = [...findings, ...(mine?.breaks ?? [])];
     if (breaks.length > 0) return { ...base, verdict: "fail", evidence: `${toolEvidence}; ${breaks.join("; ")}` };
     if (mine?.couldNotRun) return { ...base, verdict: "could not run", evidence: `${toolEvidence}; ${mine.couldNotRun}` };
+    // E-1: this run's own staged read found memory and memory_index.py says it has no snapshot to check it — an
+    // unborn HEAD, or object ids it does not read. One of the two reads is wrong about the same files, so no clause
+    // the tool checks ran: "could not run", never a pass (C2, C3).
+    if ((run.noMemory || run.unbornHead) && context.projectMemory) {
+      return {
+        ...base,
+        verdict: "could not run",
+        evidence:
+          "git ls-files --cached -- project-memory found memory in the staged state this run checked, but " +
+          `${indexChecksNotReached(run)}`,
+      };
+    }
     // The clauses memory_index.py only reaches after every entry parsed: not reaching them is never a pass (C2).
     if (AFTER_ENTRIES.has(record.id) && !run.compared) {
       return { ...base, verdict: "could not run", evidence: `${toolEvidence}; ${indexChecksNotReached(run)}` };

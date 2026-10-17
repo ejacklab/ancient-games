@@ -1,0 +1,6 @@
+- 2026-10-17T23:41:27+08:00 · e1 · planned · E-1: a pass or not applicable needs a read that worked (checks.ts, cachechecks.ts)
+- 2026-10-17T23:41:27+08:00 · e2 · planned · E-2: --out must never resolve to a memory location (command.ts)
+- 2026-10-17T23:41:31+08:00 · e1 · start · guard the staged read, the tool-vs-staged contradiction and Rd1's unreadable file
+- 2026-10-17T23:42:11+08:00 · e1 · done · E-1a-E-1d and 4 controls green, 82 pass / 5 fail (only E-2 left)
+- 2026-10-17T23:42:11+08:00 · e2 · start · refuse an --out that resolves to a memory location
+- 2026-10-17T23:43:55+08:00 · e2 · done · realTarget + outMustNotBeMemory in command.ts; review-enh 13 pass, bun 87 pass, pytest 465 pass, tsgo clean

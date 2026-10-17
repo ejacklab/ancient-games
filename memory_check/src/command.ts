@@ -2,12 +2,13 @@
 // [--warn]` — `cli.ts` launches it, `command.ts` is it.
 // R3: exit 0 when no MUST fails or could not run, 1 when one does, 2 on a usage error. Nothing is written but
 // `--out`'s file (F3, U5).
-import { existsSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { runChecks } from "./checks.ts";
 import { loadGuidelines } from "./guidelines.ts";
 import { gitOut } from "./git.ts";
+import { AGENTS_MD } from "./locations.ts";
 import { renderReport } from "./report.ts";
 import { renderWarning } from "./warn.ts";
 
@@ -85,6 +86,51 @@ function projectRootOf(given: string | null): string {
   return root;
 }
 
+/**
+ * The path as the file system will read it: every `..` resolved and every symlink along the way followed, for a file
+ * that is not there yet as well. The deepest folder that exists is resolved, and the rest is joined onto it.
+ */
+function realTarget(target: string): string {
+  const tail: string[] = [];
+  let existing = path.resolve(target);
+  while (!existsSync(existing)) {
+    const parent = path.dirname(existing);
+    if (parent === existing) return path.resolve(target);
+    tail.unshift(path.basename(existing));
+    existing = parent;
+  }
+  try {
+    return path.join(realpathSync(existing), ...tail);
+  } catch {
+    return path.resolve(target);
+  }
+}
+
+/**
+ * The memory locations F1 names, as paths the file system would write to: the files themselves, and the folders
+ * every path inside which is memory.
+ */
+function memoryTargets(root: string, home: string): { readonly file: readonly string[]; readonly folder: readonly string[] } {
+  const inside = (prefix: string) => path.join(root, prefix);
+  const agentMemory = path.join(home, ".claude", "agent-memory");
+  return {
+    file: [inside(AGENTS_MD), inside("CLAUDE.md"), inside("project-memory/INDEX.md")].map(realTarget),
+    folder: [inside("project-memory/entries"), inside("project-memory/work"), inside("project-memory/journal"), inside("project-memory/.cache"), agentMemory].map(realTarget),
+  };
+}
+
+/** E-2: `--out` may never point at memory — the tool writes only its own report (F3, U5). Resolved through `..` and
+ *  symlinks first, so the check cannot be walked around. Usage error, and nothing written. */
+function outMustNotBeMemory(root: string, home: string, out: string | null): void {
+  if (out === null) return;
+  const target = realTarget(out);
+  const memory = memoryTargets(root, home);
+  const named = memory.file.find((one) => one === target);
+  if (named !== undefined) throw new UsageError(`--out ${target} is a memory file; memory-check writes only its own report (F3)`);
+  const folder = memory.folder.find((one) => target === one || target.startsWith(`${one}${path.sep}`));
+  if (folder !== undefined) throw new UsageError(`--out ${target} is inside ${folder}, which is memory; memory-check writes only its own report (F3)`);
+}
+
 export function main(argv: readonly string[]): number {
   let options: Options;
   let root: string;
@@ -97,6 +143,7 @@ export function main(argv: readonly string[]): number {
     if (options.since !== null && gitOut(root, ["rev-parse", "--verify", "--quiet", `${options.since}^{commit}`]) === "") {
       throw new UsageError(`--since ${options.since} names no commit in ${root}`);
     }
+    outMustNotBeMemory(root, home, options.out);
   } catch (error) {
     const message = error instanceof UsageError ? error.message : String(error);
     process.stderr.write(`memory-check: ${message}\n${USAGE}\n`);
