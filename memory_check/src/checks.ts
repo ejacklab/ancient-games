@@ -161,7 +161,7 @@ const snapshotGitErrors: string[] = [];
     evidence:
       `this run created, changed and deleted nothing; it wrote ${options.out ? `only ${options.out}` : "nothing"}; ` +
       "every git call ran with GIT_OPTIONAL_LOCKS=0",
-    failsIf: "a run changes, creates or deletes any file, ignored files included, other than the report",
+    failsIf: "a run changes or creates or deletes any file other than the report (ignored files included)",
   });
 
   // --- the records of SOURCE_OF_TRUTH_REQUIREMENTS.yaml ----------------------------------------------------------
