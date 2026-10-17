@@ -2,28 +2,42 @@
 // text; nothing else; empty when there are none. `--warn` prints it; the session-start hook that also prints it is
 // a harness change R2 leaves to the owner (R12.3), and no file under project-memory/.cache/ is ever opened here
 // (Rd1): nothing in the run reads a cache file, only whether the folder is there.
+//
+// The lines are built from three things and nothing else: the requirement id, the category that id stands for, and
+// the file names in the evidence. No evidence prose and no part of an entry is ever copied into them, because the
+// evidence quotes the entry — a claim, a source — and a warning is read in a session's first lines (R2).
 import type { CheckRun, RequirementResult } from "./checks.ts";
 
-const TOOL_COMMAND = /^python3 .*--check\s+\(in .*\) → exit -?\d+(, output: [^;]*)?;?/;
 /** The file names in an evidence line, and nothing else of the entry: no claim, no body, no text. */
 const FILE_NAME = /(project-memory\/entries\/[\w.\-]+|project-memory\/INDEX\.md|AGENTS\.md)/g;
 
-function filesIn(evidence: string): string {
-  return [...new Set([...evidence.matchAll(FILE_NAME)].map((match) => match[1]!))].join(", ");
-}
+/** What each id's failure is about, in words of the guideline rather than of the entry. */
+const CATEGORY: Record<string, string> = {
+  "SoT:W1.1a": "an entry's kind does not match its name, or its name was renamed",
+  "SoT:W1.1b": "an entry's id is malformed, or was renamed",
+  "SoT:W1.2a": "an entry's header block is missing or not closed",
+  "SoT:W1.3a": "an entry has no claim or no Why",
+  "SoT:W4.1b": "an entry's status is not one of active, superseded, retired",
+  "SoT:K4.1": "an entry file was deleted, superseded without a link, or retired without a reason",
+  "SoT:K4.3": "an entry's claim, source, depends_on or covers changed without the log line for it",
+  "SoT:K6.1a": "INDEX.md does not match what the entries build",
+  "SoT:K6.2": "the index has a line for an entry that is not active, or none for one that is",
+  "SoT:K6.3a": "an entry holds an unresolved conflict marker",
+  "SoT:Rd3.1a": "INDEX.md is over its size limit",
+  "SoT:W6.1a": "one file holds more than one entry",
+  "SoT:W6.3a": "a merge dropped what one side wrote",
+};
 
-/** The one break of the evidence, without the command and output memory_index.py's own. */
-function firstBreak(evidence: string): string {
-  const withoutCommand = evidence.replace(TOOL_COMMAND, "");
-  const first = withoutCommand.split(";")[0] ?? withoutCommand;
-  const trimmed = first.trim();
-  return trimmed.length <= 200 ? trimmed : `${trimmed.slice(0, 199)}…`;
+const GENERIC = "a clause of the guideline memory needs";
+
+function filesIn(evidence: string): string[] {
+  return [...new Set([...evidence.matchAll(FILE_NAME)].map((match) => match[1]!))];
 }
 
 function warningFor(result: RequirementResult): string {
   const files = filesIn(result.evidence);
-  const where = files === "" ? "" : ` — files: ${files}`;
-  return `memory-check: ${result.id} fails: ${firstBreak(result.evidence)}${where}`;
+  const where = files.length === 0 ? "" : ` — files: ${files.join(", ")}`;
+  return `memory-check: ${result.id} fails — ${CATEGORY[result.id] ?? GENERIC}${where}`;
 }
 
 export function renderWarning(run: CheckRun): string {

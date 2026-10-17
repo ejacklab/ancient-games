@@ -16,18 +16,32 @@ export interface IndexToolRun {
   readonly sizeLine: string | null;
   /** The tool's own over-limit failure (it prints this only after the index matched). */
   readonly overLimit: boolean;
-  /** `INDEX.md ... does not match what these entries build`. */
+  /** `project-memory/INDEX.md ... does not match what these entries build`. */
   readonly mismatch: boolean;
   /** `nothing to check: no project-memory/ in ...`. */
   readonly noMemory: boolean;
   /** `nothing to check: HEAD names no commit yet ...`. */
   readonly unbornHead: boolean;
   readonly upToDate: boolean;
+  /** The index the entries build was measured against the size limits: the tool printed its size line. */
+  readonly measured: boolean;
+  /** The index was compared with what the entries build: the tool printed its size line and then judged it. */
+  readonly compared: boolean;
+  /** python itself failed: a traceback, an exit code no check of a memory uses, or no python3 at all. */
+  readonly crashed: boolean;
+  /** Problems the tool stopped on that name no requirement id: a check this tool cannot report either way. */
+  readonly unmapped: readonly string[];
   /** Tool messages that name no requirement id: reported as notes, never dropped. */
   readonly notes: readonly string[];
 }
 
 const SIZE_LINE = /^INDEX\.md: (\d+)\/(\d+) lines, (\d+)\/(\d+) bytes/;
+
+/** The index the tool judges, as it names itself (`INDEX_PATH`, tools/memory_index.py:40). */
+const INDEX_NAME = "project-memory/INDEX.md";
+const UP_TO_DATE = new RegExp(`^${INDEX_NAME.replace(/\//g, "\\/")} in .+ is up to date$`);
+const MISMATCH = new RegExp(`${INDEX_NAME.replace(/\//g, "\\/")} in .+ does not match`);
+const OVER_LIMIT = new RegExp(`${INDEX_NAME.replace(/\//g, "\\/")} in .+ is over the limit`);
 
 /** A per-file problem as memory_index.py prints it: `<file name>: <problem>` (`tools/memory_index.py:385`). */
 const PER_FILE = /^([^:]+): (.+)$/;
@@ -59,6 +73,7 @@ export function runMemoryIndex(root: string): IndexToolRun {
 
   const findings = new Map<string, string[]>();
   const notes: string[] = [];
+  const unmapped: string[] = [];
   let sizeLine: string | null = null;
   let overLimit = false;
   let mismatch = false;
@@ -86,14 +101,14 @@ export function runMemoryIndex(root: string): IndexToolRun {
       unbornHead = true;
       continue;
     }
-    if (/^INDEX\.md in .* is up to date$/.test(message)) {
+    if (UP_TO_DATE.test(message)) {
       upToDate = true;
       continue;
     }
-    if (/^INDEX\.md in .* does not match/.test(message)) {
+    if (MISMATCH.test(message)) {
       mismatch = true;
     }
-    if (/INDEX\.md in .* is over the limit/.test(message)) {
+    if (OVER_LIMIT.test(message)) {
       // The index's own size limit: the clause memory_index.py judges (Rd3.1a), reported as its own failure.
       overLimit = true;
       add("Rd3.1a", message);
@@ -114,11 +129,20 @@ export function runMemoryIndex(root: string): IndexToolRun {
       for (const one of id.split(",")) add(one, message);
       continue;
     }
+    // A problem the tool stopped on that names no requirement id: it is not a pass and not a fail here — it is a
+    // check that could not run (C2, C3). Diff lines and fix hints arrive only after the size line, once the entries
+    // were read, so they are never mistaken for one.
+    if (!/\(warning\)$/.test(message) && sizeLine === null && !noMemory && !unbornHead && code !== 0) {
+      unmapped.push(message);
+      continue;
+    }
     // Everything else the tool printed: a per-file warning, a diff line, a fix hint. Not a finding of a
     // requirement id, but never dropped.
     notes.push(message);
   }
 
+  // The tool measures the index only after every entry parsed, so a size line means the entry checks all ran.
+  const measured = sizeLine !== null;
   return {
     command,
     code,
@@ -131,12 +155,28 @@ export function runMemoryIndex(root: string): IndexToolRun {
     noMemory,
     unbornHead,
     upToDate,
+    measured,
+    compared: measured && (upToDate || mismatch),
+    crashed: code === -1 || (code !== 0 && code !== 1) || stderr.some((line) => /Traceback \(most recent call last\)/.test(line)),
+    unmapped,
     notes,
   };
 }
 
 /** Whether the tool could not be run at all: no python3, or a crash of its own. */
 export function toolFailedToStart(run: IndexToolRun): boolean {
-  return run.code === -1 || (run.code !== 0 && run.code !== 1 && run.stdout.length === 0 && run.stderr.length === 0);
+  return run.crashed;
+}
+
+/** Why the index clauses did not run: the tool had no snapshot, or it stopped on the entries before comparing. */
+export function indexChecksNotReached(run: IndexToolRun): string {
+  if (run.noMemory || run.unbornHead) {
+    return `memory_index.py had no snapshot to compare (${run.stdout.join(" ")}): the index clauses did not run (C2)`;
+  }
+  const stopped = [...run.stdout, ...run.stderr].filter((line) => line.trim() !== "" && !SIZE_LINE.test(line.trim()));
+  return (
+    `memory_index.py stopped at its entry checks and never compared ${INDEX_NAME}, so the index clauses did not ` +
+    `run (C2): ${stopped.slice(0, 4).join(" | ") || `exit ${run.code}`}`
+  );
 }
 

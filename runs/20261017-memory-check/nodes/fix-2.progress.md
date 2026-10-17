@@ -1,0 +1,42 @@
+- 2026-10-17T18:26:10+08:00 · undecodable · planned · item 1: unmapped / python-error memory_index.py runs are "could not run", never pass
+- 2026-10-17T18:26:10+08:00 · skipped · planned · item 2: track the index checks memory_index.py did not reach; fix the `INDEX.md` recogniser
+- 2026-10-17T18:26:10+08:00 · stagedpresence · planned · item 3: presence and bytes of project-memory come from the staged state
+- 2026-10-17T18:26:10+08:00 · stagedhistory · planned · item 4: staged deletions and renames reach K4.1 and the rename clauses
+- 2026-10-17T18:26:10+08:00 · transitions · planned · item 5: K4.3 checks every transition in history, each covers edit its own changed: line
+- 2026-10-17T18:26:10+08:00 · baseline · planned · item 6: --since takes its baseline from before the range
+- 2026-10-17T18:26:10+08:00 · mergedrop · planned · item 7: a merge that drops a whole entry fails K4.1
+- 2026-10-17T18:26:10+08:00 · k41reviewer · planned · item 8: K4.1 with no mechanical break is "needs a reviewer"
+- 2026-10-17T18:26:10+08:00 · unquote · planned · item 9: header scalars unquoted before comparison
+- 2026-10-17T18:26:10+08:00 · rd1 · planned · item 10: Rd1 decides only clear session-start instructions
+- 2026-10-17T18:26:10+08:00 · warning · planned · item 11: the warning is built from ids, categories and file names
+- 2026-10-17T18:26:10+08:00 · giterrors · planned · item 12: a failing git command makes its checks "could not run"
+- 2026-10-17T18:26:10+08:00 · launcher · planned · item 13: the launcher disables the transpiler cache whenever it is not off
+- 2026-10-17T18:26:10+08:00 · fences · planned · item 14: a fenced code block in an entry body is not a second header- 2026-10-17T18:26:20+08:00 · unquote · start · entry.ts scalar values
+- 2026-10-17T18:26:20+08:00 · fences · start · entry.ts fenced code blocks
+- 2026-10-17T18:26:20+08:00 · launcher · start · cli.ts cache condition
+- 2026-10-17T18:26:22+08:00 · unquote · done · entry.ts unquote() on every header scalar (memory_index.py's unquote); tests 9 and 14 pass
+- 2026-10-17T18:26:22+08:00 · fences · done · entry.ts headerDelimiters() steps over fenced code blocks; test 14 passes
+- 2026-10-17T18:26:22+08:00 · launcher · done · cli.ts re-runs unless the value is bun's off value "0"; test 13 passes
+- 2026-10-17T18:26:30+08:00 · undecodable · start · indextool: which checks the tool reached
+- 2026-10-17T18:26:30+08:00 · skipped · start · indextool: unmapped failures and the INDEX.md recogniser
+- 2026-10-17T18:27:13+08:00 · undecodable · done · indextool runMemoryIndex flags crashed/unmapped/measured/compared; checks.ts maps an unmapped failure or an unreached clause to could not run; test 1 passes
+- 2026-10-17T18:27:13+08:00 · skipped · done · indexChecksNotReached() names why, AFTER_ENTRIES = K6.1a/K6.2/Rd3.1a, INDEX_NAME recognisers now match project-memory/INDEX.md; test 2a passes
+- 2026-10-17T18:29:04+08:00 · stagedpresence · start · checks.ts asks the staged state whether project-memory/ is there
+- 2026-10-17T18:29:04+08:00 · stagedhistory · start · gitchecks staged diff for K4.1 and the rename clauses
+- 2026-10-17T18:29:04+08:00 · transitions · start · gitrequirements K4.3 rewritten over versions
+- 2026-10-17T18:29:04+08:00 · baseline · start · baseline is the version before the range's first commit
+- 2026-10-17T18:29:04+08:00 · mergedrop · start · entriesDroppedByMerges compares each parent with the result
+- 2026-10-17T18:29:04+08:00 · giterrors · start · gitRead records every failure; clauses answer could not run
+- 2026-10-17T18:29:04+08:00 · stagedpresence · done · runChecks reads presence and bytes from git ls-files; tests 3 and 4's fixture pass, 55/55 acceptance still pass
+- 2026-10-17T18:29:04+08:00 · stagedhistory · done · entryDeletions/entryRenames add git diff --cached -M; test 4 passes
+- 2026-10-17T18:29:04+08:00 · transitions · done · checkK43 compares every version in the range with the one before it, each covers change wanting a changed: line of its own; test 5 passes
+- 2026-10-17T18:29:04+08:00 · baseline · done · versionsOf takes the baseline from the parent of the range's first commit; test 6 passes
+- 2026-10-17T18:29:04+08:00 · mergedrop · done · K4.1 names an entry a parent held and the merge result lost; test 7 passes
+- 2026-10-17T18:29:04+08:00 · giterrors · done · optional --verify calls stay quiet, every other failure becomes could not run; test 12 passes
+- 2026-10-17T18:29:04+08:00 · k41reviewer · start · K4.1 with no mechanical break
+- 2026-10-17T18:29:04+08:00 · rd1 · start · session-start clauses, indirect calls, negated clauses
+- 2026-10-17T18:29:04+08:00 · warning · start · warning from ids, categories and file names
+- 2026-10-17T18:32:02+08:00 · k41reviewer · done · checks.ts withReviewer() makes a cleared K4.1 the reviewer's (C2); test 8 passes
+- 2026-10-17T18:32:02+08:00 · rd1 · done · cachechecks readLine() reads clauses on their own; unresolved session-start instructions are the reviewer's, fromOutcome answers needs a reviewer; tests 10a and 10b pass
+- 2026-10-17T18:32:02+08:00 · warning · done · warn.ts builds each line from id + category + file names only; test 11 passes
+- 2026-10-17T18:32:02+08:00 · all · done · cd memory_check && bun test → 70 pass 0 fail (55 acceptance + 15 review); ./node_modules/.bin/tsgo --noEmit -p . → exit 0, nothing printed

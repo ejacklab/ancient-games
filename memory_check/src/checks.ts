@@ -12,10 +12,10 @@ import {
   checkOneEntryPerFile,
   checkRenames,
 } from "./gitrequirements.ts";
-import { type SnapshotInfo, stagedEntries, snapshotInfo } from "./gitchecks.ts";
+import { type SnapshotInfo, stagedEntries, stagedMemoryPaths, snapshotInfo } from "./gitchecks.ts";
 import type { Guidelines, Level, SotRecord } from "./guidelines.ts";
-import { type IndexToolRun, runMemoryIndex, toolFailedToStart } from "./indextool.ts";
-import { agentsMdMissing, findLocations, hasProjectMemory, type Location } from "./locations.ts";
+import { type IndexToolRun, indexChecksNotReached, runMemoryIndex, toolFailedToStart } from "./indextool.ts";
+import { agentsMdMissing, findLocations, type Location } from "./locations.ts";
 
 export type Verdict = "pass" | "fail" | "needs a reviewer" | "not applicable" | "could not run";
 
@@ -46,6 +46,13 @@ export interface CheckRun {
  * their result when `project-memory/` is absent; every other record is "not applicable" (C4).
  */
 const OUTSIDE_PROJECT_MEMORY = new Set(["W3.5a", "W3.5b", "Rd1.1"]);
+
+/**
+ * The clauses `tools/memory_index.py --check` reaches only after every entry parsed: it prints no size line and
+ * compares no index until then (`check_index`, tools/memory_index.py:494). A run that stopped before that checked
+ * none of them, which is "could not run", never a pass (C2, C3).
+ */
+const AFTER_ENTRIES = new Set(["K6.1a", "K6.2", "Rd3.1a"]);
 
 /** Why a record is "needs a reviewer". Every record that is not decided has its own reason, cited. */
 const REVIEWER_REASON: Record<string, string> = {
@@ -87,11 +94,15 @@ export function runChecks(options: CheckOptions): CheckRun {
   const { root, home, since, guidelines } = options;
   const snapshot = snapshotInfo(root, since);
   const locations = findLocations(root, home);
-  const projectMemory = hasProjectMemory(root);
+  const snapshotGitErrors: string[] = [];
+  // C5: the snapshot this run reports on is the staged state, so its presence is the staged state's presence. The
+  // working tree is what F1 names, and a staged-but-deleted memory is still memory the checks must judge.
+  const projectMemory = stagedMemoryPaths(root, snapshotGitErrors).length > 0;
   const cachePresent = locations.some((one) => one.name === "project-memory/.cache/" && one.present);
-  const staged = projectMemory ? stagedEntries(root) : [];
+  const staged = projectMemory ? stagedEntries(root, snapshotGitErrors) : [];
   const indexTool = runMemoryIndex(root);
   const notes: string[] = [];
+  if (snapshotGitErrors.length > 0) notes.push(`the staged state could not be read: ${snapshotGitErrors.join("; ")}`);
 
   const renames = checkRenames(snapshot);
   const prefixes = checkEntryPrefixes(staged);
@@ -114,7 +125,9 @@ export function runChecks(options: CheckOptions): CheckRun {
     verdict: missingAgentsMd ? "fail" : "pass",
     evidence: missingAgentsMd
       ? `${root}/AGENTS.md does not exist: AGENTS.md is required (F1)`
-      : `${root}/AGENTS.md exists; ${locations.filter((one) => one.present).length} of ${locations.length} named locations present, ${locations.filter((one) => !one.present).length} absent`,
+      : `${root}/AGENTS.md exists; ${locations.filter((one) => one.present).length} of ${locations.length} named locations present, ` +
+        `${locations.filter((one) => !one.present).length} absent. This table is the working tree; every verdict below reads the ` +
+        "staged state (C5)",
     failsIf:
       "a named location exists and is not found, one is reported that does not exist, or a missing AGENTS.md is not a failure",
   });
@@ -188,7 +201,9 @@ function sotResult(record: SotRecord, context: SotContext): RequirementResult {
     return {
       ...base,
       verdict: "not applicable",
-      evidence: "project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)",
+      evidence:
+        "project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- " +
+        "project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)",
     };
   }
   if (level === "guidance") {
@@ -209,7 +224,11 @@ function decidedByTool(record: SotRecord, context: SotContext): RequirementResul
 
   if (record.checks.includes("tool")) {
     if (toolFailedToStart(run)) {
-      return { ...base, verdict: "could not run", evidence: `${run.command} could not be run: ${run.stderr.join(" ")}` };
+      return {
+        ...base,
+        verdict: "could not run",
+        evidence: `${run.command} could not be run: ${run.stderr.join(" ") || `exit ${run.code}`}`,
+      };
     }
     // Rd3.1a's limit is checked by memory_index.py after it compared the index; when it stopped earlier that clause
     // did not run. Its own size line is reported, not judged here a second way (C3).
@@ -227,6 +246,20 @@ function decidedByTool(record: SotRecord, context: SotContext): RequirementResul
     const breaks = [...findings, ...(mine?.breaks ?? [])];
     if (breaks.length > 0) return { ...base, verdict: "fail", evidence: `${toolEvidence}; ${breaks.join("; ")}` };
     if (mine?.couldNotRun) return { ...base, verdict: "could not run", evidence: `${toolEvidence}; ${mine.couldNotRun}` };
+    // The clauses memory_index.py only reaches after every entry parsed: not reaching them is never a pass (C2).
+    if (AFTER_ENTRIES.has(record.id) && !run.compared) {
+      return { ...base, verdict: "could not run", evidence: `${toolEvidence}; ${indexChecksNotReached(run)}` };
+    }
+    // The tool stopped on a problem that names no requirement id: it could not judge this clause either way (C2).
+    if (run.unmapped.length > 0) {
+      return {
+        ...base,
+        verdict: "could not run",
+        evidence:
+          `${toolEvidence}; memory_index.py stopped on problems that name no requirement id, so this clause did ` +
+          `not run: ${run.unmapped.slice(0, 4).join(" | ")}`,
+      };
+    }
     if (record.checks.includes("reviewer")) {
       return {
         ...base,
@@ -239,7 +272,8 @@ function decidedByTool(record: SotRecord, context: SotContext): RequirementResul
 
   switch (record.id) {
     case "K4.1":
-      return fromOutcome(base, context.k41);
+      // C2: a record checked by the tool and by a reviewer fails when the tool finds a break, else needs a reviewer.
+      return withReviewer(base, context.k41);
     case "K4.3":
       return fromOutcome(base, context.k43);
     case "W6.3a": {
@@ -321,6 +355,25 @@ function named(base: { id: string; level: string; failsIf: string }, clause: str
   return { ...result, evidence: `clause ${clause}: ${result.evidence}` };
 }
 
+/** The one part of the warning the reviewer is asked about: what the tool cleared, and what it cannot judge. */
+const MIXED_REVIEWER_REASON =
+  "whether the written reason is one the owner accepts is judged (C2: a record the tool and a reviewer both check " +
+  "is the reviewer's when the tool finds no break)";
+
+/** A clause the tool judges, where the record also names a reviewer: a break fails, nothing broken is the reviewer's. */
+function withReviewer(
+  base: { id: string; level: string; failsIf: string },
+  outcome: ClauseOutcome,
+): RequirementResult {
+  const result = fromOutcome(base, outcome);
+  if (result.verdict !== "pass") return result;
+  return {
+    ...result,
+    verdict: "needs a reviewer",
+    evidence: `${result.evidence}; ${MIXED_REVIEWER_REASON}`,
+  };
+}
+
 function fromOutcome(
   base: { id: string; level: string; failsIf: string },
   outcome: ClauseOutcome,
@@ -329,17 +382,30 @@ function fromOutcome(
     return { ...base, verdict: "fail", evidence: outcome.breaks.join("; ") };
   }
   if (outcome.couldNotRun) return { ...base, verdict: "could not run", evidence: outcome.couldNotRun };
+  const unresolved = outcome.unresolved ?? [];
+  if (unresolved.length > 0) {
+    return {
+      ...base,
+      verdict: "needs a reviewer",
+      evidence:
+        `${unresolved.join("; ")} — a line of a session-start file this scan cannot read as an instruction to open ` +
+        "a cache file nor as one never to, so it is the reviewer's (C2)",
+    };
+  }
   return { ...base, verdict: "pass", evidence: outcome.clean };
 }
 
 function cachesResult(id: string, failsIf: string, cachePresent: boolean, root: string): RequirementResult {
   const base = { id: `CACHES:${id}`, level: "not stated in CACHES.md", failsIf };
-  // C4, C6 as changed: with no cache folder every cache requirement is "not applicable", B2.2 included.
+  // C4, C6 as changed: with no cache folder every cache requirement is "not applicable", B2.2 included. The cache
+  // folder is named from the working tree and nowhere else: it is git-ignored, so it is in no snapshot.
   if (!cachePresent) {
     return {
       ...base,
       verdict: "not applicable",
-      evidence: "project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)",
+      evidence:
+        "project-memory/.cache/ is absent in the working tree (F1 names it; a git-ignored folder is in no snapshot), " +
+        "so the cache requirements are not applicable (C4, C6)",
     };
   }
   // C6, v1: of the Core requirements only B2 (its clause B2.2) and Rd1 (its clause Rd1.1) are checked.

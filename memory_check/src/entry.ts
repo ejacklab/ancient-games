@@ -34,9 +34,42 @@ function squash(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
+/** One pair of surrounding quotes, as memory_index.py's `unquote` strips (tools/memory_index.py:127): a header
+ *  scalar written `status: "superseded"` is the status `superseded`, and comparing it unquoted is comparing what
+ *  the index checker reads. */
+function unquote(value: string): string {
+  const first = value[0];
+  return value.length >= 2 && first === value[value.length - 1] && (first === '"' || first === "'")
+    ? value.slice(1, -1)
+    : value;
+}
+
+const FENCE = /^\s{0,3}(`{3,}|~{3,})/;
+
+/**
+ * The lines that are exactly `---`, as line numbers. A line inside a fenced code block is the entry's own content —
+ * a Markdown example of a header is not a second header (W6.1a), so fences are stepped over.
+ */
+function headerDelimiters(lines: readonly string[]): number[] {
+  const found: number[] = [];
+  let fence = "";
+  for (const [index, line] of lines.entries()) {
+    const marker = FENCE.exec(line);
+    if (marker) {
+      const token = marker[1]!;
+      if (fence === "") fence = token[0]!;
+      else if (token.startsWith(fence)) fence = "";
+      continue;
+    }
+    if (fence !== "") continue;
+    if (line === "---") found.push(index);
+  }
+  return found;
+}
+
 export function parseEntry(name: string, text: string): Entry {
   const lines = text.replace(/\r\n/g, "\n").split("\n");
-  const fences = lines.map((line, index) => (line === "---" ? index : -1)).filter((index) => index >= 0);
+  const fences = headerDelimiters(lines);
   const start = fences[0] ?? -1;
   const end = fences[1] ?? -1;
   const fields = new Map<string, Field>();
@@ -69,7 +102,7 @@ export function parseEntry(name: string, text: string): Entry {
       if (colon <= 0) continue;
       close();
       const key = line.slice(0, colon).trim();
-      const value = line.slice(colon + 1).trim();
+      const value = unquote(line.slice(colon + 1).trim());
       current = { key, value, parts: value ? [value] : [], items: value ? [value] : [], line: index + 1 };
       if (key === "id") idLines.push(index + 1);
     }

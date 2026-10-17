@@ -7,16 +7,17 @@
 // therefore only a launcher: no static imports and far under 4 KB, so nothing in it is ever cached. It re-runs the
 // same command through the same bun binary with the transpiler cache switched off, forwarding the arguments, the
 // standard streams and the exit code; that second run reads every module with the cache off and writes none either.
-// A caller who has already chosen a cache directory keeps it — the launcher runs once, and only when the variable is
-// unset.
+// The only value that needs no second run is the one bun already reads as off (`0`), so a caller who set it sees one
+// run, and a caller who set it to a writable directory — of their own or bun's default — gets none of its files.
 const CACHE_PATH_VAR = "BUN_RUNTIME_TRANSPILER_CACHE_PATH";
+const CACHE_OFF = "0";
 
 const args = Bun.argv.slice(2);
 
-if (process.env[CACHE_PATH_VAR] === undefined) {
+if (process.env[CACHE_PATH_VAR] !== CACHE_OFF) {
   const child = Bun.spawnSync({
     cmd: [process.execPath, import.meta.path, ...args],
-    env: { ...process.env, [CACHE_PATH_VAR]: "0" },
+    env: { ...process.env, [CACHE_PATH_VAR]: CACHE_OFF },
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",

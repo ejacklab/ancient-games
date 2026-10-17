@@ -65,7 +65,8 @@ printed. Fails if: a requirement of C1 is missing from the report, or the report
 
 **R2 (MUST) The warning.** A short warning: one line per failing MUST and a missing `AGENTS.md`, with ids and file
 names, never entry text; nothing else; empty when there are none. It is printed by `--warn` and given at the start of
-a session by a hook, which runs only the location, index and index-size checks and never opens a cache. Who decides:
+a session by a hook running `--warn`, which never opens a cache file. (U3 wins over a narrower hook: one line per
+failing MUST needs every check to run.) Who decides:
 the owner, for installing the hook (a harness config change, R12.3). Fails if: a failing MUST is not in the warning,
 the warning holds anything else, or the hook opens a cache file.
 

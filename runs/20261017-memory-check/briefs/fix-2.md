@@ -30,8 +30,9 @@ read only). In short:
 ## Lessons (from `lessons for --agent opencode --kinds code-edit`)
 - When a change sends new cases into an existing code path, list that path's early returns and exemptions first, and
   test each with one of the new cases.
-- Every file a brief cites lives inside the repo; reads outside it are auto-denied — run every command from inside
-  `memory_check/` or the repository root, never with a path outside the repository.
+- opencode headless auto-rejects a command with an absolute path, even inside the repo, and then stops with no work done.
+  **Use relative paths only, from the repository root; never `cd` to an absolute path.** (That is why the first run of
+  this brief did nothing.)
 
 ## Pieces and progress (first)
 One piece per numbered finding. Before starting, append one `planned` line per piece to

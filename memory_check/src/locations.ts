@@ -79,10 +79,6 @@ export function findLocations(root: string, home: string): Location[] {
   return [...inProject, ...agentMemory(home)];
 }
 
-export function hasProjectMemory(root: string): boolean {
-  return existsSync(path.join(root, "project-memory"));
-}
-
 export function agentsMdMissing(root: string): boolean {
   return !existsSync(path.join(root, AGENTS_MD));
 }
