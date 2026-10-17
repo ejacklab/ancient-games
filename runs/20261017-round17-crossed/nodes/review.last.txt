@@ -1,0 +1,32 @@
+status: done
+
+## Findings
+
+Paths below are relative to `.claude/skills/workflow-design/guard/`. Findings 2–5 and 7 are existing defects carried forward; finding 1 is a reproduced regression.
+
+1. **High — `src/hooks.ts:314`: a real runner failure disappears.**  
+   Input: `pytest -q && bun /guard/src/cli.ts insight`, runner exits 1 without a matching summary. The query never executes, but `guardQueryAnswered()` suppresses the fallback warning. Result: no failure and no warning; before this change it recorded a failure. **Fix:** apply the query exemption only when the query demonstrably supplied the exit; otherwise retain the warning.
+
+2. **High — `src/hooks.ts:903`: a pipeline consumer’s exit becomes a test failure.**  
+   Input: passing `pytest -q | grep missing`, exit 1 because grep finds nothing. `piped: true` describes the connection, not who supplied the status. This records `R12.2-test-failed`; with a declaration it incorrectly records red and consumes it. **Fix:** without a runner summary or separately captured runner status, warn for a failed pipeline. `test/round17-runner-exit.test.ts:68` reinforces this defect: T4 injects a pipeline exit and assumes the runner caused it. Add passing-runner/failing-consumer coverage.
+
+3. **High — `src/hooks.ts:901`: a last runner may never execute.**  
+   Input: `false && pytest test/a.py`, exit 1. The helper returns true because nothing follows pytest, although `false` supplied the exit. A declared run is incorrectly accepted as red. **Fix:** preserve control-flow information and treat an unproven last runner behind `&&` or `||` as uncertain.
+
+4. **Medium — `src/traps.ts:348`, `src/hooks.ts:894`: subshell grouping loses pipeline ownership.**  
+   Input: failing `pytest -q | (cat)`, call exits 0 with stdout `3 failed`. The `cat` segment has `piped: false` because its preceding separator is `(`. The hook records neither failure nor warning. **Fix:** preserve the group’s incoming pipeline relationship and use it when determining stdout ownership.
+
+5. **Medium — `src/hooks.ts:269`: attribution selects different runners for identity and exit.**  
+   Input: passing `bun test a.test.ts; pytest b.py`, pytest exits 2 without a summary. The new helper selects the last runner, but the record identifies `bun test run` and assigns it pytest’s exit. **Fix:** return the selected runner segment from the attribution helper and derive the record’s identity from it.
+
+6. **Medium — `SPEC.md:782`: the red-run statement is broader than the implementation.**  
+   It says a declared red run chained before another command “is then not a red record.” Input: declared `pytest test/a.py; ls /gone`, exit 2 with `3 failed` in the error output. The implementation writes a red record and consumes the declaration. **Fix:** qualify this statement as applying when no recognized failure summary establishes the test failure.
+
+7. **Medium — `src/hooks.ts:276`: matching text is treated as the runner’s own summary.**  
+   Input: passing `pytest; echo '3 errors' >&2; false`. The echo’s output produces `R12.2-test-failed`, contrary to V1’s attribution claim. **Fix:** require independently captured runner output, or warn when a mixed call’s summary cannot be attributed.
+
+Checked and found nothing in ordinary trailing `&&`, `||`, `;`, or `&` fallback cases without summaries: they produce command-error warnings naming the last command word. Simple heredoc bodies are correctly excluded from command recognition.
+
+Checked and found nothing in the normal Round 16 hook interaction: quoted `expect-fail --run` is not mistaken for a direct test invocation; exit 1 avoids duplicate logging, and exit 2 produces a warning.
+
+Verification used reviewer-written, in-memory probes of the actual functions and hook handler, plus Bash status checks. These establish the examples above, not independent acceptance. No files changed; the filesystem-writing test suite was not run.

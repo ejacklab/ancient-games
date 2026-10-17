@@ -1,0 +1,7 @@
+- 2026-10-17T11:20:17+08:00 · write:tests-runner-exit · start · opencode writes tests from the brief
+- 2026-10-17T11:22:07+08:00 · failfirst:tests-runner-exit · start · new tests on base 5ffe562
+- 2026-10-17T11:22:20+08:00 · failfirst:tests-runner-exit · done · base 5ffe562: 15 tests, 6 fail (all V2), 9 pass (all V1); worktree removed
+- 2026-10-17T11:22:39+08:00 · head:tests-runner-exit · start · run round17-crossed.test.ts on current code (580 s limit)
+- 2026-10-17T11:22:41+08:00 · head:tests-runner-exit · done · round17-crossed.test.ts exit 0, 15 pass, 0 fail
+- 2026-10-17T11:22:51+08:00 · review · start · codex read-only review of review-runner-exit brief
+- 2026-10-17T11:24:45+08:00 · review · done · codex review exit 0, 7 findings written to nodes/review.last.txt

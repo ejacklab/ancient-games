@@ -311,7 +311,8 @@ function ownFailureSpec(payload: Record<string, unknown>, command: string, faile
   const exitCode = exitCodeOf(payload, true);
   // An exit of zero is not an error, wherever the event came from — the same rule M1's result check follows.
   if (exitCode === 0) return null;
-  if (guardQueryAnswered(command, exitCode)) return null;
+  // A test run before the query may have made the exit instead (Round 17, crossed review finding 1).
+  if (runner === null && guardQueryAnswered(command, exitCode)) return null;
   return {
     finding: {
       rule: "R12.2-command-error",

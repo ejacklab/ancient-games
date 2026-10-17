@@ -73,3 +73,12 @@ test.each([["cd work && pytest -q"], ["pytest -q 2>&1 | tail -3"], ["pytest -q a
     expect(warnings()).toEqual([]);
   },
 );
+
+// T5 (crossed review, finding 1): a guard query after the runner does not excuse the exit — after `&&` the query may
+// never have run, so the exit may be the runner's.
+test("T5: a runner followed by a guard query that exit 1 is a warning, not nothing", () => {
+  bashFailure("pytest -q && bun /guard/src/cli.ts insight", "collection error", 1);
+  expect(failures()).toEqual([]);
+  expect(warnings()).toHaveLength(1);
+  expect(warnings()[0]).toMatchObject({ check: "R12.2-command-error", input: "bun call", actual: "exit 1" });
+});

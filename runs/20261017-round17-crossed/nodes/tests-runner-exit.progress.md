@@ -1,0 +1,17 @@
+- 2026-10-17T11:20:55+08:00 · read · planned · SPEC Round 17 V1/V2 and its Fails-if, read with Round 4 D1/D2 and Round 9
+- 2026-10-17T11:20:55+08:00 · harness · planned · read hooks.ts ownFailureSpec and testRunMadeExit, journal.ts and types.ts
+- 2026-10-17T11:20:55+08:00 · cases-warn · planned · cases where a runner is not last and no summary: R12.2-command-error warning
+- 2026-10-17T11:20:55+08:00 · cases-fail · planned · cases where the runner made the exit, or a summary speaks: R12.2-test-failed failure
+- 2026-10-17T11:20:55+08:00 · run · planned · bun test test/round17-crossed.test.ts and count
+- 2026-10-17T11:20:55+08:00 · result · planned · write nodes/tests-runner-exit.result.md
+- 2026-10-17T11:20:56+08:00 · read · start · SPEC.md Round 17, Round 4 D1/D2, Round 9 read
+- 2026-10-17T11:20:56+08:00 · read · done · V1: test-failed only with a summary or the runner last-but-for-its-pipeline; V2: otherwise D2's warning
+- 2026-10-17T11:21:00+08:00 · harness · start · hooks.ts ownFailureSpec, testRunMadeExit, traps FAILED_SUMMARY and TEST_RUNNERS
+- 2026-10-17T11:21:10+08:00 · harness · done · the rule is summary !== null || testRunMadeExit(command); input label comes from recognizeTestRun (first run segment)- 2026-10-17T11:21:20+08:00 · cases-warn · start · write the V2 group: `;`, `&&`, `||`, wrappers, and the evidence check
+- 2026-10-17T11:21:22+08:00 · cases-warn · done · 6 cases, each expecting exactly one R12.2-command-error warning
+- 2026-10-17T11:21:23+08:00 · cases-fail · start · write the V1 group: piped, after cd, two runners, summary while not last
+- 2026-10-17T11:21:28+08:00 · cases-fail · done · 9 cases, each expecting exactly one R12.2-test-failed failure (two controls quiet)
+- 2026-10-17T11:21:30+08:00 · run · start · bun test test/round17-crossed.test.ts
+- 2026-10-17T11:21:35+08:00 · run · done · 15 pass, 0 fail, 256 expect() calls; tsgo --noEmit -p . exit 0
+- 2026-10-17T11:21:38+08:00 · result · start · write nodes/tests-runner-exit.result.md
+- 2026-10-17T11:22:05+08:00 · result · done · status done, counts 15 pass / 0 fail, CONTRADICTS none

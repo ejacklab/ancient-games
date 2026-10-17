@@ -778,9 +778,10 @@ saw `bun test` in the call and recorded the `ls`'s exit as a failed test run.
   (`pytest -q 2>&1 | tail -3`), so the call's exit is the runner's.
 - **V2 Otherwise a guess.** Any other failed call is D2's `R12.2-command-error` warning naming the last command word.
   After `&&` the exit may still be the runner's (`pytest && echo done`, the runner failing); the guard cannot tell
-  which, so it warns (Round 9) and the agent settles it with `warning <id> fail|dismiss`.
-- A declared red run (Round 12) chained before another command is then not a red record; `expect-fail --run`
-  (Round 16) runs it as one command.
+  which, so it warns (Round 9) and the agent settles it with `warning <id> fail|dismiss`. A guard query last in the
+  call (F1) does not excuse it: the exit may be the runner's.
+- A declared red run (Round 12) chained before another command, with no failure summary, is then not a red record;
+  `expect-fail --run` (Round 16) runs it as one command.
 
 Fails-if: F-bdea5631's shape (`… bun test …; ls <gone>`, exit 2, no summary) is a failure; a runner followed by `&&`
 with no summary is a failure; a non-last runner whose summary shows failures, a last runner, a runner piped to
