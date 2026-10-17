@@ -108,6 +108,12 @@ For the task, and later for each piece, list:
   nothing (n=0).
   `guard/src/cli.ts doctor` reports, per harness, whether the guard's hooks are installed and whether the guard answers
   a planted trap; it reads settings key names only and changes nothing.
+  `memory_check` (`bun memory_check/src/cli.ts --project <repo root> --out runs/<run>/memory-check.md`) checks the
+  project's memory against `docs/memory-system/SOURCE_OF_TRUTH.md` and `CACHES.md`; it reads only. It runs once,
+  here, not per node; the report is saved in the run folder and its counts line goes into readiness. A failing MUST
+  does not stop the run: it is an unclear spot (3.3), and only the pieces that read that memory wait. "Needs a
+  reviewer" is a note, never a gate; "could not run" is recorded as unknown; pass or "not applicable" carries on, and
+  an absent `project-memory/` is no reason to create one.
   For a node run by Codex or `agy`, the proof is the canary piece in `docs/EXECUTOR_KINDS.md`, which
   also says which kind a node is assigned to and how its failure shows.
 - **Skills** that already cover part of the work.

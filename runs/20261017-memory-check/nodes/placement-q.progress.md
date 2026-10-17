@@ -1,0 +1,26 @@
+- 2026-10-17T18:46:38+08:00 · linus · start · mcode
+- 2026-10-17T18:46:38+08:00 · dario · start · claude
+- 2026-10-17T18:46:38+08:00 · fan-li · start · agy
+- 2026-10-17T18:46:39+08:00 · sun-tzu · start · dsh
+- 2026-10-17T18:46:38+08:00 · dave · start · claude
+- 2026-10-17T18:47:26+08:00 · linus · done · mcode exit 0
+- 2026-10-17T18:47:39+08:00 · check-linus · start · 
+- 2026-10-17T18:47:40+08:00 · check-linus · done · linus answer file checked, no linus failures
+- 2026-10-17T18:48:18+08:00 · fan-li · done · agy exit 0
+- 2026-10-17T18:48:34+08:00 · check-fan-li · start · 
+- 2026-10-17T18:48:37+08:00 · check-fan-li · done · fan-li check passed; no FAIL fan-li lines
+- 2026-10-17T18:48:42+08:00 · dario · done · claude exit 0
+- 2026-10-17T18:48:56+08:00 · check-dario · start · 
+- 2026-10-17T18:48:58+08:00 · check-dario · done · dario answer passes check; other experts absent by design
+- 2026-10-17T18:50:05+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-17T18:50:14+08:00 · check-sun-tzu · start · 
+- 2026-10-17T18:50:16+08:00 · check-sun-tzu · done · sun-tzu answer checked, no FAIL lines for sun-tzu
+- 2026-10-17T18:51:34+08:00 · dave · done · claude exit 0
+- 2026-10-17T18:51:43+08:00 · check-dave · start · 
+- 2026-10-17T18:51:46+08:00 · check-dave · done · dave passes; no FAIL dave lines
+- 2026-10-17T18:51:55+08:00 · lao-tzu · start · opencode
+- 2026-10-17T18:54:15+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-17T18:54:26+08:00 · check-lao-tzu · start · 
+- 2026-10-17T18:54:28+08:00 · check-lao-tzu · done · lao-tzu check has no FAIL lines; other experts absent as expected
+- 2026-10-17T18:54:43+08:00 · compare · start · 
+- 2026-10-17T18:58:12+08:00 · compare · done · compare.md written; all six place it in 3.1; split on fail policy, a second moment, reviewer/could-not-run handling, hook vs 3.1 line

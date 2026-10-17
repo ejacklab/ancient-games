@@ -59,12 +59,14 @@ cache requirement gets a pass or a fail.
 
 ## Report
 
-**R1 (MUST) The report.** One Markdown report per run: the snapshot (C5), the locations (F1), then per requirement its
-id, level, result and evidence, MUSTs first, and a list of what needs a reviewer. Where it is written: `--out`, else
+**R1 (MUST) The report.** One Markdown report per run: the snapshot (C5), the locations (F1), a line giving how many
+files under `project-memory/` are changed but not staged (and so not checked), then per requirement its id, level,
+result and evidence, MUSTs first, a list of what needs a reviewer, and last a section `## Not applicable` holding
+every "not applicable" result. Where it is written: `--out`, else
 printed. Fails if: a requirement of C1 is missing from the report, or the report's results differ from the checks'.
 
-**R2 (MUST) The warning.** A short warning: one line per failing MUST and a missing `AGENTS.md`, with ids and file
-names, never entry text; nothing else; empty when there are none. It is printed by `--warn` and given at the start of
+**R2 (MUST) The warning.** A short warning: one line per MUST that fails or could not run, and a missing
+`AGENTS.md`, with ids and file names, never entry text; nothing else; empty when there are none. It is printed by `--warn` and given at the start of
 a session by a hook running `--warn`, which never opens a cache file. (U3 wins over a narrower hook: one line per
 failing MUST needs every check to run.) Who decides:
 the owner, for installing the hook (a harness config change, R12.3). Fails if: a failing MUST is not in the warning,

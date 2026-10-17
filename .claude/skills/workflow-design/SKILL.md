@@ -47,7 +47,8 @@ method section named beside it.
 
 1. **Readiness** (method 3.1). Prove each tool by running it (`scripts/readiness.py` runs the standard inventory and
    marks each line verified/reported/unknown; `scripts/harness_health.py` adds how each harness is set up, with help
-   for what is absent; `guard/src/cli.ts doctor` says whether the guard's hooks are installed — installing them is the
+   for what is absent; `memory_check` checks the project's memory against the memory guidelines, once, its report in
+   the run folder; `guard/src/cli.ts doctor` says whether the guard's hooks are installed — installing them is the
    owner's, `install --print <harness>`), list the skills that already cover part of the work, and check the
    information. Anything missing becomes a preparation piece at the front. Template: `readiness.md`. A node run by
    Codex or `agy`: `references/executor-kinds.md` first — the canary, read-only versus write, the bundled-runtime

@@ -1,0 +1,48 @@
+# Linus Torvalds — Where memory-check belongs
+
+## Answer
+
+Add `memory-check --warn` to the existing **3.1 Readiness** checks, once immediately before a workflow-design run; make it no new numbered step and do not repeat it per node or at the end. A failure pauses for EJ’s repair-or-waiver decision; pass and not-applicable continue, reviewer-needed carries a visible note unless review is blocking, and could-not-run never silently counts as pass.
+
+## How I decided
+
+1. **Use 3.1 as the only method placement.** Step 3.1 already contains read-only checks performed before work (`readiness.py`, harness health, and hook `doctor`), so memory compliance belongs beside them (`docs/WORKFLOW_DESIGN_METHOD.md` lines 92–110). This extends an existing step rather than enlarging the method (**my #13**).
+
+2. **Run it before workflow construction starts.** A failing memory contract discovered while nodes are running would invalidate their Context, Contract, Evidence, or State. Running it before a run catches that unique configuration problem while changes are still cheap to undo (**my #5**, **my reading**).
+
+3. **Handle results explicitly:**
+   - **pass:** continue and retain the timestamped result.
+   - **fail:** stop the run and ask EJ to repair it or explicitly waive the failing MUSTs.
+   - **needs a reviewer:** carry on with a visible “unreviewed” note and reviewer task; if review is defined as blocking, pause instead.
+   - **not applicable:** continue without prompting; this repository currently takes this path.
+   - **could not run:** do not represent it as pass—continue only if EJ accepts the missing check as an exception; otherwise pause.
+
+   This distinguishes evidence from assumptions and leaves the waiver with the owner (**my #4**, **my #7**).
+
+4. **Nothing currently named in the method becomes redundant.** The other 3.1 checks validate tools, harnesses, and hooks; `memory-check` uniquely validates project memory against `SOURCE_OF_TRUTH.md` and `CACHES.md`. Section 4 and step 3.8 must still require each node to carry its five fields: the tool checks memory guidance, not whether a node correctly applied it (**my #2**, **my reading**).
+
+5. **Do not run it per node or at the end unless the workflow intentionally changed project memory.** Otherwise it repeats the same project-level result without evidence that it detects a new problem. The proposed session-start hook may provide earlier visibility, but it is an optional duplicate, not a substitute for canonical 3.1 readiness (**my #13**).
+
+6. **Proposed change to the pattern:** include the status, timestamp, checked repository revision, and exception decision in the existing timestamped readiness progress line. That makes the result visible without creating another workflow phase (**my reading**).
+
+## What I need to know
+
+- Is `needs a reviewer` advisory or blocking? I assumed advisory-with-a-note; if blocking, step 3.1 pauses for the reviewer verdict. This does not change the placement.
+- Is `could not run` allowed as an owner-approved readiness exception, or must it always pause? I recommended an explicit exception because blindly blocking every repository would defeat the small-tool approach.
+
+## Costs and risks
+
+- **Latency and output noise:** one additional read-only invocation per run, which should normally be short but can still distract from the work (**my #13**, tool facts).
+- **Avoidable owner interruption:** asking about every warning would turn a preflight check into a new approval phase; therefore only definite failures or unavailable assurance require a decision (**my #13**, **my #4**).
+- **False assurance:** a passing checker proves guideline compliance, not that memory is complete, current, or correctly interpreted in a node (**my #2**, **my #3**).
+- **Stale duplicate results:** a session-start result can become outdated before the run; step 3.1 remains the authoritative check (**my #5**, **my reading**).
+- **No useful signal in this repository today:** its “not applicable” result must remain quiet rather than manufacture work (**my #13**, `runs/20261017-memory-check/nodes/smoke-report.md`).
+
+## How we would know I was right
+
+Use fixture repositories containing pass, failing-MUST, reviewer-needed, not-applicable, and simulated could-not-run cases. The observable outcome is that every applicable check is reported before the first node runs, failures require an explicit decision, N/A adds no interruption, and the numbered method still has the same eight steps. Because the current repository cannot exercise the useful failure path, the fixture—not this repository—is needed to validate placement.
+
+**Recommendation:** Put `memory-check --warn` inside existing step 3.1, immediately before each workflow-design run; add no numbered step.  
+Fail: pause for EJ’s repair or waiver; reviewer-needed: carry on visibly unreviewed unless review is blocking; pass/N/A: continue.  
+Could-not-run: never silently pass—EJ accepts the missing check or the run pauses.  
+Do not run per node or at the end, replace §4/3.8, or make the session hook the method.

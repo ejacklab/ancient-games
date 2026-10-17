@@ -21,9 +21,10 @@ Each use case has its purpose, what fails it, and its minimum acceptance. U1–U
 
 ## U3 — Be warned at the start of a session
 - **Purpose:** an agent starting work is told, in a few lines, what is missing or failing, without reading the report.
-- **Fails if:** a failing MUST or a missing `AGENTS.md` is not in the warning, or the warning holds anything else.
-- **Minimum acceptance:** the session-start hook prints one line per failing MUST and for a missing `AGENTS.md`, and
-  nothing when there are none.
+- **Fails if:** a MUST that fails or could not run, or a missing `AGENTS.md`, is not in the warning, or the warning
+  holds anything else.
+- **Minimum acceptance:** the session-start hook prints one line per MUST that fails or could not run and for a
+  missing `AGENTS.md`, and nothing when there are none.
 
 ## U4 — Name what needs a reviewer (*proposed*)
 - **Purpose:** the requirements a tool cannot judge are listed for a person, so the report does not look complete when

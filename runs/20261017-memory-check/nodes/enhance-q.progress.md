@@ -1,0 +1,26 @@
+- 2026-10-17T18:33:25+08:00 · linus · start · mcode
+- 2026-10-17T18:33:27+08:00 · dario · start · claude
+- 2026-10-17T18:33:28+08:00 · sun-tzu · start · dsh
+- 2026-10-17T18:33:28+08:00 · fan-li · start · agy
+- 2026-10-17T18:33:29+08:00 · dave · start · claude
+- 2026-10-17T18:34:37+08:00 · linus · done · mcode exit 0
+- 2026-10-17T18:34:51+08:00 · check-linus · start · 
+- 2026-10-17T18:34:54+08:00 · check-linus · done · linus check clean, no linus FAIL lines
+- 2026-10-17T18:36:39+08:00 · dario · done · claude exit 0
+- 2026-10-17T18:36:52+08:00 · check-dario · start · 
+- 2026-10-17T18:36:55+08:00 · check-dario · done · dario check has no FAIL dario lines; other experts' no-answer lines ignored
+- 2026-10-17T18:37:08+08:00 · fan-li · done · agy exit 0
+- 2026-10-17T18:37:22+08:00 · check-fan-li · start · 
+- 2026-10-17T18:37:24+08:00 · check-fan-li · done · fan-li check has no failures; other experts reported no answer file (folder holds fan-li only)
+- 2026-10-17T18:38:44+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-17T18:38:57+08:00 · check-sun-tzu · start · 
+- 2026-10-17T18:39:00+08:00 · check-sun-tzu · done · sun-tzu answer passes the check; other experts' no-answer-file lines ignored
+- 2026-10-17T18:40:59+08:00 · dave · done · claude exit 0
+- 2026-10-17T18:41:09+08:00 · check-dave · start · 
+- 2026-10-17T18:41:11+08:00 · check-dave · done · dave passes the check; other experts have no answer file, as expected for this folder
+- 2026-10-17T18:41:21+08:00 · lao-tzu · start · opencode
+- 2026-10-17T18:42:53+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-17T18:43:04+08:00 · check-lao-tzu · start · 
+- 2026-10-17T18:43:07+08:00 · check-lao-tzu · done · lao-tzu check passed; the 5 other-expert failures are expected (folder holds one expert)
+- 2026-10-17T18:43:23+08:00 · compare · start · 
+- 2026-10-17T18:45:54+08:00 · compare · done · compare.md written; 6/6 usable; split 3/3 on first item (calibration vs could-not-run warning); 7 merged questions
