@@ -24,8 +24,10 @@ Record a time with `guard/src/cli.ts deadline start --minutes N --run runs/<run>
 file) — you cannot feel time pass; the guard
 adds a one-line clock after every Bash or file-write call, and the time-up line after the deadline (no marks at set
 points). Briefs ask for small pieces and timestamped progress lines, which you read with `deadline status`; work with
-more than one node runs as a workflow when possible — for the experts and for crossed test-and-review rounds, the
-saved `.claude/workflows/experts-decide.js` and `.claude/workflows/crossed-build-check.js` (method 3.8 item 14).
+more than one node runs as a workflow when possible — for the experts, for crossed test-and-review rounds, and for
+reviewing and enhancing a built tool, the saved `.claude/workflows/experts-decide.js`,
+`.claude/workflows/crossed-build-check.js` and `.claude/workflows/review-enhance.js` (method 3.8 item 14). Every brief
+for an engine carries its Lessons section, pasted from `guard/src/cli.ts lessons for --agent <engine>`.
 
 From the challenge text alone — no tools, no agents — state the **objective**, what is **in scope** and what is
 **out of scope**, answer the **six whys** (stop when an answer no longer changes the design), and end with a
@@ -95,7 +97,9 @@ method section named beside it.
 8. **The run ends at the acceptance criteria** (method 3.6). A piece that builds names the blueprint sections it
    depends on and the criteria it covers; its stop is the three-part stop of method 3.6. Anything else found goes to
    `docs/blueprint/backlog.md`, never into the current run. How nodes use project memory and its caches: method §4.
-   A run with logged failures ends with an insight named in the final report (`guard/src/cli.ts insight` lists what is
+   What the guard logs is evidence; a failure is the evaluator's FAIL against the vision, use cases and requirements, or
+   the owner's correction (R12.2), and a run with such failures ends with an insight named in the final report, its
+   top-ranked fix applied (R12.3) (`guard/src/cli.ts insight` lists what is
    open); a use-case register is checked with `guard/src/cli.ts register <file>` (method 3.8 item 13). A run that
    succeeded records its path (`guard/src/cli.ts path new`); a similar task starts from a recorded path
    (`path parents <category>`), changes something and tries to beat it (method 3.8 item 13, R12.7); the run is scored

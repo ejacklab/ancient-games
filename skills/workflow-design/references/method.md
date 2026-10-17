@@ -497,13 +497,14 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    fixed points, so an agent cannot skip it once it is installed: before an engine call it lints the command against a
    trap catalogue (`guard/data/traps.yaml`; only `approved` entries act); after the call it treats a missing or empty
    output, a known silent-failure text or a failing exit as a failure (exit 0 is not success) and logs it to
-   `.harness-guard/journal.jsonl` with its evidence; and a session with logged failures cannot stop until an insight
-   answers each (whys to a changeable source, the root cause, 2–3 fix options with evidence) and the final message
-   names it. What the code catches by itself is engine calls; the agent's own failures — a failing test run, an errored
-   tool call, a step redone — are failures too (R12.2): the guard logs a failing test run itself; a command that exits
-   non-zero with codes it does not know, and criteria written late, are **warnings** the agent settles before it stops
-   (`warning <id> fail|dismiss --reason "…"`, dismissals kept and listed by `warnings`); the rest the agent logs with
-   `fail`.
+   `.harness-guard/journal.jsonl` with its evidence. **What the guard sees is evidence, not a failure (R12.2):** a
+   failing test run, an errored call, a non-zero exit, criteria written late. A failure is what the evaluator judges
+   wrong against the product's vision, use cases and requirements, or a correction from the owner (`fail --found-by
+   evaluator|owner`); only those block the stop until an insight answers each (whys to a changeable source, the root
+   cause, 2–3 fix options with evidence) and the final message names it. The agent applies the option it ranks first
+   and reports it; the owner may overrule (R12.3); each fix is recorded in `insight-decisions.md` beside the insight,
+   and its lesson filed in the agent-lessons store (`.claude/skills/agent-lessons/`) when it holds for an agent type or
+   every agent.
    It also learns from success (R12.7): every checked result that passed is one `success` line, so `guard/src/cli.ts
    rates` reads failures against how often a check ran; a session with successes is asked once for its **path**
    (`path new`, then `path check`); a great success gets a `## great:` insight section; and a similar task borrows a
@@ -563,11 +564,15 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
      and duration during the run, not only the end.
    - **Workflows when possible.** Work with more than one node runs as a workflow — a script that orchestrates the
      agents in phases with visible progress (`.claude/workflows/`, the harness's Workflow tool where it has one) —
-     rather than as hand-dispatched calls or one long prompt. Two are saved for a time-boxed run; each script's
+     rather than as hand-dispatched calls or one long prompt. Three are saved for a time-boxed run; each script's
      `whenToUse` gives its args (the one copy): `experts-decide.js` asks the experts one question, reruns an expert
      with no usable answer once, checks each answer and writes the comparison; the main agent still decides.
      `crossed-build-check.js` has tests written on another engine than the code's, shows each new test failing on the
-     base commit, runs them on the head and has the work reviewed. They replace running those rounds by hand.
+     base commit, runs them on the head and has the work reviewed. `review-enhance.js` reviews a built tool on two
+     read-only engines, judges each finding against the tool's vision, use cases and requirements, reproduces the
+     accepted ones as failing tests, has the code engine fix them, loops until a review finds nothing new, then builds
+     the experts' top enhancement the same way. They replace running those rounds by hand. Every brief they give an
+     engine carries a Lessons section, the text of `guard/src/cli.ts lessons for --agent <engine>`.
    - Safety bounds still wait for the owner (MUST), limit or not: a push, a message sent, a deletion outside the run's
      branch and folder, a harness's config, `SPEC.md` or `DECISIONS.md`, spend beyond the limit. The run works around
      it (a branch, a draft) and lists it in the report.
