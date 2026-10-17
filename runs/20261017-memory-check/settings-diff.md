@@ -1,7 +1,9 @@
 # The settings change for EJ: the memory-check warning at session start (R2, U3)
 
 R12.3: applied only after the owner's yes to this exact diff. File: `~/.claude/settings.json`, `hooks.SessionStart`.
-The guard's existing entry stays; one entry is added after it.
+The guard's existing entry stays; one entry is added after it. Changed after the enhance round
+(`enhance-q/compare.md`): it speaks only in projects that have `project-memory/` (no line in every project without
+`AGENTS.md`), and says when the tool itself did not finish.
 
 ```diff
    "SessionStart": [
@@ -19,7 +21,7 @@ The guard's existing entry stays; one entry is added after it.
 +      "hooks": [
 +        {
 +          "type": "command",
-+          "command": "bun /home/smoke01/dev/ancient-games/memory_check/src/cli.ts --project \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\" --warn 2>/dev/null || true",
++          "command": "r=$(git rev-parse --show-toplevel 2>/dev/null) && [ -d \"$r/project-memory\" ] || exit 0; bun /home/smoke01/dev/ancient-games/memory_check/src/cli.ts --project \"$r\" --warn 2>/dev/null; s=$?; [ \"$s\" -gt 1 ] && echo \"memory-check: did not finish (exit $s)\"; exit 0",
 +          "timeout": 20
 +        }
 +      ]
@@ -27,11 +29,10 @@ The guard's existing entry stays; one entry is added after it.
    ]
 ```
 
-Tried by hand (18:5x): in this repo it prints nothing (exit 0); outside a git repo nothing (exit 0); in a git repo with
-no `AGENTS.md` one line, `memory-check: AGENTS.md is missing — file: …/AGENTS.md (it is required, F1)` (exit 0). It
-never fails the session start. Its output becomes session context in Claude Code.
-
-What you will see: in every git project of yours without an `AGENTS.md`, that one line at each session start; any
-failing MUST of a project that has `project-memory/`.
+Tried by hand (`hook-try.sh` in the job's scratch folder, 19:1x): this repo (no `project-memory/`), a plain folder and
+a git repo without `project-memory/` print nothing (exit 0); a git repo with `project-memory/` and no `AGENTS.md`
+prints `memory-check: AGENTS.md is missing — file: …/AGENTS.md (it is required, F1)` (exit 0). It never fails the
+session start; its output becomes session context in Claude Code. The method does not depend on it (3.1 runs the tool
+itself).
 
 Yes recorded: (not yet)

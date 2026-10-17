@@ -1,12 +1,12 @@
-// R2: the warning — one line per failing MUST and for a missing AGENTS.md, with ids and file names, never entry
-// text; nothing else; empty when there are none. `--warn` prints it; the session-start hook that also prints it is
-// a harness change R2 leaves to the owner (R12.3), and no file under project-memory/.cache/ is ever opened here
-// (Rd1): nothing in the run reads a cache file, only whether the folder is there.
+// R2, U3: the warning — one line per MUST that fails or could not run, and for a missing AGENTS.md, with ids and file
+// names, never entry text; nothing else; empty when there are none. `--warn` prints it; the session-start hook that
+// also prints it is a harness change R2 leaves to the owner (R12.3), and no file under project-memory/.cache/ is ever
+// opened here (Rd1): nothing in the run reads a cache file, only whether the folder is there.
 //
-// The lines are built from three things and nothing else: the requirement id, the category that id stands for, and
-// the file names in the evidence. No evidence prose and no part of an entry is ever copied into them, because the
+// The lines are built from three things and nothing else: the requirement id, the category that id stands for, and the
+// file names in the evidence. No evidence prose and no part of an entry is ever copied into them, because the
 // evidence quotes the entry — a claim, a source — and a warning is read in a session's first lines (R2).
-import type { CheckRun, RequirementResult } from "./checks.ts";
+import type { CheckRun, RequirementResult, Verdict } from "./checks.ts";
 
 /** The file names in an evidence line, and nothing else of the entry: no claim, no body, no text. */
 const FILE_NAME = /(project-memory\/entries\/[\w.\-]+|project-memory\/INDEX\.md|AGENTS\.md)/g;
@@ -28,7 +28,22 @@ const CATEGORY: Record<string, string> = {
   "SoT:W6.3a": "a merge dropped what one side wrote",
 };
 
-const GENERIC = "a clause of the guideline memory needs";
+const GENERIC: Record<Verdict, string> = {
+  fail: "a clause of the guideline memory needs",
+  "could not run": "a clause of the guideline memory could not be checked",
+  pass: "",
+  "needs a reviewer": "",
+  "not applicable": "",
+};
+
+/** How each verdict the warning holds is said, in words of the guideline rather than of the entry. */
+const SAYS: Record<Verdict, string> = {
+  fail: "fails",
+  "could not run": "could not run",
+  pass: "",
+  "needs a reviewer": "",
+  "not applicable": "",
+};
 
 function filesIn(evidence: string): string[] {
   return [...new Set([...evidence.matchAll(FILE_NAME)].map((match) => match[1]!))];
@@ -37,13 +52,20 @@ function filesIn(evidence: string): string[] {
 function warningFor(result: RequirementResult): string {
   const files = filesIn(result.evidence);
   const where = files.length === 0 ? "" : ` — files: ${files.join(", ")}`;
-  return `memory-check: ${result.id} fails — ${CATEGORY[result.id] ?? GENERIC}${where}`;
+  return `memory-check: ${result.id} ${SAYS[result.verdict]} — ${CATEGORY[result.id] ?? GENERIC[result.verdict]}${where}`;
 }
 
 export function renderWarning(run: CheckRun): string {
   // F1 failing is the missing AGENTS.md, which has its own line below: one line per thing, not two.
+  // U3 wins over a narrower hook: a MUST that could not run is in the warning too, or a check that never
+  // finished would read as a clean session.
   const lines = run.results
-    .filter((result) => result.id !== "F1" && result.level === "MUST" && result.verdict === "fail")
+    .filter(
+      (result) =>
+        result.id !== "F1" &&
+        result.level === "MUST" &&
+        (result.verdict === "fail" || result.verdict === "could not run"),
+    )
     .map(warningFor);
   const missingAgents = run.results.find((result) => result.id === "F1" && result.verdict === "fail");
   if (missingAgents) {

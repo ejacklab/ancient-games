@@ -16,6 +16,11 @@ Records: 64 from SOURCE_OF_TRUTH_REQUIREMENTS.yaml (SoT:), 11 Core requirements 
 | project-memory/.cache/ | `/home/smoke01/dev/ancient-games/project-memory/.cache` | absent |
 | agent memory (<home>/.claude/agent-memory/<name>/) | `/home/smoke01/.claude/agent-memory` | absent |
 
+
+## Files changed but not staged (R1)
+
+- 0 files under `project-memory/` changed but not staged, and so not checked by this run (git status --porcelain -uall -- project-memory; the checks read the staged state, C5)
+
 ## The tool's own requirements
 
 - **F1** (MUST) — pass — /home/smoke01/dev/ancient-games/AGENTS.md exists; 2 of 8 named locations present, 6 absent. This table is the working tree; every verdict below reads the staged state (C5)
@@ -23,6 +28,34 @@ Records: 64 from SOURCE_OF_TRUTH_REQUIREMENTS.yaml (SoT:), 11 Core requirements 
 - **F3** (MUST) — pass — this run created, changed and deleted nothing; it wrote only /home/smoke01/dev/ancient-games/runs/20261017-memory-check/nodes/smoke-report.md; every git call ran with GIT_OPTIONAL_LOCKS=0
 
 ## Results — MUST
+
+- **SoT:W3.5a** (MUST) — needs a reviewer — check: reviewer — whether the project holds user memory or agent memory is the owner's call (F1 reports the locations; it does not judge what is in them)
+
+## Results — SHOULD
+
+- **SoT:Rd1.1** (SHOULD) — needs a reviewer — check: reviewer — user and agent memory live in the home folder, and whether that layout has a written reason is the owner's
+- **SoT:W3.5b** (SHOULD) — needs a reviewer — check: reviewer — where user and agent memory live, and whether a reason is written, is the owner's
+
+## Needs a reviewer
+
+- **SoT:W3.5a** (MUST) — fails if: the project holds user memory or agent memory. — why not the tool: check: reviewer — whether the project holds user memory or agent memory is the owner's call (F1 reports the locations; it does not judge what is in them)
+- **SoT:W3.5b** (SHOULD) — fails if: they live elsewhere, with no written reason. — why not the tool: check: reviewer — where user and agent memory live, and whether a reason is written, is the owner's
+- **SoT:Rd1.1** (SHOULD) — fails if: these live elsewhere or are laid out otherwise, with no written reason. — why not the tool: check: reviewer — user and agent memory live in the home folder, and whether that layout has a written reason is the owner's
+
+## Notes from tools/memory_index.py
+
+- `nothing to check: no project-memory/ in the staging area`
+
+## This run
+
+- Report written to /home/smoke01/dev/ancient-games/runs/20261017-memory-check/nodes/smoke-report.md
+- Read only: nothing was created, changed or deleted except the report; every git call used GIT_OPTIONAL_LOCKS=0 (F3)
+- The session-start hook is not installed: R2 leaves that harness change to the owner (R12.3)
+- Not calibrated on a real project: no project has been named to calibrate against (design-decisions.md 15)
+- Counts: 0 fail, 3 pass, 3 needs a reviewer, 72 not applicable, 0 could not run
+- CACHES.md gives its requirements no level, so none of them gates the exit code (R3 counts MUSTs only)
+
+## Not applicable
 
 - **SoT:K4.1** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:K4.3** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
@@ -43,21 +76,16 @@ Records: 64 from SOURCE_OF_TRUTH_REQUIREMENTS.yaml (SoT:), 11 Core requirements 
 - **SoT:W1.3a** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W3.2** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W3.3a** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
-- **SoT:W3.5a** (MUST) — needs a reviewer — check: reviewer — whether the project holds user memory or agent memory is the owner's call (F1 reports the locations; it does not judge what is in them)
 - **SoT:W4.1b** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W4.1c** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W5.3b** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W6.1a** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W6.3a** (MUST) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
-
-## Results — SHOULD
-
 - **SoT:K1.1** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:K5.1** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:K5.2** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:K6.1b** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:K6.3b** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
-- **SoT:Rd1.1** (SHOULD) — needs a reviewer — check: reviewer — user and agent memory live in the home folder, and whether that layout has a written reason is the owner's
 - **SoT:Rd2.1** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:Rd2.2** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:Rd2.3b** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
@@ -71,7 +99,6 @@ Records: 64 from SOURCE_OF_TRUTH_REQUIREMENTS.yaml (SoT:), 11 Core requirements 
 - **SoT:W3.1** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W3.3b** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W3.4** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
-- **SoT:W3.5b** (SHOULD) — needs a reviewer — check: reviewer — where user and agent memory live, and whether a reason is written, is the owner's
 - **SoT:W3.6** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W4.2** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W5.1** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
@@ -80,9 +107,6 @@ Records: 64 from SOURCE_OF_TRUTH_REQUIREMENTS.yaml (SoT:), 11 Core requirements 
 - **SoT:W6.1b** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W6.2** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W6.3b** (SHOULD) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
-
-## Results — guidance
-
 - **SoT:K4.2** (guidance) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:Rd3.1b** (guidance) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:Rd4.2** (guidance) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
@@ -94,9 +118,6 @@ Records: 64 from SOURCE_OF_TRUTH_REQUIREMENTS.yaml (SoT:), 11 Core requirements 
 - **SoT:W2.2a** (guidance) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W4.1a** (guidance) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
 - **SoT:W4.3** (guidance) — not applicable — project-memory/ is absent from the staged state this run checked (git ls-files -s -z -- project-memory; F1 names what the working tree holds), so the memory this record is about is absent (C4)
-
-## Results — CACHES.md Core requirements (no level in CACHES.md)
-
 - **CACHES:B1** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent in the working tree (F1 names it; a git-ignored folder is in no snapshot), so the cache requirements are not applicable (C4, C6)
 - **CACHES:B2** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent in the working tree (F1 names it; a git-ignored folder is in no snapshot), so the cache requirements are not applicable (C4, C6)
 - **CACHES:B3** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent in the working tree (F1 names it; a git-ignored folder is in no snapshot), so the cache requirements are not applicable (C4, C6)
@@ -108,22 +129,3 @@ Records: 64 from SOURCE_OF_TRUTH_REQUIREMENTS.yaml (SoT:), 11 Core requirements 
 - **CACHES:Rd1** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent in the working tree (F1 names it; a git-ignored folder is in no snapshot), so the cache requirements are not applicable (C4, C6)
 - **CACHES:Rd2** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent in the working tree (F1 names it; a git-ignored folder is in no snapshot), so the cache requirements are not applicable (C4, C6)
 - **CACHES:Rd3** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent in the working tree (F1 names it; a git-ignored folder is in no snapshot), so the cache requirements are not applicable (C4, C6)
-
-## Needs a reviewer
-
-- **SoT:W3.5a** (MUST) — fails if: the project holds user memory or agent memory. — why not the tool: check: reviewer — whether the project holds user memory or agent memory is the owner's call (F1 reports the locations; it does not judge what is in them)
-- **SoT:W3.5b** (SHOULD) — fails if: they live elsewhere, with no written reason. — why not the tool: check: reviewer — where user and agent memory live, and whether a reason is written, is the owner's
-- **SoT:Rd1.1** (SHOULD) — fails if: these live elsewhere or are laid out otherwise, with no written reason. — why not the tool: check: reviewer — user and agent memory live in the home folder, and whether that layout has a written reason is the owner's
-
-## Notes from tools/memory_index.py
-
-- `nothing to check: no project-memory/ in the staging area`
-
-## This run
-
-- Report written to /home/smoke01/dev/ancient-games/runs/20261017-memory-check/nodes/smoke-report.md
-- Read only: nothing was created, changed or deleted except the report; every git call used GIT_OPTIONAL_LOCKS=0 (F3)
-- The session-start hook is not installed: R2 leaves that harness change to the owner (R12.3)
-- Not calibrated on a real project: no project has been named to calibrate against (design-decisions.md 15)
-- Counts: 0 fail, 3 pass, 3 needs a reviewer, 72 not applicable, 0 could not run
-- CACHES.md gives its requirements no level, so none of them gates the exit code (R3 counts MUSTs only)

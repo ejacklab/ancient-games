@@ -115,6 +115,38 @@ export function snapshotInfo(root: string, since: string | null): SnapshotInfo {
   };
 }
 
+/**
+ * R1: the files under `project-memory/` that the working tree changed and the staged snapshot does not hold — modified,
+ * deleted or untracked there — read with `git status --porcelain -uall`, read-only. They are not checked, because every
+ * check reads the staged state (C5), so the report names how many there are. A change the index already holds is not
+ * one of them: the first column of the porcelain status is the index, the second the working tree, and only the second
+ * says the staged snapshot lacks the change. `-uall` lists every untracked file by name instead of collapsing a folder
+ * of new files into one line, so the count is a count of files.
+ */
+export interface UnstagedMemory {
+  readonly count: number;
+  readonly files: readonly string[];
+  readonly error: string | null;
+}
+
+export function unstagedMemoryFiles(root: string): UnstagedMemory {
+  const result = git(root, ["status", "--porcelain", "-uall", "--", MEMORY]);
+  if (result.code !== 0) {
+    const detail = (result.stderr || result.stdout).trim();
+    return { count: 0, files: [], error: `git status --porcelain -uall -- ${MEMORY} failed: ${detail || `exit ${result.code}`}` };
+  }
+  const files = lines(result.stdout)
+    .filter((line) => isUnstaged(line.slice(0, 2)))
+    .map((line) => line.slice(3).trim());
+  return { count: files.length, files, error: null };
+}
+
+/** "??" is untracked; a modified, deleted or type-changed working tree is a letter in the second column. */
+function isUnstaged(code: string): boolean {
+  if (code === "??") return true;
+  return code.length === 2 && "MDT".includes(code[1]!);
+}
+
 /** Every path under `project-memory/` in the staged state: the snapshot itself (C5). */
 export function stagedMemoryPaths(root: string, errors: GitErrors): string[] {
   const raw = gitRead(root, ["ls-files", "-z", "--cached", "--", MEMORY], errors);

@@ -12,7 +12,14 @@ import {
   checkOneEntryPerFile,
   checkRenames,
 } from "./gitrequirements.ts";
-import { type SnapshotInfo, stagedEntries, stagedMemoryPaths, snapshotInfo } from "./gitchecks.ts";
+import {
+  type SnapshotInfo,
+  type UnstagedMemory,
+  stagedEntries,
+  stagedMemoryPaths,
+  snapshotInfo,
+  unstagedMemoryFiles,
+} from "./gitchecks.ts";
 import type { Guidelines, Level, SotRecord } from "./guidelines.ts";
 import { type IndexToolRun, indexChecksNotReached, runMemoryIndex, toolFailedToStart } from "./indextool.ts";
 import { agentsMdMissing, findLocations, type Location } from "./locations.ts";
@@ -33,6 +40,8 @@ export interface RequirementResult {
 export interface CheckRun {
   readonly root: string;
   readonly snapshot: SnapshotInfo;
+  /** R1: the files under `project-memory/` changed but not staged, so not checked (C5). */
+  readonly unstaged: UnstagedMemory;
   readonly locations: readonly Location[];
   readonly results: readonly RequirementResult[];
   readonly indexTool: IndexToolRun;
@@ -93,6 +102,8 @@ export interface CheckOptions {
 export function runChecks(options: CheckOptions): CheckRun {
   const { root, home, since, guidelines } = options;
   const snapshot = snapshotInfo(root, since);
+  // R1: named in the report, because no check reads the working tree (C5).
+  const unstaged = unstagedMemoryFiles(root);
   const locations = findLocations(root, home);
   const snapshotGitErrors: string[] = [];
   // C5: the snapshot this run reports on is the staged state, so its presence is the staged state's presence. The
@@ -164,6 +175,7 @@ export function runChecks(options: CheckOptions): CheckRun {
   return {
     root,
     snapshot,
+    unstaged,
     locations,
     results,
     indexTool,

@@ -1,0 +1,10 @@
+- 2026-10-17T19:15:00+08:00 · notapp · planned · item 1: every "not applicable" row moves to a last `## Not applicable` section and leaves every other section
+- 2026-10-17T19:15:00+08:00 · unstaged · planned · item 2: R1's line counting project-memory files changed but not staged (git status --porcelain)
+- 2026-10-17T19:15:00+08:00 · warnnotrun · planned · item 3: R2/U3's warning gets a line for every MUST that fails or could not run, plus a missing AGENTS.md
+- 2026-10-17T19:16:40+08:00 · notapp · start · report.ts sections drop "not applicable" rows; a last `## Not applicable` holds them
+- 2026-10-17T19:16:40+08:00 · unstaged · start · gitchecks unstagedMemoryFiles; checks.ts carries it on the run; report.ts prints the line
+- 2026-10-17T19:16:40+08:00 · warnnotrun · start · warn.ts filter and phrasing
+- 2026-10-17T19:17:10+08:00 · notapp · done · report.ts applicable() drops "not applicable" rows from the own/MUST/SHOULD/guidance/CACHES sections; a last notApplicable() section prints them all in the same row format; enhance test 1 passes
+- 2026-10-17T19:17:10+08:00 · unstaged · done · gitchecks unstagedMemoryFiles (git status --porcelain -uall -- project-memory; an unstaged second column or ??); checks.ts carries UnstagedMemory on CheckRun; report.ts prints the count, the names and the command, or "the count could not be read"; enhance tests 2 and 3 pass
+- 2026-10-17T19:17:10+08:00 · warnnotrun · done · warn.ts takes a MUST that fails or could not run; SAYS/GENERIC say which per verdict; id + category + file names only; enhance test 4 passes
+- 2026-10-17T19:17:10+08:00 · all · done · cd memory_check && bun test → 74 pass 0 fail (3 files, three runs, the same each); ./node_modules/.bin/tsgo --noEmit -p . → exit 0, no output

@@ -1,6 +1,8 @@
-// R1: one Markdown report per run — the snapshot in the first line (C5), the locations (F1), then every
-// requirement with its id, level, result and evidence, MUSTs first, and a list of what needs a reviewer.
+// R1: one Markdown report per run — the snapshot in the first line (C5), the locations (F1), how many files under
+// `project-memory/` are changed but not staged, then every requirement with its id, level, result and evidence, MUSTs
+// first, a list of what needs a reviewer, and last a section holding every "not applicable" result.
 import type { CheckRun, RequirementResult, Verdict } from "./checks.ts";
+import type { UnstagedMemory } from "./gitchecks.ts";
 
 const LEVEL_ORDER: Record<string, number> = { MUST: 0, SHOULD: 1, guidance: 2, "not stated in CACHES.md": 3 };
 
@@ -20,6 +22,28 @@ function line(result: RequirementResult): string {
 
 function count(results: readonly RequirementResult[], verdict: Verdict): number {
   return results.filter((one) => one.verdict === verdict).length;
+}
+
+/** R1: every "not applicable" result is printed in the last section and nowhere else, so each section drops them. */
+function applicable(results: readonly RequirementResult[]): RequirementResult[] {
+  return results.filter((result) => result.verdict !== "not applicable");
+}
+
+/** R1: how many files under `project-memory/` the working tree changed and the staged snapshot does not hold. */
+function unstagedLine(unstaged: UnstagedMemory): string[] {
+  const command = "(git status --porcelain -uall -- project-memory; the checks read the staged state, C5)";
+  if (unstaged.error !== null) {
+    return ["", "## Files changed but not staged (R1)", "", `- the count could not be read: ${unstaged.error}`];
+  }
+  const shown = unstaged.files.slice(0, 5).map((file) => `\`${file}\``);
+  const more = unstaged.files.length > 5 ? ` … and ${unstaged.files.length - 5} more` : "";
+  return [
+    "",
+    "## Files changed but not staged (R1)",
+    "",
+    `- ${unstaged.count} file${unstaged.count === 1 ? "" : "s"} under \`project-memory/\` changed but not staged, and so ` +
+      `not checked by this run${shown.length === 0 ? "" : `: ${shown.join(", ")}${more}`} ${command}`,
+  ];
 }
 
 export function renderReport(run: CheckRun, outFile: string | null): string {
@@ -58,14 +82,16 @@ export function renderReport(run: CheckRun, outFile: string | null): string {
   const body = [
     ...head,
     ...locationLines,
+    ...unstagedLine(run.unstaged),
+    "",
     "## The tool's own requirements",
     "",
-    ...own.map(line),
+    ...applicable(own).map(line),
     "",
-    ...section("Results — MUST", sot.filter((one) => one.level === "MUST").sort(byLevelThenId)),
-    ...section("Results — SHOULD", sot.filter((one) => one.level === "SHOULD").sort(byLevelThenId)),
-    ...section("Results — guidance", sot.filter((one) => one.level === "guidance").sort(byLevelThenId)),
-    ...section("Results — CACHES.md Core requirements (no level in CACHES.md)", caches.sort(byLevelThenId)),
+    ...section("Results — MUST", applicable(sot.filter((one) => one.level === "MUST")).sort(byLevelThenId)),
+    ...section("Results — SHOULD", applicable(sot.filter((one) => one.level === "SHOULD")).sort(byLevelThenId)),
+    ...section("Results — guidance", applicable(sot.filter((one) => one.level === "guidance")).sort(byLevelThenId)),
+    ...section("Results — CACHES.md Core requirements (no level in CACHES.md)", applicable(caches).sort(byLevelThenId)),
     ...needsReviewer(results),
     ...notes(run),
     "## This run",
@@ -77,8 +103,16 @@ export function renderReport(run: CheckRun, outFile: string | null): string {
     `- Counts: ${count(results, "fail")} fail, ${count(results, "pass")} pass, ${count(results, "needs a reviewer")} needs a reviewer, ${count(results, "not applicable")} not applicable, ${count(results, "could not run")} could not run`,
     "- CACHES.md gives its requirements no level, so none of them gates the exit code (R3 counts MUSTs only)",
     "",
+    ...notApplicable(results),
   ];
   return body.join("\n");
+}
+
+/** R1: the last section, holding every "not applicable" result in the same row format as the other sections. */
+function notApplicable(results: readonly RequirementResult[]): string[] {
+  const list = results.filter((result) => result.verdict === "not applicable").sort(byLevelThenId);
+  if (list.length === 0) return ["## Not applicable", "", "- none", ""];
+  return ["## Not applicable", "", ...list.map(line), ""];
 }
 
 function needsReviewer(results: readonly RequirementResult[]): string[] {
