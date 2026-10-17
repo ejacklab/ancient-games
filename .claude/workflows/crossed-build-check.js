@@ -1,7 +1,7 @@
 export const meta = {
   name: 'crossed-build-check',
   description: 'Have engines other than the one that wrote the code write its tests, show each new test fails on the base commit, run them on the current code, then review read-only. Reports; decides nothing.',
-  whenToUse: 'After a build, to check it with tests written by other engines (plan B). args: {run: "runs/<id>", base: "<commit before the build>", code_engine: "opencode|codex|dsh|claude", tests: [{id, engine, brief, test_cmd}], review: {engine: "codex|dsh", brief}}. Briefs are files inside the repo. A brief on the code engine is refused. Design: runs/20261017-workflows/design.md.',
+  whenToUse: 'After a build, to check it with tests written by other engines (plan B). args: {run: "runs/<id>", base: "<commit before the build>", code_engine: "opencode|codex|dsh|claude", tests: [{id, engine, brief, test_cmd}], review: {engine: "codex|dsh", brief}, timeout: 580}. timeout is the limit in seconds of every engine call and test command (a whole number from 60 to 3600; above 580 a step runs its command in the background and waits for it). Briefs are files inside the repo. A brief on the code engine is refused. Design: runs/20261017-workflows/design.md.',
   phases: [
     { title: 'Write tests', detail: 'one engine run per brief; opencode briefs one after another, the others in parallel' },
     { title: 'Fail first', detail: 'in a temporary worktree at base, with only the new test files copied in; every new test must fail there' },
@@ -51,13 +51,30 @@ else {
   else if (!REVIEW_ENGINES.includes(review.engine)) errors.push(`args.review: engine must be ${REVIEW_ENGINES.join(' or ')} (the only read-only commands in the design)`)
   if (!repoPath(review.brief)) errors.push('args.review: brief must be a file path inside the repo')
 }
+const TIMEOUT = a.timeout === undefined || a.timeout === null ? 580 : a.timeout
+if (!Number.isInteger(TIMEOUT) || TIMEOUT < 60 || TIMEOUT > 3600) errors.push('args.timeout must be a whole number of seconds from 60 to 3600')
 if (errors.length) return { status: 'error', errors }
 
 const RUN = a.run
 const NODES = `${RUN}/nodes`
 const PROGRESS = `${NODES}/crossed-build-check.progress.md`
 
-const COMMON = label => `
+// XB1: args.timeout is the limit of every engine call and test command the workflow starts, in seconds. Above 580 a
+// step cannot hold the command in one Bash call (they are capped at 600 s), so the step runs it in the background and
+// waits for it to end.
+const BACKGROUND = TIMEOUT > 580
+
+// XB2 and XB3: the limit reaches the command itself, under `timeout <N>`, for an engine call and for a test command
+// alike. Above 580 the step starts the command in the background and reads the exit from <file>.exit, never from a
+// process it cannot see; a missing <file>.exit is a failed step, never a pass.
+const bgCommand = (file, command) => `( timeout ${TIMEOUT} ${command}; echo "exit $?" > ${file}.exit ) &`
+const fgCommand = (command) => `timeout ${TIMEOUT} ${command}`
+const runCommand = (file, command) => (BACKGROUND ? bgCommand(file, command) : fgCommand(command))
+// How much of the Bash tool's own limit one step's call may use: the command's own limit, rounded up, never the 600 s
+// cap by name (XB3).
+const toolMs = (TIMEOUT + 20) * 1000
+
+const COMMON = (label, file = '') => `
 You are one step (${label}) of the crossed-build-check workflow in this repository; its root is your working folder.
 Run folder: ${RUN}/. Another session also commits in this working tree: never \`git add\`, never commit, never
 \`git stash\`, and change no file except the ones this step names.
@@ -68,8 +85,13 @@ Run folder: ${RUN}/. Another session also commits in this working tree: never \`
 2. Append one line to ${PROGRESS} with a shell \`echo ... >>\`:
    \`- <output of date -Iseconds> · ${label} · start · <short note>\`
    and one more when you finish, with \`done\` or \`fail\` in place of \`start\`.
-3. Run each long command with the Bash tool's timeout set to 600000 ms. Report what the commands printed and returned,
-   not what you expect them to.
+3.${BACKGROUND ? `
+One Bash call is capped at 600 s, so run every long command of this step in the background: start it exactly in the form
+given below, then wait until ${file}.exit appears (at most ${TIMEOUT} s) and read the exit code from that file. A missing
+${file}.exit after ${TIMEOUT} s is a failed step: report it as failed, never as a pass. Never leave the process running
+behind you.` : `
+Run each long command with the Bash tool's timeout set to ${toolMs} ms. Report what the commands printed and returned,
+not what you expect them to.`}
 `
 
 const ask = brief => `"Read ${brief} and do what it says."`
@@ -80,6 +102,10 @@ function engineCommand(engine, brief, out, readOnly) {
   if (engine === 'dsh') return `dsh headless ${ask(brief)} </dev/null > ${out}`
   return `claude -p --model claude-opus-5-5 ${ask(brief)} </dev/null > ${out}`
 }
+// An engine call under the limit, or the same call in the background writing its exit to <file>.exit.
+const engineRun = (engine, brief, out, readOnly) => `    ${runCommand(out, engineCommand(engine, brief, out, readOnly))}`
+// XB3: a test command the step runs itself carries the same limit as an engine call, under `timeout <N>`.
+const testRun = (t, out) => runCommand(out, t.test_cmd)
 
 const s = type => ({ type })
 const strings = { type: 'array', items: { type: 'string' } }
@@ -105,13 +131,13 @@ const NAMES = 'Name each test as the test runner prints it (file and test name),
 
 function writeStep(t) {
   const out = resultFile(t.engine, t.id)
-  return step(`${COMMON(`write:${t.id}`)}
+  return step(`${COMMON(`write:${t.id}`, out)}
 Step: have ${t.engine} write the tests that ${t.brief} asks for. First read ${t.brief}: if it has no line starting
 "## Lessons" (the node-brief template's Lessons section, the text of \`lessons for\`, or "none"), do not run anything;
 return status "failed" with problem "the brief has no Lessons section". Otherwise run exactly this command from the
 repository root:
 
-    timeout 580 ${engineCommand(t.engine, t.brief, out, false)}
+${engineRun(t.engine, t.brief, out, false)}
 
 Record its exit code; result_file is ${out}. Do not write or change any test yourself.
 Then list the test files the engine wrote, relative to the repository root: read ${t.brief} for the files it asks for,
@@ -122,16 +148,16 @@ files exists; otherwise "failed", with the reason in problem. Return id "${t.id}
 
 function failFirstStep(t, w) {
   const out = `${NODES}/${t.id}.base.txt`
-  return step(`${COMMON(`failfirst:${t.id}`)}
+  return step(`${COMMON(`failfirst:${t.id}`, out)}
 Step: show that the new tests of brief ${t.id} fail on the base commit ${a.base}, before the build.
 The new test files: ${w.test_files.join(', ')}.
 
 1. \`dir=$(mktemp -d /tmp/crossed-${t.id}-XXXXXX)\` and \`git worktree add --detach "$dir" ${a.base}\`.
 2. Copy into "$dir", at the same relative paths, only those new test files (create parent folders as needed).
-3. From "$dir", with a 580-second limit, run the brief's test command and save all its output to
+3. From "$dir", run the brief's test command under a ${TIMEOUT}-second limit and save all its output to
    ${out} in the main repository (use its absolute path):
 
-       ${t.test_cmd}
+       ${testRun(t, out)}
 
 4. Always remove the worktree at the end, even when a step failed: \`git worktree remove --force "$dir"\`.
    Check with \`git worktree list\` that it is gone.
@@ -144,11 +170,11 @@ command), say so in problem. output_file is ${out}. Return id "${t.id}".`,
 
 function headStep(t) {
   const out = `${NODES}/${t.id}.head.txt`
-  return step(`${COMMON(`head:${t.id}`)}
-Step: run brief ${t.id}'s tests on the current code. From the repository root, with a 580-second limit, run this
-command and save all its output to ${out}:
+  return step(`${COMMON(`head:${t.id}`, out)}
+Step: run brief ${t.id}'s tests on the current code. From the repository root, run this command under a
+${TIMEOUT}-second limit and save all its output to ${out}:
 
-    ${t.test_cmd}
+    ${testRun(t, out)}
 
 pass is true only when the command exits 0. failing: every test that failed or errored. ${NAMES}
 output_file is ${out}. Return id "${t.id}".`,
@@ -157,10 +183,10 @@ output_file is ${out}. Return id "${t.id}".`,
 
 function runReview() {
   const out = resultFile(review.engine, 'review')
-  return step(`${COMMON('review')}
+  return step(`${COMMON('review', out)}
 Step: a read-only review on ${review.engine}. Run exactly this command from the repository root:
 
-    timeout 580 ${engineCommand(review.engine, review.brief, out, true)}
+    ${engineRun(review.engine, review.brief, out, true)}
 
 file is ${out}, where the engine's final message is saved. findings_count is the number of findings in that file:
 count them the way ${review.brief} asks them to be listed; if it does not say, count the top-level list items under a

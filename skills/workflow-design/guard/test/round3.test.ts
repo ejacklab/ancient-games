@@ -834,18 +834,38 @@ describe("C16 (R7) doctor opencode reads a plugin file's text", () => {
 // ---- C17 --------------------------------------------------------------------------------------------------------
 
 // These tests read the real process table through the CLI (the CLI has no injection point for `running`). They start
-// their own process and fail loudly if another `opencode run` is already running, since the result would then not
-// tell the two behaviours apart.
+// their own process; the CLI runs see it through a `ps` put first on PATH, which prints the real `ps` output with every
+// other process's `opencode run` line removed (lines holding the test's marker or "second task" are kept), so other
+// sessions' opencode runs neither change the result nor stop the tests (Round 20, C17 alone).
 describe("C17 (R9) the CLI drops only its own process and its parent from running", () => {
-  const other = /opencode\s+run/;
+  const realPs = Bun.which("ps");
 
   function processLines(): string[] {
     return execFileSync("ps", ["-eo", "args="], { encoding: "utf8" }).split("\n");
   }
 
-  function requireNoOtherOpencode(): void {
-    const busy = processLines().filter((line) => other.test(line));
-    if (busy.length > 0) throw new Error(`C17 needs a machine with no other opencode run process (found ${busy.length})`);
+  // A `ps` in the test's temp folder: the real ps by absolute path, minus every `opencode run` line that holds neither
+  // this test's marker (the temp folder's name) nor "second task". Returns the env for the CLI runs.
+  function fakePsEnv(): NodeJS.ProcessEnv {
+    if (realPs === null) throw new Error("C17 needs ps on PATH");
+    const marker = path.basename(folder);
+    const bin = path.join(folder, "fake-bin");
+    fs.mkdirSync(bin, { recursive: true });
+    const script = path.join(bin, "ps");
+    fs.writeFileSync(script, [
+      "#!/bin/bash",
+      "set -o pipefail",
+      `${JSON.stringify(realPs)} "$@" | awk -v marker=${JSON.stringify(marker)} '!/opencode[ \\t]+run/ || index($0, marker) || index($0, "second task")'`,
+      "",
+    ].join("\n"));
+    fs.chmodSync(script, 0o755);
+    return { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}` };
+  }
+
+  function runCliWithPs(args: string[], input = "") {
+    const result = spawnSync(process.execPath, [cli, ...args], { cwd: folder, input, encoding: "utf8", timeout: 15000, env: fakePsEnv() });
+    expect(result.error).toBeUndefined();
+    return { exitCode: result.status, stdout: result.stdout, stderr: result.stderr };
   }
 
   // bash -c 'sleep 30; :' opencode run review <marker>: ps shows "bash -c sleep 30; : opencode run review <marker>".
@@ -865,10 +885,9 @@ describe("C17 (R9) the CLI drops only its own process and its parent from runnin
   }
 
   test("C17: another process whose line contains harness-guard still counts for lint (R9 input)", () => {
-    requireNoOtherOpencode();
     const sleeper = startSleeper(`tools/harness-guard/SPEC.md-${path.basename(folder)}`);
     try {
-      const result = runCli(["lint", 'opencode run "second task"']);
+      const result = runCliWithPs(["lint", 'opencode run "second task"']);
       expect(result.exitCode).toBe(1);
       expect(result.stdout).toContain("trap:opencode-parallel");
     } finally {
@@ -877,10 +896,9 @@ describe("C17 (R9) the CLI drops only its own process and its parent from runnin
   });
 
   test("C17: another process whose line contains harness-guard still counts for the hook", () => {
-    requireNoOtherOpencode();
     const sleeper = startSleeper(`tools/harness-guard/SPEC.md-${path.basename(folder)}`);
     try {
-      const result = runCli(["hook", "claude"], JSON.stringify(pre('opencode run "second task"')));
+      const result = runCliWithPs(["hook", "claude"], JSON.stringify(pre('opencode run "second task"')));
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout).hookSpecificOutput.permissionDecisionReason).toContain("trap:opencode-parallel");
     } finally {
@@ -889,10 +907,9 @@ describe("C17 (R9) the CLI drops only its own process and its parent from runnin
   });
 
   test("C17: the CLI's own process and its parent are dropped even when their lines name an engine", () => {
-    requireNoOtherOpencode();
     const quote = (text: string) => `'${text.replace(/'/g, "'\\''")}'`;
     const script = `${quote(process.execPath)} ${quote(cli)} lint ${quote('opencode run "second task"')}; exit $?`;
-    const result = spawnSync("bash", ["-c", script], { cwd: folder, encoding: "utf8", timeout: 15000 });
+    const result = spawnSync("bash", ["-c", script], { cwd: folder, encoding: "utf8", timeout: 15000, env: fakePsEnv() });
     expect(result.status).toBe(0);
     expect(result.stdout).not.toContain("trap:opencode-parallel");
   });

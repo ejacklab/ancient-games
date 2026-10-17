@@ -74,12 +74,30 @@ export function claimDeadlines(root: string, session: string): number {
 
 const endOf = (d: Deadline): number => Date.parse(d.start) + d.minutes * 60_000;
 
+// Open = never ended, whatever its session or run (round 20, DL3).
+export function openDeadlines(root: string, session: string | null): Deadline[] {
+  return readDeadlines(root)
+    .filter((d) => d.ended === undefined && (session === null || d.session === session))
+    .sort((a, b) => Date.parse(b.start) - Date.parse(a.start));
+}
+
 // The session's deadline: the newest one still running, else the latest one; an ended one is not counted.
 export function sessionDeadline(root: string, session: string | null, now: Date): Deadline | null {
-  const own = readDeadlines(root).filter((d) => (session === null || d.session === session) && d.ended === undefined);
+  const own = openDeadlines(root, session);
   if (own.length === 0) return null;
-  const byStart = own.sort((a, b) => Date.parse(b.start) - Date.parse(a.start));
-  return byStart.find((d) => endOf(d) > now.getTime()) ?? byStart[0]!;
+  return own.find((d) => endOf(d) > now.getTime()) ?? own[0]!;
+}
+
+// Round 20, DL1: the deadline an id names, whatever its session or run. The id names the file it came from (see
+// readDeadlines), so nothing else can be answered for it.
+export function deadlineById(root: string, id: string): Deadline | null {
+  return readDeadlines(root).find((d) => d.id === id) ?? null;
+}
+
+// Round 20, DL2: the newest open deadline of one run, the run compared the way `deadline start --run` stores it.
+export function deadlineByRun(root: string, run: string): Deadline | null {
+  const relative = path.relative(root, path.resolve(root, run));
+  return openDeadlines(root, null).find((d) => d.run === relative) ?? null;
 }
 
 const LINE = /^- (\S+) · (\S+) · (planned|start|done|fail) · ?(.*)$/;
@@ -143,7 +161,11 @@ export interface DeadlineStatus {
 
 export function deadlineStatus(root: string, session: string | null, now: Date, withWorkers = true): DeadlineStatus | null {
   const deadline = sessionDeadline(root, session, now);
-  if (deadline === null) return null;
+  return deadline === null ? null : statusOf(root, deadline, now, withWorkers);
+}
+
+// Round 20, DL1 and DL2: the status of one chosen deadline, not of the session's newest.
+export function statusOf(root: string, deadline: Deadline, now: Date, withWorkers = true): DeadlineStatus {
   const usedMs = now.getTime() - Date.parse(deadline.start);
   const usedMinutes = Math.max(0, Math.floor(usedMs / 60_000)); // floored: never "10/10" while time is left (review 3)
   const percent = Math.max(0, Math.floor((usedMs / (deadline.minutes * 60_000)) * 100));
@@ -160,10 +182,19 @@ export function deadlineStatus(root: string, session: string | null, now: Date, 
 // The task finished: its deadline stops, so the clock does not run into the next task.
 export function endDeadline(root: string, session: string | null, now: Date): Deadline | null {
   const deadline = sessionDeadline(root, session, now);
-  if (deadline === null) return null;
+  return deadline === null ? null : endOne(root, deadline, now);
+}
+
+// Round 20, DL1 and DL2: end one deadline a flag named, whatever its session or run.
+export function endOne(root: string, deadline: Deadline, now: Date): Deadline {
   const ended = { ...deadline, ended: now.toISOString() };
   fs.writeFileSync(fileOf(root, deadline.id), `${JSON.stringify(ended, null, 2)}\n`);
   return ended;
+}
+
+// What an ended deadline says instead of a clock: the id and the time it ended.
+export function endedLine(deadline: Deadline): string {
+  return `${deadline.id} ended ${deadline.ended}`;
 }
 
 export function deadlineEnd(deadline: Deadline): number {

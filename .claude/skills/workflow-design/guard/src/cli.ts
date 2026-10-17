@@ -15,14 +15,14 @@ import { checkSection, findInsightFiles, openFailures, parseInsight } from "./in
 import { WarningError, dismiss, settleAsFailure, warnings } from "./warnings.ts";
 import { indexMarkdown, insightIndex, loadCategories, showSections } from "./insight-index.ts";
 import { ExpectError, declareRed, runRed } from "./expect.ts";
-import { DeadlineError, deadlineEnd, deadlineStatus, endDeadline, readDeadlines, startDeadline } from "./deadline.ts";
+import { DeadlineError, deadlineById, deadlineByRun, deadlineEnd, deadlineStatus, endDeadline, endOne, endedLine, openDeadlines, readDeadlines, startDeadline, statusOf } from "./deadline.ts";
 import { PathError, checkPath, parents, skeleton } from "./paths.ts";
 import { rates, ratesMarkdown } from "./rates.ts";
 import { AGENTS, DEFAULT_STORE, KINDS, checkLessons, factLine, lessonLine, lessonsFor as matchLessons, readLessons } from "./lessons.ts";
 import { EvaluationError, ingestVerdict } from "./evaluation.ts";
 import { RegisterError, coverage, loadRegister, validateRegister } from "./register.ts";
 import { checkResult, lintCommand, loadEngines } from "./traps.ts";
-import type { EngineCall, Finding, HookEnv } from "./types.ts";
+import type { Deadline, EngineCall, Finding, HookEnv } from "./types.ts";
 
 const GUARD_DIR = path.resolve(import.meta.dirname, "..");
 
@@ -44,7 +44,8 @@ const USAGE = [
   "  warning <W-id> fail|dismiss --reason TEXT   settle a warning the guard could not judge",
   "  warnings [--session S]          every warning and how it was settled",
   "  deadline start --minutes N [--run DIR]   record the owner's time limit (a clock line after every Bash or file-write call)",
-  "  deadline status | wait | end   time used and left, workers' progress; wait = a background timer to the deadline; end = the task is done",
+  "  deadline status | wait | end [--id D-xxxxxxxx | --run DIR]   time used and left, workers' progress; wait = a background timer to the deadline; end = the task is done",
+  "                                  --id and --run name the deadline to act on; end without either, with more than one open, ends none",
   "  register <file>                 validate a register and report its coverage",
   "  install --print <harness>       print the hook settings for a harness",
   "  doctor [--health PATH] [--json] report where the guard is installed",
@@ -215,6 +216,53 @@ function deadlineCommand(args: string[]): number {
       throw error;
     }
   }
+  if (verb !== "status" && verb !== "wait" && verb !== "end") return usageError("deadline: start --minutes N [--run DIR] | status | wait | end [--id D-xxxxxxxx | --run DIR]");
+  // DL5: --mark went with the 50/80/100% marks (run 20261017-workflows, experts-decide mark-q, accepted by EJ): asking
+  // for it fails loudly, before any deadline is resolved and before anything waits, with --id or --run as well.
+  if (verb === "wait" && args.includes("--mark")) usageError("deadline wait: --mark was removed with the percent marks; wait runs to the deadline");
+  // Round 20, DL1 and DL2: --id and --run name the one deadline the verb acts on, whatever its session or run. With
+  // neither flag the verb keeps today's choice (DL4), and `end` refuses to guess between several open ones (DL3).
+  const named = (): { chosen: Deadline | null; missing: string | null } => {
+    const id = flagValue(args, "--id");
+    if (id !== null) return { chosen: deadlineById(root, id), missing: `no deadline ${id}` };
+    const run = flagValue(args, "--run");
+    if (run !== null) return { chosen: deadlineByRun(root, run), missing: `no deadline for ${run}` };
+    return { chosen: null, missing: null };
+  };
+  const sleepUntil = (deadline: Deadline): void => {
+    const wait = Date.parse(deadline.start) + deadline.minutes * 60_000 - Date.now();
+    if (wait > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
+  };
+  const { chosen, missing } = named();
+  if (missing !== null && chosen === null) {
+    process.stderr.write(`${missing}\n`);
+    return USAGE_EXIT;
+  }
+  if (chosen !== null) {
+    // An ended deadline has no clock to show: it says so and exits 0, whichever verb asked.
+    if (chosen.ended !== undefined) {
+      out(endedLine(chosen));
+      return OK;
+    }
+    if (verb === "end") {
+      out(`${endOne(root, chosen, new Date()).id} ended`);
+      return OK;
+    }
+    if (verb === "wait") {
+      sleepUntil(chosen);
+      // The deadline may be ended while wait sleeps, when a run finishes early (run 20261017-insight-placement).
+      const after = readDeadlines(root).find((d) => d.id === chosen.id);
+      if (after?.ended !== undefined) {
+        out(`${chosen.id} ended before its deadline`);
+        return OK;
+      }
+      out(statusOf(root, chosen, new Date()).line);
+      return OK;
+    }
+    const status = statusOf(root, chosen, new Date());
+    out([status.line, ...status.workers.map((w) => `  ${w}`)].join("\n"));
+    return status.up ? FINDINGS : OK;
+  }
   if (verb === "status") {
     const status = deadlineStatus(root, flagValue(args, "--session"), new Date());
     if (status === null) {
@@ -225,15 +273,10 @@ function deadlineCommand(args: string[]): number {
     return status.up ? FINDINGS : OK;
   }
   if (verb === "wait") {
-    // --mark went with the 50/80/100% marks (run 20261017-workflows, experts-decide mark-q, accepted by EJ): asking for it
-    // fails loudly, never waits silently to the deadline.
-    if (args.includes("--mark")) usageError("deadline wait: --mark was removed with the percent marks; wait runs to the deadline");
     const session = flagValue(args, "--session");
     const status = deadlineStatus(root, session, new Date());
     if (status === null) usageError("deadline wait: no deadline");
-    const at = Date.parse(status.deadline.start) + status.deadline.minutes * 60_000;
-    const wait = at - Date.now();
-    if (wait > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
+    sleepUntil(status.deadline);
     // The deadline may be ended while wait sleeps, when a run finishes early (run 20261017-insight-placement).
     const after = readDeadlines(root).find((d) => d.id === status.deadline.id);
     if (after?.ended !== undefined) {
@@ -244,6 +287,13 @@ function deadlineCommand(args: string[]): number {
     return OK;
   }
   if (verb === "end") {
+    // DL3: without a flag, end only when there is nothing to guess between.
+    const open = openDeadlines(root, flagValue(args, "--session"));
+    if (open.length > 1) {
+      process.stderr.write(`deadline end: ${open.length} deadlines are open; name one with --id or --run:\n`);
+      for (const deadline of open) process.stderr.write(`${deadline.id} · run ${deadline.run ?? "none"} · session ${deadline.session ?? "none"}\n`);
+      return USAGE_EXIT;
+    }
     const ended = endDeadline(root, flagValue(args, "--session"), new Date());
     if (ended === null) {
       process.stderr.write("no deadline to end\n");
@@ -252,7 +302,7 @@ function deadlineCommand(args: string[]): number {
     out(`${ended.id} ended`);
     return OK;
   }
-  return usageError("deadline: start --minutes N [--run DIR] | status | wait | end");
+  return usageError("deadline: start --minutes N [--run DIR] | status | wait | end [--id D-xxxxxxxx | --run DIR]");
 }
 
 // ---- warnings (round 9) -----------------------------------------------------------------------------------------
