@@ -229,6 +229,8 @@ export function skeleton(session: string, request: string, code = false): string
   return [
     "# The criteria this request will be scored on. Write it before the work, mark each item at the end.",
     "# Replace the two placeholder items with one item per thing the result must get right.",
+    "# Every item must be one you can mark before the task ends;",
+    "# a use expected later goes in the success path or the next task's criteria.",
     "criteria: 1",
     `session: ${scalar(session)}`,
     `request: ${scalar(cut(request))}`,

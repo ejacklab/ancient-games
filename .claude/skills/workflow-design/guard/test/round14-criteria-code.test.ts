@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { checkCriteria, loadCriteria } from "../src/criteria.ts";
+import { checkCriteria, loadCriteria, skeleton } from "../src/criteria.ts";
 import { handleHook } from "../src/hooks.ts";
 import type { HookEnv } from "../src/types.ts";
 
@@ -64,6 +64,12 @@ test("criteria new --from-register --code adds the tests item after the register
   expect(items.at(-1)?.text).toBe(WORDING);
   expect(typeof items.at(-1)?.met).not.toBe("boolean");
   expect(items.length).toBeGreaterThan(1);
+});
+
+test("the skeleton's header says each item must be markable before the task ends (F-336edcb0)", () => {
+  const text = skeleton("s14", "any request");
+  expect(text).toContain("one you can mark before the task ends");
+  expect(text).toContain("a use expected later goes in the success path or the next task's criteria");
 });
 
 test("the reminder at the start of a request names --code", () => {

@@ -30,17 +30,74 @@ def test_skills_export_is_self_contained():
                 f"{skill.parent.name}: {ref} named but not exported"
 
 
-def test_skills_export_is_current():
-    """The committed skills/ must match a fresh export — drift is caught, not hand-synced."""
+def export_drift(repo, rev="HEAD"):
+    """The skills/ paths where `rev`'s committed export differs from a fresh export of `rev`'s own sources. Reads the
+    commit through `git archive` into a temp folder; the repository's working tree is never read or written."""
     import shutil
     import tempfile
     with tempfile.TemporaryDirectory() as td:
-        td = Path(td)
-        # copy the export script to a scratch repo layout and run it into the temp dir is overkill;
-        # instead, re-run the export and diff the committed skills/ against what it just produced.
-        # The simplest sound check: re-running the export is idempotent (git status stays clean on skills/).
-        before = subprocess.run(["git", "status", "--porcelain", "--", "skills/"], capture_output=True, text=True, cwd=REPO)
-        assert before.stdout.strip() == "", f"skills/ already drifted before export:\n{before.stdout}"
-        subprocess.run([sys.executable, "tools/export_skills.py"], check=True, capture_output=True, cwd=REPO)
-        after = subprocess.run(["git", "status", "--porcelain", "--", "skills/"], capture_output=True, text=True, cwd=REPO)
-        assert after.stdout.strip() == "", f"a fresh export changed skills/ (drift):\n{after.stdout}"
+        tree, committed = Path(td) / "tree", Path(td) / "committed"
+        tree.mkdir()
+        archive = subprocess.run(["git", "archive", "--format=tar", rev], cwd=repo, capture_output=True, check=True)
+        subprocess.run(["tar", "-x", "-C", str(tree)], input=archive.stdout, check=True)
+        if (tree / "skills").is_dir():
+            shutil.copytree(tree / "skills", committed)
+        else:
+            committed.mkdir()
+        subprocess.run([sys.executable, str(tree / "tools" / "export_skills.py")], cwd=tree, check=True,
+                       capture_output=True)
+
+        def files(root):
+            return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+        old, new = files(committed), files(tree / "skills")
+        return sorted(f"skills/{name}" for name in old.keys() | new.keys() if old.get(name) != new.get(name))
+
+
+def test_skills_export_is_current():
+    """The committed skills/ matches a fresh export of the same commit's sources — drift is caught, not hand-synced.
+    It reads HEAD only, so it passes before a commit as after one (F-d8221199): the pre-commit hook makes each commit
+    carry its export, and this catches a commit made without the hook (a fresh clone, a web session)."""
+    assert export_drift(REPO) == []
+
+
+# F-d8221199 (the pick, 2026-10-17): the check reads one commit, never the working tree, so a run before a commit
+# passes as one after it does. Each test below clones this repository and plants the situation in the clone.
+SOURCE = ".claude/skills/workflow-design/guard/SPEC.md"
+EXPORTED = "skills/workflow-design/guard/SPEC.md"
+
+
+def clone_of(tmp_path):
+    target = tmp_path / "clone"
+    subprocess.run(["git", "clone", "--quiet", "--shared", str(REPO), str(target)], check=True)
+    for key, value in (("user.email", "test@example.invalid"), ("user.name", "export test")):
+        subprocess.run(["git", "config", key, value], cwd=target, check=True)
+    return target
+
+
+def change_source(clone):
+    with open(clone / SOURCE, "a", encoding="utf-8") as f:
+        f.write("\nEXPORT-TEST-LINE\n")
+
+
+def test_an_uncommitted_source_change_passes_it(tmp_path):
+    # F-d8221199's situation: a skill source changed, the commit (and its hook) not made yet.
+    clone = clone_of(tmp_path)
+    change_source(clone)
+    assert export_drift(clone) == []
+
+
+def test_a_commit_without_its_export_fails_it(tmp_path):
+    # A commit made where the pre-commit hook is not installed: the source moved on, skills/ did not.
+    clone = clone_of(tmp_path)
+    change_source(clone)
+    subprocess.run(["git", "commit", "-q", "--no-verify", "-am", "source only"], cwd=clone, check=True)
+    assert export_drift(clone) == [EXPORTED]
+
+
+def test_it_never_writes_to_the_working_tree(tmp_path):
+    clone = clone_of(tmp_path)
+    change_source(clone)
+    export_drift(clone)
+    status = subprocess.run(["git", "status", "--porcelain"], cwd=clone, capture_output=True, text=True, check=True)
+    assert status.stdout.splitlines() == [f" M {SOURCE}"]

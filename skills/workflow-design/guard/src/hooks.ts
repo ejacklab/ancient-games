@@ -13,7 +13,7 @@ import { appendWarning, newWarningId, openWarnings } from "./warnings.ts";
 import { claimDeadlines, deadlineStatus, dueMark, markId, sessionDeadline } from "./deadline.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
-import { checkResult, commandWord, engineCallSite, inlineScripts, lintCommand, missingReads, recognizeTestRun, segments, testRunFiles } from "./traps.ts";
+import { FAILED_SUMMARY, checkResult, commandWord, engineCallSite, inlineScripts, lintCommand, missingReads, recognizeTestRun, segments, testRunFiles } from "./traps.ts";
 import { coveringDeclarations } from "./expect.ts";
 import type { Finding, GuardErrorRecord, HookEnv, HookResult, PromptRecord, TouchedRecord, RaisedRecord, RedRecord, SuccessRecord } from "./types.ts";
 
@@ -237,10 +237,6 @@ function runsInBackground(payload: Record<string, unknown>, response: Record<str
 
 // ---- the agent's own failures (round 4, D1 and D2) ---------------------------------------------------------------
 
-// A test run's own summary: how many tests failed. Zero, a word after the count and text that merely mentions "failed"
-// are not summaries.
-const FAILED_SUMMARY = /\b([1-9]\d*) (failed|errors?)\b/;
-
 // The command word whose exit a failed call reports: the last segment's, whatever came before it in the pipeline.
 function failingCommandWord(command: string): string | null {
   const parts = segments(command);
@@ -252,8 +248,9 @@ function failingCommandWord(command: string): string | null {
 }
 
 // The guard's own query commands exit 1 to say "findings" — an answer, not an error (Round 8; cli.ts: 0 ok, 1
-// findings, 2 usage). Only the last segment's exit is the call's, so only it is read.
-const GUARD_QUERY = /\/src\/cli\.ts\s+(insight|criteria|register|path)\b/;
+// findings, 2 usage). Only the last segment's exit is the call's, so only it is read. `expect-fail --run` exits 1 for
+// a red run that passed, which it has already logged (round 16, X3).
+const GUARD_QUERY = /\/src\/cli\.ts\s+(insight|criteria|register|path|expect-fail)\b/;
 
 function guardQueryAnswered(command: string, exitCode: number | null): boolean {
   const parts = segments(command);

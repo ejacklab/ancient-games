@@ -14,7 +14,7 @@ import { JournalError, guardRoot, newFailureId, recordFailureFromArgs } from "./
 import { checkSection, findInsightFiles, openFailures, parseInsight } from "./insight.ts";
 import { WarningError, dismiss, settleAsFailure, warnings } from "./warnings.ts";
 import { indexMarkdown, insightIndex, loadCategories, showSections } from "./insight-index.ts";
-import { ExpectError, declareRed } from "./expect.ts";
+import { ExpectError, declareRed, runRed } from "./expect.ts";
 import { DeadlineError, deadlineEnd, deadlineStatus, endDeadline, parseMarks, startDeadline } from "./deadline.ts";
 import { PathError, checkPath, parents, skeleton } from "./paths.ts";
 import { rates, ratesMarkdown } from "./rates.ts";
@@ -38,6 +38,7 @@ const USAGE = [
   "  insight index [--json]          every insight section: ids, check, source, option kinds, category (no text)",
   "  insight show --category C | <file>#<id>   the chosen sections, whole (for an expert that loads them)",
   "  expect-fail --tests FILE [--session S]   before a planned red run: the next test run naming FILE must fail",
+  "  expect-fail --run COMMAND --out FILE [--session S]   run a planned red run: the guard runs it and records the result",
   "  warning <W-id> fail|dismiss --reason TEXT   settle a warning the guard could not judge",
   "  warnings [--session S]          every warning and how it was settled",
   "  deadline start --minutes N [--run DIR] [--marks 50,80,100]   record the owner's time limit",
@@ -273,9 +274,11 @@ function warningCommand(args: string[]): number {
 
 // The session is the harness's own when it gives one, so a declaration matches the hook's runs of the same session.
 function expectFail(args: string[]): number {
-  const file = flagValue(args, "--tests");
-  if (file === null) usageError("expect-fail: needs --tests FILE");
   const session = flagValue(args, "--session") ?? (process.env.CLAUDE_CODE_SESSION_ID?.trim() || "none");
+  const command = flagValue(args, "--run");
+  if (command !== null) return expectRun(command, flagValue(args, "--out"), session);
+  const file = flagValue(args, "--tests");
+  if (file === null) usageError("expect-fail: needs --tests FILE or --run COMMAND --out FILE");
   try {
     const record = declareRed(guardRoot(process.cwd()), path.resolve(process.cwd(), file), session, new Date());
     out(`expect-fail ${record.id}: the next test run naming ${record.file} must fail (session ${record.session})`);
@@ -284,6 +287,27 @@ function expectFail(args: string[]): number {
     throw error;
   }
   return OK;
+}
+
+// Round 16, X1–X4: the guard runs the red run itself; 0 when it failed as planned, 1 when it passed (logged).
+function expectRun(command: string, outFile: string | null, session: string): number {
+  if (outFile === null) usageError("expect-fail --run: needs --out FILE (the run's whole output goes there)");
+  const harness = process.env.CLAUDE_CODE_SESSION_ID?.trim() ? "claude-code" : "none";
+  let run;
+  try {
+    run = runRed(guardRoot(process.cwd()), command, process.cwd(), outFile, session, harness, () => new Date());
+  } catch (error) {
+    if (error instanceof ExpectError) usageError(error.message);
+    throw error;
+  }
+  const tail = fs.readFileSync(path.resolve(guardRoot(process.cwd()), run.out), "utf8").trimEnd().split("\n").slice(-15);
+  out(tail.join("\n"));
+  if (run.record.kind === "red") {
+    out(`expect-fail --run: ${run.runner} exited ${run.exit ?? "on a signal"} — the red step, recorded (${run.record.declared.join(", ")}); whole output in ${run.out}`);
+    return OK;
+  }
+  out(`expect-fail --run: ${run.runner} exited 0 — no test failed: ${run.record.id} logged (R12.2-red-passed); whole output in ${run.out}`);
+  return FINDINGS;
 }
 
 // Every warning with how it was settled, so the project owner can read the dismissals and overrule them.

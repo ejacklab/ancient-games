@@ -558,6 +558,10 @@ const TEST_RUNNERS: { label: string; pattern: RegExp }[] = [
   { label: "cargo test", pattern: /^cargo\s+test(?:\s|$)/ },
 ];
 
+// A test run's own summary: how many tests failed. Zero, a word after the count and text that merely mentions "failed"
+// are not summaries.
+export const FAILED_SUMMARY = /\b([1-9]\d*) (failed|errors?)\b/;
+
 // The runner of the first segment that is a test run, or null. Later segments count too: `cd work && pytest -q` runs
 // the tests.
 export function recognizeTestRun(command: string): string | null {

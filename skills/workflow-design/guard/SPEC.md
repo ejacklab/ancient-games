@@ -499,7 +499,8 @@ A false alarm is a check misfiring, so the check's own rule drops it before anyt
 dismisses a logged failure.
 
 - **F1 The guard's own query exits.** D2's command error is not written when the call's last segment is the guard's
-  `cli.ts insight`, `criteria`, `register` or `path` and the exit is 1 — the CLI's "findings" exit, an answer. Exit 2
+  `cli.ts insight`, `criteria`, `register`, `path` or `expect-fail` (round 16, X3) and the exit is 1 — the CLI's
+  "findings" exit, an answer. Exit 2
   (usage), any other guard command, and any call whose last segment is not the guard stay command errors.
 - **F2 Criteria are read against their own request.** UserPromptSubmit writes a `prompt` record (`kind`, `time`,
   `session` — never the prompt's text) on every prompt, before the K2 reminder logic. K2's late-criteria check compares
@@ -700,9 +701,12 @@ behaviour pass there by nature, so it could not be met. The wording is now writt
   Without `--code` both are as in K1. The agent decides whether the request changes code.
 - **Q3 The reminder.** K2's UserPromptSubmit reminder adds, after the two paths: "with `--code` when the request
   changes code (it adds the standard tests item)".
+- **Q4 Markable items** (F-336edcb0 option 1, chosen 2026-10-17). The skeleton's header adds: "Every item must be one
+  you can mark before the task ends; a use expected later goes in the success path or the next task's criteria."
 
 Fails-if: `criteria new --code` writes no `tests` item, or one whose text differs from Q1; `criteria new` without
-`--code` writes one; `--from-register --code` leaves it out; the reminder does not name `--code`.
+`--code` writes one; `--from-register --code` leaves it out; the reminder does not name `--code`; the skeleton's
+header lacks Q4's line.
 
 ## Round 15 — a program read from a heredoc (R12.2; F-d1444d01 option 2, chosen 2026-10-17)
 
@@ -736,3 +740,27 @@ Fails-if: F-d1444d01's command (its shape, the program as written) runs; a backs
 `python3`, `node -`, `timeout … python3 -u - arg`, `VAR=x python -` or `<<-` runs; an unquoted program with `$` or a
 backtick runs; a program with none of those, a heredoc fed to a script, `-m` or `-c`, a heredoc written to a file, or
 an opener inside another body is held; a `<<` inside a program's body gives a second hold; a hold writes a record.
+
+## Round 16 — the guard runs the declared red run (R12.2; F-d3132a7f option 1, chosen 2026-10-17)
+
+A declared red run failed as planned and was read as passed: the call ended with `grep`, so it exited 0, and the guard
+judges a run it did not start from the call's exit or a summary in stdout the run owns. With `--run` the guard starts
+the run, so the runner's own exit decides.
+
+- **X1 What it runs.** `expect-fail --run COMMAND --out FILE [--session S]`: COMMAND is one simple command (no pipe,
+  `;`, `&&` or `||`, which could replace the runner's exit), a test run D1 recognises after M1's wrappers, naming at
+  least one existing test file, every one inside the root; FILE is inside the root. Otherwise exit 2 with the reason,
+  and nothing is declared, written or run. `--tests` without `--run` is E1, unchanged.
+- **X2 The run.** Each named test file is declared (E1's record), then COMMAND runs under `bash -c` in the caller's
+  folder, its stdout and stderr both written to FILE. An exit other than 0 (a test failed, or the run ended on a
+  signal) is a `red` record consuming those declarations, with the failed count when FAILED_SUMMARY finds one; the CLI
+  prints the output's last 15 lines and exits 0.
+- **X3 A run that passed.** Exit 0 is E4's failure, `R12.2-red-passed`, `found_by: guard`, with FILE as its evidence
+  and the declarations as `declared`; the CLI exits 1. F1 treats that exit as an answer, so the hook writes no second
+  failure or warning for the call.
+- **X4 What the record holds.** As E3/E4: ids, counts, the runner, the exit and the file's path — never the output.
+
+Fails-if: a failing run is not a red record, or a passing one not exactly one `R12.2-red-passed` failure with FILE as
+evidence; stderr or stdout is missing from FILE; the hook logs the CLI's exit 1 again; a compound command, a command
+that is not a test run, one naming no test file, a FILE outside the root, or no `--out` runs anything or writes a
+record; `--tests` alone runs anything.
