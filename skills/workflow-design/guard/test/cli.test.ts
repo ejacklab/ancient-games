@@ -116,7 +116,7 @@ describe("installSnippet", () => {
       expect(hooks).toContainEqual({ type: "command", command: `bun ${guardDir}/src/cli.ts hook claude` });
       for (const hook of hooks) expect(hook).toEqual({ type: "command", command: `bun ${guardDir}/src/cli.ts hook claude` });
     }
-    expect(settings.hooks.PreToolUse).toContainEqual(expect.objectContaining({ matcher: "Bash" }));
+    expect(settings.hooks.PreToolUse).toContainEqual(expect.objectContaining({ matcher: "Bash|Write|Edit|MultiEdit" })); // Round 18: lessons before file edits (crossed review finding 1)
     // After a call the guard watches Bash and file writes only (EJ, 2026-10-17).
     expect(settings.hooks.PostToolUse).toEqual([expect.objectContaining({ matcher: "Bash|Write|Edit|MultiEdit" })]);
     expect(settings.hooks.PostToolUseFailure).toEqual([expect.objectContaining({ matcher: "Bash" })]);

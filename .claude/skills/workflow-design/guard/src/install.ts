@@ -25,7 +25,8 @@ function entry(matcher: string | null, guardDir: string): Record<string, unknown
 
 // The event list the handler dispatches on, with the tools each event watches.
 const EVENTS: [string, string | null][] = [
-  ["PreToolUse", "Bash"],
+  // Before a call: Bash for the traps, and file writes for the agent lessons (Round 18; crossed review finding 1).
+  ["PreToolUse", "Bash|Write|Edit|MultiEdit"],
   // After a call the guard watches Bash and file writes only (EJ, 2026-10-17, declining the time-monitor run's D2).
   ["PostToolUse", "Bash|Write|Edit|MultiEdit"],
   ["PostToolUseFailure", "Bash"],
