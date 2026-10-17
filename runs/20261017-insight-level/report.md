@@ -22,3 +22,8 @@ is right.
 
 Open for EJ: the nine questions at the end of `level-q/compare.md`; the two that change the most are what
 "project requirement issues" covers and what "task level" means.
+
+## Decided
+
+- **The rule (EJ: "Yes yes that is what I want"):** when an insight is written, its lesson is filed at agent level — for one agent type or for all agents — where every project's agents read it; the project-specific facts stay in the project, kept with the code they are about. The wording was mine; EJ confirmed it.
+- **Open (asked 2026-10-17):** where the agent-level store lives (my pick: a skill in this repo, linked like workflow-design); what "kept with the code" means (my pick: a lessons file in the code's folder). Default unless EJ says otherwise: the insight's writer proposes the split, EJ confirms with the fix choice (insight-decisions.md).
