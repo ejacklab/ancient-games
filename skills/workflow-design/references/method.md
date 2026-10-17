@@ -506,7 +506,8 @@ which binary will make it and record its version (`docs/EXECUTOR_KINDS.md`, "The
    criteria (`guard/src/cli.ts criteria new`, from a use-case register with `--from-register`), marks each met or not
    met with evidence at the end, and every criterion not met becomes a failure (`criteria score` prints the score).
    Judgment stays with the agent: the whys, the options, use cases and their fails-if. Installing the hooks is
-   the owner's (`guard/src/cli.ts install --print <harness>`); the agent never edits harness config. Measured once
+   the owner's (`guard/src/cli.ts install --print <harness>`); the agent changes a harness config only after the
+   owner's yes to that diff (R12.3). Measured once
    (`runs/20261015-ts-hybrid/effectiveness/`, n = 3 per arm on one short task): with the rules in the working folder,
    agents followed them without the hooks; the hooks caught a format slip the rules let through and, after one round of
    fixes, cost no extra time. Not measured: a long session where the rules are out of reach.
