@@ -1,0 +1,26 @@
+- 2026-10-17T13:07:49+08:00 · linus · start · codex
+- 2026-10-17T13:07:50+08:00 · dave · start · claude
+- 2026-10-17T13:07:51+08:00 · dario · start · claude
+- 2026-10-17T13:07:51+08:00 · fan-li · start · agy
+- 2026-10-17T13:07:51+08:00 · sun-tzu · start · dsh
+- 2026-10-17T13:08:55+08:00 · linus · done · codex exit 0
+- 2026-10-17T13:09:07+08:00 · check-linus · start · 
+- 2026-10-17T13:09:10+08:00 · check-linus · done · linus check passed (no linus FAIL lines; other experts not in this folder)
+- 2026-10-17T13:10:04+08:00 · fan-li · done · agy exit 0
+- 2026-10-17T13:10:14+08:00 · check-fan-li · start · 
+- 2026-10-17T13:10:17+08:00 · check-fan-li · done · fan-li check has no FAIL line; other experts' no-answer lines ignored
+- 2026-10-17T13:10:44+08:00 · dario · done · claude exit 0
+- 2026-10-17T13:10:56+08:00 · check-dario · start · 
+- 2026-10-17T13:10:59+08:00 · check-dario · done · dario answer passes check (no FAIL dario lines)
+- 2026-10-17T13:12:35+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-17T13:12:46+08:00 · check-sun-tzu · start · 
+- 2026-10-17T13:12:49+08:00 · check-sun-tzu · done · sun-tzu answer passes check; other experts absent from this folder as expected
+- 2026-10-17T13:15:20+08:00 · dave · done · claude exit 0
+- 2026-10-17T13:15:33+08:00 · check-dave · start · 
+- 2026-10-17T13:15:36+08:00 · check-dave · done · dave check passed, no FAIL dave lines
+- 2026-10-17T13:15:42+08:00 · lao-tzu · start · opencode
+- 2026-10-17T13:17:25+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-17T13:17:38+08:00 · check-lao-tzu · start · 
+- 2026-10-17T13:17:40+08:00 · check-lao-tzu · done · lao-tzu check has no FAIL lines; other experts absent by design
+- 2026-10-17T13:17:51+08:00 · compare · start · 
+- 2026-10-17T13:20:27+08:00 · compare · done · compare.md written; all 6 say hypothesis breaks on project tool/test defects; split on what task level means

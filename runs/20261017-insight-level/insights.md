@@ -1,0 +1,174 @@
+# Every insight section (runs/*/insight.md), extracted by extract.py
+
+Each: the run, the heading, then the section's own `Source:` and `Root cause:` lines, verbatim.
+
+- **20261014-code-map-build** — F-60cad515 — read Linus's answer file after his run had failed
+  - Source: tool — `four_experts.py` reports an engine error (usage limit) as "empty answer"; and my command shape masked its exit code.
+  - Root cause: `four_experts.py` collapses an engine's error output into "empty answer", and my `run …; tail` call discarded the run's non-zero exit.
+- **20261015-learn-success** — F-cf3f3a6e — the guard suite was red during the parallel build
+  - Source: instruction (the round-5 spec, the COO's)
+  - Root cause: the spec for a parallel build named new behaviour but not the older assertions it overturns, nor one required field in plain words.
+- **20261015-learn-success** — F-1b6f6a0f — a lookup command ended with exit 2
+  - Source: instruction
+  - Root cause: an exploratory check written without the guard's own location rule; harmless, but an errored call by R12.2.
+- **20261015-long-session** — F-f09b058d — the guard logged a missing output that was not missing
+  - Source: check
+  - Root cause: the result check took an unexpandable path as a real one — a false failure, from a gap in SPEC M5 and its tests.
+- **20261015-long-session** — F-8712e9fc — the full Python suite had one failing test
+  - Source: check
+  - Root cause: shared working tree — the export test cannot tell this session's changes from another session's uncommitted ones.
+- **20261015-score** — F-1e90a8e1 — a pipe hid a failed merge
+  - Source: instruction (the main agent's command habit; no rule forbids piping a command whose exit matters)
+  - Root cause: a command whose success gates the next step was piped, so its failure was invisible to `&&`.
+- **20261015-score** — F-785afc27 — a command of mine ended with exit 1, and the record cannot say which
+  - Source: tool (the guard's D2 record)
+  - Root cause: a command-error record holds too little to find the call it describes, and its command word may not be the failing segment's.
+- **20261015-ts-hybrid** — F-08cf4cc3 — the first Codex call never ran
+  - Source: check
+  - Root cause: hand-run engine calls had no result-file check; exit 0 of the last command stood in for success.
+- **20261015-ts-hybrid** — F-f44538b2 — the runner was edited while it ran
+  - Source: instruction
+  - Root cause: no rule against editing a script that a running process is executing.
+- **20261015-ts-hybrid** — F-cf7d58f7 — opencode stopped without a result file
+  - Source: instruction
+  - Root cause: the brief put the only progress record at the very end; a partial run left no trace of what it had checked.
+- **20261015-ts-hybrid** — F-3b8bdcec — Codex hit its usage limit mid-run
+  - Source: check
+  - Root cause: no quota estimate or check per engine before a multi-node build.
+- **20261016-four-experts-what-counts-as-change** — F-e82a6f58 — I read a question.md that a research run never had
+  - Source: instruction — how I build a path to read: from a folder-name pattern, read in the same command that lists the folder.
+  - Root cause: a path inferred from a naming pattern two kinds of runs share, read before the listing that would have disproved it was seen.
+- **20261016-four-experts-what-counts-as-change** — F-2cc835e3 — criterion C2 not met: Linus had no quota, and the check failed
+  - Source: tool — `.claude/skills/four-experts/scripts/four_experts.py` starts every engine with no readiness check, and the experts' brief still lets an engine change a quote's script.
+  - Root cause: an engine out of quota, found only by the run itself, because the runner has no canary step; plus a repeat of the script-variant failure whose fix was never chosen.
+- **20261016-four-experts-what-counts-as-change** — F-15cf1278 — the planned fail-first test run was logged as a failure
+  - Source: check — the guard's test-run check treats a planned red run like any other failing run.
+  - Root cause: a planned fail-first run cannot be told from a broken one by the guard's test-run check.
+- **20261016-four-experts-what-counts-as-change** — F-98c2c4c9 — the second planned fail-first run, logged as a failure again
+  - Source: check — the guard's test-run check treats a planned red run like any other failing run.
+  - Root cause: the same as F-15cf1278 — no way to mark a fail-first run as planned; this is its first repeat.
+- **20261016-four-experts-what-counts-as-change** — F-4981093a — a read of a file that was never written, an hour after the rule against it
+  - Source: instruction — the read-only-listed-paths memory rule, which has no check at the moment of the read; plus my habit of chaining a status read with the reads that depend on it.
+  - Root cause: a rule held only in memory, with no check where the read happens; the dependent read was chained after the status that would have decided it.
+- **20261016-four-experts-what-counts-as-change** — F-e69dfb66 — criterion C4 not met: mcode gave Linus no answer on a brief-sized input
+  - Source: tool — mcode's `minimax_oauth` connection, which does not answer brief-sized requests within its first-event limit; and my canary, which did not use a brief-sized input.
+  - Root cause: an engine proved only with a tiny canary, used for inputs 5–7 times the size it was shown to handle.
+- **20261016-four-experts-what-counts-as-change** — F-485505f6 — criterion C5 not met: the mcode change was not committed
+  - Source: tool — mcode's connection (the same cause as F-e69dfb66); not committing was the decision that cause forced.
+  - Root cause: F-e69dfb66's — the target engine does not answer brief-sized inputs, so the change cannot land yet.
+- **20261016-four-experts-what-counts-as-change** — F-5182be9b, F-1d185ee3 — the skills-export test failed twice before the commit it needs
+  - Source: instruction — the export step is written only in a memory about the six-experts skill, not where the guard is edited.
+  - Root cause: the order "export, commit, then run the Python suite" is not written where an edit to the workflow-design skill happens.
+- **20261016-four-experts-what-counts-as-change** — F-749688a0 — the new pre-commit hook could not stage: git gives a hook a relative index path
+  - Source: tool — git's hook environment, which passes `GIT_INDEX_FILE` relative to the working tree.
+  - Root cause: a hook that moves `--work-tree` must make `GIT_INDEX_FILE` absolute (and name `--git-dir`); mine did not.
+- **20261016-four-experts-what-counts-as-change** — F-0f2fa841 — the failing-export test planted its break where the exporter never reaches
+  - Source: check — my test's planted input, unverified.
+  - Root cause: a planted failure used without first showing that the plant alone fails.
+- **20261016-four-experts-what-counts-as-change** — F-8243a18f, F-96578c5b — criterion C4 not met twice the same day: "every new test fails on the old code"
+  - Source: instruction — the criteria I write by hand, with no standard wording for what a fail-first check covers; and a check (fixed) that hid the first miss.
+  - Root cause: "tests fail on the old code" stated for all tests, when it holds only for tests of new behaviour; pins are shown to bite by mutants.
+- **20261016-four-experts-what-counts-as-change** — F-d1444d01 — a redone step: a Python search string with a doubled backslash
+  - Source: instruction — my habit of writing one-off Python inside heredocs, where the escaping rule (quoted: none; unquoted: the shell's) must be recalled each time.
+  - Root cause: shell escaping applied to code in a quoted heredoc, which passes it through as written.
+- **20261016-four-experts-what-counts-as-change** — F-d3132a7f — a declared red run that failed as planned was read as passed: its exit never reached the guard
+  - Source: tool — the guard judges a run it did not start, from the call's exit or an owned summary, and `expect-fail` does not say so.
+  - Root cause: a declared red run whose failure did not reach what the guard reads.
+- **20261016-four-experts-what-counts-as-change** — F-a2551f81 — two new Round 14 tests expected the wrong shape of the criteria file
+  - Source: instruction — my habit of writing a test's expectations from a function's contract instead of from its existing tests.
+  - Root cause: expectations for an existing function written without reading how its own tests assert it.
+- **20261016-four-experts-what-counts-as-change** — F-21e1586c — the new plant check caught F-0f2fa841's fix passing for the wrong reason
+  - Source: check — a plant whose failure was not checked to be its own (now checked); the plant was placed by position.
+  - Root cause: a planted break placed at a position in the file, not at a line that must exist.
+- **20261016-four-experts-what-counts-as-change** — F-d8221199 — the Python suite run before the commit failed the skills-export test again
+  - Source: check — the test's result depends on when it runs, not on whether the export is current.
+  - Root cause: a test of the committed export that reads uncommitted state.
+- **20261016-four-experts-what-counts-as-change** — F-336edcb0 — criterion C3 not met: it asked for an event after the task
+  - Source: instruction — my criteria writing, with no rule that a criterion is markable within its task.
+  - Root cause: a criterion that depends on something after the task.
+- **20261016-four-experts-what-counts-as-change** — F-59498b2a — a refusal test found a file a mutant run had left in the shared temp folder
+  - Source: tool — my per-task mutant script, and a test path shared across runs.
+  - Root cause: a "must not exist" path that other runs can create, and a mutant run that can write outside its copy.
+- **20261016-four-experts-what-counts-as-change** — F-cc665076 — the read-missing hold stopped a command whose earlier grep wrote the file it then read
+  - Source: check — Round 13's N3, which skips a reader's redirect target.
+  - Root cause: a reader segment's output redirect is not counted as making its target.
+- **20261016-four-experts-what-counts-as-change** — F-2116eae0 — the final tests' run against the old guard was logged as a failure: nothing could declare it
+  - Source: tool — `expect-fail` declares only files inside the root.
+  - Root cause: no declared way to run the final tests against the old source.
+- **20261016-integrate-r11-r13** — F-8392b4ce — criteria marked late in a session that ran several tasks
+  - Source: check — SPEC Round 6 K2 and its code in `guard/src/hooks.ts` (late criteria).
+  - Root cause: the late-criteria check uses the session as the task boundary, so every criteria file after a session's first task reads as late — a false failure.
+- **20261016-integrate-r11-r13** — F-4cbb2f4b — an ambiguous line in my spec made the coder's output wrong
+  - Source: instruction — the spec's H4 list (`runs/20261016-integrate-r11-r13/spec-harness-health.md`), written by the main agent.
+  - Root cause: a spec list that put two values (requirement number and item name) in one field with no table or example.
+- **20261016-integrate-r11-r13** — F-05a1b440 — the spec mixed instructions into literal values a second time
+  - Source: instruction — `runs/20261016-integrate-r11-r13/spec-harness-health.md` H1 and H5, written by the main agent.
+  - Root cause: one cause with F-4cbb2f4b — spec lines that put literal output and instructions in one sentence with no example.
+- **20261016-integrate-r11-r13** — F-90389583 — the health script wrote under HOME through bun's cache
+  - Source: instruction — the spec's H5 (the guard call's environment), written by the main agent.
+  - Root cause: a "writes no file" promise checked only in a HOME where the runtime's cache already existed.
+- **20261016-integrate-r11-r13** — F-b7c8635f — a malformed doctor row reached the report
+  - Source: instruction — spec H5 and guard SPEC Round 7 J1 (field types not stated).
+  - Root cause: an external payload's field types were not written into the spec, so its validation stopped at the top level.
+- **20261016-integrate-r11-r13** — F-76013d09 — the guard's pipe tests failed inside the Codex sandbox only
+  - Source: config — Codex's `workspace-write` sandbox with the bundled bubblewrap.
+  - Root cause: tests that spawn a child process ran inside a sandbox whose pipe behaviour differs from the machine's, and the brief did not say how to tell the two apart.
+- **20261016-integrate-r11-r13** — F-c60edad6 — the harness refused the researcher's findings file
+  - Source: instruction — `.claude/agents/researcher.md` and method 3.8 item 9, against the harness's current refusal.
+  - Root cause: the researcher's contract (write a file) conflicts with what the harness now allows a subagent to do.
+- **20261016-integrate-r11-r13** — F-969500fa — a failing export test hidden inside a command chain
+  - Source: check — the guard's test-run detection reads only the call's exit code; plus the main agent's command habit.
+  - Root cause: a test run's result is invisible to the guard whenever it is not the last command of its Bash call.
+- **20261016-integrate-r11-r13** — F-2cdebf3b — the reviewer found the guard-JSON checks incomplete; F-d0736dc7 — the new test then caught my own shape check
+  - Source: instruction — guard SPEC Round 7 and spec H5 give field names without types or presence.
+  - Root cause: one cause with F-b7c8635f — a payload contract written as prose names, so each reader checked a different subset.
+- **20261016-integrate-r11-r13** — F-0a1f3ca1 — the reviewer saw the guard's JSON lost through a bun pipe
+  - Source: config — Codex's sandbox (as F-76013d09); and instruction — the review brief.
+  - Root cause: an engine's sandbox changes pipe behaviour, and neither the test brief nor the review brief asks for a check outside it.
+- **20261016-integrate-r11-r13** — F-682702da — the exported skill bundle lacked R13's reference file
+  - Source: tool — `tools/export_skills.py` (single-file skills copy one file) and its test.
+  - Root cause: the export treated requirement-check as one file, and no test checked that a bundled skill's named references exist.
+- **20261016-integrate-r11-r13** — F-c055f734, F-e1161864 — my export test was too broad at first
+  - Source: instruction — the main agent's way of reading test output (a filter that matched the source line), and the check's too-narrow rule.
+  - Root cause: a fail-first run read through a filter that did not show the failing case, so a wrong check was taken as right.
+- **20261016-integrate-r11-r13** — F-d8a49e5a — my R13 section added structure R13 does not have, and Limits cited a reported source
+  - Source: instruction — the requirement-check skill's "never add structure" rule was not applied to the skill's own new text.
+  - Root cause: a paraphrase of a requirement written without running the skill's own check on it.
+- **20261016-integrate-r11-r13** — F-3e11ce16 — the guard logged its own "findings" exit as a command error
+  - Source: check — round 4 D2 in `guard/src/hooks.ts` (any non-zero exit is a command error), applied to the guard's own query commands.
+  - Root cause: the command-error check does not know the guard's own exit codes, so a query that reports findings is logged as a failed command — a false failure.
+- **20261016-integrate-r11-r13** — F-86553997 — a type error in my round 8 change, recorded as an "echo call"
+  - Source: tool — `journal.ts` keeps a second, separate list of the record kinds it writes; and check — `failingCommandWord` names the last segment even when `&&` stopped earlier.
+  - Root cause: the writable record kinds are listed twice (the `JournalRecord` union and `appendRecord`'s parameter), so a new kind needs two edits.
+- **20261016-six-experts** — F-5c21dd69 — my new insight-index.ts did not typecheck
+  - Source: tool — TypeScript's inference of `?? []` as `never[]`; caught by the type check, as designed.
+  - Root cause: a copied expression lost its declared type, so the empty-array fallback was inferred as never[].
+- **20261016-six-experts** — F-7f938bdf — my question sent opencode experts to a file outside the repo
+  - Source: check — nothing checks that the paths a question names are inside the repo before an opencode expert reads it.
+  - Root cause: an input outside the repo, in a question to an engine that silently rejects such paths, with no pre-flight check.
+- **20261016-six-experts** — F-b696193d — I changed start()'s signature and broke the other session's quota tests
+  - Source: instruction — the main agent's habit of running only the tests it just wrote after changing a shared function's signature.
+  - Root cause: a shared function's signature changed without running every test that replaces it.
+- **20261016-six-experts** — F-8ac06aae — the second of two background subshells never started
+  - Source: instruction — the main agent's choice of two `&` subshells inside one background Bash call instead of two separate background calls.
+  - Root cause: a fragile command shape (parallel subshells inside one backgrounded call) whose partial start was visible only through a missing file; the exact cause of the non-start was not established.
+- **20261016-time-monitor** — F-173e0190 — Dave's Claude call got no prompt
+  - Source: tool — `.claude/skills/four-experts/scripts/four_experts.py` `command()` for claude.
+  - Root cause: a variadic CLI flag placed before the positional prompt, in a code path no run had exercised.
+- **20261016-time-monitor** — F-84636a96 — Laozi wrote 為 where his list has 爲
+  - Source: instruction — the experts' brief (`assets/brief.md`, "Quote only from your list, exactly as it is written there").
+  - Root cause: an engine normalised a variant character in a quote, and the exact-match check is right to flag it — the quote is not verbatim.
+- **20261016-time-monitor** — F-a03fa5b3 — I typed the deadline's epoch from memory, a year off
+  - Source: instruction — the main agent's way of producing a time value (typed, not computed); the guard's validation was the check that caught it.
+  - Root cause: a time value typed from recall instead of derived from a recorded start; it was caught only because `deadline start` rejects non-positive minutes.
+- **20261017-round17-crossed** — Review finding 1 — Round 17 made a real test failure disappear
+  - Source: instruction — when a change sends new cases into an existing path, I do not list that path's early returns
+  - Root cause: a change routed calls into a path whose exemption assumed they could not reach it.
+- **20261017-workflows** — F-3caba088 — I parsed a workflow's output file without checking its shape
+  - Source: instruction — the main agent's habit of parsing a file by an assumed structure instead of printing its keys first.
+  - Root cause: a parse written against an assumed shape, when the tool named the file that holds the data.
+- **20261017-workflows** — F-bdea5631 — a trailing `ls` in a test command line was logged as a failed test run
+  - Source: check — the guard's D1 test-run detection attributes a chain's final exit to a test runner that is not its last command.
+  - Root cause: a failed call is labelled a failed test run because a test runner appears anywhere in its command, not because the runner produced the exit.
+
+56 sections.

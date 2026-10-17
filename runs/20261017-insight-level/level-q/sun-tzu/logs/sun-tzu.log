@@ -1,0 +1,1351 @@
+dsh: reasoning:
+Let me read the required files.
+dsh: reasoning:
+The list file continues past line 303. Let me read the rest.
+dsh: reasoning:
+Now I need the data: `/home/smoke01/dev/ancient-games/runs/20261017-insight-level/insights.md`. Let me read it. Also perhaps the extract.py, and other briefs? The brief says answer the question. Let me read the insights file.
+dsh: reasoning:
+Now let me check other things in the run folder: e.g. any other briefs/conditions, maybe a question definition file, maybe a rubric/README. Let me list folder.
+dsh: reasoning:
+Let me read the criteria.yaml and question.md (root). Also possibly the run node definitions. This may tell me the acceptance criteria for the answer.
+dsh: reasoning:
+I have the data. Now I need to answer as Sun Tzu, using the 20-item list. Let me think hard about the actual analytic question, then map to rules.
+
+The question: at which level does an insight belong? Owner's hypothesis: apart from project requirement issues, is every insight task level or agent-type level, with no other project-level insight? And: can a program sort an insight into its level quickly and reliably?
+
+I need to actually analyze the 56 insights. Let me do the work carefully. Let me build a table of all 56, with heading, source type, root cause, and my judgment of level.
+
+First, what could "task level" mean? The owner's hypothesis has three levels: project requirement issues (project level), task level, agent-type level. The briefing defines two levels discussed: project level (about this project's code, tools, conventions; any agent working here could hit it) and agent-type level (about a kind of agent which follows it into any project). "Task level" presumably means about this one task/run — the particular brief, the particular situation, not generalizable even within the project. The owner seems to say: only project requirement issues are project-level; everything else is task-level or agent-type-level.
+
+Let me examine each insight. I'll classify each into:
+- P: project level (project code/tool/convention, any agent working here could hit it)
+- T: task level (specific to this task/run; not recurring)
+- A: agent-type level (a kind of agent's habit which follows it anywhere)
+
+Note these aren't mutually exclusive necessarily: e.g. F-524... a check in the guard's own code is project-level AND possibly agent-type? The distinction: where the fix goes vs who learns. A guard's check that misfires is project code → project-level (any agent using this repo's guard could hit it). But a habit of the main Claude agent to pipe commands is agent-type-level (follows it into any project).
+
+The owner's hypothesis says "no other project-level insight" except project requirement issues. I think the data breaks this: many insights are about this project's guard code, test harness, export tool, sandbox config, etc. — those are project-level by the definition ("about this project's code, tools or conventions; any agent working here could hit it"). E.g. F-f09b058d (result check took unexpandable path as real — SPEC M5 gap, guard code), F-8712e9fc (shared working tree — export test can't tell sessions apart), F-8392b4ce (late-criteria check uses session as task boundary), F-682702da (export tool single-file skills), F-3e11ce16 (guard's command-error check false-fires on its own query exit), F-969500fa (guard test-run detection reads only exit code), F-bdea5631 (D1 test-run detection), F-7f938bdf (nothing checks question paths inside repo), F-cc665076 (N3 read-missing hold), F-2116eae0 (expect-fail only files inside root), F-d3132a7f (guard judges run it didn't start), F-15cf1278/F-98c2c4c9 (fail-first planned red treated as failure), F-08cf4cc3 (hand-run engine calls no result-file check), F-3b8bdcec (no quota estimate per engine) — some of those are project tooling (four_experts.py, guard), so project level.
+
+Actually wait. Let's be careful about the owner's categories. "project level insight, except those project requirement issues". The owner might mean: insights about the product requirements (the requirements doc, SPEC) are project-level; everything else is about the agent's behavior (agent-type) or this task (task). But the data has many insights whose source is the project's own tool code (guard/src/hooks.ts, tools/export_skills.py, four_experts.py) — if those aren't project-level, what are they? They're about the project's tools. The definition given in the question says project level = "about this project's code, tools or conventions; any agent working here could hit it". So the data clearly breaks the hypothesis: a large class of insights are about the project's referee code/tooling, and they're not requirement issues.
+
+But is that too easy? The owner's intuition may be that tool/check bugs are still "agent-type" because the agent hits them through its behavior? Hmm. Let's think about what the distinction is *for*: "insights filed where they will be learned from", and owner wants the most important (code insights, testing insights) to improve AI agent quality and reduce noise. If the purpose is to be learned from across projects, then an insight about the guard is project-level (only useful here), while an insight about how to write a test (plant a failure, read failing case) is agent-type (useful anywhere).
+
+But there's a third level the owner names: task level. Task level = specific to this task, no learning value beyond it. The owner's hypothesis: no project-level except requirements. My reading of the data: the levels are not a partition of the insights on one axis; the strongest reading is there are at least three kinds of insight and project-level is real and large — but the useful question is not "what is it about" but "where does the fix go / who must learn it".
+
+Let me now actually build the classification. I'll make a script/table. Let me enumerate all 56 with ids. Let me count from the file: it says 56 sections; some lines hold two IDs (F-5182be9b, F-1d185ee3; F-8243a18f, F-96578c5b; F-c055f734, F-e1161864; F-2cdebf3b / F-d0736dc7 in one heading — actually line 122 has "F-2cdebf3b — ... ; F-d0736dc7 — ..." as one section? Let's count sections: the extract says 56 sections; headings may include two ids. Let me parse.
+
+I'll write a quick script to extract headings and ids.
+dsh: reasoning:
+Good. 56 sections. Note section 26 mentions F-0f2fa841 again (its fix), and section 54 has no F id ("Review finding 1").
+
+Now, the deep analysis. I need to answer two decisions:
+
+1. Is the owner correct? "apart from project requirement issues, is every insight task level or agent-type level, with no other project-level insight?"
+2. Can a program sort quickly and reliably? If yes: from which fields, by what rule, which of 56 it gets wrong. If no: what the insight would have to record.
+
+I need a defensible reading of "task level", and classify. Let me think about what the three levels are.
+
+- **Project level**: knowledge that is true of *this repo's artifacts* — the guard's checks, the export tool, the SPEC, the sandbox config, the project conventions. Any agent working here hits it; an agent working elsewhere does not. The fix goes into this repo's code/config/docs.
+- **Agent-type level**: knowledge about *a kind of agent's* behaviour — Claude main agent's habit of piping, of typing epochs from memory, of writing one-off Python in heredocs, of normalizing variant characters (that's an engine behavior), of parsing assumed shapes. It follows that agent into any project. The fix goes into the agent's instructions (AGENTS.md, brief template), a global skill, or the harness, not this repo.
+- **Task level**: knowledge about *this particular task* — the specific brief, the particular file, the one-off situation — that will not recur even in this project. E.g. F-4cbb2f4b ambiguous line in *this* spec; F-05a1b440 same spec a second time; F-90389583 this health script; F-336edcb0 this criterion C3; F-e82a6f58 read this question.md. The fix is local: rewrite this brief/spec.
+
+But here's the subtlety the owner's question surfaces: the divisions are about *grain*, not a partition of objects. The same insight can be written at more than one level. E.g. F-4cbb2f4b: "an ambiguous line in my spec made the coder's output wrong" — task-level instance of an agent-type rule "a spec field must name one value; give a table or example". The insight as recorded (this spec line) is task-level; the lesson (how to write a spec) is agent-type. Similarly F-f09b058d: the guard's result check took an unexpandable path as real — project-level code bug; but the testing lesson "a test that only exercises the happy path will not catch the check's false failure" is agent-type (testing insight). So the same insight often has a project-level *fix location* and an agent-type *lesson*.
+
+This is a key insight: the axis "where the fix goes" (instruction/check/tool/config) is not the same as the axis "who learns it / what grain". The brief itself says that. The owner's hypothesis conflates "project-level" with "project requirement issue" because they looked at the Source field, which records where the fix goes. But "where the fix goes" ≠ "who should learn". A guard check bug's fix goes in the guard (project), but its lesson for testing may be agent-type. And a main-agent habit's fix (instruction) may apply globally (agent-type) or locally (task).
+
+Let me classify all 56 to see the counts. I'll go one by one, deciding what the *learning* is. Key: I need to show at least one that supports the hypothesis and at least one that breaks it.
+
+**Supporting "task or agent-type, no other project-level"**: 
+- F-1e90a8e1 (pipe hid failed merge; source instruction "main agent's command habit; no rule forbids piping") — agent-type (main Claude agent's habit).
+- F-3caba088 (parsed output without checking shape; main agent's habit) — agent-type.
+- F-a03fa5b3 (typed deadline epoch from memory) — agent-type (main agent habit) though the guard check caught it.
+- F-84636a96 (engine normalized 為→为) — agent-type (the engine kind, any project).
+- F-d1444d01 (heredoc escaping) — agent-type.
+- F-e82a6f58 (read a question.md a research run never had) — this is task-level? It's a habit: "path inferred from naming pattern two kinds of runs share" — that generalizes to any project with runs. But arguably task/agent-type.
+- F-336edcb0 (criterion asked for event after task) — task-level (this criterion) / agent-type (how to write criteria).
+- F-4cbb2f4b, F-05a1b440 (ambiguous spec) — task-level (this spec) but the habit is agent-type.
+
+**Breaking "no other project-level"**: insights whose content is entirely about this repo's code:
+- F-8392b4ce: late-criteria check in `guard/src/hooks.ts` uses session as task boundary — project code false failure.
+- F-3e11ce16: guard's D2 command-error check logs its own query exit — project code.
+- F-969500fa: guard's test-run detection reads only call exit — project code.
+- F-bdea5631: guard's D1 test-run detection attributes final exit — project code.
+- F-f09b058d: result check unexpandable path; SPEC M5 gap — project code/tests.
+- F-8712e9fc: export test cannot tell session's changes — project test.
+- F-d8221199: test of committed export reads uncommitted state — project test.
+- F-682702da: export_skills.py single-file; no test for references — project tool.
+- F-86553997: journal.ts duplicate record kind list — project code.
+- F-76013d09: Codex sandbox pipe behavior — project config? Actually it's a config of the Codex engine in this environment; but the fix is a test brief. Hmm, this is a project-level config insight (the repo's Codex sandbox config).
+- F-0a1f3ca1: same sandbox — project config + review brief.
+- F-5c21dd69: TypeScript inference — this is project code (insight-index.ts), though the lesson "copied expression lost declared type" is general TS.
+- F-749688a0: git hook relative GIT_INDEX_FILE — project tool (pre-commit hook). The lesson is general git knowledge but the insight is about this hook.
+- F-cc665076: Round 13's N3 skip reader redirect — project check.
+- F-2116eae0: expect-fail declares only files inside root — project tool.
+- F-d3132a7f: guard judges run it didn't start — project tool.
+- F-15cf1278/F-98c2c4c9: guard test-run check treats planned red as failure — project check (two sections).
+- F-8243a18f etc: criteria writing — agent-type/task.
+- F-cf3f3a6e: spec named new behaviour but not older assertions — task-level spec issue (instruction).
+- F-4981093a: read-only-listed-paths memory rule with no check — interesting: source instruction (memory rule) plus habit; agent-type (a rule held only in memory).
+- F-08cf4cc3: hand-run engine calls had no result-file check — project tooling/workflow (the run's own practice) — could be agent-type "engine call needs result check" which follows.
+- F-3b8bdcec: no quota estimate per engine — project tooling or agent-type? "Check quota before multi-node build" — follows the agent type across projects.
+- F-e69dfb66/F-485505f6: mcode connection doesn't answer brief-sized inputs — agent-type (mcode engine limitation) — follows mcode anywhere. Though specific to this environment's mcode config.
+- F-c60edad6: researcher contract conflicts with harness — project instruction (.claude/agents/researcher.md) vs harness; project-level (this repo's agent definition) or agent-type (harness rule for subagents everywhere)? The harness rule is global; the researcher file is project. Mixed.
+- F-173e0190: four_experts.py flag order — project tool.
+- F-7f938bdf: nothing checks paths in repo before opencode reads — project check (guard/tooling).
+- F-b696193d: changed shared function signature without running every test — agent-type habit (code hygiene) — the project instance is start().
+- F-8ac06aae: two & subshells in one background call — agent-type habit.
+- F-59498b2a: shared temp folder + mutant writes outside copy — project test tooling.
+- F-90389583: health script wrote under HOME through bun cache — project code/test environment.
+- F-b7c8635f, F-2cdebf3b, F-d0736dc7: payload contract prose names without types — project spec/instruction; task-level instance of agent-type "write types and presence".
+- F-d8a49e5a: R13 section added structure — project requirement doc + agent-type habit ("never add structure").
+- F-485505f6: same as e69dfb66.
+- F-5182be9b/F-1d185ee3: export step written only in memory about six-experts skill — project instruction placement (agent-type? "write the order where the edit happens" is a general instruction-design lesson).
+- F-0f2fa841/F-21e1586c: planted failure not shown to fail; plant placed by position — testing insight (agent-type) but about project test.
+- F-a2551f81: test expectations from contract not existing tests — agent-type testing habit.
+- F-3caba088: parse assumed shape — agent-type.
+- F-1b6f6a0f: exploratory check without guard's location rule — task-level (one command).
+- F-785afc27: guard's D2 record too little — project tool.
+- F-60cad515: four_experts.py reports engine error as empty answer + command shape — project tool + agent habit.
+- F-f44538b2: no rule against editing a running script — agent-type habit/instruction.
+- F-cf7d58f7: brief put progress record at end — task-level brief or agent-type brief-design lesson.
+- F-2cc835e3: runner has no canary step + brief lets engine change quote script — project tool + agent-type brief.
+- F-749688a0 covered.
+- F-c055f734/F-e1161864: fail-first read through filter — agent-type testing habit.
+- F-336edcb0 covered.
+- F-cf3f3a6e covered.
+
+So there are easily 15+ project-level insights that are not project requirement issues. The hypothesis as stated is false. But the owner's deeper intuition may be right in a different formulation: the *learning* (the transferable lesson) of most insights is agent-type or task, and the project-level bucket is mostly "the fix goes in project code" — which is a fix location, not a learning level. The data supports a nuanced answer: there are project-level insights, and they are a real, identifiable class, but they are precisely those whose content is about this repo's code/tooling, and they're the ones EJ said matter most (code/testing insights).
+
+Hmm — but wait. The owner says "the most important ones are code insights and testing insights." So if the owner wants code/testing insights to improve agent quality across projects, then project-level code/testing insights need a place too. The data shows many code/testing insights are project-level (guard bugs) and many are agent-type (how to write a test). So the owner's "no project-level" would lose exactly the class they value most. That's a strong argument.
+
+Let me quantify. I'll build a table with a level judgment for all 56. I should be careful and transparent: my judgment is my reading, and I should name the criteria. Let me define the test:
+
+An insight is at level L if the person/agent who must learn it is at L:
+- Task: only the agent in that task can act on it; if the same task were re-run with a different agent, the lesson would still be "change this brief/file". Its subject is a one-off artifact.
+- Project: any agent working in this repo could hit the same condition, and the fix is in this repo's code/tools/conventions. The subject is a repo artifact.
+- Agent-type: any agent of that kind, in any project, could hit it, because it is a habit/capability/limit of the agent. The fix is in the agent's instructions or the harness.
+
+The problem: many insights have both. E.g. F-0f2fa841: the specific planted break (task) and the testing rule (agent-type) and the project's export test (project). This is the core finding: an insight records a *failure instance*, and level is a property of the *lesson*, and one instance often yields more than one lesson. The `Source:` field ("where the fix goes") collapses this: it records the fix, not the level.
+
+Now question 2: can a program sort quickly and reliably?
+
+If level is one value per insight, a program could sort from fields. But the data gives only: run, heading, Source, Root cause. Source ∈ {instruction, check, tool, config} — that's the fix location, not the level. Could a program map Source → level? No: Source=instruction covers both agent-type (F-1e90a8e1 pipe habit) and task-level (F-4cbb2f4b this spec) and project-level (F-c60edad6 researcher contract). Source=check covers project guard bugs (F-8392b4ce) and testing practice (F-15cf1278 planned red). Source=tool covers project tools (F-173e0190) and engine limits (F-e69dfb66). Source=config covers sandbox (F-76013d09) — project/environment. So Source alone cannot do it.
+
+Could a program use the text? The root cause lines mention guard/src/hooks.ts, export_skills.py, four_experts.py, runner, mcode etc. A rule "if root cause names repo code path → project" would get some right and some wrong. E.g. F-3b8bdcec "no quota estimate or check per engine" — no path, but project-level build practice/agent-type. F-84636a96 — "engine normalised a variant character" — agent-type. F-1e90a8e1 — "a command ... was piped" — agent-type. F-4cbb2f4b — "a spec list ..." — task-level.
+
+A crude keyword rule would do poorly. I need to actually test a rule to say which of the 56 it gets wrong. I should write a classifier and evaluate it against my hand labels. This is the rigorous thing to do: design the best simple rule from available fields, then list exactly which insights it misclassifies. That directly answers question 2 with names/counts.
+
+But first I need ground-truth labels. My labels are my reading — I should say that. Let me label all 56 with a primary level. That's a lot but doable. Then define a candidate rule from available fields and compute errors. To keep it honest, I'll label based on a stated operational test and apply consistently.
+
+Let me think about the operational test more carefully, because it determines the label.
+
+Proposed operational test (my reading, and I'll say it's my reading):
+> Ask: "If I change nothing but the agent, would the failure still be possible?" and "If I change nothing but the project, would the lesson still apply?"
+- Agent-type: the cause is a habit/limit of an agent *kind*; a different agent kind would not have it, and the same kind would have it in another repo.
+- Project-level: the cause is a property of this repo's artifact (code, config, tool, test); a different agent in this repo could hit it, and no agent outside this repo has the artifact.
+- Task-level: the cause is a property of this one task (this brief/spec/file); it does not recur even if the same agent and repo work on another task.
+
+This gives one primary label. Where an insight has two, I'll assign the level of the *stated root cause* (the fix target) and note the other as a second lesson. Hmm, but that reintroduces "where the fix goes". Actually the root cause line names the cause; the level of the cause is what I'm after. E.g. F-0f2fa841 root cause: "a planted failure used without first showing that the plant alone fails" — the cause is a testing practice → agent-type (testing insight), even though it happened in this repo's export test. F-21e1586c root cause: "a planted break placed at a position in the file, not at a line that must exist" — testing practice → agent-type.
+
+F-8392b4ce root cause: "the late-criteria check uses the session as the task boundary" — cause is project code → project.
+F-f09b058d root cause: "the result check took an unexpandable path as a real one — a false failure, from a gap in SPEC M5 and its tests" — project code/SPEC → project.
+F-8712e9fc root cause: "shared working tree — the export test cannot tell this session's changes from another session's uncommitted ones" — project test design → project.
+F-d8221199: "a test of the committed export that reads uncommitted state" — project test → project.
+F-682702da: "the export treated requirement-check as one file, and no test checked..." — project tool → project.
+F-86553997: "writable record kinds are listed twice" — project code → project.
+F-3e11ce16: "the command-error check does not know the guard's own exit codes" — project code → project.
+F-969500fa: "a test run's result is invisible to the guard whenever it is not the last command" — project guard → project.
+F-bdea5631: "a failed call is labelled a failed test run because a test runner appears anywhere in its command" — project guard → project.
+F-cc665076: "a reader segment's output redirect is not counted as making its target" — project check → project.
+F-2116eae0: "no declared way to run the final tests against the old source" — project tool → project.
+F-d3132a7f: "a declared red run whose failure did not reach what the guard reads" — project tool → project.
+F-15cf1278/F-98c2c4c9: "a planned fail-first run cannot be told from a broken one by the guard's test-run check" — project check → project. (Though there's a testing lesson too.)
+F-76013d09: config — Codex sandbox pipe behavior. Project or agent-type? The cause is a property of this repo's Codex sandbox configuration. An agent of the same kind in another project with the same sandbox would hit it. But the config is set per project (`.codex` config?). I'd say project-level config, but note it can follow if config is global. Hmm. The Source: config — "Codex's workspace-write sandbox with the bundled bubblewrap." That's an engine environment, not this repo's code. But the fix location is project config. The question's own definition: "project level (about this project's code, tools or conventions; any agent working here could hit it)". A sandbox config is a tool/convention of this environment. I'll call it project-level (config), and note it borders agent-type.
+F-0a1f3ca1: "an engine's sandbox changes pipe behaviour, and neither the test brief nor the review brief asks for a check outside it" — cause is the engine's sandbox (agent-type? engine-specific) plus the brief (task). Hmm. I'd call this agent-type if the sandbox is a property of the Codex engine as deployed; but it's this environment's config. Mixed. For consistency: the cause named is the engine's sandbox → agent-type? But the earlier one I called project config. This is a real ambiguity — good material for "what the insight would have to record".
+
+Maybe better: labels should be about *what must change*: 
+- Project: change this repo's code/config/test/tool.
+- Agent-type: change the agent's instructions/contract (global).
+- Task: change this task's brief/spec.
+
+Then F-76013d09: fix = config (Codex sandbox) → project (repo config). F-0a1f3ca1: fix = config + brief → project+task. Ugh.
+
+I think the honest answer is: a single label is not well-defined from these fields; the level is a property of a *lesson*, not of the recorded failure. The program can't sort reliably because the record doesn't carry the level. But I can still demonstrate with a best-effort rule and its error list.
+
+Let me settle on a pragmatic approach for the answer:
+
+1. Answer: The owner is **partly right, and the "project-level" bucket is wrong as they define it**. My reading of the data: there is a real project-level class beyond requirement issues, but it is not "everything about the project" — it is insights whose root cause is a defect or limit in a repo artifact (guard code, export tool, test harness, project config). Count: ~18–20 of 56. Support for the owner: many instruction-sourced insights are agent-type habits (F-1e90a8e1, F-3caba088, F-a03fa5b3, F-d1444d01, F-b696193d, F-8ac06aae, F-84636a96). Break: F-8392b4ce, F-f09b058d, F-3e11ce16, F-969500fa, F-bdea5631, F-682702da, F-86553997, F-cc665076, F-2116eae0, F-d3132a7f, F-15cf1278, F-98c2c4c9. These are not requirement issues; they are guard/tool code bugs, and any agent working here hits them.
+
+But wait — the owner's hypothesis says "except those project requirement issues". Maybe they mean the requirements docs (SPEC, R12.3) are project-level; the rest are about agent behavior. The project-level class I identify includes guard/tool code. Are those "requirement issues"? No — F-8392b4ce is a bug in hooks.ts; F-682702da is a bug in export_skills.py. So the hypothesis is broken.
+
+Yet there's a subtlety: could the owner argue the *lesson* from F-8392b4ce is agent-type (a check using session as task boundary is a general mistake in check design)? Yes. So the "level" depends on what you extract. This is the crux: **the recorded insight has no level; it has a fix location (Source) and a cause. Level is assigned when you write the lesson.** The owner's hypothesis is true for a *transferable lesson* reading of most insights, false for a *root-cause location* reading. I should say this clearly.
+
+2. Program sorting: **No, not reliably from the fields it has.** Quick yes, reliable no. Show why: Source has 4 values, all 4 cross levels; no field says who must learn. I can demonstrate with a rule and errors. What it would need to record: (a) the "who must learn" field — in the record's own words, e.g. "any agent in this repo" / "any agent of kind X anywhere" / "only this task"; (b) the trigger condition ("when a test runner appears anywhere in a chain"), stated as a reusable condition rather than a one-off story; (c) the lesson in one sentence, separate from the fix (Source = fix location); (d) the scope test: what would have to differ for the failure to disappear (agent kind / repo / task). Or perhaps: (e) two fields: "fix location" (already Source) and "learning scope" (new). 
+
+Which of the 56 would the best simple program get wrong? I need a concrete rule. Let me design the best rule a program could use from available fields:
+
+Rule R: 
+- If Source = tool or check → project-level.
+- If Source = config → project-level.
+- If Source = instruction:
+  - If root cause names a specific artifact of this task (a spec, criterion, brief, file path in `runs/...`) → task-level.
+  - Else → agent-type.
+
+Let's evaluate against my labels. This will misclassify:
+- Source=tool but agent-type: F-e69dfb66 (mcode connection limit — agent-type), F-485505f6 (same), F-60cad515? (four_experts.py — project tool, so project okay), F-173e0190 (four_experts.py — project), F-5c21dd69 (TypeScript inference in project code — project), F-59498b2a (project test tooling — project), F-08cf4cc3 (hand-run engine calls no result check — project/agent-type? the fix is the workflow's engine-call wrapper; project tooling), F-3b8bdcec (quota check per engine — project tooling/agent-type), F-785afc27 (project guard record), F-682702da (project).
+- Source=check but agent-type: F-0f2fa841 (testing practice), F-21e1586c (testing practice), F-15cf1278/F-98c2c4c9 (project guard check — project, okay), F-d3132a7f (project), F-2116eae0 (project), F-cc665076 (project), F-8392b4ce (project), F-f09b058d (project), F-8712e9fc (project), F-969500fa (project), F-bdea5631 (project), F-7f938bdf (project check — project). Hmm F-0f2fa841's Source is check — "my test's planted input, unverified" — that's agent-type testing practice, but Source=check means the fix goes in the test. The rule would call it project, wrong.
+- Source=instruction but project-level: F-c60edad6 (researcher contract vs harness — project agent definition), F-5182be9b (export step not written where the guard is edited — project workflow), F-d8a49e5a (R13 section added structure — project requirement doc + skill), F-90389583 (health script spec — project code), F-b7c8635f (guard SPEC field types — project), F-2cdebf3b (guard SPEC — project), F-cf3f3a6e (round-5 spec — task? It's a specific round spec → task-level, probably task), F-4981093a (memory rule — agent-type).
+- Source=instruction but task-level: F-4cbb2f4b, F-05a1b440, F-cf3f3a6e, F-cf7d58f7, F-336edcb0, F-e82a6f58 (path inferred habit — agent-type?), F-1b6f6a0f (task), F-d1444d01 (agent-type), F-1e90a8e1 (agent-type), F-a03fa5b3 (agent-type), F-8243a18f (agent-type/task), F-a2551f81 (agent-type), F-3caba088 (agent-type), F-b696193d (agent-type), F-f44538b2 (agent-type), F-8ac06aae (agent-type), F-a2551f81, F-84636a96 (agent-type), F-d8a49e5a.
+
+The rule's error count depends on labels; probably 12–18 wrong out of 56. That's "quick", not "reliable".
+
+Actually, maybe a simpler and more honest demonstration: apply "Source → level" mapping and count with my labels. Let me do this in a script once I fix labels. I'll create a labels file (scratch, in /tmp? The brief says don't write files — "Do not write files; your final message is the answer." Hmm. It says do not write files. I can still compute in a heredoc without writing. I'll keep data in the script itself.)
+
+Wait — "Do not write files; your final message is the answer." I'll avoid writing files. I can compute in-memory via python heredoc.
+
+Let me now make my labels. I need a consistent scheme. Let me define levels with a tie-break rule and apply. Because the whole point is that a single label is ill-defined, I can present the labels as "my reading" and note the mixed cases explicitly. But for the program-error demonstration I need one label each. Let me label each with the level of the *lesson that would prevent the failure* — the reusable thing to learn.
+
+Criterion: **What is the smallest set of agents that must learn this lesson for the failure not to recur?**
+- If the lesson is "in this task, don't do X here" → Task.
+- If the lesson is "in this repo, the tool/check/test must do Y" → Project.
+- If the lesson is "an agent of this kind should do Y anywhere" → Agent-type.
+
+Tie-break: if both project and agent-type apply, choose the one whose change would prevent *this* failure with the least change (the proximate cause). Hmm, that becomes fix location again. Let me instead choose "the level at which the lesson is *stated* in the insight" — i.e. the root cause line's subject:
+- root cause subject is a repo artifact → Project.
+- root cause subject is an agent habit/limit → Agent-type.
+- root cause subject is a one-off artifact (this spec, this brief, this criterion, this file) → Task.
+
+Examples:
+- F-60cad515: root cause subject = four_experts.py (repo tool) + my command shape (habit). Two causes; primary? The tool bug (project) and the habit (agent-type). I'll label Project (tool named first) and note mixed. Hmm, maybe better to label "Project" because the fix options likely include the tool.
+- F-cf3f3a6e: subject = the spec for a parallel build (one-off round-5 spec) → Task.
+- F-1b6f6a0f: subject = an exploratory check (one command) → Task.
+- F-f09b058d: subject = result check / SPEC M5 → Project.
+- F-8712e9fc: subject = export test / shared working tree → Project.
+- F-1e90a8e1: subject = command habit → Agent-type.
+- F-785afc27: subject = guard's D2 record → Project.
+- F-08cf4cc3: subject = hand-run engine calls (the workflow's practice) → Project? It's about how the run invoked Codex. "no result-file check" is a project workflow gap. But an agent working in another project could make the same mistake; the lesson is agent-type. Hmm. The subject is "hand-run engine calls" — a practice, not a repo artifact. I'd call Agent-type (a practice that follows the agent). But the fix location is `four_experts.py` (tool). The Source is check. Ugh.
+- F-f44538b2: subject = no rule against editing a running script → Agent-type (instruction rule).
+- F-cf7d58f7: subject = the brief put progress at the end → Task (this brief) with agent-type lesson (brief design).
+- F-3b8bdcec: subject = no quota estimate per engine before a build → Agent-type? It's a missing check in the run's process. Could be project tooling. I'd call Agent-type (a practice for multi-node builds).
+- F-e82a6f58: subject = path inferred from naming pattern → Agent-type.
+- F-2cc835e3: subject = four_experts.py no readiness check + brief lets script change → Project (tool) + agent-type. Primary Project.
+- F-15cf1278: subject = guard's test-run check → Project.
+- F-98c2c4c9: same → Project.
+- F-4981093a: subject = memory rule with no check + habit → Agent-type.
+- F-e69dfb66: subject = mcode connection → Agent-type (engine limit).
+- F-485505f6: same → Agent-type.
+- F-5182be9b: subject = export step written only in memory, not where guard edited → Project (project workflow/instruction placement) or Agent-type (instruction design). The subject is the project's export step → Project.
+- F-749688a0: subject = pre-commit hook → Project (git hook in repo).
+- F-0f2fa841: subject = planted input unverified (test practice) → Agent-type.
+- F-8243a18f: subject = criteria I write by hand, no standard wording → Agent-type.
+- F-d1444d01: subject = heredoc escaping habit → Agent-type.
+- F-d3132a7f: subject = guard's judgment of a run it didn't start → Project.
+- F-a2551f81: subject = test expectations written from contract, not existing tests → Agent-type.
+- F-21e1586c: subject = plant not checked to be its own; placed by position → Agent-type.
+- F-d8221199: subject = test of committed export reads uncommitted state → Project.
+- F-336edcb0: subject = my criteria writing, no rule → Agent-type? "a criterion that depends on something after the task" — that's a design rule for criteria; follows agent type. But it's about this task's criterion C3. Hmm. The root cause is "a criterion that depends on something after the task" — a general criteria-writing error → Agent-type.
+- F-59498b2a: subject = per-task mutant script + shared test path → Project (test infra).
+- F-cc665076: subject = Round 13's N3 check → Project.
+- F-2116eae0: subject = expect-fail tool → Project.
+- F-8392b4ce: subject = late-criteria check → Project.
+- F-4cbb2f4b: subject = the spec's H4 list (one-off spec) → Task.
+- F-05a1b440: subject = this spec H1/H5 → Task.
+- F-90389583: subject = spec's H5 (one-off spec) → Task? But it's about the health script writing under HOME, and the check was only in a HOME where cache existed. The cause is a one-off spec + test environment. Task. Hmm, but "writes no file promise checked only in a HOME where cache existed" is a testing lesson (agent-type). The subject is the spec's H5 → Task.
+- F-b7c8635f: subject = spec H5 and guard SPEC field types → Task (this spec) + project requirement. I'd say Task (one-off spec) with project lesson. Hmm, but this one recurred (F-2cdebf3b, F-d0736dc7) — a repeat indicates it's not task-level. Repeat is evidence of a level above task: if it recurs across tasks, it's project or agent-type. Good criterion! Level can be inferred from recurrence. F-b7c8635f repeated → the lesson is project-level (guard SPEC contract) or agent-type (write payload contracts with types). The insight itself says "one cause with F-2cdebf3b" and F-2cdebf3b says "one cause with F-b7c8635f" — so the record itself links them. That's project-level (guard SPEC Round 7/H5) and agent-type (spec writing). I'll label Project (the guard SPEC is the artifact) and note the agent-type lesson.
+- F-76013d09: subject = Codex sandbox config → Project (config).
+- F-c60edad6: subject = researcher.md + method 3.8 item 9 vs harness → Project (this repo's agent contract).
+- F-969500fa: subject = guard's test-run detection → Project.
+- F-2cdebf3b/F-d0736dc7: subject = guard SPEC Round 7 and spec H5 → Project.
+- F-0a1f3ca1: subject = Codex sandbox + review brief → Project (config).
+- F-682702da: subject = export tool → Project.
+- F-c055f734: subject = way of reading test output (filter) + check's rule → Agent-type? "a fail-first run read through a filter that did not show the failing case" — testing practice → Agent-type.
+- F-d8a49e5a: subject = requirement-check skill's own rule not applied → Agent-type.
+- F-3e11ce16: subject = guard's command-error check → Project.
+- F-86553997: subject = journal.ts duplicate list → Project.
+- F-5c21dd69: subject = TypeScript inference of ?? [] → Project (project code) but general TS lesson → Agent-type. The subject is the project's new file. Project.
+- F-7f938bdf: subject = nothing checks paths before opencode reads → Project (check).
+- F-b696193d: subject = my habit of running only tests just written → Agent-type.
+- F-8ac06aae: subject = my choice of two & subshells → Agent-type.
+- F-173e0190: subject = four_experts.py command() → Project.
+- F-84636a96: subject = engine normalized variant char → Agent-type (engine behavior) — or project skill's exact-match check? The root cause says the check is right; the engine normalized → Agent-type.
+- F-a03fa5b3: subject = my way of producing a time value → Agent-type.
+- F-3caba088: subject = my habit of parsing assumed shape → Agent-type.
+- F-bdea5631: subject = guard's D1 test-run detection → Project.
+- F-54 (Review finding 1): subject = my not listing early returns when routing cases → Agent-type (code-change habit).
+
+Counting:
+Project: 1? (mixed), 4,5,7,8?, 13, 19, 20, 24, 27, 29, 30, 31, 32, 35?, 36, 37, 38, 39, 40, 41, 42, 45, 46, 47, 48, 51, 56... let me count properly later with the script.
+Agent-type: 6,9,11,12,16,17,18,21,22,23,25,26,28,34? (task), 43,44,49,50,52,53,54,55...
+Task: 2,3,10,33,34,35...
+
+The counts: roughly Project ~24, Agent-type ~22, Task ~10. That would strongly break the hypothesis: project-level (non-requirement) is the largest single class under my root-cause-subject reading.
+
+Hmm, but is that too strong? Let me reconsider: the owner's category "project level" is defined as "about this project's code, tools or conventions; any agent working here could hit it". Under that definition, yes, all the guard/tool/test insights are project-level. The count is high. But the owner's *hypothesis* is that there is essentially no such thing except requirements — which is clearly false: the project's referee code is a real artifact full of bugs. Unless the owner means "project level insight = a requirement/design principle of the product", in which case they're using "project level" to mean "product vision/requirements", not "repo code". The brief says the two levels discussed are project (code/tools/conventions) and agent-type. So no.
+
+So the plain answer to Q1: **No, the owner is not correct as stated.** There is a real project-level class that is not requirement issues: insights whose cause is in this repo's guard code, export tool, project tests, or config. Cite F-8392b4ce, F-969500fa, F-bdea5631, F-3e11ce16, F-682702da, F-f09b058d, F-8712e9fc, F-cc665076, F-2116eae0, F-d3132a7f, F-15cf1278/F-98c2c4c9. Also cite what supports the owner: F-1e90a8e1, F-3caba088, F-a03fa5b3, F-d1444d01, F-b696193d, F-8ac06aae, F-84636a96 are agent-type; F-4cbb2f4b, F-05a1b440, F-cf3f3a6e, F-cf7d58f7, F-1b6f6a0f are task-level.
+
+But I should also honor the owner's intuition: the deeper truth in the hypothesis is that the *transferable lesson* of most insights is not project-specific. E.g. F-8392b4ce's specific bug is project-level, but the lesson "a check that uses the session as the task boundary will misfire" is an agent-type/check-design lesson. So the hypothesis is right about the *learning*, wrong about the *record*. And that's exactly why a one-field sorter fails: the same insight has a project-level fix and an agent-type lesson.
+
+This gives a nuanced, data-grounded answer that respects both.
+
+Also, "task level" — the owner's third level. My reading: task-level means the cause is a one-off artifact of this run (this brief, this spec, this criterion, this command), so the lesson dies with the task; it should stay in the run folder. Examples: F-4cbb2f4b, F-05a1b440, F-cf3f3a6e, F-cf7d58f7, F-1b6f6a0f, F-336edcb0? (criteria writing is agent-type), F-90389583 (spec H5 task). Also F-60cad515? mixed.
+
+Now Q2: the program.
+
+What would a quick program use? The available fields: run id, heading, source line, root-cause line, plus the guard's engine field (who failed). The question asks "from which fields, by what rule". I can evaluate several candidate rules:
+
+Rule 1 (Source → level): tool/check/config → Project; instruction → Task or Agent-type. Errors: many.
+
+Rule 2 (engine → level): none/claude → Agent-type? No — the engine field names who failed, not who should learn (the brief says this explicitly with F-7f938bdf). So engine is useless.
+
+Rule 3 (text keywords): if root cause contains a repo path or a tool name (guard, SPEC, export, hooks.ts, four_experts.py) → Project; if contains "my habit"/"my command"/"my choice"/"I typed"/"I parsed" → Agent-type; if contains "this spec"/"this criterion"/"this brief" → Task. This could be better but still error-prone.
+
+I could actually codify Rule 3 and report its exact errors against my labels. That's the most rigorous. But writing a keyword rule is arbitrary; my reported error list could be gamed by tuning. I should present it as one honest attempt, not "the best possible". The question asks "Can a program sort ... quickly and reliably? If yes: ... which of the 56 it would get wrong. If no: what the insight would have to record." The expected answer is probably "no, not reliably; the fields don't contain the level." But the question explicitly asks "which of the 56 it would get wrong", suggesting they expect a concrete attempt. I can do both: give the best simple rule, name its errors (with ids), and conclude no.
+
+Let me actually build and test a rule. I'll define labels and a keyword classifier, then list mismatches. Let me do this in Python. I'll include my labels in the script. But first, let me re-read each insight's source/root cause carefully to label consistently. I have them above. Let me write them out as data.
+
+Actually, maybe I should use a cleaner signal than my subjective labels: the question itself gives a definition of project-level ("about this project's code, tools or conventions; any agent working here could hit it"). A program could detect project-level by whether the root cause names a repo artifact. The errors would then be the ones where the text names a repo artifact but the lesson is agent-type (F-0f2fa841? no, it names "my test's planted input" not repo artifact; F-21e1586c "the plant was placed by position in the file" no artifact name). Hmm.
+
+Let me build the table. I'll assign labels with a short rationale each, then run three rules:
+A. Source mapping.
+B. Keyword on root cause (artifact names / habit phrases).
+C. "engine = none → agent-type" (to show why engine is a trap).
+
+Let me write the script with all 56 entries: index, id(s), source kind, root cause text (I have it), my label, and rule inputs. Then compute.
+
+I need to be careful to keep the final answer readable — not dump a 56-row table necessarily. The brief asks: "which of the 56 it would get wrong" — so I must name them. I can list ids grouped.
+
+Let me now write the labeling. I'll be explicit: label = "the smallest learner". Let me go one by one with reasons:
+
+1. F-60cad515 — source tool. RC: four_experts.py collapses error into "empty answer"; my `run …; tail` call discarded exit. Two causes: project tool + agent habit. Smallest learner? To prevent this instance: fix the tool to surface errors (project). The command habit is also agent-type. I'll label **Project** (primary: the tool's error handling) and note mixed.
+2. F-cf3f3a6e — instruction (round-5 spec). RC: the spec named new behaviour but not older assertions/one field. → **Task** (one-off spec).
+3. F-1b6f6a0f — instruction. RC: exploratory check without guard's location rule. → **Task** (one command).
+4. F-f09b058d — check. RC: result check unexpandable path; gap in SPEC M5 and tests. → **Project**.
+5. F-8712e9fc — check. RC: shared working tree; export test can't tell sessions. → **Project**.
+6. F-1e90a8e1 — instruction. RC: a command whose success gates next step was piped; no rule forbids. → **Agent-type** (main agent's command habit).
+7. F-785afc27 — tool. RC: command-error record too little; command word may not be failing segment. → **Project**.
+8. F-08cf4cc3 — check. RC: hand-run engine calls had no result-file check; last exit stood for success. → **Project**? The practice is in the run, not the repo artifact. But "hand-run engine calls" is the project's workflow. The fix would be a check in the tool. Hmm. I'll call **Project** (workflow/tooling) — but note it's a practice lesson that could be agent-type. Actually, to be fair: the learner is "whoever runs engines by hand", which is any agent using the six-experts pattern anywhere. That's agent-type. The Source is check because the fix is a result-file check. I'll label **Agent-type**? 
+
+Hmm. I need to stop waffling. Let me set a principled tie-break: **the level of the reusable lesson stated in the root cause** — i.e. strip the one-off names; what is the general rule? 
+- F-08cf4cc3 → "an engine call must be checked by its result file, not by the last command's exit." That is a rule for any agent running engines anywhere → Agent-type. But the fix is a project check. The insight is testing/agent practice.
+- F-3b8bdcec → "estimate/check engine quota before a multi-node build" → Agent-type.
+- F-2cc835e3 → "runner has no canary step" → Project (four_experts.py) + agent-type (canary with brief-sized input). Root cause names the runner → Project.
+- F-e69dfb66 → "an engine proved only with a tiny canary, used for brief-sized input" → Agent-type (testing practice).
+- F-485505f6 → same engine limit → Agent-type.
+- F-60cad515 → "a tool that collapses errors into empty answer" → Project (the tool). Agent habit secondary. Project.
+- F-15cf1278/F-98c2c4c9 → "the guard's test-run check cannot tell planned red from broken" → Project.
+  
+This "general rule" test is basically asking: is the lesson about a repo artifact or about agent behavior? I'll use it. It means Source=tool/check often yields Agent-type when the lesson is a practice; Source=instruction often yields Project when the lesson is about the repo's docs. That's exactly the point that Source doesn't predict level.
+
+Let me redo all 56 with this "general rule" reading and record also whether the fix is project-side. Actually, for the final answer I don't need to publish all 56 labels, only enough to show the split and the errors. But for counting, I'll do it.
+
+Let me write out labels:
+
+1 F-60cad515 Project (tool collapses errors)
+2 F-cf3f3a6e Task (this spec)
+3 F-1b6f6a0f Task (this command)
+4 F-f09b058d Project (guard result check / SPEC M5)
+5 F-8712e9fc Project (export test isolation)
+6 F-1e90a8e1 Agent (pipe habit)
+7 F-785afc27 Project (guard record)
+8 F-08cf4cc3 Agent (engine call check practice) — mixed, source check
+9 F-f44538b2 Agent (rule needed: don't edit running script)
+10 F-cf7d58f7 Task (this brief's progress placement)
+11 F-3b8bdcec Agent (quota check practice)
+12 F-e82a6f58 Agent (path inference habit)
+13 F-2cc835e3 Project (runner no canary)
+14 F-15cf1278 Project (guard test-run check)
+15 F-98c2c4c9 Project (same)
+16 F-4981093a Agent (rule only in memory, no check at read)
+17 F-e69dfb66 Agent (mcode limit / canary sizing)
+18 F-485505f6 Agent (same)
+19 F-5182be9b Project (export step placement) — could be Agent-type instruction design; root cause names project export step. Project.
+20 F-749688a0 Project (pre-commit hook)
+21 F-0f2fa841 Agent (plant must be shown to fail)
+22 F-8243a18f Agent (criteria wording practice)
+23 F-d1444d01 Agent (heredoc habit)
+24 F-d3132a7f Project (guard can't judge run it didn't start)
+25 F-a2551f81 Agent (read existing tests before expecting)
+26 F-21e1586c Agent (plant identity checked)
+27 F-d8221199 Project (test reads uncommitted state)
+28 F-336edcb0 Agent (criteria design)
+29 F-59498b2a Project (shared temp path/test infra)
+30 F-cc665076 Project (guard N3)
+31 F-2116eae0 Project (expect-fail tool)
+32 F-8392b4ce Project (guard late-criteria)
+33 F-4cbb2f4b Task (this spec H4)
+34 F-05a1b440 Task (this spec H1/H5)
+35 F-90389583 Task (this spec H5) — or Project (health script writes HOME). The root cause: "'writes no file' promise checked only in a HOME where the runtime's cache already existed" → testing practice (Agent-type) + this spec (Task). Hmm. I'll say Task (this spec's promise) with agent-type test lesson. Actually the reusable lesson "check a no-write promise in a clean HOME" is agent-type. Ugh. Label Task? The smallest learner: whoever writes this spec. But the test-side lesson is agent-type. I'll label Task and note mixed.
+36 F-b7c8635f Project (guard SPEC field types)
+37 F-76013d09 Project (Codex sandbox config)
+38 F-c60edad6 Project (researcher.md contract)
+39 F-969500fa Project (guard test-run detection)
+40 F-2cdebf3b Project (guard SPEC payload contract)
+41 F-0a1f3ca1 Project (Codex sandbox)
+42 F-682702da Project (export tool)
+43 F-c055f734 Agent (read failing case through filter)
+44 F-d8a49e5a Agent (apply requirement-check to own text)
+45 F-3e11ce16 Project (guard command-error check)
+46 F-86553997 Project (journal.ts duplicate list)
+47 F-5c21dd69 Project (insight-index.ts type) — general TS lesson but project code. Project.
+48 F-7f938bdf Project (pre-flight path check)
+49 F-b696193d Agent (run all tests after signature change)
+50 F-8ac06aae Agent (background call shape)
+51 F-173e0190 Project (four_experts.py flag order)
+52 F-84636a96 Agent (engine normalizes variant char)
+53 F-a03fa5b3 Agent (typed epoch from memory)
+54 F-54 (review finding 1) Agent (list early returns when routing cases)
+55 F-3caba088 Agent (print keys before parse)
+56 F-bdea5631 Project (guard D1)
+
+Counts:
+Project: 1,4,5,7,13,14,15,19,20,24,27,29,30,31,32,36,37,38,39,40,41,42,45,46,47,48,51,56 = let me count: 1,4,5,7 (4), 13,14,15 (7), 19,20 (9), 24,27 (11), 29,30,31,32 (15), 36,37,38,39,40,41,42 (22), 45,46,47,48 (26), 51 (27), 56 (28). So 28 Project.
+Agent: 6,8,9,11,12,16,17,18,21,22,23,25,26,28,43,44,49,50,52,53,54,55 = count: 6,8,9,11,12 (5), 16,17,18 (8), 21,22,23 (11), 25,26,28 (14), 43,44 (16), 49,50 (18), 52,53,54,55 (22). So 22 Agent.
+Task: 2,3,10,33,34,35 = 6 Task.
+Total 28+22+6 = 56. 
+
+Hmm, only 6 task-level. That seems low — the owner's "task level" category would be tiny. Is that right? Let's see: many instruction insights are agent-type because the lesson is a habit. Task-level only when the cause is a one-off artifact. Plausible. But maybe some I labeled Agent are actually Task: F-336edcb0 (this criterion C3) — I labeled Agent because "criteria writing" is a reusable design lesson. Fine.
+
+So the data says: project-level ≈ 28/56, agent-type ≈ 22/56, task ≈ 6/56. That's a strong, concrete answer: **half the insights are project-level, and only 6 are task-level.** The owner's hypothesis is not just slightly wrong; it inverts the largest bucket. But I should caution: this split is my reading, one label per insight, and 10+ are genuinely mixed. Let me identify the mixed ones to be honest: 1, 8, 13, 35, 36, 40, 44, 47, 54... Actually many. I should say "at least X are mixed; my label takes the reusable lesson, not the fix location."
+
+Wait. Is 28 project-level credible when the owner explicitly said "except those project requirement issues"? Maybe the owner would call all 28 "project requirement issues" loosely? No — guard code bugs aren't requirements. But the owner might say "the guard is this project's code, so of course those are project-level; I meant apart from those". Hmm, the hypothesis says "is there even a project level insight, except those project requirement issues". Maybe "project requirement issues" = requirements of the project (the guard rules, the specs). The guard's implementation bugs are arguably "project requirement issues" (the guard's contract/SPEC). E.g. F-8392b4ce is a mismatch between SPEC K2 and code. F-f09b058d is a gap in SPEC M5. F-b7c8635f is a gap in guard SPEC Round 7. Those are requirement issues! Hmm.
+
+I need to be careful: "project requirement issues" might refer to requirements documents (docs/HARNESS_REQUIREMENTS.md, SPEC.md). The owner's hypothesis: insights that trace to a requirement are project-level; everything else is task or agent-type. Under that reading, guard bugs that are SPEC gaps are "project requirement issues" — supporting the owner. But guard bugs that are implementation bugs, not spec gaps, are not. E.g. F-86553997 (duplicate record-kind list in journal.ts) is an implementation bug, not a requirement issue. F-3e11ce16 (command-error check doesn't know guard's exit codes) is an implementation flaw. F-969500fa (test-run detection reads only exit) is a check design flaw. F-682702da (export treats skill as one file) is an implementation bug. F-2116eae0 (expect-fail path restriction) is a tool design choice. F-8712e9fc (test can't tell session's changes) is test design. F-d8221199 (test reads uncommitted state) is test design. These are project-level and not requirement issues. So the hypothesis still breaks, with these as the breaking evidence. Good — I should choose the strongest breaking examples that are clearly not "requirement issues": F-86553997, F-3e11ce16, F-969500fa, F-bdea5631, F-682702da, F-2116eae0, F-d3132a7f, F-8712e9fc, F-d8221199, F-7f938bdf (a missing check, not a requirement), F-cc665076 (N3's gap — arguably a check requirement), F-24 (guard judgment).
+
+Also, the project's *tests* are code, and test-design insights are exactly "code insights and testing insights" the owner values. Many test-design insights are project-level (F-8712e9fc, F-d8221199, F-59498b2a, F-21e1586c? no agent). If they insist no project-level except requirements, they'd have to file those as agent-type, where they'd be noise for other projects (export test isolation is specific to this repo's exporter).
+
+So my answer: No, there is a genuine project-level class that is neither task- nor agent-type; it is the project's code and test infrastructure. But the owner's intuition is half-right: most *instruction-sourced* insights are agent-type, and level is not determined by Source. And the "project requirement issue" label is too narrow: project-level includes code/tool/test/config defects that are not requirement gaps.
+
+Now Q2. A program sorting. Let me test candidate rules against my labels.
+
+Available fields per insight: run id, heading, Source category (4 values), root-cause text, engine field (guard journal, 52 records; some insights lack it, e.g. the review finding). A program could parse the root-cause text. Fast: yes, trivially. Reliable: no, because:
+- Source has 4 values, each spanning levels. Show the cross-tab: instruction → Task/Agent/Project; check → Project/Agent; tool → Project/Agent; config → Project.
+- The root-cause text names concrete artifacts sometimes ("guard/src/hooks.ts", "export_skills.py", "four_experts.py", "SPEC M5", "R13") and sometimes a habit ("my habit of ..."). A keyword rule could get maybe 40/56 right, but the ambiguous ones are exactly the mixed ones.
+- The engine field is a trap: "none" (37) is the main agent (claude-code), and most agent-type insights are "none"; but 28 project-level insights also mostly have engine "none" because the main agent hit the project bug. So engine can't separate level (the brief already says the field names who failed, not who should learn; F-7f938bdf is the example).
+
+Let me quantify a keyword rule. Design Rule K:
+- If RC mentions a repo artifact path/name (guard, hooks.ts, journal.ts, export_skills.py, four_experts.py, SPEC, R13, pre-commit hook, runner, insight-index.ts, sandbox, researcher.md, memory rule?) → Project.
+- Else if RC mentions "my"/"I" habit words (my habit, my command, my choice, my way, I typed, I parsed, a copied expression?) → Agent.
+- Else if RC mentions "this spec"/"this criterion"/"the spec"/"brief" → Task.
+Order matters. Let me actually implement with regex and see mismatches. But the rule's exact performance depends on regex, which I'd be tuning. To stay honest, I'll describe the rule in words and report the mismatches I find, saying "a keyword rule of this shape". Maybe I can compute it and give the actual count; that's more credible. Let me try.
+
+Actually, a cleaner and less arbitrary way: **use only fields that exist**, and test the mapping that the Source field suggests. The answer to "from which fields, by what rule" is: from Source, the only candidate field that looks like a level; rule "tool/check/config → project, instruction → task/agent". Then list which it gets wrong. That's a natural quick program, and its errors are the evidence that the field can't do it. I can also test "root cause keyword" and "engine" briefly.
+
+Let me compute the Source rule errors against my labels:
+Source=tool → predict Project: entries 1 (Project ✓), 7 (Project ✓), 17 (Agent ✗), 18 (Agent ✗), 42 (Project ✓), 46 (Project ✓), 51 (Project ✓), 48? no that's check. Also 5? no. Let me get all source=tool entries: 1,7,17,18,42,46,51. Also F-60cad515 (1). F-3b8bdcec is check. F-e69dfb66 (17) tool, F-485505f6 (18) tool, F-682702da (42) tool, F-86553997 (46) tool, F-173e0190 (51) tool. F-2cdebf3b (40) instruction. So tool → Project: 5 right, 2 wrong (17,18).
+Source=config → predict Project: 37 (Project ✓), 41 (Project ✓). 2/2.
+Source=check → predict Project: entries 4,5,8,13,14,15,21,24,26,27,30,31,39,43,45,48,55?,56? Let me list check sources: 4,5,8,13,14,15,21,24,26,27,30,31,39,43,45,48,56. And 55? F-3caba088 source instruction. 54? unknown, no source line? Let me check section 54. From the file: line 164-166:
+- **20261017-round17-crossed** — Review finding 1 — Round 17 made a real test failure disappear
+  - Source: instruction — when a change sends new cases into an existing path, I do not list that path's early returns
+  - Root cause: ...
+So 54 Source=instruction.
+Check entries: 4(P ✓),5(P ✓),8(A ✗),13(P ✓),14(P ✓),15(P ✓),21(A ✗),24(P ✓),26(A ✗),27(P ✓),30(P ✓),31(P ✓),39(P ✓),43(A ✗),45(P ✓),48(P ✓),56(P ✓). Also 38? F-c60edad6 source instruction. 47? F-5c21dd69 source tool? Let me recheck: line 143-145: "Source: tool — TypeScript's inference..." → tool. So 47 tool → Project ✓ (my label Project). Add to tool list: 47 ✓. So tool: 1,7,17,18,42,46,47,51 = 8, with 2 wrong.
+Check: 17 entries, 4 wrong (8,21,26,43).
+Source=instruction → predict Task or Agent (say: if RC names this task's artifact → Task else Agent). Entries: 2,3,6,9,10,11,12,16,19,20,22,23,25,28,32,33,34,35,36,38,40,44,49,50,52,53,54. That's 27. My labels: 2 T,3 T,6 A,9 A,10 T,11 A,12 A,16 A,19 P,20 P,22 A,23 A,25 A,28 A,32 P,33 T,34 T,35 T,36 P,38 P,40 P,44 A,49 A,50 A,52 A,53 A,54 A. Wrong: 19,20,32,36,38,40 = 6 project-level labeled wrong. Also Task/Agent split: 2,3,10,33,34,35 = 6 Task; the rest 21 Agent. If the rule predicts Task when RC says "this spec/criterion/brief", it'd get some right. But the main point: 6 project-level instruction insights misclassified.
+
+Total errors for Source rule (with a perfect instruction sub-rule): 2+0+4+6 = 12/56. That's ~79% accuracy. "Quick but not reliable." And that assumes a perfect sub-rule for instruction, which a program doesn't have. A purely mechanical Source rule (instruction → Agent unless "spec" in RC → Task) would be worse.
+
+But wait: the Source rule would be *exactly* the kind of thing the owner is asking about: "are we able to fast eval using programming it is an AI Agent programming issue or a project level one". The answer: the one field that looks right (Source) is defined as "where the fix goes, not who learns it" (the brief says this), so it gets at least 12/56 wrong. And 12 errors include exactly the insights the owner cares about.
+
+Hmm, but my labels are my reading; the 12 errors are relative to them. I must say that. The *structural* argument doesn't depend on my labels: Source is a 4-value field about fix location, and the same value spans levels (e.g. Source=check includes a guard-code bug and a testing habit). That's provable by example without counting: F-8392b4ce (check, project) vs F-0f2fa841 (check, agent-type). Even if someone disputes my labels, they'd have to argue one of the pair.
+
+Let me also test the "engine" rule as a caution: engine=none (main agent) covers both project bugs (F-8392b4ce, F-969500fa) and agent habits (F-1e90a8e1, F-3caba088), because the main agent is the one who trips both. So no.
+
+What would the insight have to record? This is a design recommendation, and I should map it to Sun Tzu rules. Requirements:
+(a) **The learner, named**: one field, "who must learn" with three allowed values (task / project / agent-type) — and for agent-type, which kinds. But who fills it? The insight writer (the agent). Is that reliable? It's a judgment, but at least it's explicit and checkable. The brief's pattern says "every artifact has one maker". The insight writer writes it; the owner can override. This is a decision the agent makes at write time, which is exactly the "decide before you commit" rule (#1): count the level when the insight is made, not after with a program.
+(b) **The trigger stated as a condition**, not a story: "when X, then Y" — so that a later agent can match its situation. E.g. F-bdea5631: "if a test runner appears anywhere in a command chain, the chain's final exit is not the runner's result." This is the "form" that can be recognized (#10: shape victory by the enemy; here shape the lesson by the situation).
+(c) **The two fields separated**: `fix at:` (the Source, already there) and `learned by:` (the level). The current record has only the first.
+(d) **A scope test the writer can run**: "would this failure still happen if only the agent kind changed?" / "if only the task changed?" / "if only the repo changed?" Three counterfactuals. This is rule #4 (know the other and yourself) at the level of the insight: know what the failure depends on. Actually rule #1's five matters / seven comparisons is about counting before committing; the counterfactual test is more like #10 (respond to form) or my reading. I can use #4: three questions distinguish the levels — what would have to change for the failure to disappear (the agent kind, the repo, or the task). That's a clean "know the ground" test.
+
+Also, the insight should record **the repeat count / evidence of recurrence**: a task-level lesson that recurs becomes project- or agent-level. The data shows this: F-15cf1278 and F-98c2c4c9 are the same cause twice (the second is "its first repeat"), and F-b7c8635f/F-2cdebf3b/F-d0736dc7 link as one cause, and F-5182be9b/F-1d185ee3 are two failures of the same order. Recurrence is the empirical signal that a lesson is above task level. Sun Tzu #1: more reckoning wins; the count of repeats is data. So the program doesn't need to guess the level; it needs the record to carry the recurrence and the named learner.
+
+But I should be careful: a program could then sort *if* the record has the learner field. The answer to Q2 becomes conditional: "Not from what it records today. If the insight recorded (i) the learner, (ii) the trigger condition, (iii) the recurrence link, then yes — the sort is a lookup, not an inference." That fits the brief's "if yes... if no..." and gives a constructive answer.
+
+Also, the owner's phrase "fast eval using programming" suggests they want a quick eval. I can propose a cheap two-question decision tree that a program can enforce, and that a human can check:
+1. Does the root cause name a repo artifact (file/tool/config) as the thing to change? → Project (fix at project). But this conflates fix and level...
+Better:
+1. Would the same failure happen to a *different kind of agent* doing the *same task*? If no → Agent-type.
+2. Would it happen to the *same agent* doing a *different task* in this repo? If yes → Project.
+3. Otherwise → Task.
+This is the counterfactual test. It's not fully mechanical (requires imagining), but the insight writer can answer it and a program can store the answers. And it's checkable: each answer can cite the artifact/habit.
+
+Actually, the order matters: ask "different agent kind, same task" first, then "same agent, different task in repo". This maps to the two discussed levels. Good.
+
+Now, Sun Tzu rules to use. I need to decide "through my rules" with each step citing "my #n". Let me choose the most apt:
+
+- **#1 Reckon before battle** — count before committing; the five matters and seven comparisons. Use: count the 56 by cause before deciding the filing rule. The "more reckoning wins, fewer does not" — do the count, don't decide from the feeling in the hypothesis. Also "the ground gives measurement, measurement gives quantity, quantity gives number, number gives weighing, weighing gives victory" — a chain from the data to the decision. This is the backbone of step 1: count the 56, then decide.
+- **#4 Know whether you can fight; know the other and yourself** — the counterfactual test: know what the failure depends on (agent kind / repo / task); half-victory if you know one side only. Use for the level test and for "a sorter that knows only Source knows one side".
+- **#2 Make yourself unbeatable first** — for a filing rule: make the record carry the level at write time (the insight writer's own side), rather than waiting for a later program to infer it (the enemy's side). "Being unbeatable is in your own hands; being beatable is in the enemy's." A sorter is trying to make the enemy (the text) certain to be classifiable; it can't. Put the work on your own side: record it. This is a great fit for Q2.
+- **#10 Avoid the solid, strike the empty; no constant form** — the sorter should not attack where the record is solid (fixed fields that don't carry level); it should use the empty (a new field) / change with the situation. Or: don't build one fixed rule; have the writer mark the level, and the program only enforces the vocabulary. Also "an army has no constant form" — a single fixed keyword rule will fail on mixed insights; the form must change with the case (i.e., a decision tree on stated answers, not a keyword).
+- **#5 Move only on advantage; never from anger** — don't reorganize 56 files just because the current filing is annoying; move only if the change buys learning. The cost: a big migration for a small gain. Also "do not move without advantage" — the recommendation should be the smallest change (add two fields, leave files where they are).
+- **#7 War is the way of deception** — careful: don't use deception here? Maybe not; no need to shoehorn. Better #6 (mix harm into benefit) for costs. #8 (value victory not duration / speed) for "fast eval but not reliable" — speed vs correctness. #12 (seek it in 勢, not from people; choose people and rely on 勢) — design the record/format (勢) rather than demanding the sorter be smarter (people). This is apt for Q2: don't demand a clever program; change the ground (the record). "求之於勢，不責於人" is exactly "don't blame the program (or the agent), change the conditions." Great.
+- **#11 Foreknowledge from people, pay for it** — you can't get the level from omens/precedent/measurement; it must come from the person who was there (the insight writer). This is *very* apt: the level is foreknowledge that must be got from the person who saw the failure, not inferred from a log. "先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人" — a program reading Source is trying to get it from "measurement" (度) or "analogy with past events" (象於事); the text says it must come from people. Excellent for Q2. This may be the strongest single rule.
+- **#14 Choose the action by the ratio of forces** — effort proportional: a 56-record problem does not need an ML classifier; a 2-field form does. "Ten to one, surround" — match the method to the size. Maybe for the recommendation's cost.
+- **#15 The general's faults** — the five dangers: the insight writer's own habits are the handles. E.g. "loving the people can be harried" — too many insights (noise) is a fault; "set on dying" — insisting on one perfect taxonomy. Maybe use for the risk of over-filing. Hmm, could be a nice cost point: the filing system's own failure modes (too many levels, too fine a taxonomy) are the "five dangers".
+- **#16 Orders clear first, then enforced** — the vocabulary of levels must be defined clearly first (one field, three values), then enforced by the check. "If orders are not clear ... it is the general's fault." A program enforcing an unclear taxonomy is punishing the officers for the general's unclear orders. Great for Q2's design: define the three levels with a test before enforcing.
+- **#19 Name the ground, act as prescribed** — the three levels are grounds; name the ground then act (task → leave in run folder; project → project folder; agent-type → shared agent file). The nine grounds table maps conditions to responses. This is a perfect fit for the filing recommendation: not one bucket, a table from condition to destination. "Name the ground, act as prescribed."
+- **#3 Whole over broken** — don't break the existing 56 into a new taxonomy and rewrite; keep the run file, add the level. Or: keep the insight whole (one record) rather than splitting fix and lesson into two artifacts. "Whole over broken" fits the recommendation to add a field rather than split files.
+- **#20 Judge by the land unit, tax, breed** — maybe for the owner's hypothesis evaluation? Not really.
+
+I should use maybe 6–8 rules, not all 20. Each numbered step cites one. The brief says "Every step names the item it uses". So the "How I decided" section is numbered steps, each with a rule. Let me sketch the answer structure:
+
+# 孫子 (Sun Tzu) — where an insight belongs
+
+## Answer
+One or two sentences. Something like: "Your hypothesis is half right and, as stated, wrong on the data: the biggest single class is project-level, but it is not requirement issues — it is this repo's guard, tools and tests (28 of 56 on my reading vs 6 task-level). Do not spend a program on guessing the level: have the insight writer name it with one counterfactual test and two new fields; a sorter can then read it." Conditional on my labels being the accepted reading.
+
+But the answer must be conditional if it depends on unknown things. What do I not know?
+- What "task level" means to EJ — I define my reading, but his may differ (e.g. he might mean "the task class", not "this one task"). That changes the count.
+- Whether "project requirement issues" includes the guard's SPEC gaps (I need to know). My breaking examples avoid the ones that are clearly SPEC gaps, but some are borderline.
+- Whether the owner wants one label per insight or multiple lessons per insight. This is the big one: if one label, no reliable sort; if multiple lessons, every insight can have a project-level fix and an agent-type lesson, and the sort question changes to "per lesson, not per insight".
+- Whether insights are meant to be learned across projects or only this one.
+
+These go in "What I need to know".
+
+## How I decided
+Steps:
+1. Count the ground before deciding (my #1): 56 sections, group by root-cause subject, not by Source. Result: ~28 project, ~22 agent-type, ~6 task (my reading).
+2. Apply my reading of "task level" (my reading): one-off artifact; the lesson dies with the task.
+3. The hypothesis's test: are there project-level insights that are not requirement issues? Yes — F-86553997, F-3e11ce16, F-969500fa, F-682702da, F-2116eae0, F-8712e9fc, F-d8221199, F-7f938bdf (my reading). None is a requirement gap; each is a defect in this repo's code, tool or test. This breaks it.
+4. What supports it: the instruction-sourced class is mostly agent-type — F-1e90a8e1, F-3caba088, F-a03fa5b3, F-d1444d01, F-b696193d, F-8ac06aae, F-84636a96. So "agent-type" is real and large. And task-level is small: F-4cbb2f4b, F-05a1b440, F-cf3f3a6e, F-1b6f6a0f, F-cf7d58f7, F-90389583 (my reading).
+5. Why Source cannot be the level (my #4: know both sides): Source is where the fix goes; the same value spans levels. F-8392b4ce (check, project) vs F-0f2fa841 (check, agent-type); F-173e0190 (tool, project) vs F-e69dfb66 (tool, agent-type); F-4cbb2f4b (instruction, task) vs F-1e90a8e1 (instruction, agent-type). A sorter knowing only Source knows one side — half a victory (#4's half-victory line is about terrain, but the principle is knowing one side).
+6. Test a quick program (my #1: count; my #2: the record's own side): Source rule gets ≥12 of 56 wrong on my labels; engine is worse. Therefore no.
+7. What to record instead (my #11 foreknowledge from people; my #12 change the ground, not the people; my #19 name the ground): the writer names the learner, states the trigger, links repeats. Then the sort is a lookup; a program checks vocabulary and routes.
+8. Filing (my #19): task → stays in run folder; project → one project folder/index; agent-type → the agent's shared instruction file. Don't move the run files (my #5 move only on advantage / #3 whole over broken).
+
+I need to also name the specific 56 mismatches for the program rule. I'll give the rule and the error list. Let me decide which rule to present. I'll present the "Source → level" rule because it's the obvious program, and list its errors. Maybe also a keyword rule with its errors. The brief asks "from which fields, by what rule, and which of the 56 it would get wrong". I'll say: the only promising field is `Source:`; rule X; wrong on these 12. Then say a keyword-on-Root-cause rule does a bit better but still wrong on the mixed ones (list). Hmm, I should be concrete but not overlong.
+
+Let me compute the Source rule errors precisely with my labels, including how I treat instruction. I'll define the rule as:
+- `Source: tool`, `check`, or `config` → project.
+- `Source: instruction` → agent-type, unless the root cause names this task's own artifact ("the spec", "this spec", "the criterion", "the brief") → task.
+
+Under this rule, errors:
+- tool: 17, 18 predicted project but agent → 2 errors.
+- check: 8, 21, 26, 43 predicted project but agent → 4 errors.
+- config: none.
+- instruction predicted agent, actual project: 19, 20, 32, 36, 38, 40 → 6 errors.
+- instruction predicted task, actual? Let's check: which instruction entries have "spec"/"criterion"/"brief" in RC? 2 (the spec for a parallel build) T ✓; 3 (an exploratory check) no spec → predicted agent, actual T → error; 10 (the brief put...) T ✓; 33 (the spec's H4 list) T ✓; 34 (spec lines) T ✓; 35 ("spec's H5") T ✓; 36 ("spec H5 and guard SPEC") → predicted task, actual P → error (already counted); 40 ("guard SPEC Round 7 and spec H5") → predicted task, actual P → error (already counted); 28 ("my criteria writing" — criterion) → predicted task, actual A → error; 22 ("the criteria I write by hand") → predicted task, actual A → error; 44 ("the requirement-check skill's ...") no spec → agent ✓.
+So additional errors: 3 (predicted agent, actual task), 28 (predicted task, actual agent), 22 (predicted task, actual agent). That's 3 more. Plus 36/40 already counted.
+Total = 2 + 4 + 6 + 3 = 15. Hmm, 15/56 wrong, 41/56 right (73%). With the "spec" keyword rule.
+
+If I use a simpler rule (instruction → agent, no sub-rule), errors: 6 project + 6 task = 12 instruction errors + 6 from tool/check = 18. 38/56 = 68%.
+
+Let me be precise and compute with code to avoid arithmetic errors. I'll encode labels and source, then apply rule. Let me do that.
+
+Also I want the "keyword on RC" rule. Let me define:
+- Project if RC contains any of: guard, hooks.ts, journal.ts, SPEC, export_skills, export test, four_experts, pre-commit, runner, insight-index, sandbox, researcher.md, expect-fail, test-run check, result check, shared working tree, D1/D2, N3, Round 13, R13.
+- Agent if RC contains: my habit, my command, my choice, my way, I typed, I parsed, a copied expression, the brief (no), criteria (no)...
+- Task if RC contains: the spec, this criterion, this brief, the brief...
+This gets messy. I think I'll skip presenting a keyword rule's exact count and instead give the structural argument plus the Source rule's 15 errors. That's enough to answer "which of the 56 it would get wrong" concretely. I can mention that a keyword rule on Root cause would fix some of these and break others (e.g. it would call F-60cad515 project because "four_experts.py" appears — right — but would call F-0f2fa841 project if "export" appears — wrong). To be credible I could actually run one and report. Let me try a simple keyword rule and see; if it's decent, I'll report it as "a better rule".
+
+Actually, let me think about what the *best* simple program could do, because the answer "no" is stronger if even a tuned rule fails. A program could use a supervised classifier on 56 examples — but that's not "quick", and it would just learn my labels. With 56 and no held-out set, any classifier would overfit. That's a good point: the only way to make a program reliable is to give it labels (training data), which is the same as having the writer record the level. So: the program can't infer the level; it can only read a level someone wrote. This is rule #11: foreknowledge must come from people.
+
+Let me also consider: maybe a program *can* sort "quickly and reliably" if the taxonomy is defined by the fix location (Source). The owner might accept that. But the owner's own worry is that Source=instruction conflates task and agent-type. So no.
+
+Now let me look at docs/HARNESS_REQUIREMENTS.md R12.3 to ground the recommendation in the actual requirement format. The question cites it. It might tell me what an insight must contain, which is important for "what the insight would have to record". Let me read the relevant part.
+dsh: reasoning:
+Good. The insight format: Whys, Source, Root cause, Options. No level field. R12.3: source that can be changed (instruction, check, tool, config). The owner chooses fix. Good.
+
+Let me also check whether there's a project-level insight index already (the six-experts run had insight-index.ts). Section 47 references `insight-index.ts`. Let me search the repo for insight index conventions — maybe there's already a place for cross-run insights, which matters for the recommendation.
+dsh: reasoning:
+Interesting! There is already an `insight index` with categories (Round 11), `data/insight-categories.yaml`, six categories, and a `Category:` override. This is highly relevant to Q2. The question says "can a program sort an insight into its level quickly and reliably?" — the existing index has categories. Let me look at the categories yaml and the insight-index code. This could give the answer: there is already a program that sorts by category from keywords; how well does it do? Let me read.
+dsh: reasoning:
+This is very important. EJ already decided (after run 20261016-six-experts rerun/compare.md) that the four Source kinds (instruction, check, tool, config) are the categories, because "Linus's four Source kinds did as well as six categories guessed from titles, and are placed with nothing guessed." That means the current index already sorts by Source. The owner's new question is about level (project vs agent-type vs task), which is orthogonal.
+
+So the data and the prior decision are relevant: a program already sorts by Source, reliably because Source is explicit. But Source ≠ level. The prior decision says categories from titles were guessed; Source was not guessed. That directly informs Q2: the one reliable program-sort is on a field the writer records (Source), and EJ already chose it over guessed categories. The owner's new level question would need another recorded field, not a guess from titles/root causes.
+
+Also, the "compare.md" might be relevant evidence. Let me read it quickly — it may say four Source kinds beat six title-guessed categories. That strengthens the point: guessed sorts were tried and lost. Let me read it.
+dsh: reasoning:
+Excellent. This is strong evidence: "Both schemes missed something... Neither scheme made the named categories enough on their own." And the yaml comment says EJ decided after this comparison that Source kinds did as well as six guessed categories and are "placed with nothing guessed." So the program-sort answer: the reliable sort is on a written field (Source); the guessed sort was tried and missed. For level, there is no written field, so it would be a guessed sort — the same experiment already showed guessed categories miss.
+
+This also gives me a great "support" for the owner's hypothesis: the existing categories are Source (fix location), and they already work as a sort. But they are not levels. Adding a level is a new field.
+
+Now, I need to be careful: the question data says "all 56 insight sections in the repo", and the index has 56 sections. The current index already yields a sort by Source. So Q2's answer can say: a program can sort *by Source* today, reliably, because the writer records it (the current `insight index` does exactly that, and EJ chose it over title-guessed categories after the six-experts comparison). It cannot sort *by level* from today's fields, because no field records the level; a guessed rule would repeat the title-guessed categories that missed (compare.md: both schemes missed sections, 10/13 shared). What it would need: a recorded `Level:` field, filled by the insight's writer, from one stated counterfactual question, with the three allowed values.
+
+This is even better: the answer to Q2 is "yes for Source-category, no for level — and the difference is whether the field is written or guessed." That's a crisp, evidence-backed answer.
+
+Now let me carefully count and choose citations. Also, I might want to verify the 56-section level counts with a script and maybe produce a compact table of my labels. Let me do that now to avoid arithmetic mistakes, and to identify exactly which insights are "mixed" (support both). I'll encode the labels and the Source, then compute rule errors.
+
+Let me define the labels as decided:
+P: 1,4,5,7,13,14,15,19,20,24,27,29,30,31,32,36,37,38,39,40,41,42,45,46,47,48,51,56 (28)
+A: 6,8,9,11,12,16,17,18,21,22,23,25,26,28,43,44,49,50,52,53,54,55 (22)
+T: 2,3,10,33,34,35 (6)
+
+Wait, I need to double check #26. Section 26 is "F-21e1586c, F-0f2fa841 — the new plant check caught F-0f2fa841's fix passing for the wrong reason". Source: check — "a plant whose failure was not checked to be its own (now checked); the plant was placed by position." RC: "a planted break placed at a position in the file, not at a line that must exist." This is agent-type testing practice. Yes A.
+
+#21 F-0f2fa841: Source check — "my test's planted input, unverified." RC: "a planted failure used without first showing that the plant alone fails." A.
+
+#8 F-08cf4cc3: Source check — "hand-run engine calls had no result-file check; exit 0 of the last command stood in for success." RC same. A. Hmm, but it's a project workflow gap. The lesson "engine call must have a result-file check" is a testing/agent practice. A. But is it "about a kind of agent"? It's about the main agent's hand-run calls, which is a habit — yes A.
+
+#13 F-2cc835e3: Source tool — "four_experts.py starts every engine with no readiness check, and the experts' brief still lets an engine change a quote's script." RC: "an engine out of quota, found only by the run itself, because the runner has no canary step; plus a repeat..." P (runner code). But there's an agent-type lesson too (canary). P.
+
+#11 F-3b8bdcec: Source check — "no quota estimate or check per engine before a multi-node build." RC same. A? It's a practice. But the fix could be a project check in four_experts.py. Source check. Hmm. I said A earlier. Let me keep A: the lesson is "check quota before a build", a practice for any multi-engine run. But is it about an agent *kind*? It's about the agent's method. Yes.
+
+#17,18 mcode: A (engine limit / canary sizing). But could be P (mcode config in this repo). The root cause: "mcode's minimax_oauth connection, which does not answer brief-sized requests" — that's an engine capability, A. "an engine proved only with a tiny canary, used for inputs 5–7 times the size" — A (testing practice). Keep A.
+
+#19 F-5182be9b: Source instruction — "the export step is written only in a memory about the six-experts skill, not where the guard is edited." RC: "the order 'export, commit, then run the Python suite' is not written where an edit to the workflow-design skill happens." This is project workflow/instruction placement. P. The lesson could be agent-type (put the rule where the action happens), but the subject is the project's export step. P.
+
+#20 F-749688a0: project hook. P.
+
+#24 F-d3132a7f: guard tool. P.
+
+#27 F-d8221199: project test. P.
+
+#29 F-59498b2a: project test infra. P.
+
+#30 F-cc665076: guard N3. P.
+
+#31 F-2116eae0: expect-fail. P.
+
+#32 F-8392b4ce: guard. P.
+
+#36 F-b7c8635f: guard SPEC. P.
+#40 F-2cdebf3b: guard SPEC. P.
+
+#37 F-76013d09: Codex sandbox config. P. (Could be A if sandbox is global, but the config is repo/environment.)
+#41 F-0a1f3ca1: same. P.
+
+#38 F-c60edad6: researcher.md contract. P (this repo's agent definition).
+
+#42 F-682702da: export tool. P.
+#45 F-3e11ce16: guard check. P.
+#46 F-86553997: journal.ts. P.
+#47 F-5c21dd69: insight-index.ts type. P (project code). The lesson "copied expression lost its declared type" is general TS, but the artifact is project. P.
+#48 F-7f938bdf: missing check. P.
+#51 F-173e0190: four_experts.py. P.
+#56 F-bdea5631: guard D1. P.
+
+#6 F-1e90a8e1: A.
+#9 F-f44538b2: A.
+#12 F-e82a6f58: A.
+#16 F-4981093a: A.
+#22 F-8243a18f: A.
+#23 F-d1444d01: A.
+#25 F-a2551f81: A.
+#28 F-336edcb0: A.
+#43 F-c055f734: A.
+#44 F-d8a49e5a: A.
+#49 F-b696193d: A.
+#50 F-8ac06aae: A.
+#52 F-84636a96: A.
+#53 F-a03fa5b3: A.
+#54 (review 1): A.
+#55 F-3caba088: A.
+
+#2,3,10,33,34,35: T.
+
+Now, are there insights I'd call "mixed" (both P and A)? Yes: 1 (tool + command shape), 8 (workflow + practice), 13 (runner + canary), 19 (project workflow + instruction design), 21/26 (testing practice but in project test), 36/40 (guard SPEC + payload-contract practice), 44 (skill text + apply own skill), 47 (project type + general TS), 54 (routing change + code habit). I'll say "at least 10 are mixed; I took the reusable lesson as the label."
+
+Now the Source rule errors. Let me write a script with sources and labels, apply the rule, and print errors. This will give precise numbers. Let me also compute counts by source. And maybe a keyword rule. I'll do it in memory (no file writes).
+dsh: reasoning:
+The Source rule gets 13 of 56 wrong (43/56 right = 77%) even in its best case. Note #3: I modeled instruction → A, but F-1b6f6a0f is task; the rule's best case didn't catch it because its RC doesn't name "spec". Actually I set task_like = {2,10,33,34,35}, so 3 predicted A. Right.
+
+Note instruction counts: 26 not 27 (I thought 27). Total 26+19+9+2=56. Good.
+
+Wait, my labels have 28 P, 22 A, 6 T. But the source cross-tab: instruction has 6 T, 15 A, 5 P (26). check: 14 P, 5 A (19). tool: 7 P, 2 A (9). config: 2 P (2). Sums: P=5+14+7+2=28; A=15+5+2=22; T=6. Good.
+
+Now, 13 errors is a strong concrete result. But I should be careful: my labels are my reading, and for #3 the rule could be tuned. But the structural point holds: even a perfect Source-to-level mapping cannot work because Source values span levels (instruction: 5 P, 15 A, 6 T; check: 14 P, 5 A; tool: 7 P, 2 A).
+
+Actually, a program could learn the mapping from the text with keywords and do better than the Source rule. But it would need labels to train on — which is the point. Let me test a simple keyword rule to see whether it beats 13. If a keyword rule does much better, my "no" is weaker. Let me try a deliberately reasonable rule using root-cause text features. Let me extract RC text and define features:
+- mentions repo artifact: guard, hooks.ts, journal.ts, SPEC, export_skills, export test, four_experts, pre-commit, runner, insight-index, sandbox, researcher.md, expect-fail, D1, D2, N3, Round 13, R13, shared working tree, result check, test-run check, command-error record, late-criteria.
+- mentions one-off: "the spec", "this spec", "the brief", "this criterion", "the criterion", "exploratory check", "the round-5 spec", "H4", "H5", "H1", "C3".
+- mentions habit: "my habit", "my command", "my choice", "my way", "I typed", "I parsed", "a copied expression", "my test's", "my criteria", "a criterion that", "an engine normalised", "an engine proved", "a planted", "the plant", "my test", "read through a filter", "the requirement-check skill's", "when a change sends", "a path inferred", "the read-only-listed-paths", "no rule against", "no quota", "two `&`", "my question", "not committing".
+
+This is a lot of hand-tuning; it would effectively encode my labels. The honest claim is: the program can only do well if a human encodes the level rules from labelled examples, and even then the mixed cases are ambiguous. I don't need to build it. I'll state the Source rule as the obvious one and its 13 errors, and the structural reason.
+
+But the brief asks "If yes: from which fields, by what rule, and which of the 56 it would get wrong. If no: what the insight would have to record so that it could." I'm answering no, so I need "what it would have to record". I can still name the 13 as evidence of the failure of the obvious rule. Good.
+
+Now let me also consider whether the answer to Q1 should be "no" flat or "yes with a correction". The owner asks: "Is the owner correct: apart from project requirement issues, is every insight task level or agent-type level, with no other project-level insight?" 
+
+My answer: No as stated. There is a project-level class that is not requirement issues, and on my reading it is the largest class (28/56). But the owner is right that Source=instruction insights are mostly agent-type or task (21/26), and that the level is not the Source. The owner's intuition is half-right: the *transferable lesson* is often agent-type; the *record* is often project-level.
+
+Hmm, but I should double-check: could the owner's "project level" mean "the project's product requirements" and "task level" mean "the task's own instruction"? If so, the owner might classify the guard code bug as a "project requirement issue" because the guard is the project. In that case my 28 would mostly be "project requirement issues" and the hypothesis survives trivially. The question's own definition, though, says project level = "about this project's code, tools or conventions; any agent working here could hit it". So guard code is project level, not requirement. The owner's phrase "except those project requirement issues" narrows project-level to requirement issues, which is the thing to challenge. I should say: "If by 'project requirement issues' you mean every defect in this repo's code, tools or tests, then yes — but that is not what 'requirement' means, and it empties the project level of exactly the code/testing insights you say matter most. If you mean only gaps in SPEC/HARNESS_REQUIREMENTS, then no: F-86553997, F-3e11ce16, F-969500fa, F-682702da, F-2116eae0, F-8712e9fc, F-d8221199, F-7f938bdf are project-level and are not requirement gaps." That's a clear conditional.
+
+Let me verify each of those 8 is not a requirement gap:
+- F-86553997: journal.ts duplicate record-kind list — implementation defect. Not a requirement gap.
+- F-3e11ce16: guard command-error check doesn't know its own exit codes — implementation. Not a requirement gap.
+- F-969500fa: guard's test-run detection reads only the call's exit code — implementation. Not a requirement gap.
+- F-682702da: export_skills.py single-file skills copy; no test for references — implementation. Not a requirement gap.
+- F-2116eae0: expect-fail only files inside root — tool design. Not a requirement gap.
+- F-8712e9fc: export test can't tell sessions apart — test design. Not a requirement gap.
+- F-d8221199: test of committed export reads uncommitted state — test design. Not a requirement gap.
+- F-7f938bdf: nothing checks paths before opencode reads — missing check. Not a requirement gap (though one could argue R12.4 missing condition; still not a stated requirement).
+- F-d3132a7f: guard judges a run it didn't start — tool design. Not a requirement gap.
+- F-15cf1278/F-98c2c4c9: guard's test-run check can't tell planned red — check design. Could be a requirement gap (the requirement didn't define planned red), but the insight's source is check; it's a guard behavior. Borderline. I'll leave it out of the "clearly not requirement" list or flag as borderline.
+
+Good.
+
+Now, the "support" for the owner: 
+- F-1e90a8e1 (pipe habit) — agent-type.
+- F-3caba088 (parse assumed shape) — agent-type.
+- F-a03fa5b3 (typed epoch) — agent-type.
+- F-d1444d01 (heredoc escaping) — agent-type.
+- F-b696193d (signature change) — agent-type.
+- F-8ac06aae (subshells) — agent-type.
+- F-84636a96 (variant character) — agent-type.
+- F-4cbb2f4b, F-05a1b440 (this spec) — task-level.
+- F-cf3f3a6e (round-5 spec) — task.
+- F-cf7d58f7 (this brief) — task.
+- F-1b6f6a0f (one command) — task.
+
+This shows both categories are real. The hypothesis fails only on "no other project-level".
+
+Now "task level" definition. My reading: "the lesson is tied to one task's own artifacts — this run's brief, spec, criterion or command — so a different task in the same repo, by the same agent, would not meet it. Its home is the run folder; it is not a library lesson." Examples: F-4cbb2f4b, F-05a1b440, F-cf3f3a6e, F-cf7d58f7, F-1b6f6a0f, F-90389583. Note the owner's phrase "task level" might mean "task-type level" (a class of tasks), which would be different. I should flag that in "What I need to know": do you mean this one task, or a kind of task? If you mean a kind of task (e.g. "writing a spec"), that is a fourth level and would move some of my T labels (F-4cbb2f4b, F-05a1b440) into it — and then agent-type/project would need a third axis.
+
+Hmm, this is important. "task level" in the owner's sentence: "else should be task or agent type level". "task" vs "agent type" suggests task-level = the task, agent-type = the agent. But the brief only defines two levels discussed: project and agent-type. The owner adds task. So my reading stands, but it's ambiguous. Good to ask.
+
+Now let me think about the recommendation. The brief says "Your advice must fit [the pattern], and it may improve it: label such a point proposed change to the pattern and say what it would change." I should probably include at least one "proposed change to the pattern" point — e.g. add a "level" field to R12.3's insight format, with the writer naming it from one counterfactual question, and the guard's `insight index` printing it; the owner can override. That changes the pattern (the insight artifact) and the check. I'll label it.
+
+Also, the brief's pattern says "Vision and use cases first. An option that serves no use case or vision line is wrong." I should tie the recommendation to the use case: the owner wants insights filed where they will be learned from; the most important are code/testing insights. My recommendation: add a `Level:` line to each insight, filled by the writer, with a one-question test; the index reads it and `show`s by level. Keep the file where it is; link it (don't move 56 files). The use case: an agent starting a task in this repo can load project-level lessons; an agent of a given kind can load agent-type lessons anywhere.
+
+Do I have the vision/use case lines? The question gives the background; I can cite the owner's words "filed where they will be learned from" and "code insights and testing insights... improve an ai agent quality a lot and reduce noise". That's the use case. My reading.
+
+Now, Sun Tzu rules mapping in detail. I want each "How I decided" step to cite a specific item and be genuinely apt, not decorative.
+
+Step 1: **Count before deciding (my #1)**. "More reckoning wins, less does not" — I counted all 56 by root-cause subject before judging the hypothesis: 28 project, 22 agent-type, 6 task (my reading). Also the chain 度→量→數→稱→勝: measure the record first (what fields exist), then quantity (how many per level), then weigh. This is the core.
+
+Step 2: **Define the ground (my #19)**. "Name the ground, act as prescribed" — before sorting, name what each level is and what action follows: task → stays in run folder; project → repo-level lesson; agent-type → agent's shared instruction. The nine grounds are a table, not a hierarchy. This is my reading of "task level" too. Actually #19 is "Identify the ground by the conditions the chapter defines, then act as prescribed" — apt.
+
+Step 3: **Test the hypothesis on the data (my #4)**. "Know the other and yourself" / the half-victory line: knowing only the Source is half a victory. The hypothesis knows only the fix side (Source) and not the learner side. It therefore mislabels the project code/test insights. Cite the breakers. Hmm, #4's "know the other and yourself" is about enemy/self; here the two sides are "where the fix goes" and "who must learn". That's a fair adaptation; I'll say "my reading" for the mapping if needed. The rule itself is about knowing both sides; I can apply it.
+
+Step 4: **What supports the hypothesis (my #6 mix harm into benefit)**. The wise mix benefit and harm: state what the hypothesis gets right (the instruction class is mostly agent/task; the Source is not the level) as well as what it gets wrong. This is a nice use of #6: the hypothesis has a benefit (it spots that Source=instruction conflates task and agent-type) and a harm (it deletes the project code/test class). Good.
+
+Step 5: **Why a program cannot infer it (my #11 foreknowledge from people)**. "Foreknowledge cannot be taken from ghosts, from likeness to past events, or from measurement; it must be taken from people who know the enemy's situation." A program reading Source/title is taking it from measurement or analogy; the level must come from the person who saw the failure. This is the strongest.
+
+Step 6: **What the record must carry (my #2 make yourself unbeatable first)**. "Being unbeatable is in your own hands; being beatable is in the enemy's. The winning army wins first and then seeks battle." Don't build a sorter that tries to make the text classifiable (the enemy's side); make the record carry the level at write time (your own side), then the sort is a lookup. This is excellent.
+
+Step 7: **Change the ground, not the people (my #12)**. "Seek it in 勢, not from people" — don't demand a smarter classifier or blame the sorter; change the format (the 勢) so the level is a written field. Also 奇正: a single fixed rule will not exhaust the cases; the form must change with the enemy (the insight). This is apt.
+
+Step 8: **Move only on advantage / whole over broken (my #5 and #3)**. The recommendation: don't move the 56 files; add two lines and an index column. The cost of a migration is high, the gain is the same. "Do not move without advantage." "Whole over broken" — keep the insight whole; add the learner line to the existing section rather than splitting it into a project file and an agent file. This is a cost/implementation point.
+
+Step 9: **Orders clear first (my #16)**. Define the three levels and the one test in the requirement before the guard enforces them; otherwise the guard punishes writers for an unclear taxonomy. "If orders are not clear ... it is the general's fault." Good for the "what it would have to record" design: the vocabulary must be defined once (R12.3), with one example each, then the check enforces only that a valid value is present.
+
+That's 9 steps; maybe too many but fine. Each cites a rule. I must also include "my reading" wherever I'm not citing. The brief says a step with no item is my own reading and I should say so. I can have a couple of "my reading" steps (e.g. the label counts are my reading; the definition of task level is my reading). Good.
+
+Now, "What I need to know" — questions whose answers would change the answer:
+1. Does "task level" mean this one task, or a kind of task? If a kind (e.g. "spec writing"), a fourth bucket is needed and my 6 T labels partly move.
+2. Does "project requirement issues" include implementation defects in the guard/tools (not just SPEC/HARNESS_REQUIREMENTS gaps)? If yes, my breakers are inside the exception and the hypothesis survives — but then the project level covers almost everything in the repo, which defeats the point.
+3. One level per insight, or one per lesson? If an insight can have a project fix and an agent-type lesson (F-8392b4ce, F-0f2fa841), then a single `Level:` field forces a choice; the question becomes "level of what".
+4. Should agent-type insights cross project boundaries (into a global file like the skill), or stay in this repo's agent docs? This decides the destination, not the label.
+5. Who is allowed to override the writer's level — the owner only, or a reviewer? (R12.3 says the owner chooses the fix; the level is a claim, not a choice.) Maybe too many.
+
+I should keep it to 3-4 questions that actually change the answer, per the AGENTS.md guidance ("Ask only what changes the shape"). The strongest: (1) task-level meaning; (2) one label vs one per lesson; (3) whether project requirement issues include implementation defects. Maybe (4) cross-project destination.
+
+"Costs and risks" — each with the item it comes from:
+1. **A new field can be gamed / filled lazily.** The writer may label everything agent-type to look general, or project-level to avoid a global rule. Cost: a new field with no check is a new place to be wrong. (my #1: count; if the count is not checked, it is 無算.) Mitigation: one counterfactual question with a required one-line answer, and the owner/reviewer can spot-check.
+2. **A migration would cost more than it returns.** Moving 56 files into three buckets breaks paths and links; the run folder is where the evidence lives (R12.3 says the insight file sits beside the run's evidence). (my #5: move only on advantage; my #3: whole over broken.)
+3. **A single fixed rule will fail on the mixed insights.** If you build a keyword classifier, the 13 errors above are the price; tuning it on the 56 overfits and it will fail on the 57th. (my #10: no constant form.)
+4. **The project level may become a dump.** If every guard/tool bug is project-level, it competes with the requirement issues; the owner's "reduce noise" goal is not served by a big bucket. (my #15? The five dangers: "loving the people can be harried" — a general who loves his people can be worn out by them; a taxonomy that tries to keep every insight can be drowned by them. Hmm, maybe use #15 for this: the filing scheme's own virtues become handles. "Set on dying" = insisting on a perfect scheme; "loving the people" = keeping every insight. This is a stretch but defensible as my reading.)
+5. **Labeling level does not itself produce learning.** A filed insight that no one loads is still noise. The index/`show` is the use; if agents don't load it, the level is decoration. (my #2: the winning army wins first and then seeks battle — build the loading step, not just the label.)
+
+"How we would know I was right" — a test/measure/observable:
+- The measure: take the 56 insights, have the writer (or a second agent) fill `Level:` using the one question; compare with my labels. If the disagreements are only in the ~10 mixed cases, the field is well-defined; if they are widespread, the taxonomy is wrong. (But my labels are mine; better: two independent writers label the same 20 sections; agreement ≥ 16/20 on level, with the disagreements named.) That's a measurable inter-rater test.
+- The observable: after 10 new insights, the guard's `insight index` shows a level for every section; a starting agent loads the project-level list and the agent-type list and cites at least one in its plan; count how often a loaded insight changes the plan (or is cited). If zero over 10 runs, the level is not being learned from.
+- The "wrong" test: if a program's level prediction disagrees with the writer's level on more than X of 20, the program is not reliable (fails the claim).
+- Sun Tzu #1: count. The test is a count of agreement, not a feeling.
+
+I should also propose a concrete "one question" for the writer. Let me craft it carefully. The test must distinguish the three levels. Something like:
+
+> **The counterfactual question (one sentence):** "If the same failure happened again, what is the smallest thing that would have to change to stop it: (a) this task's own brief/spec/command, (b) this repo's code, tool, test or config, or (c) the way agents of this kind work anywhere?"
+
+Then the level = a/b/c. And record one line: "Stops if: <the artifact or habit> changes." That line is checkable (it names the artifact/habit), and a program can route on the answer.
+
+But careful: (a) is not exactly "task" — a task brief is an artifact; (b) repo; (c) agent kind. This is the counterfactual test I described. It is one question with three answers, which fits "one thing" and "who fills it" (the writer). The owner decides disputes.
+
+Maybe better as two yes/no questions in order, to make it mechanical:
+1. "Would a different kind of agent, doing this same task, still fail?" If yes → project or task; if no → agent-type.
+2. "Would the same agent, doing a different task in this repo, still fail?" If yes → project; if no → task.
+This is exactly the decision tree a program could execute if the answers are recorded, and a human can answer. The insight writer answers both from the evidence (the whys). The order matters: agent-type first, then project vs task. This is clean, mechanical, and fits "can a program sort": the program reads two booleans. And it's checkable: each boolean can be defended with a sentence.
+
+Let me test the tree against my labels: 
+- F-1e90a8e1 pipe habit: different agent (e.g. Codex) doing same task — would it pipe? Possibly not; but "a different kind of agent" might still make the same mistake. Hmm, the agent-kind test is fuzzy. The habit is the main Claude agent's; opencode might not have it. So Q1 no → agent-type. Good.
+- F-8392b4ce guard late-criteria: a different agent kind would still hit the guard's bug → Q1 yes; same agent different task in this repo → yes (the guard runs every task) → project. Good.
+- F-4cbb2f4b ambiguous spec: a different agent kind would still misread the same spec? Maybe; Q1 yes. Same agent, different task with a clear spec → no → task. Good.
+- F-682702da export tool: Q1 yes, Q2 yes → project. Good.
+- F-84636a96 variant char: Q1 — a different engine might not normalize; no → agent-type. Good.
+- F-60cad515 four_experts.py: Q1 yes (any agent using the tool hits the error collapse), Q2 yes → project. Good.
+- F-08cf4cc3 hand-run engine calls: Q1 — another agent kind might also lack a result-file check; maybe yes. Q2 — same agent, different task, would it still hand-run engines without a check? Yes (habit) → project? That would mislabel it A. Hmm. The tree gives project, my label is agent-type. The issue: "same agent, different task in this repo" — the practice follows the agent across repos, not just this repo. So Q2 should be "same agent, different *project*" for agent-type? Let me rethink the tree.
+
+The three levels: task, project, agent-type. A cleaner decision tree:
+1. Is the cause tied to this task's own one-off artifact (brief/spec/criterion/command)? If yes → task. (But some project bugs are one-off? No.)
+2. Is the cause a property of this repo's artifact (code/tool/test/config)? If yes → project.
+3. Otherwise (the cause is a habit/limit of an agent kind) → agent-type.
+
+That's a lookup on "what is the cause", which is the labeling I did. But it's not a mechanical question the writer can answer without judgment. The counterfactual version:
+1. Would the same failure happen in a different task in this repo? If no → task.
+2. Would it happen in a different repo with the same agent kind? If yes → agent-type; if no → project.
+Wait: for a project bug, a different repo wouldn't have the guard bug → no → project. For an agent habit, a different repo would still have it → yes → agent-type. For a task artifact, a different task wouldn't → task. This works!
+
+Test:
+- F-8392b4ce: different task in this repo → yes (guard runs). Different repo → no (no such guard) → project. ✓
+- F-1e90a8e1: different task in this repo → yes (pipe habit). Different repo → yes (habit follows) → agent-type. ✓
+- F-4cbb2f4b: different task in this repo → maybe no (a different spec might be clear) → task. ✓
+- F-08cf4cc3: different task in this repo → yes (hand-run engines again). Different repo → yes (same agent practice) → agent-type. ✓
+- F-60cad515: different task in this repo → yes (tool used again). Different repo → no (tool is this repo's) → project. ✓
+- F-682702da: different task → yes; different repo → no → project. ✓
+- F-84636a96: different task → yes (engine normalizes); different repo → yes (same engine) → agent-type. ✓
+- F-336edcb0: different task in this repo → no (a different criterion might not ask for a post-task event) → task? But I labeled A (criteria writing). Hmm. The *lesson* "write criteria markable within the task" is agent-type; the *instance* is this criterion. Different task → the same agent could make the same mistake again, so yes → then project/agent. The counterfactual "would the same failure happen" depends on whether the cause is the agent's habit or the one-off artifact. For F-336edcb0 the cause is "my criteria writing, with no rule" → the habit persists → yes. Then Q2 different repo → yes → agent-type. ✓. So the tree works if you answer about the *cause*, not the instance.
+
+- F-2/3/10/33/34/35: different task → no (the one-off artifact is gone) → task. ✓ (F-35: the spec's H5; a different task's spec might have the same no-write promise issue... but the cause is this spec; okay.)
+- F-19 F-5182be9b: different task → yes (export step still not written where the guard is edited); different repo → no (this repo's export) → project. ✓
+- F-36/40: different task → yes (guard SPEC still lacks types); different repo → no → project. ✓
+- F-37/41 sandbox: different task → yes; different repo → ? If the sandbox config is per-project, no → project; if global, yes → agent-type. This is the ambiguity I noted. The tree exposes it: the answer depends on whether the config is per-project or global. That's a genuine "what I need to know" or a note.
+- F-17/18 mcode: different task → yes; different repo → yes (same mcode connection) → agent-type. ✓ (Though the mcode connection is configured per environment/repo; if per-repo, project. Ambiguous.)
+- F-47 F-5c21dd69: different task → yes (TS inference again); different repo → yes (TS is everywhere) → agent-type? But I labeled P because the artifact is the project's new file. Hmm. The cause "TypeScript infers ?? [] as never[]" is a language behavior, so it follows any TS project → agent-type by the tree. But the lesson "a copied expression lost its declared type" is a code habit → agent-type. Maybe I should label it A, not P! Let me reconsider. F-5c21dd69: "my new insight-index.ts did not typecheck"; Source: tool — "TypeScript's inference of ?? [] as never[]; caught by the type check, as designed." Root cause: "a copied expression lost its declared type, so the empty-array fallback was inferred as never[]." The lesson: when copying an expression, keep/declare its type; TS will infer never[]. This is a coding habit that follows the agent to any TS project → agent-type. The project artifact (insight-index.ts) is just where it happened. So A is more consistent with the tree. My earlier P label was "project code" but the *lesson* is general. I should change 47 to A. 
+
+Then P count 27, A 23, T 6. Let me re-check other "project code" labels for the same issue:
+- F-86553997 (journal.ts duplicate list): lesson "don't keep two lists of writable record kinds" — general code-design lesson (single source of truth) that follows any project → agent-type? Or project because it's this journal.ts? The cause is the code's duplicated list; the fix is in journal.ts. But the *lesson* "a new kind needs two edits" is a design smell that any agent should avoid. Hmm. The tree: different task in this repo → yes; different repo → ? If the agent writes the same dual-list pattern elsewhere, yes → agent-type. But the specific bug is in this file. The insight's Source is tool; the fix is the file. I'd say project-level because the artifact is this repo's journal.ts and the lesson "this file lists kinds twice" is local. But the transferable lesson is general. This is exactly the mixed case. 
+- F-3e11ce16 (guard command-error check): local code → project.
+- F-969500fa (guard test-run detection): local code → project.
+- F-682702da (export tool): local → project.
+- F-2116eae0 (expect-fail): local tool → project.
+- F-f09b058d (guard result check + SPEC M5): local → project.
+- F-8712e9fc, F-d8221199 (export test): local test → project.
+- F-cc665076 (N3): local → project.
+- F-d3132a7f (guard): local → project.
+- F-15cf1278/F-98c2c4c9 (guard test-run check): local → project.
+- F-7f938bdf (missing pre-flight check): local tooling → project.
+- F-749688a0 (pre-commit hook): local → project.
+- F-37/41 sandbox: config, ambiguous.
+- F-42 export tool: local.
+- F-51 four_experts: local.
+- F-56 D1: local.
+- F-45: local.
+- F-46: local.
+- F-47: general TS → A (change).
+- F-1 F-60cad515: tool local → project.
+- F-4,5,7,13,14,15,19,20,24,27,29,30,31,32,36,37,38,39,40,41,42,45,46,48,51,56 = 28 if 47 included. Without 47: 27 P.
+
+Hmm, but I don't want to over-engineer. The point of the counts is illustrative; I can say "about 28" and "the exact count shifts by a few depending on whether you take the fix location or the reusable lesson; the direction is what matters." That's honest. But I should avoid presenting a precise 28 if my own labels are debatable. Maybe present: "by the root-cause subject: 28 project, 22 agent-type, 6 task (my reading; at least 10 are mixed, so the count is ±)." That's fine.
+
+Actually, I could present the counts by *category of the fix* and by *learner* separately, showing that even the count depends on the reading. That's the deeper point: the level is not a fact in the record. Let me do a small sensitivity check: if I take the fix-location reading (Source → project for tool/check/config, instruction → task/agent), the counts are very different (P=26? Actually tool 9 + check 19 + config 2 = 30 project; instruction 26 split). If I take the lesson reading, P=27-28. Either way P is the largest class. So the hypothesis fails under both readings. Good — that's robust. I can say: "On either reading — fix location or reusable lesson — project-level is the largest class (30 vs 27 of 56). The hypothesis fails either way."
+
+Let me compute the fix-location counts: Source tool/check/config = 9+19+2 = 30 project. Instruction = 26, split into task/agent. That's a clean, assumption-free count (Source is given). So: **at least 30 of 56 are project-level on the "where the fix goes" reading**, because their Source is check/tool/config, and none of those 30 is a requirement issue by the Source line. Wait — some check-sourced insights are agent-type (F-0f2fa841 etc.), so "where the fix goes" = project for all check/tool/config? F-0f2fa841's fix is "my test's planted input" — source check, but the fix is in the project's test. So yes, by fix location it's project. F-3b8bdcec: source check, fix = a quota check (could be tool or practice) — project. F-8: source check, fix = result-file check — project. F-17/18: source tool, fix = mcode connection / canary — project (config) or agent. Hmm. By "where the fix goes", check/tool/config are by definition the project's check/tool/config. So 30. And instruction = the agent's spec/brief/habit, split task/agent. That's a very clean count from the given field. But the owner's hypothesis says "apart from project requirement issues" — the 30 are not requirement issues, they're check/tool/config. So the hypothesis is false on the simplest reading of the data. This is the strongest, least subjective argument: **30 of 56 insights have Source check/tool/config; by the question's own definition ("project level: about this project's code, tools or conventions"), those are project-level.** The 26 instruction ones are the task/agent-type ones. So the owner's intuition is right about the instruction class but ignores the other 30.
+
+Wait, but the owner might say "check/tool/config insights are still about the agent's interaction with the project; the agent-type lesson is what matters." That's the lesson reading. But the question's definition of project-level explicitly includes "this project's code, tools or conventions" — the check/tool/config sources are exactly that. So the hypothesis is false by its own definition.
+
+This gives me a cleaner Q1:
+- **By the field the record has (Source):** 26 instruction, 19 check, 9 tool, 2 config. The 30 check/tool/config are about this project's checks/tools/config — project-level by the question's definition, and none is a "requirement issue". The 26 instruction ones split into task (6 by my reading) and agent-type (20). So the hypothesis holds for instruction-sourced insights and fails for the other 30.
+- **By the reusable lesson:** some of the 30 become agent-type (F-0f2fa841, F-21e1586c, F-08cf4cc3, F-3b8bdcec, F-e69dfb66, F-485505f6, F-c055f734, F-43), and some instruction ones become project (F-5182be9b, F-749688a0, F-b7c8635f, F-c60edad6, F-2cdebf3b). The two readings disagree on ~13 insights. That disagreement is the proof that level is not in the record.
+
+This is excellent: I can give both counts and show the 13 swaps, which is exactly the Source-rule error list I computed (13 errors). The 13 errors are the same 13 that would be swapped if you re-labeled by lesson. Nice.
+
+Let me formalize:
+- **Fix-location reading (from the given Source field):** project = check/tool/config = 30; task/agent = instruction = 26. (No judgment needed.)
+- **Lesson reading (my reading):** project = 28, agent = 22, task = 6 (or 27/23/6 if I move 47; let me settle).
+- The 13 insights where the two readings disagree are exactly the errors of the Source rule: F-1b6f6a0f (task but instruction), F-08cf4cc3, F-3b8bdcec, F-e69dfb66, F-485505f6, F-0f2fa841, F-21e1586c, F-c055f734 (agent but check/tool), F-5182be9b, F-749688a0, F-b7c8635f, F-c60edad6, F-2cdebf3b (project but instruction). That's 13. These are the "which it would get wrong" for the lesson reading.
+
+So the answer to Q2's "which of the 56 it would get wrong" is: the obvious program (Source → level) gets 13 wrong under my lesson labels, and they are the 13 swaps above. The program is 43/56 = 77% accurate. A program would be "quick" (it's a lookup) but not "reliable" (1 in 4 wrong, and wrong on exactly the mixed/high-value ones).
+
+Hmm, but wait: if the owner adopts the fix-location reading, then the program is 100% reliable, because Source is exactly the fix location and is written. That's the catch: the owner can choose to define "level" as "fix location" and the program works. But that's not the owner's question — the owner wants "AI agent programming issue or project level one", i.e. who learns, not where the fix goes. So the answer: the program can sort the *fix location* reliably today (and already does, via `insight index`); it cannot sort the *learner* reliably from today's fields.
+
+This is a crisp, defensible answer. Let me make sure I don't overclaim "30 project-level" as "my reading" when it's actually the given field: the 30 are check/tool/config by Source, so the count is quoted from the data (the Source lines), not my reading. The classification of them as "project-level" uses the question's definition, which is given. Good. I'll label that "my reading of the definition + the data's Source lines" — the count is from the data, the level mapping is the definition.
+
+Now, the 6 task-level: F-cf3f3a6e, F-1b6f6a0f, F-cf7d58f7, F-4cbb2f4b, F-05a1b440, F-90389583. Are these all instruction? Yes: 2,3,10,33,34,35. Good. The other 20 instruction are agent-type. That supports the owner's intuition strongly: **every instruction-sourced insight except 6 is agent-type.** The owner's phrase "else should be task or agent type level" is exactly right for the instruction class. But the check/tool/config class is project-level, and the owner's "except project requirement issues" doesn't cover it.
+
+Wait, if 26 instruction = 6 task + 20 agent, then "apart from project requirement issues, every insight is task or agent-type" is true for the 26 instruction only, false for the 30 others. So the hypothesis is true for exactly the class it was formed from (the agent's own instructions), and false for the rest. The owner likely formed it from their own experience of "I keep telling the agent X" — instruction insights. That's a nice observation: the hypothesis is an insight about the instruction class, generalized too far.
+
+Let me now decide the final label for #47. I'll keep it P but note it's borderline; or move to A. To keep the counts clean and consistent with "lesson reading", I should use A. But then the Source-rule errors include 47? Source tool → P predicted, actual A → yes, another error (14 total). Hmm. Let me not change it now; it's one borderline. I'll say "28 project (27 if you read F-5c21dd69's TypeScript lesson as agent-type)". That's too much detail for the answer. Better: "about 28" and "at least 10 are mixed". Avoid over-precision.
+
+Actually, for credibility, I should present the counts as approximate and give the method, not a false precision. The one precise count I can give is the Source field: 26 instruction / 19 check / 9 tool / 2 config. That's exact from the extract. Then say: on my lesson reading, roughly 28 project, 22 agent-type, 6 task, with ~10 mixed. That's honest.
+
+Now, Q2's answer structure:
+- **Fast: yes. Reliable: no.** The existing `insight index` already sorts by Source in one pass (quote the categories yaml: "Decided by EJ after a comparison... Linus's four Source kinds did as well as six categories guessed from titles, and are placed with nothing guessed"). That is the proof that a *written* field sorts reliably and a *guessed* one does not. The level is not written; so any level sort is a guess. The six-experts comparison showed both guessed schemes missed sections (10 of 13 shared, each missed 3) — quote the compare.md line.
+- **The obvious rule and its errors:** Source → level; 13/56 wrong under my lesson labels: list the 13 ids grouped as "project bug read as agent-type" and "agent habit read as project". Wait, the Source rule's errors are in both directions. Let me group:
+  - It would call project (because Source=check/tool) what I read as agent-type: F-08cf4cc3, F-3b8bdcec, F-e69dfb66, F-485505f6, F-0f2fa841, F-21e1586c, F-c055f734/F-e1161864 (7).
+  - It would call agent-type (because Source=instruction) what I read as project: F-5182be9b/F-1d185ee3, F-749688a0, F-b7c8635f, F-c60edad6, F-2cdebf3b/F-d0736dc7 (5).
+  - It would call agent-type what I read as task: F-1b6f6a0f (1).
+  Total 13. Good.
+- Note: if the owner defines level as fix location, the same rule is 100% by construction — but then "level" is just Source renamed, and the owner's question (who learns) is not answered.
+- **What it would have to record:** two fields and one question:
+  - `Level: task | project | agent-type` — filled by the insight writer (one maker; R12.3 already makes the writer the author of the section). The value is a claim the owner can override.
+  - `Stops if: <the artifact or habit that must change>` — one line, so the claim is checkable; it names the thing, not a category.
+  - `Repeats: <ids>` or a link when the same cause recurs — recurrence is evidence for project/agent over task (F-15cf1278/F-98c2c4c9 is the model: "its first repeat").
+  - The one question: "Would the same failure happen (a) in another task in this repo, (b) in another repo with the same agent kind?" The answers give the tree: no to (a) → task; yes to (a), no to (b) → project; yes to both → agent-type. (Order: task first, then project vs agent.) Hmm, earlier I had a different order. Let me write it clean:
+    1. Would it happen again in a different task in this repo? No → task.
+    2. Would it happen in a different repo with the same agent kind? No → project. Yes → agent-type.
+    This is a 2-question tree, and it matches the three levels. It's answerable from the whys, and each answer can cite the evidence.
+  - Then the program is a lookup: read `Level:`, validate against the three values, route. "Fast and reliable" becomes true, but the intelligence is in the writer, not the program.
+- The "check" that enforces it: the guard's `insight index` prints a `level` column and flags a section with no valid `Level:`; the owner's override in `insight-decisions.md` (R12.3 already has a decisions file — the owner can record a level change there). This fits the existing pattern.
+
+Wait — R12.3's `insight-decisions.md` holds the owner's fix choice, not the level. Adding a level there might conflate artifacts. The AGENTS.md warns: every artifact has one maker. The `Level:` field is the writer's; the owner's override is a decision, which could go in the decisions file as an entry. That's consistent: the writer writes the claim, the owner can decide otherwise, the decisions file records it. Good.
+
+Now, "proposed change to the pattern": the pattern is EJ's run pattern (time set, small pieces, vision/use cases, research/data, workflows). Adding a `Level:` field to the insight artifact is a change to the insight format (R12.3), not exactly the run pattern. But the brief says "Your advice must fit it, and it may improve it: label such a point proposed change to the pattern". I can label the new field as a proposed change to the pattern's insight step: "proposed change to the pattern — R12.3's insight section gains a `Level:` line and a `Stops if:` line; the guard's `insight index` gains a level column; the writer fills it, the owner may override in `insight-decisions.md`." That's a change to the pattern (the insight step). I'll say what it changes and what it does not (the file stays in the run folder; nothing is moved).
+
+Also, the brief's pattern says "Workflows when possible." The recommendation to build a sorter is a workflow? I can say the measurement (two independent writers label 20 sections) should run as a small workflow with a check, per the pattern. Maybe not necessary.
+
+Now, Sun Tzu quotes. I need to quote only from my list, exactly, with labels. I'll use short Chinese quotes with the list's translations. I must copy the characters exactly from the list. Let me select:
+- #1: 「多算勝，少算不勝，而況於無算乎？」 (from list #1). And 「地生度，度生量，量生數，數生稱，稱生勝」 (list #1). Use one.
+- #2: 「勝兵先勝而後求戰，敗兵先戰而後求勝。」 (list #2). Or 「不可勝在己，可勝在敵。」 — perfect for "put the level on your own side". Use 「不可勝在己，可勝在敵」 (list #2). And 「勝兵先勝而後求戰」.
+- #3: 「全國為上，破國次之」 — "whole over broken". Use for not splitting/moving.
+- #4: 「知彼知己，百戰不殆；不知彼而知己，一勝一負」 — knowing both sides. Use for Source vs learner.
+- #5: 「合於利而動，不合於利而止。」 — move only on advantage. Use for not migrating.
+- #6: 「是故智者之慮，必雜於利害」 — mix benefit and harm. Use for evaluating the hypothesis.
+- #10: 「兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」 — no constant form. Use for the fixed keyword rule.
+- #11: 「先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也。」 — foreknowledge from people, not measurement/analogy. Perfect for the sorter.
+- #12: 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」 — seek it in 勢, not blame people. Use for changing the record, not the program.
+- #14: 「十則圍之，五則攻之，倍則分之」 — match method to ratio. Use for "56 is small; a form is enough; don't build a classifier".
+- #16: 「約束不明，申令不熟，將之罪也；既已明而不如法者，吏士之罪也。」 — orders clear first, then enforce. Use for defining the vocabulary before the check.
+- #19: 「是故散地則無戰，輕地則無止…」 — name the ground, act as prescribed. Use for the three destinations. Or the shorter 「九地之變，屈伸之利，人情之理，不可不察也」. Better to use 「是故散地則無戰，輕地則無止，爭地則無攻…」 but that's long. I can quote just the principle: the list's rule says "Identify the ground by the conditions the chapter defines, then act as prescribed". Quote 「是故散地則無戰，輕地則無止」 and say the table. Hmm.
+- #15: 「故將有五危」 / 「凡此五者，將之過也」 — the general's faults. Use for the risks of the filing scheme? Maybe skip to avoid stretching.
+
+I should not overquote. The brief says quote only from the list, keep the label. I can quote 5–6 short lines. Each quote is `quoted` (list #n). The list says the Chinese is `quoted` for these. Good.
+
+Let me double-check exact characters from the list:
+- #1 line 50: 「夫未戰而廟算勝者，得算多也；未戰而廟算不勝者，得算少也。多算勝，少算不勝，而況於無算乎？」 and 「地生度，度生量，量生數，數生稱，稱生勝。」
+- #2 line 60: 「昔之善戰者，先為不可勝，以待敵之可勝。不可勝在己，可勝在敵。故善戰者，能為不可勝，不能使敵之必可勝。故曰：勝可知，而不可為。」 and 「是故勝兵先勝而後求戰，敗兵先戰而後求勝。」
+- #3 line 70: 「凡用兵之法，全國為上，破國次之；全軍為上，破軍次之；…」
+- #4 line 87: 「故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」
+- #5 line 97: 「合於利而動，不合於利而止。」
+- #6 line 108: 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」
+- #10 line 154: 「故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」
+- #11 line 163: 「先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也。」
+- #12 line 172: 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」
+- #14 line 194: 「故用兵之法，十則圍之，五則攻之，倍則分之，敵則能戰之，少則能守之，不若則能避之。」
+- #16 line 225: 「約束不明，申令不熟，將之罪也；既已明而不如法者，吏士之罪也。」
+- #19 line 289: 「是故散地則無戰，輕地則無止，爭地則無攻，交地則無絕，衢地則合交，重地則掠，圮地則行，圍地則謀，死地則戰。」
+
+I must copy exactly. The list uses simplified/traditional mixed as printed. I'll copy from the tool output strings exactly. Careful with 「恒」 vs 「恆」 — the list has 「無恒形」 (line 154). Use 恒. And 「勢」, 「勝」, etc.
+
+Now, the answer section: one or two sentences. Let me draft:
+
+"Your hypothesis is right about the 26 instruction-sourced insights and wrong about the other 30: apart from requirement issues, the project still owns every insight whose cause is in its checks, tools or config — and that is the code-and-testing class you say matters most. Do not write a sorter to guess the level: a program can sort Source today (it already does), but the level must be written into the insight by its author, with one counterfactual question and two lines, and then the program only reads it."
+
+That's two sentences. Good. Maybe mention the 6 task-level. "Of the 26 instruction ones, 20 are agent-type and 6 are task-level (my reading)." Could be in the answer or step 1.
+
+Let me now think about whether the answer should be "conditional" because of the unknowns. The brief says "answer conditionally: 'if … then …'". I can say: "If by project-level you mean the project's own artifacts, yes there is a large project level (30 by Source; ~28 by lesson, my reading); if you mean only requirement documents, no — the code/test insights are not requirement issues." That's conditional and clear. Maybe the answer's first sentence can be conditional: "If 'project level' means this repo's code, tools and tests, you are not correct: 30 of 56 are project-level by their own Source line, and only 6 are task-level. If it means requirement documents only, then yes — but then the code/testing insights you care about have nowhere to go."
+
+Hmm, that's a good framing: the owner's hypothesis is true only under a definition that defeats its purpose. That's the "mix harm into benefit" (#6).
+
+Let me also decide: do I say "28" or "30"? Use both, clearly labeled:
+- **30** = exact, from the Source field: 19 check + 9 tool + 2 config. (The 26 instruction are the rest.) This is "where the fix goes", per the brief: "Each insight's Source: is one of instruction, check, tool, config: where the fix goes, not who learns it." So the 30 are project *fixes*, not necessarily project *learners*. Careful: I shouldn't call them project-level learners without the lesson reading. I can say: "30 of 56 have a fix in this repo's checks, tools or config; by the question's definition ('about this project's code, tools or conventions') that is project-level, and none is a requirement issue." The brief says Source is where the fix goes, not who learns; but the question's definition of project level is about the project's code/tools/conventions, which is exactly where those fixes go. So it's fair to say the 30 are project-level *fixes*; whether they are project-level *lessons* is the second reading. I'll be precise: "By the fix, 30 are project-level. By the lesson, my reading is 28 project / 22 agent-type / 6 task — the difference is 13 swaps." This is honest and shows the two axes.
+- The 13 swaps are the Source rule's errors. Perfect symmetry. I can present a small table:
+  
+  | Reading | project | agent-type | task |
+  |---|---|---|---|
+  | by the fix the Source line names | 30 | 20? | 6? |
+  
+  Hmm, by the fix reading, the 26 instruction split into task/agent: how many? The fix for an instruction insight is a rule in a spec/brief/memory (global or task). I can't split without judgment. So the fix reading only gives project=30, instruction=26. The lesson reading gives 28/22/6. Better to state them separately, not in one table.
+
+Maybe the clearest:
+- "Count from the record: 26 instruction, 19 check, 9 tool, 2 config. The 30 check/tool/config are fixes in this repo's artifacts — project-level by the question's definition, and none is a requirement issue. So the answer to Q1 is no."
+- "Count by the lesson (my reading, one label per insight): 28 project, 22 agent-type, 6 task. The two counts differ on 13 sections — the 13 a Source-based sorter would get wrong. That difference is the evidence for Q2."
+This is elegant: the same 13 appears in both answers.
+
+Wait: the fix reading's project count is 30, the lesson reading's is 28, and the swaps are 13. 30 - 13 + 11? Let me check: Source rule predicts P for 30 (check/tool/config) and T/A for 26. Under my labels, the 30 include 7 that I call A? Let me compute: check/tool/config = 19+9+2=30. Of those, my labels: check 14 P + 5 A; tool 7 P + 2 A; config 2 P → P=23, A=7. So 7 of the 30 are agent-type by lesson. The instruction 26: my labels P=5, A=15, T=6. So 5 instruction are project by lesson. The swaps: 7 (P→A) + 5 (A→P) + 1 (instruction A predicted but T actual, F-1b6f6a0f) = 13. And the lesson P = 23 + 5 = 28; A = 7 + 15 = 22; T = 6. Yes. So the 13 swaps are 7 + 5 + 1. The 1 (F-1b6f6a0f) is a task-level insight the Source rule would call agent-type. Good.
+
+So I can say:
+- By fix: 30 project, 26 instruction (of which 6 task-level and 20 agent-type by lesson).
+- By lesson: 28 project, 22 agent-type, 6 task.
+- Disagreements: 7 check/tool insights are agent-type lessons; 5 instruction insights are project lessons; 1 instruction insight is task, not agent-type. Total 13.
+
+Hmm, the 5 instruction-project: F-5182be9b, F-749688a0, F-b7c8635f, F-c60edad6, F-2cdebf3b. Are these really project? Let me double check each:
+- F-5182be9b: export step written only in a memory, not where the guard is edited → project workflow (the export step is this repo's). Yes.
+- F-749688a0: pre-commit hook GIT_INDEX_FILE → project hook. Yes.
+- F-b7c8635f: guard SPEC field types → project SPEC. Yes.
+- F-c60edad6: researcher.md vs harness → project agent contract. Yes.
+- F-2cdebf3b: guard SPEC payload contract → project. Yes.
+Good.
+
+The 7 check/tool-agent:
+- F-08cf4cc3 (engine call result check — practice)
+- F-3b8bdcec (quota check — practice)
+- F-e69dfb66 (mcode canary — engine limit/practice)
+- F-485505f6 (same)
+- F-0f2fa841 (plant must fail — testing practice)
+- F-21e1586c (plant identity — testing practice)
+- F-c055f734 (filter hides failing case — testing practice)
+Good.
+
+The 1 task: F-1b6f6a0f (one command without the guard's location rule) — Source instruction, but it's a one-off command, not a habit. Yes.
+
+This is a really clean analysis. I'll use it.
+
+Now, "which of the 56 it would get wrong" — 13, list them. I can give the ids in the "How I decided" or in a compact list. The brief wants at least one each way for Q1, and the program's errors for Q2. I'll list all 13 with their one-line reason in a compact table or bullets. That might be long but valuable. Maybe group:
+- 7 called project, actually agent-type: F-08cf4cc3, F-3b8bdcec, F-e69dfb66, F-485505f6, F-0f2fa841, F-21e1586c, F-c055f734/F-e1161864.
+- 5 called agent-type, actually project: F-5182be9b/F-1d185ee3, F-749688a0, F-b7c8635f, F-c60edad6, F-2cdebf3b/F-d0736dc7.
+- 1 called agent-type, actually task: F-1b6f6a0f.
+That's 13 sections (counting the multi-id headings as one section). Good.
+
+Now, the "How we would know I was right" section. I want a concrete measure:
+1. **Agreement test (the field is well-defined):** Give 20 insight sections (a stratified sample: 7 project, 7 agent, 6 task by my reading, mixed in) to two independent writers who do not see my labels; each fills `Level:` using the two-question tree. If they agree with each other on ≥16/20 and with my labels on ≥15/20, the level is a stable property and the field is worth adding. If they agree less than 14/20, my labels (and the taxonomy) are the problem, not the program. This is a measurable, falsifiable test. (Note: the writers are agents; they may share the same model, so "independent" means separate runs without the labels.)
+2. **Learning test (the filing works):** After 10 new insights with the field, count how many times a level-filtered `insight show` is loaded by the main agent at the start of a task and cited in its plan. If 0/10, the level is not being learned from; the recommendation fails. If ≥3/10 with a changed plan, the filing is doing work.
+3. **Sorter test:** The program's level must equal the writer's level for 56/56 (it's a lookup). If it ever disagrees, the program is inferring, not reading, and should be removed.
+
+Maybe 2 measures are enough. I'll give the agreement test as the primary and the learning test as the observable.
+
+"Costs and risks" — let me map each to an item:
+- **Risk: the field is a claim, not a fact; it can be filled wrongly or lazily.** Cost: a wrong level sends the lesson to the wrong place and the noise persists. Item: my #1 (count; without a check it is 無算) and my #16 (clear orders then enforce). The check: the two-question answer and the `Stops if:` line make it falsifiable; the owner can override.
+- **Risk: adding a field to 56 existing insights is a migration.** Cost: time and link rot; the run folder is evidence. Item: my #5 (move only on advantage) and my #3 (whole over broken). Mitigation: fill the field only for new insights; backfill lazily when an insight is loaded; never move the files.
+- **Risk: a single keyword sorter will be wrong on the mixed cases (13/56).** Cost: false confidence, and the wrong lesson loaded. Item: my #10 (no constant form) and my #11 (foreknowledge from people). Mitigation: don't build it; if built, it may only validate, not assign.
+- **Risk: the project bucket becomes the dump and the "reduce noise" goal fails.** Cost: the owner's stated benefit is lost. Item: my #6 (mix harm into benefit) — the benefit of a big project bucket is completeness; the harm is noise. Mitigation: file by the level of the *lesson*, and keep the `Source` category separately — the two axes are not one.
+- **Risk: the agent-type bucket is global and may not fit this repo's harness.** Cost: a rule that follows the agent into a repo where it is wrong (e.g. a project-specific sandbox rule filed as agent-type). Item: my #4 (know the ground) — a rule must be re-checked on the new ground. Mitigation: agent-type insights name the condition, not just the rule ("when the engine's sandbox differs...").
+
+Good.
+
+"What I need to know" — 3-4:
+1. "Task level": one task, or a kind of task? If a kind (e.g. "writing a spec"), a fourth bucket is needed, and my 6 task labels move; the answer to Q1 changes from 6 task to ~0.
+2. "Project requirement issues": do you mean only SPEC/HARNESS_REQUIREMENTS gaps, or every defect in this repo's code/tools/tests? If the latter, the hypothesis is true by definition and the project level is just "the repo"; my breakers (F-86553997, F-3e11ce16, F-969500fa, F-682702da, F-2116eae0, F-8712e9fc, F-d8221199, F-7f938bdf) are inside the exception.
+3. One label per insight, or one per lesson? If per lesson, F-8392b4ce (project fix + agent-type lesson) needs two; the field becomes `Level:` per lesson, not per section. This changes the format.
+4. Cross-project destination: should an agent-type insight go into a global file (the skill/AGENTS.md) that other projects read, or stay in this repo's agent docs? This changes what "agent-type level" buys; it doesn't change the label.
+5. Maybe: who may overrule the writer's level? (Owner only, or a reviewer?) This is a governance question; the brief says the owner decides. I can put it as a smaller question.
+
+The brief says "questions whose answers would change the answer". 1, 2, 3 definitely. 4 changes the destination/usefulness, not the label; maybe include as a note. I'll list 4.
+
+Now, the "Answer" must be one or two sentences. Let me make it crisp and conditional:
+
+"Not as stated: if 'project level' means this repo's code, tools and tests, then 30 of the 56 insights have their fix there (19 check, 9 tool, 2 config) — none a requirement issue — and only 6 are task-level; the project level is real, and it is exactly the code-and-testing class you value. Do not have a program guess the level: it can sort the written `Source:` today (your `insight index` already does), but the level must be written by the insight's author with two counterfactual answers and a `Stops if:` line; then the sort is a read, and the 13 sections a Source-based guess would misplace are the price of skipping that."
+
+That's two sentences, a bit long but okay. Maybe split.
+
+Now the "How I decided" numbered steps. Each should be a decision move, not a summary. Let me draft:
+
+1. **Counted before judging (my #1).** I counted all 56 by the only field the record writes, `Source:`: 26 instruction, 19 check, 9 tool, 2 config. 「多算勝，少算不勝，而況於無算乎？」 — the count is what the answer rests on; the hypothesis's "there is no project level" is a claim about a count, so the count decides it.
+2. **Named the ground (my #19, my reading).** "Task level" = the lesson is tied to this one task's own brief, spec, criterion or command; a different task in this repo would not meet it, so its home is the run folder. "Project level" = any agent working in this repo could hit it, and the cause is in this repo's code, tool, test or config. "Agent-type" = the cause is a habit or limit of an agent kind and follows it into any repo. This is my reading; the question defines only project and agent-type, and "task" is the owner's third word.
+3. **Tested the hypothesis on the instruction class first (my #6).** The hypothesis's benefit: of the 26 instruction insights, 20 are agent-type and 6 task-level (my reading) — so for the class the owner was looking at, they are right. Quote a few: F-1e90a8e1, F-3caba088, F-a03fa5b3, F-d1444d01, F-b696193d, F-8ac06aae (agent-type); F-4cbb2f4b, F-05a1b440, F-cf3f3a6e, F-cf7d58f7, F-1b6f6a0f, F-90389583 (task). This is the benefit side of the mix.
+4. **Tested the harm side (my #6, my #4).** The 30 check/tool/config insights are not requirement issues and are not task-level: the cause is in this repo's check/tool/config. The clearest breakers: F-86553997 (journal.ts lists record kinds twice), F-3e11ce16 (guard's command-error check burns its own query exit), F-969500fa (guard's test-run detection reads only the call exit), F-682702da (export_skills.py treats a skill as one file), F-2116eae0 (expect-fail cannot declare a run against the old source), F-8712e9fc (export test cannot tell sessions apart), F-d8221199 (test of committed export reads uncommitted state), F-7f938bdf (no pre-flight check that a question's paths are in the repo). Each is a defect in this repo's code/test/tool, not a requirement gap. The hypothesis fails here. On my lesson reading the split is 28 project / 22 agent-type / 6 task; the exact number is my reading, the 30 is the record.
+5. **Saw why Source cannot be the level (my #4).** 「知彼知己，百戰不殆；不知彼而知己，一勝一負」 — the sorter knows only one side. `Source` is where the fix goes (the brief says so); the learner is the other side. The same value spans levels: check → F-8392b4ce (project) vs F-0f2fa841 (agent-type); tool → F-173e0190 (project) vs F-e69dfb66 (agent-type); instruction → F-4cbb2f4b (task) vs F-1e90a8e1 (agent-type). Knowing only the first is the half-victory.
+6. **Tested the obvious program (my #1 count).** Rule: check/tool/config → project; instruction → agent-type, with a task exception when the root cause names this task's own artifact. On my lesson labels it gets 13 of 56 wrong: 7 project-by-Source that are agent-type lessons (F-08cf4cc3, F-3b8bdcec, F-e69dfb66, F-485505f6, F-0f2fa841, F-21e1586c, F-c055f734/F-e1161864), 5 instruction ones that are project (F-5182be9b/F-1d185ee3, F-749688a0, F-b7c8635f, F-c60edad6, F-2cdebf3b/F-d0736dc7), and 1 task (F-1b6f6a0f). 43/56 = 77%; quick, not reliable.
+7. **Saw the existing evidence that guessing loses (my #11).** The `insight index` categories were decided after the six-experts comparison: the four written `Source` kinds did as well as six categories guessed from titles, "placed with nothing guessed"; and in that comparison both guessed schemes missed sections (10 of 13 shared; each missed 3). A level guessed from titles or root causes would repeat that. 「先知者…必取於人，知敵之情者也」 — the level is foreknowledge about a failure; it must come from the person who saw it, not from the text or the measurement.
+8. **Put the work on the record's side (my #2, my #12).** 「不可勝在己，可勝在敵」 — the sorter cannot make the text classifiable; the writer can make the record carry the level. Change the ground (勢), not the people: add two lines to the insight and a column to the index; don't ask for a smarter program. Then the sort is a lookup.
+9. **Chose the smallest move (my #5, my #3).** Keep the 56 files where they are; add the field to new insights and backfill when loaded; never move the evidence. 「合於利而動，不合於利而止」; 「全國為上，破國次之」. A migration buys no learning the field does not.
+10. **Fixed the orders before the enforcement (my #16).** Define the three values and the two questions in R12.3, with one example each, before the guard checks for a valid value; otherwise the check punishes writers for an unclear taxonomy. 「約束不明，申令不熟，將之罪也」.
+
+That's 10 steps. Maybe too many, but the brief wants numbered steps. I can merge 9 into 8 and keep 8 steps. Let me aim for 7-8.
+
+Now the "proposed change to the pattern" label. Where? In the Answer or in step 8. I'll add a labeled paragraph after the steps: "**Proposed change to the pattern** — R12.3's insight section gains `Level:` and `Stops if:`; the writer fills both from the two questions; `insight-decisions.md` records an owner override; `insight index` prints a `level` column and flags a missing value. It changes the insight artifact and the check, not the file's home or the run's shape." That's a change to the pattern (the insight step), labeled as required.
+
+Now, let me reconsider: the brief says "Write exactly this (no preamble): # 孫子 (Sun Tzu) — <the question in a few words> ...". So my final message must be exactly that structure, no preamble. I must not include a preamble like "I read the brief". The final answer must start with the heading. Good.
+
+The heading: "# 孫子 (Sun Tzu) — where an insight belongs". Use the exact name and em dash. The question in a few words: "at which level an insight belongs" or "where an insight belongs". I'll use "where an insight belongs".
+
+Sections in order: Answer, How I decided, What I need to know, Costs and risks, How we would know I was right. No extra sections. The "proposed change to the pattern" should go inside "How I decided" (as a labeled paragraph) or perhaps inside "Costs and risks". The brief says label such a point; I'll put it at the end of "How I decided" as a labeled paragraph, since it's a design recommendation. Or in the Answer after the recommendation. Hmm. The required sections don't include "Recommendation"; the Answer is the recommendation. I'll put the proposed change in "How I decided" as step 8 or as a labeled note after the steps. That keeps the exact section list.
+
+Wait — the "How I decided" section should be numbered steps; a labeled note after them might violate "no preamble"? No, it's within the section. I'll make it the last numbered step: "8. **Proposed change to the pattern** (my #16, my #2) — ..." That way it's a step and labeled. Good.
+
+Now, let me make sure the final answer doesn't overclaim. I'll add labels "my reading" where appropriate. The brief says "Each conclusion labelled quoted, my reading, or not measured" is a criterion in criteria.yaml (C3), but that's for the report to EJ, not my answer. The brief says "A point you have only from memory is labelled recall". I should use "my reading" for the counts and labels. And "quoted" for Chinese quotes (the list's label). I can say "(my #1, quoted)" — the list's "Words are: quoted". The brief says "keep its label (quoted, attributed)". So when I quote, I should say `quoted` and the item. E.g. 「多算勝…」 (my #1, quoted). Good.
+
+I also need to say what I don't know where the data doesn't answer. E.g. the exact number of project-level insights depends on the reading; I don't know EJ's definition of "task level". State it.
+
+Let me also consider whether to mention the guard journal's engine field. The question's data says engine: opencode 7, claude 4, etc., and "the field names who failed, not who should learn" with F-7f938bdf as the example. This is a trap for a sorter: a program might use `engine` to infer agent-type. I should mention it in Q2: engine is worse than Source — 37 "none" records include both the project bugs and the habits, so it can't separate; F-7f938bdf is the proof (opencode failed, but the main agent's brief caused it). That's a nice concrete point. Add to step 6 or a sentence: "The journal's `engine` field is worse: F-7f938bdf is an opencode failure caused by the main agent's brief, and 37 'none' records cover both project bugs and agent habits; the field names who failed, not who learns (the question's own data says so)." Good.
+
+Now, let me double-check the exact counts from the Source field: 26 instruction, 19 check, 9 tool, 2 config = 56. Let me verify with the script: instruction 26, check 19, tool 9, config 2. Yes.
+
+And the 30 = 19+9+2. Good.
+
+The lesson counts 28/22/6. Let me re-verify the sum: 28+22+6=56. Yes.
+
+But wait: are all 6 task-level in the instruction class? Yes (2,3,10,33,34,35). So the 30 check/tool/config contain zero task-level under my reading. That's a strong statement: **no check/tool/config insight is task-level; the cause is always in a reusable artifact.** Is that true? F-60cad515 is a one-off command shape + tool; project. F-17/18 mcode; agent. F-47 TypeScript; project/agent. None task. That seems plausible: a check/tool/config cause is by definition reusable (the artifact persists), so it's never task-level. That's a nice structural insight: **task-level lives only in the instruction class**, because a one-off brief/spec/command is an instruction. This supports the owner's intuition and sharpens it: project vs agent-type is the real question for check/tool/config; task only applies to instructions.
+
+Hmm, but could a task-level insight have Source=check? E.g. a test that was written for this one task and will be deleted? The data has none. I can say "in these 56, every task-level insight is instruction-sourced; the 30 check/tool/config are never task-level." That's a data observation. It might be a useful rule: "Source=check/tool/config → not task" for a sorter. That reduces the problem to project vs agent-type for 30, and task vs agent for 26. A two-stage sorter could be more reliable:
+- Stage 1: Source=check/tool/config → not task (30). Source=instruction → task or agent (26).
+- Stage 2: for the 30, project vs agent (hard); for the 26, task vs agent (hard).
+So the hard binary remains. The Source rule's 13 errors are mostly in stage 2.
+
+Now, can a program do stage 2 reliably? For the 30, project vs agent: the agent-type ones are testing practices (F-0f2fa841, F-21e1586c, F-c055f734), engine-call practices (F-08cf4cc3, F-3b8bdcec), and engine limits (F-e69dfb66, F-485505f6). A keyword rule could catch "my test's planted", "plant", "filter", "quota", "canary", "mcode". But that's fitting the 56. On a new insight, it may fail. The structural reason: the same words ("test", "check") appear in both project and agent lessons. E.g. "no test checked that a bundled skill's named references exist" (F-682702da, project) vs "a planted failure used without first showing that the plant alone fails" (F-0f2fa841, agent). Both are about tests; one is a missing project test, one is a testing practice. A keyword rule sees "test" in both. That's a great concrete pair to show why keywords fail. Add it.
+
+Similarly, "check" in F-8392b4ce (project) vs F-15cf1278 (project) — both project. Not a pair. The test pair is better: F-682702da vs F-0f2fa841. And "engine" in F-173e0190 (project tool) vs F-e69dfb66 (agent engine limit) — both about engines. Good.
+
+So the answer to Q2: no reliable inference; the words are the same on both sides. The only reliable signal is a written field.
+
+Now let me think about whether the recommendation should be to add the level to the *insight* or to a separate *index*. The brief says "Every artifact has one maker": the insight writer writes the insight. The level is a claim about the lesson; the writer is the one who saw the failure and wrote the whys, so they are the right maker. The owner decides disputes. The index is a derived artifact (program), so it reads the field. Good.
+
+Should the level be a field in the insight section, or a line in the `insight-decisions.md`? The writer writes the insight; the owner chooses the fix in the decisions file. The level is not a fix choice; it's a property of the lesson. So it belongs in the insight section, written by the writer. The owner's override, if any, goes in the decisions file as a decision entry. That's consistent with R12.3's "insight file holds no choices". The level is not a choice; it's a claim. Good. I should say this explicitly to avoid the "two makers" trap.
+
+What about the `Stops if:` line? Also the writer's; it's the evidence for the level. It names the artifact or habit that must change. It's checkable. Good.
+
+Now, the "repeats" field: is that the writer's? Yes, the writer can link ids from the journal/previous insights. But R12.3 already asks for "each failure, or each group with one cause"; the grouping is the writer's. The repeat count is a natural extension. I can mention it as optional, not a new field: "link the ids when the cause repeats (the data already does this: F-98c2c4c9 says 'the same as F-15cf1278 ... its first repeat')." The repeat is evidence that the level is above task. Good.
+
+Let me now draft the final answer in full, then review it against the brief's requirements:
+- Heading exact.
+- Answer 1-2 sentences.
+- How I decided: numbered, each cites my #n or says my reading.
+- What I need to know.
+- Costs and risks: each with the item.
+- How we would know I was right.
+- Quotes exact and labeled.
+- Plain English.
+- No files written.
+- Refer to EJ as they/them.
+- No preamble.
+
+Let me also check the brief's "Say what 'task level' means in your reading, and give the insight ids that support or break the hypothesis — at least one each way if the data has them." I do that. "Is the owner correct" — I answer no, with the conditional. "Can a program sort... If yes... If no: what the insight would have to record." I answer no, with the 13 errors and the required fields.
+
+One more consideration: the owner's hypothesis says "are we able to fast eval using programming it is a AI Agent programming issue or a project level one." Maybe they want a *fast eval* of failures as they happen, not a sort of existing insights. The question's decision 2 says "Can a program sort an insight into its level quickly and reliably?" So it's a sort of insights, not a live eval. But the owner's words "fast eval using programming" suggest a quick test/classifier. My answer covers both: a program can evaluate the *written* field, not the *cause*. And I can mention: a pre-flight "level" question at insight-writing time is faster than a post-hoc classifier, because the writer has the evidence. That's the "fast eval" done right. Good.
+
+Also, the owner said "the most important ones are code insights and testing insights, which can improve an ai agent quality a lot and reduce noise." My analysis: the code/testing insights are split across project and agent-type; the level is not the same as the code/testing category. E.g. F-0f2fa841 (testing practice) is agent-type; F-682702da (missing test) is project. So the owner's "code/testing" cut and the "project/agent-type" cut are two different axes. That's a key point: the owner may be conflating "code/testing insight" (subject matter) with "project-level" (scope). I should say this: "code/testing is a subject axis; project/agent-type is a scope axis. They cross: F-0f2fa841 is a testing insight and agent-type; F-682702da is a testing insight and project-level. Filing by subject will not give you the level, and filing by level will not give you the subject. Keep both." This is a valuable insight for the owner. Add it to step 3 or 4, and maybe to the answer. The brief says the owner wants code/testing insights; I should connect.
+
+Actually, this might be the single most useful correction: **the owner's two favorite categories (code, testing) and the level (project, agent-type) are different axes.** The data shows testing insights on both sides (F-0f2fa841 agent vs F-682702da project; F-21e1586c agent vs F-8712e9fc project). So "file code/testing insights where they'll be learned from" requires the level field *in addition to* the subject, not instead of it. The current `Source` categories are already a subject-ish axis (check/tool). The level is a second axis. This is a strong argument for adding a field, not replacing the categories.
+
+Let me verify the pairs:
+- Testing insights, agent-type: F-0f2fa841 (plant), F-21e1586c (plant identity), F-c055f734 (filter), F-a2551f81 (expectations from existing tests), F-8243a18f (fail-first wording).
+- Testing insights, project-level: F-8712e9fc (export test isolation), F-d8221199 (test of committed export reads uncommitted state), F-682702da (no test for bundled references), F-f09b058d (result check + tests), F-59498b2a (shared temp path).
+Yes, both sides. Great.
+
+- Code insights, agent-type: F-86553997? (journal.ts duplicate list — could be either), F-5c21dd69 (TS inference), F-b696193d (signature change), F-3caba088 (parse shape), F-54 (early returns).
+- Code insights, project-level: F-3e11ce16, F-969500fa, F-682702da, F-86553997, F-46, F-45.
+Both sides. Good.
+
+So the answer's key line: "The level is a second axis, not a replacement for the Source category; code/testing insights sit on both sides of it." That's a genuinely useful recommendation.
+
+Now, the Sun Tzu framing: the two axes are like 奇正? The regular (Source category) and the irregular (level) combine; "奇正相生" (#12) — the two axes give rise to each other, and their combinations cannot be exhausted. That's a nice use of #12: don't collapse the two axes into one; combine them. 「戰勢不過奇正，奇正之變，不可勝窮也」 (my #12, quoted). Hmm, that might be over-poetic. But it's apt: two axes (Source, level) combine like 奇正; a single sort loses the combinations. I can use it in step 7 or 8. Maybe not; I already use #12 for "change the ground". I can use #12 twice? The brief says each step names the item; using an item twice is fine. But better to spread.
+
+Let me map the two axes to #12's 奇正: the written Source is the regular (正), the level is the irregular (奇) that the writer sets; together they locate the lesson. A program that only reads Source is using 正 alone; it will miss the 奇. This is a bit of a stretch but defensible as my reading. I'll keep it brief.
+
+Now let me check the exact Chinese for #12: 「戰勢不過奇正，奇正之變，不可勝窮也。奇正相生，如循環之無端，孰能窮之哉？」 — from line 172. I can quote the first part.
+
+Now, the "Costs and risks" should name the risk or price of *every recommendation*. My recommendations:
+1. Add `Level:` and `Stops if:` to the insight (writer-filled).
+2. Add a `level` column to `insight index`; flag missing.
+3. Don't migrate the 56; backfill lazily.
+4. Use the two-question tree; define it in R12.3.
+5. Don't build a level classifier.
+Each needs a cost. I'll structure the costs around these.
+
+Let me write the final text now, then refine. I need to be careful with length — the answer can be substantial, but not bloated. Aim ~1200-1600 words.
+
+Draft:
+
+# 孫子 (Sun Tzu) — where an insight belongs
+
+## Answer
+
+Not as stated. If "project level" means this repo's code, tools and tests, 30 of the 56 insights have their fix there (19 check, 9 tool, 2 config) and none is a requirement issue, while only 6 are task-level on my reading; the project level is real, and it is exactly the code-and-testing class you value. A program can sort the written `Source:` quickly — your `insight index` already does — but it cannot sort the level reliably, because the level is not written; have the insight's author write it with two counterfactual answers and a `Stops if:` line, and the program's job becomes a read.
+
+Wait: "only 6 are task-level" — by my lesson reading. The fix reading gives 26 instruction (6 task + 20 agent). Fine.
+
+## How I decided
+
+1. **Counted the record before judging (my #1).** ... 26/19/9/2. 「多算勝，少算不勝，而況於無算乎？」 (my #1, quoted). The hypothesis is a claim about a count, so the count decides.
+2. **Named the ground (my #19; my reading).** task/project/agent definitions. ...
+3. **Found what supports the hypothesis (my #6).** Of the 26 instruction insights, 20 are agent-type and 6 task (my reading). List examples. So for the class EJ was looking at, they are right.
+4. **Found what breaks it (my #6, my #4).** The 30 check/tool/config... breakers list. Not requirement issues. So no.
+5. **Separated the two axes (my reading).** Code/testing is a subject; level is scope. Pairs: F-0f2fa841 (testing, agent) vs F-682702da (testing, project); F-5c21dd69 (code, agent? project?) — hmm, use F-54 (code, agent) vs F-3e11ce16 (code, project). Yes. So one axis cannot do the other's job.
+6. **Saw why Source is one side only (my #4).** Quote. Same Source spans levels. Examples.
+7. **Tested the obvious program (my #1).** Rule; 13 errors; list.
+8. **Saw the existing evidence that guessing loses (my #11).** The categories yaml and compare.md; the quote. So the level must be recorded.
+9. **Put the work on the record's side (my #2, my #12).** Quote 不可勝在己. Change the ground. The two questions. The fields. Proposed change to the pattern (labeled).
+10. **Chose the smallest move (my #5, my #3, my #16).** Don't move files; define orders first; backfill lazily.
+
+That's 10. Maybe merge 9 and 10. Let me keep 9 and make 10 a short "orders" point.
+
+Actually, the "proposed change to the pattern" should be prominent. I'll make step 9 the proposal, step 10 the smallest move, and put the "orders" point in step 9 or in costs. Let me structure:
+
+9. **Proposed change to the pattern (my #2, my #12, my #16).** Add the fields; the two questions; the index column; define in R12.3 before checking; the writer fills, the owner overrides in the decisions file. This is the change to the pattern, labeled.
+10. **Chose the smallest move (my #5, my #3).** Don't move the 56; backfill lazily; keep the run folder as evidence.
+
+Good.
+
+## What I need to know
+
+- Task level: one task or a kind of task?
+- Project requirement issues: only SPEC/HARNESS gaps, or every repo defect?
+- One label per insight or per lesson?
+- Cross-project destination: global file or this repo?
+- (Maybe) Is the level a claim of the writer or a decision of the owner? R12.3 says the owner chooses fixes; is the level the same? This changes who fills it. The AGENTS.md "who fills it" rule makes this important. I'll include it as a question because it changes the format: if the owner decides the level, the field goes in `insight-decisions.md`, not the insight. My recommendation is the writer claims, the owner overrides; I need EJ's confirmation. This is a real question.
+
+## Costs and risks
+
+- The field is a claim; a lazy writer can mislabel. Cost: wrong destination, noise persists. Item: my #1 (uncounted = 無算) / my #16 (clear orders). Mitigation: the `Stops if:` line makes it checkable; the owner can override.
+- The migration of 56: time, link rot. Item: my #5, my #3. Mitigation: new insights only; lazy backfill; never move.
+- A keyword sorter will be wrong on the 13. Item: my #10 (no constant form) / my #11. Mitigation: don't build it; if built, validate only.
+- The project bucket becomes a dump; the "reduce noise" goal fails. Item: my #6 (benefit/harm). Mitigation: level is the lesson, not the fix location; keep Source as a separate axis.
+- An agent-type rule may be wrong on a new repo. Item: my #4 (know the ground). Mitigation: state the condition, not just the rule.
+- Adding the field to R12.3 is a requirement change; EJ owns SPEC/DECISIONS. Item: my #16 (orders) — the owner writes the order. Cost: it takes EJ's decision, not the agent's. This is a good one: I must not change SPEC; only EJ changes it (CLAUDE.md says "Only EJ changes these"). So the proposal is advice to EJ, not something I apply. The cost: it needs EJ's decision and the requirement's wording. Good.
+
+## How we would know I was right
+
+1. Agreement test: 20 sections, two independent writers, ≥16/20 agreement; if less, the taxonomy/labels are wrong.
+2. Learning test: after 10 new insights, count level-filtered loads and citations; 0/10 = not learned from.
+3. Sorter test: the program must equal the writer's level 56/56; any disagreement means it is inferring.
+
+Let me refine the agreement test: I should not use my own labels as ground truth; use inter-writer agreement. And compare to my labels only as a secondary. The measure: two writers, blind to each other and to my labels, fill `Level:` for 20 sections; agreement ≥ 16/20 means the level is a stable property. Then the sorter is correct by construction. If agreement < 14/20, the three levels are not one thing; the question needs a different cut. This is a clean falsifiable test.
+
+The learning test: "loads and cites" is observable in the transcript/journal. The guard could count `insight show --level` calls. 10 runs is a small n; say "10 new insights or 5 runs". Fine.
+
+Let me also include a "wrong" outcome: if the project bucket is >70% of new insights, the taxonomy is not discriminating; if the agent-type bucket is >70%, the writer is over-generalizing. Hmm, maybe too much. Keep the two tests.
+
+Now, let me double-check the Chinese quotes against the list one final time, character by character. I'll copy from the list output, not retype:
+- 「多算勝，少算不勝，而況於無算乎？」 — list line 50: 「多算勝，少算不勝，而況於無算乎？」 Yes.
+- 「不可勝在己，可勝在敵。」 — list line 60: 「不可勝在己，可勝在敵。」 Yes.
+- 「知彼知己，百戰不殆；不知彼而知己，一勝一負」 — list line 87: 「故曰：知彼知己，百戰不殆；不知彼而知己，一勝一負；不知彼不知己，每戰必殆。」 I'll quote the first part with the semicolon. Yes.
+- 「先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也。」 — list line 163. Yes.
+- 「故善戰者，求之於勢，不責於人，故能擇人而任勢。」 — list line 172. Yes.
+- 「合於利而動，不合於利而止。」 — list line 97/98. Yes.
+- 「全國為上，破國次之」 — list line 70. Yes.
+- 「約束不明，申令不熟，將之罪也；既已明而不如法者，吏士之罪也。」 — list line 225. Yes.
+- 「兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」 — list line 154: 「故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」 I'll start at 故? The quote can start mid-sentence; use 「故兵無成勢，無恒形，能因敵變化而取勝者，謂之神。」 Yes.
+- 「是故智者之慮，必雜於利害」 — list line 108: 「是故智者之慮，必雜於利害，雜於利而務可信也，雜於害而患可解也。」 Yes.
+- 「戰勢不過奇正，奇正之變，不可勝窮也」 — list line 172: 「戰勢不過奇正，奇正之變，不可勝窮也。」 Yes.
+- 「散地則無戰，輕地則無止」 — list line 289: 「是故散地則無戰，輕地則無止，...」 I might not use this. The #19 rule's English is enough, no quote. But if I quote, use 「是故散地則無戰，輕地則無止」.
+
+I should avoid too many quotes. Use 6: #1, #4, #6, #11, #12, #16. Maybe #2 and #5. Let me choose the ones that carry the argument:
+- #1 for the count.
+- #2 for "your own side" (the record).
+- #4 for "both sides" (Source vs learner).
+- #5 for "move only on advantage" (don't migrate).
+- #6 for "mix benefit and harm" (the hypothesis).
+- #11 for "foreknowledge from people" (the sorter).
+- #12 for "change the ground, not the people".
+- #16 for "clear orders first".
+That's 8; okay. #3 and #19 can be English references without quotes. #10 can be referenced in the costs without a quote, or quote 「兵無成勢，無恒形」. Maybe 9. I'll keep quotes short.
+
+Now, let me reconsider the "Answer" line "30 of the 56 insights have their fix there ... while only 6 are task-level on my reading". There's a subtle inconsistency: the 30 is by fix, the 6 is by lesson. I should phrase precisely: "30 of the 56 have their fix in this repo's checks, tools or config (19 check, 9 tool, 2 config) — none a requirement issue — and on my reading of the lesson, the split is 28 project / 22 agent-type / 6 task." That's precise. Then "the project level is real..." Good.
+
+Let me also be clear that the 30 are not necessarily "project-level lessons"; the strongest claim is "the hypothesis is false by the question's definition". I'll say "By the question's own definition — about this project's code, tools or conventions — those 30 are project-level; the hypothesis's exception ('project requirement issues') does not cover them." Then the lesson split is the second reading. Good.
+
+Now, should I say "the owner is not correct" bluntly? The brief asks "Is the owner correct". I should answer plainly: "No, not as stated." Then the nuance. Good.
+
+Let me also make sure to give at least one supporting id *explicitly* for the hypothesis: "F-1e90a8e1 is agent-type; F-4cbb2f4b is task-level." Yes, in step 3.
+
+And at least one breaking id: "F-86553997 is project-level and not a requirement issue." Yes, in step 4.
+
+Now, the "What I need to know" should not ask things I can answer myself. The task-level definition: the brief doesn't define it, so it's a real question. The "project requirement issues" meaning: the brief says "except those project requirement issues" without defining; real. One label vs per lesson: real, and the data has mixed cases. Who fills the level: real, per AGENTS.md. Cross-project destination: real for the use case, but maybe it doesn't change the answer to Q1/Q2; it changes the design. I'll include it as a fourth, framed as "changes what agent-type buys, not the label". Maybe 4 is enough.
+
+Let me also think: does the owner's phrase "project requirement issues" maybe mean "the project's own requirements" (i.e., the product requirements, like SPEC), not "issues with the requirement"? If so, my question 2 is exactly right. I'll phrase: "When you say 'project requirement issues', do you mean gaps in the project's requirement documents (SPEC, HARNESS_REQUIREMENTS), or any defect in the project's code, tools and tests? The first leaves the 30 outside the exception; the second puts them inside it and makes 'project level' mean 'anything in this repo'."
+
+That's a good binary.
+
+Now let me write the final answer. I'll be careful with the format: no preamble, exact section headings, plain Markdown. I'll use em dashes and Chinese quotes. Refer to EJ as they/them.
+
+Let me draft the full text:
+
+---
+
+# 孫子 (Sun Tzu) — where an insight belongs
+
+## Answer
+
+Not as stated. If "project level" means this repo's code, tools and tests, 30 of the 56 insights have their fix there (19 check, 9 tool, 2 config) and none is a requirement issue; on my reading of the lesson the split is 28 project / 22 agent-type / 6 task. A program can sort the written `Source:` quickly — your `insight index` already does — but it cannot sort the level reliably, because the level is not in the record; have the insight's author write it with two counterfactual answers and a `Stops if:` line, and the program's job becomes a read.
+
+## How I decided
+
+1. **Counted the record first (my #1).** ... 
+...
+
+Let me write it all out carefully.
+
+For step 2, the definition of task level: "In my reading, task level means the lesson is tied to this one task's own brief, spec, criterion or command; a different task in this repo would not meet it, so its home is the run folder. Project level means any agent working in this repo could meet it and the cause is in this repo's code, tool, test or config. Agent-type means the cause is a habit or limit of an agent kind and follows it into any repo. The question defines only the first two; 'task' is your third word, and it is the one I had to define myself."
+
+For step 3: "Of the 26 instruction-sourced insights, 20 are agent-type and 6 task-level (my reading). The support: F-1e90a8e1 (a pipe habit), F-3caba088 (parse before printing keys), F-a03fa5b3 (an epoch typed from memory), F-d1444d01 (heredoc escaping), F-b696193d (a changed signature), F-8ac06aae (two `&` subshells), F-84636a96 (an engine normalising 為 to 为) are agent-type; F-4cbb2f4b and F-05a1b440 (this spec's fields), F-cf3f3a6e (this round's spec), F-cf7d58f7 (this brief's progress line), F-1b6f6a0f (one command) are task-level. So for the class you were looking at, you are right: the agent's own instruction is either a task artifact or an agent-type habit."
+
+Wait: "an engine normalising 為 to 为" — the insight says Laozi wrote 為 where his list has 爲. The engine normalized a variant character. Fine.
+
+For step 4: "The 30 check/tool/config insights are not requirement issues: the cause is in this repo's check, tool or config, and any agent working here meets it. The clearest breakers: F-86553997 (journal.ts lists its writable kinds twice, so a new kind needs two edits), F-3e11ce16 (the guard's command-error check logs its own 'findings' exit as an error), F-969500fa (the guard reads only the call's exit, so a test run inside a chain is invisible), F-682702da (export_skills.py copies a multi-file skill as one file, and no test checks the references), F-2116eae0 (expect-fail can only declare a file inside the root, so a run against the old source cannot be declared), F-8712e9fc (the export test cannot tell this session's changes from another's), F-d8221199 (a test of the committed export reads uncommitted state), F-7f938bdf (nothing checks that a question's paths are inside the repo before opencode reads). Each is a defect in this repo's code, test or tool; none is a gap in a requirement document. That breaks the hypothesis."
+
+For step 5: "Code/testing is a subject, not a level (my reading). The two axes cross: F-0f2fa841 is a testing insight and agent-type (a plant must be shown to fail on its own); F-682702da is a testing insight and project-level (a missing test for bundled references). F-54 / Review finding 1 is a code-change insight and agent-type (list a path's early returns when routing new cases into it); F-3e11ce16 is a code insight and project-level (the guard's own exit codes). So filing by 'code/testing' will not give you the level, and filing by level will not give you the subject; you need both."
+
+Hmm, "F-54 / Review finding 1" — the id is "Review finding 1" (no F id). I'll write "the 20261017-round17-crossed review finding 1". Good.
+
+For step 6: "Source is one side only (my #4). 「知彼知己，百戰不殆；不知彼而知己，一勝一負」 (my #4, quoted). The brief says `Source:` is where the fix goes, not who learns; the learner is the other side. The same Source spans levels: check — F-8392b4ce (project: the late-criteria check uses the session as the task boundary) vs F-0f2fa841 (agent-type: the plant was never shown to fail); tool — F-173e0190 (project: a variadic flag before the prompt) vs F-e69dfb66 (agent-type: an engine proved only on a tiny canary); instruction — F-4cbb2f4b (task: this spec's field) vs F-1e90a8e1 (agent-type: the pipe habit). A sorter that knows only Source knows one side."
+
+For step 7: "Tested the obvious program (my #1). The rule: check/tool/config → project; instruction → agent-type, with a task exception when the root cause names this task's own artifact. On my lesson labels it gets 13 of 56 wrong — 43/56, 77%: [list]. The journal's `engine` field is worse: F-7f938bdf is an opencode failure caused by the main agent's brief, and 37 'none' records cover both project bugs and agent habits; it names who failed, not who learns. A keyword rule on `Root cause:` does not save it either: F-682702da (project) and F-0f2fa841 (agent-type) both say 'test', and F-173e0190 (project) and F-e69dfb66 (agent-type) both say 'engine'."
+
+For step 8: "Saw the existing evidence that guessing loses (my #11). Your `insight index` categories were chosen after the six-experts comparison: the four written `Source` kinds did as well as six categories guessed from titles, and are 'placed with nothing guessed' (`data/insight-categories.yaml`). In that comparison both guessed schemes missed sections: 10 of 13 ids shared, each missed 3 (`rerun/compare.md`). A level guessed from titles or root causes would repeat that. 「先知者，不可取於鬼神，不可象於事，不可驗於度，必取於人，知敵之情者也」 (my #11, quoted): the level is foreknowledge about a failure, and the text is neither the person nor the measurement."
+
+For step 9: "Put the work on the record's side (my #2, my #12). 「不可勝在己，可勝在敵」 (my #2, quoted). The sorter cannot make the text classifiable; the writer can make the record carry the level. 「故善戰者，求之於勢，不責於人」 (my #12, quoted): change the ground, not the people. **Proposed change to the pattern** — R12.3's insight section gains two lines, written by the insight's author: `Level: task | project | agent-type` and `Stops if: <the artifact or habit that must change>`. The author answers two questions: (1) Would the same failure happen in a different task in this repo? No → task. (2) Would it happen in a different repo with the same agent kind? No → project; yes → agent-type. The guard's `insight index` prints a `level` column and flags a missing or invalid value; `insight-decisions.md` records an owner override. It changes the insight artifact and the check, not the file's home or the run's shape."
+
+For step 10: "Chose the smallest move (my #5, my #3, my #16). 「合於利而動，不合於利而止」 (my #5, quoted): do not move the 56 files; add the lines to new insights and backfill one when it is loaded. 「全國為上，破國次之」 (my #3, quoted): keep each insight whole in its run folder rather than split it into a project file and an agent file. And define the three values and the two questions in R12.3 with one example each before the guard checks them; 「約束不明，申令不熟，將之罪也；既已明而不如法者，吏士之罪也」 (my #16, quoted) — an unclear taxonomy is the general's fault, not the writer's."
+
+Wait: step 10 uses #3's quote 「全國為上，破國次之」 for "keep each insight whole". That's a bit of a stretch (the quote is about states/armies, not artifacts), but the principle "whole over broken" is the item's rule, and I'm applying it. I should say "my reading" for the application? The item's rule is a decision rule; applying it to artifacts is an analogy. I'll phrase: "by the same preference for whole over broken (my #3)". That's honest.
+
+For "What I need to know":
+- "Do you mean by 'task level' one task, or a kind of task? If you mean a kind (e.g. 'writing a spec'), it is a fourth level and my 6 task labels mostly move into it; the answer changes from '6 task' to 'almost none'."
+- "Does 'project requirement issues' mean gaps in SPEC/HARNESS_REQUIREMENTS only, or any defect in this repo's code/tools/tests? The first leaves the 8 breakers above outside the exception; the second puts them inside and makes 'project level' mean 'anything in this repo'."
+- "One label per insight, or one per lesson? If per lesson, F-8392b4ce (project fix) and F-0f2fa841 (agent-type fix) can each carry two lessons and the field belongs to the lesson, not the section."
+- "Who fills the level: the writer, as a claim, with your override in `insight-decisions.md` — or you, as a decision? I recommend the writer, because the evidence is in the whys; but R12.3 makes the fix your choice, and the level is not a fix."
+- "Should an agent-type insight go into a file that other projects read (the skill or a global agent file), or stay in this repo's agent docs? This changes what agent-type buys, not the label."
+
+That's 5; maybe too many. The brief says questions whose answers would change the answer. 1, 2, 3, 4 qualify. 5 is a design detail. I'll keep 4 and put 5 in costs or drop it. Let me keep 4.
+
+For "Costs and risks":
+- "**A label is a claim, not a fact.** A writer in a hurry can file a project bug as agent-type to look general, or an agent habit as project to avoid a global rule; the lesson then goes to the wrong place and the noise you want to remove stays. Price: one more thing to get wrong per insight. Check: the `Stops if:` line names the artifact or habit, so a wrong level is visible; your override in `insight-decisions.md` is the backstop (my #1: an uncounted claim is 無算; my #16: clear orders before enforcement)."
+- "**Backfilling 56 is a migration.** It costs time and breaks links; the run folder is where the evidence lives (R12.3). Price: the old 56 have no level until loaded. My #5 (move only on advantage) and my #3 (whole over broken): do not move them."
+- "**A guessed sorter will be wrong on the mixed 13.** Price: false confidence, and the wrong lesson loaded. My #10 (no constant form) and my #11: do not build it; if built, let it validate a written value, never assign one."
+- "**The project bucket can become the dump.** If every guard/tool/test defect is project-level, the bucket grows and 'reduce noise' fails. Price: the owner's stated benefit. My #6 (mix benefit and harm): the benefit is completeness; the harm is noise. Keep `Source` as a second axis, so the reader can ask for 'project-level testing' rather than all project."
+- "**An agent-type rule can be wrong on a new repo.** A rule that follows the agent may meet a ground where it does not hold (e.g. a sandbox behaviour). My #4 (know the ground): name the condition in the insight, not just the rule."
+- "**The change is EJ's, not the agent's.** R12.3 and SPEC are EJ's to change; the agent proposes. Price: it waits for EJ's decision and wording. My #16 (orders come from the general)."
+
+That's 6; maybe 5. I'll include 5 and fold the "EJ's" into the proposed change note.
+
+For "How we would know I was right":
+- "**Agreement test (the level is one thing).** Take 20 sections — a mix of my 28/22/6 — and give them to two writers who do not see my labels or each other's. Each fills `Level:` from the two questions. If they agree on at least 16 of 20, the level is stable enough to record; if they agree on 14 or fewer, the three levels are not one thing and the cut is wrong. This tests the taxonomy, not the program."
+- "**Learning test (the filing works).** After 10 new insights, count how often a level-filtered `insight show` is loaded at the start of a task and cited in the plan. 0 of 10 means the level is decoration; 3 or more with a changed plan means it is doing work. The guard can count the loads; the transcript shows the citation."
+- "**Sorter test (read, not guess).** The program's `level` must equal the writer's for 56 of 56; a single disagreement means it is inferring, and it should be removed."
+
+Maybe add: "If the two writers disagree exactly on the 10 mixed sections I named, that confirms the mixed-case reading and tells you the field needs a tie-break rule (the cause's proximate artifact)." That's a nice touch. But length. I'll add a sentence.
+
+Now, let me check the "Answer" length: 2 sentences? I have 2 long sentences. Good.
+
+Let me reconsider the phrase "30 ... have their fix there". The 30 includes 7 that I label agent-type by lesson. Their *fix* (Source check/tool) is still project-side, but the lesson is agent-type. Is that consistent? Yes: "have their fix there" is the fix-location reading. The next clause gives the lesson split. Good. But a reader might think I'm double-counting. I'll phrase: "By where the record says the fix goes, 30 of the 56 sit in this repo's checks, tools or config (19 check, 9 tool, 2 config), and none is a requirement issue. By the lesson, my reading is 28 project / 22 agent-type / 6 task." Clear.
+
+Now, let me verify the "8 breakers" list has 8: F-86553997, F-3e11ce16, F-969500fa, F-682702da, F-2116eae0, F-8712e9fc, F-d8221199, F-7f938bdf = 8. Good.
+
+Check each is in my P list: 46, 45, 39, 42, 31, 5, 27, 48. Yes.
+
+Now, the "support" list: F-1e90a8e1 (6), F-3caba088 (55), F-a03fa5b3 (53), F-d1444d01 (23), F-b696193d (49), F-8ac06aae (50), F-84636a96 (52) = 7 agent-type. Task: F-4cbb2f4b (33), F-05a1b440 (34), F-cf3f3a6e (2), F-cf7d58f7 (10), F-1b6f6a0f (3) = 5. I said 6 task; the 6th is F-90389583 (35). Add it. And I said 20 agent-type instruction; the 7 examples are a subset. Fine.
+
+Let me check F-90389583: "the health script wrote under HOME through bun's cache"; Source: instruction (the spec's H5). RC: "a 'writes no file' promise checked only in a HOME where the runtime's cache already existed." Is this task-level? The cause is this spec's H5 (one-off) + a test-environment gap. I label T. It's debatable (the testing lesson is agent-type). I'll include it as a task example, but note the mixed cases. Fine.
+
+Now, the "13 errors" list:
+- 7 project-by-Source that are agent-type: F-08cf4cc3, F-3b8bdcec, F-e69dfb66, F-485505f6, F-0f2fa841, F-21e1586c, F-c055f734/F-e1161864.
+- 5 instruction that are project: F-5182be9b/F-1d185ee3, F-749688a0, F-b7c8635f, F-c60edad6, F-2cdebf3b/F-d0736dc7.
+- 1 task: F-1b6f6a0f.
+Total 13. Let me double-check F-1b6f6a0f is Source instruction and actual T; yes. And the rule predicted A because its RC doesn't name "spec". Good.
+
+Wait, the rule's "task exception when the root cause names this task's own artifact" — F-1b6f6a0f's RC is "an exploratory check written without the guard's own location rule; harmless, but an errored call by R12.2." It doesn't name this task's artifact, so predicted A. Actual T (one command). Yes.
+
+Now, is F-c055f734/F-e1161864 a section with two ids; Source check; actual A. Yes.
+
+Let me also note: the 13 errors are relative to my labels; if the owner adopts the fix-location definition, the same rule is 100% by construction. I'll say that. It's important: the program isn't "bad"; it answers a different question.
+
+Now, let me think about the "owner's hypothesis" quote. I should quote it verbatim? The brief gives it. I can refer to it, not necessarily quote. Maybe quote the key phrase: "is there even a project level insight, except those project requirement issues". I can include it once. The brief says quote only from my list for Sun Tzu's words; the owner's words can be quoted from the question. That's fine. I'll quote the key phrase to ground the answer.
+
+Let me now write the final answer in full. I'll use Markdown with bold labels, bullets, and the exact headings. Let me ensure no preamble. I'll produce the final message as the answer.
+
+Before that, let me double-check the list's item numbers and rules:
+- #1 Reckon before battle (algorithm) — count.
+- #2 Make yourself unbeatable first — own side.
+- #3 Whole over broken — whole.
+- #4 Know whether you can fight; know the other and yourself — both sides.
+- #5 Move only on advantage — smallest move.
+- #6 Mix harm into benefit — benefit/harm.
+- #10 Avoid the solid, strike the empty; no constant form — no fixed form.
+- #11 Foreknowledge from people — from people, not measurement.
+- #12 Seek it in 勢, not from people — change the ground.
+- #16 Orders clear first, then enforced — clear orders.
+- #19 Name the ground, act as prescribed — name the ground.
+Good.
+
+I should use #19 explicitly for the level definitions or the routing. In step 2, I define the ground; cite #19. In step 9/10, the destination table (task → run folder, project → project index, agent-type → agent file) is #19. Let me add: "Name the ground, then act as prescribed (my #19): task stays in the run folder; project goes to a project-level list; agent-type goes to the agent's shared file." That's the routing. Good.
+
+Now, the "project-level list" — does it exist? There's `insight index` and `insight show --category`, but no project-level folder. The recommendation is to use the index with a level column, not a new folder. So the routing is: task stays in the run folder; project and agent-type stay in the run folder too, but the index can filter by level. Wait — the owner wants insights "filed where they will be learned from". If all files stay in the run folder, is that "filed"? The index is the filing. The owner's current problem is that insights are only in run folders; the index makes them findable. So the recommendation: don't move the files; add the level and let the index filter. The "destination" is the index view, not a folder. I should say that clearly: "The file stays where the evidence is; the index is the filing cabinet." That's a good line. It fits #19: the ground is the index, not the folder.
+
+But the owner might want physical folders. My recommendation is against moving, with the cost. I should be clear: "filed where they will be learned from" can be satisfied by the index, not by moving. If the owner insists on folders, that's a different cost (my #5). Good.
+
+Now, the "project-level list" and "agent-type list": the index can produce both (`insight show --level project`, `--level agent-type`). The agent-type list could be exported to the global skill/agent docs. That's the cross-project part. I'll mention it as the use case: the global file is generated from the index, not hand-maintained. That avoids two copies. Good.
+
+Let me also be careful: the brief says "Do not write files; your final message is the answer." I haven't written any files. The script was in-memory. Good.
+
+Now, let me produce the final answer. I'll aim for clarity and precision, with the required structure. Let me write it.
+
+One more thought: the "Answer" says "Not as stated." Is that too blunt? The brief says "answer the question that was asked, in plain language". Yes, blunt is good.
+
+Let me make sure the "How I decided" steps each explicitly say "my #n" or "my reading". I'll check:
+1. my #1.
+2. my #19; my reading.
+3. my #6.
+4. my #6, my #4.
+5. my reading.
+6. my #4.
+7. my #1.
+8. my #11.
+9. my #2, my #12, my #16 (proposed change).
+10. my #5, my #3, my #16.
+Good. Every step has an item or a reading label.
+
+The "Costs and risks" each has an item: #1/#16, #5/#3, #10/#11, #6, #4, #16. Good.
+
+The "How we would know" can cite #1 (count) as the method: "the test is a count (my #1)". Good.
+
+Let me write the final text now. I'll keep it under ~1800 words.
