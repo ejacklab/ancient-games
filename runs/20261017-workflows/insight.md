@@ -12,3 +12,5 @@ Root cause: a parse written against an assumed shape, when the tool named the fi
 Options:
 1. [rule] Before parsing a tool's output file, print its top-level keys (one command), then write the parse. evidence: the second try did that and worked in one step.
 2. [rule] For a finished workflow, read `<transcript>/journal.jsonl` as its diagnostics say, never the task output file. evidence: the notification's diagnostics line names journal.jsonl.
+
+Chosen (EJ, 2026-10-17): option 1 — "I prefer 1, extra step is ok". Applied as a working rule in the main agent's memory (print-keys-before-parsing).
