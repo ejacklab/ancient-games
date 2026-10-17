@@ -15,8 +15,9 @@ Each use case has its purpose, what fails it, and its minimum acceptance. U1–U
 - **Purpose:** each requirement a tool can check is checked, with its id, its level and the evidence.
 - **Fails if:** a requirement whose check is `tool` or `git` is not checked, a result has no evidence (a file and line,
   or a command and its output), or a MUST that fails is shown as passing.
-- **Minimum acceptance:** a fixture project with one planted break per checkable requirement gets exactly that
-  requirement reported as failing, with the planted file named.
+- **Minimum acceptance:** a fixture project with one planted break per checkable requirement gets exactly the
+  requirements whose fails_if that break meets reported as failing (two ids that share one fails_if, such as K6.1a
+  and K6.2, fail together), with the planted file named.
 
 ## U3 — Be warned at the start of a session
 - **Purpose:** an agent starting work is told, in a few lines, what is missing or failing, without reading the report.

@@ -1,0 +1,4 @@
+- 2026-10-17T17:49:15+08:00 · write:tests · start · codex writes tests from briefs/tests.md
+- 2026-10-17T17:58:28+08:00 · write:tests · fail · codex exit 124 (timeout 580) before writing tests.last.txt; test files exist but run not finished
+- 2026-10-17T17:58:40+08:00 · review · start · dsh read-only review of memory-check (no deadline recorded)
+- 2026-10-17T18:07:55+08:00 · review · fail · dsh exit 0 but review.result.md holds only "I'll read the brief first."; no Findings section

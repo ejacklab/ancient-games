@@ -27,7 +27,8 @@ report.
 every record of `SOURCE_OF_TRUTH_REQUIREMENTS.yaml` (`SoT:<id>`) and every requirement of `CACHES.md`'s Core
 requirements (`CACHES:<id>`). A record whose `check` names `tool` or `git` is checked where the tool can decide it;
 where it cannot (the change it needs is not visible to git, or a reason "written" elsewhere would excuse it), and for a
-`reviewer` or `none` check, the result is "needs a reviewer". Which copy of the guidelines: the tool's own, with its
+`reviewer` check, the result is "needs a reviewer". A record whose check is `none` (a definition, a permission: its
+`fails_if` is "nothing") is "not applicable". Which copy of the guidelines: the tool's own, with its
 version printed. Who decides: the guidelines' `check` field. Fails if: a decidable `tool` or `git` record is not
 checked, or a record the tool cannot decide gets a pass or a fail.
 
@@ -43,7 +44,7 @@ changes `memory_index.py`. Who decides: none. Fails if: the tool reports a pass 
 or checks a clause `memory_index.py` already checks a second way.
 
 **C4 (MUST) Absent memory.** With no `project-memory/`, its requirements are "not applicable", with the absent location
-as the reason; with no cache, the cache requirements are. Who decides: the guidelines. Fails if: an absent optional
+as the reason; with no `project-memory/.cache/`, every cache requirement is, B2.2 included. Who decides: the guidelines. Fails if: an absent optional
 location makes a requirement fail.
 
 **C5 (MUST) The snapshot and history.** The report names what it checked in its first line: the staged state (the
@@ -52,8 +53,8 @@ view `memory_index.py --check` reads) for files, and for history the commits sin
 decides: the user (`--since`). Fails if: the report does not name its snapshot or its range.
 
 **C6 (MUST) Caches, first version.** Of `CACHES.md`'s requirements, B2.2 (the cache folder is ignored by git) and Rd1
-(no start hook or instruction opens a cache file) are checked; the others are "not applicable" with no cache, and
-"needs a reviewer" with one. Who decides: the owner, for adding more. Fails if: B2.2 or Rd1 is not checked, or another
+(no start hook or instruction opens a cache file) are checked when the cache folder exists; the others are "needs a
+reviewer" then. With no cache folder, C4 applies. Who decides: the owner, for adding more. Fails if: B2.2 or Rd1 is not checked, or another
 cache requirement gets a pass or a fail.
 
 ## Report

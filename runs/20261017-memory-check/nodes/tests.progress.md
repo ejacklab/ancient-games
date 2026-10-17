@@ -1,0 +1,12 @@
+- 2026-10-17T17:49:43+08:00 · fixtures · planned · Acceptance cases from specification
+- 2026-10-17T17:49:43+08:00 · find · planned · Acceptance cases from specification
+- 2026-10-17T17:49:43+08:00 · check · planned · Acceptance cases from specification
+- 2026-10-17T17:49:43+08:00 · history · planned · Acceptance cases from specification
+- 2026-10-17T17:49:43+08:00 · report · planned · Acceptance cases from specification
+- 2026-10-17T17:49:43+08:00 · fixtures · start · Literal entries and indexes, isolated git and home
+- 2026-10-17T17:50:25+08:00 · fixtures · done · Isolated fixture helper and literal index bytes
+- 2026-10-17T17:50:25+08:00 · find · start · F1–F3 and U1/U5/U6
+- 2026-10-17T17:51:40+08:00 · find · done · Location, project, usage and read-only cases written
+- 2026-10-17T17:51:40+08:00 · check · start · Guideline coverage and single-break cases
+- 2026-10-17T17:52:41+08:00 · history · start · Staged view, range override and shallow history cases
+- 2026-10-17T17:52:41+08:00 · report · start · Report, warning, evidence and exit cases
