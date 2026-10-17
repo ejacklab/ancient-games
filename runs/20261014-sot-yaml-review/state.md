@@ -79,5 +79,7 @@ The tool `tools/memory_index.py` checks the id form and conflict markers (merged
 13. **From the W3.6 round** (`runs/20261016-w36-procedure-script/experts/compare.md`), EJ's call:
     - ~~A step that only waits for a person~~ — settled 2026-10-16, EJ: *"Yes, a script paused still a script"*;
       W3.6, the prose and the release note say so.
-    - "Can" versus "worth it": may a scriptable procedure stay a page because it runs rarely, and who decides that
-      (孫子: the project owner)?
+    - ~~"Can" versus "worth it"~~ — settled 2026-10-17 by the six experts' majority (EJ: *"directly use what the
+      mejority sasys"*), run `runs/20261017-w36-worth-scripting/`: a page may stay when the script costs more than it
+      saves, never for rarity alone; the writing agent compares at writing, in `state.md`; the project owner if
+      contested.

@@ -36,7 +36,9 @@ It holds what the code cannot tell you, as typed entries:
   script that stops and waits for a person (an approval, a typed confirmation) is still a script. Where a step cannot
   be a command with a checkable result (an action a script cannot do or wait for, or a choice that depends on judging
   what was seen), it is a page in `docs/` that names that step and calls scripts for the rest. The agent writing the
-  procedure decides by trying the script first; the project owner decides if it is contested. `AGENTS.md` names the
+  procedure decides by trying the script first; the project owner decides if it is contested. A procedure a script
+  could do may still stay a page when building and keeping the script costs more than it saves; that it runs rarely is
+  not a reason on its own, and the comparison, naming both sides, goes in the task's `state.md`. `AGENTS.md` names the
   project's scripts, one line each. An entry links to a procedure and never repeats its steps. What was learned while
   running one is a lesson (W3.6).
 

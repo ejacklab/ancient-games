@@ -4,6 +4,15 @@ The history of `SOURCE_OF_TRUTH.md`: what changed, when, and who decided. The de
 so an agent reading it carries no history it does not need (EJ, 2026-10-14). Newest first. The notes up to
 2026-10-13 are the design's former status block and inline attributions, moved here unchanged.
 
+## 2026-10-17
+
+- **W3.6: a procedure a script could do may stay a page on cost.** When building and keeping the script costs more
+  than it saves — upkeep and errors counted on both sides, no number — and never because it runs rarely alone. The
+  agent writing the procedure makes the comparison at writing and names both sides in the task's `state.md`; the
+  project owner decides if it is contested. `fails_if` now also fails a page with neither an unscriptable step nor
+  that comparison. From the six experts' majority after web research (`runs/20261017-w36-worth-scripting/`); EJ:
+  *"directly use what the mejority sasys"*.
+
 ## 2026-10-16
 
 - **W3.6: when a procedure is a script, and who decides.** A procedure lives as a script with an external check;

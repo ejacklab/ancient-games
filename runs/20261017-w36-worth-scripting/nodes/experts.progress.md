@@ -1,0 +1,32 @@
+- 2026-10-17T23:20:38+08:00 · research · start · 
+- 2026-10-17T23:23:55+08:00 · research · done · 22 findings (17 verified, 4 reported, 1 not found) in research/experts.md; experts.question.md written
+- 2026-10-17T23:24:13+08:00 · linus · start · codex
+- 2026-10-17T23:24:15+08:00 · fan-li · start · claude
+- 2026-10-17T23:24:15+08:00 · sun-tzu · start · dsh
+- 2026-10-17T23:24:15+08:00 · dario · start · claude
+- 2026-10-17T23:24:16+08:00 · dave · start · claude
+- 2026-10-17T23:24:57+08:00 · linus · done · codex exit 0
+- 2026-10-17T23:25:09+08:00 · check-linus · start · 
+- 2026-10-17T23:25:12+08:00 · check-linus · done · linus answer passes check; other experts absent from this folder as expected
+- 2026-10-17T23:25:27+08:00 · dario · done · claude exit 0
+- 2026-10-17T23:25:38+08:00 · check-dario · start · 
+- 2026-10-17T23:25:41+08:00 · check-dario · done · dario answer file checked, no FAIL dario lines
+- 2026-10-17T23:27:17+08:00 · fan-li · done · claude exit 0
+- 2026-10-17T23:27:28+08:00 · check-fan-li · start · 
+- 2026-10-17T23:27:31+08:00 · check-fan-li · done · fan-li answer file checked, no fan-li failures
+- 2026-10-17T23:28:12+08:00 · dave · done · claude exit 0
+- 2026-10-17T23:28:23+08:00 · check-dave · start · 
+- 2026-10-17T23:28:26+08:00 · check-dave · done · dave passes the check; the other five are no answer file, as expected
+- 2026-10-17T23:28:31+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-17T23:28:41+08:00 · check-sun-tzu · start · 
+- 2026-10-17T23:28:44+08:00 · check-sun-tzu · done · sun-tzu answer checked, no sun-tzu FAIL lines
+- 2026-10-17T23:28:53+08:00 · lao-tzu · start · opencode
+- 2026-10-17T23:30:01+08:00 · lao-tzu · fail · opencode exit 0
+- 2026-10-17T23:30:12+08:00 · check-lao-tzu · start · 
+- 2026-10-17T23:30:15+08:00 · check-lao-tzu · fail · lao-tzu answer missing 5 required sections
+- 2026-10-17T23:30:24+08:00 · lao-tzu · start · opencode
+- 2026-10-17T23:31:15+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-17T23:31:27+08:00 · check-lao-tzu · start · 
+- 2026-10-17T23:31:29+08:00 · check-lao-tzu · done · lao-tzu answer passes check; other experts no answer file (not this step)
+- 2026-10-17T23:31:39+08:00 · compare · start · 
+- 2026-10-17T23:33:51+08:00 · compare · done · compare.md written; 6/6 usable; all agree rarity alone is no reason, comparison not number, owner on contest; split on when, where the reason lives, try-first, owner's extra share; 14 questions

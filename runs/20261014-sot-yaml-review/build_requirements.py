@@ -142,12 +142,18 @@ CATEGORIES = [
               "still a script. Where a step cannot be a command with a checkable result — an action a script cannot "
               "do or wait for, or a choice that depends on judging what was seen — it is a page in `docs/` that names "
               "that step and calls scripts for the rest. The agent writing the procedure decides by trying the script first; the project "
-              "owner decides if it is contested. `AGENTS.md` names each script, one line each. A script is project "
-              "work, not memory.",
-              "an entry copies a document or a procedure's steps, or a procedure page names no step a script cannot "
-              "do, with no written reason.", "reviewer",
-              who_decides="the agent writing the procedure, by trying the script first; the project owner if "
-                          "contested"),
+              "owner decides if it is contested. A procedure a script could do may still stay a page when building "
+              "and keeping the script costs more than it saves; that it runs rarely is not a reason on its own. The "
+              "comparison counts upkeep and errors on both sides (a script nothing runs breaks unseen; a page nobody "
+              "follows drifts and its steps get missed) and states no number. The agent writing the procedure makes "
+              "it when it writes the procedure, naming both sides in the task's `state.md`; the project owner decides "
+              "if it is contested. `AGENTS.md` names each script, one line each. A script is project work, not "
+              "memory.",
+              "an entry copies a document or a procedure's steps, or a procedure page names neither a step a script "
+              "cannot do nor a comparison in the task's `state.md` naming both sides, with no written reason.",
+              "reviewer",
+              who_decides="the agent writing the procedure: by trying the script first, or, for a page kept on "
+                          "cost, by a written comparison; the project owner if contested"),
         ]),
         ("W4", "Who writes, and the change log", "v: no owners, every change logged", [
             r("W4.1a", "guidance", "Anyone, agent or person, may create or change any entry, and `AGENTS.md` too. "
