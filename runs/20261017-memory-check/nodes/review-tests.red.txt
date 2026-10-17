@@ -1,0 +1,224 @@
+bun test v1.4.3 (c6da4a4d3)
+
+test/review.test.ts:
+24 |   test("1: an entry memory_index.py cannot decode is not a pass", () => {
+25 |     const p = fixture();
+26 |     writeFileSync(join(p.project, entryPath), Buffer.concat([Buffer.from(entry), Buffer.from([0xff, 0xfe, 0x0a])]));
+27 |     p.git("add", entryPath);
+28 |     const r = p.run();
+29 |     for (const id of ["SoT:K6.1a", "SoT:K6.2"]) expect(state(r.stdout, id)).not.toBe("pass");
+                                                                                     ^
+error: expect(received).not.toBe(expected)
+
+Expected: not "pass"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:29:81)
+(fail) Codex review findings > 1: an entry memory_index.py cannot decode is not a pass [84.77ms]
+34 |     const p = fixture();
+35 |     p.plant(entryPath, "---\nUse UTC", "Use UTC"); // the header loses its closing delimiter (W1.2a)
+36 |     p.write("project-memory/INDEX.md", indexHeader + "- [17-10-zzz999-2026](entries/D-x.md) decision: Something else.\n");
+37 |     p.git("add", "project-memory");
+38 |     const text = p.run().stdout;
+39 |     for (const id of ["SoT:K6.1a", "SoT:K6.2", "SoT:Rd3.1a"]) expect(state(text, id), id).not.toBe("pass");
+                                                                                                   ^
+error: SoT:K6.1a
+
+Expected: not "pass"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:39:95)
+(fail) Codex review findings > 2a: when entry validation stops memory_index.py, the index checks are not passes [82.56ms]
+45 |     p.git("rm", "-r", "-q", "--cached", "--ignore-unmatch", "nothing"); // keep the index as is
+46 |     mkdirSync(join(p.project, "elsewhere"));
+47 |     // remove the working-tree folder without staging the removal
+48 |     for (const name of readdirSync(join(p.project, "project-memory"))) void name;
+49 |     require("node:fs").rmSync(join(p.project, "project-memory"), { recursive: true, force: true });
+50 |     expect(state(p.run().stdout, "SoT:W4.1b")).toBe("fail");
+                                                    ^
+error: expect(received).toBe(expected)
+
+Expected: "fail"
+Received: "not applicable"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:50:48)
+(fail) Codex review findings > 3: staged memory removed from the working tree is still checked from the staged state [78.93ms]
+52 | 
+53 |   test("4: a staged entry deletion with a matching empty index fails K4.1", () => {
+54 |     const p = fixture();
+55 |     p.git("rm", "-q", entryPath);
+56 |     p.write("project-memory/INDEX.md", emptyIndex); p.git("add", "project-memory/INDEX.md");
+57 |     expect(state(p.run().stdout, "SoT:K4.1")).toBe("fail");
+                                                   ^
+error: expect(received).toBe(expected)
+
+Expected: "fail"
+Received: "pass"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:57:47)
+(fail) Codex review findings > 4: a staged entry deletion with a matching empty index fails K4.1 [80.04ms]
+61 |     const p = fixture();
+62 |     p.plant(entryPath, "Use UTC for stored timestamps.\n\n**Why:**", "Use local time for stored timestamps.\n\n**Why:**");
+63 |     p.commit("Rewrite the claim");
+64 |     p.plant(entryPath, "Use local time for stored timestamps.\n\n**Why:**", "Use UTC for stored timestamps.\n\n**Why:**");
+65 |     p.commit("Restore the claim");
+66 |     expect(state(p.run().stdout, "SoT:K4.3")).toBe("fail");
+                                                   ^
+error: expect(received).toBe(expected)
+
+Expected: "fail"
+Received: "pass"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:66:47)
+(fail) Codex review findings > 5: a claim rewritten and then restored still fails K4.3 [93.64ms]
+69 |   test("6: --since does not drop an entry created before the range from K4.3", () => {
+70 |     const p = fixture();
+71 |     p.write("unrelated.txt", "x\n"); p.commit("Unrelated");
+72 |     const since = p.git("rev-parse", "HEAD");
+73 |     p.plant(entryPath, "source: docs/clock.md", "source: docs/other.md"); p.commit("Change source in range");
+74 |     expect(state(p.run(["--since", since]).stdout, "SoT:K4.3")).toBe("fail");
+                                                                     ^
+error: expect(received).toBe(expected)
+
+Expected: "fail"
+Received: "pass"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:74:65)
+(fail) Codex review findings > 6: --since does not drop an entry created before the range from K4.3 [90.31ms]
+82 |     p.write("project-memory/INDEX.md", singleIndex + "- [17-10-def456-2026](entries/O-17-10-def456-2026-note.md) observation: Use UTC for stored timestamps.\n");
+83 |     p.commit("Add an entry on side");
+84 |     p.git("checkout", "-q", "main");
+85 |     p.git("merge", "-q", "-s", "ours", "--no-edit", "side");
+86 |     const text = p.run().stdout;
+87 |     expect(["SoT:K4.1", "SoT:W6.3a"].some((id) => state(text, id) === "fail")).toBe(true);
+                                                                                    ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:87:80)
+(fail) Codex review findings > 7: a merge that drops a whole entry added on one side fails [103.11ms]
+87 |     expect(["SoT:K4.1", "SoT:W6.3a"].some((id) => state(text, id) === "fail")).toBe(true);
+88 |   });
+89 | 
+90 |   test("8: K4.1 with no mechanical break is needs a reviewer, not pass (C2)", () => {
+91 |     const p = fixture();
+92 |     expect(state(p.run().stdout, "SoT:K4.1")).toBe("needs a reviewer");
+                                                   ^
+error: expect(received).toBe(expected)
+
+Expected: "needs a reviewer"
+Received: "pass"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:92:47)
+(fail) Codex review findings > 8: K4.1 with no mechanical break is needs a reviewer, not pass (C2) [81.79ms]
+94 | 
+95 |   test("9: a quoted superseded status without a link fails K4.1", () => {
+96 |     const p = fixture();
+97 |     p.plant(entryPath, "status: active", 'status: "superseded"');
+98 |     p.write("project-memory/INDEX.md", emptyIndex); p.git("add", "project-memory");
+99 |     expect(state(p.run().stdout, "SoT:K4.1")).toBe("fail");
+                                                   ^
+error: expect(received).toBe(expected)
+
+Expected: "fail"
+Received: "pass"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:99:47)
+(fail) Codex review findings > 9: a quoted superseded status without a link fails K4.1 [84.86ms]
+101 | 
+102 |   test("10a: an on-demand cache read in AGENTS.md is not an Rd1 fail", () => {
+103 |     const p = fixture(); p.write("project-memory/.cache/index.sqlite", "cache");
+104 |     p.write("AGENTS.md", "Read project-memory/INDEX.md at session start.\nOn demand, open project-memory/.cache/index.sqlite to search.\n");
+105 |     p.commit("On-demand cache read");
+106 |     expect(state(p.run().stdout, "CACHES:Rd1")).not.toBe("fail");
+                                                          ^
+error: expect(received).not.toBe(expected)
+
+Expected: not "fail"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:106:53)
+(fail) Codex review findings > 10a: an on-demand cache read in AGENTS.md is not an Rd1 fail [87.96ms]
+108 | 
+109 |   test("10b: a session-start cache read beside a negation is not a pass", () => {
+110 |     const p = fixture(); p.write("project-memory/.cache/index.sqlite", "cache");
+111 |     p.write("AGENTS.md", "At session start, do not read entries; open project-memory/.cache/index.sqlite.\n");
+112 |     p.commit("Start-time cache read");
+113 |     expect(state(p.run().stdout, "CACHES:Rd1")).not.toBe("pass");
+                                                          ^
+error: expect(received).not.toBe(expected)
+
+Expected: not "pass"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:113:53)
+(fail) Codex review findings > 10b: a session-start cache read beside a negation is not a pass [90.43ms]
+117 |     const p = fixture();
+118 |     p.plant(entryPath, "Use UTC for stored timestamps.\n\n**Why:**", "Use local time for stored timestamps.\n\n**Why:**");
+119 |     p.commit("Rewrite the claim");
+120 |     const r = p.run(["--warn"]);
+121 |     expect(r.stdout).toContain("K4.3");
+122 |     expect(r.stdout).not.toContain("Use local time");
+                               ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "Use local time"
+Received: "memory-check: SoT:K4.3 fails: project-memory/entries/D-17-10-abc123-2026-choice.md:16 — the claim changed after commit 4d5e0c2: \"Use UTC for stored timestamps.\" → \"Use local time for stored timestamps.\" — files: project-memory/entries/D-17-10-abc123-2026-choice.md\nmemory-check: SoT:K6.1a fails: project-memory/INDEX.md in the staging area does not match what these entries build. To fix it: stage the entries, run `python3 tools/memory_index.py`, then `git add project-memory/INDEX.md` — files: project-memory/INDEX.md\nmemory-check: SoT:K6.2 fails: project-memory/INDEX.md in the staging area does not match what these entries build. To fix it: stage the entries, run `python3 tools/memory_index.py`, then `git add project-memory/INDEX.md` — files: project-memory/INDEX.md\n"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:122:26)
+(fail) Codex review findings > 11: the warning never holds entry text [87.24ms]
+129 |     const real = require("node:child_process").execSync("command -v git", { encoding: "utf8" }).trim();
+130 |     writeFileSync(join(bin, "git"), `#!/bin/sh\nfor a in "$@"; do [ "$a" = log ] && { echo "fatal: injected" >&2; exit 128; }; done\nexec ${real} "$@"\n`);
+131 |     chmodSync(join(bin, "git"), 0o755);
+132 |     p.env.PATH = `${bin}:${p.env.PATH}`;
+133 |     const text = p.run().stdout;
+134 |     expect(state(text, "SoT:K4.3")).not.toBe("pass");
+                                              ^
+error: expect(received).not.toBe(expected)
+
+Expected: not "pass"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:134:41)
+(fail) Codex review findings > 12: a git failure is could not run, never an empty pass [78.71ms]
+138 |   test("13: a configured bun transpiler cache gets nothing written into it", () => {
+139 |     const p = fixture();
+140 |     const cache = join(p.home, "bun-cache"); mkdirSync(cache);
+141 |     p.env.BUN_RUNTIME_TRANSPILER_CACHE_PATH = cache;
+142 |     p.run();
+143 |     expect(readdirSync(cache)).toEqual([]);
+                                     ^
+error: expect(received).toEqual(expected)
+
+- []
++ [
++   "dd9e2b884a420c9e.pile",
++   "e057832a58a4aabe.pile",
++   "13619aaf6d3ae9a8.pile",
++   "37878361b2671457.pile",
++   "5bb5a6b7c8df5ee7.pile",
++   "818aa76662667f60.pile",
++   "e5d4f98144b09963.pile",
++   "fad00eb522d67f0f.pile",
++ ]
+
+- Expected  - 1
++ Received  + 10
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:143:32)
+(fail) Codex review findings > 13: a configured bun transpiler cache gets nothing written into it [80.81ms]
+144 |   });
+145 | 
+146 |   test("14: a fenced YAML example inside one entry is not a second entry (W6.1a)", () => {
+147 |     const p = fixture();
+148 |     p.plant(entryPath, "**How to apply:** Store UTC timestamps.", "**How to apply:** Store UTC timestamps, for example:\n\n```yaml\n---\nkey: value\n---\n```");
+149 |     expect(state(p.run().stdout, "SoT:W6.1a")).not.toBe("fail");
+                                                         ^
+error: expect(received).not.toBe(expected)
+
+Expected: not "fail"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review.test.ts:149:52)
+(fail) Codex review findings > 14: a fenced YAML example inside one entry is not a second entry (W6.1a) [85.17ms]
+
+ 0 pass
+ 15 fail
+ 62 expect() calls
+Ran 15 tests across 1 file. [1299.00ms]

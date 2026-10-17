@@ -3,11 +3,11 @@
 Review the tool in `memory_check/` in this repository (the current folder is its root). Do not change any file; your
 final message is the review.
 
-The change: `git diff dd12aed..eb3b899 -- memory_check` — or simply read `memory_check/src/` as it stands; the
+The change: `git diff dd12aed..HEAD -- memory_check` — or simply read `memory_check/src/` as it stands; the
 specification is `memory_check/REQUIREMENTS.md` and `memory_check/USE_CASES.md`, the guidelines it checks are
 `docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml` and `docs/memory-system/CACHES.md`.
 
-## Lessons (from `lessons for --agent dsh --kinds code-edit,test`)
+## Lessons (from `lessons for --agent codex --kinds code-edit,test`)
 - When a change sends new cases into an existing code path, list that path's early returns and exemptions first, and
   test each with one of the new cases.
 
