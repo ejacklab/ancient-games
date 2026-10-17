@@ -28,3 +28,15 @@ referee that decides how many agents and journals every decision) is the natural
 algorithm design. Design written 2026-10-03: `docs/DISPATCHER_DESIGN.md`. Built the same day as
 `scripts/dispatch.py` (steps 1–4); open: a live canary per engine adapter, the first real run, and EJ's two
 remaining decisions (§8).
+
+## Guard: the read-missing hold blocks a correct `grep … > F; cat F`
+
+A live bug: the guard's hooks run from this repo's source in every Claude Code session. Round 13's rule N3
+(`.claude/skills/workflow-design/guard/SPEC.md`, `missingReads` in `guard/src/traps.ts`) skips an earlier segment
+whole when its command is itself a reader (`cat`, `head`, `grep`, `sed`), so the `> F` of `grep … > F` is not counted
+as making F, and a later `cat F` in the same command is denied although F will exist by then. Seen 2026-10-17
+(F-cc665076; the command is in `runs/20261016-four-experts-what-counts-as-change/read-missing-false-hold.txt`).
+
+Proposed fix, not yet chosen: N3 counts an earlier segment's stdout redirect target (`> F`, `>> F`, `tee F`) as making
+F, whatever its command word. A planted repeat of this command must run, and F-4981093a's repeat must stay held (its
+reads had no redirect). Until then: write the file in one call and read it in the next.
