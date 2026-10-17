@@ -1,0 +1,543 @@
+dsh: reasoning:
+Let me read the required files. First the list and identity.
+
+Let me start with the list and identity, then the other facts.
+dsh: reasoning:
+The list output was capped at line 303. Let me read the rest of the list (offset 304) — likely gaps section. Also I need to read the facts files: plants results, requirements, spec, frozen tests, evaluator.
+
+Let me read the remaining list and the plants file.
+dsh: reasoning:
+Now let me read the other facts: requirements trimmed, spec, the code, frozen tests, evaluator.
+
+Let me read them in parallel. First the requirements and spec and the code src. Let me list the src dir.
+dsh: reasoning:
+Now I need to read the frozen tests (13 tests), the evaluator's A5 cases and COVERAGE.md. Let me read those.
+
+Let me read the test file one-question-one-answer.test.ts, the eval cases/fixtures.json, COVERAGE.md, and the src files answer.ts and commands.ts relevant parts.
+
+Let me start.
+dsh: reasoning:
+Now let me read the evaluator's A5 cases in fixtures.json and the source code that the plants modified (answer.ts, commands.ts). Let me look at the eval cases for A5.
+
+Let me grep for A5 in fixtures.json.
+dsh: reasoning:
+Now I need to examine the source code of the plants. The brief wants an analysis of whether these five plants show the checks would catch an A5 failure. Let me read commands.ts relevant portions and understand the plants.
+
+Let me look at the plants:
+1. `limits-dropped`: `answer.limits = session.limits.all` -> `answer.limits = []` (commands.ts). Frozen tests: 7 fail. Bundled/held-out NOT MET: R2, A1, A2, A3, L1. Core: A1, A2. Note: A5 is NOT marked NOT MET! Because the evaluator's A5 case expects `limits` equals [] already (for the specific-answer case). So dropping limits makes the A5 evaluator case still pass. Interesting.
+
+2. `where-inside-dump`: `answer.matches = matches -> matches plus every definition in the program` (commands.ts). Frozen tests: 4 fail. Bundled/held-out NOT MET: A2, A5, L1. Core: A1, A2. This is the only one where A5 itself is marked NOT MET.
+
+3. `site-dropped`: `finish() deletes every link's `site`` (answer.ts). 21 fail. Bundled/held-out: R2, A1, A2, L1. Core: R2, A1, A2.
+
+4. `callers-unasked-map`: `callers` also attaches a map of every definition (commands.ts). 1 fail. Bundled/held-out: A1, A2. Core: A1, A2. Note: A5 is NOT MET? No — it says A1, A2, not A5. Hmm, but "a whole map is produced unasked" is exactly A5's Fails-if. Yet A5 is not among the NOT MET. This is a key finding! The `callers` command attaching a map — the frozen test `expectFocused(answer, "links")` would fail because `answer.map` is defined and not in the allowed set. So 1 test fails. But the evaluator doesn't catch it under A5 — under A1 and A2? That's odd. Actually the report says bundled NOT MET "A1, A2". Perhaps because the evaluator's A1/A2 cases check answer content and the map addition changes... hmm.
+
+Wait — let me think. `callers-unasked-map`: the callers command also attaches a map. This directly violates A5's "a whole map is produced unasked". But the evaluator marks A1, A2 NOT MET, not A5. Why? Maybe because the evaluator's A5 case is `where leaf` — it doesn't exercise `callers`. So A5's Fails-if line for "whole map unasked" is only checked on the `where` command, not on callers. The bundled A5 cases are only `where leaf`. So the unasked-map-on-callers failure is not caught under A5, only under A1/A2 (probably because map data has wrong content or the evaluator checks that answer sections match the command... Actually COVERAGE mentions "command-inappropriate sections" as a negative test rejected by contract/source checks. Hmm, but that's for the fixtures/contract, maybe not attributed to A5's line in the case file).
+
+5. `not-found-limit-dropped`: `where`/`find` with no match no longer adds its not-found limit (commands.ts). 1 fail. Bundled/held-out: L1. Core: A1, A2. Note: A5 NOT MET? No. But the frozen test `A5 missing name returns a limited empty answer without a fallback map` requires `limits` to contain `not-found`. Wait, that's one of the 13 frozen tests. So `bun test` should fail 1 (yes, 1 fail). But the evaluator marks L1 NOT MET, not A5. The bundled A5 case `where leaf` has matches, so doesn't exercise not-found.
+
+Hmm wait, but the frozen tests are "the round's frozen tests" — 13 tests written by Codex. If a plant causes a frozen test to fail, the round check (bun test must pass) catches it. So all 5 plants would be caught by the frozen tests alone. The question is whether they show the checks catch an "A5 failure" — specifically whether the failures are attributed to A5's Fails-if line.
+
+Let me re-read the question. The COO planted five faults to test round A5's checks.
+
+The answer format asks:
+- Linus: is each plant a real A5 failure a user would see, and is it caught for the right reason? Name a concrete A5 failure that would pass every check.
+- 范蠡: does this result justify closing round A5 now, or must something be done first?
+- 孫子: which plants are caught only by checks the builder can read? What is left to the builder's good character?
+- 老子: are the plants too heavy-handed to tell us anything? What small, quiet fault would show more?
+
+And Answer: one line per plant (enough/not enough, why), then verdict CLOSE A5 or STRENGTHEN with each change tied to A5's Fails-if line.
+
+Now, my role is Sun Tzu, and the brief says "Answer through your own rules" and includes all four expert framings in the question, and the Answer section requires the one-line-per-plant and verdict. So I should answer all four perspectives but through Sun Tzu's rules? Let me re-read.
+
+"Question: do these five plants show that round A5's checks would catch an A5 failure? Through your rules, answer:
+- **Linus:** ...
+- **范蠡:** ...
+- **孫子:** ...
+- **老子:** ..."
+
+Hmm, the seat is Sun Tzu. The question asks me to answer through my rules, but also address the four framings. So I should give each of the four perspectives, but the "How I decided" steps cite Sun Tzu items. Actually it seems like this is a "four experts" panel and I'm the Sun Tzu seat, but the question text lists all four experts' sub-questions. Wait, that's odd. Let me reconsider: maybe each expert brief has the same question but the sub-bullets named after the four experts are the questions each expert would ask? No — the brief is addressed to Sun Tzu alone. The question says "Through your rules, answer:" then four bullets with names. Perhaps the intent is that this brief is a shared question given to all four experts, and the four bullets are perspectives each expert should address? Or perhaps the template was copied and only the 孫子 bullet is mine?
+
+Hmm. Let me consider what's most sensible. The brief says "You are 孫子 (Sun Tzu), one of the experts EJ consults." The question lists four named sub-questions. I think the design is: the same question is posed to four seats, and within it, the four bullets are the four experts' assigned angles; I as Sun Tzu am primarily responsible for the 孫子 line but the Answer section asks for the overall recommendation. Actually wait — if the same question is posed to all four, then each writes their own full answer including the 孫子 bullet? That seems redundant.
+
+Let me look at the run directory to understand the setup — maybe there are other briefs (linus, fanli, laozi) with the same question. Let me check.
+
+Actually the folder is experts-p3-a5-plants. Let me list it.
+
+I should inspect to understand whether other briefs exist and whether mine differs. But the brief says "You may read only these paths in the repository". Hmm! It says "Facts (filled in by the COO). You may read only these paths in the repository:" and lists them. That's a constraint on what I may read. But I've already read the brief itself and the seats files (required by "Read first"). The instruction "You may read only these paths" seems to constrain repository reading. I should honor it. I already read those listed. I also read the eval COVERAGE and fixtures. I should not go reading other briefs then — that would violate. But wait, is it a hard constraint? The brief is from the COO. It says "You may read only these paths in the repository". I'll respect that and not read other briefs. I've read the ones allowed plus my seats (explicitly required). Good. Actually I already read the eval fixtures and COVERAGE which are listed. Fine.
+
+Hmm, but I did run `ls` on directories, and read answer.ts (allowed — it's in the src/ path). Fine.
+
+Now the four named bullets. Given ambiguity, the safest and most useful approach: address each named bullet explicitly with my rules, since the Answer section doesn't break out by person but the "How I decided" and the question's structure suggest all four are to be answered. Actually, re-reading: "Through your rules, answer: - Linus: ... - 范蠡: ... - 孫子: ... - 老子: ...". 
+
+I think this is a panel question where four seats each answer a different part, but the brief is for Sun Tzu and includes the whole question for context, expecting Sun Tzu's answer to cover the 孫子 part plus the overall verdict. But then why give Linus/范蠡/老子 parts?
+
+Hold on. Let me reconsider. Perhaps the run has four expert briefs, one per seat, and each brief contains the SAME question with the SAME four bullets. Each seat answers all four bullets but through their own rules. That is, the four bullets are the four sub-questions any answer must address. That's plausible: the COO wants a panel where each expert gives their take on all four angles. The "Answer" section then gives per-plant lines and a verdict.
+
+Actually, more likely: the brief template is shared, and each seat is asked the same overarching question; the four bullets are the four panel members' distinct concerns, and each seat is expected to answer the question through their own rules while touching all concerns. To be safe, I will answer all four bullets, clearly labeled, and make the 孫子 bullet the most developed. That satisfies any reading.
+
+But wait — the "How to answer" says "Every step names the item it uses: 'my #4'." So each of my decided steps cites a Sun Tzu list item. The four bullets can be answered through my rules too.
+
+Let me now do the actual analysis carefully.
+
+First, understand round A5's checks:
+1. Frozen tests: `code_map/test/a5/` — 13 tests by Codex. Builder may read them.
+2. Evaluator: `code_map/eval/` — its A5 cases (A5-specific-answer `where leaf`, A5-default-text) in fixtures.json; builder may read the bundled cases.
+3. Held-out copy with renamed identifiers and shifted lines — builder never sees.
+4. Private set of 8 cases from real opencode — builder never sees.
+5. `tsgo` exits 0.
+6. Round's requirement MET on bundled cases.
+7. No earlier round's requirement turns NOT MET.
+8. Round's requirement not NOT MET on any held-out or private set.
+
+Round A5's requirement is "One question, one answer" (A5). Fails if: an answer comes only inside a dump or without its evidence or limits, or a whole map is produced unasked.
+
+The plants and their results:
+
+Baseline: Before any plant, the core set's A1 and A2 were already NOT MET (from round R2 a2 baseline). So changes in A1/A2 on the core set are not distinguishing.
+
+Plant 1: limits-dropped. `answer.limits = []`. Frozen 7 fail. Bundled/held-out: R2, A1, A2, A3, L1 NOT MET. Core: A1, A2. 
+- Is this a real A5 failure a user would see? A5 says an answer must come "with its evidence and limits". Dropping all limits means answers come without limits — that is a direct A5 Fails-if. Yet A5 is NOT marked NOT MET on bundled/held-out. Why? Because the evaluator's A5 case (`where leaf`) expects `limits: []` (equals value []), and its `limitReasons: []`. So for that case, the correct answer has no limits; dropping limits doesn't change it. The A5 case is mis-designed: it checks a success path with no limits rather than a path that must carry a limit. So a genuine A5 failure (limits dropped) is caught only under other requirements' lines (L1, R2, A1, A3) and by 7 frozen tests — not by A5's own evaluator case. So it's caught for the wrong reason: the evaluator attributes it to L1 etc. But the frozen tests catch it (specifically the A5 missing-name test requires not-found limit, the undecided tests require the fake-rule limit, the callees-without-test-classification test requires "no test-file pattern given", and the chain test requires depth). Actually frozen tests are A5 tests and they'd fail, so it IS caught by A5's frozen tests for the right reason. Hmm — but the plant result says "5 of 5 caught by the frozen tests and by the evaluator". So the round's checks as a whole catch it. The question is whether the checks "would catch an A5 failure" and "caught for the right reason".
+
+Let me carefully distinguish. The round check = frozen tests pass (bun test). So any plant that fails any frozen test is caught. All five fail ≥1 frozen test. So at the level of "would the round's check catch it", all five are caught. But the deeper question the COO seems to be probing: does the evaluator's A5 line catch A5-specific failures? And are the frozen A5 tests sufficient?
+
+Let me tabulate which frozen tests fail for each plant. I need to figure out which of the 13 tests would fail. The evidence only gives counts: 7, 4, 21, 1, 1. I can reason about them.
+
+Let me actually examine the source to know exactly. But first — can I run the tests? The brief says I may read only those paths. Reading and running are different. Running the plants isn't provided; the copies may not be available. Let me not run; I'll reason from the evidence and the code.
+
+Actually, I could inspect commands.ts to confirm the plant semantics. That's allowed (src/ path). Let me read commands.ts around the relevant functions.
+
+Let me read commands.ts.
+
+Actually, more important is to nail the key analytical point: the A5 requirement's Fails-if has three prongs:
+(a) an answer comes only inside a dump,
+(b) [an answer comes] without its evidence or limits,
+(c) a whole map is produced unasked.
+
+Now map each plant to prongs:
+1. limits-dropped → prong (b) "without its limits". Direct A5 failure. But A5 evaluator case not NOT MET; frozen tests catch it (7 fail). Caught for the right reason? The frozen A5 tests do assert limits, so arguably yes at the frozen-test level; but the evaluator's A5 line does not fire, so the evaluator's A5 check is blind to dropped limits on a no-limit-needed query. So partially right reason.
+
+2. where-inside-dump → `where` returns matches plus every definition in the program. This is prong (a): the answer comes inside a dump (the requested match buried in every definition). Direct A5 failure. A5 evaluator NOT MET. Frozen 4 fail. Caught for the right reason.
+
+3. site-dropped → finish() deletes every link's `site`. This removes evidence (location of each call). A5 prong (b) "without its evidence". Direct A5 failure (evidence). A5 evaluator NOT MET? No — R2, A1, A2, L1. Not A5. Why? Because the A5 evaluator case is `where leaf`, which returns matches (nodes), no links, so deleting link sites doesn't affect it. The frozen A5 tests that check links (`callers`, `callees`, `chain`, `tests`) would fail (expectLink checks site) — 21 fails across the suite. So again A5's own line blind; caught under A1/A2/L1 etc. Caught for a different reason. Actually is site part of "evidence"? Yes — `Link.site` is the call-site evidence; A1/A2 fail-if mention location. A5 says "without its evidence". So dropping site is an A5 failure but the evaluator's A5 case doesn't test links. Frozen tests (A5 ones) do test site. Hmm.
+
+4. callers-unasked-map → `callers` also attaches a map of every definition. This is prong (c): "a whole map is produced unasked". Direct A5 failure. But A5 is NOT MET in the evaluator? The evidence says bundled/held-out NOT MET: A1, A2. Not A5. Frozen tests: 1 fail — the `expectFocused(answer, "links")` in the A5 callers test would fail because `answer.map` is defined and not allowed. So the frozen A5 test catches it for the right reason (unasked map section), but the evaluator's A5 line does not fire because its A5 cases only run `where`. So the evaluator's A5 line is blind to "whole map produced unasked" on `callers`. That is a major gap: A5's core prong (c) is only checked on `where` (which wouldn't produce a map anyway), not on commands that could (callers/callees/chain/tests/find). And the frozen test's `expectFocused` catches it — builder can read it.
+
+5. not-found-limit-dropped → `where`/`find` with no match no longer adds its not-found limit. A5 prong (b) "without its limits". Direct A5 failure. A5 evaluator: not NOT MET (its A5 case `where leaf` finds a match, so no not-found limit expected). Frozen: 1 fail — the missing-name test asserts `limits` contains not-found. So frozen catches for the right reason; evaluator's A5 line doesn't. L1 NOT MET catches it (different reason).
+
+So the pattern: The A5 evaluator cases only exercise `where leaf` (a found match, no limits needed) in JSON and text. They never exercise: a link-based command (evidence), a not-found empty answer (limit), or an unasked map (prong c). So the evaluator's A5 line fires for only 1 of the 5 plants (where-inside-dump), and even that one is the "dump" prong. All five are caught by the frozen tests, but the frozen tests are builder-readable, so a builder optimizing to the frozen tests passes but a builder who doesn't read them? Hmm.
+
+Now 孫子's bullet: "which plants are caught only by checks the builder can read? What is left to the builder's good character?" The builder can read the frozen tests and the bundled evaluator cases. For plants 1, 3, 4, 5: the A5-specific catch is in the frozen tests (builder-readable). The held-out/private sets do NOT mark A5 NOT MET for any plant (bundled A5 NOT MET only for where-inside-dump; held-out same per "bundled = held-out"). Actually the evidence says "bundled = held-out NOT MET" columns identical. And core set only tells site-dropped apart from baseline. So on the invisible-to-builder sets, A5 is never NOT MET. That means a builder who satisfies the hidden checks could still ship all these A5 failures, as long as it also satisfies the read-able frozen tests. But the builder is required to pass frozen tests (bun test) — and the frozen tests catch all 5. But the builder can read and game the frozen tests: e.g., special-case the fixture patterns. Wait, no: the builder must make the frozen tests pass, and the frozen tests assert limits on not-found, site on links, focused envelope on callers, etc. If the builder reads them and implements exactly those assertions, it may still fail on held-out? The held-out renamed identifiers/shifted lines version would catch pattern-matching to specific names/lines. Let me check: the evaluator's held-out copy renames identifiers and shifts lines. The frozen tests are not run against held-out (they reference fixture anchors). The evaluator's A5 cases run on held-out but only `where leaf`.
+
+So "what is left to the builder's good character" = the A5 failures that the hidden sets do not check and that the frozen tests only check on the bundled fixtures: the general behavior "one question, one answer, with evidence and limits, never an unasked map" across all commands and on real opencode code. The hidden checks (held-out A5, private core A5) don't assert A5 at all for limits/evidence/unasked map beyond `where leaf`. So a builder that implements to the frozen tests passes; a builder that wants to cheat can pass by satisfying exactly the frozen assertions. The core set (private, real opencode) marks A1/A2 NOT MET baseline and only distinguishes site-dropped — so it gives almost no A5 signal.
+
+Now: "Name a concrete A5 failure that would pass every check." This is Linus's task. I need a failure that:
+- passes all 13 frozen tests,
+- passes the evaluator's A5 bundled cases and doesn't turn any earlier requirement NOT MET,
+- passes the held-out and private sets (A5 not NOT MET; other requirements not newly NOT MET).
+
+Candidate: a command that the frozen tests don't exercise, and that the evaluator's A5 case doesn't touch, where the answer violates A5 but not other requirements' checks.
+
+Examples:
+- `find` with a description: returns a dump? The frozen tests exercise `find` once (exact code text). The evaluator's A5 case only `where leaf`. A change where `find` for a description returns the whole module map? That would violate A5 prong (c) but might trip A1/A2? Actually the unasked map on `callers` tripped A1/A2 in the evaluator. Hmm, why A1/A2? Because the evaluator has A1/A2 cases for callers and the extra `map` section maybe causes a mismatch in the answer shape (e.g., the evaluator's A1/A2 case checks `limits` or `map` absence). Let me look at the evaluator contract to understand why callers-unasked-map trips A1 and A2 but not A5.
+
+Actually, maybe the evaluator checks that a command's answer contains only command-appropriate sections as part of A1/A2 cases (contract checks). The COVERAGE says "Additional cases reject ... command-inappropriate sections" under negative tests. And "A5-specific-answer" expects `limits: []` and `matches`. So the evaluator may attribute "command-inappropriate sections" to A1/A2 (per-command contract) rather than A5. That's a mis-attribution relative to A5's Fails-if.
+
+Let me read eval/contract.ts and run.ts to see how commands' answer sections are validated and which requirement each negative check is attributed to. That will help me name a concrete failure that passes every check.
+
+Let me read contract.ts and requirements.ts and run.ts.
+
+Actually, the key: I need to find a plausible A5 violation not covered. Let me think about what frozen tests cover:
+- where: dispatchTicket found (1 match), missing name (empty + not-found limit), ambiguous callees (duplicatedDesk), 
+- find: exact snippet, 
+- callers: dispatch has 2 callers, focused, 
+- callees: dispatch 1 link with declaration/impl, ambiguous without tests pattern, paddedCredit direct call,
+- chain: dispatch --up 0 --down 1, focused,
+- tests: route with fake-rule count (1 test, path evidence), route without fake-rule (undecided + limit),
+- map: module, module/amount.ts.
+
+Frozen tests cover all commands, but only a handful of queries. The evaluator A5 covers only `where leaf` (JSON and text).
+
+A concrete A5 failure passing every check: 
+Option A: `chain`/`callers`/`callees` still return the evidence and limits but the *text* output buries the answer in a dump. A5's "answer comes only inside a dump". The frozen tests use `--json` (except none test text). Wait — do any frozen tests test text output? The frozen A5 test always passes `--json`. `expectFocused` checks JSON keys. So text output is not checked by the frozen tests at all. The evaluator's A5 has `A5-default-text` which checks `textIncludes: ["leaf", "chain/logic.ts:3"]` — only that the text contains the name and location for `where leaf`. So a text renderer that, for every command, prints an enormous dump (e.g., all definitions) but still includes the answer line would pass `textIncludes` (which is a "contains" check, not an "excludes/only" check). That is a real A5 failure: the user asks one question and gets a dump, with the answer buried. And it passes every check: frozen tests use --json and never assert text compactness; the evaluator's text case only requires the two strings be present, not that nothing else is. And other requirements (A1, A2, L1) are checked on JSON, not text (probably). So a text-output dump passes all checks.
+
+Hmm, but wait: `expectFocused` is called on JSON parse only. The `runCli` in frozen tests always adds `--json`. Yes. So text output is unchecked except the two `textIncludes`. That's a strong, concrete A5 failure: "the default text output can be a whole-repository dump as long as it contains the requested line." Actually let me verify the evaluator's text case handling — does it check that the answer is focused in text? Let me read run.ts/matcher.ts/contract.ts. textIncludes only. Let me confirm.
+
+Option B: `find` with a description returns every definition ranked, i.e., a dump, while still listing the true match. Frozen `find` test only checks exact snippet match returns 2 possible lines; the evaluator A5 doesn't test `find`. If `find` for a description returns all matches plus the whole definitions list (a dump), would A2 catch it? A2's `find` cases: A2-find-known, A2-ambiguous-find. If find returns extra matches, `equals`/`includes` might still pass if they only check includes. Let me check. Actually the evaluator's A2 cases probably check `matches[]` exact? Let me look at fixtures.json A2 cases.
+
+Option C: `where` returns the requested match with limits, but the limits are generic/blanket (e.g., always `{reason:"other", text:"..."}`) — L1-no-blanket-limit might catch. Hmm.
+
+Option D: A `map` command run when the user asked for a specific question... no.
+
+Option E: The answer omits limits for commands other than where/find. E.g., `callers` with a successful lookup but no `--tests` pattern: spec says every answer whose content would change carries `no test-file pattern given`. Frozen test covers `callees` without tests pattern. Evaluator covers R2-no-tests-pattern. So covered.
+
+Option F: `empty` behavior: an empty result presented without `empty` marker or with proof of absence — L1 catches.
+
+I think Option A (text dump) is the cleanest "concrete A5 failure that would pass every check", because the frozen tests are JSON-only and the evaluator's text check is a contains-check. But I should verify by reading the evaluator's text handling. Let me read run.ts, matcher.ts, contract.ts.
+
+Also, I want to understand why callers-unasked-map trips A1/A2 but not A5. Let me read contract.ts.
+
+Let me also read commands.ts to understand finish() and limits.
+
+Let me do these reads. But remember the brief restricts reading to listed paths. commands.ts, answer.ts are listed (src/). eval/ contract.ts is listed ("The evaluator: code_map/eval/"). Good.
+
+Let me read eval/contract.ts, run.ts, matcher.ts, and commands.ts.
+dsh: reasoning:
+Very important detail: the evaluator's `validateAnswer` is applied to every JSON case (all requirements), not just A5 cases. So the A5-specific Fails-if line gets its status from the A5 cases only (A5-specific-answer, A5-default-text). But `callers-unasked-map` would violate the contract's `allowedSections` (line 83-89: callers allows ["matches","links"], map is disallowed) — that check runs inside `validateAnswer`, which is only called for JSON cases. Which cases? Every JSON case across requirements. If a `callers` case exists in A1/A2/A3/L1 (it does: A1-known-callers, A2-ambiguous-callers, A2-known-callers, A3-... maybe), then that case fails and the requirement of that case (A1 or A2) is marked NOT MET. That explains why callers-unasked-map marks A1 and A2 NOT MET (whichever callers cases exist), but not A5, because the A5 cases only run `where`.
+
+So: the "unasked map" A5 violation is detected by the generic contract check when it appears on a `callers` case, and attributed to A1/A2 (whatever requirement owned the case). The A5 line's own case set never exercises a command that could produce an unasked map. That's the misattribution.
+
+Also `A5-default-text`: only checks `textIncludes` of "leaf" and "chain/logic.ts:3". It does NOT run validateAnswer (text format). So the text output is essentially unchecked for A5 beyond containing two strings.
+
+Now the site-dropped plant: deleting link `site`. In validateAnswer, `location(value.site, path + ".site")` would fail for every link in every JSON case. That's why many requirements (R2, A1, A2, L1) are NOT MET. But A5 cases (`where leaf`) have no links, so A5 not NOT MET.
+
+limits-dropped: limits = []. In `where leaf` case, limits expected equals [] → still passes. But other cases expect limitReasons: e.g., L1 cases require limit reasons, R2-no-tests-pattern requires "no test-file pattern given"? Let me check: the A5-specific-answer expects limits []. In many A1/A2/A3/L1 cases there are `limitReasons`. Dropping limits fails those, so those requirements NOT MET. A5 case still passes. So A5 blind.
+
+not-found-limit-dropped: `where` missing name no longer adds not-found limit. Which cases? The frozen test `A5 missing name...` fails. In the evaluator, L1-empty probably requires `where` missing with not-found limit → L1 NOT MET. A5 case `where leaf` finds a match, no limit → passes. So A5 blind.
+
+where-inside-dump: `where` returns matches plus every definition. For `where leaf` case: `equals matches[].name` expected ["leaf"], but now there are many names → fail. Also `includes` still passes but `equals` fails → A5-specific-answer NOT MET. Also `ambiguous` expected false but matches.length > 1 → contract fails. And A5-default-text textIncludes still passes (leaf and chain/logic.ts:3 present somewhere in the dump!). Actually textIncludes would still pass because the dump contains leaf and its location. But A5-specific-answer (JSON) fails. So A5 marked NOT MET from one of two cases. Good.
+
+Wait, but the evidence says where-inside-dump: bundled = held-out NOT MET: A2, A5, L1. It marks A5 NOT MET. And core A1, A2. Good.
+
+Now let me also verify: does the A5 line aggregate across all A5 cases? report.ts builds per-requirement status: requirement MET only if every line MET; a line NOT MET if any case for that line is NOT MET. So A5 line NOT MET only if an A5 case fails. Only where-inside-dump fails an A5 case among the five. Confirmed: "The evaluator marks A5 itself NOT MET for 1 of 5 (where-inside-dump); the other four are caught under other requirements' lines."
+
+Now, the key question: "do these five plants show that round A5's checks would catch an A5 failure?"
+
+Answer: No, not sufficiently. The plants show:
+- All five fail the frozen `bun test` checks (so the round check "tests pass" catches them). But the frozen tests are builder-readable, so they test whether the builder implemented to the tests, not whether the hidden checks catch A5.
+- Only 1 of 5 is caught by the evaluator's A5 line (where-inside-dump, the "dump" prong). The other 4 are caught under other requirements' lines (L1, A1, A2, R2, A3) — i.e., for the wrong reason relative to A5. Two A5 prongs are essentially untested by the evaluator's A5 cases: "without its evidence or limits" (only `where leaf`, a no-limit success path, is exercised) and "a whole map is produced unasked" (no A5 case runs a command that could attach a map).
+- The held-out and private sets give no A5 signal at all (A5 never NOT MET; core only distinguishes site-dropped, under A1/A2 baseline).
+
+Linus's "concrete A5 failure that would pass every check": the text-output dump. Let me verify the frozen tests never check text output: `runCli` always passes `--json` and parses JSON. Yes. The evaluator's `A5-default-text` only does `textIncludes`. And `validateAnswer` is skipped for text format. So a default text renderer that prints the whole definitions list (or the whole map) for any query, while still including the answer's name and location, passes all checks. But wait: would it pass the evaluator's other requirements? Other cases use `--json` (format defaults to json unless format:"text"), so text output is not exercised by other cases. So yes — a text-mode dump passes every check.
+
+Is that a "real A5 failure a user would see"? Yes: the default text output is what an agent/human sees; if it dumps a whole map for a `where` question, the answer comes only inside a dump — A5's Fails-if verbatim. The evaluator's bundled text case checks that the answer strings are present, not that nothing else is. So it passes. Good.
+
+But hold on — would the frozen tests catch a text dump? No. Would tsgo catch? No. Would the round's requirement MET on bundled cases remain MET? Yes, because the A5 cases pass. Would earlier requirements turn NOT MET? No, they're checked on JSON. Held-out/private? A5 not NOT MET, others baseline. So yes, it passes every check. That's the concrete failure.
+
+Actually, let me double check the private core set: "The core set tells only site-dropped apart from the baseline." The core set's A1/A2 were already NOT MET before plants. So even if the text dump changed A1/A2 on core, they're already NOT MET. But the private set runs `where` etc. with JSON? The private set is code-map answers about real opencode. Probably runs commands and checks JSON fields. If text dump only affects text format and private cases use JSON, no change. Even if it did, A1/A2 already NOT MET baseline, so the round check "no earlier round's requirement turns NOT MET" — they already are NOT MET, so can't "turn". And A5 on private not NOT MET. So the dump passes.
+
+Alternatively, another concrete A5 failure: `find` for a *description* returns all definitions plus the matching ones but with correct evidence and limits, and the evaluator's A2 `find` cases only use `includes` so extra matches are not flagged... but the contract checks `ambiguous` equals matches.length > 1. If the description query returns many matches, `ambiguous` would need to be true; the A5 "one question one answer" isn't violated by multiple matches if flagged. Hmm, the dump is the cleaner one.
+
+Even simpler concrete failure: `chain`/`callers`/`callees`/`find`/`where` on a success path that needs no limit returns `limits: []` correctly, BUT for a question where the tool *should* state a limit (e.g., `where` on a name with matches in a file that is outside the repo, or a dynamic target), it silently omits it. The A5 evaluator cases don't test any limit-bearing path. Actually the `not-found-limit-dropped` plant is exactly this and A5 didn't catch it — so the concrete failure is already demonstrated by plant 5! But the question asks to name a concrete A5 failure that would pass *every* check, i.e., not just the evaluator's A5 line. Plant 5 fails a frozen test, so it doesn't pass every check. The text dump does pass every check because no check reads text output for compactness.
+
+Let me make sure the frozen tests don't include a text-mode test. Reading test file: all `runCli` calls pass `--json` (hardcoded in runCli). Yes, there is no `format` param. So no text test. Confirmed.
+
+Wait, actually the frozen test's `runCli` appends `"--json"` always. So yes.
+
+Also the evaluator's `toolArguments`: `...(test.format === "text" ? [] : ["--json"])`. Only A5-default-text is text. And for text it only does matchAnswer (textIncludes) and nonempty check. So the text output's size/focus is never validated. That's a genuine gap in A5's checks.
+
+Now 范蠡's question: does this result justify closing round A5 now, or must something be done first? My answer: must strengthen first (or at least the verdict). Because 4 of 5 A5-relevant faults are not caught by A5's own line, and A5's three prongs are only partially exercised. Closing now would leave A5's "limits/evidence/unasked map" prongs resting on builder-readable frozen tests and generic other-requirement checks. But — the round's gate is "tests pass AND evaluator requirement MET AND no earlier NOT MET AND not NOT MET on held-out/private". All plants fail the frozen tests, so the gate as written catches them. So one could argue CLOSE, because the gate catches all five. But the deeper point: the gate's power for A5 comes almost entirely from builder-readable frozen tests; the hidden sets contribute nothing to A5. So a builder could pass the gate while shipping an A5 failure that the frozen tests don't cover (text dump). Therefore STRENGTHEN before close.
+
+Sun Tzu's own bullet: which plants are caught only by checks the builder can read? 
+- limits-dropped: caught by frozen tests (readable) for the right A5 reason; evaluator catches only under L1/R2/A1/A3 (hidden A5 line blind).
+- site-dropped: frozen tests (readable) check link site; evaluator catches under R2/A1/A2/L1, not A5.
+- callers-unasked-map: frozen test (readable) `expectFocused` catches the unasked map section; evaluator catches under A1/A2 via the generic contract, not A5.
+- not-found-limit-dropped: frozen test (readable) catches; evaluator catches under L1.
+- where-inside-dump: evaluator A5 case (bundled, readable by builder) catches it; also frozen test. The bundled A5 case is reader-visible too. So even the one A5-caught plant is caught by a check the builder can read (the bundled case file). The held-out/private sets never mark A5.
+
+So: all A5-specific catches are readable by the builder — the frozen tests and the bundled A5 cases. Nothing A5-specific rests on the held-out or private sets. What's left to the builder's good character: the behavior across untested queries/commands — text-mode focus, limit-bearing paths other than the frozen not-found/fake-rule/depth cases, evidence on link-bearing commands generally, and never attaching a map except for `map`. And the actual opencode-scale behavior: the private core set gives no A5 signal.
+
+Laozi's bullet: are the plants too heavy-handed to tell us anything? What small, quiet fault would show more?
+- The plants are large, blunt mutations: dropping all limits, deleting all sites, returning every definition, attaching a whole map, dropping a not-found limit. They all trip many checks at once (7, 4, 21, 1, 1 frozen test failures). Because they are broad, they don't isolate which check is doing the work; they mostly prove "gross breakage is caught", which any test suite catches. They also all fail frozen tests, so the experiment cannot distinguish the frozen tests' power from the evaluator's.
+- A small, quiet fault: keep the answer focused and evidence intact but make one limit slightly wrong — e.g., emit a blanket/generic limit (`{reason:"other", text:"analysis may be incomplete"}`) in place of the specific "not-found" or "no test-file pattern given", or state the limit only in `limits` but not in the `empty` branch; or make text output verbose for exactly one command (e.g., `callers`) while JSON stays focused; or attach the map only when `--json` is absent; or return the correct match but report `ambiguous:false` with one extra candidate silently dropped. These isolate a single prong of A5's Fails-if and would show whether the checks read the specific reason/text rather than merely that "some limit exists".
+
+Actually the A5 case `A5-specific-answer` expects `limits: []`, so a generic blanket limit would FAIL that case (limits not equal []). Hmm. L1-no-blanket-limit exists too. Let me think of a quiet fault that survives.
+
+A quiet fault that would show more: change only the *text* rendering to append the whole definitions list (JSON untouched). That's exactly the concrete failure that passes every check. It's small and quiet and would directly expose the A5 text gap. But if it passes every check, it "shows more" by showing the gap — which is the point: a quiet fault that is NOT caught tells us more than a loud one that is.
+
+But Laozi asks for "a small, quiet fault [that] would show more" — meaning a better plant design that would reveal whether A5's checks work. So yes: a text-only dump, or a single-command verbose text output.
+
+Another quiet fault: keep all fields but report the answer's location off by a few lines (still a location, still evidence, but wrong). Frozen tests check exact lines for several anchors, so caught. Hmm.
+
+Better Laozi proposal: a fault that keeps every field present and well-formed but makes the answer less focused in a way that only a human would notice — e.g., `find "<description>"` returns every definition ranked with the true match first (a dump-with-answer-first). The evaluator's A5 case doesn't test `find`; the frozen test uses an exact snippet where only one match exists and asserts `matches` length 1... actually frozen `find` test asserts `answer.matches` toHaveLength(1), so adding extras fails. So not quiet.
+
+The text-only dump remains the best.
+
+Now let me also address the "caught for the right reason" for each plant (Linus). Let me make a table:
+
+Plant | Real A5 failure a user sees? | Which A5 prong | Caught? by what | Right reason?
+1. limits-dropped: Yes — answers come without their limits (A5 prong b). Caught by 7 frozen tests (readable) and by evaluator lines L1, R2, A1, A3 — but not by the A5 line. Wrong attribution; right behavior caught, wrong reason.
+2. where-inside-dump: Yes — the answer is buried in a dump (prong a). Caught by A5 line (A5-specific-answer), A2, L1, and frozen tests. Right reason (A5 dump prong).
+3. site-dropped: Yes — links come without call-site evidence (prong b). Caught by 21 frozen tests and evaluator R2/A1/A2/L1 — not A5. Wrong reason.
+4. callers-unasked-map: Yes — a whole map is produced unasked (prong c). Caught by 1 frozen test (`expectFocused` on the A5 callers test) — that's an A5 test, so right reason at the frozen level; evaluator catches under A1/A2 (generic contract), not A5. Mixed: frozen right, evaluator wrong.
+5. not-found-limit-dropped: Yes — the not-found answer lacks its limit (prong b). Caught by 1 frozen A5 test (right reason) and evaluator L1 (wrong line). 
+
+Note: The frozen tests are named "A5 ..." and explicitly embed the A5 Fails-if string, so when they fail, the failure is arguably attributed to A5. So plants 1,2,3,4,5 are all caught by A5's frozen tests for the right reason (if the frozen tests count as A5's check). But the evaluator's A5 line catches only plant 2. The round's hidden checks catch none by A5.
+
+Linus's concrete failure passing every check: text-mode dump (or a verbose text renderer) — answer only inside a dump, passes all checks.
+
+Now, the verdict. The Answer section requires: one line per plant (enough / not enough, and why), then one verdict line: CLOSE A5 or STRENGTHEN with each change to a check, tied to A5's Fails-if line.
+
+I'll say STRENGTHEN, with changes:
+1. Add an A5 evaluator case that runs a link-bearing command (callers/callees/chain/tests) and checks `links[].site` is present and the answer carries only the asked section (no `map`). Ties to the "without its evidence" and "whole map produced unasked" prongs. (Case currently only `where leaf`.)
+2. Add an A5 case on a limit-bearing path other than the frozen ones: `where <missing>` expecting `limitReasons: ["not-found"]` and `empty`, and `callers` with no `--tests` expecting the "no test-file pattern given" limit. Ties to "without its limits". (Currently A5-specific-answer expects `limits: []`.)
+3. Add an A5 text-format case that checks focus, not just presence — the check must establish the text does not contain unrelated definitions (e.g., an `excludes`/size bound, or run text on a command whose dump would be detectable). Ties to "an answer comes only inside a dump". (Currently only `textIncludes` contains-check.)
+4. Add an A5 case that runs a command which must NOT carry a map (callers/callees/chain/tests/find) and asserts `map` absent, so the unasked-map prong is attributed to A5 rather than only A1/A2's contract. Ties to "a whole map is produced unasked".
+
+Also maybe: the frozen tests are builder-readable; the hidden sets must carry at least one A5 assertion. So add A5 assertions to the held-out and private sets: held-out renamed/shifted `where`-with-limits and `callers`-no-tests-pattern cases; private opencode cases that check limits and evidence.
+
+Now, "What I need to know" — questions whose answers change the answer. The brief says don't invent facts. Things I don't know:
+- Does the held-out copy contain A5 cases beyond the bundled ones (i.e., same A5 cases on renamed/shifted fixtures)? The evidence says bundled = held-out NOT MET columns identical, which suggests the same case set. But I only have the bundled A5 cases. If the held-out set adds A5 cases (e.g., a link-bearing or limit-bearing `where`), then my "hidden sets give no A5 signal" claim weakens. Actually the evidence says the held-out copy is "a held-out copy with renamed identifiers and shifted lines (never seen by the builder)" — it's the same fixtures transformed, run against the same evaluator cases (or a transformed case set). The plant table's "bundled = held-out NOT MET" identical columns suggests the same requirement attribution. But I should note: I have not seen the held-out case set; if it adds A5 cases over link-bearing or text commands, the gap narrows.
+- What the private set's 8 cases assert (do any assert A5? do any check limits/evidence/unasked map?). Evidence says core only distinguishes site-dropped from baseline, implying no.
+- Whether the round gate treats a frozen-test failure as A5's own verdict (i.e., does "A5's checks" include the frozen tests, or only the evaluator?). The brief says "round A5's checks" = tests + evaluator + held-out + private. So frozen tests count.
+- Whether `map` on `callers` was intended to be caught by A5; if the evaluator attributes command-inappropriate sections to A1/A2 by design, then the A5 line is only for `where` cases. But A5's Fails-if explicitly names unasked maps, so A5 should own it.
+- Whether text output is a user-visible surface EJ cares about (spec says text is the default for an agent). This matters for whether the text gap is a real A5 failure.
+
+Let me also verify the baseline: "Before any plant, the core set's A1 and A2 were already NOT MET (round R2 a2 baseline)." So the core set cannot distinguish A1/A2 changes; only site-dropped differed. So private set gives essentially no A5 signal.
+
+Now I should consider whether I need to actually run the plants or tests to verify. The brief gives the results; I'm told not to invent facts and to answer conditionally. I can reason from the given evidence and the code. Running the tests would consume time and the plants' copies aren't given (only the a1 src). So no.
+
+Let me also read commands.ts enough to confirm the plant descriptions (limits assignment, where match handling, callers map attachment, not-found limit). This strengthens "caught for the right reason" claims. Let me grep the relevant lines. Actually the plant descriptions are given; I don't strictly need to. But reading commands.ts could help verify e.g. that `where` returns `matches` only. Let me look at the relevant functions quickly to be accurate about which A5 prongs.
+
+Let me read commands.ts around limits/finish and where/callers.
+
+Actually the file is 23k, ~ maybe 600 lines. Let me grep for `limits =`, `finish(`, `not-found`, `matches`.
+
+I'll grep.
+dsh: reasoning:
+Confirmed. `matchAnswer` for text only checks `textIncludes` (substring), no excludes, no size. And `validateAnswer` skipped for text.
+
+Also confirmed commands.ts layout:
+- Line 477: `const answer: Answer = { ..., limits: [] }`. Line 550: `answer.limits = session.limits.all;`. So plant 1 changes line 550 to `answer.limits = []`.
+- Line 452/457/459: where sets matches from candidates; line 493 for find. Plant 2 adds every definition in program to `matches`.
+- Plant 5: line 496 `session.limits.addReason("not-found", ...)` removed.
+- Plant 4: callers attaches map — line 501 `answer.map = buildMap(...)` is in the `map` command branch. Plant 4 must add map building to callers branch. Fine.
+
+Now, one subtlety: the frozen test `expectFocused` allows `matches` for callers too. The plant adds `map`, which is disallowed → test fails. Good.
+
+Let me also check the evaluator's A1/A2 callers cases to confirm the unasked-map attribution. Search fixtures.json for callers cases. Not strictly needed but let me verify my claim that A1/A2 catch callers-unasked-map via contract allowedSections.
+
+Actually the evidence already tells us A1 and A2 are NOT MET. My explanation (contract allowedSections) is plausible but I should be careful: with an unasked `map` attached to callers, the contract's allowedSections check fails for callers cases in A1/A2. But also A5's frozen test. The evaluator's A5 doesn't run callers. So A5 not NOT MET. Good enough. I'll present it as "my reading" of the contract code, since I verified the allowedSections list and that validateAnswer runs on every JSON case.
+
+Let me double check: validateAnswer is called for all non-text cases in evaluateCase (line 51). Yes. So any JSON case with `args[0] === "callers"` and an answer containing `map` fails its own requirement. Thus if A1/A2 have callers cases, they become NOT MET. Confirmed by evidence.
+
+Now let me make sure about the A5 line aggregation: the evaluator computes requirement MET/NOT MET by lines. The evidence says "the evaluator marks A5 itself NOT MET for 1 of 5". So A5's line status driven by A5 cases only. Good.
+
+Now I have enough. Let me also consider: does the frozen test suite itself count as "A5's checks"? The brief says "the round's frozen tests" and "How the round's checks are used". So yes.
+
+Now let me think about the Sun Tzu rules I should cite. The brief requires each step in "How I decided" to cite an item from my list (1-20) or say "my reading".
+
+Relevant rules:
+- #1 Reckon before battle: before fighting, lay out the five matters and seven comparisons; more calculation wins. Apply: the round's checks have not counted the cases that can fail A5; the reckoning is incomplete. Also the 度/量/數/稱/勝 chain: ground → measurement → quantity → number → weighing → victory; i.e., the checks must be built from the ground of the actual failure modes, not from a sample of one.
+- #2 Make yourself unbeatable first; win then seek battle: The tool/round should be made unbeatable (checks that don't depend on the builder's good character) before claiming victory. "Do not rely on their not coming; rely on having what cannot be attacked." The round relies on the builder not shipping an untested failure — that's relying on the enemy's restraint. Strong match.
+- #4 Know whether you can fight; know the other side and yourself: Five ways to know victory. Knowing the checks and the failure modes.
+- #6 In deliberating, mix harm into benefit: write the harm column; the plants are the harm column. This is exactly the role of the plants — mix harm into benefit. But are they enough? The harm column is incomplete.
+- #7 War is the way of deception: the builder sees the frozen tests and bundled cases; the hidden sets are the deception. The unasked-map/text gaps are the exposed flank.
+- #10 Avoid the solid, strike the empty: the builder will optimize for the checks it can read (the solid); the untested surface (text, link limits, hidden A5) is the empty. Good match to 孫子's bullet.
+- #11 Foreknowledge from people, pay for it: don't rely on measurement (the bundled counts) alone; get the knowledge from the held-out/private sources. Actually "先知者...必取於人" — foreknowledge must come from people who know the enemy. The held-out/private sets are the "people who know the enemy's situation" (real opencode). The round has them but doesn't use them for A5. Strong match.
+- #14 Choose action by ratio of forces: with fewer, don't fight; concentrate. Could apply: the checks are spread thin across many requirements; concentrate on the untested A5 prongs.
+- #16 Orders clear first, then enforced: a check whose expected result is not clear/ambiguous can't be enforced. Perhaps: the A5 case must state what "no dump" means (a check that can fail), else it is an unclear order. Good match for the "textIncludes can't fail on a dump" point.
+- #17 Learn the enemy by probing and by signs: the plants are probes (策之, 作之, 形之, 角之). But they are heavy probes; a quiet probe (Laozi) reads more.
+- #15 The general's faults: five dangers, six defeats — "not disasters from heaven but the general's faults." Apply: the gap is not from heaven; it's the check-design's fault. Also "one who loves the people can be harried" etc. Maybe use for "the builder's good character" — relying on a virtue (good character) is a lever against you. Actually #15 says each virtue is a handle for the enemy: relying on the builder's good character is exactly relying on a virtue. Strong match!
+- #12 勢, choose people and rely on 勢: don't demand of the people; change the conditions. Apply: don't demand good character from the builder; change the checks (the 勢). Strong match to "what is left to the builder's good character."
+- #3 Whole over broken; strike plans first: prefer a whole check set. Maybe not needed.
+- #13 Not every command accepted: the general's discretion. Could apply to "the builder can read the frozen tests"; not needed.
+- #5 Move only on advantage; don't fight unless in danger: closing the round has a cost; only close if the gain is real.
+- #8 Value victory not duration; speed: don't prolong the round unnecessarily. But 范蠡 asks whether to close now; #8 warns against prolonging. However, a premature close is a lost victory. #8 also says "clumsy speed" is heard of but skill in prolonging is not — hmm, actually it favors speed. But #5 says don't move without advantage. I can cite #8 for "don't prolong for its own sake; the added checks must be few and must hit the untested prongs" — i.e., strengthen with the minimum, don't build an elaborate new suite. Good.
+- #18 Spirit/heart/strength/change: maybe not needed.
+- #19 ground: name the ground, act as prescribed. Could apply: name which A5 prong each plant is on. Eh.
+- #20 which house falls first: judge by the land unit, tax, and what they breed. Not needed.
+
+Good. Now the "How I decided" steps should be numbered and each cite "my #n". I'll write maybe 10-14 steps covering: read the requirement's three prongs, tabulate plants, determine which checks caught each, verify the evaluator's A5 cases and text handling, etc.
+
+Let me also be careful: the brief says "Quote only from your list, exactly as it is written there, and keep its label (quoted, attributed)." So if I quote a rule's Chinese, I must quote exactly from my list. I can paraphrase rules, but if I use quotation marks with Chinese, it must match. I'll mostly paraphrase. Where I quote, I'll use exact Chinese from the list and note `quoted`. Let me be careful with any Chinese I include.
+
+Also the brief says "Refer to EJ as they/them." Hmm, odd (EJ is a person, "they/them"). OK.
+
+"Do not write files; your final message is the answer." So I must NOT write any file. Good — I haven't. I read files only.
+
+Now, the output format requires exactly:
+
+# 孫子 (Sun Tzu) — <the question in a few words>
+
+## Answer
+<recommendation in one or two sentences; conditional if it must be>
+
+## How I decided
+<numbered steps; each cites "my #n" or "my reading">
+
+## What I need to know
+<questions ...>
+
+## Costs and risks
+<each with the item it comes from>
+
+## How we would know I was right
+<a test, a measure, or an observable result>
+
+But the question also demands one line per plant and a verdict line, plus the four named bullets. Where do those go? The Answer section says: "In 'Answer', give one line per plant (enough / not enough, and why), then one verdict line." So the Answer section contains the per-plant lines and the verdict. And the four named bullets (Linus, 范蠡, 孫子, 老子) — I'll put those in "How I decided" or as sub-parts. Hmm.
+
+The brief says "Through your rules, answer:" the four bullets. And "In 'Answer', give one line per plant ..., then one verdict line". The "Answer" section is one or two sentences per the template, but the question overrides with per-plant lines + verdict. I'll follow the question's more specific instruction: Answer gets the one-line-per-plant plus verdict. The four named sub-answers can go in "How I decided" as steps (or I can add a subsection). To keep the required section headers exactly, I'll put the four bullets inside "How I decided" as clearly labeled steps. Actually, the four bullets are distinct answers; better to include them under "How I decided" with bold labels. But "How I decided" is meant to be numbered steps each citing an item. I can have numbered steps and within relevant steps address Linus/范蠡/孫子/老子. Or I could put the four named answers in the Answer section after the verdict. Hmm.
+
+Requirement says "Write exactly this (no preamble)" with the five sections. So I must use exactly those five section headers. I can add content within them. The four named expert answers: I'll place them as a clearly labeled block within "How I decided" — but that section is supposed to be numbered steps. Alternatively place them at the end of "Answer" after the verdict, since the question's "Answer" instruction is per-plant + verdict but it also asks the four perspectives. Given the instruction "In 'Answer', give one line per plant ... then one verdict line", I think the four perspectives belong in "How I decided" (the reasoning). I'll structure "How I decided" with numbered steps, and for each relevant step note the perspective. To be safe I'll add a short labeled paragraph per expert within "How I decided" after the numbered steps, or make the steps themselves grouped by expert. Let me make the steps grouped: first common steps (1-4), then a step each for Linus, 范蠡, 孫子, 老子. That satisfies "numbered steps; each cites my #n".
+
+Actually, I can make each numbered step cite an item and label the expert. E.g.:
+
+**Answer**
+(line per plant)
+Verdict: STRENGTHEN...
+
+**How I decided**
+1. Read A5's Fails-if into three prongs... (my reading)
+...
+(Linus) ...
+(范蠡) ...
+(孫子) ...
+(老子) ...
+
+I'll do numbered steps 1–12 and mark which are Linus/范蠡/孫子/老子.
+
+Let me now craft the per-plant lines with "enough / not enough":
+
+1. **limits-dropped — not enough.** It is a real A5 failure (answers lose their limits) but the evaluator's A5 line never fires; the catch is in the builder-readable frozen tests and under L1/R2/A1/A3.
+2. **where-inside-dump — enough.** Real "answer only inside a dump"; the A5 evaluator case fires (A5-specific-answer) and frozen tests fire. Right prong, right line.
+3. **site-dropped — not enough.** Real "without its evidence" but A5's line never fires; caught by 21 frozen tests and under R2/A1/A2/L1.
+4. **callers-unasked-map — not enough.** Real "whole map unasked" but the evaluator attributes it to A1/A2 (generic contract), not A5; only the readable frozen test catches it as A5.
+5. **not-found-limit-dropped — not enough.** Real "without its limits" but A5's line never fires; caught by one readable frozen test and under L1.
+
+Verdict: **STRENGTHEN** before closing. Changes tied to A5's Fails-if:
+- (a) "an answer comes only inside a dump": add an A5 text-format case that can fail on a dump — e.g., run a command and require the text to exclude a marker string that only a whole-program dump would contain, or bound its size; presence-only `textIncludes` cannot fail a dump.
+- (b) "without its evidence": add an A5 case that runs a link-bearing command (`callers`/`callees`/`chain`/`tests`) and requires `links[].site` and each link's kind/location; today the A5 cases only run `where`.
+- (c) "without its limits": add A5 cases on limit-bearing paths — `where <missing>` expecting not-found + `empty`, and a callers/callees query with no `--tests` expecting "no test-file pattern given"; today `A5-specific-answer` expects `limits: []`.
+- (d) "a whole map is produced unasked": add an A5 case on each non-map command asserting `map` absent, so the attribution is A5, not only A1/A2.
+- (e) put at least one A5 assertion on a path the builder cannot read (held-out renamed/shifted `where`-with-limit and `callers`-no-pattern; private opencode case), since all current A5 catches are builder-readable.
+
+Cost/risk of each: more cases means more maintenance and a longer round (my #8 warns against prolonging); adding an excludes/size bound to text can be brittle (my #6: name the harm). Risk of not strengthening: a text-dump A5 failure passes every check (my #10: strike where they are empty).
+
+Now "What I need to know":
+1. Does the held-out set or the private 8-case set contain any A5 case beyond the bundled `where leaf` pair (specifically a link-bearing, limit-bearing, or text-focus case)? If yes, the hidden A5 signal is stronger than the table shows and my STRENGTHEN verdict narrows. The table's identical bundled/held-out NOT MET columns suggest not, but I have not seen those case files.
+2. Does the round gate count a frozen-test failure as a failure of A5's own check, or only as "bun test"? (The plants all fail bun test, so under the gate as written, all five already fail the round.) If frozen tests count as A5, then A5 "caught" 5 of 5 at the round level but 1 of 5 at the evaluator level — the verdict is about the evaluator/hidden layer.
+3. Is the default text output a user-visible answer that A5 must govern, or is `--json` the contract and text a convenience? The spec says text is the default for an agent, so I assume it is governed.
+4. Were the plants run against the frozen tests with the same 13-test file that ships now? (Assumed yes.)
+
+Hmm, I should limit to questions that change the shape. The brief says ask only what changes the answer. I'll list 2-3.
+
+Actually, one more crucial unknown: the brief says "The COO plants and two reviewers follow." and "5 of 5 caught by the frozen tests and by the evaluator (bundled and held-out alike)." So at the round level, all caught. The question "do these five plants show that round A5's checks would catch an A5 failure?" — the answer likely: they show the round's gate catches heavy breakage, but not that A5's own requirement is checked; only 1/5 by A5's line. And the concrete counterexample.
+
+Let me now think about whether the verdict should be CLOSE or STRENGTHEN. The round's check as a gate does catch all five (via frozen tests). So if the standard is "would the round catch these plants", the answer is yes, CLOSE. But the question explicitly asks "would catch an A5 failure" and Linus asks "is it caught for the right reason", and asks to name an A5 failure that passes every check. Since I can name one (text dump), the checks are not sufficient → STRENGTHEN. Strong case.
+
+But wait: is the text dump actually a failure the frozen tests wouldn't catch? Let me re-verify no frozen test checks text. Yes, runCli always --json. And the evaluator's text case only textIncludes. And no other requirement case is text. So yes.
+
+Could a text dump fail the evaluator's contract via R1/R3? No — R1/R3 check process/marker/filesystem, not answer content (run.ts lines 58-68 clear failures for R1/R3). R3 clears failures too. So no.
+
+Could it trip A5-default-text? Only if the dump lacks "leaf" or "chain/logic.ts:3" — a whole-program dump would likely include them; but if it dumps only definitions without locations, it might fail. A carefully built dump includes the answer line and location. So it passes.
+
+Good.
+
+Alternative concrete failure that's even more robust: keep JSON focused but make the text output for `map`-adjacent... no, text dump is fine. I could also mention: a command that returns the correct focused JSON but whose *text* form is the whole module map. I'll state it as: "a text renderer that prints the whole program's definitions (or the whole module map) for every question, while ensuring the asked name and location appear somewhere in that text." That passes: frozen tests (--json only), A5-default-text (contains both strings), all other cases (--json), tsgo, bundled MET, held-out/private (A5 not NOT MET). 
+
+Now let me write the answer. Keep plain English Markdown, no preamble. Use exact headers.
+
+Let me be careful with the required numbering "my #n". My list items 1-20. I'll cite e.g. "my #1", "my #2", etc.
+
+Let me draft.
+
+---
+
+# 孫子 (Sun Tzu) — do the five plants prove A5's checks catch an A5 failure?
+
+## Answer
+Per plant:
+- **limits-dropped — not enough.** Real A5 failure (answers lose their limits, my #1's "search out the true situation" needs the limits stated), but A5's own evaluator line does not fire; caught by 7 frozen tests and under L1/R2/A1/A3.
+- **where-inside-dump — enough.** Real "answer only inside a dump"; A5's own case fires.
+- **site-dropped — not enough.** Real "without its evidence"; A5's line never fires, caught by 21 frozen tests and under R2/A1/A2/L1.
+- **callers-unasked-map — not enough.** Real "whole map produced unasked"; the evaluator charges it to A1/A2, not A5; only the builder-readable frozen test calls it A5.
+- **not-found-limit-dropped — not enough.** Real "without its limits"; A5's line never fires, caught by one frozen test and under L1.
+
+**Verdict: STRENGTHEN.** Change the checks before closing A5: add an A5 text case that can fail a dump (the Fails-if "an answer comes only inside a dump"), an A5 case on a link-bearing command for evidence ("without its evidence"), A5 cases on limit-bearing paths ("without its limits"), an A5 `map`-absent assertion for "a whole map is produced unasked", and put at least one A5 assertion where the builder cannot read it.
+
+Hmm, the Answer should be "one or two sentences; conditional if it must be" but the question overrides with per-plant + verdict. I'll include both: a one-sentence headline, then the per-plant lines, then verdict.
+
+## How I decided
+Numbered steps.
+
+1. (my #1) Reckon before the verdict. My #1: "Before fighting, lay the war out by five matters ... compare the two sides on seven questions." I laid A5's Fails-if out as three prongs, and asked which prong each plant tests and which check does the testing: (a) an answer comes only inside a dump; (b) an answer without its evidence or limits; (c) a whole map produced unasked.
+
+2. (my reading) Read the evidence table. ... 5 of 5 fail bun test (7, 4, 21, 1, 1). Evaluator marks A5 NOT MET for 1 of 5. The other four are charged to R2/A1/A2/A3/L1. Core set only separates site-dropped from the A1/A2 baseline.
+
+3. (my #4) "Five things tell you who will win" and "know the other side and yourself." Here "the other side" is the failure surface. I checked what the evaluator's A5 cases actually exercise: only `where leaf` (A5-specific-answer, JSON) and `where leaf` text (A5-default-text). They never run `callers`, `callees`, `chain`, `tests`, `find`, or `map`, and never exercise a limit-bearing path.
+
+4. (my reading, verified in `eval/contract.ts` and `eval/run.ts`) `validateAnswer` runs on every JSON case and rejects a section that does not belong to the command (`allowedSections`); for text cases it is skipped and only `textIncludes` is checked. So the unasked map on `callers` fails whichever A1/A2 case runs `callers` — not A5 — and text is checked only for the presence of two strings.
+
+5. **Linus — is each plant a real A5 failure, caught for the right reason?** (my #15) "The general has five dangers... These five are the general's faults" — each planted fault maps to one of A5's prongs: 1→(b), 2→(a), 3→(b), 4→(c), 5→(b). Real user-visible failures: yes for all five. Caught for the right reason: only #2. Plants 1, 3, 5 are caught by other requirements' lines; plant 4 is caught by A1/A2 and by one A5 frozen test. So the evaluator's A5 line reads 1 of 5, and the round reads 5 of 5 only because the builder-readable frozen tests also fail.
+   Concrete A5 failure that passes every check: (my #10) "avoid the solid, strike the empty." The solid is JSON; the empty is the default text output. A text renderer that prints all definitions of the program (or the whole module map) for every question, while including the asked name and its `file:line` somewhere in that text, passes: the 13 frozen tests all pass `--json` and never read text; `A5-default-text` only checks that "leaf" and "chain/logic.ts:3" appear; `validateAnswer` is skipped for text; other requirements are JSON-only; `tsgo` is unaffected; bundled A5 stays MET; the held-out and private sets never mark A5 NOT MET. That is a user seeing one question answered only inside a dump.
+
+6. **范蠡 — close now or do something first?** (my #2) "First make yourself unbeatable... Do not rely on their not coming; rely on having the means to meet them." The round's A5 defense rests on the builder *not* shipping an untested fault — on the enemy's restraint, not on a check of ours. (my #11) "Foreknowledge... must be taken from people who知道 the enemy's situation" — the held-out copy and the private opencode set are the people who know the enemy; today they carry no A5 assertion. So something must be done first: STRENGTHEN the four untested prongs, then close.
+
+7. **孫子 — which plants are caught only by builder-readable checks?** (my #7) "War is the way of deception" and (my #10). The builder may read the frozen tests and the bundled cases. Plants 1, 3, 4, 5's A5-specific catch is in the frozen tests (readable), and plant 2's is in the bundled A5 case (readable). No plant is caught by A5 on the held-out or private set. So **all five** are caught only by checks the builder can read. What is left to the builder's good character: (i) focus of the default text output; (ii) limits on any limit-bearing path other than the frozen not-found/fake-rule/depth ones; (iii) evidence on link-bearing commands generally; (iv) never attaching a map except for `map`; (v) the same behavior on real opencode scale. (my #12) "the skilled fighter seeks it in 勢 and does not demand it of people... he can choose his people and rely on 勢" — do not demand good character; change the checks (the 勢).
+
+8. **老子 — are the plants too heavy-handed?** (my #17) "Learn the enemy by... reckon him, stir him, make him take form, test him in contact." A probe that shakes the whole tool (drop all limits, delete all sites, return every definition, attach a whole map) tests the blunt edge; it trips 7/4/21/1/1 frozen tests and many requirements at once, so it cannot tell which check did the work or whether a quiet fault would pass. A small, quiet fault shows more: leave JSON intact and make only the text output verbose; or, in JSON, keep the match exact and the fields well-formed but replace the specific limit on one branch with a generic `other` limit, or emit the limit on a different path (e.g. `find`'s no-match) than the frozen test checks. These isolate one prong each and would show whether the check reads the specific reason/text or merely that some limit exists.
+
+9. (my #5) "Do not move without advantage... move when it accords with advantage." Closing A5 now has a cost: the unasked-map and evidence prongs stay untested on the hidden sets, and a text dump ships. The advantage of adding a few targeted cases outweighs the delay.
+
+10. (my #6) "The wise always mix benefit and harm" — the plants are the harm column and they are honest as far as they go; but the harm column is incomplete, and the benefit (closing) is overstated by 5/5.
+
+Actually I want each of the four bullets clearly answered. Steps 5,6,7,8 are the four. Good.
+
+## What I need to know
+- Do the held-out copy and the private 8-case set contain any A5 case other than the two bundled `where leaf` cases — specifically a link-bearing case, a limit-bearing case, or a text-focus case? If they do, the hidden A5 signal is stronger than the table shows and the STRENGTHEN verdict narrows to the text prong. The bundled and held-out NOT MET columns are identical in the table, which suggests the same cases, but I have not seen those case files.
+- Does the round gate treat a frozen-test failure as A5's own failure, or only as "bun test failed"? The plants all fail the frozen tests, so under the gate as written all five already fail the round; my verdict is about the evaluator and hidden layer, which is what a future A5-like round would rely on when its faults are not in the frozen set.
+- Is the default text output governed by A5, or is `--json` the contract and text only a convenience? The spec says text is the default for an agent; I assume it is governed. If not, drop the first STRENGTHEN item.
+
+## Costs and risks
+- (my #8) Adding cases lengthens the round; "in war value victory, not duration." Keep the added checks few: one text-focus case, one link-evidence case, one or two limit cases, one map-absent case, one hidden A5 assertion.
+- (my #6) A text-size or exclude check can be brittle and fail for harmless formatting; name the harm and set the bound by the observable A5 failure (a dump of definitions for a one-name question), not by taste.
+- (my #2) If we close now, we rely on the builder's restraint — the risk is a shipped text dump and unstated limits at opencode scale, which no hidden check would report.
+- (my #10) If we only add loud plants and loud checks, we train the checks on gross breakage and leave the quiet flank open.
+
+## How we would know I was right
+Write the text-dump fault as a plant, run it through the round as now: it should pass every check (13 frozen tests, A5 MET on bundled and held-out, A1/A2 at baseline on the private set, `tsgo` 0). If it passes, the gap is real. Then add the four targeted A5 cases (text focus, link evidence, limit-bearing path, map-absent) and run the same plant plus a quiet limit-substitution plant: each should be marked NOT MET on the A5 line, and the earlier baseline (site-dropped and where-inside-dump) should stay NOT MET. If a quiet fault is still missed, the checks are still reading presence rather than focus.
+
+That's the plan. Now I need to double check quoting. I used some Chinese? I wrote "people who知道 the enemy's situation" — that's mixing; better to avoid. I'll write "people who know the enemy's situation" and cite my #11 which is quoted from the list. Actually my #11's rule text: "Foreknowledge cannot be had from spirits... it must be got from people who know the enemy's situation." That's the list's Rule (not the Chinese). I can quote the English rule as it's written in my list? The instruction: "Quote only from your list, exactly as it is written there, and keep its label (quoted, attributed)." The list's Rule is my paraphrase; the "Their words" are labeled. If I quote the Rule text, I should perhaps not put it in quotation marks as if it's a source. I'll paraphrase rules and only use quotation marks for the label "quoted" items. To be safe, I'll avoid direct quotes with quotation marks where possible, or clearly quote the English rendering that appears in my list under "Their words" and mark it. Hmm.
+
+Simplest: paraphrase all rules in my own words, citing "my #n". Where I want the flavor, I'll use the list's English translation in quotes and note it's the `quoted` words from my list. Let me do a few carefully:
+- my #2's words: "The skilled fighters of old first made themselves unbeatable and waited for the enemy to become beatable." and "Do not rely on their not coming; rely on having the means to meet them." Both appear in my list under #2 "Their words" as `quoted`. I can quote exactly.
+- my #10: "an army avoids the solid, strikes the empty" — the list's Rule says "an army avoids the solid, strikes the empty and shapes its victory by the enemy." Wait, the Rule text (my paraphrase) says that. The "Their words" English: "an army in its victory avoids the solid and strikes the empty." I'll quote the latter exactly and cite #10 `quoted`.
+- my #11: "it must be taken from people who know the enemy's situation" — my list #11 Rule says "it must be got from people who know the enemy's situation." Their words: "it must be taken from people who know the enemy's situation." I'll use the exact words from "Their words": 「先知者...必取於人，知敵之情者也。」 English: "it must be taken from people who know the enemy's situation." Good.
+- my #12: "seeks victory in 勢 and does not demand it of his people" — Rule text: "The skilled fighter seeks victory in 勢 and does not demand it of his people, so he can choose his people and rely on 勢". Their words: "So the skilled fighter seeks it in 勢 and does not demand it of people; so he can choose people and rely on 勢." I'll quote the latter exactly.
+- my #15: "These five are the general's faults, the calamities of using troops." — appears in their words. Good.
+- my #17: "So reckon them to know the calculation of gain and loss; stir them to know the pattern of movement and stillness; give them form to know the ground of death and life; test them to know where there is surplus and shortage." Good, exact.
+- my #1: "Before fighting, lay the war out by five matters..." that's Rule (my paraphrase). The quoted words: "So lay it out by five matters, compare it by seven reckonings, and search out the true situation". Good.
+- my #6: "The wise always mix benefit and harm together when they deliberate." Rule. Their words: "So the wise one's deliberation always mixes benefit and harm". Good.
+- my #7: "War is the way of deception." Their words exact (quoted). Good.
+- my #8: "So in war value victory, not duration." Their words exact. Good.
+- my #5: "Do not move without advantage, do not use troops without gain, do not fight unless in danger." Their words exact. Good.
+- my #4: "There are five ways to know victory". Their words: "There are five ways to know victory: one who knows when he can fight and when he cannot wins..." Good.
+- my #16: "If the rules are not clear and the orders not made familiar, it is the general's fault" (attributed). I might use for "unclear check can't be enforced". Hmm, #16 is about orders. I can use it for "a check whose expectation is not clear cannot be enforced." That's a stretch but okay as my reading applying #16. Actually I'll cite #16 for the point that the text check's "clear first, then enforced" — a presence-only check is an unclear order. Eh, maybe skip or use lightly.
+- my #3: "the highest use of troops strikes plans, the next strikes alliances..." Could use for "strike the check design (plans) not just the loud code." Maybe.
+
+I'll keep it disciplined.
+
+Let me also make sure not to invent facts. I'm relying on the provided evidence table and the code/spec/test files I read (all listed allowed paths). Good.
+
+One more consideration: the brief says "Facts (filled in by the COO). You may read only these paths in the repository". I read `code_map/eval/contract.ts`, `run.ts`, `matcher.ts`, `COVERAGE.md`, `cases/fixtures.json` — all under `code_map/eval/`, which is listed. And `code_map/test/a5/one-question-one-answer.test.ts` — listed. And src files — listed. Good. I did not read other briefs. Good.
+
+Now, "Answer" section: the template says "<your recommendation in one or two sentences; conditional if it must be>". The question says give one line per plant then verdict. I'll lead with 1-2 sentences then the per-plant lines and verdict. That satisfies both.
+
+Let me finalize the verdict reasoning: STRENGTHEN. I'll name each change tied to A5's Fails-if line.
+
+Let me write it now. I'll aim for clear, plain English, not too long but complete.
+
+Let me reconsider the claim "all five caught only by checks the builder can read". Is the evaluator's A5 case "bundled" and thus builder-readable? The brief says "the builder (opencode) may read the frozen tests and the bundled cases but never the held-out copy or the private set." Yes, bundled cases are readable. So A5-specific-answer (bundled) is readable. Thus even where-inside-dump's A5 catch is readable. And the held-out run of that same case — is the held-out case set visible? No, the held-out copy is never seen. But the plant result shows A5 is NOT MET on held-out for where-inside-dump too, because the same A5 case runs on the renamed/shifted copy. But the builder can't read that copy; however the builder can read the bundled case, so it knows the assertion. The point of held-out is to prevent hard-coding to identifiers/lines. Still, since the bundled A5 case exists and is readable, the builder knows the check. So "which plants are caught only by checks the builder can read" = all of them, for the A5-specific reason. The hidden sets add no A5-specific detection that isn't already derivable from a readable check. Answer: all five.
+
+Hmm, but is that fully right? For where-inside-dump, the held-out set also marks A5 NOT MET, which is a hidden check that catches it. But it's the same case transformed, so the builder can read the bundled version and know the behavior. The question likely means: which plants rely on readable checks for their detection? Answer: 1,3,4,5 rely on readable frozen tests; 2 relies on a readable bundled case (and its hidden transform). So effectively all five. And the hidden sets provide no *independent* A5 coverage (same cases; no new A5 assertions). Let me phrase precisely: "Every A5-specific catch is in a check the builder can read (the frozen tests, and for plant 2 the bundled A5 case). The held-out and private sets contribute no A5 assertion that is not already in a readable check; plant 2's held-out NOT MET is the same bundled case transformed."
+
+What's left to good character: text focus, limits on non-frozen branches, evidence on commands beyond the frozen queries, map-absence beyond the frozen callers test (well the frozen callers test does check focus, so map-absence on callers is readably checked; but map-absence on callees/chain/tests/find is not), and real-scale behavior.
+
+Let me refine: The frozen test `callers` uses expectFocused, so it would catch an unasked map on callers. But callees/chain/tests/find frozen tests also use expectFocused (all do). Let me check: every frozen A5 test calls expectFocused. Yes: where, find, callers, callees, chain, tests, missing name, ambiguous, callees-no-tests, direct-function, map×2. So an unasked map on any of those commands would fail the frozen test for that command. So the unasked-map prong IS covered by frozen tests for the queries they run, but only for those fixture queries. The builder can read them. So map-absence on e.g. a different query of the same command is fine (the check is command-level). Actually expectFocused checks the envelope regardless of query, so the behavior "never attach map except for map" is fully specified by the frozen tests. So map-absence is NOT left to good character — it's covered by readable tests. Hmm, but then plant 4 IS caught for a reason (the frozen test) and the evaluator mis-attributes. The residual good-character gap is narrower: the *hidden* layer doesn't check it, but the readable layer does.
+
+Let me reconsider what's truly left to good character: only failures not covered by ANY readable check. That's the text dump (no readable check can fail), and possibly:
+- Limits on paths not in the frozen tests: the frozen tests cover not-found (where), fake-rule (tests), depth (chain), no-test-pattern (callees). Other limit paths: `find` no-match not-found, `map` no-sibling-rule (covered by map frozen tests), dynamic/outside-repo/other-process reasons (not covered by frozen tests? Let me check: frozen tests don't assert dynamic or outside-repo limits). So limits for dynamic/outside-repo/other-process are unchecked by frozen tests. But those go through A5's "without its limits" prong. The evaluator's L1 cases cover dynamic (L1-dynamic) and outside-repository (L1-outside-repository). So they're checked under L1, not A5 — and are hidden? No, evaluator cases aren't all readable; the bundled cases are readable. L1 cases are bundled and readable. So the builder could read them. But attribution is L1.
+- Text focus — truly unchecked.
+
+So the honest answer to 孫子's bullet: plants 1–5 are all caught by builder-readable checks (frozen tests or the bundled A5 case); no plant is caught by an A5 check on the hidden sets that the builder cannot read. What's left to good character is specifically the behavior no readable check can fail: the focus of the default text output (the concrete counterexample), and any A5-relevant behavior on queries/limits the frozen and bundled cases do not exercise.
+
+Good.
+
+Now let me consider whether I should note that "5 of 5 caught by the frozen tests" already means the round gate catches them, so A5 as a *gate* is fine; the problem is the *evaluator attribution* and the *independent coverage*. I'll state that clearly to be fair, because the brief asks "do these five plants show that round A5's checks would catch an A5 failure?" The honest answer: they show the round's gate catches gross breakage (all 5 fail bun test), but they do not show the A5 requirement line catches A5 failures — only 1 of 5 fires on A5, and a text-only dump passes everything. So the plants are not sufficient evidence for closing.
+
+I'm confident. Let me write the final answer.
+
+Length: aim moderate. Use the exact headers. No preamble (start with the # heading). No file writes.
+
+Let me write.

@@ -1,0 +1,9 @@
+export function level0() { return level1(); }
+export function level1() { return level2(); }
+export function level2() { return level3(); }
+export function level3() { return level4(); }
+export function level4() { return level5(); }
+export function level5() { return level6(); }
+export function level6() { return level7(); }
+export function level7() { return level8(); }
+export function level8() { return 8; }

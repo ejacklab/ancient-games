@@ -1,0 +1,80 @@
+I'll read that brief first.
+# 老子 (Laozi) — what in the A5 and A2 check proposal is more than is needed
+
+## Answer
+
+Cut the proposal to four things: **two A5 cases and one matcher clause** (three of the five A5 items need no new check code at all, because `contract.ts` already rejects a missing `site` and an unasked section on every case — a failure is charged to the case's own label, `eval/run.ts:69-73`), and **one A2 fixture and one A2 case** for the shape the tool says it cannot reach (`Effect.gen(function* () { … })`, `nodes.ts:267-271`). A2's items 1, 2 and 3 are already true and need no work. Conditional, because I do not know whether the private-set A2 failure is that shape or something the fixtures cannot reproduce.
+
+### A5 — line: "an answer comes only inside a dump or without its evidence or limits, or a whole map is produced unasked"
+
+**KEEP — as one case, not three.** Add one A5-labelled case on a link command, `callers chain/logic.ts:3`, whose expectation pins the whole answer: `links[].from.name == ["middle"]`, `links[].to.name == ["leaf"]`, `links[].site.file` / `links[].site.line` (pair the line equality with a file equality — `holdout.ts:165` throws without it), and `matches[].name` pinned too. That single case makes A5's line fire for three clauses at once, because these checks run on every case: a link with no `site` or no `kind` fails `contract.ts:41-42`; a `map` or any section `callers` does not own fails `contract.ts:83-89` — that is exactly the `callers-unasked-map` plant, which today fires A1 and A2 only (`evidence/p3-a5-src-plants.txt:11`); and extra links or extra definitions riding on the answer fail the exact set — the same device that caught `where-inside-dump` under A5 (`evidence/p3-a5-src-plants.txt:8`).
+
+**KEEP — one case, in the exact form.** Add one A5 case whose correct answer carries a named limit, written as `equals: [{path: "limits[].reason", value: ["not-found"]}]` on `where definitelyNotPresent`. The reason list, not `limitReasons`: `limitReasons` only asks that *some* limit of that reason appear anywhere (`matcher.ts:41-55,85-88`), so a blanket `dynamic`/`other` limit on every answer would satisfy it — and a blanket limit on any command other than `where leaf` is caught nowhere today. The reason list fails both ways: a dropped limit and an added blanket limit. It also fixes what is true now, which is that a tool which never emits a limit is A5-MET by construction, because both existing A5 cases run `where leaf` and `A5-specific-answer` asserts `limits: []`.
+
+**CUT — item 3 as separate work.** It is the same case as item 1. There is no second check to write.
+
+**CUT — item 5 as work.** The held-out copy is generated from the bundled cases (`holdout.ts:150,188`), so a new A5 case is already in it, and `rewriteCase` clones the case and relocates its `args` and expectations (`holdout.ts:148-188`). Keep it as one line in the plan — "read the held-out report and confirm the two new A5 case ids are in it" — not as a check.
+
+**CUT — item 4 in the form written.** A separately-worded rule for text output, maintained per command, is more than is needed: `includes`/`excludes` already exist, and on a `format: "text"` case they currently select over a string and pass vacuously (`matcher.ts:57-71`, `selectPath:24-39` returns `[]` for a non-object).
+
+**ADD — one clause to the matcher, which does more than item 4.** For a case with `format: "text"`, an `includes`/`excludes` entry is a place that must / must not appear among the `file:line` tokens of the text; a place named in the case's own `args` is always allowed. No new expectation field, so `rewriteCase` already carries it into the held-out copy, and the existing `A5-default-text` case gains one `excludes` line. This closes the one quiet fault no check catches on either side: the frozen A5 tests parse stdout as JSON (`test/a5/one-question-one-answer.test.ts:45`), and the text is a pure function of the answer (`render.ts:48-88`), so extra definitions, or a whole map, can be printed by the renderer alone and pass every test and every case. The builder sees it, because the bundled case file is readable to the builder.
+
+**Do not add a mirror in the frozen test.** The evaluator case already fails, the round cannot pass, and a second copy of the same expectation is a place to go stale.
+
+**Wording proposal for the owner (A5).** Three gaps in the letter of A5, none of which any check can close:
+1. *Completeness.* "that answer" is never defined as the whole answer, so a silent cap (my earlier `matches.slice(0, 25)`, with no limit) is A5-MET by the letter, and no check can decide it without re-implementing the search. Proposed sentence: "A specific question gets that whole answer, with its evidence and its limits. Where the answer stops short — a cap, a sample, a first page of matches — it carries the limit that says so."
+2. *Whose limits.* "with its evidence and limits" is not tied to the limits the interface already makes mandatory — "no test-file pattern given" (`spec.md:24`), "fake rule not set (A3)" (`spec.md:122`), "no sibling rule given (A1)" (`spec.md:133`). Proposed sentence: "A limit the interface requires for that command is part of the answer, not an omission."
+3. *Form.* A5 says nothing about the default text, which `spec.md:37-38` makes the agent's form. Proposed: "…with its evidence and limits, in the form the tool answers in, JSON or the default text the agent reads."
+
+### A2 — line: "a known link within the depth is missing, or a shown link contradicts the code"
+
+**CUT — item 1 (chains through anonymous bodies at level 2 or deeper, both ways).** Already covered. `A2-const-chain` pins four levels down through the `Effect.fn` wrapper (`const-held/module/flow.ts:21`) → the const function (15) → the object-property arrow (10) → `deepest` (3), and two levels up through an exported arrow (`outside.ts:2`) and a test body (`flow.testcase.ts:3`) — `COVERAGE.md:63`. A fifth invented shape of the same thing buys no new absence.
+
+**CUT — item 2 as written** ("the same line … in the shape the target code base uses"). That shape is already tested (`A2-const-callers`, `A2-const-callees`, `COVERAGE.md:63`) and the private set still fails on the real code. What is missing is not another fixture of a shape we can already write; it is the one detail of the real shape. Fixtures written from memory are each blunted at the first detail that differs.
+
+**CUT — item 3 ("make A2's own line fire").** It already fires. All five A2 lines have cases (`COVERAGE.md:58-67`), and `run.ts:69-73` charges every matcher and contract failure to the case's own requirement and line — the plants table shows A2 NOT MET on four of five (`evidence/p3-a5-src-plants.txt:6-13`). Nothing to make.
+
+**CUT — item 4 (the new shapes also go in the frozen tests) as separate work.** One bundled case is enough; the verdict comes from the case file. If the shape needs a fixture the bundled fixtures cannot carry, the frozen test is the only place — conditional.
+
+**ADD — one fixture, one case, on this line.** A step function that is a generator body written straight into the call: `Effect.gen(function* () { … })`, with no `Effect.fn` holder and no object property, reached from an exported entry, with one known callee inside the body and one known caller of it. One case: `chain <entry> --down 2`, or `callees` and `callers` on the body. Why this one does more than the rest:
+- The tool's own rule says the shape is not a place — `hasWrittenName`: "A body written straight into a call — `Effect.gen(function* () { … })` — is not: it has no name of its own" (`nodes.ts:267-271`) — and `belongsTo` (`nodes.ts:283-288`) then attributes that body's calls to the nearest named enclosing place. **If** the chain therefore shows the entry as the caller of a function the entry does not call, that is a shown link contradicting the code: the same Fails-if line, invisible to every bundled case, because no fixture has that shape (only `Effect.fn("Compute")`, `flow.ts:21`).
+- It settles the private-set failure in one direction or the other instead of two: if the case passes, the real failure is scale or library resolution, not shape; if it fails, the shape is named.
+
+**Wording proposal for the owner (A2).** Nothing in A2 requires a link's `from` to be the body that contains the call, and nothing requires an unnamed body to be reachable, so the tool's own documented rule is A2-MET by the letter while the private set is NOT MET. Proposed sentence, tied to "a shown link contradicts the code": "A link names the body that holds the call. A body written straight into a call — `Effect.gen(function* () { … })` — is a place of its own or a stated limit; it is never shown as a call by the function that surrounds it." I do **not** propose a completeness sentence ("every call the code makes is in the chain"): that is what the private-set failure really wants, and no check can decide it without re-deriving the code. That is a question for the owner, not wording.
+
+## How I decided
+
+1. **My #1** — *Take away, and take away again* (損之又損，以至於無為, `quoted`). I counted each proposed item against what a check already exists for. A5's five items become two cases and one matcher clause; A2's four items become one fixture and one case. Every cut is named, not silently dropped.
+2. **My reading**, from `eval/run.ts:69-73` and `report.ts:40-45`: a failure is charged to the label on the case that produced it, never to the check that found it. So "A5's line fires" and "A2's line fires" are questions about labels, not about check code. That one fact decides COO A2 item 3 (already true) and makes A5 items 1 and 3 the same case.
+3. **My #17** — *The use is in what is not there* (故有之以為利，無之以為用, `quoted`). A check buys absences, not lines of code. One A5-labelled link-command case buys three absences — missing site or kind, unasked section, answer buried in a dump — because `contract.ts:41-42,83-89` run on every case. Three separate cases buy the same three absences and cost three times the maintenance.
+4. **My #19** — *restraint as the rule* (以深為根，以約為紀，曰：「堅則毀矣，銳則挫矣」, `attributed`). The sharp check is the one that gets blunted by the first thing it did not foresee. A fixture written "in the shape the target code base uses" from memory is blunted at the first detail that differs; a text rule maintained per command is blunted by the first legitimate place the renderer prints (`render.ts:23` prints a limit's `ref`, `render.ts:49` prints the query, which is `file:line` whenever the query is a place).
+5. **My #8** — *Know that you do not know* (知不知上，不知知病, `quoted`). Three places where I do not know and say so: whether the private-set A2 failure is the unnamed-body shape or something fixtures cannot reproduce; whether "no silent cap" can ever be checked without re-implementing the search; and whether the owner wants A2 to demand completeness (uncheckable) or only correct attribution (checkable).
+6. **My #12** — *What is to be shrunk must first be stretched* (將欲歙之，必固張之, `quoted`; my list notes the words do not say who stretches or what follows). Before cutting A2 items 1–3 I asked what each was already doing: item 1 duplicates `A2-const-chain`, item 2's real content is the *sourced* shape, item 3 is already true. Nothing is lost by the cut, and the one add absorbs what each was reaching for.
+7. **My #4** — *Acting on it ruins it; gripping it loses it* (為者敗之，執者失之 … 去甚，去奢，去泰, `quoted`). The checks must not grip the whole requirement. One behaviour charged under A5, L1 and R2 at once is the grip; I keep the A5 label because A5's verdict is what closes the round, and I name the triple count as its price instead of hiding it.
+8. **My #2** — *Know what is enough; know to stop* (知足不辱，知止不殆 · 禍莫大於不知足, `quoted`), with **my #18** — *when your time comes, ride out* (吾所以告子，若是而已, `attributed`). The least before A5 closes: two cases and one matcher clause. The least before A2 starts: one fixture and one case. Everything else in the proposal waits.
+9. **My #7** — *Be as careful at the end as at the beginning* (民之從事，常於幾成而敗之。慎終如始，則無敗事, `quoted`). The effort belongs where the round closes. A5 closes on MET or NOT MET and A2 starts only after it, so the two A5 cases go in first, the A2 fixture follows, and nothing else is built before the close.
+10. **My #16** — *eight parallel statements, not a ladder* (`quoted`). The four A5 clauses and the five A2 lines are parallel; I do not rank them, and I do not read the round order (A5 then A2) as a priority I am able to settle.
+
+## What I need to know
+
+1. In the private set's A2 failure, is the missed link one where the callee is reached **inside a body written straight into a call** (`Effect.gen(function* …)`), or inside an `Effect.fn` constant? If the first, the added fixture decides it. If the second, the added fixture proves nothing about the private set and I would want to stop rather than add cases.
+2. Does EJ want A2's wording to demand completeness, which no check can decide, or only correct attribution? I propose attribution.
+3. Is one behaviour counted under A5, L1 and R2 at once accepted, given A5's verdict is what closes the round?
+4. May a link command's answer carry `matches`? The interface says yes for an ambiguous name (`spec.md:41-42`) and the contract allows it (`contract.ts:84`); the frozen A5 test's `expectFocused` allows only `command, query, ambiguous, limits, empty` plus the payload (`test/a5/one-question-one-answer.test.ts:62-67`). My recommended case does not depend on the answer, but the two rules disagree and one of them should change.
+
+## Costs and risks
+
+- The A5 limits case charges a behaviour L1 and R2 already charge, so `report.json` counts one failure three times, and a reader may read A5 NOT MET as three faults (**my #4**).
+- Making `includes`/`excludes` work on text cases will fail a renderer that prints a place the case does not list, including the legitimate query header and a `seen` limit's `ref`. The rule must allow the args' own places, or it will punish correct tools (**my #19**).
+- One A5 case on a link command ties A5's verdict to the whole Link contract (`contract.ts:39-67`), so a later change to a Link field can turn A5 NOT MET for a reason that is not about one question, one answer (**my #4**).
+- The new A2 fixture must type-check under every held-out seed and survive the renamer (`COVERAGE.md:110-111` records that work for `const-held`); a fixture that fails to compile in a generated copy stays silent until the held-out run (**my #6**).
+- The A2 fixture may pass and still leave the private set NOT MET, if the private failure is scale or library resolution rather than shape; then A2 cannot close and the round is attempt 2 for a reason the fixture never reached (**my #8**).
+- The wording is a proposal only; the checks never change a requirement's wording. If EJ declines the A5 sentence, the silent-cap fault stays unchecked (**my #18** — 若是而已).
+
+## How we would know I was right
+
+- Re-apply the three plants one at a time to the A5-attempt-1 tool — `limits-dropped`, `site-dropped`, `callers-unasked-map` (`evidence/p3-a5-src-plants.txt:6-11`) — and read the report. A5's line must go NOT MET for all three; today it fires for none of them. If it still fires for only one, the fault was the label, not the check.
+- Apply a plant no check names: append one extra definition to the default text answer only, in `render.ts`. The text case must fail. If it passes, the `excludes`-on-text clause did not take.
+- Point the tool at the new `Effect.gen` fixture and read `links[].from`. If it names the function that surrounds the body rather than the body, the tool has the contradiction and A2's third line is right to fire — then A2 is attempt 2, and the fixture has earned its place.
+- Negative control first: run the new cases against the unplanted tool. If any new case fails on the honest tool, the expectation is wrong, not the tool (**my #8**).
+- Counts: A5 goes from 2 cases to 4, A2 from 19 to 20. If the answer needed more than that, **my #1** was applied wrongly.

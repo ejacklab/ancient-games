@@ -1,0 +1,5 @@
+2026-10-17T15:27Z count and link evidence: done (3 tests pass in copied tool)
+2026-10-17T15:28Z count and link evidence isolated rerun: done (3 pass; fixture filename avoids Bun test discovery)
+2026-10-17T15:28Z known paths and user test/fake rules: done (10 tests pass in copied tool)
+2026-10-17T15:28Z static-path wording: done (JSON passes; 3 default-text tests fail on execution coverage wording)
+2026-10-17T15:29Z per-function file opt-in: done (4 gate/opt-in tests pass; suite 15 pass, 3 wording failures)

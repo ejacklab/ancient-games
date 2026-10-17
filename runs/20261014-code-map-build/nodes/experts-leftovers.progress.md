@@ -1,0 +1,26 @@
+- 2026-10-17T23:15:01+08:00 · linus · start · codex
+- 2026-10-17T23:15:02+08:00 · sun-tzu · start · dsh
+- 2026-10-17T23:15:03+08:00 · fan-li · start · claude
+- 2026-10-17T23:15:03+08:00 · dave · start · claude
+- 2026-10-17T23:15:03+08:00 · dario · start · claude
+- 2026-10-17T23:15:57+08:00 · linus · done · codex exit 0
+- 2026-10-17T23:16:09+08:00 · check-linus · start · 
+- 2026-10-17T23:16:12+08:00 · check-linus · done · linus check passed, no FAIL linus lines
+- 2026-10-17T23:17:21+08:00 · dario · done · claude exit 0
+- 2026-10-17T23:17:34+08:00 · check-dario · start · 
+- 2026-10-17T23:17:37+08:00 · check-dario · done · dario check clean, no FAIL dario lines
+- 2026-10-17T23:18:28+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-17T23:18:43+08:00 · check-sun-tzu · start · 
+- 2026-10-17T23:18:46+08:00 · check-sun-tzu · done · sun-tzu answer checked, no FAIL sun-tzu lines
+- 2026-10-17T23:21:09+08:00 · dave · done · claude exit 0
+- 2026-10-17T23:21:21+08:00 · check-dave · start · 
+- 2026-10-17T23:21:24+08:00 · check-dave · done · dave has no FAIL lines; the other five experts had no answer file in this folder, ignored
+- 2026-10-17T23:22:13+08:00 · fan-li · done · claude exit 0
+- 2026-10-17T23:22:27+08:00 · check-fan-li · start · 
+- 2026-10-17T23:22:30+08:00 · check-fan-li · done · fan-li answer file checked, no fan-li failures
+- 2026-10-17T23:22:38+08:00 · lao-tzu · start · opencode
+- 2026-10-17T23:24:36+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-17T23:24:47+08:00 · check-lao-tzu · start · 
+- 2026-10-17T23:24:50+08:00 · check-lao-tzu · fail · six_experts check: 2 lao-tzu Chinese-quote mismatches (繁/簡 variants 以深爲根, 以約爲紀)
+- 2026-10-17T23:25:00+08:00 · compare · start · 
+- 2026-10-17T23:27:19+08:00 · compare · done · compare.md written; unanimous on 2,5,7,8; split on 1,3,4,6; 9 merged questions

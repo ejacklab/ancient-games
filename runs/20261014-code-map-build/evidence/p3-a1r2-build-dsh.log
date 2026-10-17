@@ -1,0 +1,43 @@
+Done. I worked the brief in `runs/20261014-code-map-build/builds/a1r2-dsh/code_map/` and touched only `src/commands.ts` and `src/siblings.ts`.
+
+## What changed
+
+**Shape 1 — `where Permission.assert`**
+- Added qualified-name resolution: the qualifier is resolved through the type checker to the module behind `export * as Permission from "./permission"` (also handles namespace imports).
+- The module's own members named `assert` are returned, and each member's implementation lookup adds the layer's `const assert`. Unrelated `context.permission.assert` text matches are no longer the answer.
+- Result: `permission.ts:8` (`Interface.assert`) and `permission.ts:14` (`assert`, `effect-fn`).
+
+**Shape 2 — sibling rows for `Tool.make` tools**
+- Exported values built by calls now keep the function they hold: an `execute` / `handler` / `run` member's body, or the first function body in the value.
+- The sibling table now compares those bodies positionally, so the permission check is a `shared` row and the read/write calls are a `varies` row, with per-file locations.
+
+I also sanity-checked the same two shapes against a `/tmp` copy with renamed identifiers, renamed files and shifted lines — both still resolved correctly.
+
+## Check results
+
+`bunx tsgo --noEmit`:
+```
+tsgo exit: 0
+```
+
+`bun test`:
+```
+(fail) R3 observer detects transient writes outside target/cwd ... [4.00ms]
+...
+(fail) R3 map answers under unshare -rn with unchanged target/cwd ... [2.79ms]
+ 338 pass
+ 8 fail
+Ran 346 tests across 15 files. [96.61s]
+```
+All 8 failures are the same environment issue, not the tool: `unshare: cannot open /proc/self/uid_map: Permission denied`. The sandbox blocks `unshare -rn`, so the R3 isolation tests cannot run here; every non-R3 test passes. I could not widen the sandbox because no approval channel is available.
+
+`bun eval/run.ts --tool "bun src/cli.ts" --cases eval/cases/fixtures.json --out a1r2-scratch` (rerun alone, so the R3 file snapshot is clean):
+```
+Requirements: {"MET":7,"NOT MET":0,"NOT CHECKED":3}
+Fails-if lines: {"MET":17,"NOT MET":0,"NOT CHECKED":3}
+Cases: {"MET":69,"NOT MET":0,"NOT CHECKED":1}
+Report: /home/smoke01/dev/ancient-games/runs/20261014-code-map-build/builds/a1r2-dsh/code_map/a1r2-scratch/report.json
+```
+**A1 is MET**, there is no NOT MET anywhere, and R3 is NOT CHECKED only because `unshare` is unavailable.
+
+Progress was appended to `runs/20261014-code-map-build/nodes/a1r2-build-dsh.progress.md`.

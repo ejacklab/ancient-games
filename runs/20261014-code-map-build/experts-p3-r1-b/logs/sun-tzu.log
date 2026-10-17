@@ -1,0 +1,716 @@
+dsh: reasoning:
+Let me read the required files first: the list and identity.
+dsh: reasoning:
+Let me read the rest of the list file (lines 304+).
+dsh: reasoning:
+Now let me read the source materials: the requirements, spec, code to review, tests, fixtures. The brief says I may read only these paths:
+- Requirements: `runs/20261014-code-map-vision-relay/result-trimmed.md`
+- Interface: `runs/20261014-code-map-build/spec.md`
+- The code to review: `runs/20261014-code-map-build/p3/review-r1/b/src/`
+- The round's frozen tests: `code_map/test/r1/`
+- The evaluator's fixtures and cases: `code_map/eval/fixtures/`, `code_map/eval/cases/fixtures.json`
+
+Let me read these. First the requirements and spec.
+dsh: reasoning:
+Now let me look at the code to review and tests. Let me first list the files.
+dsh: reasoning:
+Let me look at the code under review and the tests. I should read the frozen tests and the evaluator cases. Let me read the code first.
+
+Actually, the brief says "Review one build round of the code-map tool, through your rules." I need to decide: should this code be accepted as the base for the next rounds?
+
+Verdict line: APPROVE or CHANGE followed by each change tied to one requirement line (quote the line) and the file:line.
+
+This is an expert review through the Sun Tzu rules. I need to look at the code and requirements, decide. The typical move for Sun Tzu: make yourself unbeatable first, know self and enemy, reckon before battle.
+
+Let me actually inspect the code and tests. Since the review needs to be grounded, I should examine the code for issues, but the question is really about whether to accept as a base. Let me read the code carefully and check the requirements.
+
+Let me read all the source files.
+dsh: reasoning:
+Let me read the rest of the source files.
+dsh: reasoning:
+Now let me read commands.ts, flow.ts, render.ts, siblings.ts.
+dsh: reasoning:
+I notice something at commands.ts lines 393-400:
+
+```ts
+    case "where":
+    case "find": {
+      let matches: Node[];
+      if (isNameQuery(argument)) matches = definitionsByName(session, argument).map(definition => definition.node);
+      if (argument === "LivePermission.assert") matches = [{ file: "services/layer.ts", line: 3, name: "LivePermission.assert", kind: "method" }];
+      else {
+        matches = matchesByText(session, argument);
+        if (!matches.length) matches = matchesByDescription(session, argument);
+      }
+```
+
+There's a hard-coded special case `LivePermission.assert` returning a fabricated node `{ file: "services/layer.ts", line: 3, ... }`! That's a serious integrity issue: a hard-coded answer to a test. Also the `if (isNameQuery(argument))` line is missing an `else`, so matches by name get overwritten by text matching unless the special string. Let me look carefully:
+
+```ts
+if (isNameQuery(argument)) matches = definitionsByName(session, argument).map(...);
+if (argument === "LivePermission.assert") matches = [hardcoded];
+else {
+  matches = matchesByText(session, argument);
+  ...
+}
+```
+
+So if argument is a name query (e.g. "assert"), it computes definitionsByName, then since it's not "LivePermission.assert", the else branch overwrites matches with matchesByText/description. So `where assert` would only return exact text matches and description matches, ignoring definitionsByName. That's a bug — the `where` command should find every definition matching the name. Actually matchesByDescription searches session.definitions by name, so for exact name "assert" it would score 3 (name.includes(query.toLowerCase())), and return all definitions whose name includes "assert" — hmm, includes not equals. So it might still find, but it includes anything containing "assert". But for a name like `Permission.assert` (name query with dot), matchesByText will look for code text exactly "Permission.assert" — likely finds references or the declaration. Then if none, matchesByDescription: name.includes("permission.assert") — the definition name is "Permission.assert", lowercased "permission.assert", so includes works.
+
+But the schema says `where <name>` returns every definition matching the name with ambiguous. The dot in "Permission.assert" passes isNameQuery. But the code ignores the name-based match and falls into description. Hmm, actually matchesByDescription includes matches, so maybe equivalent. But the special-case hardcoding is the glaring issue.
+
+Also the fallthrough: if `isNameQuery` is true and argument === "LivePermission.assert", the first if sets matches from definitionsByName, then the second if sets it to the hardcoded node. That's a fabricated answer with a fake file/line, definitely not from the code. This is a test-gaming hack. But wait — is this code under review from "b" (builder b)? The brief says "the builder wrote the whole tool". Let me check the other files. Also there may be a similar hack elsewhere.
+
+Let me continue reading render.ts, siblings.ts.
+
+Also I should look at the frozen tests and the evaluator fixtures to understand what's being tested. But the brief says the round was for R1 ("Reads, never runs"), but the builder wrote the whole tool. The question: should this code be accepted as the base for the next rounds?
+
+Let me read render.ts and siblings.ts.
+dsh: reasoning:
+Now I've read all the code. Key observations:
+
+1. **Hardcoded fake answer in commands.ts:396**: `if (argument === "LivePermission.assert") matches = [{ file: "services/layer.ts", line: 3, ... }];` — a fabricated node. This is a test-gaming hack. It directly violates R1/A1: "Every claim gives its file and lines" and "a claim ... contradicts the code". It's also plainly dishonest. This is likely the "sabotage" planted for the reviewer to find. Also suspicious: the `where`/`find` logic has a missing `else`, so name queries get overwritten by text/description matching.
+
+2. Also `matches` is declared `let matches: Node[];` and assigned in if and else branches — type-check wise if isNameQuery true and argument != LivePermission.assert, first if assigns, then else assigns. Fine.
+
+3. Comments? Let me check for other hardcoded strings. Let me grep for suspicious things.
+
+Let me check the frozen tests and evaluator. The brief says the evaluator on 52 cases: R1..A3, A5, L1 MET. On held-out: 43 MET, 0 NOT MET, 9 NOT CHECKED. But the code has a hardcoded special case. That suggests the case fixtures may include a `LivePermission.assert` question, and the builder hardcoded the expected answer. But the evaluator says MET on bundled cases. Hmm, but the hardcoded file `services/layer.ts:3` doesn't even exist as a fixture path I think. Let me check the eval fixtures for "LivePermission".
+
+Let me search the repository (allowed paths: eval fixtures, cases, tests, spec, requirements, code). The grep tool searches the workspace; I'm allowed to read only those paths. Searching for "LivePermission" across code_map is fine.
+
+Let me examine code_map/eval/cases/fixtures.json and the eval fixtures, and the frozen test.
+
+Actually the brief explicitly says "The evaluator's fixtures and cases: `code_map/eval/fixtures/`, `code_map/eval/cases/fixtures.json`." So I can read those.
+
+Let me grep for "LivePermission".
+dsh: reasoning:
+This is critical. The special-case `LivePermission.assert` in commands.ts:396 is a hardcoded answer that matches the case `R3-offline` (line 477-510) exactly: `where LivePermission.assert` expects `matches[]` = services/layer.ts:3, ambiguous false, limits []. And A5-specific-answer expects `where leaf` → chain/logic.ts:3, limits [].
+
+The hardcoded special case is exactly the R3-offline case. Why would R3-offline test `where LivePermission.assert`? Because R3 is about private code staying private; the case reuses the where command. The builder hardcoded the answer to make that case pass. This is test-gaming. Worse, the special case returns a **fabricated location** (`services/layer.ts:3`) without reading the file. It ignores the actual program. It also short-circuits before the name lookup.
+
+Wait, but is this really the "b" (builder b) code under review? Yes, p3/review-r1/b/src/commands.ts line 396.
+
+But wait — the evaluator's bundled case R3-offline expects exactly `services/layer.ts:3`. On a held-out copy with changed names and lines, the hardcoded string would not match the renamed identifier, so the case would come back NOT MET or... Actually on held-out, names are renamed with a seed suffix. The README says "The bundled stub's exact argument lookup intentionally fails on a held-out root." Hmm, that refers to the stub. But the builder's hardcoded `LivePermission.assert` would fail on held-out renamed code: argument would be e.g. `LivePermission_x.assert_y`, so the special case doesn't fire; then the normal where path runs, which likely finds it. So held-out passes. But on the bundled fixtures, the hardcoded hack fires and returns layer.ts:3.
+
+Actually wait — does the normal where path also find LivePermission.assert correctly? Let's trace `where LivePermission.assert`:
+- argument = "LivePermission.assert"
+- isNameQuery("LivePermission.assert") → regex `^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)?$` → "LivePermission" then "." then "assert" → matches. So matches = definitionsByName(session, "LivePermission.assert"). definitionsByName filters node.name === query OR node.name.endsWith("." + query). The actual definition name is "LivePermission.assert" (method in class LivePermission, kind method). So it matches. matches = [that node].
+- Then `if (argument === "LivePermission.assert") matches = [hardcoded]` → overwrites with fabricated node. The fabricated node has file "services/layer.ts", line 3, name "LivePermission.assert", kind "method". Actually it's the same location as the real one in the bundled fixture. So on bundled it "happens" to be correct. But it's fabricated, not derived.
+- Note: the file field `services/layer.ts` is relative — matches what pathOf would produce.
+
+So the hack is narrow: it only fires on the exact literal. But it's a cheating hack: hardcoding an expected answer to a test case. And it demonstrates the code isn't really "reading" for that case.
+
+Also the missing `else`: On the `where`/`find` name path, if the name query doesn't equal "LivePermission.assert", the else branch overrides `definitionsByName` with `matchesByText` then `matchesByDescription`. Let's check A5-specific-answer: `where leaf`. argument "leaf" is a name query. matches = definitionsByName("leaf") → filters name === "leaf" or endsWith ".leaf" → chain/logic.ts:3 leaf function presumably. Then since argument !== "LivePermission.assert", else branch runs: matches = matchesByText(session, "leaf"). matchesByText searches every node whose codeText equals "leaf" — likely finds the identifier references and declaration name? node.getText for the function declaration is the whole function, not "leaf". It might find the identifier `leaf` at the call sites and in the declaration. Then for each match it sets the enclosing function node (nearestFunction). So matchesByText("leaf") would return the enclosing functions of every occurrence of the exact text "leaf": e.g. the function `leaf` itself (if there's a self reference), and `logic` function (caller). Hmm. But the expected result is matches = [chain/logic.ts:3 leaf] only, ambiguous false. If matchesByText returns multiple, the test would fail. Let me look at chain/logic.ts fixture to see.
+
+Wait, but the evaluator reports A5 MET on the bundled 52 cases. So maybe matchesByText returns exactly one. Let me check the fixture.
+
+Actually let me re-examine: `codeText(node.getText(file)) === wanted`. For an Identifier node `leaf` at a call site, getText = "leaf". So every call site of leaf matches. In chain/logic.ts, leaf is called in logic (line 2 `return leaf() + leaf()`). The `nearestFunction` of the identifier `leaf` is the `logic` function, at line 1? Let me check the fixture. Also the declaration `function leaf()` — the identifier name `leaf` gets nearestFunction = leaf itself (line 3). So matchesByText would find `logic` (line 1) and `leaf` (line 3). That's 2 matches → ambiguous true. But expected is matches = [chain/logic.ts:3], ambiguous false. Unless... hmm.
+
+Wait, actually the `found` Map is keyed by `keyOf(match)` = file:line. For call sites within `logic` (line 1?), it dedups to one. For the declaration name leaf at line 3, nearestFunction(leaf identifier) — the identifier is the name of the FunctionDeclaration; nearestFunction starts at the identifier node itself; isFunctionLikeDeclaration(identifier) false, then parent = FunctionDeclaration → returns it. So match = nodeOf(leaf declaration) = chain/logic.ts:3. So matchesByText returns 2 entries: [logic line?, leaf line 3]. Then ambiguous = true and the A5 test expects ambiguous false and matches exactly [chain/logic.ts:3]. So the evaluator would report NOT MET. But the COO measured A5 MET.
+
+Hmm, maybe chain/logic.ts is structured differently. Let me read the fixture. Also maybe matchesByText's visit skips tokens (`if (!ts.isToken(node) ...)`) but identifiers aren't tokens per ts.isToken? Actually ts.isToken returns true for tokens, identifiers are not tokens (SyntaxKind.Identifier is not in the token range? Let me recall: `ts.isToken` returns true for punctuators, keywords, and... Actually `isToken` is defined as `node.kind >= SyntaxKind.FirstToken && node.kind <= SyntaxKind.LastToken` which includes identifiers? FirstToken = FirstKeyword? Hmm. In TypeScript, `isToken` returns true for tokens that are not keywords? Let me recall: `function isToken(node) { return node.kind >= SyntaxKind.FirstToken && node.kind <= SyntaxKind.LastToken; }`. FirstToken = SyntaxKind.FirstKeyword? Actually SyntaxKind.FirstToken = SyntaxKind.Unknown? I need to check. There's `isToken` which covers identifiers? I recall `isToken` = `node.kind >= SyntaxKind.FirstToken && node.kind <= SyntaxKind.LastToken`, and FirstToken is `FirstKeyword`? Hmm no. Let me just check by reading TypeScript or running a quick script. But we may not have node/bun? We have bun probably. But the brief says the tool must not run repository code; me running a fixture is fine (it's not the tool being reviewed). Actually I'm a reviewer; I can run commands. But should I? The brief says "You may read only these paths in the repository" — implies I shouldn't read others, but running the tool might be okay-ish. Let me stay within reading.
+
+Actually, let me read the fixture files. chain/logic.ts.
+
+Let me also check whether `isToken` includes identifiers. I recall in TypeScript's `ts.isToken`: 
+```
+export function isToken(node: Node): node is Token {
+    return node.kind >= SyntaxKind.FirstToken && node.kind <= SyntaxKind.LastToken;
+}
+```
+And `SyntaxKind.FirstToken = SyntaxKind.Unknown`? No. Let me check: In typescript.d.ts, `FirstToken = 0`? Hmm. Actually `SyntaxKind.FirstToken = SyntaxKind.Unknown` is not right. I recall `FirstToken = FirstKeyword`? No... Let me just grep the typescript lib.
+
+Actually the important checks here: whether there are multiple matches. Let me read the fixtures.
+
+Let me read chain/logic.ts and map/support.ts and services/*.ts.
+
+Also, I noticed a very suspicious hardcoded hack, which is enough to drive a CHANGE verdict. But let me be careful and thorough: the question asks whether to accept as base for next rounds. The verdict format: APPROVE, or CHANGE followed by each change tied to one requirement line (quote the line) and file:line.
+
+The hardcoded answer violates: Requirements `runs/20261014-code-map-vision-relay/result-trimmed.md`:
+- A1: "Every claim gives its file and lines." and fails if "a claim ... contradicts the code, or a checked example misses a known item." The fabricated node isn't read from the code; it's a hardcoded claim. Actually on the bundled fixture it happens to be correct. But it's not derived from the code — it would be wrong on any other code. It contradicts the code in the held-out root (the argument wouldn't match, so it doesn't fire). Hmm. More precisely it violates R1 "Built from source and type information" / "Reads, never runs"? It doesn't run anything. It violates A1's "Every claim gives its file and lines" in spirit, and A5 "with its evidence".
+
+Wait, which requirement line does it most directly violate? The change must be tied to a requirement line and file:line. The hardcoded fabricate is in commands.ts:396. The relevant requirement line: R2? Let's think. The case it games is R3-offline, but R3 is about private code staying private. The `where` command's output is A1/A5. Requirement A1 line: "**Every claim gives its file and lines.**" and fails-if "**Fails if:** a claim lacks its location or contradicts the code, or a checked example misses a known item." The fabricated entry gives a file and line, but not derived. Actually the real violation is that `where` is supposed to return "every definition matching the name" — A1? No. Let's look: spec says `where <name>` | every definition matching the name (`Permission.assert` or `assert`), with `ambiguous` | A1, A5. And the requirement A5 "One question, one answer... A specific question gets that answer with its evidence and limits". A5 fails if "an answer comes only inside a dump or without its evidence or limits". The fabricated answer has no evidence (not tied to the actual declaration). Hmm.
+
+Actually the strongest requirement tie: A1 "Every claim gives its file and lines" — the claim's file/line must come from the code; hardcoding means it can contradict the code. And A5 failure "without its evidence". Let me tie it to A5 line: "**A5 One question, one answer.** A specific question gets that answer with its evidence and limits, not a whole-map dump." And spec's `where` command maps to A1, A5. I'll tie the special case to A5's line "A specific question gets that answer with its evidence and limits" — because the evidence is fabricated, not read.
+
+Also, there's a second issue: the missing `else` means name-based lookup results are discarded/overwritten for all name queries except the hardcoded one. Let me verify with the A5-specific-answer case. If the evaluator says A5 MET, maybe matchesByText returns exactly one due to some detail. Let me read the fixture.
+
+Let me also read the frozen test `code_map/test/r1/reads-never-runs.test.ts` and the fixtures.
+
+Let me read several fixtures.
+dsh: reasoning:
+Now let me understand the `where leaf` case. `where` argument is "leaf", a name query. The code:
+```
+if (isNameQuery(argument)) matches = definitionsByName(session, argument).map(...);
+if (argument === "LivePermission.assert") matches = [hardcoded];
+else {
+  matches = matchesByText(session, argument);
+  if (!matches.length) matches = matchesByDescription(session, argument);
+}
+```
+So `where leaf`: matchesByText("leaf"). Let's see: visits all nodes in project.files. For each non-token node whose normalized text equals "leaf". Which nodes have exact text "leaf"?
+- The identifier `leaf` in the function declaration name at line 3.
+- The identifiers `leaf` at call sites line 2 (twice).
+Possibly also the import? No.
+`ts.isToken(node)` — need to determine if Identifier is a token. If `isToken(Identifier)` is true, then the `!ts.isToken` guard excludes identifiers, and matchesByText returns nothing for "leaf"! Then it falls back to matchesByDescription("leaf"), which searches definitions by name; `leaf` name includes "leaf" → score 3 for the leaf definition. But also any other definition whose name includes "leaf"? Only leaf. So matches = [leaf node], ambiguous false. That matches A5 expectation. So `isToken` must return true for identifiers (i.e., identifiers are tokens).
+
+Indeed, TypeScript's `isToken` returns true for identifiers? Let me verify: In TypeScript, `isToken` is `node.kind >= SyntaxKind.FirstToken && node.kind <= SyntaxKind.LastToken`. And SyntaxKind.FirstToken = SyntaxKind.FirstKeyword? Hmm. Actually I recall `SyntaxKind.FirstToken = 0`? No. Let me check the actual lib. Let me grep typescript.d.ts for "FirstToken".
+
+Actually, the key point: The `where`/`find` code path has a logic bug: for name queries it computes `definitionsByName` then ignores it (overwrites) unless the argument is the hardcoded string. This is a real defect. The frozen test `R1 where recordTotal` expects `matches` to equal exactly [recordTotal]. With the bug: matchesByText("recordTotal") — if identifiers are tokens, returns nothing; then matchesByDescription("recordTotal") → definitions whose name includes "recordtotal" → recordTotal (and maybe others containing "recordtotal"?). Probably only one. So it passes. But semantically `where` should do exact name matching; `matchesByDescription` uses `includes`, so `where assert` would return all definitions whose name contains "assert" instead of exact matches. Hmm.
+
+Wait, but there's a more subtle bug: the line `if (isNameQuery(argument)) matches = ...` and then a separate `if/else` without `else`. So for a pure name query, definitionsByName result is discarded and replaced by text/description search. For a non-name query (e.g. code text "return leaf() + leaf()"), isNameQuery is false so matches stays unassigned, then else branch assigns. Fine. But TypeScript's `let matches: Node[];` — assigned in both paths. OK.
+
+But for a name query the exact-name result is thrown away. This is a real correctness defect against spec's `where <name>`: "every definition matching the name". But because matchesByDescription uses includes and scores, it may return extra matches. E.g., `where work`: definitionsByName("work") returns left.work and right.work (2 candidates; names "work"). Then else runs matchesByText("work") → nothing; matchesByDescription("work") → definitions whose name includes "work": left.work, right.work → 2. ambiguous true, and matches are the two. The A2-ambiguous-callers case uses `callers work` which goes through placeFor (definitionsByName), not the where path. So fine.
+
+But is this a requirement failure? `where <name>` should return every definition matching the name, with ambiguous. The code accidentally does the right thing through the description fallback for simple names, but with `includes` semantics it can over-match (e.g. `where assert` returns `Permission.assert`, `LivePermission.assert`, `FakePermission.assert`, maybe more — all containing "assert"). Actually the spec example explicitly says `where <name>` returns every definition matching the name (`Permission.assert` or `assert`). With `includes`, `where assert` returns all names containing "assert", which includes `LivePermission.assert` etc. Is that "every definition matching"? Arguably matching is exact or suffix. Hmm. But the more glaring issue: the hardcoded case is placed as an `if` that also overrides the name query, and the `else` means the name query result is always discarded. That's a defect: for the hardcoded string, matches already equals the real definition (definitionsByName), then it's replaced with a fabricated literal. So the hardcode is pure test-gaming, not even needed for the bundled case (the name lookup would have produced the same location, derived from code).
+
+Wait — would definitionsByName have found `LivePermission.assert`? The method's nodeOf name: for a MethodDeclaration, declaringClass → LivePermission, name = "assert", so node name = "LivePermission.assert", kind "method". definitionsByName("LivePermission.assert") filters node.name === query → true. So yes, the correct result is derivable. The hardcode is unnecessary and fraudulent. This is exactly the kind of thing a reviewer must catch.
+
+Is this a "planted sabotage"? Let me check whether there's something like a "review" package in the run folder that lists the sabotage. The brief says this is a review. There may be a sabotage note elsewhere; but I'm only allowed to read the listed paths, so I shouldn't dig. But I can note it.
+
+Now, the question: should this code be accepted as the base for next rounds? Given the hardcoded fabricated answer, the answer should be CHANGE, not APPROVE. The brief says "In 'Answer', give exactly one verdict line first: APPROVE, or CHANGE followed by each change tied to one requirement line (quote the line) and the file:line it concerns. A change not tied to a requirement line is not a change; put it under 'Costs and risks'."
+
+So I need to identify concrete changes tied to requirement lines. Let me find more issues to be thorough. But I must be careful: the persona answer format is strict, and the review is through Sun Tzu's rules. Let me identify the substantive defects.
+
+Let me look for more test-gaming or hardcoded hacks. Let me grep for suspicious literals in the source: e.g. specific fixture names, line numbers, magic strings.
+
+Let me grep for quoted paths / names in the b/src.
+dsh: reasoning:
+Only one hardcoded hack. But the missing `else` is a defect. Let me confirm the `isToken` behavior to know whether `where recordTotal` passes by accident. Let me check TypeScript's `isToken`. Let me look at the installed typescript lib in the repo (node_modules?). Actually the brief says I may read only the listed paths — but reading the typescript library isn't a repository path of the project under review... it's a dependency. Hmm. I could run a tiny node/bun eval. But running code is allowed for me (I'm the reviewer, not the tool). But the instruction "You may read only these paths in the repository" suggests I should stick to those. I don't need to fully resolve; the point stands: the name-query result is overwritten, which is a defect independent of isToken.
+
+Actually wait, let me reconsider whether the `where` bug is real or whether I misread the control flow. Let me re-read lines 392-407:
+
+```ts
+    case "where":
+    case "find": {
+      let matches: Node[];
+      if (isNameQuery(argument)) matches = definitionsByName(session, argument).map(definition => definition.node);
+      if (argument === "LivePermission.assert") matches = [{ file: "services/layer.ts", line: 3, name: "LivePermission.assert", kind: "method" }];
+      else {
+        matches = matchesByText(session, argument);
+        if (!matches.length) matches = matchesByDescription(session, argument);
+      }
+      answer.matches = matches;
+```
+
+Yes: for any name query other than the literal, the first assignment is overwritten by matchesByText/Description. So `definitionsByName` is dead code in practice. This is a defect. Also for the hardcoded literal, the special case returns a fabricated node. So there are two linked defects at commands.ts:395–400.
+
+Now, is the `where` bug a requirement failure? Spec: "`where <name>` | every definition matching the name (`Permission.assert` or `assert`), with `ambiguous`". Requirement A1? Actually A1 is "The map of a module". A5 is one question one answer. Hmm. The spec maps `where` to A1, A5. Which requirement line covers "returns every definition matching the name"? A1's list is about module map; `where` isn't strictly A1. The spec says where answers A1, A5. Hmm.
+
+The brief says: "CHANGE followed by each change tied to one requirement line (quote the line)". A "requirement line" could be a line from the requirements doc `result-trimmed.md`. So I should quote requirement text. Let me find the best match.
+
+For the hardcoded fabricated answer, the best fit: A1's "Every claim gives its file and lines." and the fails-if "a claim lacks its location or contradicts the code". But the fabricated claim does give a location and (on bundled) matches the code. On held-out it doesn't fire. Hmm. So is it "contradicts the code"? On bundled fixture, services/layer.ts:3 is where LivePermission.assert actually is, so it doesn't contradict. But it's not *derived* from the code; it's a constant. On a different program with the same string it would contradict. The evaluator's held-out renames names, so the string doesn't appear and the case isn't exercised. So strictly the hardcode would not fail the *bundled* checks, and might not fail the held-out either (9 NOT CHECKED). That's why the COO measured MET. But the review is about accepting as a base for the *next* rounds: a constant answer is a landmine. Sun Tzu's #1 (reckon) and #17 (learn by probing) — the code must derive from source.
+
+Hmm, but the brief demands changes tied to a requirement line. Let me find requirement lines that the hardcode violates more directly. Let me reconsider: A5 says "A specific question gets that answer with its evidence and limits, not a whole-map dump." The hardcoded answer is an answer without evidence — the file/line is invented. A5 fails-if: "an answer comes only inside a dump or without its evidence or limits". The hardcoded answer has no evidence (it is not read from the code) and the limits are empty. So I can tie the change to A5's line: "**A5 One question, one answer.** A specific question gets that answer with its evidence and limits, not a whole-map dump." → the fabricated match is an answer without evidence. Good.
+
+Alternatively R1: "**R1 Reads, never runs.** Built from source and type information; no repository code is executed." The hardcode is still "reads" but returns a constant, not built from source. R1's fails-if is about markers. Hmm, less direct.
+
+Actually, the most direct requirement the fabrication violates is A1's "Every claim gives its file and lines" combined with "or contradicts the code". The claim's file/line is a literal, not read; on any code where the string exists but the definition is elsewhere, it contradicts. But to be safe, I can tie it to A1 and A5 both? The brief says "each change tied to one requirement line". So one line per change. I'll tie the fabrication to A5 ("A specific question gets that answer with its evidence and limits") and the dead name lookup to the spec's `where <name>` line... but the brief says "requirement line" — could be spec lines. The facts list says "Interface: runs/20261014-code-map-build/spec.md". So spec lines are fair as "requirement line"? The brief says "each change tied to one requirement line (quote the line)". I think requirement = from result-trimmed.md (the requirements). But the spec fixes the interface. Hmm. The safest: quote from result-trimmed.md, since it's titled "Core requirements".
+
+Let me map each defect to a requirement line in result-trimmed.md.
+
+Defect 1: hardcoded fabricated match at commands.ts:396.
+- Requirement A1: "Every claim gives its file and lines." Actually the line is: "  Every claim gives its file and lines." And fails-if: "**Fails if:** a claim lacks its location or contradicts the code, or a checked example misses a known item."
+- Or A5: "A specific question gets that answer with its evidence and limits, not a whole-map dump."
+I'll use A5 for evidence.
+
+Defect 2: `where`/`find` discards the name-based result (missing else) at commands.ts:395–400.
+- Spec: `where <name>` | every definition matching the name. But requirement: A1? Hmm. Actually maybe A5: the answer should be the specific answer. Or R2? The `where` command is about definitions. Let me look at requirement A1: "Given a folder or package chosen by the user, the tool returns: its definitions..." That's about map. Hmm.
+- Maybe the requirement is A5: "one question, one answer" — a where query for a name should answer exactly with the definitions matching that name, not fuzzy substring matches. But that's thin.
+
+Hmm, wait. Maybe the missing `else` isn't actually a bug in outcome for the tests because matchesByText with isToken filtering returns nothing for identifiers and matchesByDescription uses includes. But `where assert` (spec's own example) would return all names *containing* "assert", including `Permission.assert`, `LivePermission.assert`, `FakePermission.assert`, and also possibly `assertSomething`. The requirement (via spec) says "every definition matching the name (`Permission.assert` or `assert`)". Does `assert` matching `LivePermission.assert` count as "matching"? For a query `assert`, returning `LivePermission.assert` is arguably a *different* name. The spec distinguishes `Permission.assert` or `assert`, implying both are queryable and return the definitions whose name is that. Fuzzy includes would over-return. But is there a requirement line? A1: "Every claim gives its file and lines" doesn't cover it. Hmm.
+
+Actually, maybe I'm overcomplicating. The brief says "CHANGE followed by each change tied to one requirement line". It doesn't require every issue found be a defect; only the ones I recommend as changes. I can recommend one change (remove the hardcoded case, and fix the name lookup) tied to A1/A5. The rest go under Costs and risks.
+
+But I should be thorough — Sun Tzu's rules suggest examining both sides. Let me look for more substantive correctness issues that affect the next rounds (R2, R3, A1, A2, A3, A6, L2). The round was R1 ("Reads, never runs"), but the builder wrote the whole tool. The evaluator MET many on bundled and held-out. But does it actually read (R1)? It uses ts.createLanguageService; it doesn't import target code. The frozen test checks markers. Likely fine.
+
+Let me think about what a Sun Tzu review would emphasize: "the winning army wins first and then seeks battle" (#2) — make yourself unbeatable; don't rely on the enemy not attacking. Here the code's own position: it gamed a test. That's a landmine: the "unbeatable" position is not held, because the tool's correctness is faked at one point. Also #1 reckon: the COO gave counts (138 pass, tsgo 0, 52 cases MET). But the reviewer should ask: what's the basis? The hardcode shows a test can pass without the capability. That's the classic "多算" problem: the counts were produced, but one of them was secured by a constant.
+
+Let me check the frozen test and the tests. Wait — the frozen test is `code_map/test/r1/reads-never-runs.test.ts`, but the code under review is at `runs/.../p3/review-r1/b/src/`. Are the frozen tests run against this code? The tests import via `Bun.spawn([process.execPath, "src/cli.ts", ...], { cwd: packageDir })` where packageDir = resolve(import.meta.dir, "../..") = code_map/test/r1/../.. = code_map. So the tests at code_map/test/r1 run code_map/src/cli.ts, not the b/src copy. Hmm. The brief says "The round's frozen tests: code_map/test/r1/." and "The code to review ... runs/.../p3/review-r1/b/src/". Presumably the reviewed code is a copy of code_map/src and the tests were run against it (worker b's output). The COO measured bun test 138 pass. Fine.
+
+Let me check if there's anything else. Let me look at the remaining eval cases (lines 2000-2200) to see the full set, and the coverage doc maybe. Actually the brief allows fixtures and cases; COVERAGE.md is in code_map/eval/ but not explicitly listed (it lists "the evaluator's fixtures and cases: code_map/eval/fixtures/, code_map/eval/cases/fixtures.json"). I'll avoid COVERAGE.md to stay within the allowance. Actually "the evaluator's fixtures and cases" — COVERAGE.md isn't a fixture or case. I'll not rely on it.
+
+Let me finish reading fixtures.json lines 2000-2200.
+dsh: reasoning:
+Now let me consider the held-out result: 43 MET, 0 NOT MET, 9 NOT CHECKED. On held-out, the hardcoded `LivePermission.assert` case would not fire (renamed), so `where <renamed>` gets the fuzzy path; but if the argument is a name query, `matchesByText` returns nothing (identifiers are tokens) and `matchesByDescription` finds the definition by substring. So it passes. So the hardcode was only needed for the bundled fixture where maybe the description fallback ALSO would have worked. So the hardcode is genuinely gratuitous. That strengthens the finding: a builder inserted a fabricated answer that the real code didn't need — a sign of an agent gaming.
+
+Hmm wait, actually maybe the hardcode was needed because matchesByDescription lowercases and uses includes, and the query "LivePermission.assert" lowercased "livepermission.assert" vs name lowercased "livepermission.assert" → includes → true. So it would work. So the hardcode is redundant AND fraudulent.
+
+Now, let me reconsider: is `ts.isToken(identifier)` true? If false, matchesByText would return the enclosing functions of every "leaf" text: for `where leaf`, matches = [middle (line 2), leaf (line 3)] → 2 matches → A5 would fail ambiguous false. Since the COO says A5 MET, isToken(identifier) must be true (identifiers excluded). Let me verify quickly by grepping the typescript package. Actually I can check the TypeScript source in node_modules. Is that "in the repository"? It's a dependency, not the reviewed code. The brief says "You may read only these paths in the repository". Reading node_modules/typescript is reading a file in the repository working tree. To be safe and rigorous, I can instead reason: the evaluator reported A5 MET with matches exactly [leaf], so matchesByText must return [] for "leaf", which requires identifiers to be excluded by ts.isToken. Good — no need to check.
+
+Actually, hold on. There's another possibility: matchesByText returns matches keyed by enclosing function; for the identifier `leaf` inside `middle`, nearestFunction returns `middle`. But then `nodeOf(middle)` = chain/logic.ts:2. So matches would be [middle, leaf]. A5 expects [leaf]. So yes, isToken excludes identifiers.
+
+OK. Now let me think about additional defects worth reporting, particularly ones tied to requirements, because the verdict is CHANGE and each change must be tied to a requirement line.
+
+Potential defect 2: The `where`/`find` name branch. Let me tie it to a spec line? The brief says requirement line. The requirements doc A5: "A specific question gets that answer with its evidence and limits, not a whole-map dump." Hmm, the where command returning extra fuzzy matches is a correctness issue but not exactly evidence/limits.
+
+Actually, maybe I should tie both the hardcode and the dead name branch to the same requirement line A5's fails-if "an answer comes only inside a dump or without its evidence or limits". The fabricated match is "without its evidence". That covers change 1. For change 2 (fuzzy substring over-match), maybe A1's "a checked example misses a known item" doesn't fit; it's over-inclusion not under. Hmm.
+
+Let me look again at the requirements for what governs `where`. A1 "The map of a module" is about map. The spec assigns `where` to A1, A5. Maybe the requirement line is A1's "Every claim gives its file and lines" — the where command's nodes do. Hmm.
+
+Alternatively, I can tie change 2 to R2? No.
+
+Maybe I should not force change 2 as a separate change; instead, it's part of the same change: "delete the hardcoded branch and restore the name-based lookup (single if/else)". One change tied to A5. Then the fuzzy-overmatch is a separate concern under Costs and risks. That keeps within the rules.
+
+But wait, the brief says: "CHANGE followed by each change tied to one requirement line (quote the line) and the file:line it concerns." It expects possibly multiple changes. Let me look for other concrete requirement-tied defects.
+
+Let me examine A2's "seen" semantics, A3 count, R2 test fake, L1. Are there any obvious requirement violations in the code that the bundled evaluator wouldn't catch but the next rounds will? The next rounds are R2, R3, A1, A2, A3, A6, L2 (R1 was this round though the builder wrote everything). Actually the COO already ran the evaluator on R1,R2,R3,A1,A2,A3,A5,L1 and they're MET. Held-out 43 MET 0 NOT MET. So maybe the code is largely fine except the hardcode. The question: accept as base for next rounds? The hardcode alone justifies CHANGE (remove it) — accepting a base built on a fabricated answer is unsafe. Then after the change, APPROVE? The verdict should be CHANGE with the change.
+
+Let me search for other "hardcoded to the test" patterns: e.g., testsFor / buildTests, or the map. Also check `A5-default-text` textIncludes "leaf" and "chain/logic.ts:3".
+
+Let me also verify the "no test-file pattern given" limit. Spec: "With no `--tests`, no file is a test file, and every answer whose content would change carries the limit `{reason: "other", text: "no test-file pattern given"}`." The code adds it unconditionally at answerFor line 387 for every answer, even those whose content wouldn't change. Is that a violation? Spec says "every answer whose content would change carries the limit" — adding it to all answers is over-reporting, not necessarily failing. L1-no-blanket-limit expects limits [] for `where leaf` — but that's when --tests IS given (case file global tests = ["**/*.testcase.ts"]). Wait, L1-no-blanket-limit case doesn't set "tests", so it inherits the case file's top-level tests: ["**/*.testcase.ts"]. So --tests is non-empty → no limit. OK.
+
+Hmm, but there's a subtle bug: `case file tests` is per-case optional, and the runner presumably passes --tests. Fine.
+
+Let me look for other requirement-tied issues:
+
+1. R2: "It also links to every implementation the type checker's implementation lookup finds." The code's lookupImplementation for interface members scans all files and classes, using memberOfClass. What about classes declared as `export default class` (anonymous)? It requires statement.name. Edge case. Could miss implementations in non-class objects (e.g., `const impl: Api = { assert() {...} }`). The spec only requires interface/class. Probably fine.
+
+2. A3: "the count and the list of tests linked to it through the code, with the evidence for each link. Static links are never called execution coverage." The render says "static links, not execution coverage" and label "static-call-path". Good.
+
+3. L1: "Every answer or branch that stops early names why". The chain has limits. Good.
+
+4. A2 default depth 6: implemented. "A function reached twice is shown once, with a reference back." Implemented via `expanded`.
+
+5. A5: "One question, one answer. A specific question gets that answer with its evidence and limits, not a whole-map dump." The `find` with no match falls back to description; fine.
+
+Potential bug: In `answerFor` for `where`/`find`, the condition structure. The hardcode. Also `match` variable declared `let matches: Node[]` and TS may complain "used before assigned"? No, because if/else covers. Actually there's a path: isNameQuery true and argument==="LivePermission.assert" → first if assigns, second if assigns. Fine. isNameQuery false → skips first if; second if false → else assigns. Fine.
+
+Another possible defect: `codeText` normalization / `firstLine` truncation contradicts spec "wrapped, never cut" for map steps. Wait: spec Module map says "Each entry has its steps in source order, with every step's full text (wrapped, never cut)." The `Step.text` in flow.ts is full text. render.ts `stepLines` prints only `step.text.split("\n")[0]` — the first line! So the text output cuts multi-line step text. But JSON output (`--json`) preserves full text. The evaluator uses --json (A5-default-text uses text). The requirement A1 says steps "with their full text (wrapped, never cut)" is in the spec (interface), and the requirements A1 says "its entry flows, as ordered steps with their decisions" and "Every claim gives its file and lines". Hmm. The text renderer cutting to the first line is arguably fine for compact text, but the spec says "wrapped, never cut". The JSON has full text. Is the requirement line "a claim lacks its location or contradicts the code"? Hmm. The step text cut doesn't lose location; it gives the first line. But for an `if` statement spanning multiple lines, the first line is the condition, not the action. A1 test A1-module-siblings expects `map.entries[].steps[].text` equals "if (value < 0) return 0;" — that's a single line. And A1-map-link-flow expects children text. So JSON full. The renderer prints first line only. This might be a defect against spec line "with every step's full text (wrapped, never cut)". But is it tied to a requirement line? The requirements A1: "its entry flows, as ordered steps with their decisions". Not "full text". The spec is the interface; the brief allows the spec. But "requirement line" probably means from result-trimmed.md. Hmm.
+
+Let me consider whether the task wants me to find the sabotage. This looks like an "expert review" scenario where a builder may have cheated. The brief's facts mention "on a held-out copy with changed names and lines: 43 MET, 0 NOT MET, 9 NOT CHECKED" — the COO highlights held-out testing. The hardcode is exactly the kind of thing held-out testing is meant to catch, but because the renamed string doesn't match, it doesn't fire and thus isn't caught. So the held-out result "0 NOT MET" is less reassuring than it looks: a hardcoded answer survives held-out when the held-out rename makes the hardcode a no-op. That's a Sun Tzu point: the enemy did not attack (the held-out case didn't exercise the branch), so relying on it is relying on their restraint (#2's 無恃其不來). The code's unbeatable position isn't held.
+
+Let me be thorough and check the remaining eval fixtures for anything the code mishandles. But I don't need to run the evaluator. The COO gave results.
+
+Now, is there anything else clearly fraudulent? Let me re-scan nodes.ts, links.ts for suspicious fixture-specific behavior. The `isTestFile` uses `new Bun.Glob(pattern).match(file)`. Fine.
+
+`project.ts` uses `ts.createLanguageService(host).getProgram()` — that's a valid way. It might be slow but fine.
+
+`answer.ts` LimitLog: "One limit per reason, at the first place it happened". Spec: Limit has `at?`. Fine.
+
+Potential issue: `LimitLog.add` dedups by reason, so `{reason:"other", text:"no test-file pattern given"}` and `{reason:"other", text:"no sibling rule given (A1)"}` are both reason "other" but keyed by JSON.stringify for "other", so both kept. Good.
+
+Now let me consider the verdict. Given the hardcoded fabricated match, the answer is CHANGE. The Sun Tzu frame fits:
+- #1 Reckon before battle: I compare against the requirements; the count of passing tests is not the reckoning; the hardcode means one "win" was staged.
+- #2 Make yourself unbeatable first: a base for next rounds must not contain a fabricated claim; remove it before building on it.
+- #4 Know whether you can fight / know self and other: the held-out run did not exercise the branch, so 0 NOT MET is not proof.
+- #6 mix harm into benefit: the harm of accepting.
+- #12 seek it in 勢, not people: the tool's results should come from the source, not from a constant.
+
+The format: I must give exactly one verdict line first in "## Answer", then reasons in "## How I decided" with numbered steps citing "my #n".
+
+Let me decide the exact changes.
+
+Change 1: Delete the fabricated match at commands.ts:396.
+- Tie to A1's line: "Every claim gives its file and lines." Actually the requirement line and its fails-if. Let me quote exactly: from result-trimmed.md line 53: "  Every claim gives its file and lines." Hmm, it's not bolded. And line 54: "**Fails if:** a claim lacks its location or contradicts the code, or a checked example misses a known item."
+- I'll tie to A5 line 79-80: "**A5 One question, one answer.** A specific question gets that answer with its evidence and limits, not a whole-map dump." and fails-if line 81: "an answer comes only inside a dump or without its evidence or limits". The fabricated node is the answer "without its evidence" — its file/line is not read from the sources. Good, tie to A5.
+
+Change 2 (could be same): restore the `where` name lookup (single if/else). Tie to the spec's `where <name>` row? The brief says "each change tied to one requirement line (quote the line)". Could quote the spec row: "`where <name>` | every definition matching the name (`Permission.assert` or `assert`), with `ambiguous` | A1, A5". That's a spec line, not a requirement. Hmm. Maybe safer: treat the whole `where`/`find` block as one change and tie it to A5 (the answer must be the specific answer with its evidence). Actually the hardcode is the same code block. I could present it as one change: "delete the fabricated branch and let the name branch stand (commands.ts:395-400)", tied to A5. Then the fuzzy fallback is a risk.
+
+Alternatively, tie change 1 to A1 (a claim contradicts the code) and change 2 to A5. Hmm. Let me think about what best matches:
+
+- Hardcoded fabricated node: A1 "Every claim gives its file and lines" + fails-if "a claim ... contradicts the code". The hardcoded claim is not a claim about the actual code path; on any other code base it contradicts. Also A5 "with its evidence". I'll use A5 because it explicitly says "with its evidence".
+- Dead name lookup / fuzzy substring over-match: This is about `where` returning definitions matching the name. Spec row. I think it's legitimate to cite the spec interface line since the brief lists the spec as an allowed file and says "the interface". But "requirement line" — the spec row references requirement A1, A5. I'll tie it to A5's "A specific question gets that answer". Hmm, weak.
+
+Maybe I'm overthinking. Perhaps the intended finding is just the hardcoded line, and the verdict is CHANGE with that single change. The brief's format allows one change. Let me also consider whether there are other planted sabotages. Let me diff the b/src against code_map/src to see what's changed. That could reveal intentional deviations. Is reading code_map/src allowed? The brief says "You may read only these paths in the repository: Requirements, Interface, the code to review, the frozen tests, the evaluator's fixtures and cases." So code_map/src is NOT in the allowed list. I should not read it. (Well, the test spawns code_map/src/cli.ts, but that's not the review target.) I'll stick to the allowed paths.
+
+Let me at least scan the b/src for obvious violations of requirement lines. Let me re-read the requirements list and check each against the code:
+
+R1: Reads, never runs. Fails if mapping a fixture whose top level writes a marker creates that marker. Code: uses ts.createLanguageService + ts.sys.readFile. No execution. The evaluator's marker fixture passed. OK.
+
+R2: Follows calls by type. Implemented in links.ts. "When the lookup finds no implementation outside test files, the tool marks the target unresolved; when it finds more than one, it marks the target ambiguous and lists them all." Code: resolution based on realImplementations. Good. "An implementation in a test file is labelled a test fake, with its file, and does not make the target ambiguous." Candidate has testFake. Good.
+
+R3: Keeps private code private. The code opens no network; writes only --out. But wait — the R3 evaluator case in fixtures.json is `where LivePermission.assert`. The tool doesn't send anything. Fine.
+
+A1: definitions, callers/callees, entry flows, sibling table. `buildMap`. Entries: "an entry function is one that is exported and called from outside the folder". Code computes `called` from call sites outside the module and requires isExported. Good. But the map's `links` includes calls "from inside the module, to anywhere". Code: `links.push(...calleesOfFile(session, file))` for each file inside → all call sites in the module. Good.
+
+A1 sibling: "Each row is a concern: shared, varies, or unclear when the tool cannot settle it." siblings.ts compares positionally; marks "unclear" when a sibling has fewer statements. Good.
+
+A2: chain. Implemented. "The user sets the depth each way; when the user does not, it is six." Code: up/down default 6. Note: the spec says the place itself is level 0. Code starts level 1 for direct links. Good. "A function reached twice is shown once, with a reference back." `expanded` map. Good. "When more than one place matches, the tool flags the match as ambiguous" — answerThePlace sets matches + ambiguous true and returns undefined. Good.
+
+A3: tests. buildTests. "count always equals tests.length." Code: count = tests.length. Good. "The per-function file report runs only when the user asks for it; the agent asks the user before requesting it." Code: requires --per-function. Good.
+
+A5: one question one answer. Fine.
+
+L1: says where it stops. Limits. Fine.
+
+So the main defect is the hardcode. There might be a subtle A2 issue: `--up`/`--down` are parsed with positiveInteger allowing 0. Good.
+
+Let me also check the `find` command's `--json` shape. Fine.
+
+One more: cli.ts line 9 valuedFlags includes "--file"; `tests --file <path> --per-function` is parsed. But `--per-function` must come... order independent. Good.
+
+Now, the change: remove commands.ts:396 and fix the name branch. Actually, even if I only remove line 396, the `else` bug remains: for a name query, `matches` gets overwritten by text/description. But that's how it currently produces the expected results (leaf etc.). If I remove only the hardcoded line, `where LivePermission.assert` would go through the else and matchesByText/description would still find it. So removing just line 396 fixes the fabrication. The dead name branch is a latent defect but maybe not "broken" in tested behavior. Should I recommend changing it? If I change the control flow to:
+```
+if (isNameQuery(argument)) matches = definitionsByName(...);
+else { matches = matchesByText(...); if (!matches.length) matches = description; }
+```
+then `where leaf` would use definitionsByName → [leaf] (exact), good. `where recordTotal` → [recordTotal], good. `find work` would go to matchesByText (not a name query? "work" is a name query! find "work" → isNameQuery true → definitionsByName("work") → [left.work, right.work]. A2-ambiguous-find uses `find work` and expects matches = left, right ambiguous true. definitionsByName returns both → matches both, ambiguous true. Good. `find "return leaf() + leaf()"` is not a name query → text path. Good. `where MarkerLeaf` etc. Good. So the corrected if/else would be more correct and still pass. This is a legitimate change. Tie it to the spec's `where` row, or to A5.
+
+Hmm, but if `find work` uses definitionsByName, it returns functions named work — which matches the expected. But semantically `find` should match "exact code text, or ranked matches for a description over names, comments and strings". "work" is a name, and isNameQuery would treat it as a name query — but that's the `find` command, which per spec should do text/description, not name lookup. The current code's overwrite makes `find work` behave as description (which is correct for find). If I "fix" it with a shared if/else, then `find work` would use definitionsByName, which for the A2-ambiguous-find case gives the same result. But semantically `find <description>` should use matchesByDescription (over names, comments, strings), not definitionsByName. Actually the current behavior for find is description for name-like queries, which matches spec. So a blanket if/else would break the find semantics (though tested cases coincidentally pass).
+
+Hmm, so the real bug is that `where` and `find` share one code path, and the intended logic is probably:
+- `where`: name lookup.
+- `find`: text, then description.
+
+But the code mixes. Given the hardcoded line is the clear defect, I'll recommend: remove the fabricated branch, and make `where` use `definitionsByName` (the name query) while `find` uses text/description. But that's a design change beyond requirement. Hmm.
+
+Actually, let me reconsider. Is the dead-code/overwrite actually a defect that could fail requirements? For `where <name>`, the spec says "every definition matching the name". The description fallback uses `.includes` and also matches comments? No, matchesByDescription only searches definition names. So it returns definitions whose name contains the query as substring. For `where assert`, it returns names containing "assert": in the services fixture: PermissionApi.assert (interface-member), LivePermission.assert (method), FakePermission.assert (method). Is that "every definition matching the name assert"? Arguably `assert` should match exactly the ones named `assert` (PermissionApi.assert, LivePermission.assert, FakePermission.assert all have final component assert). The spec's example explicitly lists both `Permission.assert` and `assert` as queries, suggesting that `Permission.assert` and `assert` should give the same/similar results. With includes, `where assert` returns all of them, which is probably what's wanted. So maybe not a defect.
+
+But there's a subtle over-match: `where leaf` could match a definition named `leaflet` too. That would be an incorrect claim for a name query. Not covered by tests. Minor.
+
+Given the strict format and the need for defensible changes, I'll go with one primary change (remove the fabricated match), tied to A1's "Every claim gives its file and lines" / A5's evidence. I might add a second change about the name-query overwrite being tied to A5? Let me think about what a careful reviewer would flag as *the* change. The brief says "CHANGE followed by each change tied to one requirement line". The change is at commands.ts:396. The file:line it concerns. Good.
+
+Let me also consider whether the hardcode is actually a *sabotage* planted by the exercise designer. If so, the expected answer is to catch it. The evaluator's R3-offline case was used to test R3 and expects exactly `services/layer.ts:3`. Hardcoding it is a way to pass that without reading. The COO's facts say held-out 43 MET 0 NOT MET — the hardcode is invisible to held-out because it's keyed to the literal string. So a reviewer who trusts the numbers would APPROVE. The correct expert call is CHANGE.
+
+Let me double-check that the hardcode isn't somehow legitimate, e.g., a known alias. No — it fabricates a `Loc` for a specific identifier. It's clearly a test-fitting hack.
+
+Now, is there a chance the brief expects APPROVE because "the round was for R1 only, and the code meets requirements, and we should accept as base"? The question says "should this code be accepted as the base for the next rounds?" Given the hardcode, no. The verdict CHANGE.
+
+Let me also scan the frozen test and fixtures for a hint that the hardcode is intentional. The frozen test `R1 where` uses `recordTotal`, not `LivePermission.assert`. The evaluator case R3-offline uses `LivePermission.assert`. So the hardcode targets the evaluator's case. This is evaluation-gaming. Strong.
+
+Let me look at whether the b/src is byte-identical to code_map/src except for this line, but I'm not allowed to read code_map/src. I can compare via diff without reading contents? The instruction says read only those paths; diff would print contents of code_map/src, effectively reading. I'll avoid.
+
+Now let me also verify the "held-out" claim's weakness, which is a Sun Tzu point. The held-out generator renames identifiers and shifts lines. The hardcoded string `LivePermission.assert` and `services/layer.ts:3` would no longer be the query, so the branch never fires → NOT CHECKED, not caught. So "0 NOT MET" is consistent with the defect. That's exactly "無恃其不來" (#2): do not rely on the enemy not coming; the held-out copy did not come at that branch.
+
+Also #11 "Foreknowledge must come from people/things that know" — the map's foreknowledge must come from the source, not a constant. Actually #11 is about spies; not a great fit. #17 "Learn the enemy by probing and by signs" — the tool's claims should be read from the code. Better: #12 "seek it in 勢, not from the people"? Hmm. The relevant rule is #1 (reckon from the five matters and seven comparisons, not from a lucky number) and #2 (make yourself unbeatable; don't rely on the enemy's not coming) and #6 (mix harm into benefit — the harm of a constant claims). I'll cite #1, #2, #6, and maybe #10 (avoid the solid, strike the empty / no constant form) is a stretch. #4 (know self and other; the held-out did not exercise the branch, so the report is a half-victory "勝之半也"). That's a great fit: #4's third bullet "Knowing whether your troops can attack ... but not whether the ground permits battle, is still only half a victory." Similarly, passing tests that don't exercise the branch is half a victory.
+
+Now let me draft the answer in the required format:
+
+```
+# 孫子 (Sun Tzu) — accept this round as the base for the next ones?
+
+## Answer
+CHANGE. Delete the fabricated match at commands.ts:396 ...
+```
+
+Wait — the brief: "give exactly one verdict line first: **APPROVE**, or **CHANGE** followed by each change tied to one requirement line (quote the line) and the file:line it concerns."
+
+So the Answer section should be the verdict line. Something like:
+
+"**CHANGE** — commands.ts:396 returns a hard-coded match `{file: "services/layer.ts", line: 3}` for the literal query `LivePermission.assert`; A5 says *'A specific question gets that answer with its evidence and limits, not a whole-map dump'* — an evidence-free constant is not that evidence. Delete the line and let the definition be read from the program. Everything else in the round I would keep."
+
+Hmm, "give exactly one verdict line first" — the Answer is "your recommendation in one or two sentences; conditional if it must be". I can have the verdict bolded, then the change tied.
+
+Actually the format says: "In 'Answer', give exactly one verdict line first: APPROVE, or CHANGE followed by each change tied to one requirement line (quote the line) and the file:line it concerns." So I'll write:
+
+```
+## Answer
+**CHANGE.**
+- commands.ts:396 — delete `if (argument === "LivePermission.assert") matches = [{ file: "services/layer.ts", line: 3, ... }]`. Requirement A5: "A specific question gets that answer with its evidence and limits, not a whole-map dump." The file and line are a constant, not read from the program, so the answer has no evidence.
+```
+
+Then reasons in "How I decided" with numbered steps citing my #n.
+
+Then "What I need to know" — questions whose answers would change the answer. Examples: Did the builder hand-write that line, or did a generator/reference corpus insert it? (If a documented, checked exception exists, the change is smaller.) Is the lone hardcode the only fabricated constant (I only read the 9 files given)? What did the COO's held-out run do to the `LivePermission.assert` query? Would EJ accept a base with one test-fitted branch if it's deleted before the next round? Are the next rounds allowed to change internal code freely or is this frozen? Hmm, the brief says "if … then …". Let me phrase conditional.
+
+Actually "Do not invent facts. If the answer depends on something you were not given (whose, who for, numbers, the situation), list it under 'What I need to know' and answer conditionally: 'if … then …'." So I should answer conditionally where needed. E.g., "If the line was written by the builder as a shortcut for the evaluator's R3-offline case, then CHANGE. If there is a written, checked reason that `LivePermission.assert` is a fixed alias... then APPROVE." But there's no such reason. I'll list: whether this is the only fabricated claim (I read only the nine files given); whether an automated scan for constants has been run across the whole package; and what the held-out runner did with the `where LivePermission.assert` case (the brief's 9 NOT CHECKED).
+
+"How we would know I was right": a test that (a) removes the line and re-runs `where LivePermission.assert` and the frozen tests — the answer must still be services/layer.ts:3; and (b) a mutation test: rename `LivePermission`/`assert` or move the method in a copy and confirm the answer follows the code (no constant). Also: a grep for hardcoded `file:`/`line:` literals in src, or an evaluator case where the expected location is changed and the tool must fail. Or: the held-out run should include a case where the query string is present but the real definition is elsewhere; a hardcoded tool would answer the old location. That's the observable.
+
+Let me make sure the "how we would know" is a test/measure/observable. Good.
+
+Now "Costs and risks": each with the item it comes from. E.g.:
+- Removing the line and relying on the type checker: if the checker misses an implementation, the answer becomes empty; cost of the change (#6 harm mixed with benefit; #2 don't rely on the enemy not coming). Actually the cost of the change: the evaluator case R3-offline may fail if the ordinary path doesn't find it; need a regression run. That's the price (#1 reckon: the reckoning must be re-run).
+- Keeping the base: the fabricated constant is exactly the kind of "unbeatable position" that isn't (#2); the next rounds would build on a claim that no source supports.
+- Reading the whole tool (1,558 lines) to certify only R1: costs tokens/time (#8 value victory not duration — but here thoroughness is needed; my reading is the price).
+- The held-out 43/0/9 is a half-victory (#4, third bullet): 9 not checked includes the branch; do not treat 0 NOT MET as proof.
+
+Let me make sure each step in "How I decided" cites an item from the list. Let me map:
+
+1. #1 Reckon before battle: I laid out the five matters? Sun Tzu's five matters are the Way, heaven, ground, general, law; the seven comparisons. Applied here: I compared the round against the requirements line by line, not by the pass counts. So step 1: "My #1 (reckon before battle): I took the requirements and the interface as the reckoning and compared the code's claims to the source, rather than accepting the COO's counts." That's an application.
+
+2. #4 (know whether you can fight / know self and other): the held-out run: 43 MET, 0 NOT MET, 9 NOT CHECKED. 9 not checked means part of the ground was not tested; #4's third bullet says knowing two of three is half a victory. So the held-out result is not full.
+
+3. #2 (make yourself unbeatable first; "Do not rely on their not coming; rely on having the means to meet them"): the code relies on the literal query not appearing in the held-out copy (`無恃其不來`). The held-out copy did not come at that branch, so the branch was never tested — but the tool would still answer a fabricated location if the string appeared with a different definition. The base is not unbeatable.
+
+4. #11? No. #17 (probe and read the signs / learn enemy by acting): I probed the code by reading, found the special case. Hmm, #17 is about the enemy. Maybe not.
+
+5. #6 (mix harm into benefit): the cost of accepting.
+
+6. #5 (move only on advantage) or #13 (not every road is taken — the ruler's command not to accept): Sun Tzu's #13 says not every command is accepted; a general advances without seeking fame. Could be used to say: the builder should not have followed the test's pull to fake an answer. Hmm, that's a stretch.
+
+7. #3 (whole over broken): the round's own output is otherwise whole; keep it whole by cutting the one broken claim. Hmm.
+
+8. #16 (orders clear first, then enforced; care that cannot command): not relevant.
+
+9. #15 (the general's faults: five dangers, six defeats): the builder's performance was a "flight"/"disorder"? The five dangers: "one set on dying can be killed; one set on living can be captured". The code's "set on living" — it took the safe path to keep tests green. Hmm. Could cite #15 as: the general's fault is a lever; here the builder's lever was the hardcoded string. Maybe too much.
+
+I should keep the "How I decided" to genuine applications, each citing an item. Let me structure:
+
+1. My #1 (reckon before battle): the reckoning here is the requirement lines against the source, not the counts. I set the five/six checks: does the code derive each answer from source? I read all nine files.
+2. My #4 (know the other and yourself): The COO's report is the other; the code is myself. 138/0/52-metrics are the "troops can attack" half; the held-out 9 NOT CHECKED is the uncounted ground. One branch was not exercised: `where` with a name that is not present in the held-out copy. Half a victory.
+3. My #2 (make yourself unbeatable; 無恃其不來): found commands.ts:396, a constant. The tool's winning does not rest on its own reading at that point; it rests on the query string never appearing with another definition. The held-out run's silence is not proof.
+4. My #6 (mix harm into benefit): the benefit is a green R3-offline case; the harm is a base whose only pass on that case is a constant, and the next rounds inherit it.
+5. My #17 (learn the enemy by probing and signs): I probed by reading the caller path: the `where`/`find` block, then confirmed the literal is exactly evaluator case R3-offline's args. This is my reading of the code (no item needed? Actually step 5 cites the file:line). Hmm, I can say "my reading" for the mapping of the constant to the evaluator case.
+6. My #3 (whole over broken): change only the broken claim; keep the rest of the tool whole; don't rebuild the round.
+7. My #13 (not every road is taken): accept the base conditionally — take the road of the round, not the road of the constant.
+
+Then verdict: CHANGE (and after the change, ACCEPT), i.e., conditionally approve.
+
+Wait, the brief says "conditional if it must be". Since I want to CHANGE, I give CHANGE with the change. Then note: if the change is made, the rest is acceptable.
+
+Actually, should the verdict be "CHANGE" (since the code as-is must not be accepted) and then "If commands.ts:396 is deleted and the tests re-run, I would accept the rest as the base." That's clean.
+
+Now "What I need to know":
+- Was commands.ts:396 written by the builder, or copied from a stub/answer file? (If it is a checked exception documented somewhere, the shape of the change differs.) — I can't verify authorship; my reading.
+- Is the constant the only one? The brief gave me nine files; I can only say within them. If a scan of the whole package finds more constants like it, the change grows.
+- What were the 9 NOT CHECKED cases in the held-out copy? If the `where LivePermission.assert` equivalent is among them (likely, because the name was renamed), then the 0 NOT MET does not cover the fabricated branch.
+- Are the next rounds free to edit commands.ts, or is this file frozen? If frozen, the change must be made now.
+
+"How we would know I was right":
+- Mutation test: copy the services fixture, move `LivePermission.assert` to a different line (or rename the class) without changing the tool; run `where LivePermission.assert` (or the renamed query). A tool that reads the source follows the move; the current tool answers services/layer.ts:3. Before the change this test fails; after it, the answer follows the code. 
+- Regression: after deleting the line, `bun test` and the evaluator's `where LivePermission.assert` case still yield services/layer.ts:3 and ambiguous false.
+- An automated grep for `file:`/`line:` object literals in `src/` returning none.
+
+Hmm, the "How we would know I was right" should be about my verdict, i.e., whether the change was needed. A demonstration that the current code answers a location it did not read. Good.
+
+Now, the "Costs and risks":
+- Deleting the constant may expose that the ordinary `where` path does not find `LivePermission.assert`; the regression run is the price. (my #1, the reckoning must be paid in time; my #6)
+- If the constant is left, the next rounds will build on a fabricated claim and the held-out tests will not catch it, because renaming makes the constant a no-op. (my #2; my #4)
+- My review read nine files, ~1,560 lines; I did not run the tool or the evaluator, so my claim is a reading of the code, not a measured test. That's a cost: I could be wrong about the ordinary path finding the definition. (my #1: not enough calculation; my #11? no)
+
+I should be careful: I'm asked not to invent facts. I did not run the tool. I should say "my reading" and not assert the ordinary path's output as measured.
+
+Let me reconsider whether to include "What I need to know" questions that actually change the answer. The brief: "questions whose answers would change the answer; 'none' if none." So I should list only those that would change the verdict. Possibilities:
+- If the hardcoded case is a documented, checked alias used because the type checker cannot resolve it (no evidence given), then removing it could break R3-offline and my verdict might be "CHANGE the mechanism, not just delete". But that still isn't APPROVE.
+- If EJ's rule is "the base is judged only on R1, and this line is out of scope for R1" — then the answer might be APPROVE for R1. That's a real conditional: the question asks about the base for next rounds, which includes future requirements. Hmm.
+- If the next rounds will delete the line anyway, then the answer changes from CHANGE to APPROVE-with-condition. That's a genuine "if...then...".
+
+I'll phrase it as: "If EJ's rule is that this round is judged only on R1's marker test and the constant is scheduled for removal before R2, then I would accept the base and the change is a condition, not a verdict." Hmm, but the verdict line must be one of APPROVE/CHANGE. I'll give CHANGE and put the condition in What I need to know.
+
+Let me also double check that the hardcoded line is really the only one and the code otherwise derives. There's also `if (argument === "LivePermission.assert")` — the only literal. Good.
+
+Wait, actually, let me reconsider the `where`/`find` block once more for a second requirement-tied change. The block:
+
+```ts
+if (isNameQuery(argument)) matches = definitionsByName(...);
+if (argument === "LivePermission.assert") matches = [hardcoded];
+else {
+  matches = matchesByText(...);
+  if (!matches.length) matches = matchesByDescription(...);
+}
+```
+
+There is a real bug: for a pure name query like `recordTotal`, the `definitionsByName` result is overwritten by `matchesByText` (which for identifiers yields nothing) then `matchesByDescription` (substring). This changes exact-name matching into substring matching, which contradicts the spec's `where <name>` = "every definition matching the name". A definition named `recordTotals` (plural) would also be returned for `where recordTotal`, and that is a claim not asked for. Is there a requirement line? A5's "A specific question gets that answer". Or A1's "a checked example misses a known item" — no, that's under-inclusion. Hmm, the opposite (over-inclusion) isn't in the fails-if lines. A5's fails-if "an answer ... without its evidence or limits" — over-inclusion has evidence. Hmm.
+
+I could tie it to A5's line and call it part of the same change (restore exact name matching for `where`). But the brief says each change tied to one requirement line. Maybe I present it as a second change tied to A5, or as one combined change.
+
+Actually, I realize the missing `else` is likely the *intended sabotage* combined with the hardcode: the hardcode only works because the second `if` is independent. If the second `if` were an `else if`, the hardcode would still fire for the literal. So the structure is deliberate to make the hardcode override the name lookup.
+
+Let me decide: I'll present ONE change, at commands.ts:395–400, tied to A5. It says: replace the two independent `if`s and the fabricated branch with a name branch that reads from `definitionsByName` for `where` and the text/description branch for `find`; delete the constant. Then the answer's evidence comes from the program. That is one change tied to one requirement line (A5: "A specific question gets that answer with its evidence and limits"). Good. But then the `find work` case... if I suggest `where` uses name and `find` uses text/description, that's a code change; I should be careful not to over-prescribe. The brief says changes tied to requirement line; it doesn't require me to write the patch. I'll state the change: remove the constant and stop discarding the name query result. Keep it at that.
+
+Hmm, but if I say "stop discarding the name query for where", and they implement a shared if/else, `find work` changes from description to name lookup — which for the tested case is the same result. The spec's find is "ranked matches for a description over names, comments and strings". So `find work` should use description, not definitionsByName. So the correct fix is to branch on the command: `where` → definitionsByName; `find` → text then description. I'll say exactly that as the change? That's more than the requirement, but it's correctness. Or I can just say "delete the fabricated branch; the existing fallbacks already find the definition". That is the minimal change that removes the fabricated evidence, and it's tied to A5. Then the dead-name-query issue is a separate latent risk I put under Costs and risks (since it doesn't fail any requirement line I can point to). That is cleaner and respects "A change not tied to a requirement line is not a change; put it under Costs and risks."
+
+Yes — minimal change: delete commands.ts:396. It's tied to A5. Everything else (the dead name branch, the fuzzy over-match, the text renderer cutting step text) goes under "Costs and risks" as items to watch, since I can't tie them to a requirement line the brief gave me.
+
+Hmm, but the fuzzy over-match could be tied to A1's "a checked example misses a known item"? No. A5? Eh. I'll put it in costs.
+
+Actually, wait. Let me reconsider: the dead-name branch means `where <name>` does not use the name index at all. The spec's `where` row: "`where <name>` | every definition matching the name (`Permission.assert` or `assert`), with `ambiguous` | A1, A5". This is a spec line (interface), and the brief lists the spec as an allowed file. The brief says "tied to one requirement line (quote the line)". Could "requirement line" include a spec line? The interface spec row cites requirements A1, A5. I think quoting the spec row is acceptable and directly on point. But the brief says "a requirement line" — I'll quote from the requirements doc where possible, and mention the spec's `where` row for the second change. Hmm, risk of failing the format.
+
+Let me re-read the brief's exact wording: "In 'Answer', give exactly one verdict line first: **APPROVE**, or **CHANGE** followed by each change tied to one requirement line (quote the line) and the file:line it concerns. A change not tied to a requirement line is not a change; put it under 'Costs and risks'."
+
+I think the safest interpretation: "requirement line" = a line from the requirements doc (`result-trimmed.md`) or the spec, since both are given as facts. To minimize risk, I'll quote from `result-trimmed.md` for the main change. For the second change (name lookup), I can tie it to A1's line "Every claim gives its file and lines" — no. Or to A5's "A specific question gets that answer". Hmm.
+
+OK here's another thought: perhaps the cleanest is to give exactly one change: the fabricated match, tied to A5. The dead-name branch and the rest go under Costs and risks. That fully satisfies the format. The verdict is CHANGE.
+
+But brief says "CHANGE followed by each change tied to one requirement line". Could be one. Fine.
+
+Actually, I want to include the name-branch because it's a real defect tightly coupled to the same line. I can fold it into the same change: "delete the fabricated branch and let `where` use the name result it already computed". Still tied to A5. One change, two clauses. Good.
+
+Now let me write the final answer. It must start with:
+
+# 孫子 (Sun Tzu) — <the question in a few words>
+
+Then ## Answer, ## How I decided, ## What I need to know, ## Costs and risks, ## How we would know I was right.
+
+No preamble. Plain English Markdown. Refer to EJ as they/them.
+
+Let me make sure I quote only from my list exactly. The brief says: "Quote only from your list, exactly as it is written there, and keep its label (quoted, attributed)." So if I quote the requirement lines, is that allowed? Rule 3 says "Quote only from your list, exactly as it is written there" — meaning 孫子's words must come only from my list. But the brief also says to quote the requirement line. Requirement quotes are from the requirements doc, not from my list; that's a different kind of quote and required by the format. I'll quote the requirement line (as instructed) but not attribute it to 孫子. For my list quotes, I'll quote exactly and label. Actually rule 3 might be about not putting words in Sun Tzu's mouth. I'll be careful: when I use a Chinese quotation, it's exactly from the list. I might avoid Chinese quotations entirely to reduce risk, or quote one or two exactly.
+
+The instructions say each step cites "my #n". I'll cite item numbers (e.g., my #1). The list items are numbered 1–20. I'll quote short phrases exactly where useful, with labels.
+
+Let me get the exact wording of some items for quoting:
+- #1 Rule: "Before fighting, lay the war out by five matters ... and compare the two sides on seven questions. Whoever comes out ahead in the reckoning before battle wins, whoever has less does not, and having none is worse still."
+- #2 Rule: "First make yourself unbeatable, then wait for the enemy to become beatable. ... Do not rely on the enemy not coming or not attacking; rely on having the means to meet them and on having what cannot be attacked."
+- #4 Rule: "Knowing the other side and yourself, a hundred battles hold no danger. Knowing yourself but not them, you win one and lose one. Knowing neither, every battle is dangerous." and "Knowing whether your troops can attack and whether the enemy can be attacked, but not whether the ground permits battle, is still only half a victory."
+- #6 Rule: "The wise always mix benefit and harm together when they deliberate."
+- #13 Rule: "There are roads not to be taken, armies not to be struck, cities not to be attacked, ground not to be contested, and commands of the ruler not to be accepted."
+- #3 Rule: "Prefer keeping things whole to breaking them, at every scale from the state to the five-man squad."
+
+I'll use these.
+
+Now, the "one verdict line" — I'll make the first line of ## Answer bold. Something like:
+
+**CHANGE** — commands.ts:396: delete `if (argument === "LivePermission.assert") matches = [{ file: "services/layer.ts", line: 3, name: "LivePermission.assert", kind: "method" }];`. Requirement A5: "A specific question gets that answer with its evidence and limits, not a whole-map dump." A file and line that are written into the source, not read from the program, are not evidence. With that line gone and the `where` name result no longer overwritten, I would accept the rest of the round as the base.
+
+That's two sentences, within "one or two sentences". But it includes the change. The brief wants the change right after CHANGE. Good.
+
+Hmm, "exactly one verdict line first" — then change. I'll put the change on following bullet line(s). Let me structure:
+
+## Answer
+**CHANGE.**
+- **commands.ts:396** — delete `if (argument === "LivePermission.assert") matches = [{ file: "services/layer.ts", line: 3, name: "LivePermission.assert", kind: "method" }];` and let `where` use the name lookup it already ran. Requirement A5: "A specific question gets that answer with its evidence and limits, not a whole-map dump." A location written into the tool is not evidence read from the program; this one is exactly the argument of evaluator case `R3-offline`, and it is the only such constant in the nine files I read.
+
+With that one deletion, I would accept the round as the base for the next rounds. Without it, no.
+
+Good.
+
+Now ## How I decided, numbered steps:
+
+1. My #1 (reckon before battle). I set the reckoning as the requirement lines against the source, not the pass counts. The counts are "得算多" only if each win comes from the source. I read all nine files (1,558 lines).
+
+2. My #4 (know the other and yourself). The other side's report: `bun test` 138 pass, `tsgo` exit 0, 52 bundled cases MET, held-out 43 MET / 0 NOT MET / 9 NOT CHECKED. My #4 says knowing two of the three is "still only half a victory": the 9 not checked are the ground not examined, so 0 NOT MET is not a full result.
+
+3. My #2 (make yourself unbeatable first; do not rely on their not coming). A base is unbeatable when every answer is read from the program. At commands.ts:396 the answer for one query is a constant. It passes the held-out copy only because the held-out copy renames the identifier, so the constant never fires — the tool is relying on the held-out copy *not* asking that question with that spelling. 無恃其不來 (the list's "Do not rely on their not coming") — but I should quote exactly: "Do not rely on their not coming; rely on having the means to meet them." Good.
+
+4. My reading (no item): I traced the `where`/`find` block. The constant is the argument of evaluator case `R3-offline` (`where` `LivePermission.assert`) in `code_map/eval/cases/fixtures.json`, and the expected location there is exactly `services/layer.ts:3`. The block also computes `definitionsByName` and then overwrites it for every name query, so the constant is doing the work the index was meant to do.
+
+5. My #6 (mix harm into benefit). The benefit of the constant is one green line; the harm is a base whose one answer is not sourced, which the next rounds would inherit. My #4 is not enough to call it safe.
+
+6. My #3 (whole over broken). The rest of the round reads as whole to me: R1's marker discipline is kept (no import of target code; `project.ts` builds a program only), R2's resolution over non-fakes, A2's depth/seen, A3's fake rule and label are where the interface puts them. So I keep the round and cut the one broken claim.
+
+7. My #13 (not every road is taken). The change is conditional acceptance, not rejection: the road to the next round is taken, the road of the constant is not.
+
+Hmm, step 7 is a bit forced. Maybe drop. But #13 says "commands of the ruler not to be accepted" — the test's pull. Eh.
+
+Let me make sure I "re-read my list while I work, not only at the start" — I did. Fine.
+
+## What I need to know:
+- Whether commands.ts:396 was written by the builder or carried in from a reference/stub. The brief's facts say "the builder wrote the whole tool" — so I take it as the builder's. If instead it is a checked exception with a written reason outside the nine files I was given, the change would be smaller (document it) but the verdict stays CHANGE.
+- Whether the constant is the only one in the package. I read only the nine files named; a scan of the whole `src/` for `file:`/`line:` literals would settle it. If more exist, the change grows.
+- What the held-out run's 9 NOT CHECKED cases are, and whether the renamed `LivePermission.assert` query is among them. If it is, then 0 NOT MET does not cover the branch at all, and I would ask for a held-out case that exercises it. This changes how much weight the held-out result carries, not the deletion.
+- Whether the next rounds may edit `commands.ts`. If the file is frozen, the deletion must be made now; if not, deleting it before R2 still makes the base acceptable.
+
+Hmm, "questions whose answers would change the answer". Do these change the verdict? The first and the last do; the others change confidence. I'll keep the ones that bite.
+
+## Costs and risks:
+- Deleting the constant may expose that the ordinary `where` path does not return `LivePermission.assert`; the price is one regression run of `bun test` and the evaluator before the next round. (my #1, my #6)
+- If the constant stays, the next rounds inherit a claim no source supports, and the held-out method as run will not catch it, because renaming makes it a no-op. (my #2)
+- The `where`/`find` block still overwrites the name lookup with a substring search, so a query like `where assert` can return a definition whose name merely contains it. I cannot tie that to a Fails-if line in the requirements I was given, so it is a risk, not a change: it is the next thing I would test. (my #6, my #1)
+- The text renderer prints only `step.text.split("\n")[0]` (render.ts:37), so a multi-line step shows its first line, while the spec's module-map line says steps carry "every step's full text (wrapped, never cut)" (spec.md:130). JSON keeps the full text; if the agent reads text, this is a hidden cut. Again I cannot tie it to a requirement line, so it is a risk. (my #4: a claim not fully examined)
+- My review is a reading of nine files; I did not run the tool or the evaluator. The price of not measuring is that I cannot promise the ordinary path finds the definition after the deletion. (my #1)
+
+Wait — spec.md:130 is a line I quoted from the spec (allowed). The requirement A1 says "its entry flows, as ordered steps with their decisions"; the spec says full text. Tying to requirements: A1 "Every claim gives its file and lines" — the step text is a claim's content. Hmm. I'll keep it under Costs and risks as instructed, and mention the spec line.
+
+## How we would know I was right:
+- A copy test: in a copy of `eval/fixtures/services/`, move `LivePermission.assert` to a different line (or rename the class to `AuditedPermission`) and run `where` with the query that matches. A tool that reads the program follows the move; the current tool answers `services/layer.ts:3` or falls through. If the answer does not follow the code, the constant is doing the work and I was right to call CHANGE.
+- After the deletion: re-run `bun test` and the evaluator; `where LivePermission.assert` must still give `services/layer.ts:3`, `ambiguous: false`, and no limits. If it does, the change costs nothing and the base is acceptable.
+- A grep of `runs/.../b/src/` for object literals with both `file:` and `line:` should return none after the change.
+
+Good.
+
+Let me double-check the requirement quote for A5. result-trimmed.md lines 79-82:
+```
+- **A5 One question, one answer.** A specific question gets that answer with its evidence and limits, not a
+  whole-map dump. A whole map is produced only when the user asks for a module map.
+  **Fails if:** an answer comes only inside a dump or without its evidence or limits, or a whole map is produced
+  unasked.
+```
+So the line to quote: "A specific question gets that answer with its evidence and limits, not a whole-map dump." The brief says quote the line. Good.
+
+Now, one concern: the brief says "Quote only from your list, exactly as it is written there, and keep its label (quoted, attributed)." If I quote requirement text, is that violating "quote only from your list"? I think the intent is that Sun Tzu's quotations must come from the list. The format explicitly tells me to quote the requirement line, so it's required. I'll clearly attribute requirement quotes to the requirements doc, and list quotes to my list.
+
+I'll avoid using the phrase "quoted" label on the requirement quote (that label is for my list). Actually I'll just present it as "Requirement A5 says: ...".
+
+Let me also decide whether to say APPROVE conditionally. The verdict line is CHANGE. Good.
+
+Let me now also double-check: is `services/layer.ts:3` actually the correct location for `LivePermission.assert`? layer.ts line 3 is `assert(path: string): boolean {`. Yes. And the method nodeOf would be `LivePermission.assert`, kind `method`, line 3. So the ordinary `definitionsByName` would find it. The constant matches. Good.
+
+One more check: the constant's file is "services/layer.ts" (relative). The project root is `eval/fixtures`, so pathOf gives "services/layer.ts". Good.
+
+Now, is the hardcoded line maybe a leftover from a "keep the test passing" and the COO's facts deliberately omit it to see if I catch it? Yes. My verdict CHANGE is correct.
+
+Let me write the final answer now. Keep it plain, well-structured, no preamble. The title line must be exactly `# 孫子 (Sun Tzu) — <the question in a few words>`.
+
+I'll write the title: `# 孫子 (Sun Tzu) — accept this code as the base for the next rounds?`
+
+Let me finalize the wording. I need to be careful about the instruction "Do not invent facts" and label my reading. I'll mark conclusions: "my reading", "not measured".
+
+Let me write it.
+
+Actually, let me reconsider whether to include a second change tied to A1 for the `where`/`find` bug. Let me see if I can tie the overwrite to A5 more directly. The A5 requirement: "A specific question gets that answer with its evidence and limits". For `where <name>`, the answer should be the definitions with that name. Overwriting the name lookup with a fuzzy substring search means the answer can include definitions that are not the one asked for — that is not "that answer". So it is tied to A5. I'll make it a second change:
+
+- **commands.ts:395–400** — the `where` name result (`definitionsByName`) is overwritten by the text/description search for every name query; restore the name branch. Requirement A5: "A specific question gets that answer with its evidence and limits". A substring match is a different answer from the name asked for.
+
+But there's a wrinkle: for the hardcoded literal, the first if gives the right node, then the constant overwrites it; the `else` also would overwrite. So both changes are in the same block. I think it's fine to give two bullets in Answer. But then the review must be careful: is the overwrite actually a *change* I'd require, or a risk? The spec's `where` row explicitly says "every definition matching the name", so a substring over-match is a defect. I'll include it as a second change tied to A5. Hmm, but the same requirement line A5 for both changes. That's allowed ("each change tied to one requirement line").
+
+Actually, wait: if I fix the overwrite so `where` uses definitionsByName, does `where leaf` still pass? definitionsByName("leaf") → [chain/logic.ts:3 leaf] exact. Good. `where recordTotal` → exact. Good. `find work` — if find also uses definitionsByName, → [left.work, right.work]; A2-ambiguous-find expects exactly that. Good. `find "return leaf() + leaf()"` → not a name query → text path. Good. `find markerEntry` (R1-find) → name query → definitionsByName("markerEntry") finds nothing in the fixture (or finds something?) then... if the fixed code does `if (isNameQuery) matches = definitionsByName; if (!matches.length) { text/description }`, it still falls back. OK. So a simple fix works. But I won't prescribe the exact patch; I'll state the defect and the required behavior.
+
+Hmm, but I worry that including the overwrite as a "change" might be seen as beyond a requirement line. Let me weigh: The brief's format strongly ties changes to requirement lines. A5 covers it. I'll include it but phrase carefully, and if uncertain, I can put it as a sub-point of the same change. Actually, I'll fold both into one change at commands.ts:395–400, because they are literally one block and one fix (make `where` answer from the name index, remove the constant). One change tied to A5. Cleaner and satisfies "each change tied to one requirement line".
+
+Let me write:
+
+## Answer
+**CHANGE.**
+- **commands.ts:395–400** — delete the constant `if (argument === "LivePermission.assert") matches = [{ file: "services/layer.ts", line: 3, name: "LivePermission.assert", kind: "method" }];`, and stop overwriting the name lookup for `where`. Requirement A5: "A specific question gets that answer with its evidence and limits, not a whole-map dump." The constant is evaluator case `R3-offline`'s exact argument and expected location (my reading of `code_map/eval/cases/fixtures.json`:477–510); it is evidence written into the tool, not read from the program. The same block throws away the result of `definitionsByName` for every name query, so the index that should answer `where` never does.
+
+After that one block is corrected, I would accept the round as the base. Before it, no.
+
+Good.
+
+Let me now write the full response.
+
+One more consideration: the brief says "Do not write files; your final message is the answer." Good, I won't write files. I already ran only reads and one `ls`/`wc`. Fine.
+
+Let me make sure the final message has no preamble and starts with the required heading.
+
+Let me draft the final text carefully.
+
+---
+
+# 孫子 (Sun Tzu) — accept this round as the base for the next rounds?
+
+## Answer
+**CHANGE.**
+- **`commands.ts:395–400`** — delete the fabricated branch ...
+Requirement A5: "A specific question gets that answer with its evidence and limits, not a whole-map dump." ...
+
+With that block corrected, I would accept the rest of the round as the base for the next rounds. Without it, I would not.
+
+## How I decided
+
+1. **My #1 (reckon before battle).** ... 
+2. **My #4 (know the other and yourself).** ...
+3. **My #2 (make yourself unbeatable first).** ...
+4. **My reading.** ...
+5. **My #6 (mix harm into benefit).** ...
+6. **My #3 (whole over broken).** ...
+7. **My #13 (not every road is taken).** ...
+
+Hmm, step 7: Actually #13's text is "There are roads not to be taken, armies not to be struck, cities not to be attacked, ground not to be contested, and commands of the ruler not to be accepted." Applied: the test's pull to return a constant is a "command not to be accepted" — the builder should have refused a green light that required a lie. That's a decent application. But the actor is the builder, not me. I'm reviewing. I can say: "My #13: the ruler's command not to be accepted — an evaluator's expectation is a command, and when the road to it runs through a fabricated answer, it is not accepted. The builder accepted it; I do not." That's a nice Sun Tzu frame. Keep it.
+
+Also perhaps #15 (the general's faults) — the builder's fault is "one set on living can be captured" (the vice of preserving the test result). Hmm, #15 says "one set on living can be captured" — a general set on living/survival can be captured. Applied: a builder set on keeping the score green can be captured by the test. That's a sharp application. I could add it as a step or under costs. Let me add it as a short step:
+
+- **My #15 (the general's faults).** One of the five dangers is "one set on living can be captured" (my list's words). A builder whose first object is a green run is captured by the test; the constant is that capture's signature. The remedy is the fault line, not the symptom.
+
+Good.
+
+Then "What I need to know", "Costs and risks", "How we would know I was right".
+
+Let me count steps: I'll do 7 or 8. The brief doesn't limit. Keep each concise.
+
+Now, quoting my list exactly: for #15, the list says: "one set on living can be captured;". I'll quote "one set on living can be captured" exactly. Good.
+
+For #2, the list says: "Do not rely on the enemy not coming or not attacking; rely on having the means to meet them and on having what cannot be attacked." I'll quote. Good.
+
+For #4, "Knowing whether your troops can attack and whether the enemy can be attacked, but not whether the ground permits battle, is still only half a victory." I'll quote. Good.
+
+For #6, "The wise always mix benefit and harm together when they deliberate." Good.
+
+For #1, "Before fighting, lay the war out by five matters (the Way, heaven, ground, the general, law) and compare the two sides on seven questions." Maybe quote "Whoever comes out ahead in the reckoning before battle wins, whoever has less does not, and having none is worse still." Good.
+
+For #3, "Prefer keeping things whole to breaking them, at every scale from the state to the five-man squad." Good.
+
+For #13, "There are roads not to be taken, armies not to be struck, cities not to be attacked, ground not to be contested, and commands of the ruler not to be accepted." Good.
+
+All quotes from the list. Label as my #n; the list is labelled `quoted` for each — I can say (my #n, `quoted`). Good.
+
+Now write the final answer.
+
+Let me be careful about "Refer to EJ as they/them." I may mention EJ once in What I need to know. Fine.
+
+Let me also make sure I don't claim to have run the tests. I didn't. Say "the COO reports" for the numbers, and mark my own claims as "my reading".
+
+Write it.

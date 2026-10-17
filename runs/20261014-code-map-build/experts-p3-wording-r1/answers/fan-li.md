@@ -1,0 +1,73 @@
+# 范蠡 (Fan Li) — wording of A2 and A5
+
+## Answer
+
+Accept the changes that name **who acts** (1 and 7), the **shortest-route depth** (4), the **body that holds the call** (3), and the A5 changes on **unasked content** and **output form** (5, 8 and 9, merged). Reject **"known" → "what the type checker can establish"** (2) and the **"whole answer / stops short"** wording (6): 2 would let the tool's own method judge the tool, and 6 repeats L1. If EJ rules that a known dynamic link the tool marks with a `dynamic` limit is not "missing", A2's missing-link line needs the conditional clause given under "What I need to know".
+
+| # | Decision | Rests on | Reason |
+|---|---|---|---|
+| 1 | accept with this wording (below, A2 Fails-if lines 2 and 3) | Use cases 1 and 4; A2's own body already says "the tool flags… the agent picks" | The body says who acts but the Fails-if line does not. Two lines inside the one requirement, owner's words kept. |
+| 2 | reject | Use case 4, L2 ("answer keys written by a different agent, by a method other than the tool's"), A1 ("a known item") | It would make the tool's method the judge of the tool. It would collide with A1's and L2's "known". It means nothing for a place found from a description. |
+| 3 | accept with this wording (no "or a stated limit") | Vision: opencode's "typed, injected Effect services"; spec: "E1 found 17 of 18 calls in anonymous bodies"; use cases 1 and 4 | A limit in place of the link would drop most opencode links. The body can always be placed from the source. |
+| 4 | accept with this wording (shortest route; no "regardless of traversal order") | Use case 2 (track changes); "counted in levels from the place" | Today the answer changes when the source order of calls changes, so a reorder would read as a logic change. The fault is real (see step 4). |
+| 5 | accept, merged with 8 and 9 | Use case 4 (fewer tokens than reading) | "Only inside a dump" let a right answer followed by a dump pass. That happened, verified by the COO. |
+| 6 | reject | L1 ("Every answer or branch that stops early names why") | Stopping short is already L1's. Required limits are already "its limits" plus the spec. "Whole answer" beside "whole-map dump" invites misreading. |
+| 7 | accept the agent part. The tool part is merged into 5/9 | Vision ("for an agent"); spec ("`map` prints a module only because the user asked for it") | "Map content" is unclear, because a `callees` answer *is* links. The tool part is covered by "content the question did not ask for". |
+| 8 | accept, merged into 5 | Vision: the tool is for an agent; use case 4 | The default text is what the agent reads. A dump there was the case that passed wrongly. |
+| 9 | accept the idea (inside the asked section too; candidates allowed), merged into 5. The enumerated list is rejected | Use case 4; A2 (candidates on an ambiguous match); spec ("answers nothing and returns the candidates") | Extra links inside the asked section are real (`A5-exact-callees` checks "extra links"). A fixed list of excluded kinds goes stale, and "unrelated" is a weak word. |
+
+**Merged:** 5 + 8 + 9 + the tool half of 7 make A5's first Fails-if line. The agent half of 7 is A5's last line. 1 makes A2's lines 2–3. 3 and 4 go into A2's body and two of its lines.
+
+**A2 The call chain through one place.** Given code or a description, the tool locates the place and returns its caller and callee chains, counted in levels from the place. The place is level 0 and each link adds one level. A link is within the depth when its shortest route from the place is. The user sets the depth each way; when the user does not, it is six. When more than one place matches, the tool flags the match as ambiguous and lists every candidate with its location; the agent picks the place that fits the question best, builds its chain, and names every other candidate it did not build. Each link gives its kind and location, and names the body that holds the call. A body written straight into a call is a place of its own; its calls are never shown as calls by the function that surrounds it. A function reached twice is shown once, with a reference back; the reference never hides a link that is within the depth through another route.
+**Fails if:** any of these happens:
+- a known place is not found;
+- the tool does not flag an ambiguous match, or leaves a matching candidate unlisted or without its location;
+- the agent treats an ambiguous match as certain, or does not name a candidate it did not build;
+- a known link within the depth is missing, including one hidden behind a reference back, or a shown link contradicts the code;
+- a link lacks its kind or location;
+- a call is shown as made by a function that surrounds the body holding it;
+- a function reached twice is shown twice.
+
+**A5 One question, one answer.** A specific question gets that answer with its evidence and limits, not a whole-map dump. When more than one place matches, the answer is the candidates. This holds for JSON and for the default text the agent reads. A whole map is produced only when the user asks for a module map.
+**Fails if:** any of these happens:
+- an answer comes inside a dump, or carries content the question did not ask for, in another section or inside its own, in JSON or in the default text;
+- an answer lacks its evidence or limits;
+- the agent produces a whole map the user did not ask for.
+
+## How I decided
+
+1. **Keep the owner's words unless a found fault forces a change** (my #5: 「天節固然，唯謀不遷。」 `quoted`). The requirements are the plan made at court. I changed only lines where a check found a wrong answer passing or a fault, or where the line does not say who acts. That kept "known", "treated as certain", "a candidate not built is not named", "six" and "A function reached twice is shown once, with a reference back".
+2. **Each party is charged with what it does** (my #14: 「四封之內，百姓之事，蠡不如種也。四封之外，敵國之制，立斷之事，種亦不如蠡也。」 `quoted`). A2's body already divides the work: "the tool flags… the agent picks… and names". A single Fails-if line that mixes the two cannot be charged to either. The spec already marks the agent's part as P6. So proposal 1 is accepted, and so is 7's agent half. A5's "a whole map is produced unasked" belongs to the agent, because the tool runs `map` only when called. It is still one requirement, A2 or A5; only its Fails-if lines name the actor (my reading).
+3. **Proposal 2 rejected on the plan, not on taste** (my #5, as in step 1, `quoted`; my reading for the rest). "Known" is used the same way in A1 ("a checked example misses a known item"), and L2 says keys are written "by a method other than the tool's". Redefining it in A2 alone as "what the type checker can establish" makes the tool's method the judge of its own answers. That is the blind spot of a key computed the same way as the rule. It also says nothing for a place found from a description by `find`, where no type checker answers. The real question behind 2, a dynamic call, goes to EJ ("What I need to know" 1).
+4. **The preparations were examined and found a gap, so the wording names it now** (my #18: 「審備則可以戰乎？」 `quoted`; my #4: 「得時無怠」 `quoted`). I ran the tool myself on the evaluator's fixture: `chain route-depth/down.ts:1 --up 0 --down 3`. The answer goes `routeRoot → routeA → routeShared → routeLeaf [stop depth]`, then `routeRoot → routeShared [stop seen]`, and `routeLeaf → routeTail` is absent. `routeTail` is 3 links away through the shorter route. The owner's "within the depth" already catches this, and the evaluator reports it NOT MET under the unchanged wording (`COVERAGE.md`, `A2-shorter-route-down`). The wording still lets a builder read "depth" as the first route found. So proposal 4 is accepted, as "shortest route" plus "the reference never hides a link". "Regardless of traversal order" is dropped because it describes the method, not the result (my reading). It rests on use case 2: a reorder of calls must not look like a logic change (my reading).
+5. **Proposal 3: the link must name the body that truly holds the call** (my #11: 「用力甚少而名聲章明」 `quoted`, the fewest words that hold; my reading for the facts). I checked this by running the tool, and the tool already does it. `callees effect-inline/use.ts:3` lists the `service.handle` call with `from` = `Effect.gen callback (function) effect-inline/use.ts:4`, not `launchInline`. The evaluator case `A2-inline-generator-owner` checks this and is MET (`COVERAGE.md`). `belongsTo` (`nodes.ts`) groups the body's calls under the surrounding function's answer, but the link's `from` names the body. I dropped 老子's "or a stated limit". The body is always placeable from source, and a limit would drop the link: E1 found 17 of 18 opencode calls in anonymous bodies (spec). That would cut against use case 4 on the first target.
+6. **The name of a body with no holder is not fixed in the requirement** (my #7: 「王無蚤圖」 `quoted`; my #14 as above). The requirement fixes what must be true: the link names the body, with its location. The name string ("Effect.gen callback" today) belongs in the spec's rule-table row "The enclosing function of a call site". The spec is the COO's work. Fixing the string in the requirement now would bind the owner's text to a tool detail before opencode output has been seen.
+7. **A5: full without overflowing** (my #2: 「天道盈而不溢，盛而不驕，勞而不矜其功。」 `quoted`; the application is my reading). The answer must be full: evidence and limits, and candidates when ambiguous. It must not overflow, whether as a dump, another section, or extra items inside its own section. "Only" is removed from "only inside a dump" (proposal 5). Linus's "inside the requested payload" (9) is kept, in fewer words. 老子's form clause (8) is kept, because the wrong pass was in the default text. Linus's list of excluded kinds is dropped: "content the question did not ask for" covers them and does not go stale (my reading). Candidates on an ambiguous match are written into A5's body so A5 does not collide with A2 and the spec.
+8. **Stop where L1 already stands** (my #10: 「無過天極，究數而止」 `quoted`). Proposal 6's "where the answer stops short… it carries the limit" is L1's "Every answer or branch that stops early names why". Writing it twice gives two places to disagree later, so 6 is rejected. A side finding supports L1 over a new A5 sentence (my reading of the code, not run). `reachableFrom` in `commands.ts` (lines 183–186), which walks links for `tests`, stops at `visited < 400` and adds no limit when it does. That is an L1 fault in A3's path, and L1's wording already catches it.
+
+## What I need to know
+
+1. **Does a known link the tool cannot follow, but marks with a `dynamic` limit at that site, count as "missing" under A2?** This is EJ's call, and it is the honest question behind proposal 2.
+   - *If yes:* keep my A2 line as written. A2 then fails on every dynamic call whose target a key writer knows.
+   - *If no:* change the line to "a known link within the depth is missing with no limit at its site naming why, including one hidden behind a reference back, or a shown link contradicts the code". The price is that the tool can no longer fail on a link it marked dynamic.
+2. **Should the name of a body with no holder be fixed?** I say it belongs in the spec (the COO), not the requirement. If EJ wants it in the requirement, the name must come from EJ or the spec; I will not invent one.
+3. **Is "the shortest route" the meaning EJ had for "counted in levels from the place"?** Linus's proposal was conditional on it. If EJ meant the first route found, reject 4 and fix the evaluator's `A2-shorter-route-*` cases instead. The price is that an answer then depends on source order (use case 2).
+
+## Costs and risks
+
+- **Builder cost of 4** (my #4: 「得時不成，天有還形」 `quoted`): showing each function once, at its shortest level, likely needs breadth-first expansion of `chain`. Today `chainDown`/`chainUp` are depth-first with one `expanded` map, so this is a rewrite of the traversal, not a patch (my reading of `commands.ts:312–358`). Not fixing it means `A2-shorter-route-down` and `-up` stay NOT MET.
+- **Two actor lines make A2 and A5 partly unclosable until P6** (my #14 as above, `quoted`). The evaluator can mark only the tool's lines MET. A2 and A5 stay "MET (tool part)" until the agent integration test runs.
+- **Rejecting 2 keeps "known" open to dispute** (my #5, `quoted`). Until EJ answers question 1, a dynamic-call key can fail A2 on a link no static tool can establish.
+- **"Content the question did not ask for" needs judgment** (my #10, `quoted`, applied as "stop at the measure"). For `callees X`, a link whose `from` is not X, or a body X holds, is unasked; for some commands the line is less sharp. The evaluator's exact-shape cases (`A5-exact-*`) are what make it checkable. Without them the line is weaker than it reads.
+- **Dropping 老子's "or a stated limit"** (my #11, `quoted`): if a body turns up in opencode that the tool truly cannot place, the requirement leaves no escape. L1 still applies to a branch that stops.
+- **The 400-visit cap** (my #18, `quoted`): it is outside A2/A5 and I did not run it. If my reading is right, a large opencode module could get a `tests` answer cut short with no limit, an L1 fault.
+
+## How we would know I was right
+
+1. After the traversal fix, `A2-shorter-route-down` and `A2-shorter-route-up` turn MET and their `-reversed` twins stay MET. The same `chain` run on `route-depth/down.ts` and `down-reversed.ts` gives the same set of links: same answer, any source order (use case 2).
+2. Every Fails-if line in the final A2 and A5 has at least one evaluator case or a P6 check named in `COVERAGE.md`, and no line is charged to the wrong actor. The two agent lines show NOT CHECKED → P6 until the integration test runs.
+3. A planted copy of the tool that adds one extra, true but unasked link to a `callees` answer fails A5's first line, in both `--json` and default text.
+4. On opencode, a `callees` on a function whose calls sit in `Effect.gen(function* …)` bodies shows each link with the body's own location as `from`, and a key written by another agent finds no link credited to the surrounding function.
+5. For question 1 above: whatever EJ decides, a case with a dynamic call and a known target gives the same verdict in the evaluator report as the requirement's wording, with no case that MET passes while the wording says it fails.
+
+*What I verified myself:* I ran the tool on the `route-depth` and `effect-inline` fixtures (output quoted in steps 4 and 5). I read `nodes.ts`, `commands.ts`, `render.ts`, the two cases in `fixtures.json`, and `COVERAGE.md`. The 400-cap reading was not run.

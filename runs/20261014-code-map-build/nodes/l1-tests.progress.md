@@ -1,0 +1,5 @@
+2026-10-17T15:33Z | ranked search group | done (3 tests: 2 pass, 1 expected failure)
+2026-10-17T15:34Z | located stop/depth/cycle group | done (11 tests: 10 pass, 1 expected failure)
+2026-10-17T15:34Z | empty JSON/default-text group | done (11 tests pass)
+2026-10-17T15:34Z | generated walk/depth group | done (4 tests: 2 pass, 2 expected failures)
+2026-10-17T15:35Z | full bun test test/l1 and report | done (29 tests: 25 pass, 4 expected failures; exit 1)

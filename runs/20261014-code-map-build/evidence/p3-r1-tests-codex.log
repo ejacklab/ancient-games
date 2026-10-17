@@ -1,0 +1,2629 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /home/smoke01/dev/ancient-games
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: high
+reasoning summaries: none
+session id: 01a13d3e-112a-7883-ae9e-3759fa41947f
+--------
+user
+Read runs/20261014-code-map-build/briefs/p3/r1-tests.md and do what it says.
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+I’ll read the repository instructions and the test brief, then carry out its steps.
+exec
+/bin/bash -lc 'cat CLAUDE.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# CLAUDE.md — Ancient Games
+
+## The name
+
+**The Ancient Games** — named by EJ, 2026-09-06. Its principles come from two poles: **孫子兵法** (ancient Chinese
+strategy) on one side and **game theory** on the other, with **modern military doctrine** and **complexity science**
+in between.
+
+## What this folder is for
+
+This folder is EJ's place for designing dynamic workflows for agent work, using the knowledge kept here.
+
+The Ancient Games is one framework for agent work: the workflow-design method (`.claude/skills/workflow-design/`)
+is the part that turns an incoming task into a designed workflow, and `ancient_games/` is the part that referees
+the work, with the referee's findings feeding back into the method.
+
+The method's skill is linked into both harness roots so it works in every project —
+`~/.agents/skills/workflow-design` (the user-global root the DeepSeek Harness and Codex scan) and
+`~/.claude/skills/workflow-design` (Claude Code). The knowledge below is what that skill uses.
+
+Designing a workflow means deciding, for a given task: which kinds of agents to use, what runs in sequence and what
+runs in parallel, what repeats (with its limit and stop condition), who decides who works next, how agents pass
+information and where they must not, and how each result is verified. Runnable workflows live in
+`.claude/workflows/`.
+
+When EJ brings a task or a question about a workflow, the job is to help design that workflow from this knowledge.
+Work on the referee code (`ancient_games/`) serves that purpose; it is not the goal by itself.
+
+## The knowledge here
+
+- `docs/WORKFLOW_DESIGN_METHOD.md` — the method for turning a challenge into a prompt file or a workflow design:
+  understand the challenge (objective, scope, six whys, category), readiness (with a check of the product's
+  blueprint), algorithm first, list the unclear spots, clear pieces as loops, then the graph; sequential first;
+  state-file driven. Templates in `docs/workflow-templates/`. Runnable form:
+  `.claude/workflows/intake.js` (args `{challenge, runId}`); each run writes to `runs/<runId>/`.
+- `docs/TASK_TYPES.md` — the default execution pattern, engine, check and sabotage per task category, seeded
+  combination pipelines, and the 20% challenger rule with `docs/TASK_TYPES_LEDGER.md`. The skill's
+  `scripts/design_gate.py` parses it — this file is the table's only copy (n=0 until the ledger fills).
+- `docs/WORKFLOW_DESIGN_DIAGRAM.md` — the same algorithm as diagrams: the whole flow, the blueprint check, what the
+  method takes from the referee code, and the mapping from method section numbers to the skill's steps.
+- `docs/EXECUTOR_KINDS.md` — who can run a node (method 3.1 / 3.6): the engines (Claude subagent, Codex, Antigravity `agy`, Qwen, opencode), what each is assigned, how it is called, its read-only form and structured output, and its
+  default model and effort. A node's engine choice reads this. n=0; *reported* versus *verified* marked throughout.
+- `.claude/skills/workflow-design/` — the method packaged as a skill. `SKILL.md` is the packaging and the trigger:
+  its frontmatter `description` is what makes an agent decide to use it, and its body is the method as eight steps.
+  Its method and templates are links into `docs/`, so there is one copy of each. It is the source of truth;
+  `~/.claude/skills/workflow-design` is a link to it, which makes it available in every project.
+- `20260919-state.md` — what Ancient Games can and cannot decide today about graph, loop, swarm, sequential,
+  parallel and communication patterns, and the proposed direction. Start here for workflow design.
+- `ancient_games/` — the referee: the part of the framework that referees agent work. Fixed rules, no LLM calls, a
+  journal of every decision. Five stages: Gate (how many agents), Guard (which actions need approval), Corroborate (how many independent
+  sources a claim needs), Filter (which candidates survive), Prove (is the plan cleared).
+- `PROJECT_OVERVIEW.md` — map of the code, how a run works, open findings F1–F11.
+- `SPEC.md`, `DECISIONS.md` — the referee's contract. Only EJ changes these.
+- `docs/` — design documents and ablations: what was tried, what held, what is marked n=1 and not to be built on.
+- `.claude/workflows/enhance-ancient-games.js` — a worked example of a designed workflow: dependencies between
+  segments, bounded verify/repair loops, independent verifiers.
+
+## Working with EJ here
+
+- Answer the question that was asked, in plain language, before offering options or plans.
+- Discuss first. Do not plan or run anything large until EJ says so.
+- Tests: `env -u NO_COLOR python3 -m pytest -q`
+
+### When EJ states a rule, a requirement or an algorithm
+
+Asked for by EJ, 2026-10-05: *"each time when I told you something, you will eval my statement or algo, and ask me
+what I missing, and we complete it."*
+
+**Evaluate it, do not just apply it.** Run the statement through the **`requirement-check` skill** — load it
+(`skill requirement-check`) or read `.claude/skills/requirement-check/SKILL.md` — and say which of the eight it passes and
+fails. Then **ask EJ the failing ones** and write the completed version together.
+
+The eight, by name: **who decides · one thing · unit · can it fail · weak words · level · basis · links.** Their
+definitions live in the skill — one copy, not four.
+
+**Two rules for me, learned the hard way on 2026-10-05:**
+
+- **Never fill a gap with my own value.** If the unit, threshold or test is missing, it goes to EJ as an open
+  question — inventing it is how rules become weird later. Recorded in the register as 11.1/11.2.
+- **Never add structure that was not given.** No "halves", no numbered reasons, no ordered pairs unless the person
+  said so. Quote them, state the operative sentence, stop.
+
+- **Ask only what changes the shape.** A question the template already answers, or that has an obvious default, is a
+  question I should not ask — it is "never add structure" done to *questions* instead of facts. Three of four
+  questions I asked EJ on 2026-10-06 (a large-batch cap, "may the worker refuse", the list's destination) were
+  invented problems; only one changed the template. State the sensible default and move on.
+
+### Who is this for — and who fills it in?
+
+EJ, 2026-10-05: *"have to remember we doing things for who."* **Every artifact has one maker.** A return template is
+the worker's output, so every field in it is written by the worker; a verdict is the human's decision, and it does not
+share the worker's form. Before adding a field, a step or a rule, name **who fills it** — if the answer is "someone
+else, later", it is a different artifact, not a field on this one.
+
+This is the "one thing" question applied to *people* instead of *facts*: a form that two different people fill at two
+different times is two forms.
+
+### Quotes, labels, and who wrote the check
+
+EJ, 2026-10-11: *"please add these to your memory"* — after one session in which I misled him three times. All three
+are **SHOULD** (a default, overridable with a stated reason): a presentation rule is method, and method does not
+earn MUST (RFC 2119 §6). Run through `requirement-check`: quoting and labelling failed **weak words**, naming the
+check failed **one thing** and was split in two; the trigger and the grain are EJ's answers, not mine.
+
+- **Quote when a source's own words are the evidence, and when a list is compressed into a count.** *"Current agent
+  memory splits short-term from long-term three ways"* invited EJ to read "an agent has three memory systems"; the
+  report's own line — tiers with promotion, file placement, validity windows — carries the meaning. Give the
+  source's line, or the count with its items in the same breath.
+- **Label a conclusion as *quoted* (with its id), *my reading*, or *not measured*.** It bites on a conclusion,
+  verdict, answer or summary line, never on narrative. *"The research was never the problem"* was my reading of a
+  structural check, stated as a fact.
+- **Name who wrote a check** before resting a conclusion on it.
+- **Name what that check does not establish.** A check I wrote and then passed is not independent evidence: the
+  acceptance gate's item 6 ended as a script of mine, so "6 of 6 items pass" without that sentence reads stronger
+  than it is.
+
+Basis: n=1 each, 2026-10-11 — `runs/20261011-agent-memory-graph/run-1-report.md`,
+`runs/20261011-agent-memory-graph-r2/run-2-report.md`, and the session thread. What **accepted** means is defined
+once, in `docs/WORKFLOW_DESIGN_METHOD.md` Appendix A.
+
+### Evidence lives in the project, not `/tmp`
+
+EJ, 2026-10-06. The pass-back `evidence:` path points into `runs/<run-id>/` — **SHOULD**, not MUST: a worker may
+leave evidence elsewhere with a written reason, but the default is the run's folder. **Basis: n=1** — the
+code-graph-tool run's optimize node wrote its "old-vs-new" proof to `/tmp`, it was deleted, and the fix became
+unverifiable. When evidence needs a persistent home, **suggest `runs/<run-id>/` and get the user's agreement** — do
+not pick a path silently. Scratch in `/tmp` is fine; it is the *refer-back* artifact that must not stay there.
+
+exec
+/bin/bash -lc 'cat runs/20261014-code-map-build/briefs/p3/r1-tests.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Brief — P3 round R1: write the failing tests
+
+You write the tests for one requirement of the `code-map` tool. Another engine builds the tool afterwards and must
+pass your tests without changing them.
+
+## Read first
+
+- `runs/20261014-code-map-vision-relay/result-trimmed.md`: requirement **R1** and its **Fails if** lines.
+- `runs/20261014-code-map-build/spec.md`: the command line and JSON shapes.
+- `code_map/eval/fixtures/` (you may use these projects as test inputs) and `code_map/src/` if it exists (read only).
+- Tests from earlier rounds: `code_map/test/` (do not change them).
+
+## Write
+
+Only `code_map/test/r1/*.test.ts` (`r1` in lower case). `bun test` tests that run the tool **through its
+command line** (`bun src/cli.ts ... --json`, from `code_map/`) and check the JSON against the spec. Cover every
+**Fails if** line of R1, each in at least one test whose name quotes the line. Use your own small fixture
+projects under `code_map/test/r1/fixtures/` where the evaluator's do not exercise a case; vary names and line
+positions from the evaluator's fixtures, so a tool that memorises those cannot pass.
+
+## Must not
+
+- Write nothing outside `code_map/test/r1/`. Do not write `code_map/src/`.
+- Do not install packages. Read nothing else.
+
+## Done when
+
+`bun test test/r1` runs, and every test you wrote fails or passes for a reason you can state (with no tool yet,
+they fail). Return the test names, the Fails-if line each covers, and the last lines of the run.
+
+exec
+/bin/bash -lc 'cat /home/smoke01/.agents/skills/coding-discipline/SKILL.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+---
+name: coding-discipline
+description: Baseline engineering discipline for any hands-on task in a repository. Use when writing, editing, refactoring, debugging or reviewing code, when running builds, tests or linters, when adding a dependency, or when preparing a git commit.
+---
+
+# Coding discipline
+
+Baseline rules for working in a repository. They apply regardless of language,
+framework or project.
+
+## Before changing anything
+
+- Read the actual file first. Never write or edit from an assumption about its contents.
+- Read a neighbouring example of the same kind of thing — a sibling module, an existing
+  test, an existing endpoint — and match it. The repository's own conventions outrank
+  your preferences on naming, formatting, typing, file layout and error style.
+- Confirm a dependency is already in use in the project, via its manifest, existing
+  imports or neighbouring code, before reaching for it. Do not add a new dependency to
+  solve something the existing ones already cover.
+
+## Keep the change minimal
+
+- Do the task that was asked. Not the adjacent task, not the cleanup you noticed on the
+  way past, not the refactor that would leave this nicer than you found it.
+- No speculative abstraction. Three similar lines beat a helper with one caller.
+- No error handling, fallbacks or validation for conditions that cannot occur. Validate
+  at boundaries only: user input, external APIs, data arriving from outside the process.
+- Comments explain *why*, and only where the code cannot carry it. No comment that
+  narrates what the next line does, and never a comment addressed to the reader about
+  the changes you are making.
+- Existing code you did not expect to find is someone's in-progress work. Leave it alone
+  unless the task requires otherwise, and stop to ask if it conflicts with what you were
+  asked to do.
+
+## Verify instead of assuming
+
+- Find the project's real check commands from its README, Makefile or package manifest.
+  Never assume `npm test`, `pytest` or `make build` is correct for this repo.
+- Run them after the change. A change you did not run is a change you did not finish.
+- Report what actually happened. If a check failed, show the failure. If you could not
+  run a check, say so and say why. Never describe unverified work as working, and never
+  skip, suppress or weaken a failing check to produce a clean result.
+
+## Git
+
+- Before committing, run `git status`, `git diff HEAD` and `git log -n 3` — to separate
+  your change from what was already in the working tree, and to match the repository's
+  commit message style.
+- Stage only the paths that belong to this change. No `git add -A` while unrelated
+  modifications are present.
+- Draft the commit message yourself, weighted toward why rather than what.
+- Never push, force-push, amend a published commit, delete a branch, or rewrite history
+  unless explicitly asked to in this conversation. Prior approval does not carry over to
+  a later commit.
+- Do not revert work that is not yours. Revert your own change only if it caused a
+  failure or you are asked to.
+- For history questions, `git log` and `git blame` are authoritative. Run the command
+  rather than reasoning from memory of the codebase.
+
+## When blocked or unsure
+
+- Ask one focused question when only the user can decide, and keep it to a single round.
+- Otherwise choose the safe default, do the work, and state which default you chose so
+  it can be corrected.
+- Investigate before working around an obstacle: read the error, check your assumption,
+  address the root cause. Do not bypass a guard, a lock or a failing check just to make
+  the obstacle go away.
+- Clean up scratch files you created. Leave the working tree containing only the change
+  you were asked for.
+
+codex
+I’m applying the coding-discipline skill for this test-writing task. I’ll keep all changes under `code_map/test/r1/` and run the tests through the CLI as the brief requires.
+exec
+/bin/bash -lc 'cat runs/20261014-code-map-build/spec.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# code-map — spec v1 (P2, written by the COO)
+
+Requirements: `runs/20261014-code-map-vision-relay/result-trimmed.md` (accepted). This spec fixes the interface so
+that the evaluator and the build agree. It prescribes internals only where the probe showed what works
+(`evidence/p1-callhierarchy-summary.md`, `evidence/p1-experiments-summary.md`).
+
+## Package
+
+- **Location:** `code_map/` in this repo, a TypeScript package named `code-map`.
+- **Runs with:** `bun code_map/src/cli.ts`. Tests use `bun test`, and type checking uses `bunx tsgo --noEmit`.
+- **Runtime dependency:** `typescript` 5.8.2 only. P0 showed that it compiles opencode core. No other runtime
+  dependency.
+
+## Command line
+
+```
+code-map <command> --project <tsconfig.json> [--root <dir>] [--tests <glob>]... [--json] [options]
+```
+
+- `--project` takes a tsconfig. It may be repeated, and the tool then builds one program from all of them.
+- `--root` is the directory that every output path is relative to. The default is the current directory.
+- `--tests <glob>` names the test files, relative to `--root`, and may be repeated. **Which files are test files is
+  set by the user.** The tool has no default. With no `--tests`, no file is a test file, and every answer whose
+  content would change carries the limit `{reason: "other", text: "no test-file pattern given"}`.
+
+| Command | Answers | Requirement |
+|---|---|---|
+| `where <name>` | every definition matching the name (`Permission.assert` or `assert`), with `ambiguous` | A1, A5 |
+| `find "<code or words>"` | the places that match exact code text, or ranked matches for a description over names, comments and strings, with `ambiguous` | A2 |
+| `callers <file:line \| name>` | one level up, with each call site | A1, A2 |
+| `callees <file:line \| name>` | one level down, with each call site | A1, A2 |
+| `chain <file:line> [--up N] [--down N]` | the caller and callee chains. The default depth is 6 each way, and the place itself is level 0 | A2 |
+| `tests <file:line \| name> [--fake-rule count\|exclude]` | the tests that reach the function through static links | A3 |
+| `tests --file <path> --per-function` | the per-function report for a whole file. It runs only with `--per-function` | A3 |
+| `map <path>... [--siblings <glob>]...` | the module map of one or more folders or files | A1 |
+
+- **Text output** is the default and is compact, for an agent. `--json` gives the same content as JSON (shapes
+  below).
+- **One question per run** (A5). No command prints the whole repository. `map` prints a module only because the
+  user asked for it.
+- When `where`, `callers`, `callees`, `chain` or `tests` is given a name that matches more than one definition,
+  the tool answers nothing and returns the candidates with `ambiguous: true`, exactly as `where` does.
+
+## JSON shapes
+
+```ts
+type Loc = { file: string; line: number; endLine?: number }      // file relative to --root, lines 1-based
+type Node = Loc & { name: string; kind: "function" | "method" | "arrow" | "effect-fn" | "property" | "class"
+                    | "variable" | "interface-member" | "other" }
+type Limit = { at?: Loc; reason: "depth" | "dynamic" | "outside-repo" | "other-process" | "not-found" | "seen"
+               | "other"; text?: string; ref?: Loc }               // "seen": ref points to where it is shown
+type Candidate = Node & { testFake: boolean }                     // testFake: the file matches --tests
+type Link = {
+  from: Node; site: Loc; kind: "call" | "new" | "service-call"
+  declaration?: Loc                                               // what the type checker says the callee is
+  resolution: "implementation" | "ambiguous" | "unresolved"
+  to?: Node                                                       // only when resolution is "implementation"
+  candidates: Candidate[]                                         // every implementation the lookup found
+  via: "definition" | "implementation-lookup"
+  reason?: string                                                 // required when "unresolved"
+}
+type Answer = {
+  command: string; query: string[]
+  ambiguous?: boolean; matches?: Node[]                           // where, find, and any ambiguous name
+  links?: Link[]                                                  // callers, callees
+  chain?: { up: ChainStep[]; down: ChainStep[] }                  // chain
+  tests?: TestsAnswer                                             // tests
+  map?: ModuleMap                                                 // map
+  limits: Limit[]
+  empty?: "none found by static analysis"                         // present exactly when the result is empty
+}
+type ChainStep = { level: number; link: Link; children: ChainStep[]; stop?: Limit }
+type TestCase = { file: string; line: number; name: string; path: Link[]; throughFake: boolean }
+type TestsAnswer = { label: "static-call-path"; count: number; tests: TestCase[]; undecided: TestCase[] }
+type ModuleMap = {
+  definitions: Node[]; links: Link[]
+  entries: { fn: Node; steps: Step[] }[]
+  siblings?: { members: string[]; rows: { concern: string; status: "shared" | "varies" | "unclear";
+               cells: { member: string; text: string; at: Loc }[] }[] }
+}
+type Step = { kind: "call" | "if" | "else" | "loop" | "try" | "catch" | "return" | "yield*"; at: Loc;
+              text: string; children?: Step[] }
+```
+
+## Call links (R2)
+
+| Kind | How it is found |
+|---|---|
+| Direct call or `new` | the type checker's definition, then its implementation (`via: "definition"`) |
+| Call on an injected service (Effect `yield* X.Service`, then `x.method(...)`) | the type checker's implementation lookup on the member (`via: "implementation-lookup"`). The probe showed `edit.ts:275` → `permission.ts:231` |
+| Callers of a function | references to its declaration and to its interface member. Only a reference that is called is a caller (E1: a `Service.of` shorthand is not) |
+| The enclosing function of a call site | the nearest function, method or arrow, named by the `const x = Effect.fn(...)` or the property that holds it. E1 found 17 of 18 calls in anonymous bodies |
+
+Resolution, over the candidates that are **not** test fakes:
+- exactly one → `implementation`, and `to` is that one;
+- more than one → `ambiguous`;
+- none → `unresolved`, with a reason.
+
+Test fakes stay in `candidates` with `testFake: true` and never change the resolution. The tool has no rule for
+Effect service wiring. A declaration is never `to`.
+
+## Call chain (A2)
+
+- The place is level 0. Up and down each stop at the depth given (default 6), with `stop: {reason: "depth"}`.
+- A function reached a second time is not expanded again. Its step carries `stop: {reason: "seen", ref}`, where
+  `ref` is the location where it is shown.
+- When `find` returns several places, the **agent** picks the one that fits the question, runs `chain` on it, and
+  names the others in its answer. The tool's part is to list every candidate with `ambiguous: true`. The agent's part
+  is checked in P6, not by the evaluator.
+
+## Tests (A3)
+
+- **A test** is one `test(...)`, `it(...)` or `describe`-nested test call in a test file (`--tests`), named by its
+  first argument. `count` counts test cases.
+- A test reaches the function when a chain of links runs from the test's body to the function. `path` is that
+  chain, and each link is its evidence.
+- `throughFake` is true when the path passes a `service-call` link whose candidates include a test fake.
+- **The fake rule is set by the user:**
+  - `--fake-rule count`: tests with `throughFake` are counted and listed in `tests`;
+  - `--fake-rule exclude`: they are left out of both `tests` and `undecided`;
+  - with no `--fake-rule`, they go in `undecided`, are not counted, and the answer carries the limit
+    `{reason: "other", text: "fake rule not set (A3)"}`.
+- `count` always equals `tests.length`.
+
+## Module map (A1)
+
+- **definitions:** every function, method, class and `Effect.fn` constant in the paths given.
+- **links:** calls made from inside the module, to anywhere.
+- **entries:** an entry function is one that is exported and called from outside the paths given. Each entry has its
+  steps in source order, with every step's full text (wrapped, never cut).
+- **siblings:** set by the user with `--siblings <glob>`, repeatable, one glob per sibling group. With no
+  `--siblings`, there is no sibling table, and the answer carries the limit
+  `{reason: "other", text: "no sibling rule given (A1)"}`. Each row is a concern: `shared`, `varies`, or `unclear`
+  when the tool cannot settle it.
+- **Every claim has a location.**
+
+## Never
+
+- **R1 Executes nothing.** The tool never imports, requires or runs a file of the target project. It reads files and
+  builds a TypeScript program only.
+- **R3 Stays offline, writes only its output.** It opens no network connection and writes no file except to stdout
+  and, when `--out` is given, that one file.
+- **Stores nothing in the target.** Every run is rebuilt from the files.
+
+## Evaluator (`code_map/eval/`, built by Codex, not by the builder)
+
+- **Command:** `bun code_map/eval/run.ts --tool "<command that runs code-map>" [--cases <file>]... --out <dir>`.
+  It runs the tool as a black box through its `--json` output, so a broken copy of the tool can be checked the same
+  way.
+- **One check per Fails-if line** of R1, R2, R3, A1, A2, A3, A5, A6 and L1, on two kinds of input:
+  - fixture projects in `code_map/eval/fixtures/`, each written so that one Fails-if line can fire;
+  - case files (`--cases`, JSON, format below) that hold questions about a real project and their expected answers.
+    The evaluator ships the format and one small example case file over its own fixtures. Case files for opencode
+    are written by the COO and kept away from builders.
+- **Reports** MET, NOT MET or NOT CHECKED per requirement and per Fails-if line, with totals, as `report.json` and
+  `report.md`. A requirement is MET only when every one of its lines is MET. A line that no input exercises is
+  NOT CHECKED, never MET.
+- **R1:** a fixture whose top level writes a marker file. After `map`, `chain`, `tests` and `callers` run, no marker
+  may exist.
+- **R3:** the tool runs under `unshare -rn` (E5), and a connection attempt is a failure. The evaluator also lists
+  the files changed under `--root` and in the working directory before and after each run. Any change is a failure.
+- **A2's naming of the other candidates** and **A5's "unasked whole map"** are agent behaviour. The evaluator
+  checks the tool's part (every candidate listed; no command dumps more than asked) and marks the agent's part
+  NOT CHECKED, pointing to P6.
+- **A6:** the opencode case files for the three modules. A6 is MET when `map` on each module passes A1's checks.
+- **L2** is not the evaluator's. It is the P5 measurement.
+
+### Case file format
+
+```json
+{
+  "project": ["packages/core/tsconfig.json"], "root": ".", "tests": ["packages/core/test/**"],
+  "cases": [
+    { "id": "X1", "requirement": "R2", "line": "an implementation the lookup finds has no link",
+      "args": ["callees", "src/a.ts:10"],
+      "expect": { "includes": [{ "path": "links[].to", "file": "src/b.ts", "line": 4 }],
+                  "excludes": [], "equals": [], "ambiguous": null, "limitReasons": [] } }
+  ]
+}
+```
+
+- `includes`: objects with `file` and `line` that must be found at `path` (a simple dotted path; `[]` means any
+  element; `children` is searched at any depth).
+- `excludes`: the same form, for objects that must not be found there.
+- `equals`: `{path, value}` pairs.
+- `ambiguous`: `true`, `false`, or `null` (not checked).
+- `limitReasons`: reasons that must appear in `limits` or in a `stop`.
+
+The `tests` value in a case file is the test-file pattern the case runs with. What counts as a test file is open
+for EJ (R2), so the opencode case files use opencode's own `test/` folders until EJ sets the rule.
+
+exec
+/bin/bash -lc 'cat runs/20261014-code-map-vision-relay/result-trimmed.md' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+# Code map — vision and core requirements
+
+## Vision
+
+The code map is a simple TypeScript tool for an agent developing and reviewing apps and tools. It reads repository
+source without running it and produces a map of a module's logic. The map covers:
+- definitions;
+- callers and callees;
+- flows, with their decisions;
+- what sibling implementations share and where they differ;
+- the tests that reach each function.
+
+The agent uses the map to understand the logic, track changes, and prepare a template and open questions for the
+next sibling implementation from the map's sibling table.
+
+The aim: answer a module's questions when its code is too large to read in full, with fewer tokens than reading it,
+and say plainly when reading is cheaper. The first target is opencode: about 899,000 lines of
+TypeScript and TSX.
+
+It is written in TypeScript because opencode's calls go through typed, injected services (Effect's
+`yield* Permission.Service`), which a syntax-only reader cannot follow.
+
+## Core requirements
+
+A requirement the tool does not meet stays here and is reported **NOT MET**.
+
+- **R1 Reads, never runs.** Built from source and type information; no repository code is executed.
+  **Fails if:** mapping a fixture whose top level writes a marker creates that marker.
+
+- **R2 Follows calls by type.** A call through an injected service or an interface links to the declaration that the
+  type checker establishes. It also links to every implementation the type checker's implementation lookup finds.
+  An implementation in a test file is labelled a test fake, with its file, and does not make the target ambiguous.
+  When the lookup finds no implementation outside test files, the tool marks the target unresolved; when it finds
+  more than one, it marks the target ambiguous and lists them all.
+  **Fails if:** any of these happens:
+  - an implementation the lookup finds has no link;
+  - a declaration is presented as proof of an implementation;
+  - a test fake is unlabelled or presented as the real implementation;
+  - an unresolved or ambiguous target is unmarked.
+
+- **R3 Keeps private code private.** The user names the private paths. Their code, and maps made from it, stay on
+  the machine: they are never put in git, sent to outside engines, or submitted for training.
+  **Fails if:** protected content leaves the machine or enters git.
+
+- **A1 The map of a module.** Given a folder or package chosen by the user, the tool returns:
+  - its definitions;
+  - callers and callees;
+  - its entry flows, as ordered steps with their decisions; an entry function is one that is exported and called
+    from outside the folder;
+  - a table of what siblings share and where they differ, when sibling implementations exist. Which files are
+    siblings is decided by a fixed rule the user sets.
+
+  Every claim gives its file and lines.
+  **Fails if:** a claim lacks its location or contradicts the code, or a checked example misses a known item.
+
+- **A2 The call chain through one place.** Given code or a description, the tool locates the place and returns its
+  caller and callee chains, counted in levels from the place. The user sets the depth each way; when the user does
+  not, it is six. When more than one place matches, the tool flags the match as ambiguous; the agent picks the place
+  that fits the question best, builds its chain, and names every other candidate it did not build. Each link gives
+  its kind and location. A function reached twice is shown once, with a reference back.
+  **Fails if:** any of these happens:
+  - a known place is not found;
+  - an ambiguous match is treated as certain, or a candidate not built is not named;
+  - a known link within the depth is missing, or a shown link contradicts the code;
+  - a link lacks its kind or location;
+  - a function reached twice is shown twice.
+
+- **A3 Tests that reach a function.** For a function, the tool returns the count and the list of tests linked to it
+  through the code, with the evidence for each link. Static links are never called execution coverage. Whether a
+  test that replaces a service with a fake reaches the real function is decided by a fixed rule the user sets.
+  For a whole file, the per-function report runs only when the user asks for it; the agent asks the user before
+  requesting it.
+  **Fails if:** any of these happens:
+  - the count differs from the list, or a link lacks its evidence;
+  - a test with a known path is missing;
+  - static links are called coverage;
+  - the per-function file report runs without the user's request.
+
+- **A5 One question, one answer.** A specific question gets that answer with its evidence and limits, not a
+  whole-map dump. A whole map is produced only when the user asks for a module map.
+  **Fails if:** an answer comes only inside a dump or without its evidence or limits, or a whole map is produced
+  unasked.
+
+- **A6 Three opencode module maps.** The tool produces maps that meet A1 for three opencode modules:
+  `packages/core/src/session`, `packages/core/src/tool` with `packages/core/src/permission.ts`, and `packages/ai`.
+  **Fails if:** fewer than three modules are mapped, or a map fails A1.
+
+- **L1 Says where it stops.** Every answer or branch that stops early names why: the depth the user set, dynamic
+  behaviour, outside the repository, another process, not found, or another stated reason. An empty result means
+  nothing was found by this analysis, never that nothing exists.
+  **Fails if:** a branch stops early without a reason, or an empty result is presented as proof of absence.
+
+- **L2 Reports its cost against reading.** On the same module and the same questions, the tool is compared with the
+  same agent, on the same model, reading and grepping the code. Correctness is judged against answer keys written by
+  a different agent, by a method other than the tool's, before either side answers. The comparison reports:
+  - correctness;
+  - total tokens, including the cost of building the map;
+  - elapsed time.
+
+  It says plainly when the map costs more.
+  **Fails if:** it leaves out correctness, the build cost, the reading tokens or the time, or hides a worse result.
+
+exec
+/bin/bash -lc 'rg --files code_map/eval/fixtures code_map/src code_map/test' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+code_map/test/eval/run.test.ts
+code_map/test/eval/report.test.ts
+code_map/test/eval/contract.test.ts
+code_map/test/eval/holdout.test.ts
+code_map/test/eval/matcher.test.ts
+code_map/eval/fixtures/marker/main.testcase.ts
+code_map/eval/fixtures/marker/main.ts
+code_map/eval/fixtures/marker/tsconfig.json
+code_map/eval/fixtures/marker/throws.ts
+code_map/eval/fixtures/map/support.ts
+code_map/eval/fixtures/map/siblings/right.ts
+code_map/eval/fixtures/map/siblings/left.ts
+code_map/eval/fixtures/map/tsconfig.json
+code_map/eval/fixtures/ambiguity/one.ts
+code_map/eval/fixtures/ambiguity/two.ts
+code_map/eval/fixtures/ambiguity/use.ts
+code_map/eval/fixtures/ambiguity/tsconfig.json
+code_map/eval/fixtures/ambiguity/api.ts
+code_map/eval/fixtures/typed-twins/live.ts
+code_map/eval/fixtures/typed-twins/use.ts
+code_map/eval/fixtures/typed-twins/fake.specimen.ts
+code_map/eval/fixtures/typed-twins/tsconfig.json
+code_map/eval/fixtures/typed-twins/api.ts
+code_map/eval/fixtures/computed/use.ts
+code_map/eval/fixtures/computed/tsconfig.json
+code_map/eval/fixtures/outside.ts
+code_map/eval/fixtures/services/api.ts
+code_map/eval/fixtures/services/use.ts
+code_map/eval/fixtures/classified/use.ts
+code_map/eval/fixtures/unresolved/use.ts
+code_map/eval/fixtures/unresolved/tsconfig.json
+code_map/eval/fixtures/services/layer.ts
+code_map/eval/fixtures/services/permission.testcase.ts
+code_map/eval/fixtures/services/tsconfig.json
+code_map/eval/fixtures/classified/tsconfig.json
+code_map/eval/fixtures/classified/implementations/right.ts
+code_map/eval/fixtures/classified/implementations/left.ts
+code_map/eval/fixtures/named-tests/checks.specimen.ts
+code_map/eval/fixtures/named-tests/tsconfig.json
+code_map/eval/fixtures/chain/logic.testcase.ts
+code_map/eval/fixtures/named-tests/target.ts
+code_map/eval/fixtures/chain/deep.ts
+code_map/eval/fixtures/chain/logic.ts
+code_map/eval/fixtures/chain/tsconfig.json
+
+exec
+/bin/bash -lc 'cat code_map/eval/fixtures/marker/main.ts code_map/eval/fixtures/marker/main.testcase.ts code_map/eval/fixtures/marker/throws.ts code_map/eval/fixtures/marker/tsconfig.json' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+declare const Bun: { write(path: URL, value: string): Promise<number> };
+await Bun.write(new URL("./EXECUTED.marker", import.meta.url), "repository executed");
+export function markerLeaf() { return 1; }
+export function markerEntry() { return markerLeaf(); }
+import { markerEntry } from "./main";
+declare function test(name: string, body: () => void): void;
+test("marker entry", () => { markerEntry(); });
+export {};
+declare const Bun: { write(path: URL, value: string): Promise<number> };
+await Bun.write(new URL("./EXECUTED.marker", import.meta.url), "throwing source executed");
+export function throwEntry() { return 1; }
+throw new Error("fixture top level must never run");
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "types": []
+  },
+  "include": [
+    "**/*.ts"
+  ]
+}
+
+exec
+/bin/bash -lc 'cat code_map/test/eval/contract.test.ts code_map/test/eval/run.test.ts' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { validateAnswer } from "../../eval/contract.ts";
+import { matchAnswer } from "../../eval/matcher.ts";
+import { validateCaseFile } from "../../eval/case-file.ts";
+
+const evalDir = resolve(import.meta.dir, "../../eval");
+const suite = validateCaseFile(JSON.parse(readFileSync(resolve(evalDir, "cases/fixtures.json"), "utf8")));
+const canned = (id: string): any => JSON.parse(readFileSync(resolve(evalDir, "stub/answers", id + ".json"), "utf8"));
+function failures(id: string, mutate: (answer: any) => void) {
+  const answer = canned(id); mutate(answer);
+  const sample = suite.cases.find(sample => sample.id === id)!;
+  return [...matchAnswer(answer, sample.expect), ...validateAnswer(answer, sample.args, sample.tests ?? suite.tests, resolve(evalDir, "fixtures"))];
+}
+
+describe("independent fixture checks", () => {
+  for (const sample of suite.cases) test(`correct canned ${sample.id}`, () => {
+    const answer = canned(sample.id);
+    if (["R1", "R3"].includes(sample.requirement)) return;
+    if (sample.format === "text") {
+      const text = answer.matches.map((node: any) => `${node.name} — ${node.file}:${node.line}`).join("\n");
+      expect(matchAnswer(text, sample.expect)).toEqual([]); return;
+    }
+    expect(matchAnswer(answer, sample.expect)).toEqual([]);
+    expect(validateAnswer(answer, sample.args, sample.tests ?? suite.tests, resolve(evalDir, "fixtures"))).toEqual([]);
+  });
+  const mutations: [string, string, (answer: any) => void][] = [
+    ["missing implementation", "R2-all-implementations", a => a.links[0].candidates.pop()],
+    ["declaration as implementation", "R2-declaration", a => a.links[0].to = { ...a.links[0].to, file: "services/api.ts", line: 2 }],
+    ["fake loses label", "R2-test-fake", a => delete a.links[0].candidates[1].testFake],
+    ["fake as real", "R2-test-fake", a => a.links[0].to = a.links[0].candidates[1]],
+    ["ambiguous unmarked", "R2-ambiguous", a => a.links[0].resolution = "implementation"],
+    ["unresolved unmarked", "R2-unresolved", a => delete a.links[0].resolution],
+    ["unresolved without reason", "R2-unresolved", a => delete a.links[0].reason],
+    ["missing map location", "A1-module-siblings", a => delete a.map.definitions[0].line],
+    ["map contradicts code", "A1-module-siblings", a => a.map.entries[0].steps[1].text = "return value + 9;"],
+    ["missing definition", "A1-module-siblings", a => a.map.definitions.pop()],
+    ["missing sibling", "A1-module-siblings", a => a.map.siblings.members.pop()],
+    ["known place missing", "A2-find-known", a => a.matches = []],
+    ["ambiguity treated as certainty", "A2-ambiguous-find", a => a.ambiguous = false],
+    ["unnamed candidate", "A2-ambiguous-find", a => a.matches.pop()],
+    ["known chain link missing", "A2-known-chain", a => a.chain.down[0].children = []],
+    ["missing link kind", "A2-link-kind-location", a => delete a.chain.down[0].link.kind],
+    ["missing link location", "A2-link-kind-location", a => delete a.chain.down[0].link.site],
+    ["duplicate function expanded", "A2-shared-once", a => delete a.chain.down[0].children[1].stop],
+    ["bad seen ref", "A2-shared-once", a => a.chain.down[0].children[1].stop.ref.line = 99],
+    ["depth exceeded", "A2-default-six-down", a => a.chain.down[0].level = 7],
+    ["count differs", "A3-count-evidence", a => a.tests.count = 9],
+    ["no test evidence", "A3-count-evidence", a => a.tests.tests[0].path = []],
+    ["disconnected test evidence", "A3-count-evidence", a => a.tests.tests[0].path[1].from.line = 42],
+    ["known test missing", "A3-known-path", a => a.tests.tests = []],
+    ["coverage label", "A3-static-label", a => a.tests.label = "execution coverage"],
+    ["fake counted without rule", "A3-fake-unset", a => { a.tests.tests = a.tests.undecided; a.tests.undecided = []; a.tests.count = 1; }],
+    ["fake rule limit missing", "A3-fake-unset", a => a.limits = []],
+    ["file report unasked", "A3-no-file-report", a => a.tests = { label: "static-call-path", count: 0, tests: [], undecided: [] }],
+    ["whole map unasked", "A5-specific-answer", a => a.map = canned("A1-module-siblings").map],
+    ["answer limits missing", "A5-specific-answer", a => delete a.limits],
+    ["unknown whole-repo payload", "A5-specific-answer", a => a.repositoryDump = {}],
+    ["empty proves absence", "L1-empty", a => a.empty = "nothing exists"],
+    ["early branch no reason", "L1-depth-zero", a => a.limits = []],
+    ["nonempty marked empty", "A5-specific-answer", a => a.empty = "none found by static analysis"],
+  ];
+  for (const [name, id, mutate] of mutations) test(`rejects ${name}`, () => {
+    expect(failures(id, mutate).length).toBeGreaterThan(0);
+  });
+});
+
+// These use contract/source checks alone so unrelated case equalities cannot hide a validation gap.
+describe("source relationships", () => {
+  function check(id: string, mutate: (answer: any) => void) {
+    const answer = canned(id); mutate(answer);
+    const sample = suite.cases.find(sample => sample.id === id)!;
+    return validateAnswer(answer, sample.args, sample.tests ?? suite.tests, resolve(evalDir, "fixtures"));
+  }
+  const mutations: [string, string, (answer: any) => void][] = [
+    ["sibling text at wrong source location", "A1-module-siblings", a => a.map.siblings.rows[0].cells[0].text = "return value + 1;"],
+    ["flow text at wrong source location", "A1-module-siblings", a => a.map.entries[0].steps[1].text = "return value + 9;"],
+    ["chain first down link detached from query", "A2-known-chain", a => a.chain.down[0].link.from.line = 4],
+    ["chain child detached from parent", "A2-known-chain", a => a.chain.down[0].children[0].link.from.line = 4],
+    ["chain first up link detached from query", "A2-default-six-up", a => { a.chain.up[0].link.to.line = 8; a.chain.up[0].link.candidates[0].line = 8; }],
+    ["chain up child detached from parent", "A2-default-six-up", a => { a.chain.up[0].children[0].link.to.line = 7; a.chain.up[0].children[0].link.candidates[0].line = 7; }],
+    ["test path starts outside test", "A3-count-evidence", a => a.tests.tests[0].path[0].from.line = 2],
+    ["test path ends at wrong function", "A3-count-evidence", a => { const last = a.tests.tests[0].path.at(-1); last.to.line = 4; last.candidates[0].line = 4; }],
+    ["test path links do not join", "A3-count-evidence", a => a.tests.tests[0].path[1].from.line = 4],
+    ["test site is not a call on the source line", "A3-count-evidence", a => a.tests.tests[0].path[0].site.line = 2],
+    ["test site belongs to another function", "A3-count-evidence", a => a.tests.tests[0].path[1].site.line = 4],
+    ["chain section in where response", "A5-specific-answer", a => a.chain = { up: [], down: [] }],
+    ["links section in where response", "A5-specific-answer", a => a.links = []],
+  ];
+  for (const [name, id, mutate] of mutations) test(`rejects ${name}`, () => expect(check(id, mutate).length).toBeGreaterThan(0));
+  test("trailing whitespace allowed, internal whitespace and truncation rejected", () => {
+    expect(check("A1-module-siblings", a => a.map.siblings.rows[0].cells[0].text += " \t")).toEqual([]);
+    expect(check("A1-module-siblings", a => a.map.siblings.rows[0].cells[0].text = "if (value<0) return 0;").length).toBeGreaterThan(0);
+    expect(check("A1-module-siblings", a => a.map.siblings.rows[0].cells[0].text = "if (value < 0)").length).toBeGreaterThan(0);
+  });
+  test("known sibling classification cannot be unclear", () => expect(failures("A1-shared-and-varies", a => a.map.siblings.rows[0].status = "unclear").length).toBeGreaterThan(0));
+  test("computed call must state dynamic limit", () => expect(failures("A2-computed-member", a => a.limits = []).length).toBeGreaterThan(0));
+  test("blanket limit is rejected on complete answer", () => expect(failures("L1-no-blanket-limit", a => a.limits = [{ reason: "dynamic" }]).length).toBeGreaterThan(0));
+});
+import { afterEach, expect, test } from "bun:test";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { evaluate, parseArguments } from "../../eval/run.ts";
+import { captureProcess, shellQuote, snapshotFiles, compareSnapshots } from "../../eval/process.ts";
+import { requirementLines } from "../../eval/requirements.ts";
+import { loadCaseFile } from "../../eval/case-file.ts";
+
+const packageDir = resolve(import.meta.dir, "../..");
+const evalDir = resolve(packageDir, "eval");
+const casePath = resolve(evalDir, "cases/fixtures.json");
+const tool = `${shellQuote(process.execPath)} ${shellQuote(resolve(evalDir, "stub/stub.ts"))}`;
+const scratchPaths: string[] = [];
+async function scratch() {
+  const path = await mkdtemp(resolve(import.meta.dir, ".scratch-"));
+  scratchPaths.push(path); return path;
+}
+afterEach(async () => {
+  for (const path of scratchPaths.splice(0)) await rm(path, { recursive: true, force: true });
+});
+
+test("CLI options accept repeated cases, use fixtures by default, reject unknown/missing options", () => {
+  expect(parseArguments(["--tool", "bun tool.ts", "--out", "out"]).cases).toEqual([casePath]);
+  expect(parseArguments(["--cases", "a.json", "--tool", "bun tool.ts", "--cases", "b.json", "--out", "out"]).cases).toEqual(["a.json", "b.json"]);
+  expect(() => parseArguments(["--tool", "bun tool.ts"])).toThrow();
+  expect(() => parseArguments(["--tool", "bun tool.ts", "--out"])).toThrow();
+  expect(() => parseArguments(["--unknown", "x"])).toThrow();
+});
+
+test("shell arguments preserve metacharacters as literal data", async () => {
+  const cwd = await scratch();
+  const value = "line\n' ; $(touch ACCIDENTAL_WRITE) `touch ACCIDENTAL_WRITE`";
+  const script = 'console.log(JSON.stringify(process.argv.slice(1)))';
+  const result = await captureProcess(["sh", "-c", `${shellQuote(process.execPath)} -e ${shellQuote(script)} ${shellQuote(value)}`], cwd);
+  expect(result.exitCode).toBe(0);
+  expect(JSON.parse(result.stdout)).toEqual([value]);
+  expect(await Bun.file(resolve(cwd, "ACCIDENTAL_WRITE")).exists()).toBe(false);
+});
+
+test("filesystem snapshots find same-size edits, additions, deletions and symlink changes", async () => {
+  const cwd = await scratch();
+  await writeFile(resolve(cwd, "edit"), "one");
+  await writeFile(resolve(cwd, "remove"), "old");
+  await symlink("edit", resolve(cwd, "link"));
+  const before = await snapshotFiles([cwd, cwd]);
+  await writeFile(resolve(cwd, "edit"), "two");
+  await rm(resolve(cwd, "remove"));
+  await writeFile(resolve(cwd, "added"), "new");
+  await rm(resolve(cwd, "link"));
+  await symlink("added", resolve(cwd, "link"));
+  const changes = compareSnapshots(before, await snapshotFiles([cwd]));
+  for (const [name, change] of [["edit", "modified"], ["remove", "removed"], ["added", "added"], ["link", "modified"]] as const) {
+    expect(changes).toContainEqual({ path: resolve(cwd, name), change });
+  }
+});
+
+test("full stub run reports all exercised lines MET, A6/L2 NOT CHECKED, and preserves process evidence", async () => {
+  const cwd = await scratch();
+  const report = await evaluate({ tool, cases: [casePath], out: resolve(cwd, "report"), cwd });
+  const available = report.isolationProbe.exitCode === 0;
+  expect(report.totals.cases["NOT MET"]).toBe(0);
+  expect(report.totals.lines.MET).toBe(available ? 18 : 17);
+  expect(report.totals.lines["NOT CHECKED"]).toBe(available ? 2 : 3);
+  for (const requirement of report.requirements) {
+    if (requirement.requirement === "A6" || requirement.requirement === "L2" || (requirement.requirement === "R3" && !available)) expect(requirement.status).toBe("NOT CHECKED");
+    else expect(requirement.status).toBe("MET");
+  }
+  expect(report.cases).toHaveLength((await loadCaseFile(casePath)).cases.length);
+  expect(report.cases.every(result => result.process.exitCode === 0 && result.process.stdout.length > 0 && result.changedFiles.length === 0)).toBe(true);
+  expect(await Bun.file(resolve(cwd, "report/report.md")).exists()).toBe(true);
+  const persisted = JSON.parse(await readFile(resolve(cwd, "report/report.json"), "utf8"));
+  expect(persisted.totals).toEqual(report.totals);
+  expect(persisted.uncheckedParts.every((part: any) => part.status === "NOT CHECKED")).toBe(true);
+}, 30_000);
+
+test("breaking an editable canned answer is detected even for duplicate commands", async () => {
+  const cwd = await scratch();
+  const answerPath = resolve(evalDir, "stub/answers/R2-test-fake.json");
+  const original = await readFile(answerPath, "utf8");
+  const broken = JSON.parse(original); broken.links[0].candidates[1].testFake = false;
+  try {
+    await writeFile(answerPath, JSON.stringify(broken));
+    const loaded = await loadCaseFile(casePath);
+    const caseFile = resolve(cwd, "cases.json");
+    await writeFile(caseFile, JSON.stringify({ ...loaded, cases: loaded.cases.filter(sample => sample.id === "R2-test-fake") }));
+    const report = await evaluate({ tool, cases: [caseFile], out: resolve(cwd, "report"), cwd });
+    expect(report.cases[0]!.status).toBe("NOT MET");
+    expect(report.cases[0]!.process.stderr).toContain("Conflicting canned answers");
+    expect(report.cases[0]!.failures.length).toBeGreaterThan(0);
+  } finally { await writeFile(answerPath, original); }
+}, 30_000);
+
+test("R1 executes the marker check, detects an importing tool and removes the marker", async () => {
+  const cwd = await scratch();
+  const importingTool = resolve(cwd, "importing-tool.ts");
+  await writeFile(importingTool, `await import(${JSON.stringify(resolve(evalDir, "fixtures/marker/main.ts"))});\nconsole.log(JSON.stringify({command: 'map', limits: [], empty: 'none found by static analysis'}));\n`);
+  const loaded = await loadCaseFile(casePath);
+  const originalCase = loaded.cases.find(sample => sample.id === "R1-map")!;
+  const caseFile = resolve(cwd, "cases.json");
+  await writeFile(caseFile, JSON.stringify({ ...loaded, cases: [{ ...originalCase,
+    expect: { includes: [], excludes: [], equals: [], ambiguous: null, limitReasons: [] } }] }));
+  const report = await evaluate({ tool: `${shellQuote(process.execPath)} ${shellQuote(importingTool)}`, cases: [caseFile], out: resolve(cwd, "report"), cwd });
+  expect(report.cases[0]!.markerCreated).toBe(true);
+  expect(report.requirements.find(item => item.requirement === "R1")!.status).toBe("NOT MET");
+  expect(report.cases[0]!.failures.some(failure => failure.path === "$marker")).toBe(true);
+  expect(await Bun.file(resolve(evalDir, "fixtures/marker/EXECUTED.marker")).exists()).toBe(false);
+}, 30_000);
+
+test("R3 detects a tool write in the working directory", async () => {
+  const cwd = await scratch();
+  const target = resolve(cwd, "target"); await mkdir(target);
+  const writingTool = resolve(cwd, "writing-tool.ts");
+  await writeFile(writingTool, "await Bun.write('UNAUTHORIZED', 'changed'); console.log(JSON.stringify({command:'where',limits:[],empty:'none found by static analysis'}));");
+  const caseFile = resolve(cwd, "cases.json");
+  await writeFile(caseFile, JSON.stringify({ project: [resolve(target, "tsconfig.json")], root: target, tests: [], cases: [{ id: "writes", requirement: "R3", line: requirementLines.R3[0], args: ["where", "x"], expect: { includes: [], excludes: [], equals: [], ambiguous: null, limitReasons: [] } }] }));
+  const report = await evaluate({ tool: `${shellQuote(process.execPath)} ${shellQuote(writingTool)}`, cases: [caseFile], out: resolve(cwd, "report"), cwd });
+  expect(report.cases[0]!.changedFiles.some(change => change.path === resolve(cwd, "UNAUTHORIZED"))).toBe(true);
+  expect(report.cases[0]!.failures.some(failure => failure.path === "$filesystem")).toBe(true);
+  expect(report.requirements.find(item => item.requirement === "R3")!.status).toBe("NOT MET");
+}, 30_000);
+
+test("unavailable unshare records exit/output and reports R3 NOT CHECKED", async () => {
+  const cwd = await scratch();
+  const target = resolve(cwd, "target"); await mkdir(target);
+  const bins = resolve(cwd, "bin"); await mkdir(bins); await symlink("/bin/sh", resolve(bins, "sh"));
+  const caseFile = resolve(cwd, "cases.json");
+  await writeFile(caseFile, JSON.stringify({ project: [resolve(target, "tsconfig.json")], root: target, tests: [], cases: [{ id: "offline", requirement: "R3", line: requirementLines.R3[0], args: ["where", "unknown"], expect: { includes: [], excludes: [], equals: [], ambiguous: null, limitReasons: [] } }] }));
+  const out = resolve(cwd, "report");
+  const child = Bun.spawn([process.execPath, resolve(evalDir, "run.ts"), "--tool", tool, "--cases", caseFile, "--out", out], {
+    cwd, env: { ...process.env, PATH: bins }, stdout: "pipe", stderr: "pipe",
+  });
+  const [exit, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
+  expect({ exit, stderr }).toEqual({ exit: 0, stderr: "" });
+  expect(stdout).toContain("NOT CHECKED");
+  const report = JSON.parse(await readFile(resolve(out, "report.json"), "utf8"));
+  expect(report.isolationProbe.exitCode).not.toBe(0);
+  expect(report.isolationProbe.stderr.length).toBeGreaterThan(0);
+  expect(report.requirements.find((item: any) => item.requirement === "R3").status).toBe("NOT CHECKED");
+  expect(report.cases[0].reasons.join(" ")).toContain("unshare -rn unavailable");
+}, 30_000);
+
+test("stub fallback is exactly the required empty static-analysis response", async () => {
+  const result = await captureProcess([process.execPath, resolve(evalDir, "stub/stub.ts"), "where", "not-a-fixture-command"], packageDir);
+  expect(result.exitCode).toBe(0);
+  expect(JSON.parse(result.stdout)).toEqual({ command: "where", limits: [], empty: "none found by static analysis" });
+});
+
+test("R1/R3 judge observations despite incorrect JSON, and faults leave other requirement statuses unchanged", async () => {
+  const cwd = await scratch();
+  const loaded = await loadCaseFile(casePath);
+  const caseFile = resolve(cwd, "observations.json");
+  const samples = loaded.cases.filter(sample => ["R1-map", "R3-offline", "A5-specific-answer"].includes(sample.id));
+  await writeFile(caseFile, JSON.stringify({ ...loaded, cases: samples }));
+  const answer = JSON.parse(await readFile(resolve(evalDir, "stub/answers/A5-specific-answer.json"), "utf8"));
+  const marker = resolve(evalDir, "fixtures/marker/EXECUTED.marker");
+  const toolPath = resolve(cwd, "observations.ts");
+  const makeTool = async (fault: "none" | "marker" | "write" | "exit") => {
+    await writeFile(toolPath, `
+      const command = process.argv[2];
+      if (${JSON.stringify(fault)} === "marker") await Bun.write(${JSON.stringify(marker)}, "executed");
+      if (${JSON.stringify(fault)} === "write") await Bun.write("UNAUTHORIZED", String(Math.random()));
+      if (${JSON.stringify(fault)} === "exit") process.exitCode = 1;
+      // Safety cases deliberately receive invalid JSON. Only the A5 question gets its correct answer.
+      console.log(command === "where" && process.argv[3] === "leaf" ? ${JSON.stringify(JSON.stringify(answer))} : "wrong answer");
+    `);
+  };
+  const run = async () => evaluate({ tool: `${shellQuote(process.execPath)} ${shellQuote(toolPath)}`, cases: [caseFile], out: resolve(cwd, "report"), cwd });
+  await makeTool("none"); const baseline = await run();
+  expect(baseline.cases.find(sample => sample.requirement === "R1")!.status).toBe("MET");
+  expect(baseline.cases.find(sample => sample.requirement === "R3")!.status).toBe(baseline.isolationProbe.exitCode === 0 ? "MET" : "NOT CHECKED");
+  const statuses = (report: typeof baseline, omit: string) => report.requirements.filter(item => item.requirement !== omit).map(item => [item.requirement, item.status]);
+  await makeTool("marker"); const r1Fault = await run();
+  expect(r1Fault.requirements.find(item => item.requirement === "R1")!.status).toBe("NOT MET");
+  expect(statuses(r1Fault, "R1")).toEqual(statuses(baseline, "R1"));
+  expect(r1Fault.cases.find(sample => sample.requirement === "A5")!.failures).toEqual([]);
+  await makeTool("exit"); const exitFault = await run();
+  expect(exitFault.requirements.find(item => item.requirement === "R1")!.status).toBe("NOT MET");
+  expect(statuses(exitFault, "R1")).toEqual(statuses(baseline, "R1"));
+  await makeTool("write"); const r3Fault = await run();
+  expect(r3Fault.requirements.find(item => item.requirement === "R3")!.status).toBe("NOT MET");
+  expect(statuses(r3Fault, "R3")).toEqual(statuses(baseline, "R3"));
+  expect(r3Fault.cases.find(sample => sample.requirement === "A5")!.failures).toEqual([]);
+}, 30_000);
+
+test("top-level throw fixture is not executed by the stub, and an importing tool fails R1", async () => {
+  const cwd = await scratch();
+  const loaded = await loadCaseFile(casePath);
+  const caseFile = resolve(cwd, "throws.json");
+  await writeFile(caseFile, JSON.stringify({ ...loaded, cases: loaded.cases.filter(sample => sample.id === "R1-top-level-throws") }));
+  const baseline = await evaluate({ tool, cases: [caseFile], out: resolve(cwd, "safe"), cwd });
+  expect(baseline.cases[0]!.status).toBe("MET");
+  const importing = resolve(cwd, "throws.ts");
+  await writeFile(importing, `await import(${JSON.stringify(resolve(evalDir, "fixtures/marker/throws.ts"))});`);
+  const failed = await evaluate({ tool: `${shellQuote(process.execPath)} ${shellQuote(importing)}`, cases: [caseFile], out: resolve(cwd, "failed"), cwd });
+  expect(failed.cases[0]!.process.exitCode).not.toBe(0);
+  expect(failed.cases[0]!.status).toBe("NOT MET");
+  expect(failed.cases[0]!.failures.some(failure => failure.path === "$process.exitCode")).toBe(true);
+  expect(failed.cases[0]!.process.stderr).toContain("fixture top level must never run");
+}, 30_000);
+
+exec
+/bin/bash -lc 'ls -ld code_map/src code_map/test/r1' in /home/smoke01/dev/ancient-games
+ exited 2 in 0ms:
+ls: cannot access 'code_map/test/r1': No such file or directory
+drwxr-xr-x 2 smoke01 smoke01 4096 Oct 15 00:18 code_map/src
+
+codex
+R1 has one Fails-if line: “mapping a fixture whose top level writes a marker creates that marker.” The spec calls for checking `map`, `chain`, `tests`, and `callers`; I’ll also cover the other query commands using fresh fixtures with different names and line positions. Each test will require a useful JSON answer and check that no marker was created.
+apply patch
+patch: completed
+/home/smoke01/dev/ancient-games/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+/home/smoke01/dev/ancient-games/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+/home/smoke01/dev/ancient-games/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+/home/smoke01/dev/ancient-games/code_map/test/r1/fixtures/passive-ledger/trap.ts
+/home/smoke01/dev/ancient-games/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts
+diff --git a/code_map/test/r1/fixtures/passive-ledger/adjustment.ts b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4896d0cf7c0344dfe8163e835d84066cef03d7ea
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+@@ -0,0 +1,10 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// Even an imported dependency must be read without running its top level.
++
++await Bun.write(new URL("./dependency-ran.marker", import.meta.url), "dependency executed");
++
++
++export function adjustTotal(amount: number) {
++  return amount + 3;
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..02f46f1e343fc11407721d7af484e7329c1d062d
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+@@ -0,0 +1,11 @@
++import { submitLedger } from "./ledger";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++declare function test(name: string, body: () => void): void;
++
++
++await Bun.write(new URL("./test-file-ran.marker", import.meta.url), "test file executed");
++
++test("submits an adjusted ledger", () => {
++  submitLedger();
++});
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..fada0f8d0ecd1c7a76476c9682ff6a8f93b9d1a2
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+@@ -0,0 +1,16 @@
++import { adjustTotal } from "./adjustment";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++await Bun.write(new URL("./ledger-ran.marker", import.meta.url), "ledger executed");
++
++// These definitions remain readable even though the module has a side effect.
++
++export function recordTotal(amount: number) {
++  return adjustTotal(amount);
++}
++
++
++export function submitLedger() {
++  return recordTotal(17);
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/trap.ts b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9f888adddfe41714ff817f0b348569218b502e38
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+@@ -0,0 +1,12 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// This file belongs to the program even when a query targets a different file.
++
++
++await Bun.write(new URL("./trap-ran.marker", import.meta.url), "throwing module executed");
++throw new Error("passive ledger source must never execute");
++
++
++export function dormantReceipt() {
++  return "receipt";
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/tsconfig.json b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..e0eab5e67d8546f7803f9db0b7ab88931417cf61
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+@@ -0,0 +1,11 @@
++{
++  "compilerOptions": {
++    "target": "ESNext",
++    "module": "Preserve",
++    "moduleResolution": "bundler",
++    "strict": true,
++    "noEmit": true,
++    "types": []
++  },
++  "include": ["**/*.ts"]
++}
+diff --git a/code_map/test/r1/reads-never-runs.test.ts b/code_map/test/r1/reads-never-runs.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..14a3a4ae3cae66a1510e7d16ba960536f765e71c
+--- /dev/null
++++ b/code_map/test/r1/reads-never-runs.test.ts
+@@ -0,0 +1,120 @@
++import { afterEach, beforeEach, expect, test } from "bun:test";
++import { existsSync } from "node:fs";
++import { rm } from "node:fs/promises";
++import { resolve } from "node:path";
++
++const packageDir = resolve(import.meta.dir, "../..");
++const fixtureDir = resolve(import.meta.dir, "fixtures/passive-ledger");
++const markers = ["ledger-ran.marker", "dependency-ran.marker", "test-file-ran.marker", "trap-ran.marker"];
++const failsIf = "mapping a fixture whose top level writes a marker creates that marker.";
++
++async function removeMarkers() {
++  await Promise.all(markers.map(marker => rm(resolve(fixtureDir, marker), { force: true })));
++}
++
++beforeEach(removeMarkers);
++afterEach(removeMarkers);
++
++async function runCli(args: string[]) {
++  const child = Bun.spawn([
++    process.execPath, "src/cli.ts", ...args,
++    "--project", resolve(fixtureDir, "tsconfig.json"),
++    "--root", fixtureDir,
++    "--tests", "*.checks.ts",
++    "--json",
++  ], { cwd: packageDir, stdout: "pipe", stderr: "pipe" });
++  const timer = setTimeout(() => child.kill(), 15_000);
++  try {
++    const [exitCode, stdout, stderr] = await Promise.all([
++      child.exited,
++      new Response(child.stdout).text(),
++      new Response(child.stderr).text(),
++    ]);
++
++    // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
++    expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
++    expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
++    const answer = JSON.parse(stdout);
++    expect(answer.command).toBe(args[0]);
++    expect(Array.isArray(answer.query)).toBe(true);
++    expect(Array.isArray(answer.limits)).toBe(true);
++    expect(answer.empty).toBeUndefined();
++    return answer;
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
++const recordTotal = { file: "ledger.ts", line: 9, name: "recordTotal", kind: "function" };
++const adjustTotal = { file: "adjustment.ts", line: 8, name: "adjustTotal", kind: "function" };
++const submitLedger = { file: "ledger.ts", line: 14, name: "submitLedger", kind: "function" };
++
++test(`R1 map — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["map", "."]);
++  expect(answer.map.definitions).toEqual(expect.arrayContaining([
++    expect.objectContaining(recordTotal),
++    expect.objectContaining(adjustTotal),
++    expect.objectContaining(submitLedger),
++    expect.objectContaining({ file: "trap.ts", line: 10, name: "dormantReceipt", kind: "function" }),
++  ]));
++}, 20_000);
++
++test(`R1 chain — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["chain", "ledger.ts:9"]);
++  expect(answer.chain.up).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++    }) }),
++  ]));
++  expect(answer.chain.down).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++    }) }),
++  ]));
++}, 20_000);
++
++test(`R1 tests — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["tests", "recordTotal"]);
++  expect(answer.tests.label).toBe("static-call-path");
++  expect(answer.tests.count).toBe(1);
++  expect(answer.tests.tests).toHaveLength(1);
++  expect(answer.tests.tests[0]).toMatchObject({
++    file: "ledger.checks.ts", line: 9, name: "submits an adjusted ledger", throughFake: false,
++  });
++  expect(answer.tests.tests[0].path.length).toBeGreaterThan(0);
++  expect(answer.tests.tests[0].path.at(-1).to).toMatchObject(recordTotal);
++}, 20_000);
++
++test(`R1 callers — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callers", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 15 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 callees — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callees", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 10 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 where — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["where", "recordTotal"]);
++  expect(answer.ambiguous).toBe(false);
++  expect(answer.matches).toEqual([expect.objectContaining(recordTotal)]);
++}, 20_000);
++
++test(`R1 find — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["find", "return adjustTotal(amount);"]);
++  expect(answer.matches.length).toBeGreaterThan(0);
++  expect(answer.matches).toEqual(expect.arrayContaining([
++    expect.objectContaining({ file: "ledger.ts", line: expect.any(Number) }),
++  ]));
++}, 20_000);
+
+diff --git a/code_map/test/r1/fixtures/passive-ledger/adjustment.ts b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4896d0cf7c0344dfe8163e835d84066cef03d7ea
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+@@ -0,0 +1,10 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// Even an imported dependency must be read without running its top level.
++
++await Bun.write(new URL("./dependency-ran.marker", import.meta.url), "dependency executed");
++
++
++export function adjustTotal(amount: number) {
++  return amount + 3;
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..02f46f1e343fc11407721d7af484e7329c1d062d
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+@@ -0,0 +1,11 @@
++import { submitLedger } from "./ledger";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++declare function test(name: string, body: () => void): void;
++
++
++await Bun.write(new URL("./test-file-ran.marker", import.meta.url), "test file executed");
++
++test("submits an adjusted ledger", () => {
++  submitLedger();
++});
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..fada0f8d0ecd1c7a76476c9682ff6a8f93b9d1a2
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+@@ -0,0 +1,16 @@
++import { adjustTotal } from "./adjustment";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++await Bun.write(new URL("./ledger-ran.marker", import.meta.url), "ledger executed");
++
++// These definitions remain readable even though the module has a side effect.
++
++export function recordTotal(amount: number) {
++  return adjustTotal(amount);
++}
++
++
++export function submitLedger() {
++  return recordTotal(17);
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/trap.ts b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9f888adddfe41714ff817f0b348569218b502e38
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+@@ -0,0 +1,12 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// This file belongs to the program even when a query targets a different file.
++
++
++await Bun.write(new URL("./trap-ran.marker", import.meta.url), "throwing module executed");
++throw new Error("passive ledger source must never execute");
++
++
++export function dormantReceipt() {
++  return "receipt";
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/tsconfig.json b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..e0eab5e67d8546f7803f9db0b7ab88931417cf61
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+@@ -0,0 +1,11 @@
++{
++  "compilerOptions": {
++    "target": "ESNext",
++    "module": "Preserve",
++    "moduleResolution": "bundler",
++    "strict": true,
++    "noEmit": true,
++    "types": []
++  },
++  "include": ["**/*.ts"]
++}
+diff --git a/code_map/test/r1/reads-never-runs.test.ts b/code_map/test/r1/reads-never-runs.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..14a3a4ae3cae66a1510e7d16ba960536f765e71c
+--- /dev/null
++++ b/code_map/test/r1/reads-never-runs.test.ts
+@@ -0,0 +1,120 @@
++import { afterEach, beforeEach, expect, test } from "bun:test";
++import { existsSync } from "node:fs";
++import { rm } from "node:fs/promises";
++import { resolve } from "node:path";
++
++const packageDir = resolve(import.meta.dir, "../..");
++const fixtureDir = resolve(import.meta.dir, "fixtures/passive-ledger");
++const markers = ["ledger-ran.marker", "dependency-ran.marker", "test-file-ran.marker", "trap-ran.marker"];
++const failsIf = "mapping a fixture whose top level writes a marker creates that marker.";
++
++async function removeMarkers() {
++  await Promise.all(markers.map(marker => rm(resolve(fixtureDir, marker), { force: true })));
++}
++
++beforeEach(removeMarkers);
++afterEach(removeMarkers);
++
++async function runCli(args: string[]) {
++  const child = Bun.spawn([
++    process.execPath, "src/cli.ts", ...args,
++    "--project", resolve(fixtureDir, "tsconfig.json"),
++    "--root", fixtureDir,
++    "--tests", "*.checks.ts",
++    "--json",
++  ], { cwd: packageDir, stdout: "pipe", stderr: "pipe" });
++  const timer = setTimeout(() => child.kill(), 15_000);
++  try {
++    const [exitCode, stdout, stderr] = await Promise.all([
++      child.exited,
++      new Response(child.stdout).text(),
++      new Response(child.stderr).text(),
++    ]);
++
++    // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
++    expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
++    expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
++    const answer = JSON.parse(stdout);
++    expect(answer.command).toBe(args[0]);
++    expect(Array.isArray(answer.query)).toBe(true);
++    expect(Array.isArray(answer.limits)).toBe(true);
++    expect(answer.empty).toBeUndefined();
++    return answer;
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
++const recordTotal = { file: "ledger.ts", line: 9, name: "recordTotal", kind: "function" };
++const adjustTotal = { file: "adjustment.ts", line: 8, name: "adjustTotal", kind: "function" };
++const submitLedger = { file: "ledger.ts", line: 14, name: "submitLedger", kind: "function" };
++
++test(`R1 map — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["map", "."]);
++  expect(answer.map.definitions).toEqual(expect.arrayContaining([
++    expect.objectContaining(recordTotal),
++    expect.objectContaining(adjustTotal),
++    expect.objectContaining(submitLedger),
++    expect.objectContaining({ file: "trap.ts", line: 10, name: "dormantReceipt", kind: "function" }),
++  ]));
++}, 20_000);
++
++test(`R1 chain — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["chain", "ledger.ts:9"]);
++  expect(answer.chain.up).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++    }) }),
++  ]));
++  expect(answer.chain.down).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++    }) }),
++  ]));
++}, 20_000);
++
++test(`R1 tests — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["tests", "recordTotal"]);
++  expect(answer.tests.label).toBe("static-call-path");
++  expect(answer.tests.count).toBe(1);
++  expect(answer.tests.tests).toHaveLength(1);
++  expect(answer.tests.tests[0]).toMatchObject({
++    file: "ledger.checks.ts", line: 9, name: "submits an adjusted ledger", throughFake: false,
++  });
++  expect(answer.tests.tests[0].path.length).toBeGreaterThan(0);
++  expect(answer.tests.tests[0].path.at(-1).to).toMatchObject(recordTotal);
++}, 20_000);
++
++test(`R1 callers — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callers", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 15 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 callees — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callees", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 10 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 where — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["where", "recordTotal"]);
++  expect(answer.ambiguous).toBe(false);
++  expect(answer.matches).toEqual([expect.objectContaining(recordTotal)]);
++}, 20_000);
++
++test(`R1 find — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["find", "return adjustTotal(amount);"]);
++  expect(answer.matches.length).toBeGreaterThan(0);
++  expect(answer.matches).toEqual(expect.arrayContaining([
++    expect.objectContaining({ file: "ledger.ts", line: expect.any(Number) }),
++  ]));
++}, 20_000);
+
+exec
+/bin/bash -lc 'bun test test/r1' in /home/smoke01/dev/ancient-games/code_map
+ exited 1 in 0ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/r1/reads-never-runs.test.ts:
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
+                                      ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "exitCode": 0,
+-   "stderr": "",
++   "exitCode": 1,
++   "stderr": 
++ "error: Module not found "src/cli.ts"
++ "
++ ,
+  }
+
+- Expected  - 2
++ Received  + 5
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:34)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:53:24)
+(fail) R1 map — Fails if: mapping a fixture whose top level writes a marker creates that marker. [7.63ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
+                                      ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "exitCode": 0,
+-   "stderr": "",
++   "exitCode": 1,
++   "stderr": 
++ "error: Module not found "src/cli.ts"
++ "
++ ,
+  }
+
+- Expected  - 2
++ Received  + 5
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:34)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:63:24)
+(fail) R1 chain — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.64ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
+                                      ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "exitCode": 0,
+-   "stderr": "",
++   "exitCode": 1,
++   "stderr": 
++ "error: Module not found "src/cli.ts"
++ "
++ ,
+  }
+
+- Expected  - 2
++ Received  + 5
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:34)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:77:24)
+(fail) R1 tests — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.40ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
+                                      ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "exitCode": 0,
+-   "stderr": "",
++   "exitCode": 1,
++   "stderr": 
++ "error: Module not found "src/cli.ts"
++ "
++ ,
+  }
+
+- Expected  - 2
++ Received  + 5
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:34)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:89:24)
+(fail) R1 callers — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.45ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
+                                      ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "exitCode": 0,
+-   "stderr": "",
++   "exitCode": 1,
++   "stderr": 
++ "error: Module not found "src/cli.ts"
++ "
++ ,
+  }
+
+- Expected  - 2
++ Received  + 5
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:34)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:99:24)
+(fail) R1 callees — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.55ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
+                                      ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "exitCode": 0,
+-   "stderr": "",
++   "exitCode": 1,
++   "stderr": 
++ "error: Module not found "src/cli.ts"
++ "
++ ,
+  }
+
+- Expected  - 2
++ Received  + 5
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:34)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:109:24)
+(fail) R1 where — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.45ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
+                                      ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "exitCode": 0,
+-   "stderr": "",
++   "exitCode": 1,
++   "stderr": 
++ "error: Module not found "src/cli.ts"
++ "
++ ,
+  }
+
+- Expected  - 2
++ Received  + 5
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:34)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:115:24)
+(fail) R1 find — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.39ms]
+
+ 0 pass
+ 7 fail
+ 14 expect() calls
+Ran 7 tests across 1 file. [21.00ms]
+
+diff --git a/code_map/test/r1/fixtures/passive-ledger/adjustment.ts b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4896d0cf7c0344dfe8163e835d84066cef03d7ea
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+@@ -0,0 +1,10 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// Even an imported dependency must be read without running its top level.
++
++await Bun.write(new URL("./dependency-ran.marker", import.meta.url), "dependency executed");
++
++
++export function adjustTotal(amount: number) {
++  return amount + 3;
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..02f46f1e343fc11407721d7af484e7329c1d062d
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+@@ -0,0 +1,11 @@
++import { submitLedger } from "./ledger";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++declare function test(name: string, body: () => void): void;
++
++
++await Bun.write(new URL("./test-file-ran.marker", import.meta.url), "test file executed");
++
++test("submits an adjusted ledger", () => {
++  submitLedger();
++});
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..fada0f8d0ecd1c7a76476c9682ff6a8f93b9d1a2
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+@@ -0,0 +1,16 @@
++import { adjustTotal } from "./adjustment";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++await Bun.write(new URL("./ledger-ran.marker", import.meta.url), "ledger executed");
++
++// These definitions remain readable even though the module has a side effect.
++
++export function recordTotal(amount: number) {
++  return adjustTotal(amount);
++}
++
++
++export function submitLedger() {
++  return recordTotal(17);
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/trap.ts b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9f888adddfe41714ff817f0b348569218b502e38
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+@@ -0,0 +1,12 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// This file belongs to the program even when a query targets a different file.
++
++
++await Bun.write(new URL("./trap-ran.marker", import.meta.url), "throwing module executed");
++throw new Error("passive ledger source must never execute");
++
++
++export function dormantReceipt() {
++  return "receipt";
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/tsconfig.json b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..e0eab5e67d8546f7803f9db0b7ab88931417cf61
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+@@ -0,0 +1,11 @@
++{
++  "compilerOptions": {
++    "target": "ESNext",
++    "module": "Preserve",
++    "moduleResolution": "bundler",
++    "strict": true,
++    "noEmit": true,
++    "types": []
++  },
++  "include": ["**/*.ts"]
++}
+diff --git a/code_map/test/r1/reads-never-runs.test.ts b/code_map/test/r1/reads-never-runs.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..14a3a4ae3cae66a1510e7d16ba960536f765e71c
+--- /dev/null
++++ b/code_map/test/r1/reads-never-runs.test.ts
+@@ -0,0 +1,120 @@
++import { afterEach, beforeEach, expect, test } from "bun:test";
++import { existsSync } from "node:fs";
++import { rm } from "node:fs/promises";
++import { resolve } from "node:path";
++
++const packageDir = resolve(import.meta.dir, "../..");
++const fixtureDir = resolve(import.meta.dir, "fixtures/passive-ledger");
++const markers = ["ledger-ran.marker", "dependency-ran.marker", "test-file-ran.marker", "trap-ran.marker"];
++const failsIf = "mapping a fixture whose top level writes a marker creates that marker.";
++
++async function removeMarkers() {
++  await Promise.all(markers.map(marker => rm(resolve(fixtureDir, marker), { force: true })));
++}
++
++beforeEach(removeMarkers);
++afterEach(removeMarkers);
++
++async function runCli(args: string[]) {
++  const child = Bun.spawn([
++    process.execPath, "src/cli.ts", ...args,
++    "--project", resolve(fixtureDir, "tsconfig.json"),
++    "--root", fixtureDir,
++    "--tests", "*.checks.ts",
++    "--json",
++  ], { cwd: packageDir, stdout: "pipe", stderr: "pipe" });
++  const timer = setTimeout(() => child.kill(), 15_000);
++  try {
++    const [exitCode, stdout, stderr] = await Promise.all([
++      child.exited,
++      new Response(child.stdout).text(),
++      new Response(child.stderr).text(),
++    ]);
++
++    // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
++    expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
++    expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
++    const answer = JSON.parse(stdout);
++    expect(answer.command).toBe(args[0]);
++    expect(Array.isArray(answer.query)).toBe(true);
++    expect(Array.isArray(answer.limits)).toBe(true);
++    expect(answer.empty).toBeUndefined();
++    return answer;
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
++const recordTotal = { file: "ledger.ts", line: 9, name: "recordTotal", kind: "function" };
++const adjustTotal = { file: "adjustment.ts", line: 8, name: "adjustTotal", kind: "function" };
++const submitLedger = { file: "ledger.ts", line: 14, name: "submitLedger", kind: "function" };
++
++test(`R1 map — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["map", "."]);
++  expect(answer.map.definitions).toEqual(expect.arrayContaining([
++    expect.objectContaining(recordTotal),
++    expect.objectContaining(adjustTotal),
++    expect.objectContaining(submitLedger),
++    expect.objectContaining({ file: "trap.ts", line: 10, name: "dormantReceipt", kind: "function" }),
++  ]));
++}, 20_000);
++
++test(`R1 chain — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["chain", "ledger.ts:9"]);
++  expect(answer.chain.up).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++    }) }),
++  ]));
++  expect(answer.chain.down).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++    }) }),
++  ]));
++}, 20_000);
++
++test(`R1 tests — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["tests", "recordTotal"]);
++  expect(answer.tests.label).toBe("static-call-path");
++  expect(answer.tests.count).toBe(1);
++  expect(answer.tests.tests).toHaveLength(1);
++  expect(answer.tests.tests[0]).toMatchObject({
++    file: "ledger.checks.ts", line: 9, name: "submits an adjusted ledger", throughFake: false,
++  });
++  expect(answer.tests.tests[0].path.length).toBeGreaterThan(0);
++  expect(answer.tests.tests[0].path.at(-1).to).toMatchObject(recordTotal);
++}, 20_000);
++
++test(`R1 callers — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callers", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 15 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 callees — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callees", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 10 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 where — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["where", "recordTotal"]);
++  expect(answer.ambiguous).toBe(false);
++  expect(answer.matches).toEqual([expect.objectContaining(recordTotal)]);
++}, 20_000);
++
++test(`R1 find — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["find", "return adjustTotal(amount);"]);
++  expect(answer.matches.length).toBeGreaterThan(0);
++  expect(answer.matches).toEqual(expect.arrayContaining([
++    expect.objectContaining({ file: "ledger.ts", line: expect.any(Number) }),
++  ]));
++}, 20_000);
+
+apply patch
+patch: completed
+/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts
+diff --git a/code_map/test/r1/fixtures/passive-ledger/adjustment.ts b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4896d0cf7c0344dfe8163e835d84066cef03d7ea
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+@@ -0,0 +1,10 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// Even an imported dependency must be read without running its top level.
++
++await Bun.write(new URL("./dependency-ran.marker", import.meta.url), "dependency executed");
++
++
++export function adjustTotal(amount: number) {
++  return amount + 3;
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..02f46f1e343fc11407721d7af484e7329c1d062d
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+@@ -0,0 +1,11 @@
++import { submitLedger } from "./ledger";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++declare function test(name: string, body: () => void): void;
++
++
++await Bun.write(new URL("./test-file-ran.marker", import.meta.url), "test file executed");
++
++test("submits an adjusted ledger", () => {
++  submitLedger();
++});
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..fada0f8d0ecd1c7a76476c9682ff6a8f93b9d1a2
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+@@ -0,0 +1,16 @@
++import { adjustTotal } from "./adjustment";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++await Bun.write(new URL("./ledger-ran.marker", import.meta.url), "ledger executed");
++
++// These definitions remain readable even though the module has a side effect.
++
++export function recordTotal(amount: number) {
++  return adjustTotal(amount);
++}
++
++
++export function submitLedger() {
++  return recordTotal(17);
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/trap.ts b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9f888adddfe41714ff817f0b348569218b502e38
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+@@ -0,0 +1,12 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// This file belongs to the program even when a query targets a different file.
++
++
++await Bun.write(new URL("./trap-ran.marker", import.meta.url), "throwing module executed");
++throw new Error("passive ledger source must never execute");
++
++
++export function dormantReceipt() {
++  return "receipt";
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/tsconfig.json b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..e0eab5e67d8546f7803f9db0b7ab88931417cf61
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+@@ -0,0 +1,11 @@
++{
++  "compilerOptions": {
++    "target": "ESNext",
++    "module": "Preserve",
++    "moduleResolution": "bundler",
++    "strict": true,
++    "noEmit": true,
++    "types": []
++  },
++  "include": ["**/*.ts"]
++}
+diff --git a/code_map/test/r1/reads-never-runs.test.ts b/code_map/test/r1/reads-never-runs.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..e505204e4209b97d1ca3ea87ab80e43b07aa9951
+--- /dev/null
++++ b/code_map/test/r1/reads-never-runs.test.ts
+@@ -0,0 +1,120 @@
++import { afterEach, beforeEach, expect, test } from "bun:test";
++import { existsSync } from "node:fs";
++import { rm } from "node:fs/promises";
++import { resolve } from "node:path";
++
++const packageDir = resolve(import.meta.dir, "../..");
++const fixtureDir = resolve(import.meta.dir, "fixtures/passive-ledger");
++const markers = ["ledger-ran.marker", "dependency-ran.marker", "test-file-ran.marker", "trap-ran.marker"];
++const failsIf = "mapping a fixture whose top level writes a marker creates that marker.";
++
++async function removeMarkers() {
++  await Promise.all(markers.map(marker => rm(resolve(fixtureDir, marker), { force: true })));
++}
++
++beforeEach(removeMarkers);
++afterEach(removeMarkers);
++
++async function runCli(args: string[]) {
++  const child = Bun.spawn([
++    process.execPath, "src/cli.ts", ...args,
++    "--project", resolve(fixtureDir, "tsconfig.json"),
++    "--root", fixtureDir,
++    "--tests", "*.checks.ts",
++    "--json",
++  ], { cwd: packageDir, stdout: "pipe", stderr: "pipe" });
++  const timer = setTimeout(() => child.kill(), 15_000);
++  try {
++    const [exitCode, stdout, stderr] = await Promise.all([
++      child.exited,
++      new Response(child.stdout).text(),
++      new Response(child.stderr).text(),
++    ]);
++
++    // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
++    expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
++    expect(exitCode, stderr || stdout).toBe(0);
++    const answer = JSON.parse(stdout);
++    expect(answer.command).toBe(args[0]);
++    expect(Array.isArray(answer.query)).toBe(true);
++    expect(Array.isArray(answer.limits)).toBe(true);
++    expect(answer.empty).toBeUndefined();
++    return answer;
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
++const recordTotal = { file: "ledger.ts", line: 9, name: "recordTotal", kind: "function" };
++const adjustTotal = { file: "adjustment.ts", line: 8, name: "adjustTotal", kind: "function" };
++const submitLedger = { file: "ledger.ts", line: 14, name: "submitLedger", kind: "function" };
++
++test(`R1 map — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["map", "."]);
++  expect(answer.map.definitions).toEqual(expect.arrayContaining([
++    expect.objectContaining(recordTotal),
++    expect.objectContaining(adjustTotal),
++    expect.objectContaining(submitLedger),
++    expect.objectContaining({ file: "trap.ts", line: 10, name: "dormantReceipt", kind: "function" }),
++  ]));
++}, 20_000);
++
++test(`R1 chain — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["chain", "ledger.ts:9"]);
++  expect(answer.chain.up).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++    }) }),
++  ]));
++  expect(answer.chain.down).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++    }) }),
++  ]));
++}, 20_000);
++
++test(`R1 tests — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["tests", "recordTotal"]);
++  expect(answer.tests.label).toBe("static-call-path");
++  expect(answer.tests.count).toBe(1);
++  expect(answer.tests.tests).toHaveLength(1);
++  expect(answer.tests.tests[0]).toMatchObject({
++    file: "ledger.checks.ts", line: 9, name: "submits an adjusted ledger", throughFake: false,
++  });
++  expect(answer.tests.tests[0].path.length).toBeGreaterThan(0);
++  expect(answer.tests.tests[0].path.at(-1).to).toMatchObject(recordTotal);
++}, 20_000);
++
++test(`R1 callers — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callers", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 15 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 callees — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callees", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 10 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 where — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["where", "recordTotal"]);
++  expect(answer.ambiguous).toBe(false);
++  expect(answer.matches).toEqual([expect.objectContaining(recordTotal)]);
++}, 20_000);
++
++test(`R1 find — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["find", "return adjustTotal(amount);"]);
++  expect(answer.matches.length).toBeGreaterThan(0);
++  expect(answer.matches).toEqual(expect.arrayContaining([
++    expect.objectContaining({ file: "ledger.ts", line: expect.any(Number) }),
++  ]));
++}, 20_000);
+
+exec
+/bin/bash -lc 'bun test test/r1' in /home/smoke01/dev/ancient-games/code_map
+ exited 1 in 0ms:
+bun test v1.4.3 (c6da4a4d3)
+
+test/r1/reads-never-runs.test.ts:
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect(exitCode, stderr || stdout).toBe(0);
+                                            ^
+error: error: Module not found "src/cli.ts"
+
+
+Expected: 0
+Received: 1
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:40)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:53:24)
+(fail) R1 map — Fails if: mapping a fixture whose top level writes a marker creates that marker. [2.45ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect(exitCode, stderr || stdout).toBe(0);
+                                            ^
+error: error: Module not found "src/cli.ts"
+
+
+Expected: 0
+Received: 1
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:40)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:63:24)
+(fail) R1 chain — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.65ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect(exitCode, stderr || stdout).toBe(0);
+                                            ^
+error: error: Module not found "src/cli.ts"
+
+
+Expected: 0
+Received: 1
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:40)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:77:24)
+(fail) R1 tests — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.62ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect(exitCode, stderr || stdout).toBe(0);
+                                            ^
+error: error: Module not found "src/cli.ts"
+
+
+Expected: 0
+Received: 1
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:40)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:89:24)
+(fail) R1 callers — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.54ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect(exitCode, stderr || stdout).toBe(0);
+                                            ^
+error: error: Module not found "src/cli.ts"
+
+
+Expected: 0
+Received: 1
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:40)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:99:24)
+(fail) R1 callees — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.60ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect(exitCode, stderr || stdout).toBe(0);
+                                            ^
+error: error: Module not found "src/cli.ts"
+
+
+Expected: 0
+Received: 1
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:40)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:109:24)
+(fail) R1 where — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.49ms]
+31 |       new Response(child.stderr).text(),
+32 |     ]);
+33 | 
+34 |     // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
+35 |     expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
+36 |     expect(exitCode, stderr || stdout).toBe(0);
+                                            ^
+error: error: Module not found "src/cli.ts"
+
+
+Expected: 0
+Received: 1
+
+      at runCli (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:36:40)
+      at async <anonymous> (/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts:115:24)
+(fail) R1 find — Fails if: mapping a fixture whose top level writes a marker creates that marker. [1.44ms]
+
+ 0 pass
+ 7 fail
+ 14 expect() calls
+Ran 7 tests across 1 file. [17.00ms]
+
+exec
+/bin/bash -lc 'rg --files --hidden code_map/test/r1' in /home/smoke01/dev/ancient-games
+ succeeded in 0ms:
+code_map/test/r1/reads-never-runs.test.ts
+code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+code_map/test/r1/fixtures/passive-ledger/trap.ts
+code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+code_map/test/r1/fixtures/passive-ledger/ledger.ts
+
+diff --git a/code_map/test/r1/fixtures/passive-ledger/adjustment.ts b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4896d0cf7c0344dfe8163e835d84066cef03d7ea
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+@@ -0,0 +1,10 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// Even an imported dependency must be read without running its top level.
++
++await Bun.write(new URL("./dependency-ran.marker", import.meta.url), "dependency executed");
++
++
++export function adjustTotal(amount: number) {
++  return amount + 3;
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..02f46f1e343fc11407721d7af484e7329c1d062d
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+@@ -0,0 +1,11 @@
++import { submitLedger } from "./ledger";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++declare function test(name: string, body: () => void): void;
++
++
++await Bun.write(new URL("./test-file-ran.marker", import.meta.url), "test file executed");
++
++test("submits an adjusted ledger", () => {
++  submitLedger();
++});
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..fada0f8d0ecd1c7a76476c9682ff6a8f93b9d1a2
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+@@ -0,0 +1,16 @@
++import { adjustTotal } from "./adjustment";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++await Bun.write(new URL("./ledger-ran.marker", import.meta.url), "ledger executed");
++
++// These definitions remain readable even though the module has a side effect.
++
++export function recordTotal(amount: number) {
++  return adjustTotal(amount);
++}
++
++
++export function submitLedger() {
++  return recordTotal(17);
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/trap.ts b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9f888adddfe41714ff817f0b348569218b502e38
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+@@ -0,0 +1,12 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// This file belongs to the program even when a query targets a different file.
++
++
++await Bun.write(new URL("./trap-ran.marker", import.meta.url), "throwing module executed");
++throw new Error("passive ledger source must never execute");
++
++
++export function dormantReceipt() {
++  return "receipt";
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/tsconfig.json b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..e0eab5e67d8546f7803f9db0b7ab88931417cf61
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+@@ -0,0 +1,11 @@
++{
++  "compilerOptions": {
++    "target": "ESNext",
++    "module": "Preserve",
++    "moduleResolution": "bundler",
++    "strict": true,
++    "noEmit": true,
++    "types": []
++  },
++  "include": ["**/*.ts"]
++}
+diff --git a/code_map/test/r1/reads-never-runs.test.ts b/code_map/test/r1/reads-never-runs.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..e505204e4209b97d1ca3ea87ab80e43b07aa9951
+--- /dev/null
++++ b/code_map/test/r1/reads-never-runs.test.ts
+@@ -0,0 +1,120 @@
++import { afterEach, beforeEach, expect, test } from "bun:test";
++import { existsSync } from "node:fs";
++import { rm } from "node:fs/promises";
++import { resolve } from "node:path";
++
++const packageDir = resolve(import.meta.dir, "../..");
++const fixtureDir = resolve(import.meta.dir, "fixtures/passive-ledger");
++const markers = ["ledger-ran.marker", "dependency-ran.marker", "test-file-ran.marker", "trap-ran.marker"];
++const failsIf = "mapping a fixture whose top level writes a marker creates that marker.";
++
++async function removeMarkers() {
++  await Promise.all(markers.map(marker => rm(resolve(fixtureDir, marker), { force: true })));
++}
++
++beforeEach(removeMarkers);
++afterEach(removeMarkers);
++
++async function runCli(args: string[]) {
++  const child = Bun.spawn([
++    process.execPath, "src/cli.ts", ...args,
++    "--project", resolve(fixtureDir, "tsconfig.json"),
++    "--root", fixtureDir,
++    "--tests", "*.checks.ts",
++    "--json",
++  ], { cwd: packageDir, stdout: "pipe", stderr: "pipe" });
++  const timer = setTimeout(() => child.kill(), 15_000);
++  try {
++    const [exitCode, stdout, stderr] = await Promise.all([
++      child.exited,
++      new Response(child.stdout).text(),
++      new Response(child.stderr).text(),
++    ]);
++
++    // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
++    expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
++    expect(exitCode, stderr || stdout).toBe(0);
++    const answer = JSON.parse(stdout);
++    expect(answer.command).toBe(args[0]);
++    expect(Array.isArray(answer.query)).toBe(true);
++    expect(Array.isArray(answer.limits)).toBe(true);
++    expect(answer.empty).toBeUndefined();
++    return answer;
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
++const recordTotal = { file: "ledger.ts", line: 9, name: "recordTotal", kind: "function" };
++const adjustTotal = { file: "adjustment.ts", line: 8, name: "adjustTotal", kind: "function" };
++const submitLedger = { file: "ledger.ts", line: 14, name: "submitLedger", kind: "function" };
++
++test(`R1 map — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["map", "."]);
++  expect(answer.map.definitions).toEqual(expect.arrayContaining([
++    expect.objectContaining(recordTotal),
++    expect.objectContaining(adjustTotal),
++    expect.objectContaining(submitLedger),
++    expect.objectContaining({ file: "trap.ts", line: 10, name: "dormantReceipt", kind: "function" }),
++  ]));
++}, 20_000);
++
++test(`R1 chain — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["chain", "ledger.ts:9"]);
++  expect(answer.chain.up).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++    }) }),
++  ]));
++  expect(answer.chain.down).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++    }) }),
++  ]));
++}, 20_000);
++
++test(`R1 tests — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["tests", "recordTotal"]);
++  expect(answer.tests.label).toBe("static-call-path");
++  expect(answer.tests.count).toBe(1);
++  expect(answer.tests.tests).toHaveLength(1);
++  expect(answer.tests.tests[0]).toMatchObject({
++    file: "ledger.checks.ts", line: 9, name: "submits an adjusted ledger", throughFake: false,
++  });
++  expect(answer.tests.tests[0].path.length).toBeGreaterThan(0);
++  expect(answer.tests.tests[0].path.at(-1).to).toMatchObject(recordTotal);
++}, 20_000);
++
++test(`R1 callers — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callers", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 15 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 callees — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callees", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 10 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 where — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["where", "recordTotal"]);
++  expect(answer.ambiguous).toBe(false);
++  expect(answer.matches).toEqual([expect.objectContaining(recordTotal)]);
++}, 20_000);
++
++test(`R1 find — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["find", "return adjustTotal(amount);"]);
++  expect(answer.matches.length).toBeGreaterThan(0);
++  expect(answer.matches).toEqual(expect.arrayContaining([
++    expect.objectContaining({ file: "ledger.ts", line: expect.any(Number) }),
++  ]));
++}, 20_000);
+
+codex
+Added [reads-never-runs.test.ts](/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts) and custom fixtures, entirely under `code_map/test/r1/`.
+
+Seven test names use `R1 <command> — Fails if: mapping a fixture whose top level writes a marker creates that marker.`, with these commands:
+
+- `map`
+- `chain`
+- `tests`
+- `callers`
+- `callees`
+- `where`
+- `find`
+
+All cover R1’s sole Fails-if line, checking marker absence and useful JSON output.
+
+I ran `bun test test/r1`. All seven fail because `src/cli.ts` does not exist. These tests were written by me; this run does not establish R1 compliance.
+
+Last lines:
+
+```text
+ 0 pass
+ 7 fail
+ 14 expect() calls
+Ran 7 tests across 1 file. [17.00ms]
+```
+diff --git a/code_map/test/r1/fixtures/passive-ledger/adjustment.ts b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4896d0cf7c0344dfe8163e835d84066cef03d7ea
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/adjustment.ts
+@@ -0,0 +1,10 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// Even an imported dependency must be read without running its top level.
++
++await Bun.write(new URL("./dependency-ran.marker", import.meta.url), "dependency executed");
++
++
++export function adjustTotal(amount: number) {
++  return amount + 3;
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..02f46f1e343fc11407721d7af484e7329c1d062d
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.checks.ts
+@@ -0,0 +1,11 @@
++import { submitLedger } from "./ledger";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++declare function test(name: string, body: () => void): void;
++
++
++await Bun.write(new URL("./test-file-ran.marker", import.meta.url), "test file executed");
++
++test("submits an adjusted ledger", () => {
++  submitLedger();
++});
+diff --git a/code_map/test/r1/fixtures/passive-ledger/ledger.ts b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..fada0f8d0ecd1c7a76476c9682ff6a8f93b9d1a2
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/ledger.ts
+@@ -0,0 +1,16 @@
++import { adjustTotal } from "./adjustment";
++
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++await Bun.write(new URL("./ledger-ran.marker", import.meta.url), "ledger executed");
++
++// These definitions remain readable even though the module has a side effect.
++
++export function recordTotal(amount: number) {
++  return adjustTotal(amount);
++}
++
++
++export function submitLedger() {
++  return recordTotal(17);
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/trap.ts b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9f888adddfe41714ff817f0b348569218b502e38
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/trap.ts
+@@ -0,0 +1,12 @@
++declare const Bun: { write(path: URL, value: string): Promise<number> };
++
++// This file belongs to the program even when a query targets a different file.
++
++
++await Bun.write(new URL("./trap-ran.marker", import.meta.url), "throwing module executed");
++throw new Error("passive ledger source must never execute");
++
++
++export function dormantReceipt() {
++  return "receipt";
++}
+diff --git a/code_map/test/r1/fixtures/passive-ledger/tsconfig.json b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..e0eab5e67d8546f7803f9db0b7ab88931417cf61
+--- /dev/null
++++ b/code_map/test/r1/fixtures/passive-ledger/tsconfig.json
+@@ -0,0 +1,11 @@
++{
++  "compilerOptions": {
++    "target": "ESNext",
++    "module": "Preserve",
++    "moduleResolution": "bundler",
++    "strict": true,
++    "noEmit": true,
++    "types": []
++  },
++  "include": ["**/*.ts"]
++}
+diff --git a/code_map/test/r1/reads-never-runs.test.ts b/code_map/test/r1/reads-never-runs.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..e505204e4209b97d1ca3ea87ab80e43b07aa9951
+--- /dev/null
++++ b/code_map/test/r1/reads-never-runs.test.ts
+@@ -0,0 +1,120 @@
++import { afterEach, beforeEach, expect, test } from "bun:test";
++import { existsSync } from "node:fs";
++import { rm } from "node:fs/promises";
++import { resolve } from "node:path";
++
++const packageDir = resolve(import.meta.dir, "../..");
++const fixtureDir = resolve(import.meta.dir, "fixtures/passive-ledger");
++const markers = ["ledger-ran.marker", "dependency-ran.marker", "test-file-ran.marker", "trap-ran.marker"];
++const failsIf = "mapping a fixture whose top level writes a marker creates that marker.";
++
++async function removeMarkers() {
++  await Promise.all(markers.map(marker => rm(resolve(fixtureDir, marker), { force: true })));
++}
++
++beforeEach(removeMarkers);
++afterEach(removeMarkers);
++
++async function runCli(args: string[]) {
++  const child = Bun.spawn([
++    process.execPath, "src/cli.ts", ...args,
++    "--project", resolve(fixtureDir, "tsconfig.json"),
++    "--root", fixtureDir,
++    "--tests", "*.checks.ts",
++    "--json",
++  ], { cwd: packageDir, stdout: "pipe", stderr: "pipe" });
++  const timer = setTimeout(() => child.kill(), 15_000);
++  try {
++    const [exitCode, stdout, stderr] = await Promise.all([
++      child.exited,
++      new Response(child.stdout).text(),
++      new Response(child.stderr).text(),
++    ]);
++
++    // Check effects before parsing: a marker remains a failure even with broken JSON or a crash.
++    expect(markers.filter(marker => existsSync(resolve(fixtureDir, marker)))).toEqual([]);
++    expect(exitCode, stderr || stdout).toBe(0);
++    const answer = JSON.parse(stdout);
++    expect(answer.command).toBe(args[0]);
++    expect(Array.isArray(answer.query)).toBe(true);
++    expect(Array.isArray(answer.limits)).toBe(true);
++    expect(answer.empty).toBeUndefined();
++    return answer;
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
++const recordTotal = { file: "ledger.ts", line: 9, name: "recordTotal", kind: "function" };
++const adjustTotal = { file: "adjustment.ts", line: 8, name: "adjustTotal", kind: "function" };
++const submitLedger = { file: "ledger.ts", line: 14, name: "submitLedger", kind: "function" };
++
++test(`R1 map — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["map", "."]);
++  expect(answer.map.definitions).toEqual(expect.arrayContaining([
++    expect.objectContaining(recordTotal),
++    expect.objectContaining(adjustTotal),
++    expect.objectContaining(submitLedger),
++    expect.objectContaining({ file: "trap.ts", line: 10, name: "dormantReceipt", kind: "function" }),
++  ]));
++}, 20_000);
++
++test(`R1 chain — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["chain", "ledger.ts:9"]);
++  expect(answer.chain.up).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++    }) }),
++  ]));
++  expect(answer.chain.down).toEqual(expect.arrayContaining([
++    expect.objectContaining({ level: 1, link: expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++    }) }),
++  ]));
++}, 20_000);
++
++test(`R1 tests — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["tests", "recordTotal"]);
++  expect(answer.tests.label).toBe("static-call-path");
++  expect(answer.tests.count).toBe(1);
++  expect(answer.tests.tests).toHaveLength(1);
++  expect(answer.tests.tests[0]).toMatchObject({
++    file: "ledger.checks.ts", line: 9, name: "submits an adjusted ledger", throughFake: false,
++  });
++  expect(answer.tests.tests[0].path.length).toBeGreaterThan(0);
++  expect(answer.tests.tests[0].path.at(-1).to).toMatchObject(recordTotal);
++}, 20_000);
++
++test(`R1 callers — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callers", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(submitLedger), to: expect.objectContaining(recordTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 15 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 callees — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["callees", "recordTotal"]);
++  expect(answer.links).toEqual(expect.arrayContaining([
++    expect.objectContaining({
++      from: expect.objectContaining(recordTotal), to: expect.objectContaining(adjustTotal),
++      kind: "call", resolution: "implementation", site: expect.objectContaining({ file: "ledger.ts", line: 10 }),
++    }),
++  ]));
++}, 20_000);
++
++test(`R1 where — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["where", "recordTotal"]);
++  expect(answer.ambiguous).toBe(false);
++  expect(answer.matches).toEqual([expect.objectContaining(recordTotal)]);
++}, 20_000);
++
++test(`R1 find — Fails if: ${failsIf}`, async () => {
++  const answer = await runCli(["find", "return adjustTotal(amount);"]);
++  expect(answer.matches.length).toBeGreaterThan(0);
++  expect(answer.matches).toEqual(expect.arrayContaining([
++    expect.objectContaining({ file: "ledger.ts", line: expect.any(Number) }),
++  ]));
++}, 20_000);
+
+tokens used
+34,459
+Added [reads-never-runs.test.ts](/home/smoke01/dev/ancient-games/code_map/test/r1/reads-never-runs.test.ts) and custom fixtures, entirely under `code_map/test/r1/`.
+
+Seven test names use `R1 <command> — Fails if: mapping a fixture whose top level writes a marker creates that marker.`, with these commands:
+
+- `map`
+- `chain`
+- `tests`
+- `callers`
+- `callees`
+- `where`
+- `find`
+
+All cover R1’s sole Fails-if line, checking marker absence and useful JSON output.
+
+I ran `bun test test/r1`. All seven fail because `src/cli.ts` does not exist. These tests were written by me; this run does not establish R1 compliance.
+
+Last lines:
+
+```text
+ 0 pass
+ 7 fail
+ 14 expect() calls
+Ran 7 tests across 1 file. [17.00ms]
+```
+exit=0
