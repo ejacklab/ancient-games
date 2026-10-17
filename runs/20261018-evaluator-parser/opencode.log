@@ -1,0 +1,1369 @@
+[0m
+> build · MiniMax-M3.1-Flash-Preview
+[0m
+I'll read the brief first.
+[0m→ [0mRead runs/20261018-evaluator-parser/brief.md
+[0m
+[0m$ [0mls runs/20261018-evaluator-parser/ && git status --short && git branch --show-current
+brief.md
+opencode.log
+ M docs/evaluator/DATA.md
+?? runs/20261018-evaluator-parser/
+?? tests/fixtures/evaluator/harness-REQUIREMENTS.md
+?? tests/fixtures/evaluator/memory-check-REQUIREMENTS.md
+?? tests/test_evaluator_spec_parse_paragraph.py
+fix/evaluator-parser
+[0m
+[0m$ [0mwc -l docs/evaluator/DATA.md tools/evaluator/spec_parse.py tests/test_evaluator_spec_parse_paragraph.py tests/test_evaluator_spec_parse.py; ls tests/fixtures/evaluator/
+445 docs/evaluator/DATA.md
+  282 tools/evaluator/spec_parse.py
+   77 tests/test_evaluator_spec_parse_paragraph.py
+  213 tests/test_evaluator_spec_parse.py
+ 1017 total
+caches-CACHES.md
+harness-REQUIREMENTS.md
+index-md-REQUIREMENTS.md
+index-md-VISION.md
+memory-check-REQUIREMENTS.md
+sot-SOURCE_OF_TRUTH.md
+[0m
+[0m→ [0mRead tools/evaluator/spec_parse.py
+[0m→ [0mRead tests/test_evaluator_spec_parse_paragraph.py
+[0m→ [0mRead docs/evaluator/DATA.md
+[0m→ [0mRead tests/fixtures/evaluator/harness-REQUIREMENTS.md
+[0m→ [0mRead tests/fixtures/evaluator/memory-check-REQUIREMENTS.md
+[0m→ [0mRead tests/test_evaluator_spec_parse.py
+[0m
+[0m$ [0mls tests/test_evaluator_*.py; echo ---; grep -n "leaves open\|leaves this open" tests/fixtures/evaluator/*.md; echo --- bullets; grep -rn "^- \|^  - \|^Fails if\|^## \|^# " tests/fixtures/evaluator/index-md-REQUIREMENTS.md | head -60
+tests/test_evaluator_k1_regressions.py
+tests/test_evaluator_model_io.py
+tests/test_evaluator_probe_matrix.py
+tests/test_evaluator_r1.py
+tests/test_evaluator_r1_matrix_spec.py
+tests/test_evaluator_spec_parse.py
+tests/test_evaluator_spec_parse_paragraph.py
+tests/test_evaluator_verdict.py
+tests/test_evaluator_workspace.py
+---
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:5:reason. Each requirement names who decides any choice it leaves open, and the case that fails it.
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:280:  decision replaced by a different one gets a new entry that supersedes it. The design leaves this open.
+--- bullets
+1:# INDEX.md generator — requirements
+19:## B — Build: from entries to `INDEX.md`
+22:- **B1.1** Only files directly in `project-memory/entries/` whose name matches `^[DFLOH]-[^/]+\.md$`. No subfolders,
+24:- **B1.2** Write mode reads the working-tree content of the entry files git knows about (tracked or staged). An
+26:- **B1.3** Check mode reads git objects only: the staging area by default, or a commit with `--check <rev>`. Paths
+28:- **Fails if** an untracked entry gets a line, a file outside B1.1 gets a line, or a path with a space or a non-ASCII
+32:- **B2.1** The header starts on line 1 with `---` and ends at the next line that is exactly `---`. Inside it, read
+35:- **B2.2** The claim is the body after the header, up to the first line that starts with `**Why:**`. Blank lines are
+37:- **B2.3** Every entry must have a readable header with a non-empty `id` and a `status` of `active`, `superseded` or
+39:- **B2.4** An **active** entry must also have: a `kind` from the five (decision, fact, lesson, observation,
+41:- **B2.5** A problem in an inactive entry beyond B2.3 is a warning, not an error, so one old entry cannot block every
+43:- **B2.6** A file that is not valid UTF-8 is reported as `<file>: <problem>`, not as a crash.
+44:- **Fails if** a malformed active entry gets a line, a prefix/kind mismatch passes, a duplicate id passes, a broken
+48:- **B3.1** One line per active entry, sorted by file name in code-point order:
+50:- **B3.2** A fixed head: the title `# Project memory index`, then a comment saying the file is generated, must not be
+52:- **B3.3** UTF-8, LF line endings, one newline at the end. No date, time, count, host name or locale-dependent order.
+53:- **B3.4** If the result is byte-identical to the existing file, the file is not rewritten. A missing `INDEX.md` is
+55:- **Fails if** two runs over the same entries, on two machines or with two locales, give different bytes; a
+59:- **B4.1** The index must fit the strictest start-file limit of the agents that read it (Rd3.1). The script measures
+63:- **B4.2** Every run prints the size against both limits.
+64:- **B4.3** Nothing is ever cut to fit. Over the limit, write mode still writes the whole file, prints a warning and
+66:- **B4.4** Any change that brings the index back under the limit makes the check pass. No approval is needed (d W4.1).
+67:- **Open:** which agents and load paths read `INDEX.md`, and whether any of them counts characters rather than bytes
+69:- **Fails if** a line is dropped or shortened to fit, or `--check` passes an index over either limit.
+71:## C — Check: how anyone tells the file is right
+74:- **C1.1** `python3 tools/memory_index.py --check [<rev>]` rebuilds the index from the snapshot (B1.3) and compares it
+76:- **C1.2** It passes (exit 0) only when the entries are valid, the bytes are equal, and the size is within the limits.
+79:- **C1.3** A snapshot with no `project-memory/`, or an unborn `HEAD`, passes with "nothing to check".
+80:- **C1.4** It writes nothing.
+81:- **Fails if** a hand edit to `INDEX.md` passes, a stale `INDEX.md` passes, or check mode changes any file.
+84:- **C2.1** `tests/test_memory_index.py` runs under the repo's `pytest`
+86:- **C2.2** It holds at least these tests:
+87:  - golden bytes for a fixed set of sample entries;
+88:  - running twice changes nothing;
+89:  - the check rejects a hand-edited `INDEX.md`;
+90:  - the check rejects a superseded entry listed as active;
+91:  - `--check HEAD` passes on this repo itself.
+92:- **Fails if** any of these cases passes when it should fail, or the test file does not run under the repo's `pytest`.
+94:## G — Git: when it runs, and how branches meet
+97:- **G1.1** Whoever creates or changes any entry file runs the script, of every kind and for every status change, and
+99:- **G1.2** This is written as an instruction where agents read it: `CLAUDE.md` today, because `AGENTS.md` only points
+101:- **Fails if** a commit changes an entry and not the `INDEX.md` it implies (caught by C1 at the next check).
+104:- **G2.1** One committed hook, `.githooks/pre-commit`, runs `--check` when the staged change touches
+106:- **G2.2** It is switched on once per clone with `git config core.hooksPath .githooks`.
+107:- **G2.3** The hook is a convenience, not the guarantee. Rebase, cherry-pick, fast-forward and `--no-verify` skip it;
+109:- **Fails if** a commit through the hook leaves a wrong `INDEX.md`, or a change to the script alone skips the check.
+112:- **G3.1** `INDEX.md` merges as normal text. There is no `merge=union`, no `merge=binary` and no custom merge driver.
+113:- **G3.2** When `INDEX.md` conflicts, nobody edits it. Resolve the entry files first, then run the script, stage
+115:- **Fails if** a merged `INDEX.md` differs from what the script builds from the merged entries.
+118:- **G4.1** An entry's `id` is unique without coordination between branches. It is never "the next free number". The
+120:- **G4.2** The script rejects a duplicate id (B2.3); it does not choose the form.
+121:- **Fails if** two branches can each create the same id and the clash shows only after a merge.
+123:## Open, for EJ
+[0m
+[0m→ [0mRead tests/fixtures/evaluator/index-md-REQUIREMENTS.md
+[0m
+[0m$ [0mgrep -n "^#\|^Fails if\|^\*\*[A-Z]" tests/fixtures/evaluator/*.md
+tests/fixtures/evaluator/caches-CACHES.md:28:# Memory Caches: SQLite Full-Text and Vector
+tests/fixtures/evaluator/caches-CACHES.md:57:## The answer first
+tests/fixtures/evaluator/caches-CACHES.md:72:## When to use which store
+tests/fixtures/evaluator/caches-CACHES.md:74:**Part 1 is for memory entries** (`project-memory/`), reasoned from the research and the run record. Part 2, for code
+tests/fixtures/evaluator/caches-CACHES.md:78:### Part 1 — memory entries (corpus: `project-memory/`)
+tests/fixtures/evaluator/caches-CACHES.md:86:**The rule.** **SQLite FTS5** is for a free-text question whose words are likely in the entry text, once its comparison
+tests/fixtures/evaluator/caches-CACHES.md:105:**Costs, and where there are none.** Measured on other corpora or on this machine, never on a real
+tests/fixtures/evaluator/caches-CACHES.md:117:**Still unresolved.** Six disagreements the three engines did not settle, kept as positions and not averaged (D1–D6
+tests/fixtures/evaluator/caches-CACHES.md:127:**Why no SQLite is visible in this repo.** Three reasons, and none is a rejection. (Since 2026-10-12 three SQLite
+tests/fixtures/evaluator/caches-CACHES.md:140:### Part 2 — code and docs
+tests/fixtures/evaluator/caches-CACHES.md:146:## Rules for every cache
+tests/fixtures/evaluator/caches-CACHES.md:166:## SQLite full-text index
+tests/fixtures/evaluator/caches-CACHES.md:168:### Five whys
+tests/fixtures/evaluator/caches-CACHES.md:191:### 5W1H
+tests/fixtures/evaluator/caches-CACHES.md:202:## Vector index
+tests/fixtures/evaluator/caches-CACHES.md:204:### Five whys
+tests/fixtures/evaluator/caches-CACHES.md:228:### 5W1H
+tests/fixtures/evaluator/caches-CACHES.md:239:## Measured here: development and testing
+tests/fixtures/evaluator/caches-CACHES.md:246:**Who wrote each check, and what it does not establish.**
+tests/fixtures/evaluator/caches-CACHES.md:266:**What each route returns, per category** (symbol hit in the top 5 / characters read to the first line that names a
+tests/fixtures/evaluator/caches-CACHES.md:292:**What the numbers say (my reading).**
+tests/fixtures/evaluator/caches-CACHES.md:310:## Core requirements
+tests/fixtures/evaluator/caches-CACHES.md:320:### Build — when a cache comes to exist, and what goes in it
+tests/fixtures/evaluator/caches-CACHES.md:322:**B1 — Nothing is built before its trigger fires** (v: never built before its own trigger; was R5)
+tests/fixtures/evaluator/caches-CACHES.md:371:**B2 — Derived from the files** (v: never the source of truth; was R1)
+tests/fixtures/evaluator/caches-CACHES.md:385:**B3 — Full rebuild, never patched** (v: never patched; was R2.1)
+tests/fixtures/evaluator/caches-CACHES.md:390:**B4 — Only active entries** (d: Rules for every cache, my reading; was R6)
+tests/fixtures/evaluator/caches-CACHES.md:399:**B5 — No model call to rebuild, except embedding** (v: How we know it works; was R8.1)
+tests/fixtures/evaluator/caches-CACHES.md:404:### Keep — the cache stays true to the files, and stays worth having
+tests/fixtures/evaluator/caches-CACHES.md:406:**K1 — It records what it was built from** (d: Rules for every cache; was R2.2)
+tests/fixtures/evaluator/caches-CACHES.md:414:**K2 — Stale never answers** (d: Rules for every cache; was R3.1)
+tests/fixtures/evaluator/caches-CACHES.md:428:**K3 — Dropped when it stops paying** (d; vision: *"cheap … and not before"*; was R8.2; EJ, 2026-10-12: *"yes please
+tests/fixtures/evaluator/caches-CACHES.md:440:### Read — an agent queries it
+tests/fixtures/evaluator/caches-CACHES.md:442:**Rd1 — Never read at session start** (v: never read at session start; was R9)
+tests/fixtures/evaluator/caches-CACHES.md:449:**Rd2 — An answer names its entry** (d; was R7)
+tests/fixtures/evaluator/caches-CACHES.md:456:**Rd3 — Absence degrades, it does not fail** (v: delete the folder and memory is unaffected; was R1.2, R3.2, R4)
+tests/fixtures/evaluator/caches-CACHES.md:471:## Example numbers by case
+tests/fixtures/evaluator/caches-CACHES.md:489:### The index read at session start (`INDEX.md`, `MEMORY.md`), by agent type
+tests/fixtures/evaluator/caches-CACHES.md:501:**Why the start load should stay small, whatever the window:**
+tests/fixtures/evaluator/caches-CACHES.md:508:**Use case, SEZA (SZ, CX):**
+tests/fixtures/evaluator/caches-CACHES.md:515:**When several agents share a project, the binding limit is the smallest one among them** (*my reading*).
+tests/fixtures/evaluator/caches-CACHES.md:517:### B1.1: full-text against `INDEX.md` plus grep
+tests/fixtures/evaluator/caches-CACHES.md:528:**My reading:** on accuracy, grep stays competitive until millions of tokens. On tokens read, a single broad term
+tests/fixtures/evaluator/caches-CACHES.md:533:### B1.2: the vector index
+tests/fixtures/evaluator/caches-CACHES.md:546:**My reading:** retrieval beats loading everything somewhere around 100K–500K tokens (W-19; the retriever is not stated
+tests/fixtures/evaluator/caches-CACHES.md:550:### SEZA today, trigger by trigger (SZ, the researcher's reading)
+tests/fixtures/evaluator/caches-CACHES.md:556:**What actually went wrong in SEZA was not search** (CX):
+tests/fixtures/evaluator/caches-CACHES.md:561:**My reading:** a faster cache would have returned the same outdated entries. Neither cache nor its freshness check
+tests/fixtures/evaluator/caches-CACHES.md:566:## What this changes elsewhere (proposed, not done)
+tests/fixtures/evaluator/caches-CACHES.md:570:## Not known
+tests/fixtures/evaluator/caches-CACHES.md:583:## Unresolved after review
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:1:# Harness requirements — R11 and R12
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:11:## R11 — results can be judged
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:13:**R11.1 Coverage of a requirement (SHOULD; a target, not a gate).**
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:28:Fails if: the units are written after the cases; a variant of a covered unit raises the percentage; an uncovered unit
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:32:**Skip criterion.** A unit is skippable when the damage if it breaks is smaller than the cost of covering it, and the
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:35:**R11.2 First signal (SHOULD).** Each judge gives a first signal before its full verdict: a check that runs first, can
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:40:## R12 — failures, great successes and model changes all update the harness
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:42:**R12.1 Failure handling (MUST — a safety bound).** An evaluator reports fail — never pass — when the result is
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:45:**R12.2 Failure log (MUST).** A failure is a result the evaluator judges wrong against the product's vision, use
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:53:**R12.3 Insight at the end of a task (MUST).** When a task ends with one or more failure records, the agent that ran
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:64:**R12.4 Judges say what is wrong, not how to be right (SHOULD).** An evaluation rule states the conditions that make
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:70:**R12.5 Review when a model changes (SHOULD).** When a model the harness uses is replaced or its capability is
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:77:**R12.6 Withdrawal conditions (SHOULD).** A fix added under this requirement names the observable that would show it
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:81:Fails if: an evaluator crash or an empty result is read as pass; a judge rejects a result that breaks no stated
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:94:**R12.7 Learn from success (MUST).** A failure matters more than a success, but a great success matters too.
+tests/fixtures/evaluator/harness-REQUIREMENTS.md:116:Fails if: a check's successes are not recorded; a task with criteria has no score, or its criteria are written after
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:1:# INDEX.md generator — requirements
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:19:## B — Build: from entries to `INDEX.md`
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:21:**B1 — What it reads** (p step 1; r opencode 3, codex 7)
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:31:**B2 — What it parses** (p steps 3–4; r opencode 5, 6, 8, 9; agy 6, 7)
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:47:**B3 — What it writes** (p steps 2, 5, 6; r codex 6, opencode 7, agy 8)
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:58:**B4 — Size** (d Rd3.1; p steps 7–8, 14; r agy 2, opencode 13, 16, codex 10–12)
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:71:## C — Check: how anyone tells the file is right
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:73:**C1 — The check mode** (d K6; p step 9)
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:83:**C2 — Tests** (r opencode 15, agy 3–4; replaces "the build checks it" in Rd3.1)
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:94:## G — Git: when it runs, and how branches meet
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:96:**G1 — Who runs it** (p step 10; d K6.2, *proposed* change)
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:103:**G2 — The hook** (p step 11; r opencode 10, codex 3)
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:111:**G3 — Merging** (p step 13; d W6; *proposed* new K6.3)
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:117:**G4 — Ids across branches** (p must-not 5; d W1.1, *proposed* change)
+tests/fixtures/evaluator/index-md-REQUIREMENTS.md:123:## Open, for EJ
+tests/fixtures/evaluator/index-md-VISION.md:1:# INDEX.md generator — product vision
+tests/fixtures/evaluator/index-md-VISION.md:18:**Who it is for.**
+tests/fixtures/evaluator/index-md-VISION.md:22:**The problem it solves.** A hand-kept index drifts from the entries. And one file that every branch rewrites
+tests/fixtures/evaluator/index-md-VISION.md:27:**What it will never do.**
+tests/fixtures/evaluator/index-md-VISION.md:38:**Kept simple.** Memory is simple, and a mechanism that is not needed is removed [EJ, 2026-10-12: *"memory is very
+tests/fixtures/evaluator/index-md-VISION.md:42:**How we know it works.** [proposed]
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:1:# memory-check — requirements
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:7:## Find
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:9:**F1 (MUST) The locations.** The tool looks for every memory location the guidelines name: under the project root
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:16:**F2 (MUST) The project.** The project is `--project <path>`, else the current folder, and must be the root of a git
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:20:**F3 (MUST) Read only.** The tool reads files and git (with `GIT_OPTIONAL_LOCKS=0`), and writes nothing but its own
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:24:## Check
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:26:**C1 (MUST) From the requirements.** The checks are the guidelines' own requirements, by id, prefixed by guideline:
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:35:**C2 (MUST) Results and evidence.** Each requirement's result is one of: pass, fail, needs a reviewer, not applicable
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:41:**C3 (MUST) The existing tool.** The index and entry-format checks are `tools/memory_index.py --check`, run and parsed
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:46:**C4 (MUST) Absent memory.** With no `project-memory/`, its requirements are "not applicable", with the absent location
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:50:**C5 (MUST) The snapshot and history.** The report names what it checked in its first line: the staged state (the
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:55:**C6 (MUST) Caches, first version.** Of `CACHES.md`'s requirements, B2.2 (the cache folder is ignored by git) and Rd1
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:60:## Report
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:62:**R1 (MUST) The report.** One Markdown report per run: the snapshot (C5), the locations (F1), a line giving how many
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:68:**R2 (MUST) The warning.** A short warning: one line per MUST that fails or could not run, and a missing
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:75:**R3 (MUST) Exit code.** The command exits 0 when no MUST fails or could not run, 1 when one does, 2 on a usage error.
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:78:## Tests
+tests/fixtures/evaluator/memory-check-REQUIREMENTS.md:80:**T1 (MUST) Known answers.** Fixtures and their expected results are written before the check runs, by hand (an
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:1:# Source-of-Truth Memory Design
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:43:## Why we need this memory
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:50:## Who it is for
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:65:## What it is for
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:85:## What will be put in
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:87:**An entry** is one markdown file. Its header holds: `id`, `kind`, `status`, `author`, the date it was recorded,
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:93:**Changing entries.** Anyone may change any entry, and `AGENTS.md` too. Each change adds one line to the entry's
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:101:**When to write.**
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:109:**Keeping it current.** Entries may go out of date while work goes on; that is accepted. Nothing watches for it: there
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:117:**Still open:** which tool generates `INDEX.md` and what runs it (K6); who resolves a git merge conflict (W6). Whether a
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:120:## What will not be put in
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:131:## Where it is put
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:150:## When it will be used
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:162:## When it will not be used
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:164:**Not at session start, but read later at its set time** (Rd2.2):
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:169:**Never loaded, at any point** (Rd2.3):
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:182:## Core requirements (confirmed by EJ, 2026-10-12)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:191:### Write — what goes in, and how
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:193:**W1 — The shape of an entry** (d: What will be put in)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:208:**W2 — What each kind means** (v; d: What it is for)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:216:**W3 — What never goes in** (v; d: What will not be put in)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:230:**W4 — Who writes, and the change log** (v: no owners, every change logged)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:239:**W5 — When to write** (d: When to write)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:254:**W6 — Writers do not collide** (d: Changing entries)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:262:### Keep — memory stays true, and nothing is lost
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:264:**K1 — The decision or fact first, then the code** (v; d: What it is for)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:274:**K4 — Never deleted, never expired by age** (v: nothing lost; d: What will not be put in)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:283:**K5 — The journal becomes entries** (v: nothing lost between sessions)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:293:**K6 — `INDEX.md` stays in step** (d: Where it is put; When to write)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:301:### Read — the right memory reaches the agent at the right time
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:303:**Rd1 — Where it lives, and readable from a clone alone** (v: plain files; never a database or service)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:310:**Rd2 — Session start** (v: a fresh session carries on; d: When it will be used)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:331:**Rd3 — `INDEX.md` fits every agent that reads it** (d: the size check; CACHES.md § Example numbers by case)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:336:**Rd4 — On demand** (d: When it will be used)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:348:**Rd5 — Check before acting** (d: When it will be used; When it will not be used)
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:366:**Rd6 — A fresh session carries on** (v: how we know it works)
+[0m
+[0m$ [0mgrep -n "^ \+[*-]" tests/fixtures/evaluator/index-md-REQUIREMENTS.md tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md tests/fixtures/evaluator/caches-CACHES.md | grep -v "^\S*:[0-9]*: *[-*] " | head -20; echo "=== indented bold id ==="; grep -rn "^ \+\*\*[A-Z]" tests/fixtures/evaluator/ | head -20
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:70:  **fact** is a truth or outside constraint the code must respect.
+tests/fixtures/evaluator/sot-SOURCE_OF_TRUTH.md:213:  **hypothesis** is a guess, labelled as one.
+tests/fixtures/evaluator/caches-CACHES.md:156:  *"A stale index is worse than no index."*).
+tests/fixtures/evaluator/caches-CACHES.md:377:  *Example:* `rm -rf project-memory/.cache/` → run the documented rebuild → the same query returns the same entries.
+tests/fixtures/evaluator/caches-CACHES.md:387:  *Example:* the rebuild command has no "update" mode. (G-F5 drift)
+tests/fixtures/evaluator/caches-CACHES.md:401:  *Example:* rebuild with no model credentials available; the full-text path still works. (M4, M6)
+tests/fixtures/evaluator/caches-CACHES.md:453:  *"write fixes 1–4 into CACHES.md"*)
+=== indented bold id ===
+[0m
+[0m$ [0mgrep -rn "spec_parse" tests/*.py | grep -v "^tests/test_evaluator_spec_parse" | head -30
+tests/test_evaluator_r1_matrix_spec.py:1:"""R1-F3 — Repair R1 contract tests for probe_matrix.py and spec_parse.py.
+tests/test_evaluator_r1_matrix_spec.py:29:from test_evaluator_spec_parse import TOOL as SPEC_TOOL, load_spec_parse
+tests/test_evaluator_r1_matrix_spec.py:64:    """R1-F3 — changing ID in a scratch copy changes CITATION through a spec_parse import."""
+tests/test_evaluator_r1_matrix_spec.py:67:    copied_spec = evaluator_copy / "spec_parse.py"
+tests/test_evaluator_r1_matrix_spec.py:75:    original_id = load_spec_parse().ID
+tests/test_evaluator_r1_matrix_spec.py:86:         and (node.module or "").split(".")[-1] == "spec_parse"
+tests/test_evaluator_r1_matrix_spec.py:89:            and any(alias.name.split(".")[-1] == "spec_parse" for alias in node.names))
+tests/test_evaluator_r1_matrix_spec.py:91:            and any(alias.name == "spec_parse" for alias in node.names))
+tests/test_evaluator_r1_matrix_spec.py:93:    ), "probe_matrix must import spec_parse.ID instead of copying its grammar"
+tests/test_evaluator_r1_matrix_spec.py:359:    document = load_spec_parse().parse(textwrap.dedent('''\
+tests/test_evaluator_r1_matrix_spec.py:373:    document = load_spec_parse().parse(textwrap.dedent('''\
+tests/test_evaluator_r1_matrix_spec.py:394:    document = load_spec_parse().parse(textwrap.dedent('''\
+[0m
+[0m→ [0mRead tests/test_evaluator_r1_matrix_spec.py[90m [offset=350, limit=60][0m
+[0m
+[0m$ [0mdate -Iseconds
+2026-10-18T01:55:34+08:00
+[0m
+[0m← [0mWrite runs/20261018-evaluator-parser/progress.md
+Wrote file successfully.
+[0m
+[0m← [0mWrite runs/20261018-evaluator-parser/progress.md
+Wrote file successfully.
+[0m
+Now the code.
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -2,10 +2,11 @@
+ """spec_parse.py — read the product's REQUIREMENTS and VISION text into requirements.json (step E1).
+ 
+ Run:  python3 tools/evaluator/spec_parse.py --requirements REQUIREMENTS.md [--vision VISION.md] --out requirements.json
+ 
+-DATA.md's E1 section is the contract, and its rules 1 to 8 are the only thing this module knows about a spec file:
+-a group heading, the ids under it, its **Fails if** lines split into cases, the open ids, and the two vision sections.
++DATA.md's E1 section is the contract, and its rules 1 to 9 are the only thing this module knows about a spec file:
++a group heading, the ids under it, its **Fails if** lines split into cases, the open ids, the two vision sections, and
++the paragraph form of rule 9, which the same file may use beside the bullets.
+ Every requirement id read here lands in the manifest, because an id the run never reports on is a requirement the
+ run claims to have covered (EV-P2.1), and an id the file marks open lands out of scope instead (EV-R1.1). An id-shaped
+ token in bold at the start of a bullet that never reached the manifest is listed in `unparsed_ids`, so it is visible
+ rather than silently dropped (R1-F14), and a spec with an empty manifest is refused rather than run (R1-F1).
+
+[0m
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -30,8 +30,20 @@
+ # R1-F14: the id token a bullet starts with, whether or not the parser could take the rest of the bold. The lookahead
+ # keeps `**B1.20Oops**` out: an id is not an id when a letter or a digit carries straight on, or when `.n` follows.
+ ID_LEADING = re.compile(r"^\*\*(?P<id>" + ID + r")(?!\w|\.\d)")
+ 
++# DATA.md E1 rule 9, the paragraph form. A heading line `## R12 — title` names a group; the group is made when the
++# first requirement paragraph lands in it, so a heading that holds none (INDEX.md's `## B — Build`, above bullets) adds
++# no empty group and rules 1 to 8 read that file exactly as before. The group has no `.n` part, so `### B1.1: x` is
++# not one.
++HEADING_GROUP = re.compile(r"^\#{1,6}\s+(?P<group>" + ID + r")\s+—\s*(?P<title>.*?)\s*\Z")
++# A requirement paragraph's first line: `**<id>` then a space or the bold's own closing `**` (rule 9). The line starts
++# at column 0, as it does in both files that use the form.
++PARAGRAPH_START = re.compile(r"^\*\*(?P<id>" + ID + r")(?= |\*\*)")
++# Rule 9's **Fails if**, as a paragraph of its own and inside a requirement paragraph: the bold spellings of rule 3
++# and the plain `Fails if:`, the longest first so `**Fails if:**` is not read as `**Fails if**`.
++FAILS_IF_IN_TEXT = re.compile(r"\*\*Fails if:?\*\*|\*\*Fails if:?|Fails if:")
++
+ # DATA.md E1 rule 5: an id whose own text says it is open gets no verdict. The word has to end a clause — `.`, `;`,
+ # `,`, `)` or the end of the bullet — so "is open." and "leaves this open." count, while "is opened read-only" and
+ # "can open the source" do not.
+ OPEN_AT_CLAUSE_END = re.compile(r"\bopen\b(?=[.;,)]|\Z)", re.IGNORECASE)
+
+[0m
+Now the parsing helpers and the loop.
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -99,8 +99,31 @@
+             return body[len(marker):].strip()
+     return None
+ 
+ 
++def _paragraph(lines: list[str], index: int) -> tuple[str, int]:
++    """A paragraph: its lines up to the blank line that ends it, joined by one space (DATA.md E1 rule 9)."""
++    parts = []
++    while index < len(lines) and not _starts_block(lines[index]):
++        parts.append(lines[index].strip())
++        index += 1
++    return " ".join(parts).strip(), index
++
++
++def _paragraph_fails_if(body: str) -> str | None:
++    """The text after a **Fails if** marker anywhere in a paragraph, or None when it holds none (rule 9)."""
++    marker = FAILS_IF_IN_TEXT.search(body)
++    return body[marker.end():].strip() if marker is not None else None
++
++
++def _paragraph_title(line: str, identifier: str) -> str:
++    """The rest of a requirement paragraph's bold text, which titles the group of its own (rule 9)."""
++    rest = line[line.index("**") + 2 + len(identifier):].strip()
++    if rest.startswith("**"):
++        return ""
++    return (rest[:-2] if rest.endswith("**") else rest).strip()
++
++
+ def _is_open(text: str) -> bool:
+     """Whether an id's own bullet text says the requirement is still open (DATA.md E1 rule 5)."""
+     return OPEN_AT_CLAUSE_END.search(text) is not None
+ 
+
+[0m
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -188,36 +188,62 @@
+ 
+ def _read_groups(text: str) -> tuple[list[dict], list[str]]:
+     """Every requirement group in the file, in file order, and the id tokens the parser could not place (R1-F14)."""
+     lines = text.splitlines()
+-    groups, current, index, leading = [], None, 0, []
++    groups, current, pending, index, leading = [], None, None, 0, []
+     while index < len(lines):
+         heading = GROUP_HEADING.match(lines[index])
+         if heading is not None:
+-            current = {"group": heading.group("group"), "title": heading.group("title").strip(),
+-                       "ids": [], "open_ids": [], "fails": []}
++            current = _new_group(heading.group("group"), heading.group("title").strip())
+             groups.append(current)
+             index += 1
+             continue
+-        if BULLET.match(lines[index]) is None:
++        if lines[index].startswith("#"):
++            # Rule 9: a `## <group> — ` heading opens a group, any other heading closes it. The group waits in
++            # `pending` until a paragraph lands in it, so a heading over bullets adds no group of its own.
++            opened = HEADING_GROUP.match(lines[index])
++            pending = None if opened is None else _new_group(opened.group("group"), opened.group("title"))
+             index += 1
+             continue
+-        body, index = _bullet_body(lines, index)
+-        bold = ID_BOLD.match(body)
+-        if bold is not None and current is not None:
+-            current["ids"].append(bold.group("id"))
+-            if _is_open(body[bold.end():]):
+-                current["open_ids"].append(bold.group("id"))
++        if BULLET.match(lines[index]) is not None:
++            body, index = _bullet_body(lines, index)
++            bold = ID_BOLD.match(body)
++            if bold is not None and current is not None:
++                current["ids"].append(bold.group("id"))
++                if _is_open(body[bold.end():]):
++                    current["open_ids"].append(bold.group("id"))
++                continue
++            fails_if = _fails_if(body)
++            if fails_if is not None and current is not None:
++                current["fails"].append(fails_if)
++                continue
++            # A bullet the parser could not read: before any group heading, or in a bold shape rule 2 does not take
++            # (`**B1.1:**`). It is named in unparsed_ids rather than dropped.
++            orphan = ID_LEADING.match(body)
++            if orphan is not None and orphan.group("id") not in leading:
++                leading.append(orphan.group("id"))
+             continue
+-        fails_if = _fails_if(body)
+-        if fails_if is not None and current is not None:
+-            current["fails"].append(fails_if)
++        identifier = PARAGRAPH_START.match(lines[index])
++        if identifier is not None or _paragraph_fails_if(lines[index]) is not None:
++            body, index = _paragraph(lines, index)
++            if pending is not None:
++                groups.append(pending)
++                current, pending = pending, None
++            if identifier is not None:
++                if current is None:
++                    # Rule 9: no heading group holds it, so the requirement paragraph is a group of its own.
++                    current = _new_group(identifier.group("id"),
++                                         _paragraph_title(lines[index - 1], identifier.group("id")))
++                    groups.append(current)
++                current["ids"].append(identifier.group("id"))
++                # Rule 5 reads the whole paragraph.
++                if _is_open(body):
++                    current["open_ids"].append(identifier.group("id"))
++            fails_if = _paragraph_fails_if(body)
++            if fails_if is not None and current is not None:
++                current["fails"].append(fails_if)
+             continue
+-        # A bullet the parser could not read: before any group heading, or in a bold shape rule 2 does not take
+-        # (`**B1.1:**`). It is named in unparsed_ids rather than dropped.
+-        orphan = ID_LEADING.match(body)
+-        if orphan is not None and orphan.group("id") not in leading:
+-            leading.append(orphan.group("id"))
++        index += 1
+     return [_close(group) for group in groups], leading
+ 
+ 
+ # --- one vision file -----------------------------------------------------------------------
+
+[0m
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -223,17 +223,20 @@
+         leading.append(orphan.group("id"))
+     continue
+ identifier = PARAGRAPH_START.match(lines[index])
+ if identifier is not None or _paragraph_fails_if(lines[index]) is not None:
+-    body, index = _paragraph(lines, index)
++    first, body = lines[index], _paragraph(lines, index)[0]
++    index += 1
++    while index < len(lines) and not _starts_block(lines[index]):
++        index += 1
+     if pending is not None:
+         groups.append(pending)
+         current, pending = pending, None
+     if identifier is not None:
+         if current is None:
+             # Rule 9: no heading group holds it, so the requirement paragraph is a group of its own.
+             current = _new_group(identifier.group("id"),
+-                                 _paragraph_title(lines[index - 1], identifier.group("id")))
++                                 _paragraph_title(first, identifier.group("id")))
+             groups.append(current)
+         current["ids"].append(identifier.group("id"))
+         # Rule 5 reads the whole paragraph.
+         if _is_open(body):
+
+[0m
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -223,12 +223,10 @@
+         leading.append(orphan.group("id"))
+     continue
+ identifier = PARAGRAPH_START.match(lines[index])
+ if identifier is not None or _paragraph_fails_if(lines[index]) is not None:
+-    first, body = lines[index], _paragraph(lines, index)[0]
+-    index += 1
+-    while index < len(lines) and not _starts_block(lines[index]):
+-        index += 1
++    first = lines[index]
++    body, index = _paragraph(lines, index)
+     if pending is not None:
+         groups.append(pending)
+         current, pending = pending, None
+     if identifier is not None:
+
+[0m
+Now add `_new_group` and place it near `_close`.
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -166,8 +166,13 @@
+             cases.append(part)
+     return cases
+ 
+ 
++def _new_group(group_id: str, title: str) -> dict:
++    """A group still being read: its ids, its open ids and its Fails if texts, in the order the file holds them."""
++    return {"group": group_id, "title": title, "ids": [], "open_ids": [], "fails": []}
++
++
+ def _close(group: dict) -> dict:
+     """Give a collected group its status, its cases and the key order DATA.md's example uses."""
+     texts = group.pop("fails")
+     fails_if = " / ".join(texts)
+
+[0m
+[0m→ [0mRead tools/evaluator/spec_parse.py[90m [offset=1, limit=60][0m
+[0m
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -30,8 +30,13 @@
+ # R1-F14: the id token a bullet starts with, whether or not the parser could take the rest of the bold. The lookahead
+ # keeps `**B1.20Oops**` out: an id is not an id when a letter or a digit carries straight on, or when `.n` follows.
+ ID_LEADING = re.compile(r"^\*\*(?P<id>" + ID + r")(?!\w|\.\d)")
+ 
++# DATA.md E1 rule 5: an id whose own text says it is open gets no verdict. The word has to end a clause — `.`, `;`,
++# `,`, `)` or the end of the bullet — so "is open." and "leaves this open." count, while "is opened read-only" and
++# "can open the source" do not.
++OPEN_AT_CLAUSE_END = re.compile(r"\bopen\b(?=[.;,)]|\Z)", re.IGNORECASE)
++
+ # DATA.md E1 rule 9, the paragraph form. A heading line `## R12 — title` names a group; the group is made when the
+ # first requirement paragraph lands in it, so a heading that holds none (INDEX.md's `## B — Build`, above bullets) adds
+ # no empty group and rules 1 to 8 read that file exactly as before. The group has no `.n` part, so `### B1.1: x` is
+ # not one.
+@@ -42,13 +47,8 @@
+ # Rule 9's **Fails if**, as a paragraph of its own and inside a requirement paragraph: the bold spellings of rule 3
+ # and the plain `Fails if:`, the longest first so `**Fails if:**` is not read as `**Fails if**`.
+ FAILS_IF_IN_TEXT = re.compile(r"\*\*Fails if:?\*\*|\*\*Fails if:?|Fails if:")
+ 
+-# DATA.md E1 rule 5: an id whose own text says it is open gets no verdict. The word has to end a clause — `.`, `;`,
+-# `,`, `)` or the end of the bullet — so "is open." and "leaves this open." count, while "is opened read-only" and
+-# "can open the source" do not.
+-OPEN_AT_CLAUSE_END = re.compile(r"\bopen\b(?=[.;,)]|\Z)", re.IGNORECASE)
+-
+ IN_SCOPE = "in_scope"
+ OPEN = "open"
+ UNTESTABLE = "untestable"
+ 
+
+[0m
+[0m→ [0mRead tools/evaluator/spec_parse.py[90m [limit=120, offset=95][0m
+[0m→ [0mRead tools/evaluator/spec_parse.py[90m [limit=50, offset=212][0m
+Now run the suite.
+[0m
+[0m$ [0mpython3 -m pytest -q tests/test_evaluator_*.py 2>&1 | tail -40
+(no output)
+
+<shell_metadata>
+shell tool terminated command after exceeding timeout 120000 ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.
+</shell_metadata>
+[0m
+[0m$ [0mpython3 -m pytest -q -p no:cacheprovider tests/test_evaluator_spec_parse.py tests/test_evaluator_spec_parse_paragraph.py 2>&1 | tail -40
+(no output)
+
+<shell_metadata>
+shell tool terminated command after exceeding timeout 300000 ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.
+</shell_metadata>
+[0m
+[0m$ [0mtimeout 20 python3 -c "
+import importlib.util,sys
+spec=importlib.util.spec_from_file_location('sp','tools/evaluator/spec_parse.py')
+m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+print('loaded')
+d=m.parse(open('tests/fixtures/evaluator/memory-check-REQUIREMENTS.md').read())
+print(d['manifest'])
+" 2>&1 | tail -5; echo "exit=$?"
+loaded
+['F1', 'F2', 'F3', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'R1', 'R2', 'R3', 'T1']
+exit=0
+[0m
+[0m$ [0mtimeout 30 python3 -c "
+import importlib.util
+spec=importlib.util.spec_from_file_location('sp','tools/evaluator/spec_parse.py')
+m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+d=m.parse(open('tests/fixtures/evaluator/harness-REQUIREMENTS.md').read())
+print(d['manifest'])
+print([(g['group'],g['title'],g['ids'],g['status'],len(g['cases'])) for g in d['groups']])
+print(d['unparsed_ids'])
+"; echo "exit=$?"
+['R11.1', 'R11.2', 'R12.1', 'R12.2', 'R12.3', 'R12.4', 'R12.5', 'R12.6', 'R12.7']
+[('R11', 'results can be judged', ['R11.1', 'R11.2'], 'in_scope', 6), ('R12', 'failures, great successes and model changes all update the harness', ['R12.1', 'R12.2', 'R12.3', 'R12.4', 'R12.5', 'R12.6', 'R12.7'], 'in_scope', 28)]
+[]
+exit=0
+[0m
+[0m$ [0mls conftest.py tests/conftest.py pytest.ini setup.cfg pyproject.toml tox.ini 2>&1; grep -n "addopts\|testpaths\|\[tool.pytest" pyproject.toml pytest.ini setup.cfg 2>/dev/null
+ls: cannot access 'conftest.py': No such file or directory
+ls: cannot access 'pytest.ini': No such file or directory
+ls: cannot access 'setup.cfg': No such file or directory
+ls: cannot access 'tox.ini': No such file or directory
+pyproject.toml
+tests/conftest.py
+pyproject.toml:11:[tool.pytest.ini_options]
+pyproject.toml:12:testpaths = ["tests", "code_graph/tests"]
+[0m
+[0m→ [0mRead pyproject.toml
+[0m
+[0m$ [0mtimeout 60 python3 -m pytest -q -p no:cacheprovider --collect-only tests/test_evaluator_spec_parse_paragraph.py 2>&1 | tail -20; echo "exit=$?"
+tests/test_evaluator_spec_parse_paragraph.py::test_harness_ids_are_all_read_in_file_order
+tests/test_evaluator_spec_parse_paragraph.py::test_harness_groups_come_from_the_headings
+tests/test_evaluator_spec_parse_paragraph.py::test_harness_group_fails_if_paragraphs_become_cases
+tests/test_evaluator_spec_parse_paragraph.py::test_memory_check_ids_are_all_read_each_its_own_group
+tests/test_evaluator_spec_parse_paragraph.py::test_memory_check_inline_fails_if_is_each_groups_cases
+tests/test_evaluator_spec_parse_paragraph.py::test_paragraph_text_outside_a_requirement_is_ignored
+tests/test_evaluator_spec_parse_paragraph.py::test_the_main_command_no_longer_refuses_our_files
+
+7 tests collected in 0.01s
+exit=0
+[0m
+[0m$ [0mtimeout 90 python3 -m pytest -q -p no:cacheprovider tests/test_evaluator_spec_parse_paragraph.py -x 2>&1 | tail -30; echo "exit=$?"
+...F
+=================================== FAILURES ===================================
+____________ test_memory_check_ids_are_all_read_each_its_own_group _____________
+
+    def test_memory_check_ids_are_all_read_each_its_own_group():
+        document = parsed(MEMORY_CHECK)
+        assert document["manifest"] == MEMORY_CHECK_IDS
+>       assert [g["group"] for g in document["groups"]] == MEMORY_CHECK_IDS
+E       AssertionError: assert ['F1'] == ['F1', 'F2', ...2', 'C3', ...]
+E         
+E         Right contains 12 more items, first extra item: 'F2'
+E         Use -v to get more diff
+
+tests/test_evaluator_spec_parse_paragraph.py:56: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_evaluator_spec_parse_paragraph.py::test_memory_check_ids_are_all_read_each_its_own_group
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 3 passed in 0.02s
+exit=0
+[0m
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -193,21 +193,22 @@
+ 
+ def _read_groups(text: str) -> tuple[list[dict], list[str]]:
+     """Every requirement group in the file, in file order, and the id tokens the parser could not place (R1-F14)."""
+     lines = text.splitlines()
+-    groups, current, pending, index, leading = [], None, None, 0, []
++    groups, current, opened, held, index, leading = [], None, None, False, 0, []
+     while index < len(lines):
+         heading = GROUP_HEADING.match(lines[index])
+         if heading is not None:
+             current = _new_group(heading.group("group"), heading.group("title").strip())
+             groups.append(current)
+             index += 1
+             continue
+         if lines[index].startswith("#"):
+-            # Rule 9: a `## <group> — ` heading opens a group, any other heading closes it. The group waits in
+-            # `pending` until a paragraph lands in it, so a heading over bullets adds no group of its own.
+-            opened = HEADING_GROUP.match(lines[index])
+-            pending = None if opened is None else _new_group(opened.group("group"), opened.group("title"))
++            # Rule 9: a `## <group> — ` heading opens a group, any other heading closes it. The group is made when a
++            # paragraph lands in it, so a heading over bullets adds no group of its own.
++            named = HEADING_GROUP.match(lines[index])
++            opened, held = (None, False) if named is None else (_new_group(named.group("group"),
++                                                                         named.group("title")), False)
+             index += 1
+             continue
+         if BULLET.match(lines[index]) is not None:
+             body, index = _bullet_body(lines, index)
+@@ -226,24 +227,25 @@
+             orphan = ID_LEADING.match(body)
+             if orphan is not None and orphan.group("id") not in leading:
+                 leading.append(orphan.group("id"))
+             continue
+-        identifier = PARAGRAPH_START.match(lines[index])
+-        if identifier is not None or _paragraph_fails_if(lines[index]) is not None:
+-            first = lines[index]
++        first = lines[index]
++        identifier = PARAGRAPH_START.match(first)
++        if identifier is not None or _paragraph_fails_if(first) is not None:
+             body, index = _paragraph(lines, index)
+-            if pending is not None:
+-                groups.append(pending)
+-                current, pending = pending, None
++            if opened is not None and not held:
++                groups.append(opened)
++                current, held = opened, True
+             if identifier is not None:
+-                if current is None:
+-                    # Rule 9: no heading group holds it, so the requirement paragraph is a group of its own.
++                if opened is None:
++                    # Rule 9: no heading group is open, so the requirement paragraph is a group of its own, named
++                    # after its id and titled by the rest of its bold.
+                     current = _new_group(identifier.group("id"),
+                                          _paragraph_title(first, identifier.group("id")))
+                     groups.append(current)
+                 current["ids"].append(identifier.group("id"))
+-                # Rule 5 reads the whole paragraph.
+                 if _is_open(body):
++                    # Rule 5 reads the whole paragraph, not only the text after the bold.
+                     current["open_ids"].append(identifier.group("id"))
+             fails_if = _paragraph_fails_if(body)
+             if fails_if is not None and current is not None:
+                 current["fails"].append(fails_if)
+
+[0m
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -205,10 +205,10 @@
+ if lines[index].startswith("#"):
+     # Rule 9: a `## <group> — ` heading opens a group, any other heading closes it. The group is made when a
+     # paragraph lands in it, so a heading over bullets adds no group of its own.
+     named = HEADING_GROUP.match(lines[index])
+-    opened, held = (None, False) if named is None else (_new_group(named.group("group"),
+-                                                                 named.group("title")), False)
++    opened = None if named is None else _new_group(named.group("group"), named.group("title"))
++    held = False
+     index += 1
+     continue
+ if BULLET.match(lines[index]) is not None:
+     body, index = _bullet_body(lines, index)
+
+[0m
+[0m$ [0mtimeout 90 python3 -m pytest -q -p no:cacheprovider tests/test_evaluator_spec_parse_paragraph.py tests/test_evaluator_spec_parse.py 2>&1 | tail -30
+.......
+[0m
+[0m$ [0mtimeout 120 python3 -m pytest -q -p no:cacheprovider tests/test_evaluator_spec_parse_paragraph.py tests/test_evaluator_spec_parse.py > /tmp/opencode/spec.txt 2>&1; echo "exit=$?"; cat /tmp/opencode/spec.txt
+exit=124
+.......
+[0m
+[0m$ [0mtimeout 20 python3 -c "
+import importlib.util,signal
+spec=importlib.util.spec_from_file_location('sp','tools/evaluator/spec_parse.py')
+m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+def h(*a): raise SystemExit('HANG')
+signal.signal(signal.SIGALRM,h); signal.alarm(10)
+for f in ['index-md-REQUIREMENTS.md','sot-SOURCE_OF_TRUTH.md','caches-CACHES.md']:
+    d=m.parse(open('tests/fixtures/evaluator/'+f).read())
+    print(f, len(d['groups']), len(d['manifest']), d['unparsed_ids'])
+"; echo "exit=$?"
+HANG
+exit=1
+[0m
+[0m$ [0mtimeout 20 python3 -c "
+import importlib.util,signal
+spec=importlib.util.spec_from_file_location('sp','tools/evaluator/spec_parse.py')
+m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+def h(*a): raise SystemExit('HANG')
+signal.signal(signal.SIGALRM,h); signal.alarm(10)
+t=open('tests/fixtures/evaluator/index-md-REQUIREMENTS.md').read()
+print(m._read_groups(t)[1])
+"; echo "exit=$?"
+HANG
+exit=1
+[0m
+[0m$ [0mtimeout 30 python3 -c "
+import faulthandler,sys
+faulthandler.dump_traceback_later(8, exit=True)
+import importlib.util
+spec=importlib.util.spec_from_file_location('sp','tools/evaluator/spec_parse.py')
+m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+t=open('tests/fixtures/evaluator/index-md-REQUIREMENTS.md').read()
+print(m._read_groups(t)[1])
+" 2>&1 | head -20
+Timeout (0:00:08)!
+Thread 0x000070aa3fb5e080 (most recent call first):
+  File "/home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py", line 72 in _starts_block
+  File "/home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py", line 114 in _paragraph_fails_if
+  File "/home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py", line 232 in _read_groups
+  File "<string>", line 8 in <module>
+[0m
+[0m→ [0mRead tools/evaluator/spec_parse.py[90m [limit=40, offset=66][0m
+[0m→ [0mRead tools/evaluator/spec_parse.py[90m [limit=28, offset=103][0m
+[0m
+[0m$ [0mtimeout 30 python3 -c "
+import importlib.util
+spec=importlib.util.spec_from_file_location('sp','tools/evaluator/spec_parse.py')
+m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+import re
+orig=m._paragraph
+calls={}
+def spy(lines,index):
+    calls[index]=calls.get(index,0)+1
+    if calls[index]>3: raise SystemExit('STUCK at index %d line=%r'%(index,lines[index]))
+    return orig(lines,index)
+m._paragraph=spy
+t=open('tests/fixtures/evaluator/index-md-REQUIREMENTS.md').read()
+print(m._read_groups(t)[1])
+" 2>&1 | head
+STUCK at index 12 line='> *Proposed* marks wording EJ has not decided. Every requirement has a **Fails if** check that some case breaks. There'
+[0m
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -108,10 +108,15 @@
+         index += 1
+     return " ".join(parts).strip(), index
+ 
+ 
++def _starts_fails_if(body: str) -> bool:
++    """Whether a paragraph opens with a **Fails if** marker (DATA.md E1 rule 9), as a rule 3 bullet does."""
++    return FAILS_IF_IN_TEXT.match(body) is not None
++
++
+ def _paragraph_fails_if(body: str) -> str | None:
+-    """The text after a **Fails if** marker anywhere in a paragraph, or None when it holds none (rule 9)."""
++    """The text after the first **Fails if** marker anywhere in a paragraph, or None when it holds none (rule 9)."""
+     marker = FAILS_IF_IN_TEXT.search(body)
+     return body[marker.end():].strip() if marker is not None else None
+ 
+ 
+
+[0m
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -232,30 +232,33 @@
+         orphan = ID_LEADING.match(body)
+         if orphan is not None and orphan.group("id") not in leading:
+             leading.append(orphan.group("id"))
+         continue
+-    first = lines[index]
+-    identifier = PARAGRAPH_START.match(first)
+-    if identifier is not None or _paragraph_fails_if(first) is not None:
+-        body, index = _paragraph(lines, index)
+-        if opened is not None and not held:
+-            groups.append(opened)
+-            current, held = opened, True
+-        if identifier is not None:
+-            if opened is None:
+-                # Rule 9: no heading group is open, so the requirement paragraph is a group of its own, named
+-                # after its id and titled by the rest of its bold.
+-                current = _new_group(identifier.group("id"),
+-                                     _paragraph_title(first, identifier.group("id")))
+-                groups.append(current)
+-            current["ids"].append(identifier.group("id"))
+-            if _is_open(body):
+-                # Rule 5 reads the whole paragraph, not only the text after the bold.
+-                current["open_ids"].append(identifier.group("id"))
+-        fails_if = _paragraph_fails_if(body)
+-        if fails_if is not None and current is not None:
+-            current["fails"].append(fails_if)
+-        continue
++    if not _starts_block(lines[index]):
++        # Rule 9, the paragraph form. Only a line that begins nothing else is read as a paragraph, so the
++        # bullet form above and a block quote keep the lines they had.
++        first = lines[index]
++        identifier = PARAGRAPH_START.match(first)
++        if identifier is not None or _starts_fails_if(first):
++            body, index = _paragraph(lines, index)
++            if opened is not None and not held:
++                groups.append(opened)
++                current, held = opened, True
++            if identifier is not None:
++                if opened is None:
++                    # Rule 9: no heading group is open, so the requirement paragraph is a group of its own,
++                    # named after its id and titled by the rest of its bold.
++                    current = _new_group(identifier.group("id"),
++                                         _paragraph_title(first, identifier.group("id")))
++                    groups.append(current)
++                current["ids"].append(identifier.group("id"))
++                if _is_open(body):
++                    # Rule 5 reads the whole paragraph, not only the text after the bold.
++                    current["open_ids"].append(identifier.group("id"))
++            fails_if = _paragraph_fails_if(body)
++            if fails_if is not None and current is not None:
++                current["fails"].append(fails_if)
++            continue
+     index += 1
+ return [_close(group) for group in groups], leading
+ 
+ 
+
+[0m
+[0m$ [0mtimeout 120 python3 -m pytest -q -p no:cacheprovider tests/test_evaluator_spec_parse_paragraph.py tests/test_evaluator_spec_parse.py > /tmp/opencode/spec.txt 2>&1; echo "exit=$?"; cat /tmp/opencode/spec.txt
+exit=0
+...............                                                          [100%]
+15 passed in 0.04s
+[0m
+[0m$ [0mtimeout 900 python3 -m pytest -q tests/test_evaluator_*.py > /tmp/opencode/all.txt 2>&1; echo "exit=$?"; tail -20 /tmp/opencode/all.txt
+exit=0
+........................................................................ [ 39%]
+........................................................................ [ 78%]
+........................................                                 [100%]
+184 passed in 39.96s
+[0m
+[0m$ [0mgit show HEAD:tools/evaluator/spec_parse.py > /tmp/opencode/old_spec_parse.py && timeout 120 python3 -c "
+import importlib.util, json
+def load(p,n):
+    s=importlib.util.spec_from_file_location(n,p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); return m
+old=load('/tmp/opencode/old_spec_parse.py','old'); new=load('tools/evaluator/spec_parse.py','new')
+import pathlib
+for f in ['index-md-REQUIREMENTS.md','sot-SOURCE_OF_TRUTH.md','caches-CACHES.md']:
+    t=pathlib.Path('tests/fixtures/evaluator/'+f).read_text()
+    a=old.parse(t); b=new.parse(t)
+    print(f, 'identical' if json.dumps(a,sort_keys=True)==json.dumps(b,sort_keys=True) else 'DIFFERENT')
+v=pathlib.Path('tests/fixtures/evaluator/index-md-VISION.md').read_text()
+t=pathlib.Path('tests/fixtures/evaluator/index-md-REQUIREMENTS.md').read_text()
+print('vision identical' if json.dumps(old.parse(t,v),sort_keys=True)==json.dumps(new.parse(t,v),sort_keys=True) else 'DIFFERENT')
+"
+index-md-REQUIREMENTS.md identical
+sot-SOURCE_OF_TRUTH.md identical
+caches-CACHES.md identical
+vision identical
+[0m
+[0m$ [0mtimeout 60 python3 tools/evaluator/spec_parse.py --requirements docs/HARNESS_REQUIREMENTS.md --out /tmp/opencode/h.json; timeout 60 python3 tools/evaluator/spec_parse.py --requirements memory_check/REQUIREMENTS.md --vision memory_check/VISION.md --out /tmp/opencode/m.json 2>&1 | tail -3
+docs/HARNESS_REQUIREMENTS.md: no such file
+memory_check/REQUIREMENTS.md: no such file
+[0m
+[0m$ [0mls docs | head -20; ls | head -20
+ABLATION_1.md
+ABLATION_2.md
+ABLATION_3.md
+ABLATION_4.md
+ABLATION_4_DESIGN.md
+ABLATION_4_IMPL.md
+ABLATION_5.md
+ABLATION_6.md
+ABLATION_7.md
+AUTONOMY_DESIGN.md
+AUTONOMY_REVIEW.md
+DISPATCHER_DESIGN.md
+DKIND_MIRROR_RESEARCH.md
+EXECUTOR_KINDS.md
+FEEDBACK_TEMPLATES.md
+HYBRID_BRIEF.md
+HYBRID_SEQUENCES.md
+HYBRID_SPEC.md
+INTERFACE_FIXES_IMPL.md
+INTERFACE_FIXES_PLAN.md
+20260919-plan-critic-issues.md
+20260919-state.md
+AGENTS.md
+BOOTSTRAP_PROMPT.md
+CLAUDE.md
+DECISIONS.md
+PROJECT_OVERVIEW.md
+README.md
+SPEC.md
+TODO.md
+ablation
+ancient_games
+code_graph
+docs
+pyproject.toml
+runs
+skills
+tests
+tools
+[0m
+[0m$ [0mls docs | grep -i "harness\|requirem"; ls docs/memory_check 2>/dev/null; find . -maxdepth 2 -name "HARNESS_REQUIREMENTS.md" -o -maxdepth 2 -name "memory_check" -type d | head
+(no output)
+[0m
+[0m$ [0mtimeout 30 python3 -c "
+import importlib.util, json
+s=importlib.util.spec_from_file_location('new','tools/evaluator/spec_parse.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
+mixed = '''# Spec
+
+## R1 — First
+
+**R1.1 The one thing.** Some text. Fails if: it breaks.
+
+- **R1.2** A bullet in the same group.
+- **Fails if** the bullet breaks.
+
+## Notes, for EJ
+
+Some prose.
+
+## R2 — Second
+
+**R2.1 Open one.** The design leaves this open.
+'''
+d=m.parse(mixed)
+print(json.dumps(d,indent=1,ensure_ascii=False))
+"
+{
+ "spec": {
+  "requirements": null,
+  "vision": null
+ },
+ "groups": [
+  {
+   "group": "R1",
+   "title": "First",
+   "ids": [
+    "R1.1",
+    "R1.2"
+   ],
+   "status": "in_scope",
+   "fails_if": "it breaks. / the bullet breaks.",
+   "cases": [
+    {
+     "case": "R1-F1",
+     "text": "it breaks"
+    },
+    {
+     "case": "R1-F2",
+     "text": "the bullet breaks"
+    }
+   ],
+   "open_ids": []
+  },
+  {
+   "group": "R2",
+   "title": "Second",
+   "ids": [
+    "R2.1"
+   ],
+   "status": "open",
+   "fails_if": "",
+   "cases": [],
+   "open_ids": [
+    "R2.1"
+   ]
+  }
+ ],
+ "vision": [],
+ "manifest": [
+  "R1.1",
+  "R1.2",
+  "R2.1"
+ ],
+ "unparsed_ids": []
+}
+[0m
+[0m$ [0mgrep -rn "ruff\|flake8\|pylint\|mypy" pyproject.toml CLAUDE.md AGENTS.md 2>/dev/null | head
+(no output)
+[0m
+[0m$ [0mgrep -rn "line length\|max-line\|120" CLAUDE.md | head -5; awk 'length > 120 {print FILENAME":"FNR": "length}' tools/evaluator/spec_parse.py
+(no output)
+[0m
+[0m→ [0mRead tools/evaluator/spec_parse.py[90m [offset=194, limit=62][0m
+[0m
+[0m$ [0mcd . && python3 - <<'EOF'
+from pathlib import Path
+p = Path("tools/evaluator/spec_parse.py")
+text = p.read_text(encoding="utf-8")
+assert text.count("held") == 3, text.count("held")
+text = text.replace("held", "placed")
+p.write_text(text, encoding="utf-8")
+print("ok")
+EOF
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+AssertionError: 4
+[0m
+[0m$ [0mgrep -n "held" tools/evaluator/spec_parse.py
+202:    groups, current, opened, held, index, leading = [], None, None, False, 0, []
+215:            held = False
+243:                if opened is not None and not held:
+245:                    current, held = opened, True
+[0m
+[0m$ [0mcd . && python3 - <<'EOF'
+from pathlib import Path
+p = Path("tools/evaluator/spec_parse.py")
+text = p.read_text(encoding="utf-8")
+text = text.replace("groups, current, opened, held, index, leading = [], None, None, False, 0, []",
+                    "groups, current, opened, placed, index, leading = [], None, None, False, 0, []")
+text = text.replace("            held = False", "            placed = False")
+text = text.replace("                if opened is not None and not held:",
+                    "                if opened is not None and not placed:")
+text = text.replace("                    current, held = opened, True",
+                    "                    current, placed = opened, True")
+p.write_text(text, encoding="utf-8")
+EOF
+grep -n "placed" tools/evaluator/spec_parse.py
+202:    groups, current, opened, placed, index, leading = [], None, None, False, 0, []
+215:            placed = False
+243:                if opened is not None and not placed:
+245:                    current, placed = opened, True
+[0m
+[0m✗ [0mEdit tools/evaluator/spec_parse.py failed
+[91m[1mError: [0mNo changes to apply: oldString and newString are identical.
+[0m
+[0m← [0mEdit tools/evaluator/spec_parse.py
+Index: /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
++++ /home/smoke01/dev/ancient-games-evparser/tools/evaluator/spec_parse.py
+@@ -240,8 +240,9 @@
+ identifier = PARAGRAPH_START.match(first)
+ if identifier is not None or _starts_fails_if(first):
+     body, index = _paragraph(lines, index)
+     if opened is not None and not placed:
++        # The heading group takes its place in the file's order now that a paragraph has landed in it.
+         groups.append(opened)
+         current, placed = opened, True
+     if identifier is not None:
+         if opened is None:
+
+[0m
+[0m$ [0mtimeout 900 python3 -m pytest -q tests/test_evaluator_*.py > /tmp/opencode/all.txt 2>&1; echo "exit=$?"; tail -5 /tmp/opencode/all.txt
+exit=0
+........................................................................ [ 39%]
+........................................................................ [ 78%]
+........................................                                 [100%]
+184 passed in 39.98s
+[0m
+[0m$ [0mgit diff --stat; git status --short
+docs/evaluator/DATA.md        |  12 +++++
+ tools/evaluator/spec_parse.py | 121 ++++++++++++++++++++++++++++++++++--------
+ 2 files changed, 112 insertions(+), 21 deletions(-)
+ M docs/evaluator/DATA.md
+ M tools/evaluator/spec_parse.py
+?? runs/20261018-evaluator-parser/
+?? tests/fixtures/evaluator/harness-REQUIREMENTS.md
+?? tests/fixtures/evaluator/memory-check-REQUIREMENTS.md
+?? tests/test_evaluator_spec_parse_paragraph.py
+[0m
+[0m$ [0mgit diff tools/evaluator/spec_parse.py
+diff --git a/tools/evaluator/spec_parse.py b/tools/evaluator/spec_parse.py
+index b40573e..b6ef71e 100644
+--- a/tools/evaluator/spec_parse.py
++++ b/tools/evaluator/spec_parse.py
+@@ -3,8 +3,9 @@
+ 
+ Run:  python3 tools/evaluator/spec_parse.py --requirements REQUIREMENTS.md [--vision VISION.md] --out requirements.json
+ 
+-DATA.md's E1 section is the contract, and its rules 1 to 8 are the only thing this module knows about a spec file:
+-a group heading, the ids under it, its **Fails if** lines split into cases, the open ids, and the two vision sections.
++DATA.md's E1 section is the contract, and its rules 1 to 9 are the only thing this module knows about a spec file:
++a group heading, the ids under it, its **Fails if** lines split into cases, the open ids, the two vision sections, and
++the paragraph form of rule 9, which the same file may use beside the bullets.
+ Every requirement id read here lands in the manifest, because an id the run never reports on is a requirement the
+ run claims to have covered (EV-P2.1), and an id the file marks open lands out of scope instead (EV-R1.1). An id-shaped
+ token in bold at the start of a bullet that never reached the manifest is listed in `unparsed_ids`, so it is visible
+@@ -35,6 +36,18 @@ ID_LEADING = re.compile(r"^\*\*(?P<id>" + ID + r")(?!\w|\.\d)")
+ # "can open the source" do not.
+ OPEN_AT_CLAUSE_END = re.compile(r"\bopen\b(?=[.;,)]|\Z)", re.IGNORECASE)
+ 
++# DATA.md E1 rule 9, the paragraph form. A heading line `## R12 — title` names a group; the group is made when the
++# first requirement paragraph lands in it, so a heading that holds none (INDEX.md's `## B — Build`, above bullets) adds
++# no empty group and rules 1 to 8 read that file exactly as before. The group has no `.n` part, so `### B1.1: x` is
++# not one.
++HEADING_GROUP = re.compile(r"^\#{1,6}\s+(?P<group>" + ID + r")\s+—\s*(?P<title>.*?)\s*\Z")
++# A requirement paragraph's first line: `**<id>` then a space or the bold's own closing `**` (rule 9). The line starts
++# at column 0, as it does in both files that use the form.
++PARAGRAPH_START = re.compile(r"^\*\*(?P<id>" + ID + r")(?= |\*\*)")
++# Rule 9's **Fails if**, as a paragraph of its own and inside a requirement paragraph: the bold spellings of rule 3
++# and the plain `Fails if:`, the longest first so `**Fails if:**` is not read as `**Fails if**`.
++FAILS_IF_IN_TEXT = re.compile(r"\*\*Fails if:?\*\*|\*\*Fails if:?|Fails if:")
++
+ IN_SCOPE = "in_scope"
+ OPEN = "open"
+ UNTESTABLE = "untestable"
+@@ -87,6 +100,34 @@ def _fails_if(body: str) -> str | None:
+     return None
+ 
+ 
++def _paragraph(lines: list[str], index: int) -> tuple[str, int]:
++    """A paragraph: its lines up to the blank line that ends it, joined by one space (DATA.md E1 rule 9)."""
++    parts = []
++    while index < len(lines) and not _starts_block(lines[index]):
++        parts.append(lines[index].strip())
++        index += 1
++    return " ".join(parts).strip(), index
++
++
++def _starts_fails_if(body: str) -> bool:
++    """Whether a paragraph opens with a **Fails if** marker (DATA.md E1 rule 9), as a rule 3 bullet does."""
++    return FAILS_IF_IN_TEXT.match(body) is not None
++
++
++def _paragraph_fails_if(body: str) -> str | None:
++    """The text after the first **Fails if** marker anywhere in a paragraph, or None when it holds none (rule 9)."""
++    marker = FAILS_IF_IN_TEXT.search(body)
++    return body[marker.end():].strip() if marker is not None else None
++
++
++def _paragraph_title(line: str, identifier: str) -> str:
++    """The rest of a requirement paragraph's bold text, which titles the group of its own (rule 9)."""
++    rest = line[line.index("**") + 2 + len(identifier):].strip()
++    if rest.startswith("**"):
++        return ""
++    return (rest[:-2] if rest.endswith("**") else rest).strip()
++
++
+ def _is_open(text: str) -> bool:
+     """Whether an id's own bullet text says the requirement is still open (DATA.md E1 rule 5)."""
+     return OPEN_AT_CLAUSE_END.search(text) is not None
+@@ -131,6 +172,11 @@ def _split_cases(text: str) -> list[str]:
+     return cases
+ 
+ 
++def _new_group(group_id: str, title: str) -> dict:
++    """A group still being read: its ids, its open ids and its Fails if texts, in the order the file holds them."""
++    return {"group": group_id, "title": title, "ids": [], "open_ids": [], "fails": []}
++
++
+ def _close(group: dict) -> dict:
+     """Give a collected group its status, its cases and the key order DATA.md's example uses."""
+     texts = group.pop("fails")
+@@ -153,34 +199,67 @@ def _close(group: dict) -> dict:
+ def _read_groups(text: str) -> tuple[list[dict], list[str]]:
+     """Every requirement group in the file, in file order, and the id tokens the parser could not place (R1-F14)."""
+     lines = text.splitlines()
+-    groups, current, index, leading = [], None, 0, []
++    groups, current, opened, placed, index, leading = [], None, None, False, 0, []
+     while index < len(lines):
+         heading = GROUP_HEADING.match(lines[index])
+         if heading is not None:
+-            current = {"group": heading.group("group"), "title": heading.group("title").strip(),
+-                       "ids": [], "open_ids": [], "fails": []}
++            current = _new_group(heading.group("group"), heading.group("title").strip())
+             groups.append(current)
+             index += 1
+             continue
+-        if BULLET.match(lines[index]) is None:
++        if lines[index].startswith("#"):
++            # Rule 9: a `## <group> — ` heading opens a group, any other heading closes it. The group is made when a
++            # paragraph lands in it, so a heading over bullets adds no group of its own.
++            named = HEADING_GROUP.match(lines[index])
++            opened = None if named is None else _new_group(named.group("group"), named.group("title"))
++            placed = False
+             index += 1
+             continue
+-        body, index = _bullet_body(lines, index)
+-        bold = ID_BOLD.match(body)
+-        if bold is not None and current is not None:
+-            current["ids"].append(bold.group("id"))
+-            if _is_open(body[bold.end():]):
+-                current["open_ids"].append(bold.group("id"))
+-            continue
+-        fails_if = _fails_if(body)
+-        if fails_if is not None and current is not None:
+-            current["fails"].append(fails_if)
++        if BULLET.match(lines[index]) is not None:
++            body, index = _bullet_body(lines, index)
++            bold = ID_BOLD.match(body)
++            if bold is not None and current is not None:
++                current["ids"].append(bold.group("id"))
++                if _is_open(body[bold.end():]):
++                    current["open_ids"].append(bold.group("id"))
++                continue
++            fails_if = _fails_if(body)
++            if fails_if is not None and current is not None:
++                current["fails"].append(fails_if)
++                continue
++            # A bullet the parser could not read: before any group heading, or in a bold shape rule 2 does not take
++            # (`**B1.1:**`). It is named in unparsed_ids rather than dropped.
++            orphan = ID_LEADING.match(body)
++            if orphan is not None and orphan.group("id") not in leading:
++                leading.append(orphan.group("id"))
+             continue
+-        # A bullet the parser could not read: before any group heading, or in a bold shape rule 2 does not take
+-        # (`**B1.1:**`). It is named in unparsed_ids rather than dropped.
+-        orphan = ID_LEADING.match(body)
+-        if orphan is not None and orphan.group("id") not in leading:
+-            leading.append(orphan.group("id"))
++        if not _starts_block(lines[index]):
++            # Rule 9, the paragraph form. Only a line that begins nothing else is read as a paragraph, so the
++            # bullet form above and a block quote keep the lines they had.
++            first = lines[index]
++            identifier = PARAGRAPH_START.match(first)
++            if identifier is not None or _starts_fails_if(first):
++                body, index = _paragraph(lines, index)
++                if opened is not None and not placed:
++                    # The heading group takes its place in the file's order now that a paragraph has landed in it.
++                    groups.append(opened)
++                    current, placed = opened, True
++                if identifier is not None:
++                    if opened is None:
++                        # Rule 9: no heading group is open, so the requirement paragraph is a group of its own,
++                        # named after its id and titled by the rest of its bold.
++                        current = _new_group(identifier.group("id"),
++                                             _paragraph_title(first, identifier.group("id")))
++                        groups.append(current)
++                    current["ids"].append(identifier.group("id"))
++                    if _is_open(body):
++                        # Rule 5 reads the whole paragraph, not only the text after the bold.
++                        current["open_ids"].append(identifier.group("id"))
++                fails_if = _paragraph_fails_if(body)
++                if fails_if is not None and current is not None:
++                    current["fails"].append(fails_if)
++                continue
++        index += 1
+     return [_close(group) for group in groups], leading
+[0m
+Now the progress and result files.
+[0m$ [0mdate -Iseconds; tail -3 /tmp/opencode/all.txt
+2026-10-18T02:10:04+08:00
+........................................................................ [ 78%]
+........................................                                 [100%]
+184 passed in 39.98s
+[0m
+[0m← [0mEdit runs/20261018-evaluator-parser/progress.md
+Index: /home/smoke01/dev/ancient-games-evparser/runs/20261018-evaluator-parser/progress.md
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/runs/20261018-evaluator-parser/progress.md
++++ /home/smoke01/dev/ancient-games-evparser/runs/20261018-evaluator-parser/progress.md
+@@ -5,7 +5,10 @@
+ - 2026-10-18T01:55:34+08:00 · read · done · rule 9 read; the four early returns of _read_groups (group heading, heading, bullet, plain line) listed; index-md's `## B — ` headings noted as the collision with rule 1
+ - 2026-10-18T01:55:40+08:00 · design · planned · decide how a heading group opens without adding an empty group to index-md
+ - 2026-10-18T01:58:00+08:00 · design · done · a heading group is made when its first paragraph lands (lazily); a requirement paragraph is a group of its own only when no heading group holds it; both at column 0
+ - 2026-10-18T02:00:00+08:00 · code · planned · extend _read_groups with a paragraph branch, leaving the bullet branch as it is
+-- 2026-10-18T02:00:10+08:00 · code · start · HEADING_GROUP, PARAGRAPH_START, FAILS_IF_IN_TEXT, _paragraph, _paragraph_title, _fails_if_paragraph
+-- 2026-10-18T02:10:00+08:00 · verify · planned · python3 -m pytest -q tests/test_evaluator_*.py
++- 2026-10-18T02:00:10+08:00 · code · start · HEADING_GROUP, PARAGRAPH_START, FAILS_IF_IN_TEXT, _paragraph, _paragraph_title, _starts_fails_if, _paragraph_fails_if, _new_group
++- 2026-10-18T02:05:00+08:00 · code · fail · a block quote holding `**Fails if**` mid-line stalled the loop: the Fails if paragraph test searched anywhere, and _paragraph returned the same index
++- 2026-10-18T02:07:00+08:00 · code · done · a paragraph is read only from a line that begins nothing else, and a Fails if paragraph only when the marker opens it; rules 1-8 byte-identical on the four old fixtures
++- 2026-10-18T02:08:00+08:00 · verify · planned · python3 -m pytest -q tests/test_evaluator_*.py
++- 2026-10-18T02:10:04+08:00 · verify · done · 184 passed in 39.98s
+ - 2026-10-18T02:20:00+08:00 · report · planned · write result.md
+\ No newline at end of file
+
+[0m
+[0m← [0mWrite runs/20261018-evaluator-parser/result.md
+Wrote file successfully.
+[0m
+[0m$ [0mdate -Iseconds
+2026-10-18T02:10:12+08:00
+[0m
+[0m← [0mEdit runs/20261018-evaluator-parser/progress.md
+Index: /home/smoke01/dev/ancient-games-evparser/runs/20261018-evaluator-parser/progress.md
+===================================================================
+--- /home/smoke01/dev/ancient-games-evparser/runs/20261018-evaluator-parser/progress.md
++++ /home/smoke01/dev/ancient-games-evparser/runs/20261018-evaluator-parser/progress.md
+@@ -10,5 +10,6 @@
+ - 2026-10-18T02:05:00+08:00 · code · fail · a block quote holding `**Fails if**` mid-line stalled the loop: the Fails if paragraph test searched anywhere, and _paragraph returned the same index
+ - 2026-10-18T02:07:00+08:00 · code · done · a paragraph is read only from a line that begins nothing else, and a Fails if paragraph only when the marker opens it; rules 1-8 byte-identical on the four old fixtures
+ - 2026-10-18T02:08:00+08:00 · verify · planned · python3 -m pytest -q tests/test_evaluator_*.py
+ - 2026-10-18T02:10:04+08:00 · verify · done · 184 passed in 39.98s
+-- 2026-10-18T02:20:00+08:00 · report · planned · write result.md
+\ No newline at end of file
++- 2026-10-18T02:10:05+08:00 · report · planned · write result.md
++- 2026-10-18T02:10:12+08:00 · report · done · result.md written; CONTRADICTS names the one line of rule 9 that cannot be met as written
+\ No newline at end of file
+
+[0m
+Done. `python3 -m pytest -q tests/test_evaluator_*.py` → **184 passed**, including the 7 rule9 tests; rules 1–8 output is byte-identical to HEAD on their fixtures.
+
+- Changed only `tools/evaluator/spec_parse.py` (+ `runs/20261018-evaluator-parser/progress.md`, `result.md`); nothing staged or committed.
+- Added: `HEADING_GROUP`, `PARAGRAPH_START`, `FAILS_IF_IN_TEXT`, `_paragraph`, `_starts_fails_if`, `_paragraph_fails_if`, `_paragraph_title`, `_new_group`, and a paragraph branch in `_read_groups`.
+- One caveat recorded in result.md as CONTRADICTS: read literally, rule 9's "a heading line `#… <group> — <title>` opens group `<group>`" breaks the frozen rules 1–8 fixtures (`index-md` has `## B — …` above bullets), so the heading names the group and the group is made when its first paragraph lands in it.
