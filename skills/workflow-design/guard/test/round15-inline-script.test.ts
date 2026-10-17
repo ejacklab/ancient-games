@@ -31,25 +31,9 @@ function held(command: string): string | null {
 
 // ---- the planted repeat (R12.3)
 
-// F-d1444d01's command: its shape, with the Python program exactly as written (the search string doubled the
-// backslash, so it held a backslash and an n, never a newline).
-const F_D1444D01 = String.raw`cd ROOT/runs/run && cat >> decisions.md <<'EOF'
-
-Built as guard Round 13 and ` + "`tools/git-hooks/pre-commit`" + String.raw`, commit 6794ea0.
-EOF
-python3 - <<'EOF'
-from pathlib import Path
-p = Path("success-path.yaml")
-t = p.read_text(encoding="utf-8")
-step = '''  - did: "2026-10-17: guard Round 13 (read-missing holds) and the pre-commit export hook"
-    engine: "claude"
-    model: "claude-opus-5-5"
-    check: "planted repeats of F-e82a6f58 and F-4981093a held"
-decisions:'''
-assert t.count("\\ndecisions:") == 1
-p.write_text(t.replace("\\ndecisions:", "\\n" + step, 1), encoding="utf-8")
-EOF
-cd ROOT && bun cli.ts path check runs/run/success-path.yaml 2>&1 | tail -1`;
+// F-d1444d01's command exactly as written, the repo path replaced by ROOT. Its Python search string doubled the
+// backslash, so it held a backslash and an n, never a newline.
+const F_D1444D01 = "cd ROOT/runs/20261016-four-experts-what-counts-as-change && cat >> decisions.md <<'EOF'\n\nBuilt as guard Round 13 and `tools/git-hooks/pre-commit`, commit 6794ea0; the criteria-logging fix found on the way is\n7e93e51. The choices the options left open, each mine:\n\n- **\"Warns\" is a hold.** Claude Code shows the agent nothing before a Bash command runs unless the command is held, so\n  the guard denies it with the reason, and the agent splits or guards the read. Told to EJ in the session, with the\n  offer of a note only; no answer yet.\n- **What is not held** (SPEC N3), each found by the planted repeats or the replay of 1,841 past commands: a file an\n  earlier non-read segment names; a folder an earlier writing command names; `||`; a probe (stderr to /dev/null and\n  an exit that cannot end the command); after a subshell `cd`. `2>/dev/null` alone is not an exemption — F-4981093a's\n  last read had it.\n- **Parser fixes the replay forced, which also change the engine-call checks:** a backslash escapes the next character\n  (an escaped quote no longer splits a command), and `cd ~` is the home folder.\n- **The hook** builds `skills/` from the index (never unstaged edits, which may be another session's), stages it, syncs\n  the working tree's `skills/`, and runs only when a commit touches `.claude/skills/`, `docs/` or the exporter. It is\n  installed in this clone only; a fresh clone or a web session has none.\n- **Memory** `read-only-listed-paths.md` rewritten to the complete rule (status first, outputs in a later call; the\n  hold enforces it), after EJ: \"doesn't seems to be a complete rule\".\nEOF\npython3 - <<'EOF'\nfrom pathlib import Path\np = Path(\"success-path.yaml\")\nt = p.read_text(encoding=\"utf-8\")\nstep = '''  - did: \"2026-10-17: guard Round 13 (read-missing holds) and the pre-commit export hook (EJ: follow your pick for both); found and fixed the once-per-session criterion logging; committed 6794ea0, 7e93e51\"\n    engine: \"claude\"\n    model: \"claude-opus-5-5\"\n    check: \"planted repeats of F-e82a6f58 and F-4981093a held; replay of 1,841 past commands, 1 hold unexplained; 16/16 + 5/5 mutants; bun 1311; Python 1122 after each hooked commit; held live; criteria 4/5 (C4 wording, F-96578c5b)\"\ndecisions:'''\nassert t.count(\"\\\\ndecisions:\") == 1\np.write_text(t.replace(\"\\\\ndecisions:\", \"\\\\n\" + step, 1), encoding=\"utf-8\")\nEOF\ncd ROOT && bun .claude/skills/workflow-design/guard/src/cli.ts path check runs/20261016-four-experts-what-counts-as-change/success-path.yaml 2>&1 | tail -1";
 
 test("F-d1444d01's command, a Python program in a quoted heredoc holding a backslash, is held", () => {
   const reason = held(F_D1444D01.replaceAll("ROOT", root));
