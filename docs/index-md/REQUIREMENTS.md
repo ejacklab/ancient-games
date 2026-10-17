@@ -45,14 +45,18 @@
 - **B2.7** No entry holds a line that starts with `<<<<<<<` or `>>>>>>>`, a git conflict marker (SoT K6.3). It is an
   error in every status.
 - **B2.8** No entry holds a known credential (SoT W3.2). A known credential is text that matches one of these
-  fixed-prefix forms: an AWS access key id (`AKIA`, `ASIA`, `ABIA` or `ACCA`, then 16 of `A`–`Z` and `2`–`7`); a
-  `-----BEGIN … PRIVATE KEY-----` line followed by a key body of 64 or more characters before its `-----END` line; a
+  fixed-prefix forms, each as a whole token (a prefix right after a letter, digit or `_` is not one): an AWS access
+  key id (`AKIA`, `ASIA`, `ABIA` or `ACCA`, then 16 of `A`–`Z` and `2`–`7`); a private key block — a line containing
+  `-----BEGIN … PRIVATE KEY-----`, then a body of 64 or more characters, line breaks and surrounding spaces not
+  counted, then a line containing `-----END … PRIVATE KEY-----` (a BEGIN with no END is not a block); a
   GitHub token (`ghp_`, `gho_`, `ghu_`, `ghs_` or `ghr_`, then 36 letters or digits; or `github_pat_` then 82 letters,
   digits or `_`); a GitLab token (`glpat-` then 20 letters, digits, `-` or `_`); a Slack token (`xoxb-`, `xoxp-` or
   `xoxe-`, then a run of digits); an Anthropic key (`sk-ant-api03-`); a Google API key (`AIza` then 35 letters,
   digits, `-` or `_`). It is an error in every status, in both modes, reported as `<file>: possible credential
-  (<kind>) on line <n>`, without printing the matched text. There is no entropy or keyword rule and no waiver: an
-  example key in an entry is shortened so it no longer matches. Everything else W3.2 covers stays the reviewer's.
+  (<kind>) on line <n>`, without printing the matched text. No other report prints it either: wherever an error
+  message would quote an entry's text (a conflict-marker line, a `kind`, an `id`, a `status`), text holding a known
+  credential is shown as `<withheld>`. There is no entropy or keyword rule and no waiver: an example key in an entry
+  is shortened so it no longer matches. Everything else W3.2 covers stays the reviewer's.
 - **Fails if** a malformed active entry gets a line, a prefix/kind mismatch passes, a duplicate id passes, a retired
   entry broken beyond B2.3, B2.7 and B2.8 stops the build, or any input ends in a traceback; an id not in W1.1's form
   passes, an entry with a conflict-marker line passes, or an entry holding a known credential passes, or a report
@@ -73,8 +77,8 @@
 - **B4.1** The index must fit the strictest start-file limit of the agents whose session start loads it (SoT Rd3.1a).
   The project owner records those limits in `project-memory/start-limits.json`: a JSON object whose `limits` is a
   list of rows, one per agent and unit, each with `agent` (a name), `unit` (`lines`, `bytes` or `characters`),
-  `limit` (a whole number above 0), `basis` (`measured`, `documented` or `example`) and `source` (where the figure
-  comes from). For each unit, the smallest `limit` among its rows applies; a unit with no row keeps the example.
+  `limit` (a JSON integer above 0; `1.0` is not one), `basis` (`measured`, `documented` or `example`) and `source`
+  (where the figure comes from); the four text fields are non-empty. For each unit, the smallest `limit` among its rows applies; a unit with no row keeps the example.
   With no file, the script uses the example: `MAX_LINES` (200) and `MAX_BYTES` (24,000), constants marked in the code
   as the design's example. Lines are counted as now, bytes as UTF-8 bytes, characters as Unicode code points.
 - **B4.2** Every run prints the size against each limit that applies, as `INDEX.md: <lines>/<l> lines, <bytes>/<b>
@@ -82,10 +86,13 @@
   limits came from: `limits: project-memory/start-limits.json` or `limits: the design's example (no
   project-memory/start-limits.json)`.
 - **B4.5** A limits file that is not valid UTF-8 JSON, or is not an object with a non-empty `limits` list, or has a
-  row missing a field, a field of the wrong type, an unknown `unit` or `basis`, or a `limit` that is not a whole number
-  above 0, is an error in both modes, reported as `project-memory/start-limits.json: <problem>`; nothing is written
-  and the script never falls back to the example silently. In check mode the file is read from the same snapshot as
-  the entries (the staging area, or the commit named), never from the working tree.
+  row missing a field, a field of the wrong type, an empty text field, an unknown `unit` or `basis`, or a `limit` that
+  is not a JSON integer above 0, is an error in both modes, reported as `project-memory/start-limits.json: <problem>`;
+  nothing is written and the script never falls back to the example silently. So is JSON too deeply nested to read,
+  a limits path that exists but cannot be read as a file (a dangling link, a folder), and, in check mode, a limits
+  file that is unmerged or whose blob is missing. A limits error is reported together with any entry errors, not
+  instead of them. In check mode the file is read from the same snapshot as the entries (the staging area, or the
+  commit named), never from the working tree.
 - **B4.3** Nothing is ever cut to fit. Over the limit, write mode still writes the whole file, prints a warning and
   exits 0. Check mode fails.
 - **B4.4** Any change that brings the index back under the limit makes the check pass. No approval is needed (d W4.1).
