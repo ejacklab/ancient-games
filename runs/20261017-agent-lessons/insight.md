@@ -51,7 +51,7 @@ Options:
 3. [tool] Widen the agy lesson to "reads outside the workspace are auto-denied too" and keep the Claude fallback.
    evidence: the log line above.
 
-## Criterion C4 not met — it named the mechanism ("context, never a deny"), and the design changed
+## F-c64c0bbb — criterion C4 not met: it named the mechanism ("context, never a deny"), and the design changed
 
 Whys:
 1. Why not met? C4 said the hook "adds the matching lessons as context, never a deny"; the build holds the call once
