@@ -5,6 +5,7 @@ F-5182be9b, F-1d185ee3).
 Each test clones this repo, installs the working tree's hook in the clone and commits there."""
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -77,7 +78,13 @@ def test_a_removed_source_file_is_removed_from_the_export(clone):
 def test_a_failing_export_stops_the_commit(clone):
     head = git(clone, "rev-parse", "HEAD").stdout
     script = clone / "tools" / "export_skills.py"
-    script.write_text("raise SystemExit(3)\n" + script.read_text(encoding="utf-8"), encoding="utf-8")
+    # The break replaces the entry point: placed first, it stood before `from __future__` and failed as a SyntaxError.
+    text = script.read_text(encoding="utf-8")
+    assert text.count("raise SystemExit(main())") == 1
+    script.write_text(text.replace("raise SystemExit(main())", "raise SystemExit(3)"), encoding="utf-8")
+    # The plant first (F-0f2fa841): a planted exporter that does not fail on its own proves nothing about the hook.
+    planted = subprocess.run([sys.executable, str(script)], cwd=clone, capture_output=True, text=True)
+    assert planted.returncode == 3, f"the plant does not break the exporter: it exited {planted.returncode}"
     git(clone, "add", "tools/export_skills.py")
     result = git(clone, "commit", "-q", "-m", "broken export", check=False)
     assert result.returncode != 0

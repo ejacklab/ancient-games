@@ -182,13 +182,22 @@ export function score(c: CriteriaFile): Score {
 
 // ---- building ----------------------------------------------------------------------------------------------------
 
-// The criteria of a register's units: one item per thing the result must get right, none of them marked yet.
-export function fromRegister(r: Register, session: string, request: string): CriteriaFile {
+// Round 14 (Q1): what a fail-first check covers, written once so it is never typed by hand. A test that pins unchanged
+// behaviour passes on the old code by nature; mutants are what show it bites.
+export const TESTS_ID = "tests";
+export const TESTS_CRITERION = "the tests of new behaviour fail on the old code and pass on the new; the tests that pin unchanged behaviour pass on both, and mutants show they bite";
+
+// The criteria of a register's units: one item per thing the result must get right, none of them marked yet; with
+// `code`, the tests item last (Q2).
+export function fromRegister(r: Register, session: string, request: string, code = false): CriteriaFile {
   return {
     criteria: 1,
     session,
     request: cut(request),
-    items: units(r).map(({ id, text: unitText }) => ({ id, text: unitText })),
+    items: [
+      ...units(r).map(({ id, text: unitText }) => ({ id, text: unitText })),
+      ...(code ? [{ id: TESTS_ID, text: TESTS_CRITERION }] : []),
+    ],
   };
 }
 
@@ -206,9 +215,17 @@ function scalar(value: string): string {
   return plain(value) ? value : JSON.stringify(value);
 }
 
-// The skeleton for a new criteria file: two placeholder items the agent replaces. The file holds nothing but the
-// session, the request and the placeholders — no command text, no output.
-export function skeleton(session: string, request: string): string {
+// The skeleton for a new criteria file: two placeholder items the agent replaces, and with `code` the tests item (Q2).
+// The file holds nothing but the session, the request and the items — no command text, no output.
+export function skeleton(session: string, request: string, code = false): string {
+  const tests = code
+    ? [
+      `  - id: ${TESTS_ID}`,
+      `    text: ${JSON.stringify(TESTS_CRITERION)}   # the request changes code: keep this wording`,
+      "    met: null",
+      '    evidence: ""',
+    ]
+    : [];
   return [
     "# The criteria this request will be scored on. Write it before the work, mark each item at the end.",
     "# Replace the two placeholder items with one item per thing the result must get right.",
@@ -224,6 +241,7 @@ export function skeleton(session: string, request: string): string {
     '    text: ""',
     "    met: null",
     '    evidence: ""',
+    ...tests,
     "",
   ].join("\n");
 }

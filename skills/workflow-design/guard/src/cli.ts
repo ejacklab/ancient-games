@@ -49,8 +49,8 @@ const USAGE = [
   "  path new [--session S] [--out F]  print or write a success-path skeleton",
   "  path check <file>               check a success-path file",
   "  path parents <category>         list the path files of a category",
-  "  criteria new [--session S] [--request TEXT] [--from-register FILE] [--out F]",
-  "                                  print or write a criteria file",
+  "  criteria new [--session S] [--request TEXT] [--from-register FILE] [--code] [--out F]",
+  "                                  print or write a criteria file; --code adds the tests item",
   "  criteria score <file>           score a criteria file: met/total and the unmarked ids",
 ].join("\n");
 
@@ -477,10 +477,12 @@ function criteriaNew(args: string[]): number {
   const request = flagValue(args, "--request") ?? "";
   const registerFile = flagValue(args, "--from-register");
   const outFile = flagValue(args, "--out");
+  // Round 14, Q2: the request changes code, so the file carries the standard tests item.
+  const code = args.includes("--code");
 
   let yaml: string;
   if (registerFile === null) {
-    yaml = criteriaSkeleton(session, request);
+    yaml = criteriaSkeleton(session, request, code);
   } else {
     let loaded;
     try {
@@ -489,7 +491,7 @@ function criteriaNew(args: string[]): number {
       if (error instanceof RegisterError) usageError(error.message);
       throw error;
     }
-    yaml = Bun.YAML.stringify(fromRegister(loaded, session, request), null, 2);
+    yaml = Bun.YAML.stringify(fromRegister(loaded, session, request, code), null, 2);
   }
 
   if (outFile === null) {

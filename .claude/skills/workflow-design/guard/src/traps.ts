@@ -223,11 +223,12 @@ function hasHelpWord(text: string): boolean {
 }
 
 // The heredoc a line opens: "<<WORD", "<<'WORD'", "<<"WORD"" or "<<-WORD", with or without a space before "<<" (C18).
-function heredocIn(line: string): { word: string; tabs: boolean } | null {
+// Round 15 also needs whether the word is quoted (the body is then passed as written) and where the "<<" stands.
+function heredocIn(line: string): { word: string; tabs: boolean; quoted: boolean; at: number } | null {
   const found = line.match(/<<(-?)(?:'([^']*)'|"([^"]*)"|([A-Za-z_][A-Za-z0-9_]*))/);
   if (found === null) return null;
   const word = found[2] ?? found[3] ?? found[4] ?? "";
-  return word === "" ? null : { word, tabs: found[1] === "-" };
+  return word === "" ? null : { word, tabs: found[1] === "-", quoted: found[4] === undefined, at: found.index ?? 0 };
 }
 
 // Heredoc bodies carry data, not commands: the opening line stays, the body and its delimiter go.
@@ -688,6 +689,74 @@ export function missingReads(command: string, cwd: string, exists: (file: string
       if (parent !== "." && writers.includes(parent)) continue;
       found.push({ reader, path: operand });
     }
+  }
+  return found;
+}
+
+// ---- a program read from a heredoc (round 15) --------------------------------------------------------------------
+
+export interface InlineScript {
+  interpreter: string;
+  delimiter: string;
+  holds: string; // what the body holds that the shell's quoting decides: "a backslash", "a $" or "a backtick"
+}
+
+const INTERPRETER = /^(?:python[0-9.]*|node)$/;
+const REDIRECT_ONLY = /^(?:\d*(?:>>?|<{1,2}|>&|<&)|&>>?)$/;
+
+// P1: the words between the interpreter and the "<<" leave the program to stdin — a "-", or flags only. A script, a
+// module after -m and a program after -c or -e are each a word that is not a flag, so the heredoc is then data.
+function readsProgram(rest: Word[]): boolean {
+  const values: string[] = [];
+  let skipNext = false;
+  for (const word of rest) {
+    const value = unquote(word.text);
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
+    if (REDIRECT_ONLY.test(value)) {
+      skipNext = true;
+      continue;
+    }
+    if (REDIRECT_PREFIX.test(value)) continue;
+    values.push(value);
+  }
+  if (values.includes("-")) return true;
+  return values.every((value) => value.startsWith("-"));
+}
+
+// P1–P3: each interpreter that reads its program from a heredoc whose body holds a character the shell's quoting
+// decides — a backslash, and in an unquoted heredoc a `$` or a backtick too. A heredoc fed to a script or a module, a
+// heredoc written to a file, and an opener inside another heredoc's body are not programs.
+export function inlineScripts(command: string): InlineScript[] {
+  const found: InlineScript[] = [];
+  const lines = command.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const opened = heredocIn(lines[i]!);
+    if (opened === null) continue;
+    const body: string[] = [];
+    let end = i + 1;
+    for (; end < lines.length; end++) {
+      const line = opened.tabs ? lines[end]!.replace(/^\t+/, "") : lines[end]!;
+      if (line.trimEnd() === opened.word) break;
+      body.push(lines[end]!);
+    }
+    // The command the "<<" belongs to, read from the start, so a quote opened on an earlier line (a multi-line commit
+    // message) is still open; earlier heredoc bodies are dropped first.
+    const before = dropHeredocBodies([...lines.slice(0, i), lines[i]!.slice(0, opened.at)].join("\n"));
+    const owner = tokenize(before).filter((token) => token.kind === "text").at(-1);
+    const list = owner?.kind === "text" ? words(stripWrappers(owner.text)) : [];
+    const interpreter = wrapperName(list[0]?.text ?? "");
+    if (INTERPRETER.test(interpreter) && readsProgram(list.slice(1))) {
+      const text = body.join("\n");
+      const holds = text.includes("\\") ? "a backslash"
+        : !opened.quoted && text.includes("$") ? "a $"
+        : !opened.quoted && text.includes("`") ? "a backtick"
+        : null;
+      if (holds !== null) found.push({ interpreter, delimiter: opened.word, holds });
+    }
+    i = end;
   }
   return found;
 }

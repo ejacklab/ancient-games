@@ -687,3 +687,52 @@ read of a folder an earlier writer names, a `cat > f <<EOF` write, a word inside
 script, a pattern holding an escaped quote, a path holding `$`, a read after a subshell `cd`, or a reader with no file
 operand is held; `head -n 5 missing`, `sed -n 1p missing`, `cd sub && cat missing` (missing in `sub`), `cat missing
 2>/dev/null` ending the command, or `ls dir/ && head dir/missing` runs.
+
+## Round 14 — the tests item of a code change (R12.7; F-8243a18f/F-96578c5b option 2, chosen 2026-10-17)
+
+Twice in one day a hand-written criterion said every new test fails on the old code; tests that pin unchanged
+behaviour pass there by nature, so it could not be met. The wording is now written by the tool.
+
+- **Q1 The wording.** `TESTS_CRITERION` (criteria.ts): "the tests of new behaviour fail on the old code and pass on
+  the new; the tests that pin unchanged behaviour pass on both, and mutants show they bite". Item id `tests`.
+- **Q2 `--code`.** `criteria new --code` adds the item, unmarked, after the two placeholders of the skeleton
+  (`skeleton(session, request, code)`) or after a register's units (`fromRegister(r, session, request, code)`).
+  Without `--code` both are as in K1. The agent decides whether the request changes code.
+- **Q3 The reminder.** K2's UserPromptSubmit reminder adds, after the two paths: "with `--code` when the request
+  changes code (it adds the standard tests item)".
+
+Fails-if: `criteria new --code` writes no `tests` item, or one whose text differs from Q1; `criteria new` without
+`--code` writes one; `--from-register --code` leaves it out; the reminder does not name `--code`.
+
+## Round 15 — a program read from a heredoc (R12.2; F-d1444d01 option 2, chosen 2026-10-17)
+
+A Python program in a quoted heredoc searched for `"\\ndecisions:"`: I had escaped the backslash for a shell that, in a
+quoted heredoc, passes it as written. A script in a file has no shell layer, so the guard holds the inline form where
+quoting can change it.
+
+- **P1 A program from a heredoc.** A heredoc whose owner (the simple command its `<<` belongs to, read from the start
+  of the command so a quote opened on an earlier line is still open, earlier heredoc bodies dropped, M1's wrappers
+  stripped) is `python`, `python3`, `python3.N` or `node`, with nothing between the interpreter and the `<<` but a
+  `-`, flags and redirects. A script, a module after `-m` or a program after `-c`/`-e` is a word that is not a flag:
+  the heredoc is then data.
+- **P2 Held when quoting can change it.** The body holds a backslash; or the heredoc is unquoted (`<<EOF`) and the
+  body holds a `$` or a backtick.
+- **P3 Not held.** A body with none of those; a heredoc fed to a script, a module or `-c`; a heredoc written to a file
+  (`cat > f.py <<'EOF'`); an opener inside another heredoc's body, and a `<<` inside the program's own body (one
+  program, one hold).
+- **P4 Held.** PreToolUse denies the command with `inline-script: <interpreter> reads its program from the
+  <<<word> heredoc, whose body holds <a backslash | a $ | a backtick>, so what it gets depends on the shell's
+  quoting` and the fix: write the script to a file with the Write tool (in the run folder when there is one) and run
+  that file. No journal record: nothing ran.
+
+Measured before trusting it: of the 1,873 Bash commands of Round 13's replay (1,841 succeeded), 330 fed an
+interpreter its program through a heredoc; 193 are held (191 for a backslash, 2 for a `$`), the same 193 an
+independent regex count picks (both written by the agent). Each is held by design, so the cost is about one call in
+ten moving its script to a file. The option chosen said "a script longer than a few lines"; the trigger is what
+makes quoting matter instead of a line count, which would have needed an invented number (F-d1444d01's program had 10
+lines).
+
+Fails-if: F-d1444d01's command (its shape, the program as written) runs; a backslash program after `python3 -`,
+`python3`, `node -`, `timeout … python3 -u - arg`, `VAR=x python -` or `<<-` runs; an unquoted program with `$` or a
+backtick runs; a program with none of those, a heredoc fed to a script, `-m` or `-c`, a heredoc written to a file, or
+an opener inside another body is held; a `<<` inside a program's body gives a second hold; a hold writes a record.

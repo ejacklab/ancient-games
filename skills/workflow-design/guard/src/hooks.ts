@@ -13,7 +13,7 @@ import { appendWarning, newWarningId, openWarnings } from "./warnings.ts";
 import { claimDeadlines, deadlineStatus, dueMark, markId, sessionDeadline } from "./deadline.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
-import { checkResult, commandWord, engineCallSite, lintCommand, missingReads, recognizeTestRun, segments, testRunFiles } from "./traps.ts";
+import { checkResult, commandWord, engineCallSite, inlineScripts, lintCommand, missingReads, recognizeTestRun, segments, testRunFiles } from "./traps.ts";
 import { coveringDeclarations } from "./expect.ts";
 import type { Finding, GuardErrorRecord, HookEnv, HookResult, PromptRecord, TouchedRecord, RaisedRecord, RedRecord, SuccessRecord } from "./types.ts";
 
@@ -110,8 +110,11 @@ function handlePreToolUse(payload: Record<string, unknown>, env: HookEnv): HookR
   // A read of a file that is not there is held before it runs (round 13, N4); nothing ran, so nothing is recorded.
   const reads = missingReads(command, workingFolder(payload, env)).map((read) =>
     `read-missing: ${read.reader} reads ${read.path}, which does not exist yet. Fix: read the step's status first and its outputs in a later call, once the status says they were written; to probe a file, guard the read ([ -f ${read.path} ] && …, or … || …).`);
-  if (findings.length === 0 && reads.length === 0) return quiet();
-  const reason = [...findings.map(findingText), ...reads].join("; ");
+  // A program read from a heredoc that the shell's quoting can change is held the same way (round 15, P4).
+  const scripts = inlineScripts(command).map((script) =>
+    `inline-script: ${script.interpreter} reads its program from the <<${script.delimiter} heredoc, whose body holds ${script.holds}, so what it gets depends on the shell's quoting. Fix: write the script to a file with the Write tool (in the run folder when there is one) and run that file.`);
+  if (findings.length === 0 && reads.length === 0 && scripts.length === 0) return quiet();
+  const reason = [...findings.map(findingText), ...reads, ...scripts].join("; ");
   return {
     exitCode: 0,
     stdout: `${JSON.stringify({
@@ -782,7 +785,7 @@ function handleUserPromptSubmit(payload: Record<string, unknown>, root: string, 
   const ids: string[] = [];
   if (!records.some((record) => record.kind === "touched" && isCriteriaFile(record.path)) && !asked("criteria")) {
     ids.push("criteria");
-    lines.push(`harness-guard: before you start, write the criteria this request will be scored on — \`bun ${guardDirFor(root)}/src/cli.ts criteria new --out runs/<run>/criteria.yaml\` (or .harness-guard/criteria/<name>.yaml), one item per thing the result must get right; mark each met or not met with evidence at the end.`);
+    lines.push(`harness-guard: before you start, write the criteria this request will be scored on — \`bun ${guardDirFor(root)}/src/cli.ts criteria new --out runs/<run>/criteria.yaml\` (or .harness-guard/criteria/<name>.yaml), with \`--code\` when the request changes code (it adds the standard tests item), one item per thing the result must get right; mark each met or not met with evidence at the end.`);
   }
   // Round 10, T6: the time is asked at the start of a task (method 3.8 item 14), once per session.
   if (sessionDeadline(root, session, env.now()) === null && !asked("deadline-ask")) {
