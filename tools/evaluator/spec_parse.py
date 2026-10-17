@@ -3,8 +3,9 @@
 
 Run:  python3 tools/evaluator/spec_parse.py --requirements REQUIREMENTS.md [--vision VISION.md] --out requirements.json
 
-DATA.md's E1 section is the contract, and its rules 1 to 8 are the only thing this module knows about a spec file:
-a group heading, the ids under it, its **Fails if** lines split into cases, the open ids, and the two vision sections.
+DATA.md's E1 section is the contract, and its rules 1 to 9 are the only thing this module knows about a spec file:
+a group heading, the ids under it, its **Fails if** lines split into cases, the open ids, the two vision sections, and
+the paragraph form of rule 9, which the same file may use beside the bullets.
 Every requirement id read here lands in the manifest, because an id the run never reports on is a requirement the
 run claims to have covered (EV-P2.1), and an id the file marks open lands out of scope instead (EV-R1.1). An id-shaped
 token in bold at the start of a bullet that never reached the manifest is listed in `unparsed_ids`, so it is visible
@@ -34,6 +35,18 @@ ID_LEADING = re.compile(r"^\*\*(?P<id>" + ID + r")(?!\w|\.\d)")
 # `,`, `)` or the end of the bullet — so "is open." and "leaves this open." count, while "is opened read-only" and
 # "can open the source" do not.
 OPEN_AT_CLAUSE_END = re.compile(r"\bopen\b(?=[.;,)]|\Z)", re.IGNORECASE)
+
+# DATA.md E1 rule 9, the paragraph form. A heading line `## R12 — title` names a group; the group is made when the
+# first requirement paragraph lands in it, so a heading that holds none (INDEX.md's `## B — Build`, above bullets) adds
+# no empty group and rules 1 to 8 read that file exactly as before. The group has no `.n` part, so `### B1.1: x` is
+# not one.
+HEADING_GROUP = re.compile(r"^\#{1,6}\s+(?P<group>" + ID + r")\s+—\s*(?P<title>.*?)\s*\Z")
+# A requirement paragraph's first line: `**<id>` then a space or the bold's own closing `**` (rule 9). The line starts
+# at column 0, as it does in both files that use the form.
+PARAGRAPH_START = re.compile(r"^\*\*(?P<id>" + ID + r")(?= |\*\*)")
+# Rule 9's **Fails if**, as a paragraph of its own and inside a requirement paragraph: the bold spellings of rule 3
+# and the plain `Fails if:`, the longest first so `**Fails if:**` is not read as `**Fails if**`.
+FAILS_IF_IN_TEXT = re.compile(r"\*\*Fails if:?\*\*|\*\*Fails if:?|Fails if:")
 
 IN_SCOPE = "in_scope"
 OPEN = "open"
@@ -87,6 +100,34 @@ def _fails_if(body: str) -> str | None:
     return None
 
 
+def _paragraph(lines: list[str], index: int) -> tuple[str, int]:
+    """A paragraph: its lines up to the blank line that ends it, joined by one space (DATA.md E1 rule 9)."""
+    parts = []
+    while index < len(lines) and not _starts_block(lines[index]):
+        parts.append(lines[index].strip())
+        index += 1
+    return " ".join(parts).strip(), index
+
+
+def _starts_fails_if(body: str) -> bool:
+    """Whether a paragraph opens with a **Fails if** marker (DATA.md E1 rule 9), as a rule 3 bullet does."""
+    return FAILS_IF_IN_TEXT.match(body) is not None
+
+
+def _paragraph_fails_if(body: str) -> str | None:
+    """The text after the first **Fails if** marker anywhere in a paragraph, or None when it holds none (rule 9)."""
+    marker = FAILS_IF_IN_TEXT.search(body)
+    return body[marker.end():].strip() if marker is not None else None
+
+
+def _paragraph_title(line: str, identifier: str) -> str:
+    """The rest of a requirement paragraph's bold text, which titles the group of its own (rule 9)."""
+    rest = line[line.index("**") + 2 + len(identifier):].strip()
+    if rest.startswith("**"):
+        return ""
+    return (rest[:-2] if rest.endswith("**") else rest).strip()
+
+
 def _is_open(text: str) -> bool:
     """Whether an id's own bullet text says the requirement is still open (DATA.md E1 rule 5)."""
     return OPEN_AT_CLAUSE_END.search(text) is not None
@@ -131,6 +172,11 @@ def _split_cases(text: str) -> list[str]:
     return cases
 
 
+def _new_group(group_id: str, title: str) -> dict:
+    """A group still being read: its ids, its open ids and its Fails if texts, in the order the file holds them."""
+    return {"group": group_id, "title": title, "ids": [], "open_ids": [], "fails": []}
+
+
 def _close(group: dict) -> dict:
     """Give a collected group its status, its cases and the key order DATA.md's example uses."""
     texts = group.pop("fails")
@@ -153,34 +199,67 @@ def _close(group: dict) -> dict:
 def _read_groups(text: str) -> tuple[list[dict], list[str]]:
     """Every requirement group in the file, in file order, and the id tokens the parser could not place (R1-F14)."""
     lines = text.splitlines()
-    groups, current, index, leading = [], None, 0, []
+    groups, current, opened, placed, index, leading = [], None, None, False, 0, []
     while index < len(lines):
         heading = GROUP_HEADING.match(lines[index])
         if heading is not None:
-            current = {"group": heading.group("group"), "title": heading.group("title").strip(),
-                       "ids": [], "open_ids": [], "fails": []}
+            current = _new_group(heading.group("group"), heading.group("title").strip())
             groups.append(current)
             index += 1
             continue
-        if BULLET.match(lines[index]) is None:
+        if lines[index].startswith("#"):
+            # Rule 9: a `## <group> — ` heading opens a group, any other heading closes it. The group is made when a
+            # paragraph lands in it, so a heading over bullets adds no group of its own.
+            named = HEADING_GROUP.match(lines[index])
+            opened = None if named is None else _new_group(named.group("group"), named.group("title"))
+            placed = False
             index += 1
             continue
-        body, index = _bullet_body(lines, index)
-        bold = ID_BOLD.match(body)
-        if bold is not None and current is not None:
-            current["ids"].append(bold.group("id"))
-            if _is_open(body[bold.end():]):
-                current["open_ids"].append(bold.group("id"))
+        if BULLET.match(lines[index]) is not None:
+            body, index = _bullet_body(lines, index)
+            bold = ID_BOLD.match(body)
+            if bold is not None and current is not None:
+                current["ids"].append(bold.group("id"))
+                if _is_open(body[bold.end():]):
+                    current["open_ids"].append(bold.group("id"))
+                continue
+            fails_if = _fails_if(body)
+            if fails_if is not None and current is not None:
+                current["fails"].append(fails_if)
+                continue
+            # A bullet the parser could not read: before any group heading, or in a bold shape rule 2 does not take
+            # (`**B1.1:**`). It is named in unparsed_ids rather than dropped.
+            orphan = ID_LEADING.match(body)
+            if orphan is not None and orphan.group("id") not in leading:
+                leading.append(orphan.group("id"))
             continue
-        fails_if = _fails_if(body)
-        if fails_if is not None and current is not None:
-            current["fails"].append(fails_if)
-            continue
-        # A bullet the parser could not read: before any group heading, or in a bold shape rule 2 does not take
-        # (`**B1.1:**`). It is named in unparsed_ids rather than dropped.
-        orphan = ID_LEADING.match(body)
-        if orphan is not None and orphan.group("id") not in leading:
-            leading.append(orphan.group("id"))
+        if not _starts_block(lines[index]):
+            # Rule 9, the paragraph form. Only a line that begins nothing else is read as a paragraph, so the
+            # bullet form above and a block quote keep the lines they had.
+            first = lines[index]
+            identifier = PARAGRAPH_START.match(first)
+            if identifier is not None or _starts_fails_if(first):
+                body, index = _paragraph(lines, index)
+                if opened is not None and not placed:
+                    # The heading group takes its place in the file's order now that a paragraph has landed in it.
+                    groups.append(opened)
+                    current, placed = opened, True
+                if identifier is not None:
+                    if opened is None:
+                        # Rule 9: no heading group is open, so the requirement paragraph is a group of its own,
+                        # named after its id and titled by the rest of its bold.
+                        current = _new_group(identifier.group("id"),
+                                             _paragraph_title(first, identifier.group("id")))
+                        groups.append(current)
+                    current["ids"].append(identifier.group("id"))
+                    if _is_open(body):
+                        # Rule 5 reads the whole paragraph, not only the text after the bold.
+                        current["open_ids"].append(identifier.group("id"))
+                fails_if = _paragraph_fails_if(body)
+                if fails_if is not None and current is not None:
+                    current["fails"].append(fails_if)
+                continue
+        index += 1
     return [_close(group) for group in groups], leading
 
 

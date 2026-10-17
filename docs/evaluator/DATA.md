@@ -67,6 +67,20 @@ An id matches `[A-Z][A-Za-z]*(-[A-Z][A-Za-z]*)?\d+(\.\d+)?`.
    Each bullet is one vision id with one case, `V<n>-F1`, whose text is the bullet.
 8. **Manifest.** Every requirement id (open ones included) and every vision id, in file order. This is the coverage
    manifest of EV-P2.1.
+9. **Paragraph form** (added 2026-10-18, so the evaluator reads `docs/HARNESS_REQUIREMENTS.md` and
+   `memory_check/REQUIREMENTS.md`; run 20261017-evaluator-wiring). A file may use it beside rules 1–3.
+   - A **requirement paragraph** is a paragraph (lines up to a blank line) whose first line starts with `**<id>`
+     followed by a space or `**` (`**R12.2 Failure log (MUST).**`, `**F1 (MUST) The locations.**`).
+   - A heading line `#… <group> — <title>` (U+2014), where `<group>` has no `.n` part (`## R12 — …`), opens group
+     `<group>`; the requirement paragraphs after it belong to it, and the group exists only once a requirement paragraph
+     lands in it (a heading over rules 1–3 bullets, as in index-md's `## B — …`, adds no group). Any other heading
+     closes it.
+   - A requirement paragraph with no open heading group is a group of its own: the group is its id, the title the rest
+     of its bold text.
+   - **Fails if.** A paragraph that starts with `Fails if:` (or `**Fails if**`, `**Fails if:**`) belongs to the latest
+     group; inside a requirement paragraph, the text after `Fails if:` to the paragraph's end belongs to that
+     paragraph's group. Several in one group are joined and split as in rules 3 and 4.
+   - Rule 5 reads a requirement paragraph's whole text; rules 6 and 8 apply unchanged.
 
 ## E3 — `classify.json`, written by the classify step (a model)
 
