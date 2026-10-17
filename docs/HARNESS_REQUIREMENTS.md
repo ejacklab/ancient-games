@@ -97,8 +97,8 @@ Every checked result is recorded — a success as one line (the time, the sessio
 runner, `ok`), a failure as its full record (R12.2) — so a check's failures can be read against how often it ran. A
 task's result is **scored** as the share of its criteria met — each accepted use case's fails-if and minimum acceptance,
 and each accepted requirement's fails-if; for a task with no accepted use cases, the agent writes the criteria from the
-request before it starts, and the project owner may correct them. Every criterion not met is a failure (R12.2), even
-when the task looks done; a total failure is a score of 0 and needs no other rule. When
+request before it starts, and the project owner may correct them. Every criterion not met is logged as evidence for the
+evaluator (R12.2), even when the task looks done; a total failure is a score of 0 and needs no other rule. When
 a task succeeds, the agent records its **path**: the category and objective, the steps in order with the engine, model
 and check of each, the decisions that mattered and why, and the measures of the result (time, failures, retries,
 checks passed). A **great success** — one that beats the comparison it was measured against (its prediction, the
@@ -115,7 +115,7 @@ becomes a parent for the next similar task; every path stays recorded, so the pa
 selected by results.
 
 Fails if: a check's successes are not recorded; a task with criteria has no score, or its criteria are written after
-the work; a criterion not met has no failure record; a successful task leaves no path, or a path lacks its steps, engines,
+the work; a criterion not met is not logged; a successful task leaves no path, or a path lacks its steps, engines,
 checks or measures; a great success has no insight, names no comparison or evidence, or its insight gives no cause or
 nothing to repeat; a design for a similar task neither names a parent path nor says why none applies; a design copies
 its parent unchanged; the change, the measure or the parent's value is not written before the run; a child that repeats
