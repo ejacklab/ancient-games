@@ -244,6 +244,16 @@ def _judge_folder(run: Path) -> Path:
     return Path("/tmp") / f"evaluator-judge-{name}"
 
 
+def _remove_judge_folder(folder: Path) -> None:
+    """The judge's /tmp folder goes once the merge has read what it needs (item 8).
+
+    A folder that is not there is nothing to remove, and a symlink at that path is never followed: only the
+    real directory the evaluator made is deleted, and only that path.
+    """
+    if not folder.is_symlink() and folder.is_dir():
+        shutil.rmtree(folder)
+
+
 def _reset_directory(path: Path) -> None:
     if path.is_symlink() or path.is_file():
         path.unlink()
@@ -352,13 +362,17 @@ def judged_merge(run: Path, requirements: dict) -> dict:
         if not isinstance(plant_case, str):
             plant_case = None
         folder = _judge_folder(run)
-        _require_model_file(folder / "judge-1.json", "first judge")
-        if plant_case is not None:
-            _require_model_file(run / "judge-2.json", "second judge")
-        first_document = _read_json(folder / "judge-1.json")
-        shutil.copyfile(folder / "judge-1.json", run / "judge-1.json")
-        first = {entry["case"]: entry for entry in _entries(first_document, "judge-1.json", problems)
-                 if _code_quote_found(entry, folder / "product")}
+        try:
+            _require_model_file(folder / "judge-1.json", "first judge")
+            if plant_case is not None:
+                _require_model_file(run / "judge-2.json", "second judge")
+            first_document = _read_json(folder / "judge-1.json")
+            shutil.copyfile(folder / "judge-1.json", run / "judge-1.json")
+            first = {entry["case"]: entry for entry in _entries(first_document, "judge-1.json", problems)
+                     if _code_quote_found(entry, folder / "product")}
+        finally:
+            # Call 1's answer and its code quotes have both been read; the folder is the evaluator's own and goes.
+            _remove_judge_folder(folder)
         second = {entry["case"]: entry for entry in _entries(_read_json(run / "judge-2.json"),
                                                             "judge-2.json", problems)
                   if _code_quote_found(entry, run / "workspace/product")}
