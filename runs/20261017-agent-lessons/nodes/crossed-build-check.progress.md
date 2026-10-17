@@ -1,0 +1,8 @@
+- 2026-10-17T15:06:15+08:00 · write:tests-lessons · start · run opencode to write tests from briefs/tests-lessons.md
+- 2026-10-17T15:08:59+08:00 · write:tests-lessons · done · opencode wrote round18-crossed.test.ts (40 pass)
+- 2026-10-17T15:09:14+08:00 · failfirst:tests-lessons · start · run new tests on base 00a81fc in a detached worktree
+- 2026-10-17T15:09:32+08:00 · failfirst:tests-lessons · done · base 00a81fc: file failed to load (Cannot find module ../src/lessons.ts), 0 pass 1 fail 1 error; worktree removed
+- 2026-10-17T15:09:44+08:00 · head:tests-lessons · start · running round18-crossed.test.ts
+- 2026-10-17T15:09:48+08:00 · head:tests-lessons · done · round18-crossed.test.ts exit 0: 40 pass, 0 fail, 196 expect() calls; output in nodes/tests-lessons.head.txt
+- 2026-10-17T15:09:56+08:00 · review · start · codex read-only review of agent lessons
+- 2026-10-17T15:13:27+08:00 · review · done · codex review returned 7 findings in nodes/review.last.txt

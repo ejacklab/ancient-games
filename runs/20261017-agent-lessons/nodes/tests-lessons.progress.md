@@ -1,0 +1,27 @@
+- 2026-10-17T15:06:48+08:00 · fixtures · planned · temp git root, temp store, env with lessons, payload helpers
+- 2026-10-17T15:06:48+08:00 · l1 · planned · parseLesson / readLessons / checkLessons cases
+- 2026-10-17T15:06:48+08:00 · l2 · planned · project-fact lines of LESSONS.md
+- 2026-10-17T15:06:48+08:00 · l3 · planned · matches / isTestFile / lessonLine
+- 2026-10-17T15:06:48+08:00 · l4 · planned · CLI lessons for|check with spawnSync
+- 2026-10-17T15:06:48+08:00 · l5 · planned · hook gives matching lessons and facts, once per session
+- 2026-10-17T15:06:48+08:00 · l6 · planned · hold once, retry runs, no journal record
+- 2026-10-17T15:06:48+08:00 · failsif · planned · every Fails-if clause and each early return of handlePreToolUse
+- 2026-10-17T15:06:48+08:00 · report · planned · run bun test, write result file
+- 2026-10-17T15:08:42+08:00 · fixtures · start · temp git root + temp store, env with lessons, PreToolUse payload helpers
+- 2026-10-17T15:08:42+08:00 · fixtures · done · beforeEach/afterEach, 7 lesson fixtures, two LESSONS.md folders
+- 2026-10-17T15:08:42+08:00 · l1 · start · parseLesson / readLessons / checkLessons
+- 2026-10-17T15:08:42+08:00 · l1 · done · valid parse, defaults, 10 broken shapes, skip-and-report, missing store
+- 2026-10-17T15:08:42+08:00 · l2 · start · project facts
+- 2026-10-17T15:08:42+08:00 · l2 · done · by name and folder, prose ignored, other folder not reached
+- 2026-10-17T15:08:42+08:00 · l3 · start · matches / isTestFile / lessonLine
+- 2026-10-17T15:08:42+08:00 · l3 · done · agents, test vs code-edit kind, path glob, command word, kind, enforced pointer
+- 2026-10-17T15:08:42+08:00 · l4 · start · CLI lessons for|check
+- 2026-10-17T15:08:42+08:00 · l4 · done · line forms, filters, exit 0, unknown agent/kind exit 2, check exit 0/1
+- 2026-10-17T15:08:42+08:00 · l5 · start · hook gives matching lessons and facts once per session
+- 2026-10-17T15:08:42+08:00 · l5 · done · Write/Edit/MultiEdit by path, Bash by command words, no store quiet, other session again
+- 2026-10-17T15:08:42+08:00 · l6 · start · hold once, retry runs, no journal record
+- 2026-10-17T15:08:42+08:00 · l6 · done · LESSON_HOLD first line, one hold, retry quiet, shown file per session, no record
+- 2026-10-17T15:08:42+08:00 · failsif · start · every Fails-if clause and each early return
+- 2026-10-17T15:08:42+08:00 · failsif · done · 8 clauses; other tool, no lessons, no file_path, lint/read-missing/inline-script denies
+- 2026-10-17T15:08:42+08:00 · report · start · run bun test, write result
+- 2026-10-17T15:08:42+08:00 · report · done · 40 pass, 0 fail; guard suite 1445 pass / 3 pre-existing C17 fails in round3.test.ts

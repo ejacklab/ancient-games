@@ -12,8 +12,8 @@ Criteria: `criteria.yaml` (C1–C10).
 ## Rounds
 | Round | Pieces | State |
 |---|---|---|
-| 1 | P1 verify docs · P2 store + seeds · P3 `lessons for` · P4 guard PreToolUse context | start |
-| 2 | crossed check on round 1 + fixes · P6 brief template + workflows · P7 move memory lessons | — |
+| 1 | P1 verify docs · P2 store + seeds · P3 `lessons for` · P4 guard PreToolUse context | done 15:10 |
+| 2 | crossed check on round 1 + fixes · P6 brief template + workflows · P7 move memory lessons | done 15:45 (finding 1 for EJ) |
 | 3 | P8 planted-repeat delivery test · settings command for EJ · report | — |
 
 ## Provisional decisions
@@ -27,3 +27,4 @@ Criteria: `criteria.yaml` (C1–C10).
 - 15:25 round 2 part 1: L6 provisional = hold once (delivery-q: five of six; Dario: context); P6 node-brief Lessons section, six_experts.py lessons per engine (3 tests), crossed-build-check refuses a brief without Lessons (harnesses pass); P7 16 memory notes → 15 lesson files (17 in store), memory index pointer agent-lessons-store; Python 1136; crossed check on round 1 running (wf_e1507bdd-867).
 - 15:28 found: the live Bash hook (installed PreToolUse Bash runs this repo's cli.ts) marked 7 lessons shown for this session — engine, node and read lessons, the commands the crossed-check workflow's agents ran — and the main agent got no hold (my reading: subagents' calls reach the hook under the parent session id). Logged in insight.md; docs check on subagent fields sent.
 - 15:33 docs: a subagent's hook input has agent_id (hooks reference). Provisional (insight option 1): shown marks keyed <session>#<agent_id or main>; test red first (nodes/agent-marks.red.txt). Live: the main agent's next Bash call was held (the first real delivery, before the call ran) — by an enforced lesson's pointer only, which was noise. Provisional: an enforced lesson never holds a call; lessons for still lists it (test red first, nodes/enforced.red.txt). Guard 1449/1449.
+- 15:45 round 2 done: crossed check (wf_e1507bdd-867): opencode 40 tests (all failed on base only as a group — the module was missing), 40 pass on head; Codex review 7 findings, all judged real by reading the cited lines. Fixed with tests red first (nodes/review-fixes.red.txt): 2+3 one marker file per shown key (wx create; old code lost 2 of 8 marks), 4 '..name' paths, 5 '---body', 6 bootstrap + bundle README name agent-lessons, 7 SPEC path. Finding 1 (install.ts PreToolUse matcher) NOT done: the auto-mode classifier denied the edit as self-modification; reverted the test; for EJ. opencode's shown-file assertion changed to the marker form (deliberate). Holds that reached the main agent so far: 3, all noise (claude --help; an enforced pointer, since fixed; python3 not parsing). Guard 1454/1454, Python 1136.

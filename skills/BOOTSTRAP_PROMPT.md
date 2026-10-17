@@ -13,7 +13,7 @@ Adopt the Ancient Games workflow-design and orchestration style for this project
 The Ancient Games is at <PATH> (a local path). This session's working directory is the adopting project's root;
 keep its outputs there. Treat <PATH> as a read-only source, not as the destination project.
 
-1. Locate the four complete skill folders under <PATH>/skills/. Install them into the skill root your harness
+1. Locate the five complete skill folders under <PATH>/skills/. Install them into the skill root your harness
    scans (`~/.claude/skills/` for Claude Code, `~/.agents/skills/` for the DeepSeek Harness / Codex).
    Replace both placeholders below with actual paths and quote them; <SKILL_ROOT> is the chosen skill root.
    Before copying, inspect any existing destination folder or symlink: reuse an identical install, otherwise show
@@ -25,6 +25,7 @@ keep its outputs there. Treat <PATH> as a read-only source, not as the destinati
        cp -r "<PATH>/skills/requirement-check" "<SKILL_ROOT>/requirement-check"
        cp -r "<PATH>/skills/meaningful-names" "<SKILL_ROOT>/meaningful-names"
        cp -r "<PATH>/skills/bootstrap" "<SKILL_ROOT>/bootstrap"
+       cp -r "<PATH>/skills/agent-lessons" "<SKILL_ROOT>/agent-lessons"
 
    `README.md` and `BOOTSTRAP_PROMPT.md` in the bundle are documentation, not skills. Verify each installed
    `SKILL.md` and workflow-design's referenced files resolve. If the harness has no skill-loading command, read

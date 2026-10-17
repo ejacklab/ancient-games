@@ -1,11 +1,11 @@
 // Acceptance expectations come from SPEC.md, Round 18 (L1–L5): agent lessons and project facts.
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { LESSON_HOLD, handleHook } from "../src/hooks.ts";
-import { checkLessons, isTestFile, readLessons } from "../src/lessons.ts";
+import { checkLessons, isTestFile, matches, readLessons, takeUnshown } from "../src/lessons.ts";
 import type { HookEnv } from "../src/types.ts";
 
 const CLI = path.resolve(import.meta.dirname, "../src/cli.ts");
@@ -200,4 +200,46 @@ test("L4: lessons check exits 1 on an invalid file and 0 when all are valid", ()
   const result = cli("lessons", "check", "--dir", store);
   expect(result.status).toBe(1);
   expect(result.stdout).toContain("bad.md: kinds");
+});
+
+// ---- crossed review (run 20261017-agent-lessons, nodes/review.last.txt), findings 2–5
+
+test("review 2: an unreadable old shown file does not hold the retry again", () => {
+  lesson("for-git", "agents: [all]\nkinds: [command]\ncommands: [git]");
+  write(".harness-guard/lessons-shown.json", "{}");
+  fs.chmodSync(path.join(root, ".harness-guard/lessons-shown.json"), 0o200);
+  expect(context(pre("Bash", { command: "git status" }))).toContain("(for-git)");
+  expect(pre("Bash", { command: "git status" }).stdout).toBe("");
+});
+
+test("review 2: when the marks cannot be written, nothing is held (no endless hold)", () => {
+  lesson("for-git", "agents: [all]\nkinds: [command]\ncommands: [git]");
+  fs.mkdirSync(path.join(root, ".harness-guard"), { recursive: true });
+  write(".harness-guard/lessons-shown", "a file where the marks' folder should be");
+  expect(pre("Bash", { command: "git status" }).stdout).toBe("");
+  expect(pre("Bash", { command: "git status" }).stdout).toBe("");
+});
+
+test("review 3: eight hooks marking at once lose no mark", async () => {
+  const keys = Array.from({ length: 8 }, (_, i) => `lesson:k${i}`);
+  const module = path.resolve(import.meta.dirname, "../src/lessons.ts");
+  await Promise.all(keys.map((key) => new Promise<void>((resolve) => {
+    const child = spawn(process.execPath, ["-e", `const m = await import(${JSON.stringify(module)}); m.takeUnshown(${JSON.stringify(root)}, "s", [${JSON.stringify(key)}]);`],
+      { env: { ...process.env, BUN_RUNTIME_TRANSPILER_CACHE_PATH: "0" } });
+    child.on("close", () => resolve());
+  })));
+  expect(takeUnshown(root, "s", keys)).toEqual([]);
+}, 20_000);
+
+test("review 4: a repository path starting with .. matches its glob", () => {
+  const [entry] = [{ slug: "dots", agents: ["all"], kinds: ["brief"], paths: ["..notes/*.md"], commands: [], from: "x",
+    enforcedBy: "", text: "t" }];
+  expect(matches(entry!, { agent: "claude-main", paths: [path.join(root, "..notes/a.md")], root })).toBe(true);
+  expect(matches(entry!, { agent: "claude-main", paths: [path.join(root, "../outside/a.md")], root })).toBe(false);
+});
+
+test("review 5: a closing --- that is not on its own line is not front matter", () => {
+  fs.writeFileSync(path.join(store, "glued.md"), "---\nagents: [all]\nkinds: [test]\nfrom: x\n---body\n");
+  expect(readLessons(store)).toEqual([]);
+  expect(checkLessons(store)[0]!.reason).toContain("front matter");
 });

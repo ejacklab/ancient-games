@@ -1,0 +1,190 @@
+bun test v1.4.3 (c6da4a4d3)
+
+test/round18-lessons.test.ts:
+207 | test("review 2: an unreadable old shown file does not hold the retry again", () => {
+208 |   lesson("for-git", "agents: [all]\nkinds: [command]\ncommands: [git]");
+209 |   write(".harness-guard/lessons-shown.json", "{}");
+210 |   fs.chmodSync(path.join(root, ".harness-guard/lessons-shown.json"), 0o200);
+211 |   expect(context(pre("Bash", { command: "git status" }))).toContain("(for-git)");
+212 |   expect(pre("Bash", { command: "git status" }).stdout).toBe("");
+                                                              ^
+error: expect(received).toBe(expected)
+
+- ""
++ "{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"harness-guard lesson — not a block for a mistake: read it, then send the call again, changed only if the lesson applies to it:\n- Lesson text of for-git. (for-git)"}}
++ "
+
+- Expected  - 1
++ Received  + 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round18-lessons.test.ts:212:57)
+(fail) review 2: an unreadable old shown file does not hold the retry again [9.16ms]
+214 | 
+215 | test("review 2: when the marks cannot be written, nothing is held (no endless hold)", () => {
+216 |   lesson("for-git", "agents: [all]\nkinds: [command]\ncommands: [git]");
+217 |   fs.mkdirSync(path.join(root, ".harness-guard"), { recursive: true });
+218 |   write(".harness-guard/lessons-shown", "a file where the marks' folder should be");
+219 |   expect(pre("Bash", { command: "git status" }).stdout).toBe("");
+                                                              ^
+error: expect(received).toBe(expected)
+
+- ""
++ "{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"harness-guard lesson — not a block for a mistake: read it, then send the call again, changed only if the lesson applies to it:\n- Lesson text of for-git. (for-git)"}}
++ "
+
+- Expected  - 1
++ Received  + 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round18-lessons.test.ts:219:57)
+(fail) review 2: when the marks cannot be written, nothing is held (no endless hold) [6.43ms]
+226 |   await Promise.all(keys.map((key) => new Promise<void>((resolve) => {
+227 |     const child = spawn(process.execPath, ["-e", `const m = await import(${JSON.stringify(module)}); m.takeUnshown(${JSON.stringify(root)}, "s", [${JSON.stringify(key)}]);`],
+228 |       { env: { ...process.env, BUN_RUNTIME_TRANSPILER_CACHE_PATH: "0" } });
+229 |     child.on("close", () => resolve());
+230 |   })));
+231 |   expect(takeUnshown(root, "s", keys)).toEqual([]);
+                                             ^
+error: expect(received).toEqual(expected)
+
+- []
++ [
++   "lesson:k1",
++   "lesson:k7",
++ ]
+
+- Expected  - 1
++ Received  + 4
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round18-lessons.test.ts:231:40)
+(fail) review 3: eight hooks marking at once lose no mark [16.06ms]
+232 | }, 20_000);
+233 | 
+234 | test("review 4: a repository path starting with .. matches its glob", () => {
+235 |   const [entry] = [{ slug: "dots", agents: ["all"], kinds: ["brief"], paths: ["..notes/*.md"], commands: [], from: "x",
+236 |     enforcedBy: "", text: "t" }];
+237 |   expect(matches(entry!, { agent: "claude-main", paths: [path.join(root, "..notes/a.md")], root })).toBe(true);
+                                                                                                          ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round18-lessons.test.ts:237:101)
+(fail) review 4: a repository path starting with .. matches its glob [5.52ms]
+238 |   expect(matches(entry!, { agent: "claude-main", paths: [path.join(root, "../outside/a.md")], root })).toBe(false);
+239 | });
+240 | 
+241 | test("review 5: a closing --- that is not on its own line is not front matter", () => {
+242 |   fs.writeFileSync(path.join(store, "glued.md"), "---\nagents: [all]\nkinds: [test]\nfrom: x\n---body\n");
+243 |   expect(readLessons(store)).toEqual([]);
+                                   ^
+error: expect(received).toEqual(expected)
+
+- []
++ [
++   {
++     "agents": [
++       "all",
++     ],
++     "commands": [],
++     "enforcedBy": "",
++     "from": "x",
++     "kinds": [
++       "test",
++     ],
++     "paths": [],
++     "slug": "glued",
++     "text": "body",
++   },
++ ]
+
+- Expected  - 1
++ Received  + 16
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round18-lessons.test.ts:243:30)
+(fail) review 5: a closing --- that is not on its own line is not front matter [3.40ms]
+
+test/cli.test.ts:
+114 |       expect(entries.length).toBeGreaterThan(0);
+115 |       const hooks = entries.flatMap((entry: { hooks: unknown[] }) => entry.hooks);
+116 |       expect(hooks).toContainEqual({ type: "command", command: `bun ${guardDir}/src/cli.ts hook claude` });
+117 |       for (const hook of hooks) expect(hook).toEqual({ type: "command", command: `bun ${guardDir}/src/cli.ts hook claude` });
+118 |     }
+119 |     expect(settings.hooks.PreToolUse).toContainEqual(expect.objectContaining({ matcher: "Bash|Write|Edit|MultiEdit" })); // Round 18: lessons before file edits (crossed review 1)
+                                            ^
+error: expect(received).toContainEqual(expected)
+
+Expected to contain: ObjectContaining {
+  matcher: "Bash|Write|Edit|MultiEdit",
+}
+Received: [
+  {
+    matcher: "Bash",
+    hooks: [
+      {
+        type: "command",
+        command: "bun /tmp/hg-EfDTZv/harness-guard/src/cli.ts hook claude",
+      }
+    ],
+  }
+]
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/cli.test.ts:119:39)
+(fail) installSnippet > install: claude-code has every required event and matcher [0.58ms]
+114 |       expect(entries.length).toBeGreaterThan(0);
+115 |       const hooks = entries.flatMap((entry: { hooks: unknown[] }) => entry.hooks);
+116 |       expect(hooks).toContainEqual({ type: "command", command: `bun ${guardDir}/src/cli.ts hook claude` });
+117 |       for (const hook of hooks) expect(hook).toEqual({ type: "command", command: `bun ${guardDir}/src/cli.ts hook claude` });
+118 |     }
+119 |     expect(settings.hooks.PreToolUse).toContainEqual(expect.objectContaining({ matcher: "Bash|Write|Edit|MultiEdit" })); // Round 18: lessons before file edits (crossed review 1)
+                                            ^
+error: expect(received).toContainEqual(expected)
+
+Expected to contain: ObjectContaining {
+  matcher: "Bash|Write|Edit|MultiEdit",
+}
+Received: [
+  {
+    matcher: "Bash",
+    hooks: [
+      {
+        type: "command",
+        command: "bun /tmp/hg-B5zCvS/harness-guard/src/cli.ts hook claude",
+      }
+    ],
+  }
+]
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/cli.test.ts:119:39)
+(fail) installSnippet > install: codex has every required event and matcher [0.33ms]
+114 |       expect(entries.length).toBeGreaterThan(0);
+115 |       const hooks = entries.flatMap((entry: { hooks: unknown[] }) => entry.hooks);
+116 |       expect(hooks).toContainEqual({ type: "command", command: `bun ${guardDir}/src/cli.ts hook claude` });
+117 |       for (const hook of hooks) expect(hook).toEqual({ type: "command", command: `bun ${guardDir}/src/cli.ts hook claude` });
+118 |     }
+119 |     expect(settings.hooks.PreToolUse).toContainEqual(expect.objectContaining({ matcher: "Bash|Write|Edit|MultiEdit" })); // Round 18: lessons before file edits (crossed review 1)
+                                            ^
+error: expect(received).toContainEqual(expected)
+
+Expected to contain: ObjectContaining {
+  matcher: "Bash|Write|Edit|MultiEdit",
+}
+Received: [
+  {
+    matcher: "Bash",
+    hooks: [
+      {
+        type: "command",
+        command: "bun /tmp/hg-zXBtow/harness-guard/src/cli.ts hook claude",
+      }
+    ],
+  }
+]
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/cli.test.ts:119:39)
+(fail) installSnippet > install: qwen has every required event and matcher [0.23ms]
+
+ 80 pass
+ 8 fail
+ 405 expect() calls
+Ran 88 tests across 2 files. [1172.00ms]

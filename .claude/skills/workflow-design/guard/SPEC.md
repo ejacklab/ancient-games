@@ -832,7 +832,7 @@ in the code's own folder. The guard gives the main agent the ones that match wha
 - **L4 `lessons for`.** `cli.ts lessons for --agent A [--kinds K,…] [--paths P,…] [--commands C,…] [--dir D]` prints
   one line per matching lesson, `- <text> (<slug>)`, then one line per project fact of the paths given,
   `- <file>: <fact>`; nothing when none match; exit 0. `--dir` defaults to the store beside the guard
-  (`../../agent-lessons/lessons` from `src/`). An unknown agent or kind is a usage error (2). `lessons check [--dir D]`
+  (`../../../agent-lessons/lessons` from `src/`: the `agent-lessons` skill beside `workflow-design`). An unknown agent or kind is a usage error (2). `lessons check [--dir D]`
   lists each invalid lesson file with its reason; exit 1 when there is one.
 - **L5 The hook.** With a lessons store in its environment (the CLI's `hook claude` gives the default store; tests give
   a folder or none), PreToolUse gives `claude-main` the lessons that match: for Write, Edit and MultiEdit, by

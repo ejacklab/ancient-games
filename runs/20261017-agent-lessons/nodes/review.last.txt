@@ -1,0 +1,29 @@
+status: done
+
+## Findings
+
+1. **P1 — Installed hooks never receive file edits.** [install.ts:28](/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/install.ts:28) registers `PreToolUse` only for Bash. Following the installation instructions therefore skips lessons and facts for every Write/Edit/MultiEdit. The existing [CLI test:119](/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/cli.test.ts:119) explicitly accepts this incorrect matcher. **Fix:** include the file tools and test delivery through the generated registration.
+
+2. **P1 — Unreadable shown-state causes an endless hold.** [lessons.ts:178](/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/lessons.ts:178) treats every read error as empty state. With `lessons-shown.json` persistently unreadable but writable, identical retries repeatedly receive the lesson deny. Reproduced with and without `session_id`. **Fix:** distinguish a missing file from unreadable state; allow the call without a lesson hold when deduplication cannot be established.
+
+3. **P2 — Concurrent hooks overwrite delivery records.** [lessons.ts:186](/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/lessons.ts:186) performs an unlocked read–modify–write. If two hooks read before either writes, the last write erases the other’s keys. Its retry is held again. Reproduced with an interleaved in-memory write. **Fix:** serialize the complete state update; atomic replacement alone cannot prevent lost updates.
+
+4. **P2 — Valid repository paths beginning with `..` miss their globs.** [lessons.ts:132](/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/lessons.ts:132) mistakes every relative path starting with `..` for an escape. With root `/repo`, path `..notes/a.md`, and glob `..notes/*.md`, matching incorrectly returns false. Outside paths are also passed to globs as absolute paths. **Fix:** check parent-directory boundaries explicitly and keep glob matching repository-relative.
+
+5. **P2 — A malformed closing delimiter is accepted.** [lessons.ts:55](/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/lessons.ts:55) makes the newline following the closing `---` optional. A file ending its header with `---body` is accepted with lesson text `body`, contrary to L1’s requirement for two delimiter lines. **Fix:** require the closing delimiter to occupy its own line.
+
+6. **P2 — Documented adoption omits the new lesson store.** [export_skills.py:151](/home/smoke01/dev/ancient-games/tools/export_skills.py:151) exports `agent-lessons`, but its generated README and `BOOTSTRAP_PROMPT.md` still instruct adopters to install only four folders, excluding it. Following those instructions leaves `DEFAULT_STORE` absent and silently delivers no lessons. **Fix:** include `agent-lessons` in the adoption instructions and installation checks.
+
+7. **P3 — SPEC gives the wrong default-store path.** [SPEC.md:834](/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/SPEC.md:834) says `../../agent-lessons/lessons` from `src/`; the working implementation uses `../../../agent-lessons/lessons`. **Fix:** correct the SPEC’s relative path.
+
+Checked and found nothing in:
+
+- Normal retry handling, including a missing session ID.
+- Denial precedence for command traps, missing reads, and unsafe heredocs.
+- Agent/kind selection, enforced pointers, and `isTestFile`, including Windows separators.
+- Project-fact filename/folder isolation and CRLF lines.
+- Quoted YAML lists, empty required lists, and CRLF front matter.
+- CLI rejection of unknown agents/kinds and missing required flag values.
+- Committed export contents: all 63 compared source/export files matched.
+
+These conclusions use reviewer-written probes and source inspection. No files were changed. The full test suite was not run because its fixtures write files.

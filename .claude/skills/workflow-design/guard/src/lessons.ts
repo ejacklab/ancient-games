@@ -1,5 +1,6 @@
 // Round 18: agent lessons and project facts — reading them, checking them, and choosing the ones that match a call.
 
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -52,7 +53,8 @@ export function parseLesson(file: string): Lesson | { file: string; reason: stri
   } catch {
     return bad("unreadable");
   }
-  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
+  // The closing --- stands on its own line (crossed review finding 5: "---body" is not a delimiter).
+  const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n([\s\S]*))?$/.exec(text);
   if (match === null) return bad("no front matter between two --- lines");
   let front: unknown;
   try {
@@ -77,7 +79,7 @@ export function parseLesson(file: string): Lesson | { file: string; reason: stri
   if (typeof fields.from !== "string" || fields.from.trim() === "") return bad("from: the insight or memory it came from");
   const enforcedBy = fields.enforced_by === undefined || fields.enforced_by === null ? "" : fields.enforced_by;
   if (typeof enforcedBy !== "string") return bad("enforced_by: a check or test, as text");
-  const body = match[2]!.trim();
+  const body = (match[2] ?? "").trim();
   if (body === "") return bad("no lesson text after the front matter");
   return { slug, agents, kinds, paths, commands, from: fields.from.trim(), enforcedBy: enforcedBy.trim(), text: body };
 }
@@ -129,7 +131,9 @@ export function isTestFile(file: string): boolean {
 function relativeTo(root: string, file: string): string {
   const absolute = path.resolve(root, file);
   const relative = path.relative(root, absolute);
-  return relative.startsWith("..") ? absolute : relative.split(path.sep).join("/");
+  // Outside the root only when the first segment is "..", not a name that starts with it (crossed review finding 4).
+  const outside = relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
+  return outside ? absolute : relative.split(path.sep).join("/");
 }
 
 // Whether one lesson matches the query (L3).
@@ -162,33 +166,33 @@ export function lessonsFor(store: string, query: Query): { lessons: Lesson[]; fa
 
 // ---- once per session (L5) ---------------------------------------------------------------------------------------
 
-function shownFile(root: string): string {
-  return path.join(root, ".harness-guard", "lessons-shown.json");
+// One marker file per shown key, created only if absent: two hooks at once cannot lose a mark, and a mark that cannot
+// be written means the key is not given — a hold the retry would meet again is worse than no hold (crossed review
+// findings 2 and 3). `.harness-guard/lessons-shown/<hash of session>/<hash of key>`, the key as the file's text.
+function hash(text: string): string {
+  return createHash("sha256").update(text).digest("hex").slice(0, 16);
 }
 
-function readShown(root: string): Record<string, string[]> {
-  try {
-    const parsed: unknown = JSON.parse(fs.readFileSync(shownFile(root), "utf8"));
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
-    const out: Record<string, string[]> = {};
-    for (const [session, keys] of Object.entries(parsed)) {
-      if (Array.isArray(keys)) out[session] = keys.filter((key): key is string => typeof key === "string");
-    }
-    return out;
-  } catch {
-    return {};
-  }
+export function shownFolder(root: string, session: string): string {
+  return path.join(root, ".harness-guard", "lessons-shown", hash(session));
 }
 
-// The keys not yet shown in this session; records them as shown.
+// The keys not yet shown in this session (and agent); marks them shown before it returns.
 export function takeUnshown(root: string, session: string, keys: string[]): string[] {
-  if (keys.length === 0) return [];
-  const shown = readShown(root);
-  const seen = new Set(shown[session] ?? []);
-  const fresh = [...new Set(keys)].filter((key) => !seen.has(key));
-  if (fresh.length === 0) return [];
-  shown[session] = [...seen, ...fresh];
-  fs.mkdirSync(path.dirname(shownFile(root)), { recursive: true });
-  fs.writeFileSync(shownFile(root), `${JSON.stringify(shown, null, 2)}\n`);
-  return fresh;
+  const unique = [...new Set(keys)];
+  if (unique.length === 0) return [];
+  const folder = shownFolder(root, session);
+  try {
+    fs.mkdirSync(folder, { recursive: true });
+  } catch {
+    return [];
+  }
+  return unique.filter((key) => {
+    try {
+      fs.writeFileSync(path.join(folder, hash(key)), `${key}\n`, { flag: "wx" });
+      return true;
+    } catch {
+      return false; // shown already (EEXIST), or the mark cannot be written: either way, not given now
+    }
+  });
 }

@@ -45,7 +45,7 @@ quote, workload, runlog and harvest checks).
 ## Start here
 
 - **Adopting the style in a project** — paste the block from `BOOTSTRAP_PROMPT.md` into a fresh agent session in
-  that project, with a local path to the Ancient Games repo filled in. It installs all four skills and writes that
+  that project, with a local path to the Ancient Games repo filled in. It installs all five skills and writes that
   project's `AGENTS.md` + root `orchestration.mdc`. Read `bootstrap/SKILL.md` for the input sources, required output
   content and completion checks. Missing blueprint decisions produce drafts and blocked work, not guessed values.
 - **Designing a workflow** — install `workflow-design` and load the skill. Read `references/method.md` once before
@@ -53,7 +53,7 @@ quote, workload, runlog and harvest checks).
 
 ## Use it
 
-For bootstrap, install **all four sibling folders**: `workflow-design`, `requirement-check`, `meaningful-names`,
+For bootstrap, install **all five sibling folders**: `workflow-design`, `agent-lessons`, `requirement-check`, `meaningful-names`,
 and `bootstrap`. The examples below show individual copies, not a complete bootstrap install.
 Create the skill root first. Inspect existing folders/symlinks before copying; reuse identical installs and obtain
 authorization before replacing different ones. Do not merge copies or write through destination symlinks.
