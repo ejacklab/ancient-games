@@ -48,7 +48,8 @@ checked, the input, the expected and the actual result, the engine and harness t
 failure, and the path to the evidence (the data) in the run folder; a record without a reason and evidence is not
 accepted. What other checks see while the work is done — a failed test run, an errored tool call, a non-zero exit, an
 engine result that fails R12.1, a criterion marked not met — is logged as evidence the evaluator reads, never a
-failure by itself.
+failure by itself. A FAIL the owner already accepted, in the product's last accepted verdict, is not a new failure:
+it is kept as a note.
 
 **R12.3 Insight at the end of a task (MUST).** When a task ends with one or more failure records, the agent that ran
 the task writes an insight file in the run folder and raises it to the project owner in its final report. For each

@@ -100,10 +100,13 @@ method section named beside it.
    What the guard logs is evidence; a failure is the evaluator's FAIL against the vision, use cases and requirements, or
    the owner's correction (R12.2), and a run with such failures ends with an insight named in the final report, its
    top-ranked fix applied (R12.3) (`guard/src/cli.ts insight` lists what is
-   open); a use-case register is checked with `guard/src/cli.ts register <file>` (method 3.8 item 13). A run that
-   succeeded records its path (`guard/src/cli.ts path new`); a similar task starts from a recorded path
-   (`path parents <category>`), changes something and tries to beat it (method 3.8 item 13, R12.7); the run is scored
-   on criteria written before the work (`guard/src/cli.ts criteria new`, then `criteria score`).
+   open); a use-case register is checked with `guard/src/cli.ts register <file>` (method 3.8 item 13). At a milestone
+   build, or one the owner names, the requirements evaluator judges the product, and
+   `guard/src/cli.ts evaluation ingest` turns its verdict into evaluator failures and owner notes against the last
+   accepted verdict (method 3.6). A run that succeeded records its path (`guard/src/cli.ts path new`); a similar task
+   starts from a recorded path (`path parents <category>`), changes something and tries to beat it (method 3.8 item
+   13, R12.7); the run is scored on criteria written before the work (`guard/src/cli.ts criteria new`, then
+   `criteria score`).
 
 ## Every node carries five things
 

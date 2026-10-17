@@ -31,3 +31,4 @@ whichever first (method 3.8 item 14: decisions provisional from the experts, the
 - 23:48 my slip: deadline end --session (meant for the memory review's D-3ae31886) ended this run's D-c578cc89, the newest open one; ended the review's, restarted this run's clock for the minutes left (to 00:38) — the guard's per-session deadline defect, again.
 - 00:07 check-q done (25 min, 777k tokens): 5 of 6 usable (Dave timed out twice); verdict not ready. Round 19 spec + 7 tests red first (nodes/round19.red.txt); bridge to mcode.
 - 00:20 round 3: per group then baseline by case, measured on the six K2 verdicts: 39 → 12 → 5 (group baseline hid k2-4) → 6 (case baseline, 5 of 6 faults, the evaluator's own rate); guard 1527/1527, tsgo clean. Report written.
+- 01:52 P1, P2, P3 accepted by EJ ("use a workflow to run your three provisional decisions"); written into method 3.6, the skill and the changelog.

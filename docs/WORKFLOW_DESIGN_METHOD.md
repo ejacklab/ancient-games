@@ -391,6 +391,17 @@ problem that neither the criteria in scope nor the baseline covers — is writte
 `docs/blueprint/backlog.md` with the date and the run id (a suspected break of something the baseline does not cover
 is marked as such, for EJ); it does not become a new piece or a new attempt in this run. This is what lets a run end.
 
+**The evaluator at a milestone.** The requirements evaluator (`docs/evaluator/`, code on branch `build/evaluator`)
+judges a product against its vision, use cases and requirements. It runs on a milestone build, or a build the owner
+names — never per task or per node: one evaluation costs about a million tokens and twenty minutes. Its `verdict.json`
+reaches the guard through `guard/src/cli.ts evaluation ingest <verdict.json> --run runs/<run> --baseline <the
+product's last accepted verdict.json>`: each requirement group that fails with a FAIL case the accepted verdict did
+not fail becomes one failure found by the evaluator (R12.2); a group whose FAIL cases were all in the accepted verdict
+is a note in `evaluator-notes.md` ("FAIL in the baseline too"), since the owner accepted it with that build; an UNKNOWN
+is a note too; an evaluation that crashed, timed out or was blocked is a note, never a failure, because a crash is no
+judgment. When the owner accepts the build, its verdict becomes the accepted verdict for the next evaluation. (This
+"accepted verdict" is not the test baseline of 3.1.)
+
 With everything known, the design's edges decide who works next: a Workflow script, or the COO (the main Claude
 session) following the knowledge graph. A node's role subagents do not choose the next node. Each node names its role, engine,
 model and effort; the COO's contract, and when she does a small node herself, are in `docs/EXECUTOR_KINDS.md`. If a node hits its attempt limit
