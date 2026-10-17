@@ -827,7 +827,8 @@ in the code's own folder. The guard gives the main agent the ones that match wha
   path given matches one of its `paths`; a path given is a test file (a path segment `test` or `tests`, or a name
   containing `.test.`, `_test.` or starting `test_`) and its `kinds` holds `test`; a path given is any other file and
   its `kinds` holds `code-edit`; a command word given is in its `commands`; a kind given is in its `kinds`. A lesson
-  with `enforced_by` set matches as its pointer: "<slug>: enforced by <enforced_by>".
+  with `enforced_by` set is listed by `lessons for` as its pointer, "<slug>: enforced by <enforced_by>", and never holds a
+  call (L5): its check acts at the moment already.
 - **L4 `lessons for`.** `cli.ts lessons for --agent A [--kinds K,…] [--paths P,…] [--commands C,…] [--dir D]` prints
   one line per matching lesson, `- <text> (<slug>)`, then one line per project fact of the paths given,
   `- <file>: <fact>`; nothing when none match; exit 0. `--dir` defaults to the store beside the guard
@@ -836,7 +837,7 @@ in the code's own folder. The guard gives the main agent the ones that match wha
 - **L5 The hook.** With a lessons store in its environment (the CLI's `hook claude` gives the default store; tests give
   a folder or none), PreToolUse gives `claude-main` the lessons that match: for Write, Edit and MultiEdit, by
   `tool_input.file_path` (and that file's project facts); for Bash, by the command words of its segments. Each lesson
-  and fact is given once per session (`.harness-guard/lessons-shown.json`, `{session: [keys]}`). A call the guard
+  and fact is given once per agent per session (`.harness-guard/lessons-shown.json`, `{"<session>#<agent_id or main>": [keys]}`: a subagent's calls carry the parent's session id and their own `agent_id`). A call the guard
   denies for another reason gets the deny alone. How the lessons are given is L6.
 - **L6 How they are given: the call is held once** (provisional, run 20261017-agent-lessons, `delivery-q`: five of six
   experts; `additionalContext` reaches the agent "alongside the tool result", too late for the call it is about). The

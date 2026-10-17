@@ -117,6 +117,18 @@ test("L5: a Write gets the matching lessons and the file's project facts once pe
   expect(context(pre("Edit", { file_path: file }, "s2"))).toContain("(for-code)");
 });
 
+// Run 20261017-agent-lessons insight: subagents' calls carry the parent session id, so the marks are per agent too.
+test("L5: each agent of a session gets a lesson once — the main agent and each subagent (agent_id)", () => {
+  lesson("for-git", "agents: [all]\nkinds: [command]\ncommands: [git]");
+  const call = (agent?: string) => handleHook({ hook_event_name: "PreToolUse", session_id: "s1", cwd: root, tool_name: "Bash",
+    tool_input: { command: "git status" }, ...(agent === undefined ? {} : { agent_id: agent, agent_type: "general-purpose" }) }, env);
+  expect(context(call("sub-1"))).toContain("(for-git)");
+  expect(call("sub-1").stdout).toBe("");
+  expect(context(call())).toContain("(for-git)");
+  expect(call().stdout).toBe("");
+  expect(context(call("sub-2"))).toContain("(for-git)");
+});
+
 test("L5: a test file gets test lessons; a path glob matches a non-code file", () => {
   lesson("for-tests", "agents: [claude-main]\nkinds: [test]");
   lesson("for-yaml", "agents: [claude-main]\nkinds: [brief]\npaths: [\"conf/*.yaml\"]");
@@ -155,9 +167,12 @@ test("L5: no store, an unknown tool, or a Write with no path gives nothing", () 
   expect(pre("Write", { file_path: write("src/b.ts", "") }).stdout).toBe("");
 });
 
-test("L5: an enforced lesson is given as its pointer", () => {
+// Run 20261017-agent-lessons: a hold that carried only an enforced lesson's pointer was noise — its check already acts.
+test("L5: an enforced lesson never holds a call; lessons for still lists its pointer", () => {
   lesson("checked", "agents: [all]\nkinds: [code-edit]\nenforced_by: guard Round 13");
-  expect(context(pre("Write", { file_path: write("src/a.ts", "") }))).toContain("- checked: enforced by guard Round 13");
+  expect(pre("Write", { file_path: write("src/a.ts", "") }).stdout).toBe("");
+  const listed = cli("lessons", "for", "--agent", "claude-main", "--kinds", "code-edit", "--dir", store);
+  expect(listed.stdout.trim()).toBe("- checked: enforced by guard Round 13");
 });
 
 // ---- L4

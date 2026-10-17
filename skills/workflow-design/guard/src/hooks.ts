@@ -120,11 +120,15 @@ function lessonLines(payload: Record<string, unknown>, env: HookEnv): string[] {
     return [];
   }
   const found = lessonsFor(env.lessons, query);
+  // A lesson a check enforces never holds a call: that check acts at the moment already (run 20261017-agent-lessons).
   const keyed = [
-    ...found.lessons.map((lesson) => ({ key: `lesson:${lesson.slug}`, line: lessonLine(lesson) })),
+    ...found.lessons.filter((lesson) => lesson.enforcedBy === "").map((lesson) => ({ key: `lesson:${lesson.slug}`, line: lessonLine(lesson) })),
     ...found.facts.map((fact) => ({ key: `fact:${path.relative(root, fact.file)}:${fact.fact}`, line: factLine(root, fact) })),
   ];
-  const fresh = new Set(takeUnshown(root, sessionOf(payload), keyed.map((entry) => entry.key)));
+  // A subagent's calls carry the parent's session id and their own agent_id (Claude Code hooks reference), so the
+  // marks are per agent: each agent gets each lesson once (run 20261017-agent-lessons insight, option 1).
+  const agent = typeof payload.agent_id === "string" && payload.agent_id !== "" ? payload.agent_id : "main";
+  const fresh = new Set(takeUnshown(root, `${sessionOf(payload)}#${agent}`, keyed.map((entry) => entry.key)));
   return keyed.filter((entry) => fresh.has(entry.key)).map((entry) => entry.line);
 }
 
