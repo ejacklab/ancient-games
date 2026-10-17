@@ -4,6 +4,20 @@ The history of `SOURCE_OF_TRUTH.md`: what changed, when, and who decided. The de
 so an agent reading it carries no history it does not need (EJ, 2026-10-14). Newest first. The notes up to
 2026-10-13 are the design's former status block and inline attributions, moved here unchanged.
 
+## 2026-10-18 (time-boxed run `runs/20261018-sot-finish/`)
+
+EJ: *"auto finish everything within 6 hours"*. Each change is the six experts' majority, applied provisionally; EJ
+accepts or overrules at the end.
+- **The limits file** (Rd3.1a): `project-memory/start-limits.json`, one JSON row per agent and unit; with no file the
+  tool uses the example and says so; a bad file is an error, never a silent fallback (S1: place 6/6, JSON 5/6, rows
+  4/6). The file's name is the COO's pick (3 of 6 used it).
+- **W6.3a:** when both sides replace the same `covers` path differently, the merge keeps both new paths, the old one
+  stays removed, and the clash is reported in `state.md` (S1: 6/6; the report 4/6).
+- **The COO's wording of 2026-10-14, reviewed** (S2, all six CHANGE): K1.1 `who_decides` is "the project owner,
+  through the project's workflow" (6/6); K5.1's `fails_if` is a journal line already written being changed or
+  removed (6/6); Rd5.2's check is found only on audit (4/6); W5.2's `fails_if` points at the K5.2 journal-read line
+  (5/6 asked for a change; the words are the COO's, after 孫子). W1.2a and W6.1a stand (no majority).
+
 ## 2026-10-18
 
 Item 11, from the six experts' majority after web research (`runs/20261017-sot-item11/`; EJ: apply the majority and
