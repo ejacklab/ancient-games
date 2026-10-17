@@ -106,7 +106,10 @@ const NAMES = 'Name each test as the test runner prints it (file and test name),
 function writeStep(t) {
   const out = resultFile(t.engine, t.id)
   return step(`${COMMON(`write:${t.id}`)}
-Step: have ${t.engine} write the tests that ${t.brief} asks for. Run exactly this command from the repository root:
+Step: have ${t.engine} write the tests that ${t.brief} asks for. First read ${t.brief}: if it has no line starting
+"## Lessons" (the node-brief template's Lessons section, the text of \`lessons for\`, or "none"), do not run anything;
+return status "failed" with problem "the brief has no Lessons section". Otherwise run exactly this command from the
+repository root:
 
     timeout 580 ${engineCommand(t.engine, t.brief, out, false)}
 

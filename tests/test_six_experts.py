@@ -7,6 +7,7 @@ process is ever started."""
 import argparse
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -56,7 +57,7 @@ class Ticks:
 
 
 def run_seats(tmp_path, monkeypatch, only, insights=None, guard=None, alive=1, rc=0, answer=ANSWER,
-              codex_left=None):
+              codex_left=None, lessons=None):
     """Run `only` with fake engines; returns (out, calls, rc).
 
     calls is one dict per start and one per exit: sid, engine, model, prompt, and `running` — the experts still
@@ -77,6 +78,7 @@ def run_seats(tmp_path, monkeypatch, only, insights=None, guard=None, alive=1, r
 
     if guard is not None:
         monkeypatch.setattr(fe, "guard_text", guard)
+    monkeypatch.setattr(fe, "lessons_text", lessons or (lambda engine, cwd: ""))
     monkeypatch.setattr(fe, "start", fake_start)
     monkeypatch.setattr(fe, "codex_left", lambda *a, **k: codex_left)
     monkeypatch.setattr(fe.time, "sleep", clock.sleep)
@@ -322,3 +324,40 @@ def test_caller_mode_names_dave_and_darios_model(tmp_path, monkeypatch, capsys):
     assert printed.count("on claude-opus-5-5") == 1 and printed.count("on claude-sonnet-5-5") == 1
     status = __import__("json").loads((out / "status.json").read_text(encoding="utf-8"))
     assert (status["dave"]["model"], status["dario"]["model"]) == ("claude-opus-5-5", "claude-sonnet-5-5")
+
+
+# --- guard Round 18: each expert's brief ends with the lessons for the engine that will run it (run 20261017-agent-lessons)
+
+
+def test_each_seat_gets_the_lessons_of_its_engine_and_dario_none(tmp_path, monkeypatch):
+    asked = []
+
+    def lessons(engine, cwd):
+        asked.append(engine)
+        return f"\n\n## Lessons\n\n- lesson for {engine}\n"
+
+    out, _calls, _rc = run_seats(tmp_path, monkeypatch, "linus,sun-tzu,dario", lessons=lessons, codex_left=10.0)
+    assert "- lesson for mcode" in (out / "briefs" / "linus.md").read_text(encoding="utf-8")  # after the fallback
+    assert "- lesson for dsh" in (out / "briefs" / "sun-tzu.md").read_text(encoding="utf-8")
+    assert "Lessons" not in (out / "briefs" / "dario.md").read_text(encoding="utf-8")
+    assert sorted(asked) == ["dsh", "mcode"]
+
+
+def test_no_lessons_leaves_the_brief_as_it_was(tmp_path, monkeypatch):
+    out, _calls, _rc = run_seats(tmp_path, monkeypatch, "sun-tzu")
+    assert "## Lessons" not in (out / "briefs" / "sun-tzu.md").read_text(encoding="utf-8")
+
+
+def test_lessons_text_asks_the_guard_for_brief_lessons_of_the_engine(monkeypatch, tmp_path):
+    seen = {}
+
+    def fake_run(cmd, **kwargs):
+        seen["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, stdout="- a lesson (slug)\n", stderr="")
+
+    monkeypatch.setattr(fe.subprocess, "run", fake_run)
+    text = fe.lessons_text("claude", tmp_path)
+    assert seen["cmd"][-6:] == ["lessons", "for", "--agent", "claude-main", "--kinds", "brief"]
+    assert text.startswith("\n\n## Lessons") and "- a lesson (slug)" in text
+    monkeypatch.setattr(fe.subprocess, "run", lambda cmd, **kw: subprocess.CompletedProcess(cmd, 2, stdout="x", stderr=""))
+    assert fe.lessons_text("opencode", tmp_path) == ""

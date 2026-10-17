@@ -187,6 +187,23 @@ def guard_text(args: list[str], cwd: Path) -> str:
     return p.stdout if p.returncode == 0 else ""
 
 
+LESSON_AGENT = {"claude": "claude-main"}  # a Claude seat takes the Claude lessons; the other engines are their own type
+
+
+def lessons_text(engine: str, cwd: Path) -> str:
+    """The brief's Lessons section: `lessons for --agent <engine> --kinds brief`, as text; "" when none match or the
+    guard cannot answer (guard SPEC Round 18, L4)."""
+    try:
+        p = subprocess.run(["bun", str(GUARD_CLI), "lessons", "for", "--agent", LESSON_AGENT.get(engine, engine),
+                            "--kinds", "brief"], cwd=cwd, capture_output=True, text=True, timeout=60,
+                           stdin=subprocess.DEVNULL, env={**os.environ, "BUN_RUNTIME_TRANSPILER_CACHE_PATH": "0"})
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    if p.returncode != 0 or not p.stdout.strip():
+        return ""
+    return "\n\n## Lessons (from earlier agents' failures; apply each that fits)\n\n" + p.stdout.strip() + "\n"
+
+
 def insight_load(out: Path, categories: str | None, cwd: Path, scheme: str | None = None) -> str:
     """Dave's insights (run 20261016-six-experts, D1): the index, then the named categories' sections, copied into the
     run folder so every engine can read them; the brief section that tells him to load and cite them."""
@@ -269,6 +286,11 @@ def run(a) -> int:
         if left is not None and left <= CODEX_MIN_LEFT:
             jobs["linus"].update(engine="mcode", fallback_from="codex",
                                  fallback_reason=f"codex has {left:g}% left ({CODEX_MIN_LEFT}% or less)")
+    for sid, j in jobs.items():  # after the fallbacks, so the lessons are the engine's that will run (guard Round 18)
+        if sid not in PLAIN:
+            lessons = lessons_text(j["engine"], cwd)
+            if lessons:
+                j["brief"].write_text(j["brief"].read_text(encoding="utf-8") + lessons, encoding="utf-8")
     old = out / "status.json"
     status = json.loads(old.read_text(encoding="utf-8")) if only and old.exists() else {}
 

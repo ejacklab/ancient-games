@@ -16,6 +16,10 @@ Fill every part. A part that cannot be filled is an unclear spot, not a blank.
 ## Context (only what this task needs)
 <paths to read, with the lines or ids that matter; facts the worker must not re-derive; what is withheld on purpose>
 
+## Lessons (from earlier agents' failures)
+<the text printed by `bun <ancient-games>/.claude/skills/workflow-design/guard/src/cli.ts lessons for --agent <engine>
+--kinds <the task's kinds> --paths <the files it touches>`, pasted, never a path to read; "none" when it prints nothing>
+
 ## Template (fill this exactly)
 <path to the result template, usually docs/workflow-templates/result-file.md, or research-file.md for research;
 the body shape if it is not the default: headings, fields, order>
@@ -53,6 +57,9 @@ List every place readiness.py prints the word "unknown" and say which ones are i
 
 ## Context
 .claude/skills/workflow-design/scripts/readiness.py only. Do not read the tests.
+
+## Lessons
+none
 
 ## Template
 docs/workflow-templates/result-file.md; body = a table: line number | context | intentional (yes/no) | why.
