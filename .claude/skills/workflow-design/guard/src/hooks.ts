@@ -10,7 +10,7 @@ import { checkCriteria, isCriteriaFile, loadCriteria, score } from "./criteria.t
 import { appendFailure, appendRecord, failuresFor, guardRoot, newFailureId, readJournal, writeEvidence } from "./journal.ts";
 import { answered, greatAnswered, openFailures } from "./insight.ts";
 import { appendWarning, newWarningId, openWarnings } from "./warnings.ts";
-import { claimDeadlines, deadlineStatus, dueMark, markId, sessionDeadline } from "./deadline.ts";
+import { claimDeadlines, deadlineStatus, sessionDeadline } from "./deadline.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
 import { coverage, isRegisterFile, loadRegister, validateRegister } from "./register.ts";
 import { FAILED_SUMMARY, checkResult, commandWord, engineCallSite, inlineScripts, lintCommand, missingReads, recognizeTestRun, segments, testRunFiles } from "./traps.ts";
@@ -813,43 +813,14 @@ function withTime(payload: Record<string, unknown>, root: string, env: HookEnv, 
   const now = env.now();
   const status = deadlineStatus(root, session, now, false);
   if (status === null) return result;
-  let message: string | null = null;
-  if (status.up) {
-    const raisedUp = new Set(readJournal(root).records.flatMap((r) => (r.kind === "raised" && r.session === session ? r.ids : [])));
-    const unsaid = status.deadline.marks.map((m) => markId(status.deadline, m)).filter((id) => !raisedUp.has(id));
-    // The overrun from the exact end, rounded once, as deadline status does (review finding 7).
-    const over = Math.max(0, Math.round((now.getTime() - (Date.parse(status.deadline.start) + status.deadline.minutes * 60_000)) / 60_000));
-    const upLine = `harness-guard time is up (${over} min over): stop trying, finish the report, and put what is open to the owner.`;
-    if (unsaid.length > 0) {
-      // The 100% block, with the workers, is said once when the deadline is first seen passed (review finding 4).
-      appendRecord(root, { kind: "raised", time: now.toISOString(), session, ids: unsaid } as RaisedRecord);
-      const workers = deadlineStatus(root, session, now)?.workers ?? [];
-      message = [`harness-guard time: ${status.deadline.minutes} of ${status.deadline.minutes} min used (100%), 0 left`,
-        ...workers.slice(0, 5).map((w) => `  ${w}`), upLine].join("\n");
-    } else {
-      message = upLine;
-    }
-  } else {
-    // No mark passed yet: nothing can be due, so the journal is not read (the optimisation round of this run).
-    const passed = status.deadline.marks.some((m) => status.percent >= m);
-    const raised = passed ? new Set(readJournal(root).records.flatMap((r) => (r.kind === "raised" && r.session === session ? r.ids : []))) : new Set<string>();
-    const mark = passed ? dueMark(status, raised) : null;
-    if (mark !== null) {
-      const ids = status.deadline.marks.filter((m) => m <= mark).map((m) => markId(status.deadline, m)).filter((id) => !raised.has(id));
-      const record: RaisedRecord = { kind: "raised", time: now.toISOString(), session, ids };
-      appendRecord(root, record);
-      const end = new Date(Date.parse(status.deadline.start) + status.deadline.minutes * 60_000);
-      const hhmm = `${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`;
-      const workers = deadlineStatus(root, session, now)?.workers ?? [];
-      message = [`harness-guard time: ${status.usedMinutes} of ${status.deadline.minutes} min used (${status.percent}%), ${status.leftMinutes} left — deadline ${hhmm}`,
-        ...workers.slice(0, 5).map((w) => `  ${w}`)].join("\n");
-    } else {
-      // Between marks, one short line every call: every tested design shows the budget at every step
-      // (runs/20261016-time-monitor/research/reminders.md F1, F3, F6; a budget given once fails, F5, F6, F8).
-      message = `harness-guard clock: ${status.usedMinutes}/${status.deadline.minutes} min (${status.percent}%), ${status.leftMinutes} left`;
-    }
-  }
-  if (message === null) return result;
+  // One clock line after every call — every tested design shows the budget at every step
+  // (runs/20261016-time-monitor/research/reminders.md F1, F3, F6; a budget given once fails, F5, F6, F8). EJ chose it
+  // over reminders at 50/80/100%, which "is not able to well predict, specific when exploring solutions".
+  // After the deadline, the time-up line on every call; the overrun from the exact end, rounded once (review finding 7).
+  const over = Math.max(0, Math.round((now.getTime() - (Date.parse(status.deadline.start) + status.deadline.minutes * 60_000)) / 60_000));
+  const message = status.up
+    ? `harness-guard time is up (${over} min over): stop trying, finish the report, and put what is open to the owner.`
+    : `harness-guard clock: ${status.usedMinutes}/${status.deadline.minutes} min (${status.percent}%), ${status.leftMinutes} left`;
   let existing = "";
   if (result.stdout.trim() !== "") {
     try {

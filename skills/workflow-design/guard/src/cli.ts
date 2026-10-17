@@ -15,7 +15,7 @@ import { checkSection, findInsightFiles, openFailures, parseInsight } from "./in
 import { WarningError, dismiss, settleAsFailure, warnings } from "./warnings.ts";
 import { indexMarkdown, insightIndex, loadCategories, showSections } from "./insight-index.ts";
 import { ExpectError, declareRed, runRed } from "./expect.ts";
-import { DeadlineError, deadlineEnd, deadlineStatus, endDeadline, parseMarks, startDeadline } from "./deadline.ts";
+import { DeadlineError, deadlineEnd, deadlineStatus, endDeadline, startDeadline } from "./deadline.ts";
 import { PathError, checkPath, parents, skeleton } from "./paths.ts";
 import { rates, ratesMarkdown } from "./rates.ts";
 import { RegisterError, coverage, loadRegister, validateRegister } from "./register.ts";
@@ -41,7 +41,7 @@ const USAGE = [
   "  expect-fail --run COMMAND --out FILE [--session S]   run a planned red run: the guard runs it and records the result",
   "  warning <W-id> fail|dismiss --reason TEXT   settle a warning the guard could not judge",
   "  warnings [--session S]          every warning and how it was settled",
-  "  deadline start --minutes N [--run DIR] [--marks 50,80,100]   record the owner's time limit",
+  "  deadline start --minutes N [--run DIR]   record the owner's time limit (a clock line after every call)",
   "  deadline status | wait [--mark P] | end   time used and left, workers' progress; wait = a background timer; end = the task is done",
   "  register <file>                 validate a register and report its coverage",
   "  install --print <harness>       print the hook settings for a harness",
@@ -199,9 +199,9 @@ function deadlineCommand(args: string[]): number {
     const minutesText = flagValue(args, "--minutes");
     const minutes = minutesText === null ? Number.NaN : Number(minutesText);
     try {
-      const deadline = startDeadline(root, { minutes, run: flagValue(args, "--run"), marks: parseMarks(flagValue(args, "--marks")) }, new Date());
+      const deadline = startDeadline(root, { minutes, run: flagValue(args, "--run") }, new Date());
       const end = new Date(deadlineEnd(deadline));
-      out(`${deadline.id}: ${deadline.minutes} min, deadline ${end.toTimeString().slice(0, 5)}; reminders at ${deadline.marks.join("%, ")}%`);
+      out(`${deadline.id}: ${deadline.minutes} min, deadline ${end.toTimeString().slice(0, 5)}; a clock line after every call`);
       return OK;
     } catch (error) {
       if (error instanceof DeadlineError) usageError(`deadline start: ${error.message}`);
@@ -239,7 +239,7 @@ function deadlineCommand(args: string[]): number {
     out(`${ended.id} ended`);
     return OK;
   }
-  return usageError("deadline: start --minutes N [--run DIR] [--marks 50,80,100] | status | wait [--mark P] | end");
+  return usageError("deadline: start --minutes N [--run DIR] | status | wait [--mark P] | end");
 }
 
 // ---- warnings (round 9) -----------------------------------------------------------------------------------------

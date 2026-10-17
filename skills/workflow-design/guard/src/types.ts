@@ -348,7 +348,6 @@ export interface Deadline {
   start: string; // ISO 8601
   minutes: number;
   run: string | null; // root-relative run folder, for the workers' progress files
-  marks: number[]; // percent, ascending, ends with 100
   session: string | null; // claimed by the hook of the call that started it
   ended?: string; // ISO time the task ended its deadline early (deadline end); an ended deadline is no deadline
 }

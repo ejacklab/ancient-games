@@ -10,8 +10,6 @@ import type { Deadline, ProgressSummary } from "./types.ts";
 
 export class DeadlineError extends Error {}
 
-export const DEFAULT_MARKS = [50, 80, 100];
-
 function folder(root: string): string {
   return path.join(root, GUARD_DIR, "deadlines");
 }
@@ -20,23 +18,12 @@ function fileOf(root: string, id: string): string {
   return path.join(folder(root), `${id}.json`);
 }
 
-export function parseMarks(text: string | null): number[] {
-  if (text === null) return [...DEFAULT_MARKS];
-  const marks = text.split(",").map((part) => Number(part.trim()));
-  if (marks.length === 0 || marks.some((mark) => !Number.isInteger(mark) || mark < 1 || mark > 100)) {
-    throw new DeadlineError("--marks: integers from 1 to 100, comma-separated");
-  }
-  return [...new Set([...marks, 100])].sort((a, b) => a - b);
-}
-
-export function startDeadline(root: string, opts: { minutes: number; run?: string | null; marks?: number[] }, now: Date): Deadline {
+export function startDeadline(root: string, opts: { minutes: number; run?: string | null }, now: Date): Deadline {
   if (!Number.isFinite(opts.minutes) || opts.minutes <= 0) throw new DeadlineError("--minutes: a positive number");
   // A duration whose end is not a representable time would never expire (review finding 6).
   if (!Number.isFinite(new Date(now.getTime() + opts.minutes * 60_000).getTime())) throw new DeadlineError("--minutes: too large to be a time");
-  const marks = opts.marks === undefined ? [...DEFAULT_MARKS] : [...new Set([...opts.marks, 100])].sort((a, b) => a - b);
-  if (marks.some((mark) => !Number.isInteger(mark) || mark < 1 || mark > 100)) throw new DeadlineError("marks: integers from 1 to 100");
   const run = opts.run === undefined || opts.run === null || opts.run === "" ? null : path.relative(root, path.resolve(root, opts.run));
-  const deadline: Deadline = { id: `D-${randomBytes(4).toString("hex")}`, start: now.toISOString(), minutes: opts.minutes, run, marks, session: null };
+  const deadline: Deadline = { id: `D-${randomBytes(4).toString("hex")}`, start: now.toISOString(), minutes: opts.minutes, run, session: null };
   fs.mkdirSync(folder(root), { recursive: true });
   fs.writeFileSync(fileOf(root, deadline.id), `${JSON.stringify(deadline, null, 2)}\n`);
   return deadline;
@@ -50,7 +37,6 @@ function isDeadline(value: unknown): value is Deadline {
   return typeof d.id === "string" && ID.test(d.id) && typeof d.start === "string" && Number.isFinite(Date.parse(d.start))
     && typeof d.minutes === "number" && d.minutes > 0
     && Number.isFinite(new Date(Date.parse(d.start) + d.minutes * 60_000).getTime())
-    && Array.isArray(d.marks) && d.marks.every((m) => Number.isInteger(m) && (m as number) >= 1 && (m as number) <= 100)
     && (d.session === null || typeof d.session === "string") && (d.run === null || typeof d.run === "string")
     && (d.ended === undefined || typeof d.ended === "string");
 }
@@ -166,20 +152,9 @@ export function deadlineStatus(root: string, session: string | null, now: Date, 
   const line = up
     ? `time is up, ${Math.round((now.getTime() - endOf(deadline)) / 60_000)} min over (deadline ${clock(endOf(deadline))})`
     : `used ${usedMinutes} of ${deadline.minutes} min (${percent}%), ${leftMinutes} left, deadline ${clock(endOf(deadline))}`;
-  // The workers' files are read only where they are shown — a mark block or status, not the every-call clock.
+  // The workers' files are read only where they are shown — deadline status, not the every-call clock.
   const workers = withWorkers ? progressFiles(root, deadline.run).map((file) => workerLine(progressSummary(file, now))) : [];
   return { deadline, usedMinutes, leftMinutes, percent, up, line, workers };
-}
-
-// The highest mark passed and not yet announced (T5); null when none is due.
-export function dueMark(status: DeadlineStatus, announced: Set<string>): number | null {
-  const passed = status.deadline.marks.filter((mark) => status.percent >= mark || (mark === 100 && status.up));
-  const fresh = passed.filter((mark) => !announced.has(markId(status.deadline, mark)));
-  return fresh.length === 0 ? null : fresh[fresh.length - 1]!;
-}
-
-export function markId(deadline: Deadline, mark: number): string {
-  return `deadline:${deadline.id}:${mark}`;
 }
 
 // The task finished: its deadline stops, so the clock does not run into the next task.

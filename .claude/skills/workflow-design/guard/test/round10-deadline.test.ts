@@ -43,7 +43,7 @@ function box() {
   const plant = (overrides: Partial<Deadline> = {}) => {
     const deadline: Deadline = {
       id: "D-00000001", start: env.now().toISOString(), minutes: 10,
-      run: null, marks: [50, 80, 100], session: "s", ...overrides,
+      run: null, session: "s", ...overrides,
     };
     save(deadline);
     return deadline;
@@ -83,32 +83,28 @@ test.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])("T1: module refuses inv
   expect(() => startDeadline(b.root, { minutes }, b.env.now())).toThrow();
 });
 
-test.each(["0,100", "50.5,100", "101,100", "x,100"])("T1: CLI rejects invalid marks %s", (marks) => {
-  expect(box().cli("deadline", "start", "--minutes", "10", "--marks", marks).status).toBe(2);
-});
-
 test("T1: module persists an unclaimed deadline with defaults and the injected start time", () => {
   const b = box();
   const deadline: Deadline = startDeadline(b.root, { minutes: 10 }, b.env.now());
   expect(deadline).toEqual({ id: expect.stringMatching(/^D-[0-9a-f]{8}$/), start: b.env.now().toISOString(),
-    minutes: 10, run: null, marks: [50, 80, 100], session: null });
+    minutes: 10, run: null, session: null });
   expect(JSON.parse(fs.readFileSync(path.join(b.root, `.harness-guard/deadlines/${deadline.id}.json`), "utf8")))
     .toEqual(deadline);
 });
 
-test("T1: marks ascend, 100 is added, and run is root-relative", () => {
+test("T1: run is root-relative", () => {
   const b = box();
-  const deadline = startDeadline(b.root, { minutes: 2.5, run: path.join(b.root, "runs/task"), marks: [80, 25] }, b.env.now());
-  expect(deadline).toMatchObject({ minutes: 2.5, run: "runs/task", marks: [25, 80, 100], session: null });
+  const deadline = startDeadline(b.root, { minutes: 2.5, run: path.join(b.root, "runs/task") }, b.env.now());
+  expect(deadline).toMatchObject({ minutes: 2.5, run: "runs/task", session: null });
 });
 
 test("T1: CLI start prints its id and local deadline time and writes the requested settings", () => {
   const b = box();
-  const result = b.cli("deadline", "start", "--minutes", "10", "--run", "runs/task", "--marks", "80,50");
+  const result = b.cli("deadline", "start", "--minutes", "10", "--run", "runs/task");
   expect(result.status).toBe(0);
   const [file] = fs.readdirSync(path.join(b.root, ".harness-guard/deadlines"));
   const deadline: Deadline = JSON.parse(fs.readFileSync(path.join(b.root, ".harness-guard/deadlines", file!), "utf8"));
-  expect(deadline).toMatchObject({ minutes: 10, run: "runs/task", marks: [50, 80, 100], session: null });
+  expect(deadline).toMatchObject({ minutes: 10, run: "runs/task", session: null });
   expect(result.stdout).toContain(deadline.id);
   const end = new Date(Date.parse(deadline.start) + deadline.minutes * 60_000);
   expect(result.stdout).toContain(`${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`);
@@ -244,42 +240,38 @@ test("T4 Fails-if: status crashes on malformed progress or prints raw progress t
 });
 
 for (const event of ["PostToolUse", "PostToolUseFailure"]) {
-  test(`T5 Fails-if: ${event} misses a passed mark or announces it twice`, () => {
+  // EJ 2026-10-17: the clock on every call, no reminders at 50/80/100% ("not able to well predict").
+  test(`T5 Fails-if: ${event} misses the clock on a call before the deadline`, () => {
     const b = box();
-    const deadline = b.plant();
+    b.plant();
     const payload = event === "PostToolUseFailure"
       ? { hook_event_name: event, tool_input: { command: "grep needle absent" }, exit_code: 1, error: "exit 1" }
       : { hook_event_name: event };
-    b.at(4.9);
-    expect(context(b.post(payload))).not.toContain("harness-guard time:");
-    for (const [minutes, mark] of [[5.1, 50], [8.1, 80]] as const) {
+    for (const minutes of [0.5, 4.9, 5.1, 8.1]) {
       b.at(minutes);
-      const text = context(b.post(payload));
-      expect(text).toContain("harness-guard time:");
-      expect(b.raised(`deadline:${deadline.id}:${mark}`)).toHaveLength(1);
-      expect(context(b.post(payload))).not.toContain("harness-guard time:");
-      expect(b.raised(`deadline:${deadline.id}:${mark}`)).toHaveLength(1);
+      expect(context(b.post(payload))).toContain("harness-guard clock:");
     }
   });
 
   test(`T5 Fails-if: ${event} fails to say time is up on every call after expiry`, () => {
     const b = box();
-    const deadline = b.plant();
+    b.plant();
     b.at(11);
     for (let i = 0; i < 2; i++) {
       const text = context(b.post({ hook_event_name: event, ...(event === "PostToolUseFailure" ? { exit_code: 1, error: "exit 1" } : {}) }));
       expect(text).toContain("harness-guard time is up");
       expect(text).toContain("stop trying, finish the report, and put what is open to the owner.");
     }
-    expect(b.raised(`deadline:${deadline.id}:100`)).toHaveLength(1);
   });
 }
 
-test("T5: mark reminder follows the specified time context format", () => {
+test("T5: no mark reminders and no marks recorded — only the clock", () => {
   const b = box();
   b.plant();
   b.at(6);
-  expect(context(b.post())).toMatch(/harness-guard time: .* of 10 min used \(.*%\), .* left — deadline \d{2}:\d{2}/);
+  const text = context(b.post());
+  expect(text).toMatch(/^harness-guard clock: 6\/10 min \(60%\), 4 left$/);
+  expect(b.raised("deadline:D-00000001:50")).toEqual([]);
 });
 
 test("T5: expired reminder follows the specified time-up format", () => {
@@ -296,43 +288,34 @@ test("T5: the injected clock reaches time-up exactly at the deadline", () => {
   expect(context(b.post())).toContain("harness-guard time is up");
 });
 
-test("T5: crossing multiple marks between calls records each mark exactly once", () => {
-  const b = box();
-  const deadline = b.plant();
-  b.at(9);
-  expect(context(b.post())).toContain("harness-guard time:");
-  for (const mark of [50, 80]) expect(b.raised(`deadline:${deadline.id}:${mark}`)).toHaveLength(1);
-  expect(context(b.post())).not.toContain("harness-guard time:");
-});
-
 test("T5 Fails-if: an expired deadline from another session reminds this one", () => {
   const b = box();
-  const deadline = b.plant({ session: "other" });
+  b.plant({ session: "other" });
   b.at(11);
-  expect(context(b.post())).not.toContain("harness-guard time");
-  expect(b.raised(`deadline:${deadline.id}:100`)).toEqual([]);
+  expect(context(b.post())).not.toContain("harness-guard");
   expect(context(b.post({}, "other"))).toContain("harness-guard time is up");
 });
 
-test("T5: reminders show no more than five workers and never echo raw progress text", () => {
+test("T5: the clock never echoes progress text; workers' progress is for deadline status", () => {
   const b = box();
   const secret = "RAW_PROMPT_MUST_STAY_PRIVATE";
   for (let i = 0; i < 7; i++) progress(b, `worker-${i}`, `${secret}\n` + line(1, "A", "done", `finished piece; prompt: ${secret}`));
   b.plant({ run: "runs/task" });
   b.at(6);
   const text = context(b.post());
-  expect(text.match(/worker-\d: 1\/1 pieces, last A done 5(?:\.0)? min ago/g)).toHaveLength(5);
+  expect(text).not.toContain("worker-");
   expect(text).not.toContain(secret);
+  expect(deadlineStatus(b.root, "s", b.env.now())!.workers).toHaveLength(7);
 });
 
-test("T5: timer context joins the warning context produced by the same hook", () => {
+test("T5: the clock joins the warning context produced by the same hook", () => {
   const b = box();
   b.plant();
   b.at(6);
   const text = context(b.post({ hook_event_name: "PostToolUseFailure", tool_input: { command: "grep needle absent" },
     exit_code: 1, error: "exit 1" }));
   expect(text).toMatch(/harness-guard warning W-[0-9a-f]{8}/);
-  expect(text).toContain("harness-guard time:");
+  expect(text).toContain("harness-guard clock:");
 });
 
 test("T6 Fails-if: ask-the-time repeats; the first ask joins the K2 criteria reminder", () => {
@@ -357,8 +340,8 @@ test("T6: owning a deadline suppresses the time ask, while another session's dea
   expect(context(b.prompt("other"))).toContain("ask the owner how much time");
 });
 
-// COO, Round 10 correction: between marks every call still carries the time (research F1, F3, F6).
-test("between marks, every call adds a one-line clock", () => {
+// COO, Round 10 correction: every call carries the time (research F1, F3, F6).
+test("every call adds a one-line clock", () => {
   const b = box();
   b.plant();
   b.at(2);
@@ -382,18 +365,15 @@ test("review 2: a command that only mentions deadline start, or failed, claims n
   expect(JSON.parse(fs.readFileSync(path.join(b.root, ".harness-guard/deadlines/D-00000001.json"), "utf8")).session).toBe("s");
 });
 
-test("review 4: the 100% block carries the workers once, then time-up alone", () => {
+test("at the deadline, the time-up line alone, every call", () => {
   const b = box();
   b.plant({ run: "runs/task" });
   b.write("runs/task/nodes/w.progress.md", "- 2026-01-01T00:00:00Z · P1 · done · ok\n");
   b.at(10);
-  const first = context(b.post({ hook_event_name: "PostToolUse" }));
-  expect(first).toContain("(100%)");
-  expect(first).toContain("w: 1/1 pieces");
-  expect(first).toContain("harness-guard time is up (0 min over)");
-  const second = context(b.post({ hook_event_name: "PostToolUse" }));
-  expect(second).not.toContain("w: 1/1 pieces");
-  expect(second).toContain("harness-guard time is up");
+  for (let i = 0; i < 2; i++) {
+    const text = context(b.post({ hook_event_name: "PostToolUse" }));
+    expect(text).toBe("harness-guard time is up (0 min over): stop trying, finish the report, and put what is open to the owner.");
+  }
 });
 
 test("review 5: a deadline file whose id is not D-xxxxxxxx, or not its file name, is no deadline", () => {
