@@ -1,0 +1,29 @@
+- 2026-10-17T17:42:37+08:00 · scaffold · planned · per brief
+- 2026-10-17T17:42:37+08:00 · guidelines · planned · per brief
+- 2026-10-17T17:42:37+08:00 · locations · planned · per brief
+- 2026-10-17T17:42:37+08:00 · indextool · planned · per brief
+- 2026-10-17T17:42:37+08:00 · gitchecks · planned · per brief
+- 2026-10-17T17:42:37+08:00 · caches · planned · per brief
+- 2026-10-17T17:42:37+08:00 · report · planned · per brief
+- 2026-10-17T17:42:37+08:00 · warn · planned · per brief
+- 2026-10-17T17:42:37+08:00 · cli · planned · per brief
+- 2026-10-17T17:42:37+08:00 · smoke · planned · per brief
+- 2026-10-17T17:43:06+08:00 · scaffold · done · 64 SoT records and 11 CACHES core requirements load; tool copy hashed
+- 2026-10-17T17:43:06+08:00 · guidelines · done · 64 SoT records and 11 CACHES core requirements load; tool copy hashed
+- 2026-10-17T17:43:06+08:00 · locations · start · git runner and F1/F2
+- 2026-10-17T17:44:49+08:00 · locations · done
+- 2026-10-17T17:44:49+08:00 · indextool · done
+- 2026-10-17T17:44:49+08:00 · gitchecks · done
+- 2026-10-17T17:44:49+08:00 · gitchecks · start · K4.1/K4.3/W1.1/W6.1a clauses and C5 snapshot
+- 2026-10-17T17:47:06+08:00 · gitchecks · start
+- 2026-10-17T17:47:06+08:00 · caches · start
+- 2026-10-17T17:47:06+08:00 · report · start
+- 2026-10-17T17:47:06+08:00 · warn · start
+- 2026-10-17T17:47:06+08:00 · cli · start
+- 2026-10-17T17:47:28+08:00 · gitchecks · done · K4.1/K4.3/W1.1a/W1.1b/W6.1a from the staged snapshot and history; shallow clone could not run
+- 2026-10-17T17:47:28+08:00 · caches · done · B2.2 by git check-ignore, Rd1.1 by the session-start scan
+- 2026-10-17T17:47:28+08:00 · report · done · first line names the snapshot; MUSTs first; needs-a-reviewer list
+- 2026-10-17T17:47:28+08:00 · warn · done · one line per failing MUST and a missing AGENTS.md, ids and file names
+- 2026-10-17T17:47:28+08:00 · cli · done · --project/--home/--since/--out/--warn; exit 0/1/2
+- 2026-10-17T17:47:28+08:00 · smoke · start · typecheck, six fixture projects, smoke run on this repo
+- 2026-10-17T17:47:40+08:00 · smoke · done · tsgo clean; smoke run on this repo exit 0; six fixture projects run by hand

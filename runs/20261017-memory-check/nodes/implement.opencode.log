@@ -1,0 +1,2189 @@
+[0m
+> build · MiniMax-M3.1-Flash-Preview
+[0m
+I'll read the brief first.
+[0m→ [0mRead runs/20261017-memory-check/briefs/implement.md
+[0m
+[0m$ [0mls -la memory_check/ runs/20261017-memory-check/ runs/20261017-memory-check/nodes/ runs/20261017-memory-check/research-q/ 2>&1
+memory_check/:
+total 28
+drwxr-xr-x  2 smoke01 smoke01 4096 Oct 17 17:40 .
+drwxr-xr-x 21 smoke01 smoke01 4096 Oct 17 17:23 ..
+-rw-r--r--  1 smoke01 smoke01 1288 Oct 17 17:23 AGENTS.md
+-rw-r--r--  1 smoke01 smoke01 5704 Oct 17 17:40 REQUIREMENTS.md
+-rw-r--r--  1 smoke01 smoke01 2884 Oct 17 17:40 USE_CASES.md
+-rw-r--r--  1 smoke01 smoke01 1391 Oct 17 17:23 VISION.md
+
+runs/20261017-memory-check/:
+total 48
+drwxr-xr-x   5 smoke01 smoke01  4096 Oct 17 17:40 .
+drwxr-xr-x 117 smoke01 smoke01 12288 Oct 17 17:24 ..
+drwxr-xr-x   2 smoke01 smoke01  4096 Oct 17 17:41 briefs
+-rw-r--r--   1 smoke01 smoke01  1200 Oct 17 17:24 criteria.yaml
+-rw-r--r--   1 smoke01 smoke01  1900 Oct 17 17:40 design-decisions.md
+drwxr-xr-x   2 smoke01 smoke01  4096 Oct 17 17:41 nodes
+drwxr-xr-x   8 smoke01 smoke01  4096 Oct 17 17:38 research-q
+-rw-r--r--   1 smoke01 smoke01  2814 Oct 17 17:24 research-question.md
+-rw-r--r--   1 smoke01 smoke01  6782 Oct 17 17:24 sot-requirements.txt
+
+runs/20261017-memory-check/nodes/:
+total 16
+drwxr-xr-x 2 smoke01 smoke01 4096 Oct 17 17:41 .
+drwxr-xr-x 5 smoke01 smoke01 4096 Oct 17 17:40 ..
+-rw-r--r-- 1 smoke01 smoke01  139 Oct 17 17:41 implement.opencode.log
+-rw-r--r-- 1 smoke01 smoke01 3058 Oct 17 17:38 research-q.progress.md
+
+runs/20261017-memory-check/research-q/:
+total 56
+drwxr-xr-x 8 smoke01 smoke01  4096 Oct 17 17:38 .
+drwxr-xr-x 5 smoke01 smoke01  4096 Oct 17 17:40 ..
+-rw-r--r-- 1 smoke01 smoke01 23040 Oct 17 17:38 compare.md
+drwxr-xr-x 6 smoke01 smoke01  4096 Oct 17 17:30 dario
+drwxr-xr-x 6 smoke01 smoke01  4096 Oct 17 17:32 dave
+drwxr-xr-x 6 smoke01 smoke01  4096 Oct 17 17:28 fan-li
+drwxr-xr-x 6 smoke01 smoke01  4096 Oct 17 17:34 lao-tzu
+drwxr-xr-x 6 smoke01 smoke01  4096 Oct 17 17:27 linus
+drwxr-xr-x 6 smoke01 smoke01  4096 Oct 17 17:30 sun-tzu
+[0m
+[0m→ [0mRead memory_check/AGENTS.md
+[0m→ [0mRead memory_check/USE_CASES.md
+[0m→ [0mRead memory_check/REQUIREMENTS.md
+[0m→ [0mRead memory_check/VISION.md
+[0m→ [0mRead runs/20261017-memory-check/design-decisions.md
+[0m→ [0mRead runs/20261017-memory-check/sot-requirements.txt
+[0m→ [0mRead runs/20261017-memory-check/nodes/implement.opencode.log
+[0m
+[0m$ [0mwc -l docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml docs/memory-system/CACHES.md tools/memory_index.py code_map/package.json code_map/tsconfig.json
+879 docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml
+   593 docs/memory-system/CACHES.md
+   561 tools/memory_index.py
+    18 code_map/package.json
+    14 code_map/tsconfig.json
+  2065 total
+[0m
+[0m→ [0mRead code_map/package.json
+[0m→ [0mRead code_map/tsconfig.json
+[0m
+[0m$ [0mgrep -n "Core requirements" -A 200 docs/memory-system/CACHES.md | head -260
+310:## Core requirements
+311-
+312-They serve the vision, `vision-statements/caches-memory-vision-statements.md`, and cover the two memory caches,
+313-full-text and vector; the code graph is its own project (`docs/code-graph/`). They are grouped by what happens to a
+314-cache: it is **built**, it is **kept** true, and it is **read** (EJ, 2026-10-12: *"let rewrite using these 3
+315-categories first"*). Each requirement names its source: **(v)** is the vision, **(d)** is this document's text, and
+316-*proposed* marks wording EJ has not decided. Each has a check, **Fails if**, that some case breaks. There are no fixed
+317-numbers: where a limit applies, it is a comparison that measurement decides. The ids R1–R9 they replace are given in
+318-brackets, because run records cite them.
+319-
+320-### Build — when a cache comes to exist, and what goes in it
+321-
+322-**B1 — Nothing is built before its trigger fires** (v: never built before its own trigger; was R5)
+323-Each cache has an observable trigger. This is the requirement that keeps the whole layer honest. The query-time
+324-counterpart — which store to reach for once a trigger has fired — is the section **When to use which store** above.
+325-
+326-- **B1.0 EJ decides** — when a cache's comparison passes, EJ decides whether it is built; a passed comparison alone
+327-  builds nothing (EJ, 2026-10-12: *"EJ decides"*; the 5W1H tables below say the same). The agent that told EJ
+328-  writes down his decision — build or not, his words, the date — beside the comparison result in `runs/<run-id>/`
+329-  (*proposed*; EJ, 2026-10-12: *"yes, write them in"*).
+330-- **B1.1 Full-text** — built only when, on a question set built for the comparison (B1.3), full-text reaches the right
+331-  entry after reading less than `INDEX.md` plus grep does, with no more misses. Measured as the code-and-docs benchmark
+332-  was (BM-1 to BM-9): the same questions through both routes, the characters read to the first right entry, and the
+333-  misses. Characters read is a proxy, not a token count, and a weak one: it stops at the right file, not the right
+334-  answer (**Measured here**, who wrote each check). A route answers a question when the right entry is in its top 5
+335-  results; a question it does not answer counts as a miss, never left out as the benchmark did (*"A miss is left out,
+336-  never scored 0"*, `bench/results.md`); characters are compared only over the questions both routes answered
+337-  (*proposed*). The benchmark had no `INDEX.md` arm; this comparison adds one. *Not decided:* how the
+338-  `INDEX.md`-plus-grep route orders its results, and so what its top 5 is (the benchmark's `rg` ranked by distinct
+339-  terms matched, then matches per file, `bench/README.md`). The comparison decides; no fixed size is
+340-  set in advance (S-F5: nothing is measured yet for a corpus of a few hundred to a few thousand short entries; S-F13
+341-  measured only speed, on synthetic entries). (was R5.1)
+342-  - **The comparison** runs on a trial index built in `runs/<run-id>/`, never in `project-memory/.cache/`
+343-    (*proposed*). It runs when EJ asks; the agent that runs it writes the result there; if it passes, the agent tells
+344-    EJ, who decides (B1.0) (*proposed*; EJ, 2026-10-13: *"remove this idea , sounds very weird"*).
+345-- **B1.2 Vector** — built only when, on a question set built for the comparison (B1.3), the vector index (the hybrid
+346-  index, under the proposal below) finds an entry that full-text missed, and loses nothing full-text already found. (was
+347-  R5.2; EJ, 2026-10-12: *"ok write it into CACHES.md"*)
+348-  - **The question set** includes questions written in words that share no term with their entry, the kind
+349-    `INDEX.md`, grep and full-text all miss (V-F13, the researcher's inference; BM-2 tested such questions)
+350-    (*proposed*; EJ, 2026-10-13: *"remove this idea , sounds very weird"*).
+351-  - **Finds** means the right entry is in the top 5 results (*proposed*; the benchmark's measure, BM-1 to BM-5).
+352-  - **Loses nothing** means: every question in the set that full-text answers is still answered, and the
+353-    characters read to the first right entry, over the questions both answered, are no more than full-text's
+354-    (*proposed*; the same measure as B1.1, with its weakness).
+355-  - **The comparison** runs on a trial index built in `runs/<run-id>/`, never in `project-memory/.cache/`
+356-    (*proposed*). It runs when EJ asks; the agent that runs it writes the result there; if it passes, the agent tells
+357-    EJ, who decides (B1.0) (*proposed*).
+358-  - *Proposed* (hybrid only, **Vector index** why 5; EJ, 2026-10-12: *"label hybrid as proposed"*): the vector index
+359-    is combined with full-text, so it is built only after B1.1 has fired, and the comparison runs on the hybrid
+360-    index.
+361-  - **Fails if** a vector index exists in `project-memory/.cache/` with no recorded comparison in which it found at
+362-    least one entry full-text missed and lost none of full-text's answers, or with no recorded decision by EJ.
+363-- **B1.3 The question set** for a comparison is built when the comparison runs: questions with known answers, written
+364-  from the entries that exist then and checked by a second agent, as the code-and-docs benchmark was (**Measured
+365-  here**: codex wrote the questions, five Claude agents checked them). The run records who wrote and who checked it
+366-  (*proposed*; moved from Rd4.2, EJ, 2026-10-13: *"remove this idea , sounds very weird"*).
+367-- **Fails if** a cache exists under `project-memory/.cache/` with no recorded comparison showing its trigger fired,
+368-  or with no recorded decision by EJ to build it; a passed comparison has no record that EJ was told; or a comparison
+369-  ran on a question set with no record of who wrote it and who checked it.
+370-
+371-**B2 — Derived from the files** (v: never the source of truth; was R1)
+372-The cache is computed from the memory's markdown and never holds knowledge of its own (M4, M6; M6 is marked
+373-CONTESTED in its source, where one engine proposed SQLite as a structured state store).
+374-
+375-- **B2.1** Deleting the cache and rebuilding from the same files restores every answer, provided the vector index is
+376-  rebuilt with the same embedding model and settings (a changed model makes every vector useless, V-F24).
+377-  *Example:* `rm -rf project-memory/.cache/` → run the documented rebuild → the same query returns the same entries.
+378-  (M6) (was R1.1)
+379-- **B2.2** The cache directory is ignored by git (`git check-ignore` reports it), and a rebuild adds nothing to
+380-  `git status --short` that was not there before it. (M6) (was R1.3)
+381-- **Fails if** the same query returns different entries after a delete and a rebuild from the same files with the
+382-  same embedding model, `git check-ignore` does not report the cache directory, or a rebuild adds a line to
+383-  `git status --short`.
+384-
+385-**B3 — Full rebuild, never patched** (v: never patched; was R2.1)
+386-- **B3.1** The documented rebuild regenerates the whole index from the files; no incremental update path exists.
+387-  *Example:* the rebuild command has no "update" mode. (G-F5 drift)
+388-- **Fails if** the rebuild has an update or incremental mode, or reuses any row or vector from the previous index.
+389-
+390-**B4 — Only active entries** (d: Rules for every cache, my reading; was R6)
+391-- **B4.1** The index holds every file in `entries/` whose own header says `status: active`, and nothing else — not
+392-  `journal/` or `work/` — each row carrying `covers`. Every row is active, so no row stores `status`
+393-  (*proposed*; EJ, 2026-10-12: *"others can accept and apply"*). The headers are the reference, not
+394-  `INDEX.md`, which is generated from them (`SOURCE_OF_TRUTH.md` K6.1) (*proposed*). *Example:* a superseded entry
+395-  never appears in a search result as if current. (V-F22, my reading)
+396-- **Fails if** the index holds a file whose header is not `status: active`, lacks an active entry, holds a file
+397-  outside `entries/`, or has a row without `covers`.
+398-
+399-**B5 — No model call to rebuild, except embedding** (v: How we know it works; was R8.1)
+400-- **B5.1** The documented rebuild completes without a model call, except the embedding step of B1.2.
+401-  *Example:* rebuild with no model credentials available; the full-text path still works. (M4, M6)
+402-- **Fails if** the full-text rebuild calls a model, or the vector rebuild calls any model but its embedding model.
+403-
+404-### Keep — the cache stays true to the files, and stays worth having
+405-
+406-**K1 — It records what it was built from** (d: Rules for every cache; was R2.2)
+407-- **K1.1** The index records a content hash of each entry file it was built from, so a stale one is detectable,
+408-  including edits not yet committed (*proposed*: a commit alone misses those). A newest-mtime check, the one `S-F9`
+409-  uses, is not enough: a deletion leaves no newer file (K2.1; my reading). (S-F11: SHA-256 on files)
+410-- **K1.2** The vector index also records the id of the embedding model it was built with, because a changed model
+411-  makes every vector useless (V-F24; the vector 5W1H stores it beside each vector).
+412-- **Fails if** the index carries no content hash of its sources, or the vector index carries no embedding-model id.
+413-
+414-**K2 — Stale never answers** (d: Rules for every cache; was R3.1)
+415-- **K2.1** Before answering, the tool compares the recorded content hash with the entry files, and for the vector
+416-  index the recorded model id with the one a rebuild would use now (*proposed*). If either differs it rebuilds,
+417-  building into a temporary file and renaming over the old one — so a deleted entry cannot stay searchable. (S-F9:
+418-  rebuild before answering; S-F11: the hash)
+419-- **K2.2** Only one rebuild runs at a time in a working copy: a second one waits for it, then compares the hash again
+420-  (K2.1) before answering. Each worktree has its own `.cache/`, because the folder is gitignored, so agents on
+421-  different worktrees never share one (*proposed*; EJ, 2026-10-12: *"yes, write them in"*).
+422-- **K2.3** When both indexes are built, they are rebuilt by one command, in one step. If either fails, neither
+423-  replaces the old ones, and the query falls back (Rd3.5) (*proposed*; the vector 5W1H and V-F24: a second rebuild
+424-  step lets the two disagree).
+425-- **Fails if** after an entry is added, changed or deleted, or the embedding model changes, a query answers from the
+426-  old index; two rebuilds write to one cache at once; or the two indexes were built from different content hashes.
+427-
+428-**K3 — Dropped when it stops paying** (d; vision: *"cheap … and not before"*; was R8.2; EJ, 2026-10-12: *"yes please
+429-write"*)
+430-- **K3.1** A built cache is expected to keep passing its own trigger (K3.3 says what happens when it does not): its B1
+431-  comparison is rerun, on a question set built then (B1.3) (*proposed*;
+432-  the rebuild-cost part was dropped, EJ, 2026-10-12: *"drop the K3 cost part"*).
+433-- **K3.2** The comparison is rerun when EJ asks; the agent that runs it writes the result to `runs/<run-id>/`
+434-  (*proposed*, the same as B1.1 and B1.2).
+435-- **K3.3** If the cache no longer passes, the agent tells EJ, who decides whether to drop it; his decision is recorded
+436-  as in B1.0. Dropping is deleting it; memory is unaffected (B2, Rd3) (*proposed*, mirroring B1.0).
+437-- **Fails if** a cache stays in `project-memory/.cache/` after a rerun it failed, with no recorded decision by EJ to
+438-  keep it.
+439-
+440-### Read — an agent queries it
+441-
+442-**Rd1 — Never read at session start** (v: never read at session start; was R9)
+443-- **Rd1.1** No cache file is part of what a session loads at start. *Example:* the session-start reads in
+444-  `SOURCE_OF_TRUTH.md` (§ When it will be used) name no file under `project-memory/.cache/`; a start hook that
+445-  opens `.cache/index.sqlite` fails this. (M18; CP6, codex: *"Do not bulk-load … an entire search index at
+446-  startup"*)
+447-- **Fails if** a start hook or instruction opens any file under `project-memory/.cache/`.
+448-
+449-**Rd2 — An answer names its entry** (d; was R7)
+450-- **Rd2.1** Every result prints the entry file it came from, so the agent can open the source before acting on it
+451-  (M19: *"open the primary source when a retrieved statement will determine an action"*). *Example:* search output
+452-  names `entries/D-0012-*.md`. (*proposed*: "the agent", not "a human", per M19 and the vision; EJ, 2026-10-12:
+453-  *"write fixes 1–4 into CACHES.md"*)
+454-- **Fails if** a result does not name its entry file.
+455-
+456-**Rd3 — Absence degrades, it does not fail** (v: delete the folder and memory is unaffected; was R1.2, R3.2, R4)
+457-- **Rd3.1** Memory is fully readable with no cache present. *Example:* with `.cache/` absent, session start and an
+458-  on-demand `grep` over `entries/` both work. (M6) (was R1.2)
+459-- **Rd3.2** A missing cache file or a missing FTS5 falls back to grep, and every fallback answer says it came from
+460-  grep, not the cache, so the agent knows its results are unranked. (S-F9) (was R4.1; *proposed*: "says so in every
+461-  answer" replaces "warns once")
+462-- **Rd3.3** A missing embedding model falls back to full-text if it is there, and to grep if not; the answer says
+463-  so. *(my reading, extending S-F9; *proposed*: full-text before grep.)* (was R4.2)
+464-- **Rd3.4** A wrong path is never mistaken for an empty index: the cache is opened read-only and "no such file" is
+465-  treated as absent. *Example:* point the tool at a typo'd path → it falls back to grep and says so, it does not
+466-  create an empty database. (G-F5 drift, failure mode 5) (was R3.2)
+467-- **Rd3.5** A rebuild that fails falls back to grep; it never answers from the stale index (K2) (*proposed*).
+468-- **Fails if** with the cache, FTS5 or the embedding model missing, the path mistyped, or a rebuild failing, a query
+469-  errors, answers from an empty or stale index, or answers from grep without saying so.
+470-
+471-## Example numbers by case
+472-
+473-The triggers in B1 and K3 are comparisons. The measurement decides them, so no number is fixed in advance. This
+474-section shows **what those comparisons have come out at elsewhere**, by agent type and condition, so a reader knows
+475-roughly where a project stands before measuring. These are examples with sources, not thresholds. The first
+476-subsection is different: it gives start-file limits, which `SOURCE_OF_TRUTH.md` Rd3 uses for the `INDEX.md` size
+477-check. No cache trigger compares them.
+478-
+479-Run: `runs/20261012-caches-numbers/`. Its source ids are:
+480-- `W-*`: web research (`nodes/web.md`);
+481-- `OC`: opencode's research (`nodes/opencode.md`);
+482-- `SZ`: the SEZA measurement (`nodes/seza.md`; every number with its command);
+483-- `CX`: codex's independent second look at SEZA, by agent type (`nodes/codex.md`);
+484-- `BM-*`, `S-F*`, `V-F*`, `G-F*`, `s3-F*`: as above.
+485-
+486-Web quotes are model-made extracts, not byte-checked, except W-1. Numbers marked *my arithmetic* are computed from a
+487-sourced figure.
+488-
+489-### The index read at session start (`INDEX.md`, `MEMORY.md`), by agent type
+490-
+491-| Agent | Window | Limit on files loaded at start | Measured effective context | Example |
+492-|---|---|---|---|---|
+493-| Claude Code (Claude 5.x) | 1M (W-8) | `MEMORY.md`: "first 200 lines … or the first 25KB, whichever comes first"; `CLAUDE.md`: target under 200 lines (W-1) | Opus 4.6, MRCR v2: 76% at 1M (W-14); 93% at 256K (W-15, reported) | 25 KB binds first: about 150 lines at 167 B per line (W-1), about 107 lines at SEZA's 233 B per line (*my arithmetic*, SZ) |
+494-| Codex (GPT-6.x) | 1.05M per the API (W-9), but this machine's Codex model cache says `context_window: 500000`, 95% effective, so about 475K (CX) | `AGENTS.md` combined up to 32 KiB (`project_doc_max_bytes`) (W-2) | GPT-5.4: 79.3% at 128K–256K, 36.6% at 512K–1M (W-15, reported) | instructions plus index under 32 KiB, if the index is loaded through `AGENTS.md` |
+495-| agy (Gemini 3.1 Pro / 3.8 Flash) | 1,048,576 (W-9, CX) | 24,000 bytes per rule file, **and** a 20,000-token budget across all rules (CX, official page); 12,000 characters in other reports (W-4, conflict) | 84.9% at 128K, 26.3% at 1M (W-15, reported) | under 12,000 characters if both readings must hold (*my reading*) |
+496-| opencode (MiniMax M3 / M2.7) | 1M / 204,800 (W-9) | no limit stated (W-6) | GAP | follow the strictest agent sharing the repo |
+497-| dsh (DeepSeek flash / V4 pro) | 1,048,576 (CX) | a 65,536-byte budget for the instruction files it loads (CX, from its loader docs) | GAP | instructions plus index under 64 KiB, if the index is loaded through its instruction files |
+498-| Qwen Code | — | its auto-memory index is capped at 200 lines or 25,000 bytes (`MAX_MANAGED_AUTO_MEMORY_INDEX_LINES` / `_BYTES`, CX); it also warns when always-loaded context passes 15% of the window, an advisory only (CX) | — | the index cap binds first: under 25,000 bytes, as for Claude |
+499-| Cursor | — | rules "under 500 lines" (W-3) | — | — |
+500-
+501-**Why the start load should stay small, whatever the window:**
+502-- Half of 17 models kept satisfactory performance only up to 32K (RULER, W-10).
+503-- 11 models fell below 50% of their baseline at 32K when the question and the answer share few words (NoLiMa, W-11).
+504-- Focused prompts of about 300 tokens beat full ones of about 113K (W-13).
+505-- Context files raised inference cost by over 20%, with no general success gain (W-17).
+506-- At 500 simultaneous instructions, the best model was 68% accurate (W-16).
+507-
+508-**Use case, SEZA (SZ, CX):**
+509-- The start load by agent, as estimates: Claude Code 61,993 B (about 15.4K tokens, including the global `CLAUDE.md`;
+510-  SZ measured 58,427 B without it); dsh 46,319 B (about 11.5K); Codex and agy 29,166 B each (about 7.2K) (CX). All are
+[0m
+[0m→ [0mRead docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml[90m [limit=120][0m
+[0m→ [0mRead tools/memory_index.py
+[0m
+[0m$ [0mgrep -n "Where they agree" -A 120 runs/20261017-memory-check/research-q/compare.md
+15:## Where they agree
+16-
+17-- **The tool reports a result other than pass or fail for what it cannot decide.** Linus: "Missing evidence produces an
+18-  incomplete result, never a pass"; 范蠡: reviewer items are "never report[ed] as pass or fail"; 孫子: "'not checked' for a
+19-  stage that never ran"; 老子: "one `unknown` state, never folded into pass"; Dave: "*needs a reviewer*, never as pass";
+20-  Dario: results for "partly checked", "guidance", "break found, reason not looked for" and "could not run" (*quoted*,
+21-  all six). The names of the extra results differ (*my reading*; see disagreements).
+22-- **W2.1b, W5.1 and K1.1 cannot be decided from git, despite their `git` label.** All six say so (*quoted*: Linus "It
+23-  cannot determine generally whether a code change embodies a new decision"; 范蠡 lists them under "Need what the tool
+24-  cannot see"; 孫子, 老子, Dave and Dario list them as reviewer or not buildable).
+25-- **`memory_index.py --check` reads the staging area or a commit, not the working tree.** Linus, 范蠡, 孫子, Dave, Dario
+26-  (*quoted*). 老子 adds only that it takes no path and runs on the cwd's git root (*quoted*). So the report must name its
+27-  snapshot — Linus, 孫子, Dave say this outright (*quoted*).
+28-- **Reuse `memory_index.py` (C3) rather than rewrite it.** All six (*quoted*). How much it covers is disputed (below).
+29-- **SHOULD records with "with no written reason" cannot be failed by a tool.** Linus, 孫子, 老子, Dave, Dario (*quoted*);
+30-  老子 calls it "the largest gap in the four docs" (*quoted*). 范蠡 does not raise it (*my reading*).
+31-- **Records that mix a mechanical and a reviewer check have no result rule today.** Linus, 孫子, 老子, Dave, Dario
+32-  (*quoted*). 孫子 and Dave give the same rule: a mechanical fail is a fail; otherwise any human half means needs a
+33-  reviewer (*quoted*).
+34-- **CACHES Core requirements have no `check` field (and no levels), and most of them are runtime behaviour.** Linus,
+35-  孫子, Dave, Dario (*quoted*); 范蠡 agrees on the runtime half only (B2.1, B3.1, B5.1, K2, Rd3) (*quoted*).
+36-- **"Required location" (C4, R2) has no source in the guidelines; this repo has no `project-memory/`.** All six raise
+37-  the absent-memory case (*quoted*); what to do about it is disputed (below).
+38-- **U5's `git status --short` is too weak; hash the whole tree, ignored files included.** Linus, 孫子, Dave, Dario
+39-  (*quoted*). 孫子, Dave and Dario add `GIT_OPTIONAL_LOCKS=0` on git calls (*quoted*).
+40-- **F1 needs a home-folder override so tests do not touch the real home; U1's "user memory" has no path in the
+41-  guidelines.** Linus, 孫子, Dave, Dario (*quoted*).
+42-- **Tests: the expected answer is written before the check, by hand or by another route, never computed by the check.**
+43-  All six (*quoted*). Dave and Dario add a sabotage step: remove or force-pass each check and a test must go red
+44-  (*quoted*); 孫子 a "mutation check" that flips one expected row (*quoted*).
+45-- **Build in small pieces, hook last, hook installed only on EJ's yes to the settings diff.** All six (*quoted*).
+46-
+47-## Where they disagree (side by side, quoted; never averaged)
+48-
+49-**1. How much of the `tool` records `memory_index.py` already covers.**
+50-- 老子: "All 9 `tool` records are already built. The tool adds no entry check at all." (*quoted*)
+51-- 范蠡: lists W1.1a among the delegated file checks and does not name a gap in it (*my reading*).
+52-- Linus: "The existing checker ignores names outside its recognised entry-name pattern and treats some inactive-entry
+53-  content defects as warnings. W1.1a has broader MUST failure conditions." (*quoted*)
+54-- 孫子: "W1.1a's 'prefix is not one of the five' is silently passed." (*quoted*)
+55-- Dave: "Under C3 as written, a planted `X-foo.md`, or a superseded entry with `kind: foo`, gets W1.1a = pass." He cites
+56-  `tests/test_memory_index.py:136-145`, which asserts exit 0 for `X-hidden.md` (*quoted*).
+57-- Dario: "treat the '(warning)' kind/prefix lines as W1.1a fails." (*quoted*)
+58-- Who checked it: Dave and 孫子 cite code lines and Dave a test; none ran `memory_index.py` (Dario: "I did not run
+59-  `memory_index.py`"; Dave's prediction run is proposed, not done) (*quoted*). The claim is *not measured* by a run.
+60-
+61-**2. How the 20 `tool`/`git` records split.**
+62-- 孫子: "9 MUSTs a tool can settle finally; 4 MUSTs where a mechanical fail is final but a pass still needs a person; 7
+63-  tool/git SHOULDs that can only signal" (*quoted*).
+64-- 老子: 9 by `memory_index.py`, "5 more are decidable from git history", "6 of the 20 cannot be decided by any tool"
+65-  (*quoted*).
+66-- Dave: "14 of the 20 `tool`/`git` records can be decided at least in part. Five (W2.1b, W5.1, K1.1, W6.1b, W6.2) carry
+67-  a `git` label that git history cannot back up" (*quoted*).
+68-- Dario: "9 in slice 1, 7 in slice 2 and 4 unbuildable" (W2.1b, W5.1, K1.1, W6.1b) (*quoted*).
+69-- Linus: no count; per-group table, with W6.1b "cannot identify distinct agent sessions" and W6.2 "No detected loss
+70-  cannot certify compliance" (*quoted*).
+71-- 范蠡: lists W6.1b and W6.2 under "Need git history" (*quoted*).
+72-- On W6.1b and W6.2: 老子 and 范蠡 treat them as git-checkable (老子: W6.2 "at a **merge** commit"; W6.1b with K5.1 as
+73-  "never edited after it is written"); Linus, 孫子, Dave, Dario say git cannot see them (*quoted*).
+74-
+75-**3. What to do when `project-memory/` (or another location) is absent.**
+76-- 范蠡: absent optional memory is "not applicable"; on this repo the tool "exits 0 with no warnings"; "Only missing
+77-  *required* memory (e.g. `AGENTS.md`) should fail" (*quoted*).
+78-- 孫子: "Make a missing `project-memory/` a warned missing location ... not a requirement failure" (*quoted*).
+79-- 老子: "R3 makes 'no memory at all' a silent pass ... The owner must name the required-when-absent list" (*quoted*).
+80-- Dave: "None of the 64 records has a MUST requiring any location to exist ... C4's example 'AGENTS.md is required'
+81-  would be a rule the tool invents"; default: the warning carries only failing MUSTs (*quoted*).
+82-- Dario: default "`AGENTS.md` always; the rest only once `project-memory/` exists in HEAD" (*quoted*).
+83-- Linus: "report absence as an observed fact; leave its unresolved severity open"; also U3 says "every missing
+84-  location" where R2 says "missing required locations" (*quoted*).
+85-
+86-**4. CACHES in the first version.**
+87-- 范蠡: file-checkable now: "B1/B1.1/B1.2 ... B4.1 (SQLite holds only active entries with `covers`), and K1.1/K1.2
+88-  (SQLite carries content hash and model id)" (*quoted*).
+89-- 孫子: "keep `CACHES.md` out of mechanical checking until it has levels, a `check` field and a cache schema"; B2.2 is a
+90-  signal (*quoted*).
+91-- Dave: "Only B2.2 (`git check-ignore`) and Rd1 ... can be read"; B4 and K1 "need the index opened and its schema
+92-  known, and no doc fixes a schema" (*quoted*).
+93-- Dario: "only B2.2 and Rd1.1 now. Everything else is 'not applicable: no cache tool'" (*quoted*).
+94-- Linus: inspect "supported formats"; rebuild and query trials "belong in disposable fixtures" (*quoted*).
+95-
+96-**5. The expected `INDEX.md` in test fixtures.**
+97-- 孫子: "generated **once** by `memory_index.py` write mode (a different code path from `--check`), stored in the
+98-  fixture" (*quoted*).
+99-- Dave: the baseline has "an `INDEX.md` built by memory_index.py" (*quoted*).
+100-- Linus: "Do not generate expected indexes with the production renderer. Handwrite tiny expected indexes." (*quoted*)
+101-- 老子: "a **literal byte string** written in the test" (*quoted*).
+102-- Dario: "`INDEX.md` must be literal bytes, never produced by the script's write mode" (*quoted*).
+103-
+104-**6. Who writes the expected answers.**
+105-- Dave: "Another engine writes it before the check exists, and it stays out of the builder's files" (*quoted*).
+106-- Dario: "Have an engine other than the code's author write or review the mutation table" (*quoted*).
+107-- Linus: "The worker writes each expectation ... a second reader checks it before seeing implementation output"
+108-  (*quoted*).
+109-- 孫子 and 老子: hand-written from `fails_if` before the check exists; no second author named (*my reading*).
+110-
+111-**7. U2's "exactly that requirement".**
+112-- Linus, 孫子, Dario: impossible as written; use an expected *set* per fixture (*quoted*).
+113-- 老子 point 12: K6.1a and K6.2 "the report must cite both ids on one result"; yet in "How we would know": "Count of
+114-  failing ids per fixture must be 1" (*quoted*; the two read as in tension — *my reading*).
+115-- Dave: keeps "Each plant makes exactly its own id fail" by adding a "*not reached (blocked by <id>)*" result
+116-  (*quoted*).
+117-
+118-**8. What the session-start hook may read.**
+119-- 老子: "the hook runs locations + `memory_index.py --check` + index size only, and the body checks (W1.3a) belong to the
+120-  command" — R2 conflicts with Rd1.1/Rd2.3b (*quoted*).
+121-- Dave: "never open a file inside `.cache/` (listing the folder is fine), and it must print ids, never claims"; whether
+122-  history MUSTs go in the hook is "a measured comparison" (*quoted*).
+123-- Linus: "the startup path inspects permitted files and location metadata; full cache-content checks run on demand"
+124-  (*quoted*).
+125-- 孫子: "The warning uses HEAD only; the full report checks history on demand" (*quoted*).
+126-- 范蠡: "run only file-level presence and index checks at startup", and "Benchmark ... to guarantee sub-100ms startup
+127-  latency" (*quoted*). The 100 ms and 50 ms figures are not in the question or the four docs (*my reading*).
+128-
+129-**9. The four undecidable `git` records: edit the YAML or not.**
+130-- Dario: "ask EJ to mark them `reviewer`" in the YAML (*quoted*).
+131-- 孫子: "Report the kit problems to EJ, do not edit the kit"; "I will not edit the kit to relabel W2.1b/W5.1/K1.1"
+132-  (*quoted*).
+133-- Dave: "Report the YAML's overstated `tool`/`git` labels to EJ" (*quoted*).
+134-- 老子: report as an observation for the owner, not a fix (*quoted*, on the reviewer-labelled records).
+135-
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'EOF'
+import re
+t=open('docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml').read()
+# print records of interest
+import yaml
+d=yaml.safe_load(t)
+for c in d['categories']:
+    for g in c['groups']:
+        for r in g['requirements']:
+            if r['id'] in ('W4.2','K4.1','K4.3','K6.1a','K6.2','K6.3a','W6.1a','W6.3a','W1.3a','Rd3.1a','W1.2a','W1.1a','W1.1b','W4.1b','K5.1'):
+                print('==',r['id'],r['level'],'|check:',r['check'],'|who:',r['who_decides'])
+                print('fails_if:',' '.join(r['fails_if'].split()))
+                print('text:',' '.join(r['text'].split())[:600])
+                print()
+EOF
+== W1.1a MUST |check: tool; git |who: none
+fails_if: a file's prefix is not one of the five or does not match its `kind`, `kind` holds any other value, or git shows an entry file renamed to a different prefix.
+text: Each entry is one file. The prefix is one letter per kind (W2): `D-` decision, `F-` fact, `L-` lesson, `O-` observation and `H-` hypothesis. It matches the entry's `kind`. There is no runbook prefix (W3.6). An entry's kind, and so its prefix, never changes. A changed kind (a hypothesis confirmed, an observation that turns out to be a fact) is a new entry that supersedes the old one (K4.1).
+
+== W1.1b MUST |check: tool; git |who: none
+fails_if: an id is not in the W1.1 form, two entries share an id, or git shows an entry file renamed to a different id.
+text: The `id` is `DD-MM-xxxxxx-YYYY`: the day, month and year the entry is written, six random lowercase letters and digits, for example `13-10-k3f7a2-2026`. Writers on different branches pick ids without coordinating, so an id is never "the next free number". No two entries share an id. An id never changes, so the file keeps its name.
+
+== W1.2a MUST |check: tool |who: none
+fails_if: a header is not between two `---` lines.
+text: The header starts on the file's first line, which is exactly `---`, and ends at the next line that is exactly `---`.
+
+== W1.3a MUST |check: tool; reviewer |who: none
+fails_if: an active entry has no claim or no `**Why:**` line, or a reviewer finds two claims in one entry.
+text: The body follows the header: the claim, then a line starting with `**Why:**`. There is one claim per entry.
+
+== W4.1b MUST |check: tool |who: none
+fails_if: an entry's `status` is any other value.
+text: `status` is only `active`, `superseded` or `retired`.
+
+== W4.2 SHOULD |check: git |who: none
+fails_if: git shows a change to an entry with no matching `changed:` line, or an earlier line edited, with no written reason.
+text: Every change to an entry adds one line to its `changed:` log: the time, and who made it (the model ID for an agent, the name for a person). Earlier lines are never edited.
+
+== W6.1a MUST |check: reviewer; git |who: none
+fails_if: an entry file holds more than one entry, or a commit adds an entry to an existing file.
+text: Each new entry gets its own file. Agents never append to one shared file.
+
+== W6.3a MUST |check: git; reviewer |who: project owner
+fails_if: a merged entry is missing a `changed:` line, link or `covers` path that one side added, or two entries superseding one go unreported.
+text: A claim is never rewritten (K4.3), so a merge conflict in an entry is never in its claim: only in its header (`covers`, `status`, the links) and the lines added to it. Whoever does the merge keeps both sides: both `changed:` lines, both links, and every `covers` path either side wrote. Nobody chooses between two claims. Two entries that each supersede the same entry are reported in the task's `state.md` and to the project owner, as in Rd5.3.
+
+== K4.1 MUST |check: git; reviewer |who: none
+fails_if: git shows an entry file deleted, a `superseded` entry with no `superseded_by` link, or a `retired` entry with no reason in its `changed:` line.
+text: An entry is never deleted. A `superseded` entry links to what replaced it (`superseded_by`). A `retired` entry, which nothing replaces, gives its reason in its `changed:` line. Either keeps its old body.
+
+== K4.3 MUST |check: git |who: none
+fails_if: git shows an entry's claim, `source` or `depends_on` changed after its first commit, or its `covers` changed with no `changed:` line.
+text: An entry's claim is never rewritten. A changed claim is a new entry that supersedes the old one. After an entry is first committed, it only gains a `changed:` line, a new `status`, the `superseded_by` link, and `done:` on a decision to build something (W5.3). Its `covers` may also be corrected, for example after a file is renamed, with a `changed:` line; `source` and `depends_on` change only by superseding the entry. A `covers` correction changes where the entry points, not what it claims, so it is not a mismatch under Rd5.3. This also keeps merge conflicts out of claims (W6.3).
+
+== K5.1 SHOULD |check: git |who: none
+fails_if: a journal file is edited after it is written, or raw notes are kept elsewhere, with no written reason.
+text: Task and project memory each keep a journal: a task's in `work/<task-id>/journal/`, the project's in `journal/` for work not tied to a task. Both hold raw notes, one file per agent session, appended to and never edited. Agent and user memory keep no journal under this design.
+
+== K6.1a MUST |check: tool |who: none
+fails_if: a commit's `INDEX.md` differs from what the tool builds from that commit's entries, or lists a superseded or retired entry as active.
+text: `INDEX.md` is generated from `entries/`: one line per active entry, showing its id, kind and one-line claim.
+
+== K6.2 MUST |check: tool |who: none
+fails_if: a commit's `INDEX.md` differs from what the tool builds from that commit's entries.
+text: Whenever an entry is created or changed (any kind, any status change), `INDEX.md` is regenerated and committed in the same commit as the entry, so the next session, on any clone, sees it. `tools/memory_index.py` builds it; its `--check [<rev>]` compares the `INDEX.md` in the staging area, or in a commit, with what it builds from the entries there. Its requirements and design are in `docs/index-md/`.
+
+== K6.3a MUST |check: tool |who: none
+fails_if: an entry holds a git conflict-marker line (`<<<<<<<` or `>>>>>>>`). In `INDEX.md`, the comparison in K6.2 catches it.
+text: When a merge conflicts, resolve the entry files first, with no conflict markers left in them.
+
+== Rd3.1a MUST |check: tool |who: project owner: which agents work on the project, and so the strictest limit
+fails_if: `INDEX.md` exceeds that strictest limit (until it is recorded, the interim numbers), or the K6 check passes an `INDEX.md` that exceeds it.
+text: `INDEX.md` fits the strictest start-file limit among the agents that work on the project. The check that keeps it in step with its entries (K6) also fails when it does not fit. Until the project owner records measured limits, the tool's limit is the example in Rd3.1b: 200 lines and 24,000 bytes.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -rn "agent-memory" docs/memory-system/*.md | head -30; echo ---; grep -rn "\.claude/agent-memory" --include=*.md -l . | head
+docs/memory-system/SOURCE_OF_TRUTH.md:24:memory at `~/.claude/agent-memory/<name>/`, the way Claude Code does it). For agent memory, this design says only how
+---
+./runs/20261015-sot-final-review/experts/question.md
+./runs/20261015-sot-final-review/experts/briefs/sun-tzu.md
+./runs/20261015-sot-final-review/experts/briefs/fan-li.md
+./runs/20261015-sot-final-review/experts/briefs/linus.md
+./runs/20261015-sot-final-review/experts/briefs/dave.md
+./runs/20261015-sot-final-review/experts/briefs/lao-tzu.md
+./runs/20261015-sot-final-review/question.md
+./runs/20261012-agent-memory-claude-code/notes.md
+./runs/20261014-sot-must-should/round2/question.md
+./runs/20261014-sot-must-should/round2/briefs/sun-tzu.md
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && sed -n '1,60p' docs/memory-system/SOURCE_OF_TRUTH.md
+# Source-of-Truth Memory Design
+
+## Why we need this memory
+
+The context window is cleared at the start of every session, so anything learned is lost unless it is written down.
+Project memory is plain markdown files kept in the repo with the code. Every agent and every person reads the same
+files, a fresh clone has all of it, and every change shows up as a git diff. Reading it needs no private agent store,
+database or outside service.
+
+## Who it is for
+
+Every agent and every person working on this project. Entries have no owners and there is no approval gate: anyone may
+change any entry, and every change is logged. One person, **the project owner**, decides for the project: a mismatch
+between memory and the code, a contested supersession, and the open choices the requirements name. The project owner
+also reviews the checks that need judgement, or names someone who does.
+
+Memory has four scopes:
+- **task:** `project-memory/work/<task-id>/`;
+- **project:** the rest of `project-memory/`, and `AGENTS.md`;
+- **agent:** memory belonging to one agent name;
+- **user:** memory about one person, across projects.
+
+This design covers task and project memory. Agent and user memory live outside the repo, in the home folder (agent
+memory at `~/.claude/agent-memory/<name>/`, the way Claude Code does it). For agent memory, this design says only how
+another agent may read it (Rd4.5).
+
+## What it is for
+
+It holds what the code cannot tell you, as typed entries:
+
+- **Requirements, written before the code.** A **decision** is a choice the code must follow, with the reason. A
+  **fact** is a truth or outside constraint the code must respect.
+- **What was learned, written after.** A **lesson** comes from a failure or a human correction. An **observation**
+  records what was seen. A **hypothesis** is a guess, labelled as one.
+- **Not a kind: procedures.** How to run or fix something lives in the repo as a script with an external check. A
+  script that stops and waits for a person (an approval, a typed confirmation) is still a script. Where a step cannot
+  be a command with a checkable result (an action a script cannot do or wait for, or a choice that depends on judging
+  what was seen), it is a page in `docs/` that names that step and calls scripts for the rest. The agent writing the
+  procedure decides by trying the script first; the project owner decides if it is contested. `AGENTS.md` names the
+  project's scripts, one line each. An entry links to a procedure and never repeats its steps. What was learned while
+  running one is a lesson (W3.6).
+
+The order of work is: change the decision or fact first, then the code. Changing a claim means superseding its entry
+with a new one (K1.1). Work that has to go the other way is a matter for the project's workflow, not for memory. A
+decision about this project is a project entry, whoever made it, the project owner included.
+
+A decision to build something is **started** when it is written: we decided to build something, and why. It is
+**complete** when the time, the result and the test results are added to it. A standing rule, such as
+"all timestamps are UTC", is never complete.
+
+## What will be put in
+
+**An entry** is one markdown file. Its header, between two `---` lines (W1.2), holds: `id`, `kind`, `status`,
+`author`, the date it was recorded (`recorded`), `covers` (the code paths it is about), its source or evidence
+(`source`), links (`depends_on`, `supersedes`, `superseded_by`), a
+`changed:` log, and, on a decision to build something once its work is complete, `done:` (the time, the result, and the
+test results or a pointer to them; W5.3). Its
+body is the claim in one or two sentences, then **Why:**, then **How to apply:**.
+
+**Changing entries.** Anyone may change any entry, and `AGENTS.md` too. Each change adds one line to the entry's
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && bun --version; ls code_map/node_modules 2>/dev/null | head -5; git rev-parse --is-shallow-repository; ls project-memory 2>&1 | head -2; git log --oneline -3; echo "HOME=$HOME"; ls ~/.claude/agent-memory 2>&1 | head -3
+1.4.3
+@types
+@typescript
+bun-types
+typescript
+undici-types
+false
+ls: cannot access 'project-memory': No such file or directory
+dd12aed memory-check project (run 20261017-memory-check): AGENTS.md, vision, use cases U1–U6, requirements (find, check, report, tests); six experts' research (research-q, all six checked) and the main agent's 16 picks applied (design-decisions.md)
+4ea109f agent-lessons skill: a lesson is filed when the agent applies an insight's fix (R12.3 as changed today), and removed if the owner overrules it
+9bc5306 R12.2/R12.3 (EJ, 2026-10-17): a failure is what the evaluator judges wrong against the vision, use cases and requirements, or the owner's correction; a red test, an errored call or a non-zero exit is evidence, never a failure by itself. The agent applies the fix it ranks first and reports it; the owner may overrule. Guard: only evaluator and owner failures need an insight or block the stop; warnings no longer block; the per-call message says evidence; tests updated to the rule (R12.3 sentence and the Stop gate applied by EJ from patches); guard 1517/1517, Python 1147
+HOME=/home/smoke01
+ls: cannot access '/home/smoke01/.claude/agent-memory': No such file or directory
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "^\*\*\(B[0-9]\|K[0-9]\|Rd[0-9]\) — " docs/memory-system/CACHES.md
+322:**B1 — Nothing is built before its trigger fires** (v: never built before its own trigger; was R5)
+371:**B2 — Derived from the files** (v: never the source of truth; was R1)
+385:**B3 — Full rebuild, never patched** (v: never patched; was R2.1)
+390:**B4 — Only active entries** (d: Rules for every cache, my reading; was R6)
+399:**B5 — No model call to rebuild, except embedding** (v: How we know it works; was R8.1)
+406:**K1 — It records what it was built from** (d: Rules for every cache; was R2.2)
+414:**K2 — Stale never answers** (d: Rules for every cache; was R3.1)
+428:**K3 — Dropped when it stops paying** (d; vision: *"cheap … and not before"*; was R8.2; EJ, 2026-10-12: *"yes please
+442:**Rd1 — Never read at session start** (v: never read at session start; was R9)
+449:**Rd2 — An answer names its entry** (d; was R7)
+456:**Rd3 — Absence degrades, it does not fail** (v: delete the folder and memory is unaffected; was R1.2, R3.2, R4)
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && for p in scaffold guidelines locations indextool gitchecks caches report warn cli smoke; do echo "- $(date -Iseconds) · $p · planned · per brief" >> runs/20261017-memory-check/nodes/implement.progress.md; done; cat runs/20261017-memory-check/nodes/implement.progress.md
+- 2026-10-17T17:42:37+08:00 · scaffold · planned · per brief
+- 2026-10-17T17:42:37+08:00 · guidelines · planned · per brief
+- 2026-10-17T17:42:37+08:00 · locations · planned · per brief
+- 2026-10-17T17:42:37+08:00 · indextool · planned · per brief
+- 2026-10-17T17:42:37+08:00 · gitchecks · planned · per brief
+- 2026-10-17T17:42:37+08:00 · caches · planned · per brief
+- 2026-10-17T17:42:37+08:00 · report · planned · per brief
+- 2026-10-17T17:42:37+08:00 · warn · planned · per brief
+- 2026-10-17T17:42:37+08:00 · cli · planned · per brief
+- 2026-10-17T17:42:37+08:00 · smoke · planned · per brief
+[0m
+Now the scaffold piece.
+[0m$ [0mcd /home/smoke01/dev/ancient-games && mkdir -p memory_check/src memory_check/guidelines memory_check/test/fixtures && cp docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml docs/memory-system/CACHES.md memory_check/guidelines/ && ls memory_check/guidelines
+CACHES.md
+SOURCE_OF_TRUTH_REQUIREMENTS.yaml
+[0m
+[0m← [0mWrite memory_check/package.json
+Wrote file successfully.
+[0m
+[0m← [0mWrite memory_check/tsconfig.json
+Wrote file successfully.
+[0m
+[0m← [0mWrite memory_check/src/guidelines.ts
+Wrote file successfully.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && bun -e '
+const m = await import("./memory_check/src/guidelines.ts");
+const g = m.loadGuidelines();
+console.log(g.version, g.sot.length, g.caches.length);
+console.log(JSON.stringify(g.caches.map(c=>c.id)));
+console.log(JSON.stringify(g.sot.slice(0,2).map(s=>[s.id,s.level,s.checks])));
+'
+SOURCE_OF_TRUTH_REQUIREMENTS.yaml 26226965112c, CACHES.md 8eef3b46f3f2 64 10
+["B1","B2","B3","B4","B5","K1","K2","K3","Rd1","Rd2"]
+[["W1.1a","MUST",["tool","git"]],["W1.1b","MUST",["tool","git"]]]
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && sed -n '456,470p' docs/memory-system/CACHES.md | cat -A | cut -c1-120 | head -20
+**Rd3 M-bM-^@M-^T Absence degrades, it does not fail** (v: delete the folder and memory is unaffected; was R1.2, R3.2, R
+- **Rd3.1** Memory is fully readable with no cache present. *Example:* with `.cache/` absent, session start and an$
+  on-demand `grep` over `entries/` both work. (M6) (was R1.2)$
+- **Rd3.2** A missing cache file or a missing FTS5 falls back to grep, and every fallback answer says it came from$
+  grep, not the cache, so the agent knows its results are unranked. (S-F9) (was R4.1; *proposed*: "says so in every$
+  answer" replaces "warns once")$
+- **Rd3.3** A missing embedding model falls back to full-text if it is there, and to grep if not; the answer says$
+  so. *(my reading, extending S-F9; *proposed*: full-text before grep.)* (was R4.2)$
+- **Rd3.4** A wrong path is never mistaken for an empty index: the cache is opened read-only and "no such file" is$
+  treated as absent. *Example:* point the tool at a typo'd path M-bM-^FM-^R it falls back to grep and says so, it does n
+  create an empty database. (G-F5 drift, failure mode 5) (was R3.2)$
+- **Rd3.5** A rebuild that fails falls back to grep; it never answers from the stale index (K2) (*proposed*).$
+- **Fails if** with the cache, FTS5 or the embedding model missing, the path mistyped, or a rebuild failing, a query$
+  errors, answers from an empty or stale index, or answers from grep without saying so.$
+$
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && bun -e '
+const t = await Bun.file("memory_check/guidelines/CACHES.md").text();
+const lines = t.split("\n");
+const HEADING = /^\*\*((?:B|K|Rd)\d+) — (.+?)\*\*.*$/;
+lines.forEach((l,i)=>{ if (l.startsWith("**")) console.log(i+1, JSON.stringify(l.slice(0,60)), HEADING.test(l)); });
+'
+62 "**trigger**: a condition that can be observed and that makes" false
+74 "**Part 1 is for memory entries** (`project-memory/`), reason" false
+86 "**The rule.** **SQLite FTS5** is for a free-text question wh" false
+105 "**Costs, and where there are none.** Measured on other corpo" false
+117 "**Still unresolved.** Six disagreements the three engines di" false
+127 "**Why no SQLite is visible in this repo.** Three reasons, an" false
+246 "**Who wrote each check, and what it does not establish.**" false
+266 "**What each route returns, per category** (symbol hit in the" false
+292 "**What the numbers say (my reading).**" false
+322 "**B1 — Nothing is built before its trigger fires** (v: never" true
+371 "**B2 — Derived from the files** (v: never the source of trut" true
+385 "**B3 — Full rebuild, never patched** (v: never patched; was " true
+390 "**B4 — Only active entries** (d: Rules for every cache, my r" true
+399 "**B5 — No model call to rebuild, except embedding** (v: How " true
+406 "**K1 — It records what it was built from** (d: Rules for eve" true
+414 "**K2 — Stale never answers** (d: Rules for every cache; was " true
+428 "**K3 — Dropped when it stops paying** (d; vision: *\"cheap … " true
+442 "**Rd1 — Never read at session start** (v: never read at sess" true
+449 "**Rd2 — An answer names its entry** (d; was R7)" true
+456 "**Rd3 — Absence degrades, it does not fail** (v: delete the " true
+501 "**Why the start load should stay small, whatever the window:" false
+508 "**Use case, SEZA (SZ, CX):**" false
+515 "**When several agents share a project, the binding limit is " false
+528 "**My reading:** on accuracy, grep stays competitive until mi" false
+546 "**My reading:** retrieval beats loading everything somewhere" false
+556 "**What actually went wrong in SEZA was not search** (CX):" false
+561 "**My reading:** a faster cache would have returned the same " false
+[0m
+[0m← [0mEdit memory_check/src/guidelines.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/guidelines.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/guidelines.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/guidelines.ts
+@@ -90,8 +90,9 @@
+ let current: { id: string; title: string; failsIf: string } | null = null;
+ let heading = false;
+ for (const line of readText(file).split("\n")) {
+   if (/^## /.test(line)) {
++    if (current) records.push(current);
+     current = null;
+     heading = false;
+   }
+   const match = HEADING.exec(line);
+
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && bun -e '
+const m = await import("./memory_check/src/guidelines.ts");
+const g = m.loadGuidelines();
+console.log(g.sot.length, g.caches.map(c=>c.id).join(","));
+console.log(JSON.stringify(g.caches.find(c=>c.id==="Rd3")));
+console.log(JSON.stringify(g.caches.find(c=>c.id==="B2").failsIf));
+console.log(g.sot.filter(r=>r.checks.includes("tool")).map(r=>r.id).join(","));
+console.log(g.sot.filter(r=>r.level==="guidance").length, g.sot.filter(r=>r.level==="MUST").length);
+'
+64 B1,B2,B3,B4,B5,K1,K2,K3,Rd1,Rd2,Rd3
+{"id":"Rd3","title":"Absence degrades, it does not fail","failsIf":"undefined with the cache, FTS5 or the embedding model missing, the path mistyped, or a rebuild failing, a query"}
+"undefined the same query returns different entries after a delete and a rebuild from the same files with the"
+W1.1a,W1.1b,W1.2a,W1.3a,W4.1b,K6.1a,K6.2,K6.3a,Rd3.1a
+11 25
+[0m
+[0m← [0mEdit memory_check/src/guidelines.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/guidelines.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/guidelines.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/guidelines.ts
+@@ -97,9 +97,9 @@
+ }
+ const match = HEADING.exec(line);
+ if (match) {
+   if (current) records.push(current);
+-  current = { id: match[1]!, title: squash(match[2]!) };
++  current = { id: match[1]!, title: squash(match[2]!), failsIf: "" };
+   heading = true;
+   continue;
+ }
+ if (!heading || !current) continue;
+
+[0m
+[0m✗ [0mEdit memory_check/src/guidelines.ts failed
+[91m[1mError: [0mNo changes to apply: oldString and newString are identical.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && bun -e '
+const m = await import("./memory_check/src/guidelines.ts");
+const g = m.loadGuidelines();
+for (const c of g.caches) console.log(c.id, "|", c.title, "|", c.failsIf.slice(0,90));
+'
+B1 | Nothing is built before its trigger fires | a vector index exists in `project-memory/.cache/` with no recorded comparison in which it 
+B2 | Derived from the files | the same query returns different entries after a delete and a rebuild from the same files 
+B3 | Full rebuild, never patched | the rebuild has an update or incremental mode, or reuses any row or vector from the previo
+B4 | Only active entries | the index holds a file whose header is not `status: active`, lacks an active entry, holds 
+B5 | No model call to rebuild, except embedding | the full-text rebuild calls a model, or the vector rebuild calls any model but its embeddi
+K1 | It records what it was built from | the index carries no content hash of its sources, or the vector index carries no embedding
+K2 | Stale never answers | after an entry is added, changed or deleted, or the embedding model changes, a query answe
+K3 | Dropped when it stops paying | a cache stays in `project-memory/.cache/` after a rerun it failed, with no recorded decisi
+Rd1 | Never read at session start | a start hook or instruction opens any file under `project-memory/.cache/`.
+Rd2 | An answer names its entry | a result does not name its entry file.
+Rd3 | Absence degrades, it does not fail | with the cache, FTS5 or the embedding model missing, the path mistyped, or a rebuild faili
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && for s in scaffold guidelines; do echo "- $(date -Iseconds) · $s · done · 64 SoT records and 11 CACHES core requirements load; tool copy hashed" >> runs/20261017-memory-check/nodes/implement.progress.md; done && echo "- $(date -Iseconds) · locations · start · git runner and F1/F2" >> runs/20261017-memory-check/nodes/implement.progress.md
+(no output)
+[0m
+[0m← [0mWrite memory_check/src/git.ts
+Wrote file successfully.
+[0m
+[0m← [0mWrite memory_check/src/locations.ts
+Wrote file successfully.
+[0m
+[0m← [0mWrite memory_check/src/locations.ts
+Wrote file successfully.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && bun -e '
+const m = await import("./memory_check/src/locations.ts");
+for (const l of m.findLocations(process.cwd(), process.env.HOME)) console.log(l.present?"present":"absent ", l.name, l.children ?? "");
+'
+present AGENTS.md 
+present CLAUDE.md 
+absent  project-memory/INDEX.md 
+absent  project-memory/entries/ 
+absent  project-memory/work/ 
+absent  project-memory/journal/ 
+absent  project-memory/.cache/ 
+absent  agent memory (<home>/.claude/agent-memory/<name>/)
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -rn "^covers:" -A 12 -B 12 docs/index-md/*.md 2>/dev/null | head -60; ls docs/index-md/
+BACKLOG.md
+DESIGN.md
+REQUIREMENTS.md
+VISION.md
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -rln "^changed:" --include=*.md docs runs vision-statements | head -5; echo ---; grep -rn "^changed:" -B 20 --include=*.md docs | head -40
+grep: vision-statements: No such file or directory
+runs/20261014-memory-index-cleanup/nodes/n1-1.result.md
+runs/20261014-memory-index-cleanup/nodes/n2-1.result.md
+runs/20261014-memory-index-cleanup/briefs/n2.md
+runs/20261014-memory-index-cleanup/briefs/n1.md
+---
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -rn "changed:" docs/memory-system/SOURCE_OF_TRUTH.md | head -20; echo ===; grep -rn "index-sqlite\|SQLite" docs/index-md/DESIGN.md | head -5
+56:`changed:` log, and, on a decision to build something once its work is complete, `done:` (the time, the result, and the
+61:`changed:` log: the time, and who made it — the model ID for an agent, the name for a person. Files that are not
+63:old one, and the old one only gains a `changed:` line, its new `status` and the `superseded_by` link (K4.3). An
+64:entry's `covers` may be corrected in place, with a `changed:` line, for example after a file is renamed (K4.3). Each
+===
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -rn "changed:" -B 4 -A 4 docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml | grep -n "example\|Example" | head; grep -rn '`changed:`' -A 6 docs/memory-system/SOURCE_OF_TRUTH.md | sed -n '1,40p'; echo ===; grep -rn "covers:" docs/memory-system/SOURCE_OF_TRUTH.md | head
+69:524-              and `done:` on a decision to build something (W5.3). Its `covers` may also be corrected, for example
+56:`changed:` log, and, on a decision to build something once its work is complete, `done:` (the time, the result, and the
+57-test results or a pointer to them; W5.3). Its
+58-body is the claim in one or two sentences, then **Why:**, then **How to apply:**.
+59-
+60-**Changing entries.** Anyone may change any entry, and `AGENTS.md` too. Each change adds one line to the entry's
+61:`changed:` log: the time, and who made it — the model ID for an agent, the name for a person. Files that are not
+62-entries rely on git history. An entry's claim is never rewritten: a changed claim is a new entry that supersedes the
+63:old one, and the old one only gains a `changed:` line, its new `status` and the `superseded_by` link (K4.3). An
+64:entry's `covers` may be corrected in place, with a `changed:` line, for example after a file is renamed (K4.3). Each
+65-new entry gets its own file, so agents never append to one shared file. Two writers must not edit the same file at the
+66-same time: each agent works on its own branch or worktree, and git shows a merge conflict when two edits touch the
+67-same lines. Edits to different lines of one file merge without warning even if they contradict each other, so a clean
+68-merge does not mean the file is consistent.
+69-
+70-**When to write.**
+===
+[0m
+[0m← [0mWrite memory_check/src/entry.ts
+Wrote file successfully.
+[0m
+Now the memory_index.py adapter.
+[0m← [0mWrite memory_check/src/indextool.ts
+Wrote file successfully.
+[0m
+[0m✗ [0mEdit memory_check/src/indextool.ts failed
+[91m[1mError: [0mCould not find oldString in the file. It must match exactly, including whitespace, indentation, and line endings.
+[0m✗ [0mEdit memory_check/src/indextool.ts failed
+[91m[1mError: [0mCould not find oldString in the file. It must match exactly, including whitespace, indentation, and line endings.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "isDetailLine" -A 3 -B 1 memory_check/src/indextool.ts
+45-/** Lines that are a diff or a fix hint, not a finding: the evidence keeps the message and the diff's own lines. */
+46:function isDetailLine(line: string): boolean {
+47-  return /^(---|\+\+\+|@@|[-+ ])/.test(line) && !/^[-+] /.test(line) === false ? true : /^[-+ ]/.test(line);
+48-}
+49-
+--
+131-
+132:export { isDetailLine };
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'EOF'
+p='memory_check/src/indextool.ts'
+t=open(p).read().split('\n')
+del t[44:49]   # lines 45-49 (comment, func, blank)
+t=[l for l in t]
+s='\n'.join(t)
+s=s.replace('\nexport { isDetailLine };\n','')
+open(p,'w').write(s)
+EOF
+grep -n "isDetailLine" memory_check/src/indextool.ts; sed -n '40,50p;120,132p' memory_check/src/indextool.ts
+127:export { isDetailLine };
+  if (/^(no \*\*Why:\*\* line|empty claim)/.test(message)) return "W1.3a";
+  if (/^status .* is not one of/.test(message)) return "W4.1b";
+  return null;
+}
+
+export function runMemoryIndex(root: string): IndexToolRun {
+  const args = ["--check"];
+  const result = spawnSync("python3", [MEMORY_INDEX_PY, ...args], {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
+}
+
+/** Whether the tool could not be run at all: no python3, or a crash of its own. */
+export function toolFailedToStart(run: IndexToolRun): boolean {
+  return run.code === -1 || (run.code !== 0 && run.code !== 1 && run.stdout.length === 0 && run.stderr.length === 0);
+}
+
+export { isDetailLine };
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'EOF'
+p='memory_check/src/indextool.ts'
+t=open(p).read()
+t=t.replace('\nexport { isDetailLine };\n','')
+open(p,'w').write(t)
+EOF
+tail -5 memory_check/src/indextool.ts; grep -c "" memory_check/src/indextool.ts
+export function toolFailedToStart(run: IndexToolRun): boolean {
+  return run.code === -1 || (run.code !== 0 && run.code !== 1 && run.stdout.length === 0 && run.stderr.length === 0);
+}
+
+export { isDetailLine };127
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 -c "
+p='memory_check/src/indextool.ts'
+t=open(p).read()
+t=t.replace('export { isDetailLine };','')
+open(p,'w').write(t)
+" && tail -4 memory_check/src/indextool.ts
+export function toolFailedToStart(run: IndexToolRun): boolean {
+  return run.code === -1 || (run.code !== 0 && run.code !== 1 && run.stdout.length === 0 && run.stderr.length === 0);
+}
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun -e '
+const m = await import("./src/indextool.ts");
+const run = m.runMemoryIndex("/home/smoke01/dev/ancient-games");
+console.log(JSON.stringify(run, null, 1).slice(0, 1200));
+'
+{
+ "command": "python3 /home/smoke01/dev/tools/memory_index.py --check   (in /home/smoke01/dev/ancient-games)",
+ "code": 2,
+ "stdout": [],
+ "stderr": [
+  "python3: can't open file '/home/smoke01/dev/tools/memory_index.py': [Errno 2] No such file or directory"
+ ],
+ "findings": {},
+ "sizeLine": null,
+ "overLimit": false,
+ "mismatch": false,
+ "noMemory": false,
+ "unbornHead": false,
+ "upToDate": false,
+ "notes": [
+  "python3: can't open file '/home/smoke01/dev/tools/memory_index.py': [Errno 2] No such file or directory"
+ ]
+}
+[0m
+[0m← [0mEdit memory_check/src/guidelines.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/guidelines.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/guidelines.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/guidelines.ts
+@@ -8,9 +8,9 @@
+ export const FOLDER = path.resolve(import.meta.dirname, "..");
+ export const GUIDELINES_DIR = path.join(FOLDER, "guidelines");
+ export const SOT_YAML = path.join(GUIDELINES_DIR, "SOURCE_OF_TRUTH_REQUIREMENTS.yaml");
+ export const CACHES_MD = path.join(GUIDELINES_DIR, "CACHES.md");
+-export const MEMORY_INDEX_PY = path.resolve(FOLDER, "../../tools/memory_index.py");
++export const MEMORY_INDEX_PY = path.resolve(import.meta.dirname, "../../tools/memory_index.py");
+ 
+ export type Level = "MUST" | "SHOULD" | "guidance";
+ 
+ export interface SotRecord {
+
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun -e '
+const m = await import("./src/indextool.ts");
+const run = m.runMemoryIndex("/home/smoke01/dev/ancient-games");
+console.log(run.code, JSON.stringify(run.stdout), JSON.stringify(run.stderr), run.noMemory);
+'
+0 ["nothing to check: no project-memory/ in the staging area"] [] true
+[0m
+[0m← [0mWrite memory_check/src/gitchecks.ts
+Wrote file successfully.
+[0m
+[0m← [0mEdit memory_check/src/gitchecks.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/gitchecks.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/gitchecks.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/gitchecks.ts
+@@ -61,18 +61,19 @@
+     commitsInRange: 0,
+   };
+ }
+ // The first commit that touches project-memory/ is inside the range: an entry's first version is its evidence.
+-const range = gitOut(root, ["rev-parse", "--verify", "--quiet", `${first}^`]) === "" && git(root, ["rev-parse", "--verify", "--quiet", `${first}^`]).code !== 0
+-  ? "HEAD"
+-  : `${first}^..HEAD`;
++const parent = gitOut(root, ["rev-parse", "--verify", "--quiet", `${first}^`]);
++const range = parent === "" ? "HEAD" : `${first}^..HEAD`;
+ const count = Number(gitOut(root, ["rev-list", "--count", range]) || "0");
+ const short = gitOut(root, ["rev-parse", "--short", first]) || first.slice(0, 7);
+ return {
+   root,
+   shallow,
+   filesView,
+-  historyView: `${short}..HEAD (${count} commit${count === 1 ? "" : "s"})`,
++  historyView: shallow
++    ? `${short}..HEAD — could not be read: this is a shallow clone`
++    : `${short}..HEAD (${count} commit${count === 1 ? "" : "s"})`,
+   range,
+   firstTouching: first,
+   commitsInRange: count,
+ };
+
+[0m
+[0m→ [0mRead memory_check/src/gitchecks.ts[90m [offset=48, limit=45][0m
+[0m
+[0m← [0mEdit memory_check/src/gitchecks.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/gitchecks.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/gitchecks.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/gitchecks.ts
+@@ -54,9 +54,11 @@
+ return {
+   root,
+   shallow,
+   filesView,
+-  historyView: `no commits touch ${MEMORY}/: no history range`,
++  historyView: shallow
++    ? `could not run: this is a shallow clone, so the first commit touching ${MEMORY}/ is not here`
++    : `no commits touch ${MEMORY}/: no history range to check`,
+   range: null,
+   firstTouching: null,
+   commitsInRange: 0,
+ };
+@@ -70,9 +72,9 @@
+ root,
+ shallow,
+ filesView,
+ historyView: shallow
+-  ? `${short}..HEAD — could not be read: this is a shallow clone`
++  ? `${short}..HEAD (${count} commit${count === 1 ? "" : "s"} in a shallow clone: history checks could not run)`
+   : `${short}..HEAD (${count} commit${count === 1 ? "" : "s"})`,
+ range,
+ firstTouching: first,
+ commitsInRange: count,
+
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun -e '
+const g = await import("./src/gitchecks.ts");
+const root="/home/smoke01/dev/ancient-games";
+console.log(JSON.stringify(g.snapshotInfo(root,null),null,1));
+console.log(JSON.stringify(g.stagedEntries(root)));
+console.log(JSON.stringify(g.cacheIsIgnored(root)));
+console.log(g.sessionStartFiles(root).filter(f=>require("fs").existsSync(f)));
+' 2>&1 | tail -20
+{
+ "root": "/home/smoke01/dev/ancient-games",
+ "shallow": false,
+ "filesView": "the staged state (git index, stage 0), the view `tools/memory_index.py --check` reads",
+ "historyView": "no commits touch project-memory/: no history range to check",
+ "range": null,
+ "firstTouching": null,
+ "commitsInRange": 0
+}
+[]
+{"ignored":false,"command":"git check-ignore -v project-memory/.cache   (in /home/smoke01/dev/ancient-games)","output":""}
+[ "/home/smoke01/dev/ancient-games/AGENTS.md", "/home/smoke01/dev/ancient-games/CLAUDE.md",
+  "/home/smoke01/dev/ancient-games/.git/hooks/pre-commit"
+]
+[0m
+[0m← [0mEdit memory_check/src/entry.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
+@@ -6,8 +6,10 @@
+   /** The value on the `key:` line, whitespace collapsed. */
+   readonly value: string;
+   /** The value plus every indented or `- ` continuation line under it, as one text. */
+   readonly full: string;
++  /** The continuation lines under the `key:` (`- ` items, or wrapped values), one per line. */
++  readonly items: readonly string[];
+   /** The 1-based line the `key:` is on, for evidence. */
+   readonly line: number;
+ }
+ 
+
+[0m
+[0m← [0mEdit memory_check/src/entry.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
+@@ -41,27 +41,37 @@
+ const end = fences[1] ?? -1;
+ const fields = new Map<string, Field>();
+ const idLines: number[] = [];
+ if (start === 0 && end > 0) {
+-  let current: { key: string; value: string; parts: string[]; line: number } | null = null;
++  let current: { key: string; value: string; parts: string[]; items: string[]; line: number } | null = null;
+   const close = (): void => {
+-    if (current) fields.set(current.key, { value: current.value, full: squash(current.parts.join(" ")), line: current.line });
++    if (current) {
++      fields.set(current.key, {
++        value: current.value,
++        full: squash(current.parts.join(" ")),
++        items: current.items,
++        line: current.line,
++      });
++    }
+     current = null;
+   };
+   for (let index = start + 1; index < end; index++) {
+     const line = lines[index] ?? "";
+     if (line.trim() === "") continue;
+     const indented = /^\s/.test(line);
+     if (indented || line.startsWith("- ")) {
+-      if (current) current.parts.push(line.trim());
++      if (current) {
++        current.parts.push(line.trim());
++        current.items.push(line.trim().replace(/^-\s*/, ""));
++      }
+       continue;
+     }
+     const colon = line.indexOf(":");
+     if (colon <= 0) continue;
+     close();
+     const key = line.slice(0, colon).trim();
+     const value = line.slice(colon + 1).trim();
+-    current = { key, value, parts: value ? [value] : [], line: index + 1 };
++    current = { key, value, parts: value ? [value] : [], items: value ? [value] : [], line: index + 1 };
+     if (key === "id") idLines.push(index + 1);
+   }
+   close();
+ }
+
+[0m
+Now the tool's own git-checked clauses:
+[0m← [0mWrite memory_check/src/gitrequirements.ts
+Wrote file successfully.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'EOF'
+p='memory_check/src/gitrequirements.ts'
+t=open(p).read()
+t=t.replace('''  /** Set when the check could not run: the reason. */
+  readonly couldNotRun: string | null;
+}''','''  /** Set when the check could not run: the reason. */
+  readonly couldNotRun: string | null;
+  /** Things a reader should know that are not breaks (a name not in the W1.1c form, for instance). */
+  readonly notes?: readonly string[];
+}''')
+t=t.replace('''  const prefixes: ClauseOutcome =
+    prefixBreaks.length > 0
+      ? { breaks: prefixBreaks, clean: "", couldNotRun: null }
+      : { breaks: [], clean: how, couldNotRun: null };
+  const ids: ClauseOutcome =
+    idBreaks.length > 0
+      ? { breaks: idBreaks, clean: "", couldNotRun: null }
+      : { breaks: [], clean: `${how}; no id changed in a rename`, couldNotRun: null };
+  return { prefixes, ids, ...(skipped.length > 0 ? { skipped } : {}) } as {
+    prefixes: ClauseOutcome;
+    ids: ClauseOutcome;
+  };
+}
+
+export { CLEAN };''','''  const prefixes: ClauseOutcome =
+    prefixBreaks.length > 0
+      ? { breaks: prefixBreaks, clean: "", couldNotRun: null, notes: skipped }
+      : { breaks: [], clean: how, couldNotRun: null, notes: skipped };
+  const ids: ClauseOutcome =
+    idBreaks.length > 0
+      ? { breaks: idBreaks, clean: "", couldNotRun: null, notes: skipped }
+      : { breaks: [], clean: `${how}; no id changed in a rename`, couldNotRun: null, notes: skipped };
+  return { prefixes, ids };
+}''')
+t=t.replace('''const CLEAN: ClauseOutcome = { breaks: [], clean: "", couldNotRun: null };
+
+''','')
+open(p,'w').write(t)
+EOF
+grep -n "CLEAN\|skipped" memory_check/src/gitrequirements.ts
+189:  const skipped: string[] = [];
+198:      skipped.push(`${commit} — the name is not <prefix>-<id>-<slug>.md, so no id was compared (W1.1c is a reviewer's)`);
+208:      ? { breaks: prefixBreaks, clean: "", couldNotRun: null, notes: skipped }
+209:      : { breaks: [], clean: how, couldNotRun: null, notes: skipped };
+212:      ? { breaks: idBreaks, clean: "", couldNotRun: null, notes: skipped }
+213:      : { breaks: [], clean: `${how}; no id changed in a rename`, couldNotRun: null, notes: skipped };
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && for s in locations indextool gitchecks; do echo "- $(date -Iseconds) · $s · done" >> runs/20261017-memory-check/nodes/implement.progress.md; done; echo "- $(date -Iseconds) · gitchecks · start · K4.1/K4.3/W1.1/W6.1a clauses and C5 snapshot" >> runs/20261017-memory-check/nodes/implement.progress.md; bun install 2>&1 | tail -3
+error: Bun could not find a package.json file to install from
+note: Run "bun init" to initialize a project
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun install 2>&1 | tail -5 && ls node_modules/.bin | head
++ @types/bun@1.4.0
++ @typescript/native-preview@7.0.0-dev.20251207.1
++ typescript@5.8.2
+
+7 packages installed [186.00ms]
+tsc
+tsgo
+tsserver
+[0m
+[0m← [0mWrite memory_check/src/cachechecks.ts
+Wrote file successfully.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'EOF'
+g='memory_check/src/gitchecks.ts'
+t=open(g).read()
+t=t.replace('''export function cacheIsIgnored(root: string): { ignored: boolean; command: string; output: string } {
+  const command = "git check-ignore -v project-memory/.cache";
+  const result = git(root, ["check-ignore", "-v", CACHE]);
+  const output = (result.stdout + result.stderr).trim();
+  return { ignored: result.code === 0, command: `${command}   (in ${root})`, output };
+}''','''export function cacheIsIgnored(root: string): { ignored: boolean; command: string; code: number; output: string } {
+  const result = git(root, ["check-ignore", "-v", CACHE]);
+  const output = (result.stdout + result.stderr).trim();
+  return {
+    ignored: result.code === 0,
+    command: `git check-ignore -v project-memory/.cache   (in ${root})`,
+    code: result.code,
+    output,
+  };
+}''')
+open(g,'w').write(t)
+
+c='memory_check/src/cachechecks.ts'
+t=open(c).read()
+t=t.replace('''    breaks: [`${result.command} → exit ${result.output === "" ? 1 : "1"}: no ignore rule reports project-memory/.cache`],''','''    breaks: [
+      `${result.command} → exit ${result.code}${result.output === "" ? ", no output" : `, ${result.output}`}: ` +
+        "no ignore rule reports project-memory/.cache",
+    ],''')
+open(c,'w').write(t)
+EOF
+grep -n "exit " memory_check/src/cachechecks.ts
+18:      clean: `${result.command} → exit 0, ${result.output}`,
+24:      `${result.command} → exit ${result.code}${result.output === "" ? ", no output" : `, ${result.output}`}: ` +
+[0m
+Now the checks engine that maps every guideline record to one of the five results.
+[0m← [0mWrite memory_check/src/checks.ts
+Wrote file successfully.
+[0m
+[0m← [0mWrite memory_check/src/checks.ts
+Wrote file successfully.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'EOF'
+p='memory_check/src/checks.ts'
+t=open(p).read()
+t=t.replace('''    if (mine === undefined && record.checks.some((check) => check === "git") && record.id !== "W1.1b") {
+      // A `tool; git` record whose git clause this tool does not decide: the tool half passed, the rest is a
+      // reviewer's. (W1.1a and W1.1b carry a decided git clause, so they are not here.)
+      if (record.id !== "W1.1a") {
+        return { ...base, verdict: "needs a reviewer", evidence: `${toolEvidence}; ${DEFAULT_REVIEWER_REASON}` };
+      }
+    }
+''','')
+t=t.replace('''import { agentsMdMissing, findLocations, type Location } from "./locations.ts";''','''import { agentsMdMissing, findLocations, hasProjectMemory, type Location } from "./locations.ts";''')
+t=t.replace('''  const projectMemory = locations.some((one) => one.name === "project-memory/entries/" || one.name === "project-memory/INDEX.md");''','''  const projectMemory = hasProjectMemory(root);''')
+open(p,'w').write(t)
+EOF
+grep -n "mine === undefined\|hasProjectMemory" memory_check/src/checks.ts
+17:import { agentsMdMissing, findLocations, hasProjectMemory, type Location } from "./locations.ts";
+89:  const projectMemory = hasProjectMemory(root);
+[0m
+Now the report, warning and CLI.
+[0m← [0mWrite memory_check/src/report.ts
+Wrote file successfully.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'EOF'
+p='memory_check/src/report.ts'
+t=open(p).read()
+t=t.replace('''    "",
+    `Home folder for agent memory: \\`${run.indexTool.command.includes("x") ? "" : ""}\\``,
+    "",
+  ];
+  locationLines.pop();
+''','''    "",
+  ];
+''')
+open(p,'w').write(t)
+EOF
+grep -n "Home folder\|locationLines.pop" memory_check/src/report.ts
+(no output)
+[0m
+[0m← [0mWrite memory_check/src/warn.ts
+Wrote file successfully.
+[0m
+[0m← [0mWrite memory_check/src/cli.ts
+Wrote file successfully.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project .. ; echo "exit $?"
+51 |   W2.1b:
+         ^
+error: Syntax Error
+    at /home/smoke01/dev/ancient-games/memory_check/src/checks.ts:51:5
+
+Bun v1.4.3 (Linux x64)
+exit 1
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'EOF'
+import re
+p='memory_check/src/checks.ts'
+t=open(p).read()
+t=re.sub(r'\n  (W\d\.\d[ab]?|K\d\.\d[ab]?|Rd\d\.\d[ab]?|W\d|K\d):', lambda m: '\n  "%s":' % m.group(1), t)
+open(p,'w').write(t)
+EOF
+grep -n '^  "' memory_check/src/checks.ts
+51:  "W2.1b":
+54:  "W4.2":
+56:  "W5.1":
+59:  "W6.1b": "two agent sessions writing one journal file is not visible in git history (design-decisions.md 6)",
+60:  "W6.2": "an edit lost without a conflict cannot be shown by git (design-decisions.md 6)",
+61:  "K1.1":
+64:  "K5.1":
+67:  "W6.3a":
+73:  "its check is the project owner (or someone they name): the tool does not judge it, and never reports it as " +
+74:  "passing or failing (C1, U4)";
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project .. ; echo "exit $?"
+# memory-check — snapshot: files: the staged state (git index, stage 0), the view `tools/memory_index.py --check` reads; history: no commits touch project-memory/: no history range to check — project: /home/smoke01/dev/ancient-games
+
+Guidelines this report is checked against (the tool's own copy, C1): SOURCE_OF_TRUTH_REQUIREMENTS.yaml 26226965112c, CACHES.md 8eef3b46f3f2
+Records: 64 from SOURCE_OF_TRUTH_REQUIREMENTS.yaml (SoT:), 11 Core requirements from CACHES.md (CACHES:).
+
+## Memory locations (F1, F2)
+
+| location | path | state |
+|---|---|---|
+| AGENTS.md | `/home/smoke01/dev/ancient-games/AGENTS.md` | present |
+| CLAUDE.md | `/home/smoke01/dev/ancient-games/CLAUDE.md` | present |
+| project-memory/INDEX.md | `/home/smoke01/dev/ancient-games/project-memory/INDEX.md` | absent |
+| project-memory/entries/ | `/home/smoke01/dev/ancient-games/project-memory/entries` | absent |
+| project-memory/work/ | `/home/smoke01/dev/ancient-games/project-memory/work` | absent |
+| project-memory/journal/ | `/home/smoke01/dev/ancient-games/project-memory/journal` | absent |
+| project-memory/.cache/ | `/home/smoke01/dev/ancient-games/project-memory/.cache` | absent |
+| agent memory (<home>/.claude/agent-memory/<name>/) | `/home/smoke01/.claude/agent-memory` | absent |
+
+## The tool's own requirements
+
+- **F1** (MUST) — pass — /home/smoke01/dev/ancient-games/AGENTS.md exists; 2 of 8 named locations present, 6 absent
+- **F2** (MUST) — pass — project /home/smoke01/dev/ancient-games is the root of a git repository (git rev-parse --show-toplevel in it)
+- **F3** (MUST) — pass — this run created, changed and deleted nothing; it wrote nothing; every git call ran with GIT_OPTIONAL_LOCKS=0
+
+## Results — MUST
+
+- **SoT:K4.1** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:K4.3** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:K6.1a** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:K6.2** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:K6.3a** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd1.2** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd2.3a** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd3.1a** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd4.1** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd5.1** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd5.2** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd5.3** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd6.1** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W1.1a** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W1.1b** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W1.2a** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W1.3a** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W3.2** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W3.3a** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W3.5a** (MUST) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W4.1b** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W4.1c** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W5.3b** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W6.1a** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W6.3a** (MUST) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+
+## Results — SHOULD
+
+- **SoT:K1.1** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:K5.1** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:K5.2** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:K6.1b** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:K6.3b** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd1.1** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:Rd2.1** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd2.2** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd2.3b** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd4.4** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd4.5b** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W1.1c** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W1.2b** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W1.3b** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W2.1b** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W2.2b** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W3.1** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W3.3b** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W3.4** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W3.5b** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W3.6** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W4.2** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W5.1** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W5.2** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W5.3a** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W6.1b** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W6.2** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W6.3b** (SHOULD) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+
+## Results — guidance
+
+- **SoT:K4.2** (guidance) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd3.1b** (guidance) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd4.2** (guidance) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd4.3** (guidance) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd4.5a** (guidance) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd5.4** (guidance) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:Rd5.5** (guidance) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W2.1a** (guidance) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W2.2a** (guidance) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W4.1a** (guidance) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+- **SoT:W4.3** (guidance) — not applicable — project-memory/ is absent (F1 reports it absent), so the memory this record is about is absent (C4)
+
+## Results — CACHES.md Core requirements (no level in CACHES.md)
+
+- **CACHES:B1** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+- **CACHES:B2** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+- **CACHES:B3** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+- **CACHES:B4** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+- **CACHES:B5** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+- **CACHES:K1** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+- **CACHES:K2** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+- **CACHES:K3** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+- **CACHES:Rd1** (not stated in CACHES.md) — pass — 3 session-start file(s) scanned (/home/smoke01/dev/ancient-games/AGENTS.md, /home/smoke01/dev/ancient-games/CLAUDE.md, /home/smoke01/dev/ancient-games/.git/hooks/pre-commit): no line opens a file under project-memory/.cache/. A hook outside the repository is not visible here.
+- **CACHES:Rd2** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+- **CACHES:Rd3** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+
+## Needs a reviewer,,- **SoT:W3.5a** (MUST) — fails if: the project holds user memory or agent memory. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4),- **SoT:W3.5b** (SHOULD) — fails if: they live elsewhere, with no written reason. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4),- **SoT:Rd1.1** (SHOULD) — fails if: these live elsewhere or are laid out otherwise, with no written reason. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4),
+## Notes from tools/memory_index.py,,- `nothing to check: no project-memory/ in the staging area`,
+## This run
+
+- Report printed to stdout (no --out)
+- Read only: nothing was created, changed or deleted except the report; every git call used GIT_OPTIONAL_LOCKS=0 (F3)
+- Not calibrated on a real project: no project has been named to calibrate against (design-decisions.md 15)
+- Counts: 0 fail, 4 pass, 3 needs a reviewer, 71 not applicable, 0 could not run
+- CACHES.md gives its requirements no level, so none of them gates the exit code (R3 counts MUSTs only)
+
+exit 0
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'EOF'
+p='memory_check/src/report.ts'
+t=open(p).read()
+t=t.replace("    needsReviewer(results),\n    notes(run),", "    ...needsReviewer(results),\n    ...notes(run),")
+open(p,'w').write(t)
+
+p='memory_check/src/checks.ts'
+t=open(p).read()
+t=t.replace('''function cachesResult(id: string, failsIf: string, cachePresent: boolean, root: string): RequirementResult {
+  const base = { id: `CACHES:${id}`, level: "not stated in CACHES.md", failsIf };
+  if (id === "B2.2") return fromOutcome(base, checkB22(root));
+  if (id === "Rd1") return fromOutcome(base, checkRd1(root));''','''function cachesResult(id: string, failsIf: string, cachePresent: boolean, root: string): RequirementResult {
+  const base = { id: `CACHES:${id}`, level: "not stated in CACHES.md", failsIf };
+  // C6, v1: of the Core requirements only B2 (its clause B2.2) and Rd1 (its clause Rd1.1) are checked.
+  if (id === "B2") return named(base, "B2.2", fromOutcome(base, checkB22(root)));
+  if (id === "Rd1") return named(base, "Rd1.1", fromOutcome(base, checkRd1(root)));''')
+t=t.replace('''  "W6.3a":
+    "check: git; reviewer — whether a merge kept both sides is judged at the merge commit " +
+    "(who_decides: project owner)",
+};''','''  "W6.3a":
+    "check: git; reviewer — whether a merge kept both sides is judged at the merge commit " +
+    "(who_decides: project owner)",
+  "W3.5a": "check: reviewer — whether the project holds user memory or agent memory is the owner's call (F1 reports the locations; it does not judge what is in them)",
+  "W3.5b": "check: reviewer — where user and agent memory live, and whether a reason is written, is the owner's",
+  "Rd1.1": "check: reviewer — user and agent memory live in the home folder, and whether that layout has a written reason is the owner's",
+};''')
+t=t.replace('''function fromOutcome(''','''/** The clause of a CACHES requirement a result stands for, named in its evidence. */
+function named(base: { id: string; level: string; failsIf: string }, clause: string, result: RequirementResult): RequirementResult {
+  return { ...result, evidence: `clause ${clause}: ${result.evidence}` };
+}
+
+function fromOutcome(''')
+open(p,'w').write(t)
+EOF
+cd memory_check && bun src/cli.ts --project .. | tail -22; echo "exit ${PIPESTATUS[0]}"
+- **CACHES:Rd1** (not stated in CACHES.md) — pass — clause Rd1.1: 3 session-start file(s) scanned (/home/smoke01/dev/ancient-games/AGENTS.md, /home/smoke01/dev/ancient-games/CLAUDE.md, /home/smoke01/dev/ancient-games/.git/hooks/pre-commit): no line opens a file under project-memory/.cache/. A hook outside the repository is not visible here.
+- **CACHES:Rd2** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+- **CACHES:Rd3** (not stated in CACHES.md) — not applicable — project-memory/.cache/ is absent (F1 reports it absent), so the cache requirements are not applicable (C4, C6)
+
+## Needs a reviewer
+
+- **SoT:W3.5a** (MUST) — fails if: the project holds user memory or agent memory. — why not the tool: check: reviewer — whether the project holds user memory or agent memory is the owner's call (F1 reports the locations; it does not judge what is in them)
+- **SoT:W3.5b** (SHOULD) — fails if: they live elsewhere, with no written reason. — why not the tool: check: reviewer — where user and agent memory live, and whether a reason is written, is the owner's
+- **SoT:Rd1.1** (SHOULD) — fails if: these live elsewhere or are laid out otherwise, with no written reason. — why not the tool: check: reviewer — user and agent memory live in the home folder, and whether that layout has a written reason is the owner's
+
+## Notes from tools/memory_index.py
+
+- `nothing to check: no project-memory/ in the staging area`
+
+## This run
+
+- Report printed to stdout (no --out)
+- Read only: nothing was created, changed or deleted except the report; every git call used GIT_OPTIONAL_LOCKS=0 (F3)
+- Not calibrated on a real project: no project has been named to calibrate against (design-decisions.md 15)
+- Counts: 1 fail, 4 pass, 3 needs a reviewer, 70 not applicable, 0 could not run
+- CACHES.md gives its requirements no level, so none of them gates the exit code (R3 counts MUSTs only)
+
+exit 0
+[0m
+[0m$ [0mmkdir -p /tmp/opencode/fix1 && cd /tmp/opencode/fix1 && rm -rf * .git 2>/dev/null; mkdir -p project-memory/entries project-memory/work/t1/journal project-memory/journal .cache && cat > AGENTS.md <<'EOF'
+# Project
+Read CLAUDE.md beside it.
+EOF
+printf 'project-memory/.cache/\n' > .gitignore
+cat > project-memory/entries/D-17-10-a1b2c3-2026-index.md <<'EOF'
+---
+id: 17-10-a1b2c3-2026
+kind: decision
+status: active
+author: test
+recorded: 2026-10-17
+covers:
+  - src/a.ts
+source: a run record
+---
+
+The fixture holds one decision entry.
+
+**Why:** to exercise the checks.
+
+**How to apply:** read it.
+EOF
+cat > project-memory/entries/X-not-an-entry.md <<'EOF'
+---
+id: 17-10-zzzzzz-2026
+kind: decision
+status: active
+---
+
+Second file, wrong prefix.
+
+**Why:** planted break for W1.1a.
+EOF
+git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm "first" && python3 /home/smoke01/dev/ancient-games/tools/memory_index.py && git add -A && git -c user.email=t@t -c user.name=t commit -qm "index" && git log --oneline && ls project-memory/.cache 2>/dev/null; echo "--- cache present:"; ls -d project-memory/.cache
+INDEX.md: 5/200 lines, 267/24000 bytes
+wrote project-memory/INDEX.md
+14a0b67 index
+3c884b5 first
+--- cache present:
+ls: cannot access 'project-memory/.cache': No such file or directory
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix1 --home /tmp/opencode/fix1 2>&1 | grep -E "SoT:(W1|K4|K6|W6|Rd3)" | head -30; echo "exit"
+- **SoT:K4.1** (MUST) — pass — 2 staged entry file(s): no status: superseded without superseded_by, no status: retired without a reason in its changed: line; git log --diff-filter=D --name-status -- project-memory/entries (HEAD) deleted none
+- **SoT:K4.3** (MUST) — pass — 2 entry file(s) compared with their first version in HEAD: claim, source, depends_on unchanged, and every covers change has a changed: line
+- **SoT:K6.1a** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix1) → exit 0, output: INDEX.md: 5/200 lines, 267/24000 bytes | project-memory/INDEX.md in the staging area is up to date
+- **SoT:K6.2** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix1) → exit 0, output: INDEX.md: 5/200 lines, 267/24000 bytes | project-memory/INDEX.md in the staging area is up to date
+- **SoT:K6.3a** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix1) → exit 0, output: INDEX.md: 5/200 lines, 267/24000 bytes | project-memory/INDEX.md in the staging area is up to date
+- **SoT:Rd3.1a** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix1) → exit 0, output: INDEX.md: 5/200 lines, 267/24000 bytes | project-memory/INDEX.md in the staging area is up to date
+- **SoT:W1.1a** (MUST) — fail — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix1) → exit 0, output: INDEX.md: 5/200 lines, 267/24000 bytes | project-memory/INDEX.md in the staging area is up to date; project-memory/entries/X-not-an-entry.md:1 — the prefix "X" is not one of D F L O H
+- **SoT:W1.1b** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix1) → exit 0, output: INDEX.md: 5/200 lines, 267/24000 bytes | project-memory/INDEX.md in the staging area is up to date; git log -M --name-status -- project-memory/entries (HEAD): 0 rename(s); no id changed in a rename
+- **SoT:W1.2a** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix1) → exit 0, output: INDEX.md: 5/200 lines, 267/24000 bytes | project-memory/INDEX.md in the staging area is up to date
+- **SoT:W1.3a** (MUST) — needs a reviewer — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix1) → exit 0, output: INDEX.md: 5/200 lines, 267/24000 bytes | project-memory/INDEX.md in the staging area is up to date; the tool found no break in the clause it checks — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W6.1a** (MUST) — needs a reviewer — 2 staged entry file(s), each with one header block and one id:; whether a commit adds an entry to an existing file is judged with the project owner (C2: checked by the tool and by a reviewer)
+- **SoT:W6.3a** (MUST) — needs a reviewer — check: git; reviewer — whether a merge kept both sides is judged at the merge commit (who_decides: project owner)
+- **SoT:K6.1b** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:K6.3b** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.1c** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.2b** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.3b** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W6.1b** (SHOULD) — needs a reviewer — two agent sessions writing one journal file is not visible in git history (design-decisions.md 6)
+- **SoT:W6.2** (SHOULD) — needs a reviewer — an edit lost without a conflict cannot be shown by git (design-decisions.md 6)
+- **SoT:W6.3b** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:K4.2** (guidance) — not applicable — guidance: nothing to check (check: none)
+- **SoT:Rd3.1b** (guidance) — not applicable — guidance: nothing to check (check: none)
+- **SoT:W1.1c** (SHOULD) — fails if: an entry file has another folder or name, with no written reason. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.2b** (SHOULD) — fails if: a field is missing or laid out otherwise, with no written reason. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.3a** (MUST) — fails if: an active entry has no claim or no `**Why:**` line, or a reviewer finds two claims in one entry. — why not the tool: python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix1) → exit 0, output: INDEX.md: 5/200 lines, 267/24000 bytes | project-memory/INDEX.md in the staging area is up to date; the tool found no break in the clause it checks — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.3b** (SHOULD) — fails if: the claim is longer, or the `**How to apply:**` line is missing or spelled otherwise, with no written reason. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W6.1a** (MUST) — fails if: an entry file holds more than one entry, or a commit adds an entry to an existing file. — why not the tool: 2 staged entry file(s), each with one header block and one id:; whether a commit adds an entry to an existing file is judged with the project owner (C2: checked by the tool and by a reviewer)
+- **SoT:W6.1b** (SHOULD) — fails if: two agent sessions write to one journal file, with no written reason. — why not the tool: two agent sessions writing one journal file is not visible in git history (design-decisions.md 6)
+- **SoT:W6.2** (SHOULD) — fails if: an edit to an entry is lost without a conflict, with no written reason. — why not the tool: an edit lost without a conflict cannot be shown by git (design-decisions.md 6)
+- **SoT:W6.3a** (MUST) — fails if: a merged entry is missing a `changed:` line, link or `covers` path that one side added, or two entries superseding one go unreported. — why not the tool: check: git; reviewer — whether a merge kept both sides is judged at the merge commit (who_decides: project owner)
+exit
+[0m
+[0m$ [0mcd /tmp/opencode && rm -rf fix2 && cp -r fix1 fix2 && cd fix2 && rm -rf project-memory/entries/X-not-an-entry.md && git rm -q --cached project-memory/entries/X-not-an-entry.md && cat > project-memory/entries/F-18-10-b2c3d4-2026-fact.md <<'EOF'
+---
+id: 18-10-b2c3d4-2026
+kind: fact
+status: settled
+---
+
+A fact whose status is not one of the three.
+
+**Why:** planted break for W4.1b.
+EOF
+cat > project-memory/entries/L-19-10-c3d4e5-2026-lesson.md <<'EOF'
+# no header here
+
+A lesson with no header and no Why line.
+EOF
+cat > project-memory/entries/O-20-10-d4e5f6-2026-observation.md <<'EOF'
+---
+id: 20-10-d4e5f6-2026
+kind: observation
+status: active
+---
+
+An observation with a conflict marker.
+
+<<<<<<< HEAD
+**Why:** planted break for K6.3a.
+EOF
+cat > project-memory/entries/H-21-10-e5f6a7-2026-hypothesis.md <<'EOF'
+---
+id: 21-10-e5f6a7-2026
+kind: hypothesis
+status: active
+---
+
+An active entry with no **Why:** line.
+EOF
+git add -A && git -c user.email=t@t -c user.name=t commit -qm breaks && cd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix2 --home /tmp/opencode/fix2 2>&1 | grep -E "^(- \*\*SoT:(W1|W4|K6|Rd3|W6|K4))" ; echo "exit ${PIPESTATUS[0]}"
+- **SoT:K4.1** (MUST) — fail — commit 38ebf26 deleted project-memory/entries/X-not-an-entry.md — an entry file is never deleted (git log --diff-filter=D --name-status -- project-memory/entries)
+- **SoT:K4.3** (MUST) — pass — 4 entry file(s) compared with their first version in HEAD: claim, source, depends_on unchanged, and every covers change has a changed: line
+- **SoT:K6.1a** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix2) → exit 1, output: F-18-10-b2c3d4-2026-fact.md: status 'settled' is not one of active / superseded / retired | H-21-10-e5f6a7-2026-hypothesis.md: no **Why:** line | L-19-10-c3d4e5-2026-lesson.md: no header | O-20-10-d4e5f6-2026-observation.md: unresolved conflict marker on line 9: '<<<<<<< HEAD'
+- **SoT:K6.2** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix2) → exit 1, output: F-18-10-b2c3d4-2026-fact.md: status 'settled' is not one of active / superseded / retired | H-21-10-e5f6a7-2026-hypothesis.md: no **Why:** line | L-19-10-c3d4e5-2026-lesson.md: no header | O-20-10-d4e5f6-2026-observation.md: unresolved conflict marker on line 9: '<<<<<<< HEAD'
+- **SoT:K6.3a** (MUST) — fail — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix2) → exit 1, output: F-18-10-b2c3d4-2026-fact.md: status 'settled' is not one of active / superseded / retired | H-21-10-e5f6a7-2026-hypothesis.md: no **Why:** line | L-19-10-c3d4e5-2026-lesson.md: no header | O-20-10-d4e5f6-2026-observation.md: unresolved conflict marker on line 9: '<<<<<<< HEAD'; O-20-10-d4e5f6-2026-observation.md: unresolved conflict marker on line 9: '<<<<<<< HEAD'
+- **SoT:Rd3.1a** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix2) → exit 1, output: F-18-10-b2c3d4-2026-fact.md: status 'settled' is not one of active / superseded / retired | H-21-10-e5f6a7-2026-hypothesis.md: no **Why:** line | L-19-10-c3d4e5-2026-lesson.md: no header | O-20-10-d4e5f6-2026-observation.md: unresolved conflict marker on line 9: '<<<<<<< HEAD'
+- **SoT:W1.1a** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix2) → exit 1, output: F-18-10-b2c3d4-2026-fact.md: status 'settled' is not one of active / superseded / retired | H-21-10-e5f6a7-2026-hypothesis.md: no **Why:** line | L-19-10-c3d4e5-2026-lesson.md: no header | O-20-10-d4e5f6-2026-observation.md: unresolved conflict marker on line 9: '<<<<<<< HEAD'; 5 staged file(s) under project-memory/entries/, every name's prefix is one of D F L O H; git log -M --name-status -- project-memory/entries (HEAD): 0 rename(s)
+- **SoT:W1.1b** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix2) → exit 1, output: F-18-10-b2c3d4-2026-fact.md: status 'settled' is not one of active / superseded / retired | H-21-10-e5f6a7-2026-hypothesis.md: no **Why:** line | L-19-10-c3d4e5-2026-lesson.md: no header | O-20-10-d4e5f6-2026-observation.md: unresolved conflict marker on line 9: '<<<<<<< HEAD'; git log -M --name-status -- project-memory/entries (HEAD): 0 rename(s); no id changed in a rename
+- **SoT:W1.2a** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix2) → exit 1, output: F-18-10-b2c3d4-2026-fact.md: status 'settled' is not one of active / superseded / retired | H-21-10-e5f6a7-2026-hypothesis.md: no **Why:** line | L-19-10-c3d4e5-2026-lesson.md: no header | O-20-10-d4e5f6-2026-observation.md: unresolved conflict marker on line 9: '<<<<<<< HEAD'
+- **SoT:W1.3a** (MUST) — needs a reviewer — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix2) → exit 1, output: F-18-10-b2c3d4-2026-fact.md: status 'settled' is not one of active / superseded / retired | H-21-10-e5f6a7-2026-hypothesis.md: no **Why:** line | L-19-10-c3d4e5-2026-lesson.md: no header | O-20-10-d4e5f6-2026-observation.md: unresolved conflict marker on line 9: '<<<<<<< HEAD'; the tool found no break in the clause it checks — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W4.1b** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix2) → exit 1, output: F-18-10-b2c3d4-2026-fact.md: status 'settled' is not one of active / superseded / retired | H-21-10-e5f6a7-2026-hypothesis.md: no **Why:** line | L-19-10-c3d4e5-2026-lesson.md: no header | O-20-10-d4e5f6-2026-observation.md: unresolved conflict marker on line 9: '<<<<<<< HEAD'
+- **SoT:W4.1c** (MUST) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W6.1a** (MUST) — needs a reviewer — 5 staged entry file(s), each with one header block and one id:; whether a commit adds an entry to an existing file is judged with the project owner (C2: checked by the tool and by a reviewer)
+- **SoT:W6.3a** (MUST) — needs a reviewer — check: git; reviewer — whether a merge kept both sides is judged at the merge commit (who_decides: project owner)
+- **SoT:K6.1b** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:K6.3b** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.1c** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.2b** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.3b** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W4.2** (SHOULD) — needs a reviewer — its fails_if ends "with no written reason", which no tool can see (research-q/compare.md, Where they agree)
+- **SoT:W6.1b** (SHOULD) — needs a reviewer — two agent sessions writing one journal file is not visible in git history (design-decisions.md 6)
+- **SoT:W6.2** (SHOULD) — needs a reviewer — an edit lost without a conflict cannot be shown by git (design-decisions.md 6)
+- **SoT:W6.3b** (SHOULD) — needs a reviewer — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:K4.2** (guidance) — not applicable — guidance: nothing to check (check: none)
+- **SoT:Rd3.1b** (guidance) — not applicable — guidance: nothing to check (check: none)
+- **SoT:W4.1a** (guidance) — not applicable — guidance: nothing to check (check: none)
+- **SoT:W4.3** (guidance) — not applicable — guidance: nothing to check (check: none)
+- **SoT:W1.1c** (SHOULD) — fails if: an entry file has another folder or name, with no written reason. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.2b** (SHOULD) — fails if: a field is missing or laid out otherwise, with no written reason. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.3a** (MUST) — fails if: an active entry has no claim or no `**Why:**` line, or a reviewer finds two claims in one entry. — why not the tool: python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix2) → exit 1, output: F-18-10-b2c3d4-2026-fact.md: status 'settled' is not one of active / superseded / retired | H-21-10-e5f6a7-2026-hypothesis.md: no **Why:** line | L-19-10-c3d4e5-2026-lesson.md: no header | O-20-10-d4e5f6-2026-observation.md: unresolved conflict marker on line 9: '<<<<<<< HEAD'; the tool found no break in the clause it checks — its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W1.3b** (SHOULD) — fails if: the claim is longer, or the `**How to apply:**` line is missing or spelled otherwise, with no written reason. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W4.1c** (MUST) — fails if: as Rd5.3. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:W4.2** (SHOULD) — fails if: git shows a change to an entry with no matching `changed:` line, or an earlier line edited, with no written reason. — why not the tool: its fails_if ends "with no written reason", which no tool can see (research-q/compare.md, Where they agree)
+- **SoT:W6.1a** (MUST) — fails if: an entry file holds more than one entry, or a commit adds an entry to an existing file. — why not the tool: 5 staged entry file(s), each with one header block and one id:; whether a commit adds an entry to an existing file is judged with the project owner (C2: checked by the tool and by a reviewer)
+- **SoT:W6.1b** (SHOULD) — fails if: two agent sessions write to one journal file, with no written reason. — why not the tool: two agent sessions writing one journal file is not visible in git history (design-decisions.md 6)
+- **SoT:W6.2** (SHOULD) — fails if: an edit to an entry is lost without a conflict, with no written reason. — why not the tool: an edit lost without a conflict cannot be shown by git (design-decisions.md 6)
+- **SoT:W6.3a** (MUST) — fails if: a merged entry is missing a `changed:` line, link or `covers` path that one side added, or two entries superseding one go unreported. — why not the tool: check: git; reviewer — whether a merge kept both sides is judged at the merge commit (who_decides: project owner)
+- **SoT:W6.3b** (SHOULD) — fails if: as K6.3b. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:K6.1b** (SHOULD) — fails if: `INDEX.md` is edited by hand, with no written reason. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+- **SoT:K6.3b** (SHOULD) — fails if: `INDEX.md` is merged by hand, with no written reason. — why not the tool: its check is the project owner (or someone they name): the tool does not judge it, and never reports it as passing or failing (C1, U4)
+exit 1
+[0m
+[0m→ [0mRead memory_check/src/indextool.ts[90m [offset=30, limit=20][0m
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'PY'
+p='memory_check/src/indextool.ts'
+t=open(p).read()
+
+t=t.replace('''/** Which requirement each of memory_index.py's messages belongs to. An order matters: longer patterns first. */
+function idOfMessage(message: string): string | null {
+  if (/^INDEX\\.md in .* does not match what these entries build/.test(message)) return "K6.1a,K6.2";
+  if (/^INDEX\\.md in .* is over the limit/.test(message)) return "Rd3.1a";
+  if (/unresolved conflict marker/.test(message)) return "K6.3a";
+  if (/^(kind .* is not one of|kind .* does not match the)/.test(message)) return "W1.1a";
+  if (/^(id .* is not in the form|empty id|duplicate id)/.test(message)) return "W1.1b";
+  if (/^(no header|header is not closed)/.test(message)) return "W1.2a";
+  if (/^(no \\*\\*Why:\\*\\* line|empty claim)/.test(message)) return "W1.3a";
+  if (/^status .* is not one of/.test(message)) return "W4.1b";
+  return null;
+}''','''/** A per-file problem as memory_index.py prints it: `<file name>: <problem>` (`tools/memory_index.py:385`). */
+const PER_FILE = /^([^:]+): (.+)$/;
+
+/** Which requirement each of memory_index.py's own problems belongs to. Order matters: longer patterns first. */
+function idOfProblem(problem: string): string | null {
+  if (/^kind .* is not one of/.test(problem)) return "W1.1a";
+  if (/^kind .* does not match the/.test(problem)) return "W1.1a";
+  if (/^id .* is not in the form/.test(problem)) return "W1.1b";
+  if (/^(empty id|duplicate id)/.test(problem)) return "W1.1b";
+  if (/^(no header|header is not closed)/.test(problem)) return "W1.2a";
+  if (/^(no \\*\\*Why:\\*\\* line|empty claim)/.test(problem)) return "W1.3a";
+  if (/^status .* is not one of/.test(problem)) return "W4.1b";
+  if (/^unresolved conflict marker/.test(problem)) return "K6.3a";
+  return null;
+}''')
+
+t=t.replace('''    const id = idOfMessage(message);
+    if (id) {
+      for (const one of id.split(",")) add(one, message);
+      continue;
+    }''','''    if (/^INDEX\\.md in .* does not match what these entries build/.test(message)) {
+      add("K6.1a", message);
+      add("K6.2", message);
+      continue;
+    }
+    const perFile = PER_FILE.exec(message);
+    const problem = perFile ? perFile[2]! : message;
+    const id = idOfProblem(problem);
+    if (id && !/\\(warning\\)$/.test(message)) {
+      // memory_index.py calls a content problem in an inactive entry a warning, and exits 0 on it: a clause it
+      // only warns about is not a break here either (C3: never report a pass the tool fails).
+      for (const one of id.split(",")) add(one, message);
+      continue;
+    }''')
+open(p,'w').write(t)
+PY
+cd memory_check && bun src/cli.ts --project /tmp/opencode/fix2 --home /tmp 2>&1 | grep -E "^(- \*\*SoT:(W1\.[123]a|W4\.1b|K6|Rd3\.1a|K4|W6\.1a)) " ; echo "exit ${PIPESTATUS[0]}"
+exit 1
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix2 --home /tmp 2>&1 | grep -E "SoT:(W1\.1a|W1\.2a|W1\.3a|W4\.1b|K6\.1a|K6\.3a|Rd3\.1a|K4\.1|W6\.1a) \(" | sed -n '1,12p'
+(no output)
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix2 --home /tmp 2>&1 | head -20
+# memory-check — snapshot: files: the staged state (git index, stage 0), the view `tools/memory_index.py --check` reads; history: 3c884b5..HEAD (3 commits) — project: /tmp/opencode/fix2
+
+Guidelines this report is checked against (the tool's own copy, C1): SOURCE_OF_TRUTH_REQUIREMENTS.yaml 26226965112c, CACHES.md 8eef3b46f3f2
+Records: 64 from SOURCE_OF_TRUTH_REQUIREMENTS.yaml (SoT:), 11 Core requirements from CACHES.md (CACHES:).
+
+## Memory locations (F1, F2)
+
+| location | path | state |
+|---|---|---|
+| AGENTS.md | `/tmp/opencode/fix2/AGENTS.md` | present |
+| CLAUDE.md | `/tmp/opencode/fix2/CLAUDE.md` | absent |
+| project-memory/INDEX.md | `/tmp/opencode/fix2/project-memory/INDEX.md` | present |
+| project-memory/entries/ | `/tmp/opencode/fix2/project-memory/entries` | present (5 item(s)) |
+| project-memory/work/ | `/tmp/opencode/fix2/project-memory/work` | present (1 item(s)) |
+| project-memory/journal/ | `/tmp/opencode/fix2/project-memory/journal` | present (0 item(s)) |
+| project-memory/.cache/ | `/tmp/opencode/fix2/project-memory/.cache` | absent |
+| agent memory (<home>/.claude/agent-memory/<name>/) | `/tmp/.claude/agent-memory` | absent |
+
+## The tool's own requirements
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix2 --home /tmp 2>&1 | sed -n '/## Results — MUST/,/## Results — SHOULD/p' | grep -oE "\*\*SoT:(W1\.1a|W1\.2a|W1\.3a|W4\.1b|K6\.1a|K6\.2|K6\.3a|Rd3\.1a|K4\.1|K4\.3|W6\.1a)\*\* \(MUST\) — [a-z ]+"
+**SoT:K4.1** (MUST) — fail 
+**SoT:K4.3** (MUST) — pass 
+**SoT:K6.1a** (MUST) — pass 
+**SoT:K6.2** (MUST) — pass 
+**SoT:K6.3a** (MUST) — fail 
+**SoT:Rd3.1a** (MUST) — pass 
+**SoT:W1.1a** (MUST) — pass 
+**SoT:W1.2a** (MUST) — fail 
+**SoT:W1.3a** (MUST) — fail 
+**SoT:W4.1b** (MUST) — fail 
+**SoT:W6.1a** (MUST) — needs a reviewer
+[0m
+[0m$ [0mcd /tmp/opencode && rm -rf fix3 && mkdir -p fix3/project-memory/entries && cd fix3 && printf 'project-memory/.cache/\n' > .gitignore && printf '# Project\n' > AGENTS.md && cat > project-memory/entries/D-17-10-a1b2c3-2026-index.md <<'EOF'
+---
+id: 17-10-a1b2c3-2026
+kind: decision
+status: active
+covers:
+  - src/a.ts
+---
+
+The first claim of the entry.
+
+**Why:** to plant a rewrite (K4.3).
+EOF
+cat > project-memory/entries/D-18-10-ff11ff-2026-second.md <<'EOF'
+---
+id: BAD-ID
+kind: decision
+status: active
+---
+
+A second entry with a bad id.
+
+**Why:** W1.1b.
+EOF
+cat > project-memory/entries/L-19-10-aabbcc-2026-two.md <<'EOF'
+---
+id: 19-10-aabbcc-2026
+kind: lesson
+status: active
+---
+
+First entry in the file.
+
+**Why:** W6.1a.
+---
+id: 20-10-ccddee-2026
+kind: lesson
+status: active
+---
+
+Second entry in the same file.
+
+**Why:** W6.1a.
+EOF
+git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm first >/dev/null && sed -i 's/The first claim of the entry./A rewritten claim, after the first commit./' project-memory/entries/D-17-10-a1b2c3-2026-index.md && printf -- '- 2026-10-17 12:00 MiniMax: covers corrected\n' >> /dev/null && git add -A && git -c user.email=t@t -c user.name=t commit -qm rewrite >/dev/null && cd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix3 --home /tmp 2>&1 | grep -E "\*\*SoT:(W1\.1b|W1\.1a|K4\.3|W6\.1a|K6\.1a|W1\.3a)\*\* \(" | sed 's/ — python3.*exit/ — exit/' | cut -c1-260
+- **SoT:K4.3** (MUST) — fail — project-memory/entries/D-17-10-a1b2c3-2026-index.md:9 — the claim changed after commit 65970c0: "The first claim of the entry." → "A rewritten claim, after the first commit."
+- **SoT:K6.1a** (MUST) — pass — exit 1, output: D-18-10-ff11ff-2026-second.md: id 'BAD-ID' is not in the form DD-MM-xxxxxx-YYYY (x: a lowercase letter or digit)
+- **SoT:W1.1a** (MUST) — pass — exit 1, output: D-18-10-ff11ff-2026-second.md: id 'BAD-ID' is not in the form DD-MM-xxxxxx-YYYY (x: a lowercase letter or digit); 3 staged file(s) under project-memory/entries/, every name's prefix is one of D F L O H; git l
+- **SoT:W1.1b** (MUST) — fail — exit 1, output: D-18-10-ff11ff-2026-second.md: id 'BAD-ID' is not in the form DD-MM-xxxxxx-YYYY (x: a lowercase letter or digit); D-18-10-ff11ff-2026-second.md: id 'BAD-ID' is not in the form DD-MM-xxxxxx-YYYY (x: a lowercas
+- **SoT:W1.3a** (MUST) — needs a reviewer — exit 1, output: D-18-10-ff11ff-2026-second.md: id 'BAD-ID' is not in the form DD-MM-xxxxxx-YYYY (x: a lowercase letter or digit); the tool found no break in the clause it checks — its check is the project owner
+- **SoT:W6.1a** (MUST) — fail — project-memory/entries/L-19-10-aabbcc-2026-two.md:5 — a second --- header block; one file holds one entry
+- **SoT:W1.3a** (MUST) — fails if: an active entry has no claim or no `**Why:**` line, or a reviewer finds two claims in one entry. — why not the tool: python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix3) → exit
+[0m
+[0m$ [0mcd /tmp/opencode && rm -rf fix4 && mkdir -p fix4/project-memory/entries fix4/.claude && cd fix4 && printf 'project-memory/.cache/\n' > .gitignore && printf '# Project\n' > AGENTS.md && mkdir -p project-memory/.cache && printf 'index\n' > project-memory/.cache/index.txt && cat > project-memory/entries/D-17-10-a1b2c3-2026-index.md <<'EOF'
+---
+id: 17-10-a1b2c3-2026
+kind: decision
+status: active
+---
+
+A clean entry.
+
+**Why:** clean.
+EOF
+cat > .claude/settings.json <<'EOF'
+{ "hooks": { "SessionStart": [ { "command": "cat project-memory/.cache/index.txt" } ] } }
+EOF
+git init -q . && git add -A -f && git -c user.email=t@t -c user.name=t commit -qm first >/dev/null && python3 /home/smoke01/dev/ancient-games/tools/memory_index.py && printf '\n- hand-written line\n' >> project-memory/INDEX.md && git add -A && git -c user.email=t@t -c user.name=t commit -qm "index by hand" >/dev/null && cd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix4 --home /tmp 2>&1 | grep -E "\*\*CACHES:(B2|Rd1)\*\*|\*\*SoT:(K6\.1a|K6\.2|Rd3\.1a)\*\* \(|Counts" | cut -c1-300; echo "exit ${PIPESTATUS[0]}"
+INDEX.md: 5/200 lines, 244/24000 bytes
+wrote project-memory/INDEX.md
+- **SoT:K6.1a** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix4) → exit 1, output: INDEX.md: 5/200 lines, 244/24000 bytes | project-memory/INDEX.md in the staging area does not match what these entries build. To fix it: stage the e
+- **SoT:K6.2** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix4) → exit 1, output: INDEX.md: 5/200 lines, 244/24000 bytes | project-memory/INDEX.md in the staging area does not match what these entries build. To fix it: stage the en
+- **SoT:Rd3.1a** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix4) → exit 1, output: INDEX.md: 5/200 lines, 244/24000 bytes | project-memory/INDEX.md in the staging area does not match what these entries build. To fix it: stage the 
+- **CACHES:B2** (not stated in CACHES.md) — fail — clause B2.2: git check-ignore -v project-memory/.cache   (in /tmp/opencode/fix4) → exit 1, no output: no ignore rule reports project-memory/.cache
+- **CACHES:Rd1** (not stated in CACHES.md) — fail — clause Rd1.1: /tmp/opencode/fix4/.claude/settings.json:1 — "{ "hooks": { "SessionStart": [ { "command": "cat project-memory/.cache/index.txt" } ] } }"
+- Counts: 2 fail, 13 pass, 52 needs a reviewer, 11 not applicable, 0 could not run
+exit 0
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'PY'
+p='memory_check/src/indextool.ts'
+t=open(p).read()
+t=t.replace('''    if (/^INDEX\\.md in .* does not match what these entries build/.test(message)) {
+      add("K6.1a", message);
+      add("K6.2", message);
+      continue;
+    }''','''    // The two index clauses share memory_index.py's one comparison: K6.1a and K6.2 are reported together (C3).
+    if (/INDEX\\.md in .* does not match what these entries build/.test(message)) {
+      add("K6.1a", message);
+      add("K6.2", message);
+      continue;
+    }''')
+t=t.replace('''    if (/^INDEX\\.md in .* is over the limit/.test(message)) {
+      overLimit = true;
+    }''','''    if (/INDEX\\.md in .* is over the limit/.test(message)) {
+      overLimit = true;
+    }''')
+open(p,'w').write(t)
+PY
+cd memory_check && bun src/cli.ts --project /tmp/opencode/fix4 --home /tmp 2>&1 | grep -E "\*\*SoT:(K6\.1a|K6\.2|Rd3\.1a)\*\* \(" | cut -c1-200
+- **SoT:K6.1a** (MUST) — fail — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix4) → exit 1, output: INDEX.md: 5/200 lines, 244/24000 bytes | project
+- **SoT:K6.2** (MUST) — fail — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix4) → exit 1, output: INDEX.md: 5/200 lines, 244/24000 bytes | project-
+- **SoT:Rd3.1a** (MUST) — pass — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix4) → exit 1, output: INDEX.md: 5/200 lines, 244/24000 bytes | projec
+[0m
+[0m$ [0mcd /tmp/opencode/fix4 && git mv project-memory/entries/D-17-10-a1b2c3-2026-index.md project-memory/entries/F-17-10-a1b2c3-2026-index.md && git -c user.email=t@t -c user.name=t commit -qm "renamed prefix" >/dev/null && git mv project-memory/entries/F-17-10-a1b2c3-2026-index.md project-memory/entries/F-17-10-zzzzzz-2026-index.md && git -c user.email=t@t -c user.name=t commit -qm "renamed id" >/dev/null && cd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix4 --home /tmp 2>&1 | grep -E "\*\*SoT:W1\.1[ab]\*\* \(" | sed -E 's/.*(exit [0-9]+).*(; git log -M.*)/\1 \2/' | cut -c1-300
+- **SoT:W1.1a** (MUST) — fail — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/fix4) → exit 1, output: F-17-10-zzzzzz-2026-index.md: kind 'decision' does not match the F- file prefix; F-17-10-zzzzzz-2026-index.md: kind 'decision' does not match the F-
+exit 1 ; git log -M --name-status -- project-memory/entries (HEAD): 2 rename(s); no id changed in a rename
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix4 --home /tmp 2>&1 | grep -E "\*\*SoT:W1\.1[ab]\*\* \(" | grep -oE "commit [0-9a-f]+ renamed[^;]*" | head
+commit b1134bb renamed project-memory/entries/D-17-10-a1b2c3-2026-index.md → project-memory/entries/F-17-10-a1b2c3-2026-index.md — the prefix changed from D to F
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'PY'
+p='memory_check/src/entry.ts'
+t=open(p).read()
+t=t.replace('''/** `<prefix>-<id>-<slug>.md` (W1.1c). A name that is not in that form has no prefix or id to compare. */
+export function nameParts(name: string): { prefix: string; id: string | null } {
+  const base = name.endsWith(".md") ? name.slice(0, -3) : name;
+  const parts = base.split("-");
+  return { prefix: parts[0] ?? "", id: parts.length >= 3 ? (parts[1] ?? null) : null };
+}''','''/** The id form of W1.1b, the same one tools/memory_index.py checks (`ID_FORM`, tools/memory_index.py:57). */
+const ID_FORM = /\\d{2}-\\d{2}-[0-9a-z]{6}-\\d{4}/;
+
+/** `<prefix>-<id>-<slug>.md` (W1.1c): the prefix is the first letter, the id the W1.1b form in the name. A name
+ *  with no id in it has none to compare, and that is W1.1c's (a reviewer's) to say. */
+export function nameParts(name: string): { prefix: string; id: string | null } {
+  return { prefix: name.slice(0, 1), id: ID_FORM.exec(name)?.[0] ?? null };
+}''')
+open(p,'w').write(t)
+PY
+cd memory_check && bun src/cli.ts --project /tmp/opencode/fix4 --home /tmp 2>&1 | grep -E "\*\*SoT:W1\.1b\*\* \(" | grep -oE "(commit [0-9a-f]+ renamed[^;]*|git log -M[^;]*)" | head
+commit 2b22105 renamed project-memory/entries/F-17-10-a1b2c3-2026-index.md → project-memory/entries/F-17-10-zzzzzz-2026-index.md — the id changed from 17-10-a1b2c3-2026 to 17-10-zzzzzz-2026
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && echo "== warn on fix4"; bun src/cli.ts --project /tmp/opencode/fix4 --home /tmp --warn; echo "exit $?"; echo "== usage errors"; bun src/cli.ts --project /tmp/opencode/nope >/dev/null 2>&1; echo "missing path exit $?"; bun src/cli.ts --project /tmp >/dev/null 2>&1; echo "not a git repo exit $?"; bun src/cli.ts --project /tmp/opencode/fix4/project-memory >/dev/null 2>&1; echo "not a git root exit $?"; bun src/cli.ts --bad >/dev/null 2>&1; echo "unknown flag exit $?"; bun src/cli.ts --project /tmp/opencode/fix4 --since nope >/dev/null 2>&1; echo "bad --since exit $?"
+== warn on fix4
+memory-check: SoT:W1.1a fails — a file's prefix is not one of the five or does not match its `kind`, `kind` holds any other value, or git shows an entry file renamed to a different prefix. — project-memory/entries/D-17-10-a1b2c3-2026-index.md, project-memory/entries/F-17-10-a1b2c3-2026-index.md
+memory-check: SoT:W1.1b fails — an id is not in the W1.1 form, two entries share an id, or git shows an entry file renamed to a different id. — project-memory/entries/F-17-10-a1b2c3-2026-index.md, project-memory/entries/F-17-10-zzzzzz-2026-index.md
+exit 1
+== usage errors
+missing path exit 2
+not a git repo exit 2
+not a git root exit 2
+unknown flag exit 2
+bad --since exit 2
+[0m
+[0m← [0mWrite memory_check/src/warn.ts
+Wrote file successfully.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix4 --home /tmp --warn; echo "exit $?"; echo "== no AGENTS.md"; cd /tmp/opencode && rm -rf fix5 && mkdir -p fix5 && cd fix5 && git init -q . && printf 'x\n' > README.md && git add -A && git -c user.email=t@t -c user.name=t commit -qm first >/dev/null && cd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix5 --home /tmp --warn; echo "exit $?"
+memory-check: SoT:W1.1a fails: F-17-10-zzzzzz-2026-index.md: kind 'decision' does not match the F- file prefix — files: project-memory/entries/D-17-10-a1b2c3-2026-index.md, project-memory/entries/F-17-10-a1b2c3-2026-index.md
+memory-check: SoT:W1.1b fails: commit 2b22105 renamed project-memory/entries/F-17-10-a1b2c3-2026-index.md → project-memory/entries/F-17-10-zzzzzz-2026-index.md — the id changed from 17-10-a1… — files: project-memory/entries/F-17-10-a1b2c3-2026-index.md, project-memory/entries/F-17-10-zzzzzz-2026-index.md
+exit 1
+== no AGENTS.md
+memory-check: F1 fails: /tmp/opencode/fix5/AGENTS.md does not exist: AGENTS.md is required (F1) — files: AGENTS.md
+memory-check: AGENTS.md is missing — file: /tmp/opencode/fix5/AGENTS.md (it is required, F1)
+exit 1
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'PY'
+p='memory_check/src/warn.ts'
+t=open(p).read()
+t=t.replace('''  const lines = run.results
+    .filter((result) => result.level === "MUST" && result.verdict === "fail")
+    .map(warningFor);''','''  // F1 failing is the missing AGENTS.md, which has its own line below: one line per thing, not two.
+  const lines = run.results
+    .filter((result) => result.id !== "F1" && result.level === "MUST" && result.verdict === "fail")
+    .map(warningFor);''')
+t=t.replace("return trimmed.length <= 160 ? trimmed : `${trimmed.slice(0, 159)}…`;","return trimmed.length <= 200 ? trimmed : `${trimmed.slice(0, 199)}…`;")
+open(p,'w').write(t)
+PY
+cd memory_check && bun src/cli.ts --project /tmp/opencode/fix5 --home /tmp --warn; echo "exit $?"; bun src/cli.ts --project /tmp/opencode/fix1 --home /tmp --warn; echo "warn on clean project exit $?"
+memory-check: AGENTS.md is missing — file: /tmp/opencode/fix5/AGENTS.md (it is required, F1)
+exit 1
+memory-check: SoT:W1.1a fails: project-memory/entries/X-not-an-entry.md:1 — the prefix "X" is not one of D F L O H — files: project-memory/INDEX.md, project-memory/entries/X-not-an-entry.md
+warn on clean project exit 1
+[0m
+[0m$ [0mcd /tmp/opencode/fix1 && git status --porcelain --ignored > /tmp/opencode/before.txt && find . -path ./.git -prune -o -type f -print | sort > /tmp/opencode/before-files.txt && md5sum $(find . -path ./.git -prune -o -type f -print | sort) > /tmp/opencode/before-md5.txt && cd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/fix1 --home /tmp >/dev/null; echo "exit $?"; cd /tmp/opencode/fix1 && git status --porcelain --ignored > /tmp/opencode/after.txt && find . -path ./.git -prune -o -type f -print | sort > /tmp/opencode/after-files.txt && md5sum $(find . -path ./.git -prune -o -type f -print | sort) > /tmp/opencode/after-md5.txt; diff /tmp/opencode/before.txt /tmp/opencode/after.txt && diff /tmp/opencode/before-files.txt /tmp/opencode/after-files.txt && diff /tmp/opencode/before-md5.txt /tmp/opencode/after-md5.txt && echo "READ-ONLY: no change"
+exit 1
+READ-ONLY: no change
+[0m
+[0m$ [0mcd /tmp/opencode && rm -rf shallow && git clone -q --depth 1 file:///tmp/opencode/fix4 shallow 2>/dev/null && cd /home/smoke01/dev/ancient-games/memory_check && bun src/cli.ts --project /tmp/opencode/shallow --home /tmp 2>&1 | grep -E "snapshot:|SoT:(K4\.1|K4\.3|W1\.1a|W1\.1b) \*\*|could not run" | cut -c1-260
+# memory-check — snapshot: files: the staged state (git index, stage 0), the view `tools/memory_index.py --check` reads; history: 2b22105..HEAD (1 commit in a shallow clone: history checks could not run) — project: /tmp/opencode/shallow
+- **SoT:K4.1** (MUST) — could not run — this is a shallow clone, so the history this clause needs is not here (C5); the superseded_by and retired checks on the snapshot still ran
+- **SoT:K4.3** (MUST) — could not run — this is a shallow clone, so the history this clause needs is not here (C5)
+- **SoT:W1.1b** (MUST) — could not run — python3 /home/smoke01/dev/ancient-games/tools/memory_index.py --check   (in /tmp/opencode/shallow) → exit 1, output: F-17-10-zzzzzz-2026-index.md: kind 'decision' does not match the F- file prefix; this is a shall
+- Counts: 3 fail, 9 pass, 52 needs a reviewer, 11 not applicable, 3 could not run
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && ./node_modules/.bin/tsgo --noEmit -p . 2>&1 | head -30; echo "tsgo exit ${PIPESTATUS[0]}"
+src/checks.ts(322,59): error TS2345: Argument of type '{ id: string; level: string; failsIf: string; }' is not assignable to parameter of type '{ id: string; level: Level; failsIf: string; }'.
+  Types of property 'level' are incompatible.
+    Type 'string' is not assignable to type 'Level'.
+src/checks.ts(323,61): error TS2345: Argument of type '{ id: string; level: string; failsIf: string; }' is not assignable to parameter of type '{ id: string; level: Level; failsIf: string; }'.
+  Types of property 'level' are incompatible.
+    Type 'string' is not assignable to type 'Level'.
+tsgo exit 2
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'PY'
+p='memory_check/src/gitrequirements.ts'
+t=open(p).read()
+t=t.replace('''function fromOutcome(
+  base: { id: string; level: Level; failsIf: string },
+  outcome: ClauseOutcome,
+): RequirementResult {''','''function fromOutcome(
+  base: { id: string; level: string; failsIf: string },
+  outcome: ClauseOutcome,
+): RequirementResult {''')
+t=t.replace('''import { parseEntry, nameParts, type Entry } from "./entry.ts";''','''import { nameParts, parseEntry, type Entry } from "./entry.ts";''')
+open(p,'w').write(t)
+PY
+grep -n "^import\|Level" memory_check/src/gitrequirements.ts | head
+6:import { nameParts, parseEntry, type Entry } from "./entry.ts";
+7:import { catFileBatch, entryDeletions, entryRenames, firstVersionOf, type SnapshotInfo, type StagedEntry } from "./gitchecks.ts";
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && ./node_modules/.bin/tsgo --noEmit -p . 2>&1 | head -30; echo "tsgo exit ${PIPESTATUS[0]}"
+src/checks.ts(322,59): error TS2345: Argument of type '{ id: string; level: string; failsIf: string; }' is not assignable to parameter of type '{ id: string; level: Level; failsIf: string; }'.
+  Types of property 'level' are incompatible.
+    Type 'string' is not assignable to type 'Level'.
+src/checks.ts(323,61): error TS2345: Argument of type '{ id: string; level: string; failsIf: string; }' is not assignable to parameter of type '{ id: string; level: Level; failsIf: string; }'.
+  Types of property 'level' are incompatible.
+    Type 'string' is not assignable to type 'Level'.
+tsgo exit 2
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && grep -n "Level" memory_check/src/checks.ts | head
+15:import type { Guidelines, Level, SotRecord } from "./guidelines.ts";
+185:  const level: Level = record.level;
+206:  const base = { id: `SoT:${record.id}`, level: record.level as Level, failsIf: record.failsIf };
+309:  base: { id: string; level: Level; failsIf: string },
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'PY'
+p='memory_check/src/checks.ts'
+t=open(p).read()
+t=t.replace('''  base: { id: string; level: Level; failsIf: string },
+  outcome: ClauseOutcome,
+): RequirementResult {''','''  base: { id: string; level: string; failsIf: string },
+  outcome: ClauseOutcome,
+): RequirementResult {''')
+open(p,'w').write(t)
+PY
+cd memory_check && ./node_modules/.bin/tsgo --noEmit -p . 2>&1 | head -20; echo "tsgo exit ${PIPESTATUS[0]}"
+tsgo exit 0
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && for s in gitchecks caches report warn cli; do echo "- $(date -Iseconds) · $s · start" >> runs/20261017-memory-check/nodes/implement.progress.md; done && cd memory_check && ./node_modules/.bin/tsgo --noEmit -p . && echo "TYPECHECK CLEAN" && bun src/cli.ts --project .. --out ../runs/20261017-memory-check/nodes/smoke-report.md; echo "exit $?"
+TYPECHECK CLEAN
+/home/smoke01/dev/ancient-games/runs/20261017-memory-check/nodes/smoke-report.md
+exit 0
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && head -3 runs/20261017-memory-check/nodes/smoke-report.md && echo ... && tail -12 runs/20261017-memory-check/nodes/smoke-report.md && git status --short
+# memory-check — snapshot: files: the staged state (git index, stage 0), the view `tools/memory_index.py --check` reads; history: no commits touch project-memory/: no history range to check — project: /home/smoke01/dev/ancient-games
+
+Guidelines this report is checked against (the tool's own copy, C1): SOURCE_OF_TRUTH_REQUIREMENTS.yaml 26226965112c, CACHES.md 8eef3b46f3f2
+...
+
+## Notes from tools/memory_index.py
+
+- `nothing to check: no project-memory/ in the staging area`
+
+## This run
+
+- Report written to /home/smoke01/dev/ancient-games/runs/20261017-memory-check/nodes/smoke-report.md
+- Read only: nothing was created, changed or deleted except the report; every git call used GIT_OPTIONAL_LOCKS=0 (F3)
+- Not calibrated on a real project: no project has been named to calibrate against (design-decisions.md 15)
+- Counts: 1 fail, 4 pass, 3 needs a reviewer, 70 not applicable, 0 could not run
+- CACHES.md gives its requirements no level, so none of them gates the exit code (R3 counts MUSTs only)
+ M CLAUDE.md
+ M docs/TASK_TYPES_LEDGER.md
+ M docs/code-graph/CODE_GRAPH.md
+ M runs/20261012-index-md-build/state.md
+?? .claude/skills/state-entry/
+?? .claude/skills/why-chain/
+?? TODO-2.0.md
+?? code_map/
+?? docs/code-graph/vision-statements/
+?? docs/evaluator/
+?? docs/research/20261011-agent-memory-graph-r2/
+?? docs/research/20261011-agent-memory-graph/
+?? docs/research/20261014-code-map/
+?? memory_check/bun.lock
+?? memory_check/guidelines/
+?? memory_check/node_modules/
+?? memory_check/package.json
+?? memory_check/src/
+?? memory_check/tsconfig.json
+?? runs/20261011-agent-memory-graph-r2/
+?? runs/20261011-agent-memory-graph/
+?? runs/20261011-project-memory-engines/
+?? runs/20261012-caches-enhance/
+?? runs/20261012-caches-routing/cov/.coverage
+?? runs/20261013-code-graph-blueprint-eval/
+?? runs/20261013-four-experts-clean-up-the-code-graph/
+?? runs/20261013-four-experts-review-the-ancients-page-what/
+?? runs/20261013-four-experts-round-2-approve-the-merged/
+?? runs/20261013-four-experts-round-3-approve-the-final/
+?? runs/20261013-four-experts-two-open-decisions-in-the/
+?? runs/20261013-four-experts-write-a-skill-how-to/
+?? runs/20261013-requirements-evaluator/
+?? runs/20261013-requirements-relay/
+?? runs/20261014-call-chain-vision/
+?? runs/20261014-code-graph-fix-loop/
+?? runs/20261014-code-map-build/
+?? runs/20261014-code-map-vision-relay/
+?? runs/20261014-code-mapping-research/
+?? runs/20261014-four-experts-question-for-the-four-experts/
+?? runs/20261014-four-experts-review-the-cleaned-code-map/
+?? runs/20261014-four-experts-review-the-draft-the-call/
+?? runs/20261014-opencode-code-map/
+?? runs/20261014-why-chain-hook/
+?? runs/20261015-long-session/r4-mutants.txt
+?? runs/20261015-long-session/run_r5.sh
+?? runs/20261015-long-session/runs-r2/
+?? runs/20261015-long-session/runs-r5/
+?? runs/20261015-long-session/runs/
+?? runs/20261015-ts-hybrid/evidence/n1b/
+?? runs/20261016-four-experts-what-counts-as-change/
+?? runs/20261017-agent-lessons/r12.2-stop.patch
+?? runs/20261017-agent-lessons/r12.3.patch
+?? runs/20261017-memory-check/briefs/
+?? runs/20261017-memory-check/nodes/implement.opencode.log
+?? runs/20261017-memory-check/nodes/implement.progress.md
+?? runs/20261017-memory-check/nodes/smoke-report.md
+?? runs/20261017-read-missing-false-hold/
+?? tools/.gitignore
+?? tools/bun.lock
+?? tools/package.json
+?? tools/tsconfig.base.json
+?? tools/why-chain-hook/
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && python3 - <<'PY'
+p='memory_check/src/warn.ts'
+t=open(p).read()
+t=t.replace('''// R2: the warning a session starts with — one line per failing MUST and for a missing AGENTS.md, with ids and file
+// names, never entry text; nothing else; empty when there are none. It is built from the location, index and
+// index-size checks only, and no file under project-memory/.cache/ is ever opened (Rd1).''','''// R2: the warning — one line per failing MUST and for a missing AGENTS.md, with ids and file names, never entry
+// text; nothing else; empty when there are none. `--warn` prints it; the session-start hook that also prints it is
+// a harness change R2 leaves to the owner (R12.3), and no file under project-memory/.cache/ is ever opened here
+// (Rd1): nothing in the run reads a cache file, only whether the folder is there.''')
+open(p,'w').write(t)
+
+p='memory_check/src/report.ts'
+t=open(p).read()
+t=t.replace('''    "- Not calibrated on a real project:''','''    "- The session-start hook is not installed: R2 leaves that harness change to the owner (R12.3)",
+    "- Not calibrated on a real project:''')
+open(p,'w').write(t)
+PY
+cd memory_check && ./node_modules/.bin/tsgo --noEmit -p . && echo TYPECHECK CLEAN && bun src/cli.ts --project .. --out ../runs/20261017-memory-check/nodes/smoke-report.md && echo "smoke exit $?" && tail -10 ../runs/20261017-memory-check/nodes/smoke-report.md
+TYPECHECK CLEAN
+/home/smoke01/dev/ancient-games/runs/20261017-memory-check/nodes/smoke-report.md
+smoke exit 0
+- `nothing to check: no project-memory/ in the staging area`
+
+## This run
+
+- Report written to /home/smoke01/dev/ancient-games/runs/20261017-memory-check/nodes/smoke-report.md
+- Read only: nothing was created, changed or deleted except the report; every git call used GIT_OPTIONAL_LOCKS=0 (F3)
+- The session-start hook is not installed: R2 leaves that harness change to the owner (R12.3)
+- Not calibrated on a real project: no project has been named to calibrate against (design-decisions.md 15)
+- Counts: 1 fail, 4 pass, 3 needs a reviewer, 70 not applicable, 0 could not run
+- CACHES.md gives its requirements no level, so none of them gates the exit code (R3 counts MUSTs only)
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && for p in fix1 fix2 fix3 fix4 fix5 shallow; do printf "%s: " "$p"; bun src/cli.ts --project /tmp/opencode/$p --home /tmp --out /tmp/opencode/r-$p.md >/dev/null 2>&1; echo "exit $?"; done; grep -c "^- \*\*" /tmp/opencode/r-fix4.md
+fix1: exit 1
+fix2: exit 1
+fix3: exit 1
+fix4: exit 1
+fix5: exit 1
+shallow: exit 1
+130
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games/memory_check && bun -e '
+const m = await import("./src/cli.ts");
+' 2>/dev/null; bun -e '
+const checks = await import("./src/checks.ts");
+const g = await import("./src/guidelines.ts");
+const run = checks.runChecks({root:"/tmp/opencode/fix4", home:"/tmp", since:null, out:null, guidelines:g.loadGuidelines()});
+const sot = new Set(run.results.filter(r=>r.id.startsWith("SoT:")).map(r=>r.id.slice(4)));
+const caches = new Set(run.results.filter(r=>r.id.startsWith("CACHES:")).map(r=>r.id.slice(7)));
+console.log("SoT covered", sot.size, "of", g.loadGuidelines().sot.length);
+console.log("CACHES covered", caches.size, "of", g.loadGuidelines().caches.length);
+const bad = run.results.filter(r=>!["pass","fail","needs a reviewer","not applicable","could not run"].includes(r.verdict));
+console.log("states outside the five:", bad.length);
+console.log("no evidence:", run.results.filter(r=>r.evidence.trim()==="").length);
+const five = ["pass","fail","needs a reviewer","not applicable","could not run"];
+for (const v of five) console.log(v, run.results.filter(r=>r.verdict===v).length);
+'
+SoT covered 64 of 64
+CACHES covered 11 of 11
+states outside the five: 0
+no evidence: 0
+pass 11
+fail 4
+needs a reviewer 52
+not applicable 11
+could not run 0
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && cat runs/20261017-memory-check/nodes/implement.progress.md
+- 2026-10-17T17:42:37+08:00 · scaffold · planned · per brief
+- 2026-10-17T17:42:37+08:00 · guidelines · planned · per brief
+- 2026-10-17T17:42:37+08:00 · locations · planned · per brief
+- 2026-10-17T17:42:37+08:00 · indextool · planned · per brief
+- 2026-10-17T17:42:37+08:00 · gitchecks · planned · per brief
+- 2026-10-17T17:42:37+08:00 · caches · planned · per brief
+- 2026-10-17T17:42:37+08:00 · report · planned · per brief
+- 2026-10-17T17:42:37+08:00 · warn · planned · per brief
+- 2026-10-17T17:42:37+08:00 · cli · planned · per brief
+- 2026-10-17T17:42:37+08:00 · smoke · planned · per brief
+- 2026-10-17T17:43:06+08:00 · scaffold · done · 64 SoT records and 11 CACHES core requirements load; tool copy hashed
+- 2026-10-17T17:43:06+08:00 · guidelines · done · 64 SoT records and 11 CACHES core requirements load; tool copy hashed
+- 2026-10-17T17:43:06+08:00 · locations · start · git runner and F1/F2
+- 2026-10-17T17:44:49+08:00 · locations · done
+- 2026-10-17T17:44:49+08:00 · indextool · done
+- 2026-10-17T17:44:49+08:00 · gitchecks · done
+- 2026-10-17T17:44:49+08:00 · gitchecks · start · K4.1/K4.3/W1.1/W6.1a clauses and C5 snapshot
+- 2026-10-17T17:47:06+08:00 · gitchecks · start
+- 2026-10-17T17:47:06+08:00 · caches · start
+- 2026-10-17T17:47:06+08:00 · report · start
+- 2026-10-17T17:47:06+08:00 · warn · start
+- 2026-10-17T17:47:06+08:00 · cli · start
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && { echo "- $(date -Iseconds) · gitchecks · done · K4.1/K4.3/W1.1a/W1.1b/W6.1a from the staged snapshot and history; shallow clone could not run"; echo "- $(date -Iseconds) · caches · done · B2.2 by git check-ignore, Rd1.1 by the session-start scan"; echo "- $(date -Iseconds) · report · done · first line names the snapshot; MUSTs first; needs-a-reviewer list"; echo "- $(date -Iseconds) · warn · done · one line per failing MUST and a missing AGENTS.md, ids and file names"; echo "- $(date -Iseconds) · cli · done · --project/--home/--since/--out/--warn; exit 0/1/2"; echo "- $(date -Iseconds) · smoke · start · typecheck, six fixture projects, smoke run on this repo"; } >> runs/20261017-memory-check/nodes/implement.progress.md && tail -3 runs/20261017-memory-check/nodes/implement.progress.md
+- 2026-10-17T17:47:28+08:00 · warn · done · one line per failing MUST and a missing AGENTS.md, ids and file names
+- 2026-10-17T17:47:28+08:00 · cli · done · --project/--home/--since/--out/--warn; exit 0/1/2
+- 2026-10-17T17:47:28+08:00 · smoke · start · typecheck, six fixture projects, smoke run on this repo
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && ls memory_check memory_check/src && cd memory_check && ./node_modules/.bin/tsgo --noEmit -p . 2>&1 | tail -2; echo "typecheck exit ${PIPESTATUS[0]}"; bun src/cli.ts --project .. --out ../runs/20261017-memory-check/nodes/smoke-report.md; echo "smoke exit $?"
+memory_check:
+AGENTS.md
+REQUIREMENTS.md
+USE_CASES.md
+VISION.md
+bun.lock
+guidelines
+node_modules
+package.json
+src
+test
+tsconfig.json
+
+memory_check/src:
+cachechecks.ts
+checks.ts
+cli.ts
+entry.ts
+git.ts
+gitchecks.ts
+gitrequirements.ts
+guidelines.ts
+indextool.ts
+locations.ts
+report.ts
+warn.ts
+typecheck exit 0
+/home/smoke01/dev/ancient-games/runs/20261017-memory-check/nodes/smoke-report.md
+smoke exit 0
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && rmdir memory_check/test/fixtures memory_check/test 2>/dev/null; ls memory_check; cd memory_check && bun test 2>&1 | tail -3
+AGENTS.md
+REQUIREMENTS.md
+USE_CASES.md
+VISION.md
+bun.lock
+guidelines
+node_modules
+package.json
+src
+tsconfig.json
+bun test v1.4.3 (c6da4a4d3)
+error: 0 test files matching **{.test,.spec,_test_,_spec_}.{js,ts,jsx,tsx} in --cwd="/home/smoke01/dev/ancient-games/memory_check"
+[0m
+[0m← [0mWrite runs/20261017-memory-check/nodes/implement.result.md
+Wrote file successfully.
+[0m
+[0m$ [0mcd /home/smoke01/dev/ancient-games && echo "- $(date -Iseconds) · smoke · done · tsgo clean; smoke run on this repo exit 0; six fixture projects run by hand" >> runs/20261017-memory-check/nodes/implement.progress.md && git status --short memory_check runs/20261017-memory-check/nodes && wc -l memory_check/src/*.ts
+?? memory_check/bun.lock
+?? memory_check/guidelines/
+?? memory_check/node_modules/
+?? memory_check/package.json
+?? memory_check/src/
+?? memory_check/tsconfig.json
+?? runs/20261017-memory-check/nodes/implement.opencode.log
+?? runs/20261017-memory-check/nodes/implement.progress.md
+?? runs/20261017-memory-check/nodes/implement.result.md
+?? runs/20261017-memory-check/nodes/smoke-report.md
+   59 memory_check/src/cachechecks.ts
+  337 memory_check/src/checks.ts
+  126 memory_check/src/cli.ts
+  111 memory_check/src/entry.ts
+   35 memory_check/src/git.ts
+  203 memory_check/src/gitchecks.ts
+  214 memory_check/src/gitrequirements.ts
+  118 memory_check/src/guidelines.ts
+  139 memory_check/src/indextool.ts
+   87 memory_check/src/locations.ts
+  108 memory_check/src/report.ts
+   38 memory_check/src/warn.ts
+ 1575 total
+[0m
+`memory-check` v1 is built and verified.
+
+**What exists** — `memory_check/` (12 TS files, ~1,575 lines): a guideline loader (the tool's own verbatim copy of the SoT YAML + `CACHES.md`, version = content hashes), F1/F2 locations, a `tools/memory_index.py --check` adapter that maps each of its messages to a requirement id (C3 — never judged a second way), the tool's own git clauses (W1.1a's unseen prefix clause, W6.1a, K4.1, K4.3, the rename halves of W1.1a/b), the C6 v1 cache checks (B2.2 by `git check-ignore`, Rd1.1 by a session-start scan), the report, the warning and the CLI.
+
+**Verified** — `tsgo --noEmit -p .` clean; smoke run on this repo exits 0 (`runs/20261017-memory-check/nodes/smoke-report.md`; one real fail: `CACHES:B2`/B2.2 — `.cache` is not gitignored here). All 64 SoT records and 11 CACHES requirements appear with one of the five states, every one with evidence. Six throwaway fixtures confirmed each planted break is found, that reads change nothing (status + md5sums before/after), that usage errors exit 2, that a shallow clone makes history MUSTs "could not run", and that a missing `AGENTS.md` warns and exits 1.
+
+**Two contradictions reported** in `implement.result.md`: U2's "exactly that requirement" cannot hold for K6.1a/K6.2 (one comparison, both ids — `research-q/compare.md` §7 names this); and R2's warning clause conflicts with its reduced-scope hook clause, so `--warn` prints every failing MUST and the hook is left uninstalled (owner's, R12.3). Also noted: `CACHES.md` gives its requirements no level, so a failing cache requirement cannot gate the exit code under R3.
