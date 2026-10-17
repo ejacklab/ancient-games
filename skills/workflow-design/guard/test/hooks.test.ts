@@ -50,7 +50,7 @@ function stop(event = "Stop", changes: Record<string, unknown> = {}): Record<str
 
 function seedFailure(id = first, session = "session-a"): FailureRecord {
   const rec: FailureRecord = {
-    kind: "failure", id, time, session, found_by: "guard", check: "R12.1-empty-output",
+    kind: "failure", id, time, session, found_by: "evaluator", check: "R12.1-empty-output", // R12.2: an evaluator's failure gates Stop
     input: "codex answer.md", expected: "non-empty output", actual: "empty output",
     engine: "codex", harness: "claude-code", reason: "the output file is empty",
     evidence: writeEvidence(folder, id, { stdoutLength: 0, rules: ["R12.1-empty-output"] }),
@@ -201,8 +201,8 @@ describe("PostToolUse", () => {
     const output = JSON.parse(result.stdout).hookSpecificOutput;
     expect(output.hookEventName).toBe("PostToolUse");
     // Round 3 C23: the line says the failure is already logged, so the agent does not log it again.
-    expect(output.additionalContext).toContain(`harness-guard logged ${rec.id} — already in the journal; do not log them again.`);
-    expect(output.additionalContext).toContain("insight");
+    expect(output.additionalContext).toContain(`harness-guard logged ${rec.id} — already in the journal as evidence; do not log them again.`);
+    expect(output.additionalContext).toContain("as evidence"); // R12.2: the guard's record is evidence
   });
 
   test("post: a missing output file is a recorded failure", () => {
@@ -221,7 +221,7 @@ describe("PostToolUse", () => {
     expect(new Set(records.map((r) => r.evidence)).size).toBe(2);
     const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
     // Round 3 C23: ids only, and the line says they are already in the journal.
-    expect(context).toContain("already in the journal; do not log them again.");
+    expect(context).toContain("already in the journal as evidence; do not log them again.");
     for (const rec of records) {
       expectEvidence(rec);
       expect(context).toContain(rec.id);

@@ -14,7 +14,7 @@ function setup() {
   const log = () => {
     const id = newFailureId();
     const evidence = writeEvidence(root, id, { exit: 1 });
-    appendFailure(root, { kind: "failure", id, time: new Date().toISOString(), session: "s1", found_by: "guard", check: "c", input: "i", expected: "e", actual: "a", engine: "none", harness: "claude-code", reason: "r", evidence });
+    appendFailure(root, { kind: "failure", id, time: new Date().toISOString(), session: "s1", found_by: "evaluator", check: "c", input: "i", expected: "e", actual: "a", engine: "none", harness: "claude-code", reason: "r", evidence });
     return id;
   };
   const answer = (ids: string[]) => {

@@ -59,30 +59,24 @@ test("a written meaning is still a failure: an engine call with no output file (
   expect(b.kinds("warning")).toHaveLength(0);
 });
 
-test("an open warning blocks every stop until it is settled; a dismissal ends it and keeps the reason", () => {
+// R12.2 (2026-10-17): a warning is evidence; it never blocks a stop, and it can still be dismissed with a reason.
+test("an open warning is evidence: it does not block the stop; a dismissal still keeps the reason", () => {
   const b = box();
   failedCall(b.post, "grep x y", 1);
   const id = warningId(b);
-  for (let i = 0; i < 2; i++) {
-    const out = JSON.parse(b.stop().stdout);
-    expect(out.decision).toBe("block");
-    expect(out.reason).toContain(id);
-  }
-  dismiss(b.root, id, "grep found no match, which was the expected answer", new Date());
   expect(b.stop().stdout).toBe("");
+  dismiss(b.root, id, "grep found no match, which was the expected answer", new Date());
   expect(warnings(b.root, "s")).toEqual([expect.objectContaining({ settled: { state: "dismissed", reason: "grep found no match, which was the expected answer" } })]);
 });
 
-test("a warning logged as a failure becomes an open failure that needs an insight, and cites the warning", () => {
+test("a warning the agent logs as a failure stays evidence (found_by agent) and does not block the stop", () => {
   const b = box();
   failedCall(b.post, "make", 2);
   const id = warningId(b);
   const failure = settleAsFailure(b.root, id, "the build broke on my edit", new Date(), () => "F-0000abcd");
   expect(failure).toMatchObject({ kind: "failure", from: id, found_by: "agent", reason: "the build broke on my edit", check: "R12.2-command-error" });
   expect(openWarnings(b.root, "s")).toEqual([]);
-  const out = JSON.parse(b.stop().stdout);
-  expect(out.decision).toBe("block");
-  expect(out.reason).toContain("F-0000abcd");
+  expect(b.stop().stdout).toBe("");
 });
 
 test.each([[""], ["   "], ["two\nlines"]])("a settlement needs a one-line reason: %j", (reason: string) => {

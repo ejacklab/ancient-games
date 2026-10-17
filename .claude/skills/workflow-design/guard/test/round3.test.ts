@@ -19,7 +19,7 @@ const secret = "SECRET-PLANT-7f3a9c";
 const time = "2026-10-15T08:00:00.000Z";
 const cli = path.resolve(import.meta.dir, "../src/cli.ts");
 const packageDir = path.resolve(import.meta.dir, "..");
-const contextLine = "already in the journal; do not log them again. An insight answering them is required before you stop.";
+const contextLine = "already in the journal as evidence; do not log them again. Whether it is a failure is the evaluator's or the owner's call (R12.2).";
 let folder: string;
 let env: HookEnv;
 
@@ -141,7 +141,7 @@ function expectInput(rec: FailureRecord, engine: string, basename: string | null
 
 function seedFailure(id: string, session = "session-a", root = folder): FailureRecord {
   return appendFailure(root, {
-    kind: "failure", id, time, session, found_by: "guard", check: "R12.1-empty-output",
+    kind: "failure", id, time, session, found_by: "evaluator", check: "R12.1-empty-output",
     input: "codex call answer.md", expected: "non-empty output", actual: "empty output",
     engine: "codex", harness: "claude-code", reason: "the output file is empty",
     evidence: writeEvidence(root, id, { stdoutLength: 0, rules: ["R12.1-empty-output"] }),

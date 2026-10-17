@@ -71,7 +71,7 @@ function runCli(args: string[]) {
 function failure(id = openId, session = "session-a", check = "R12.1-empty-output", engine = "codex"): FailureRecord {
   writeFile(`.harness-guard/evidence/${id}.json`, '{"stdoutLength":0}\n');
   return {
-    kind: "failure", id, time, session, found_by: "guard", check, engine, harness: "claude-code",
+    kind: "failure", id, time, session, found_by: "evaluator", check, engine, harness: "claude-code",
     input: `${engine} call`, expected: "non-empty output", actual: "empty output", reason: "output is empty",
     evidence: `.harness-guard/evidence/${id}.json`,
   };

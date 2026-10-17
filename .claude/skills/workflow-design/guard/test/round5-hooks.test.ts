@@ -77,7 +77,7 @@ function success(check = "engine-call", engine = "codex", selectedSession = sess
 
 function failed(check: string, engine: string, selectedSession = session, id = "F-1234abcd"): FailureRecord {
   return {
-    kind: "failure", id, time, session: selectedSession, found_by: "guard", check, engine,
+    kind: "failure", id, time, session: selectedSession, found_by: "evaluator", check, engine,
     harness: "claude-code", input: `${engine} call`, expected: "exit 0", actual: "exit 1",
     reason: "planted failure", evidence: ".harness-guard/evidence/fixture.json",
   };

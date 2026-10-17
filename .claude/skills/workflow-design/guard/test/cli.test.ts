@@ -62,7 +62,7 @@ function expectNoSecret(result: ReturnType<typeof runCli>): void {
 
 function seedFailure(id = first, session = "session-a"): FailureRecord {
   return appendFailure(folder, {
-    kind: "failure", id, time: "2026-10-15T08:00:00.000Z", session, found_by: "guard",
+    kind: "failure", id, time: "2026-10-15T08:00:00.000Z", session, found_by: "evaluator",
     check: "R12.1-empty-output", input: "codex answer.md", expected: "non-empty output", actual: "empty output",
     engine: "codex", harness: "claude-code", reason: "output is empty",
     evidence: writeEvidence(folder, id, { stdoutLength: 0, rules: ["R12.1-empty-output"] }),

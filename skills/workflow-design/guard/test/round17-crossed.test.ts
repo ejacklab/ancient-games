@@ -94,7 +94,7 @@ function expectTestFailed(result: HookResult, fields: { input: string | string[]
   const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext as string;
   expect(context.match(/harness-guard logged/g)).toHaveLength(1);
   expect(context.split(record.id)).toHaveLength(2);
-  expect(context).toContain("already in the journal; do not log them again.");
+  expect(context).toContain("already in the journal as evidence; do not log them again.");
   return record;
 }
 
@@ -106,12 +106,12 @@ function expectCommandErrorWarning(result: HookResult, fields: { input: string; 
   expect(record.input).toBe(fields.input);
   expect(record.expected).toBe("exit 0");
   expect(record.actual).toBe(`exit ${fields.exit}`);
-  // Round 9, W2: the context line names the warning and both ways to settle it.
+  // R12.2 (2026-10-17): the context line names the warning and says it is evidence; nothing has to be settled.
   expect(result.exitCode).toBe(0);
   expect(result.stderr).toBe("");
   const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext as string;
   expect(context).toContain(`harness-guard warning ${record.id}`);
-  expect(context).toContain("dismiss");
+  expect(context).toContain("kept as evidence");
   return record;
 }
 

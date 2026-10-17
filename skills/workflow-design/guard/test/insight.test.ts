@@ -90,7 +90,7 @@ function failure(changes: Partial<FailureRecord> = {}): FailureRecord {
     id,
     time: "2026-10-15T09:00:00Z",
     session: "s1",
-    found_by: "guard",
+    found_by: "evaluator", // R12.2: only the evaluator's or the owner's failures are open until answered
     check: "R12.1-exit",
     input: "codex, output file answer.md",
     expected: "a non-empty answer file",

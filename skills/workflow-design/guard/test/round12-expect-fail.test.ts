@@ -126,7 +126,7 @@ test("a covered run that passes is an R12.2-red-passed failure and writes no suc
     actual: "no test failed", declared: [id], found_by: "guard" });
   expect(fs.existsSync(path.resolve(root, found[0]!.evidence))).toBe(true);
   expect(records("success")).toEqual([]);
-  expect(openFailures(root, session).map((record) => record.id)).toEqual([found[0]!.id]);
+  expect(openFailures(root, session)).toEqual([]); // R12.2: the guard's record is evidence, not an open failure
   expect(JSON.stringify(result)).toContain(found[0]!.id);
 });
 
@@ -157,7 +157,8 @@ test("a declaration made after a failing run does not remove its failure", () =>
   red("pytest tests/test_a.py");
   const [failure] = failures();
   declare("tests/test_a.py");
-  expect(openFailures(root, session).map((record) => record.id)).toEqual([failure!.id]);
+  expect(failures().map((record) => record.id)).toEqual([failure!.id]); // R12.2: kept as evidence
+  expect(openFailures(root, session)).toEqual([]);
 });
 
 test("an interrupted run consumes nothing", () => {

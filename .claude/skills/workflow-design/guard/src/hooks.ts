@@ -8,7 +8,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { checkCriteria, isCriteriaFile, loadCriteria, score } from "./criteria.ts";
 import { appendFailure, appendRecord, failuresFor, guardRoot, newFailureId, readJournal, writeEvidence } from "./journal.ts";
-import { answered, greatAnswered, openFailures } from "./insight.ts";
+import { answered, greatAnswered, isJudged, openFailures } from "./insight.ts";
 import { appendWarning, newWarningId, openWarnings } from "./warnings.ts";
 import { claimDeadlines, deadlineStatus, sessionDeadline } from "./deadline.ts";
 import { findPathFiles, loadPath } from "./paths.ts";
@@ -34,24 +34,11 @@ const INSIGHT_FORMAT = [
   "  Options: 2–3 items, each starting with a kind ([rule], [check], [tool] or [config-advice]) and ending with evidence: <path or fact>.",
 ];
 
-// The context line says the failure is in the journal already, so the agent does not log it a second time (round 3, C23).
-const ALREADY_LOGGED = "already in the journal; do not log them again. An insight answering them is required before you stop.";
-
-// A failure the agent caused is answerable like any other, and one section may answer several of them (round 4, D4).
-const OWN_FAILURES = "your own failures count — answer them in the insight; one section may answer several ids with one cause.";
+// The context line says the record is in the journal already, so the agent does not log it a second time (round 3,
+// C23). R12.2: what the guard sees is evidence; the evaluator or the owner decides whether it is a failure.
+const ALREADY_LOGGED = "already in the journal as evidence; do not log them again. Whether it is a failure is the evaluator's or the owner's call (R12.2).";
 
 // The format an unanswered failure is told to use.
-// Round 9: what the guard could not judge, with the two ways to settle it. Ids, checks and exit facts only.
-function warningReason(root: string, open: { id: string; check: string; input: string; actual: string }[]): string {
-  const cli = `bun ${guardDirFor(root)}/src/cli.ts`;
-  return [
-    `harness-guard: ${open.length} warning(s) the guard could not judge — settle each before you stop:`,
-    ...open.map((w) => `  ${w.id}: ${w.check} — ${w.input}, ${w.actual}`),
-    `If it was a mistake, log it as a failure: \`${cli} warning <id> fail --reason "<one line>"\` (then an insight is required).`,
-    `If it was not, dismiss it with the reason: \`${cli} warning <id> dismiss --reason "<one line>"\` (kept for the project owner).`,
-  ].join("\n");
-}
-
 function insightReason(ids: string[]): string {
   return [
     `harness-guard: ${ids.length} logged failure(s) have no valid insight: ${ids.join(", ")}.`,
@@ -425,12 +412,11 @@ function recordWarning(root: string, payload: Record<string, unknown>, env: Hook
 }
 
 function warned(id: string): HookResult {
-  return context("PostToolUse", `harness-guard warning ${id}: a command exited non-zero, and the guard cannot tell whether that was a mistake. Decide before you stop: log it as a failure or dismiss it with a one-line reason (\`cli.ts warning ${id} fail|dismiss --reason "…"\`).`);
+  return context("PostToolUse", `harness-guard warning ${id}: a command exited non-zero; kept as evidence (R12.2).`);
 }
 
-function logged(ids: string[], own: boolean): HookResult {
-  const tail = own ? `${ALREADY_LOGGED} Note: ${OWN_FAILURES}` : ALREADY_LOGGED;
-  return context("PostToolUse", `harness-guard logged ${ids.join(", ")} — ${tail}`);
+function logged(ids: string[], _own: boolean): HookResult {
+  return context("PostToolUse", `harness-guard logged ${ids.join(", ")} — ${ALREADY_LOGGED}`);
 }
 
 // Round 12, E3: the declared red run failed as planned — a red record with its counts, not a failure.
@@ -573,10 +559,9 @@ function handleStop(payload: Record<string, unknown>, root: string, env: HookEnv
 
   const open = openFailures(root, session);
   if (open.length > 0) return block(insightReason(open.map((record) => record.id)));
-  const unsettled = openWarnings(root, session);
-  if (unsettled.length > 0) return block(warningReason(root, unsettled));
 
-  const sessionFailures = failuresFor(root, session);
+  // R12.2: only failures the evaluator or the owner found are raised; the guard's own records are evidence.
+  const sessionFailures = failuresFor(root, session).filter(isJudged);
   // The raise step needs the final message to check: a payload without that string is asked, not told (round 3, C10).
   const last = payload.last_assistant_message;
   // Raise once (round 4, D6): failures a final message has already raised need not be named again at a later stop.
@@ -764,8 +749,6 @@ function criteriaStep(root: string, session: string, raised: Set<string>, env: H
   if (wrote) {
     const open = openFailures(root, session);
     if (open.length > 0) return block(insightReason(open.map((record) => record.id)));
-    const unsettled = openWarnings(root, session);
-    if (unsettled.length > 0) return block(warningReason(root, unsettled));
   }
   return null;
 }

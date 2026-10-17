@@ -265,7 +265,7 @@ function warningCommand(args: string[]): number {
   try {
     if (verb === "fail") {
       const record = settleAsFailure(root, id, reason, new Date(), newFailureId);
-      out(`${id} logged as ${record.id}: an insight is required before you stop`);
+      out(`${id} logged as ${record.id}, as evidence (R12.2: the evaluator or the owner decides whether it is a failure)`);
     } else {
       dismiss(root, id, reason, new Date());
       out(`${id} dismissed: the reason is kept for the project owner`);

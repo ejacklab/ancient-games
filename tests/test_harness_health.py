@@ -680,7 +680,7 @@ def test_hh_28_real_guard_is_read_only_with_empty_and_open_journal(box, has_fail
     box.fake("claude")
     if has_failure:
         record = {"kind": "failure", "id": "F-7f3a9c00", "time": "2026-10-16T00:00:00Z",
-                  "session": "hh-28", "found_by": "test", "check": "R12.2-test-failed",
+                  "session": "hh-28", "found_by": "evaluator", "check": "R12.2-test-failed",
                   "input": "pytest run", "expected": "all tests pass", "actual": "exit 1",
                   "engine": "pytest", "harness": "claude-code", "reason": SECRET, "evidence": ""}
         write(box.cwd / ".harness-guard/journal.jsonl", json.dumps(record) + "\n")

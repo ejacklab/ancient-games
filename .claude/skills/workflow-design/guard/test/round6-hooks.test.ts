@@ -205,23 +205,17 @@ describe("K2 Stop criteria validation", () => {
     expect(failures()).toEqual([]);
   });
 
-  test("Fails-if: met:false has no failure; repeated Stops block until answered and D6 raises once", () => {
+  // R12.2 (2026-10-17): an unmet criterion is recorded once as evidence; it does not block the stop by itself.
+  test("Fails-if: met:false has no record; the record is evidence, made once, and does not block the stop", () => {
     criteria([{ id: "C1", text: secret, met: false, evidence: "observed mismatch" }]);
     touch();
-    const first = stop();
+    expect(stop().stdout).toBe("");
     const [failure] = failures("criterion:C1");
     expect(failure).toBeDefined();
     expect(failure!).toMatchObject({ kind: "failure", session, found_by: "guard", check: "criterion:C1",
       input: path.basename(file), expected: "met", actual: "not met", reason: "a criterion of the task was not met", evidence: file });
     expect(failure!.id).toMatch(/^F-[0-9a-f]{8}$/);
-    expect(blocked(first)).toContain(failure!.id);
-    expect(blocked(stop())).toContain(failure!.id);
-    expect(failures("criterion:C1")).toHaveLength(1);
-    const insight = answer([failure!.id]);
-    expect(blocked(stop())).toContain("raise the insight");
-    expect(stop(`see ${insight}`).stdout).toBe("");
     expect(stop().stdout).toBe("");
-    expect(records().some((r) => r.kind === "raised" && r.ids.includes(failure!.id))).toBe(true);
     expect(failures("criterion:C1")).toHaveLength(1);
   });
 
@@ -260,13 +254,13 @@ describe("K2 Stop criteria validation", () => {
     expect(stop().stdout).toBe("");
   });
 
-  test("open failures and the raise check precede criteria validation", () => {
+  // R12.2: the guard's own failure record is evidence, so criteria validation is the first block.
+  test("a guard-found failure does not block; criteria validation does", () => {
     criteria([{ id: "C1", text: secret }]); touch(); bash(false);
     const failure = failures()[0]!;
-    expect(blocked(stop())).toContain(failure.id);
-    const insight = answer([failure.id]);
-    expect(blocked(stop())).toContain("raise the insight");
-    expect(blocked(stop(`see ${insight}`))).toContain("C1");
+    const out = blocked(stop());
+    expect(out).toContain("C1");
+    expect(out).not.toContain(failure.id);
   });
 });
 

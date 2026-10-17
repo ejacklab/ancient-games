@@ -113,10 +113,11 @@ function contextLine(result: HookResult, ids: string[], ownFailure: boolean): st
   for (const id of ids) {
     expect(context.split(id)).toHaveLength(2);
   }
-  expect(context).toContain("already in the journal; do not log them again.");
-  expect(context).toContain("An insight answering them is required before you stop.");
-  if (ownFailure) expect(context).toContain(ownFailureContext);
-  else expect(context).not.toContain("your own failures count");
+  // R12.2 (2026-10-17): what the guard logs is evidence; the evaluator or the owner decides whether it is a failure.
+  expect(context).toContain("already in the journal as evidence; do not log them again.");
+  expect(context).not.toContain("An insight answering them is required");
+  expect(context).not.toContain("your own failures count");
+  void ownFailure;
   return context;
 }
 
@@ -336,39 +337,25 @@ describe("D4 context and insight for the agent's own failures", () => {
     expect(contextLine(secondResult, [second.id], true)).not.toContain(first.id);
   });
 
-  test("D4 (round 9): a test failure blocks Stop for its insight, then a command error's warning blocks until settled", () => {
+  // R12.2 (2026-10-17): a failure is the evaluator's or the owner's judgment; what the guard saw is evidence.
+  test("D4 (R12.2): the guard's test failure and warning are evidence and do not block Stop; an owner's failure does", () => {
     const testResult = invokeHook(bashFailure("pytest -q"));
     const testFailure = expectFailure("R12.2-test-failed");
     contextLine(testResult, [testFailure.id], true);
     invokeHook(bashFailure("false"));
-    const warning = expectWarning("R12.2-command-error");
-    const records = failures();
-    expect(records).toHaveLength(1);
+    expectWarning("R12.2-command-error");
     const stop = { hook_event_name: "Stop", session_id: session, cwd: folder, stop_hook_active: false };
-    const blocked = invokeHook(stop);
-    expect(blocked.exitCode).toBe(0);
-    expect(blocked.stderr).toBe("");
-    const decision = JSON.parse(blocked.stdout);
-    expect(decision.decision).toBe("block");
-    for (const record of records) expect(decision.reason).toContain(record.id);
+    expect(invokeHook(stop)).toEqual({ exitCode: 0, stdout: "", stderr: "" });
 
-    const insight = ".harness-guard/insights/own-failures.md";
-    fs.mkdirSync(path.dirname(path.join(folder, insight)), { recursive: true });
-    fs.writeFileSync(path.join(folder, insight), [
-      `## ${records.map((record) => record.id).join(", ")}`, "Whys:",
-      "1. The commands used an invalid fixture.", "2. The fixture had not been checked.",
-      "3. The check omitted fixture validation.", "Source: check",
-      "Root cause: fixture validation was absent.", "Options:",
-      "1. [check] validate the fixture; evidence: test/round4.test.ts",
-      "2. [rule] require a valid fixture; evidence: SPEC.md", "",
-    ].join("\n"));
-    const warned = JSON.parse(invokeHook({ ...stop, last_assistant_message: `Insight: ${insight}` }).stdout);
-    expect(warned.decision).toBe("block");
-    expect(warned.reason).toContain(warning.id);
-    expect(warned.reason).toContain("dismiss");
-    dismiss(folder, warning.id, "false is the fixture's own command", new Date(time));
-    expect(invokeHook({ ...stop, last_assistant_message: `Insight: ${insight}` })).toEqual({ exitCode: 0, stdout: "", stderr: "" });
-    expect(failures()).toHaveLength(1);
+    fs.writeFileSync(path.join(folder, "owner.json"), "{}\n");
+    execFileSync(process.execPath, [path.resolve(import.meta.dirname, "../src/cli.ts"), "fail", "--check", "owner:wrong-output",
+      "--input", "the report", "--expected", "the use case met", "--actual", "not met", "--reason", "the owner said so",
+      "--evidence", "owner.json", "--found-by", "owner", "--session", session], { cwd: folder, env: { ...process.env, BUN_RUNTIME_TRANSPILER_CACHE_PATH: "0" } });
+    const owner = failures().find((record) => record.found_by === "owner")!;
+    const blocked = JSON.parse(invokeHook(stop).stdout);
+    expect(blocked.decision).toBe("block");
+    expect(blocked.reason).toContain(owner.id);
+    expect(blocked.reason).not.toContain(testFailure.id);
   });
 });
 

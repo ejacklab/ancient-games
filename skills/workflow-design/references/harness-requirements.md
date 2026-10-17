@@ -42,29 +42,22 @@ reason written into the design.
 **R12.1 Failure handling (MUST — a safety bound).** An evaluator reports fail — never pass — when the result is
 missing, empty, of the wrong form, or when the evaluator itself errors or times out. Exit 0 is not success.
 
-**R12.2 Failure log (MUST).** A failure is anything that went wrong while the work was done, whoever caused it: a
-check that returned fail (a test run, a linter, a gate), a tool call that errored, an engine result that fails R12.1,
-work that had to be undone or redone, and a correction from the project owner. Every failure is logged when it happens,
-as one record: what was checked, the input,
-the expected and the actual result, the engine and harness that produced it, the reason it is a failure, and the path
-to the evidence (the data) in the run folder. Anyone may declare a failure — an evaluator, a retry, the project owner
-or another agent — but a record without a reason and evidence is not accepted. A failure is logged even when a retry
-later passes. An automatic check records a failure only where the meaning of what it saw is written down — a test
-run's own summary or exit, an exit code the tool documents, an engine result that fails R12.1, a criterion marked not
-met. Where it can only guess — a non-zero exit of a command whose codes it does not know, a timing pattern — it records
-a warning, and the agent settles each warning before the task ends: logged as a failure with its reason, or dismissed
-with a one-line reason. A dismissal is kept for the project owner, who may overrule it. A check drops what it saw
-without any record only where a written meaning says it is not a failure (a tool's documented "findings" exit).
+**R12.2 Failure log (MUST).** A failure is a result the evaluator judges wrong against the product's vision, use
+cases and requirements, or a correction from the project owner. It is logged when it is found, as one record: what was
+checked, the input, the expected and the actual result, the engine and harness that produced it, the reason it is a
+failure, and the path to the evidence (the data) in the run folder; a record without a reason and evidence is not
+accepted. What other checks see while the work is done — a failed test run, an errored tool call, a non-zero exit, an
+engine result that fails R12.1, a criterion marked not met — is logged as evidence the evaluator reads, never a
+failure by itself.
 
 **R12.3 Insight at the end of a task (MUST).** When a task ends with one or more failure records, the agent that ran
 the task writes an insight file in the run folder and raises it to the project owner in its final report. For each
 failure, or each group with one cause: six whys down to a source that can be changed (an instruction, a check, a tool,
 a config), the root cause, and two or three fix options — each a rule, a check or a tool — that the agent has
-researched, ranked by expected effect, with the evidence for each. The agent proposes; it does not apply a fix without
-the project owner's choice. The agent records each choice in `insight-decisions.md` beside the insight file, one entry
-per insight section: the decision (an option, with whether it was the agent's, the owner's own fix, or declined), the
-owner's words, the date, and where the fix was applied or "not yet". The insight file holds no choices; a section with
-no entry is open. A fix that is a check is shown failing on a planted repeat of the failure before it is
+researched, ranked by expected effect, with the evidence for each. The agent applies the option it ranks first and
+reports it with the others; the project owner may overrule it. The agent records each fix in `insight-decisions.md`
+beside the insight file, one entry per insight section: the option applied, or the owner's overrule, the owner's
+words when there are any, the date, and where the fix was applied. The insight file holds no decisions. A fix that is a check is shown failing on a planted repeat of the failure before it is
 trusted. A fix to a harness's config is applied only after the project owner says yes to that exact change, shown as
 a diff; the yes is recorded in the run folder.
 
@@ -87,12 +80,12 @@ returning failures while the work still passes, under a comparison the project o
 
 Fails if: an evaluator crash or an empty result is read as pass; a judge rejects a result that breaks no stated
 condition only because it differs from the expected method or output; a wrong result that passed every condition
-leads to no new condition; a failure a retry later passed, or one found outside an evaluator, has no record; the agent's own failing test run,
-errored tool call or redone step has no record; a guess is recorded as a failure, or not recorded at all; a task ends with a warning neither logged nor dismissed; a dismissal has no reason or is not kept; a task
+leads to no new condition; a failure the evaluator or the owner found has no record; what a check saw is counted as a
+failure without the evaluator's or the owner's judgment, or is not logged as evidence; a task
 with failure records ends without an insight file, or with one not raised to the project owner; a failure record has
-no reason or no evidence; an insight offers fewer than two fix options, or applies a fix the owner did not choose; a harness's config is changed
-with no recorded yes from the owner to that diff; a choice the owner made has
-no entry in `insight-decisions.md`, or an entry has no owner's words; a why stops at the agent forgetting or the model being wrong; a
+no reason or no evidence; an insight offers fewer than two fix options, applies a fix without reporting it, or keeps a
+fix the owner overruled; a harness's config is changed with no recorded yes from the owner to that diff; a fix applied
+has no entry in `insight-decisions.md`; a why stops at the agent forgetting or the model being wrong; a
 check-type fix is trusted without a planted repeat failing it; a model the harness uses changes and no review
 follows; a scaffolding item names no weakness it compensates for, or no observable that shows it still occurs; an
 item that shows no contribution under the owner's comparison is not put up for withdrawal; the review uses a

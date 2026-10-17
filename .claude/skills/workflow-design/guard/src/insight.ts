@@ -358,7 +358,16 @@ export function greatAnswered(root: string): Set<string> {
   return files;
 }
 
+// R12.2: a failure is what the evaluator judges wrong against the product's vision, use cases and requirements, or a
+// correction from the owner. What the guard's own checks see is evidence, kept in the journal, never asking for an
+// insight by itself.
+export const JUDGES = new Set(["evaluator", "owner"]);
+
+export function isJudged(record: FailureRecord): boolean {
+  return JUDGES.has(record.found_by);
+}
+
 export function openFailures(root: string, session: string | null): FailureRecord[] {
   const answers = answered(root);
-  return failuresFor(root, session).filter((record) => !answers.has(record.id));
+  return failuresFor(root, session).filter((record) => isJudged(record) && !answers.has(record.id));
 }
