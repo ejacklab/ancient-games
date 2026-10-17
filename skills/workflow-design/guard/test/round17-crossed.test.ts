@@ -165,19 +165,20 @@ describe("Round 17 V2: a failed call that holds a test run but whose exit the ru
 });
 
 describe("Round 17 V1: the runner made the exit, or its own summary says so", () => {
-  test("V1/Fails-if: a runner piped to `tail` is R12.2-test-failed, with the call's exit as the runner's", () => {
-    // `pytest -q 2>&1 | tail -3` — nothing but its own pipeline follows the runner, so the call's exit is the runner's.
+  // Changed after the crossed review (finding 2, EJ 2026-10-17): a pipeline's exit is its last command's, so a failed
+  // pipeline with no summary is a guess. Written by opencode as R12.2-test-failed; the expectation changed, not the input.
+  test("V1/Fails-if: a runner piped to `tail` with no summary is a warning naming tail", () => {
     const result = invokeHook(failedCall("pytest -q 2>&1 | tail -3", `collecting ...\n${planted}`, 1));
-    expectTestFailed(result, { input: "pytest run", actual: "exit 1" });
+    expectCommandErrorWarning(result, { input: "tail call", exit: 1 });
   });
 
-  test("V1: a runner piped to `grep` is R12.2-test-failed", () => {
+  test("V1: a runner piped to `grep` with no summary is a warning naming grep", () => {
     const result = invokeHook(failedCall(
       "bun test test/round17.test.ts | grep -n failed",
       `no lines matched\n${planted}`,
       1,
     ));
-    expectTestFailed(result, { input: "bun test run", actual: "exit 1" });
+    expectCommandErrorWarning(result, { input: "grep call", exit: 1 });
   });
 
   test("V1: a runner last after `cd … &&` made the exit", () => {

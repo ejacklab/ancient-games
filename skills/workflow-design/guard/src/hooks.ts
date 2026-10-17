@@ -276,9 +276,11 @@ function ownFailureSpec(payload: Record<string, unknown>, command: string, faile
     const summary = failed ? FAILED_SUMMARY.exec(stderr) : ownsStdout ? FAILED_SUMMARY.exec(stdout) : null;
     if (!failed && summary === null) return null;
     // Round 17 (F-bdea5631 option 1): with no summary, a failed call is the test run's only when the runner made the
-    // exit — it is the last command, but for its own pipeline. Otherwise the exit may be a later command's, and the
-    // call is the command error below, a guess.
-    if (summary !== null || testRunMadeExit(command)) {
+    // exit — it is the last command. Otherwise the exit may be a later command's, and the call is the command error
+    // below, a guess. The record names the runner that made the exit (crossed review, finding 5).
+    const madeExit = summary === null ? exitRunner(command) : null;
+    if (summary !== null || madeExit !== null) {
+      const label = madeExit ?? runner;
       const exitCode = failed ? exitCodeOf(payload, true) : null;
       const failedCount = summary === null ? null : Number(summary[1]);
       const actual = summary === null ? `exit ${exitCode}` : `${summary[1]} ${summary[2]}`;
@@ -287,15 +289,15 @@ function ownFailureSpec(payload: Record<string, unknown>, command: string, faile
           rule: "R12.2-test-failed",
           severity: "fail",
           message: summary === null
-            ? `the ${runner} run exited with code ${exitCode}`
-            : `the ${runner} run reported ${actual}`,
+            ? `the ${label} run exited with code ${exitCode}`
+            : `the ${label} run reported ${actual}`,
           fix: "read which tests failed, fix the cause, run them again",
         },
-        input: `${runner} run`,
+        input: `${label} run`,
         expected: "all tests pass",
         actual,
         facts: {
-          runner,
+          runner: label,
           failedCount,
           exitCode,
           stdoutLength: stdout.length,
@@ -895,11 +897,9 @@ function testRunOwnsStdout(command: string): boolean {
   return list.slice(at + 1).every((segment) => segment.piped);
 }
 
-// True when every segment after the last test-run segment is piped from the one before it: the call's exit is the
-// runner's (Round 17).
-function testRunMadeExit(command: string): boolean {
-  const list = segments(command);
-  const at = list.findLastIndex((segment) => recognizeTestRun(segment.text) !== null);
-  if (at < 0) return false;
-  return list.slice(at + 1).every((segment) => segment.piped);
+// The runner whose exit is the call's: the last segment, when it is a test run (Round 17). A pipeline's exit is its
+// last command's, so a runner piped on is not it (crossed review, finding 2).
+function exitRunner(command: string): string | null {
+  const last = segments(command).at(-1);
+  return last === undefined ? null : recognizeTestRun(last.text);
 }

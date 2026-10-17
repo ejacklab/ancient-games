@@ -345,7 +345,13 @@ export function segments(command: string): Segment[] {
     const after = separator(index, 1);
     if (text === "") continue;
     const position = parts.length;
-    parts.push({ text, background: after === "&", piped: before === "|" });
+    // A command that opens a group is piped when the group is: `pytest | (cat)` (Round 17, crossed review finding 4).
+    let lead = before;
+    for (let i = index - 1; lead === "(" && i >= 0; i--) {
+      const token = tokens[i]!;
+      if (token.kind === "sep" && token.sep === "(") lead = separator(i, -1);
+    }
+    parts.push({ text, background: after === "&", piped: lead === "|" });
     // A command inside nested groups is inside each of them.
     for (const group of groups) group.push(position);
   }

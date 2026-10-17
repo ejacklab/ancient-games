@@ -23,3 +23,5 @@ Options for the source:
    test per exemption with a new case. evidence: F1's exemption was the one early return the new cases reach.
 2. [tool] crossed-build-check's review brief always asks "which existing exemptions do the newly routed cases reach".
    evidence: Codex found it when the brief named the interaction areas.
+
+Chosen (EJ, 2026-10-17): option 1 — "go with your pick, option 1". Option 1 was mine. Applied as a working rule in the main agent's memory (test-exemptions-on-reroute).

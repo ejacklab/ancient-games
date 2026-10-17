@@ -64,8 +64,8 @@ test("T3: a runner that is not last but whose summary shows failures is a failed
   expect(warnings()).toEqual([]);
 });
 
-// T4: the runner is last, or last but for its own pipeline: its exit is the call's.
-test.each([["cd work && pytest -q"], ["pytest -q 2>&1 | tail -3"], ["pytest -q a.py && pytest -q b.py"]])(
+// T4: the runner is last: its exit is the call's.
+test.each([["cd work && pytest -q"], ["pytest -q a.py && pytest -q b.py"]])(
   "T4: %s exiting 1 is a failed test run", (command: string) => {
     bashFailure(command, "runner could not start", 1);
     expect(failures()).toHaveLength(1);
@@ -81,4 +81,31 @@ test("T5: a runner followed by a guard query that exit 1 is a warning, not nothi
   expect(failures()).toEqual([]);
   expect(warnings()).toHaveLength(1);
   expect(warnings()[0]).toMatchObject({ check: "R12.2-command-error", input: "bun call", actual: "exit 1" });
+});
+
+// T6 (finding 2): a pipeline's exit is its last command's — `grep` finding nothing is not a failed test run.
+test.each([["pytest -q | grep missing", "grep"], ["pytest -q 2>&1 | tail -3", "tail"]])(
+  "T6: %s exiting 1 with no summary is a warning naming the last command", (command: string, word: string) => {
+    bashFailure(command, "", 1);
+    expect(failures()).toEqual([]);
+    expect(warnings()).toHaveLength(1);
+    expect(warnings()[0]).toMatchObject({ check: "R12.2-command-error", input: `${word} call`, actual: "exit 1" });
+  },
+);
+
+// T7 (finding 4): a group at the end of a pipe is still piped, so the runner's summary in stdout counts.
+test("T7: pytest -q | (cat) with a failure summary in stdout is a failed test run", () => {
+  handleHook({
+    hook_event_name: "PostToolUse", session_id: session, cwd: folder, tool_name: "Bash",
+    tool_input: { command: "pytest -q | (cat)" }, tool_response: { stdout: "3 failed, 2 passed", stderr: "", interrupted: false },
+  }, env);
+  expect(failures()).toHaveLength(1);
+  expect(failures()[0]).toMatchObject({ check: "R12.2-test-failed", input: "pytest run", actual: "3 failed" });
+});
+
+// T8 (finding 5): the record names the runner that made the exit, the last one.
+test("T8: bun test a; pytest b exiting 2 with no summary names the pytest run", () => {
+  bashFailure("bun test a.test.ts; pytest b.py", "no tests ran", 2);
+  expect(failures()).toHaveLength(1);
+  expect(failures()[0]).toMatchObject({ check: "R12.2-test-failed", input: "pytest run", actual: "exit 2" });
 });

@@ -29,6 +29,11 @@ wording, fixed.**
 ## Checks
 Guard 1373/1373 (1357 + 15 opencode + T5), tsgo clean.
 
-## For EJ
-- Findings 2, 3, 4, 5 and 7 (proposed fixes in the message).
-- The insight for finding 1 (`insight.md`): the source options.
+## EJ's decisions ("go with your pick, option 1, and push")
+- **Findings 2, 4, 5 fixed** (my pick). A failed pipeline with no summary is a warning naming its last command (2);
+  a group at the end of a pipe is piped (4, `src/traps.ts` segments); the record names the runner that made the exit
+  (5). Tests T6–T8 and two of opencode's pipe tests changed from failure to warning, all 6 red on the old code first
+  (`nodes/fixes.red.txt`); `nodes/probe.fixed.txt` shows 1, 2, 4, 5 fixed and 3, 7 unchanged.
+- **Findings 3 and 7 kept as known limits**, written in SPEC Round 17.
+- **Insight option 1** (mine): a working rule in the main agent's memory.
+- Guard 1376/1376, tsgo clean.

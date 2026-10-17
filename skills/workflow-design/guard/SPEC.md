@@ -774,8 +774,12 @@ A planned base-commit test run was followed by an `ls` that exited 2 because the
 saw `bun test` in the call and recorded the `ls`'s exit as a failed test run.
 
 - **V1 The runner's exit.** A failed call that holds a test run is `R12.2-test-failed` only when the runner's own
-  summary (FAILED_SUMMARY) shows failures, or the last test-run segment is followed by nothing but its own pipeline
-  (`pytest -q 2>&1 | tail -3`), so the call's exit is the runner's.
+  summary (FAILED_SUMMARY) shows failures, or the call's last segment is a test run, so the call's exit is the
+  runner's. A pipeline's exit is its last command's, so `pytest -q | grep missing` failing with no summary is V2's
+  warning naming `grep`; a failing `pytest | tail` is still caught by its summary. With no summary, the record names
+  the runner that made the exit (`bun test a; pytest b` → `pytest run`).
+- **V1a A group at the end of a pipe is piped.** In `pytest -q | (cat)` the `cat` segment is piped (`segments()` reads
+  past the `(`), so the runner's summary in stdout counts, as D1 already counts it for `pytest -q | cat`.
 - **V2 Otherwise a guess.** Any other failed call is D2's `R12.2-command-error` warning naming the last command word.
   After `&&` the exit may still be the runner's (`pytest && echo done`, the runner failing); the guard cannot tell
   which, so it warns (Round 9) and the agent settles it with `warning <id> fail|dismiss`. A guard query last in the
@@ -783,6 +787,14 @@ saw `bun test` in the call and recorded the `ls`'s exit as a failed test run.
 - A declared red run (Round 12) chained before another command, with no failure summary, is then not a red record;
   `expect-fail --run` (Round 16) runs it as one command.
 
-Fails-if: F-bdea5631's shape (`… bun test …; ls <gone>`, exit 2, no summary) is a failure; a runner followed by `&&`
-with no summary is a failure; a non-last runner whose summary shows failures, a last runner, a runner piped to
-`tail`, or a second runner last is not `R12.2-test-failed`.
+- **Known limits** (crossed review findings 3 and 7, kept): a last runner behind `&&` may never have run
+  (`false && pytest`), and its call is still a failed test run — treating it as a guess would turn every common
+  `cd x && bun test` failure into a warning, since bun's "N fail" is not a FAILED_SUMMARY; and text another command
+  writes that looks like a summary (`echo '3 errors' >&2`) is read as the runner's. `expect-fail --run` captures the
+  runner's own exit and output when that matters.
+
+Fails-if: F-bdea5631's shape (`… bun test …; ls <gone>`, exit 2, no summary) is a failure; a runner followed by `&&`,
+or piped to `tail` or `grep`, with no summary is a failure; a runner before a guard query leaves no record; a
+non-last runner whose summary shows failures, a last runner, or a second runner last is not `R12.2-test-failed`;
+`pytest -q | (cat)` with a summary in stdout is not one; a two-runner record names the first runner when the last made
+the exit.
