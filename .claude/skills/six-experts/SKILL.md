@@ -56,6 +56,13 @@ python3 ~/.claude/skills/six-experts/scripts/six_experts.py run "Should we keep 
   to the answer path it names. Outside Claude Code the script runs `claude -p` itself.
 - `--progress runs/<run>/nodes/experts.progress.md` appends a timestamped line as each expert starts and ends, so the
   caller sees progress while they work; `status.json` records each expert's start and finish time.
+- `--card` puts each persona's rules in its brief as a card: who they are, then one line per rule (heading and the
+  Rule's first sentence, no quotes or sources). The brief tells the expert to read nothing else but the files the
+  question names, and to run no shell. The full list and identity are still copied to `seats/` for `check`.
+  `--vote` is for an approve-or-change question: the answer is `APPROVE` or `CHANGE` with the exact words, a short
+  cited **Why**, and **What I need to know**. The run writes `form.txt`, and `check` then requires these three
+  sections instead of the five. Both flags are opt-in and on trial (run `20261017-experts-speed-trial`: one rerun of
+  round 3 with both flags, n=1; the two effects are not separated).
 - `--only dave` (or any comma list of ids: `linus,fan-li,sun-tzu,lao-tzu,dave,dario`) with `--out <existing run>` adds
   those answers to a run and keeps the others.
 - Output: `runs/<date>-six-experts-<slug>/` (or `six-experts/…` when there is no `runs/`): `question.md`,

@@ -57,7 +57,7 @@ class Ticks:
 
 
 def run_seats(tmp_path, monkeypatch, only, insights=None, guard=None, alive=1, rc=0, answer=ANSWER,
-              codex_left=None, lessons=None):
+              codex_left=None, lessons=None, card=False, vote=False):
     """Run `only` with fake engines; returns (out, calls, rc).
 
     calls is one dict per start and one per exit: sid, engine, model, prompt, and `running` — the experts still
@@ -86,7 +86,7 @@ def run_seats(tmp_path, monkeypatch, only, insights=None, guard=None, alive=1, r
     out = tmp_path / "run"
     args = argparse.Namespace(question=QUESTION, question_file=None, out=str(out), needs_web=False,
                               needs_shell=False, timeout=60, progress=None, only=only, insights=insights,
-                              claude_by_caller=False)
+                              claude_by_caller=False, card=card, vote=vote)
     rc = fe.run(args)
     return out, calls, rc
 
@@ -361,3 +361,96 @@ def test_lessons_text_asks_the_guard_for_brief_lessons_of_the_engine(monkeypatch
     assert text.startswith("\n\n## Lessons") and "- a lesson (slug)" in text
     monkeypatch.setattr(fe.subprocess, "run", lambda cmd, **kw: subprocess.CompletedProcess(cmd, 2, stdout="x", stderr=""))
     assert fe.lessons_text("opencode", tmp_path) == ""
+
+
+# --- run 20261017-experts-speed-trial: --card (the rules as a short card in the brief, read nothing else) and --vote
+# (APPROVE or CHANGE with a short cited why). Both are opt-in; without them the briefs and the check are as before.
+
+VOTE_ANSWER = "# X — q\n\n## Answer\nAPPROVE\n\n## Why\n1. my #1\n\n## What I need to know\nnone\n"
+
+
+def test_card_brief_holds_the_rules_inline_and_not_the_list_files(tmp_path, monkeypatch):
+    out, _calls, _rc = run_seats(tmp_path, monkeypatch, "linus", card=True)
+    brief = (out / "briefs" / "linus.md").read_text(encoding="utf-8")
+    lst, ident = out / "seats" / "linus-list.md", out / "seats" / "linus-identity.md"
+    assert lst.exists() and ident.exists()  # the full files stay in the run, for check
+    assert str(lst) not in brief and str(ident) not in brief
+    assert "Talk is cheap; show the code." in brief  # the real list's item 2 heading
+    assert "costs nothing to make; what he asks for is the code." in brief  # its Rule's first sentence
+    assert "In 2017 he did not accept" not in brief  # the Rule's second sentence stays out
+    for left_out in ("**Their words:**", "**Source:**", "**Words are:**", "**From:**", "lkml.org"):
+        assert left_out not in brief
+
+
+def test_card_has_one_line_per_rule(tmp_path, monkeypatch):
+    out, _calls, _rc = run_seats(tmp_path, monkeypatch, "sun-tzu", card=True)
+    brief = (out / "briefs" / "sun-tzu.md").read_text(encoding="utf-8")
+    # 20 counted another way than the parser: `grep -c 'Rule:\*\*'` on the list file (one Rule line per item)
+    import re as _re
+    assert [int(x) for x in _re.findall(r"^- #(\d+) \*\*", brief, _re.M)] == list(range(1, 21))
+
+
+def test_card_brief_says_read_nothing_else_and_run_no_shell(tmp_path, monkeypatch):
+    out, _calls, _rc = run_seats(tmp_path, monkeypatch, "lao-tzu", card=True)
+    brief = (out / "briefs" / "lao-tzu.md").read_text(encoding="utf-8")
+    assert "Read nothing else" in brief and "Run no shell commands" in brief
+
+
+def test_without_card_the_brief_names_the_list_files_as_before(tmp_path, monkeypatch):
+    out, _calls, _rc = run_seats(tmp_path, monkeypatch, "linus")
+    brief = (out / "briefs" / "linus.md").read_text(encoding="utf-8")
+    assert str(out / "seats" / "linus-list.md") in brief and "Read nothing else" not in brief
+
+
+def test_card_on_mcode_gives_the_card_brief_not_the_pasted_files(tmp_path, monkeypatch):
+    out, calls, _rc = run_seats(tmp_path, monkeypatch, "linus", card=True, codex_left=10.0)
+    assert [c["prompt"] for c in started(calls)] == [str(out / "briefs" / "linus.md")]
+    assert not (out / "briefs" / "linus.pasted.md").exists()
+
+
+def test_vote_brief_asks_for_approve_or_change_and_the_vote_sections(tmp_path, monkeypatch):
+    out, _calls, _rc = run_seats(tmp_path, monkeypatch, "linus,dario", vote=True, answer=VOTE_ANSWER)
+    for sid in ("linus", "dario"):
+        brief = (out / "briefs" / f"{sid}.md").read_text(encoding="utf-8")
+        assert "APPROVE" in brief and "CHANGE" in brief
+        for s in fe.VOTE_SECTIONS:
+            assert s in brief
+        assert "## Costs and risks" not in brief and "## How we would know I was right" not in brief
+
+
+def test_vote_run_accepts_a_vote_answer_and_records_its_form(tmp_path, monkeypatch):
+    out, _calls, rc = run_seats(tmp_path, monkeypatch, "linus", vote=True, answer=VOTE_ANSWER)
+    assert rc == 0
+    assert json.loads((out / "status.json").read_text(encoding="utf-8"))["linus"]["ok"] is True
+    assert (out / "form.txt").read_text(encoding="utf-8").strip() == "vote"
+
+
+def test_without_vote_a_vote_answer_is_missing_sections(tmp_path, monkeypatch):
+    _out, _calls, rc = run_seats(tmp_path, monkeypatch, "linus", answer=VOTE_ANSWER)
+    assert rc == 1
+
+
+def make_vote_run(tmp_path, answers):
+    out = make_run(tmp_path, answers)
+    (out / "form.txt").write_text("vote\n", encoding="utf-8")
+    return out
+
+
+def test_vote_check_passes_dario_on_the_vote_sections(tmp_path):  # exemption: PLAIN returns after the sections
+    out = make_vote_run(tmp_path, {})
+    assert fe.check_one("dario", VOTE_ANSWER, out) == []
+    assert fe.check_one("dario", ANSWER, out) != []  # five sections, no "## Why"
+
+
+def test_vote_check_still_holds_dave_to_his_insights(tmp_path):  # exemption: Dave's insight check
+    out = make_vote_run(tmp_path, {})
+    assert [b for b in fe.check_one("dave", VOTE_ANSWER, out) if "cites none" in b]
+    assert fe.check_one("dave", VOTE_ANSWER + f"\n{INSIGHT_ID}\n", out) == []
+
+
+def test_vote_sabotage_still_fails_the_check(tmp_path, capsys):  # exemption: the sabotage path
+    out = make_vote_run(tmp_path, {"linus": VOTE_ANSWER})
+    assert fe.check(SimpleNamespace(dir=str(out), sabotage=True)) == 0
+    import re as _re
+    found = _re.search(r"→ (\d+) failure\(s\)", capsys.readouterr().out)
+    assert found and int(found.group(1)) >= 2

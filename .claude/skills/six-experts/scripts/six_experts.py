@@ -67,6 +67,7 @@ MODELS = {"codex": "gpt-6.1-sol", "agy": "gemini-3.8-flash-medium", "dsh": "deep
 MCODE = os.environ.get("MCODE", str(Path.home() / ".minimax-code" / "bin" / "mcode"))  # not on a non-interactive PATH
 SECTIONS = ["## Answer", "## How I decided", "## What I need to know", "## Costs and risks",
             "## How we would know I was right"]
+VOTE_SECTIONS = ["## Answer", "## Why", "## What I need to know"]  # --vote (run 20261017-experts-speed-trial)
 ITEM_START = re.compile(r"^(?:### (\d{1,2})\. |(\d{1,2})\. \*\*)", re.M)
 CJK_RUN = re.compile(r"[㐀-鿿]{4,}")
 ITEM_CITE = re.compile(r"(?<![\w#])#(\d{1,3})\b")
@@ -82,6 +83,62 @@ def final_list(text: str) -> str:
 def n_items(list_file: Path) -> int:
     nums = [int(a or b) for a, b in ITEM_START.findall(final_list(list_file.read_text(encoding="utf-8")))]
     return max(nums) if nums else 0
+
+
+def rule_card(list_file: Path, identity_file: Path) -> str:
+    """--card: who they are and one line per rule (its heading and its Rule's first sentence), without the quotes and
+    sources; the full files stay in seats/ for `check` (run 20261017-experts-speed-trial, fix 1)."""
+    body = final_list(list_file.read_text(encoding="utf-8"))
+    starts = list(ITEM_START.finditer(body))
+    lines = []
+    for m, nxt in zip(starts, starts[1:] + [None]):
+        chunk = body[m.start():nxt.start() if nxt else len(body)]
+        head = chunk.splitlines()[0][m.end() - m.start():].strip().strip("*").strip()
+        rule = re.search(r"\*\*Rule:\*\*\s*(.*?)(?=\n\s*- \*\*|\Z)", chunk, re.S)
+        first = re.match(r".+?[.!?](?=\s|$)", " ".join(rule.group(1).split())) if rule else None
+        lines.append(f"- #{m.group(1) or m.group(2)} **{head}**" + (f" — {first.group(0)}" if first else ""))
+    who = re.search(r"^## Who they are\s*$(.*?)(?=^## |\Z)", identity_file.read_text(encoding="utf-8"), re.M | re.S)
+    return f"### Who you are\n\n{who.group(1).strip() if who else ''}\n\n### Your rules\n\n" + "\n".join(lines) + "\n"
+
+
+CARD_SECTION = """## Your rules — read nothing else
+
+Your rules are below, one line each: the heading and the rule, without the quotes and sources (the main agent keeps
+the full list for checking). Read nothing else: do not open your list or identity file, and open only the files the
+question names, if any. Run no shell commands — no git, no ls, no search. Everything you need is here or in those
+files.
+
+{card}
+"""
+
+
+def swap(text: str, pattern: str, new: str) -> str:
+    """Replace the one match of `pattern`; a brief template that no longer has it is an error, not a silent skip."""
+    found = re.findall(pattern, text, re.M | re.S)
+    if len(found) != 1:
+        raise ValueError(f"brief template: expected one match of {pattern!r}, found {len(found)}")
+    return re.sub(pattern, lambda _m: new, text, flags=re.M | re.S)
+
+
+def card_brief(text: str, card: str) -> str:
+    """--card: the rules in the brief instead of the two files, and no reading or shell beyond the question's files
+    (fixes 1 and 5)."""
+    text = swap(text, r"^## Read first\n.*?(?=^## )", CARD_SECTION.format(card=card) + "\n")
+    text = swap(text, r"^3\. \*\*Quote only from your list,\*\*.*?(?=^4\. )",
+                "3. **Quote nothing.** Your rules above hold no original words; cite them by number.\n")
+    return swap(text, r"Re-read your list while you work", "Re-read your rules above while you work")
+
+
+def vote_brief(text: str, name: str, why: str) -> str:
+    """--vote: APPROVE or CHANGE with a short cited why, in place of the five sections (fix 2)."""
+    form = (HERE / "assets" / "answer-vote.md").read_text(encoding="utf-8").format(name=name, why=why)
+    return swap(text, r"^## Write exactly this.*\Z", form)
+
+
+def sections_of(out: Path) -> list[str]:
+    """The sections an answer in this run must have: the vote form's when the run was made with --vote."""
+    form = out / "form.txt"
+    return VOTE_SECTIONS if form.exists() and form.read_text(encoding="utf-8").strip() == "vote" else SECTIONS
 
 
 def seat_files(sid: str) -> tuple[Path, Path]:
@@ -169,11 +226,11 @@ def start(engine: str, prompt: str, ans: Path, log: Path, timeout: int, web: boo
     return p, time.time()
 
 
-def answer_ok(ans: Path) -> tuple[bool, str]:
+def answer_ok(ans: Path, sections: list[str] = SECTIONS) -> tuple[bool, str]:
     text = ans.read_text(encoding="utf-8", errors="ignore") if ans.exists() else ""
     if not text.strip():
         return False, "empty answer"
-    missing = [s for s in SECTIONS if s not in text]
+    missing = [s for s in sections if s not in text]
     return (False, f"missing sections {missing}") if missing else (True, "")
 
 
@@ -258,6 +315,10 @@ def run(a) -> int:
     brief_t = (HERE / "assets" / "brief.md").read_text(encoding="utf-8")
     plain_t = (HERE / "assets" / "brief-plain.md").read_text(encoding="utf-8")
     only = set(a.only.split(",")) if a.only else None
+    card, vote = getattr(a, "card", False), getattr(a, "vote", False)
+    if vote:
+        (out / "form.txt").write_text("vote\n", encoding="utf-8")
+    sections = sections_of(out)
     jobs = {}
     for sid, name, engine in EXPERTS:
         lst, ident = out / "seats" / f"{sid}-list.md", out / "seats" / f"{sid}-identity.md"
@@ -265,7 +326,10 @@ def run(a) -> int:
             continue
         brief = out / "briefs" / f"{sid}.md"
         if sid in PLAIN:  # the control gets the question and the answer's shape, nothing else
-            brief.write_text(plain_t.format(question=question.strip()), encoding="utf-8")
+            text = plain_t.format(question=question.strip())
+            if vote:
+                text = vote_brief(text, "Answer", "one reason per line")
+            brief.write_text(text, encoding="utf-8")
             jobs[sid] = {"expert": name, "engine": engine, "brief": brief}
             continue
         src_list, src_ident = seat_files(sid)
@@ -273,6 +337,10 @@ def run(a) -> int:
         shutil.copyfile(src_ident, ident)
         text = brief_t.format(name=name, list_path=lst, identity_path=ident, n_items=n_items(lst),
                               question=question.strip())
+        if card:
+            text = card_brief(text, rule_card(lst, ident))
+        if vote:
+            text = vote_brief(text, name, 'each line cites "my #n" or says "my reading"')
         if sid == INSIGHT_SEAT:
             text += insight_load(out, a.insights, cwd, getattr(a, "insight_scheme", None))
         brief.write_text(text, encoding="utf-8")
@@ -295,6 +363,8 @@ def run(a) -> int:
     status = json.loads(old.read_text(encoding="utf-8")) if only and old.exists() else {}
 
     def prompt_for(sid, engine):
+        if engine == "mcode" and card:  # the card brief already holds the rules; nothing to paste
+            return str(jobs[sid]["brief"])
         if engine == "mcode":
             return str(pasted_brief(jobs[sid]["brief"], jobs[sid]["list"], jobs[sid]["identity"]))
         p = f"Read {jobs[sid]['brief']} and do what it says."
@@ -341,7 +411,7 @@ def run(a) -> int:
                 continue
             del procs[sid]
             j = jobs[sid]
-            ok, why = answer_ok(ans)
+            ok, why = answer_ok(ans, sections)
             if p.returncode == 124:
                 ok, why = False, f"timeout after {a.timeout} s"
             elif p.returncode != 0 and ok:
@@ -395,7 +465,7 @@ def nearest(run_: str, allowed: str) -> str:
 
 
 def check_one(sid: str, text: str, out: Path) -> list[str]:
-    bad = [f"{sid}: missing section {s}" for s in SECTIONS if s not in text]
+    bad = [f"{sid}: missing section {s}" for s in sections_of(out) if s not in text]
     if sid in PLAIN:  # no list to cite from: the sections are the whole check
         return bad
     index = out / "seats" / "dave-insight-index.md"
@@ -480,6 +550,10 @@ def main() -> int:
                    "existing run and keeps its other answers")
     r.add_argument("--claude-by-caller", action="store_true",
                    help="inside Claude Code: leave Dave and any 范蠡 fallback to the caller's subagents")
+    r.add_argument("--card", action="store_true", help="put each expert's rules in its brief as a short card (one line "
+                   "per rule) and tell it to read nothing else and run no shell")
+    r.add_argument("--vote", action="store_true", help="answer form for an approve-or-change question: APPROVE or "
+                   "CHANGE, a short cited why, and what I need to know; check judges these sections")
     c = sub.add_parser("check")
     c.add_argument("dir")
     c.add_argument("--sabotage", action="store_true")
