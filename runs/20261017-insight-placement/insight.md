@@ -20,3 +20,20 @@ Options:
    with neither is marked *recall*. evidence: the facts that had a file path in this question were right.
 2. [tool] experts-decide's Check step also checks each fact the question labels verified against the file it names,
    and lists any with no source. evidence: Linus caught it by reading two files.
+
+## Timer crash — `deadline wait` failed when the deadline was ended before it woke
+
+Found by: the background timer's exit 1 and its one line, "harness-guard: an internal error was caught; the guard is
+failing open". Cause by reading `src/cli.ts:224-232`, not reproduced.
+
+Whys:
+1. Why did the timer fail? After its sleep, `deadline wait` reads `deadlineStatus(...)!.line`; the result was null.
+2. Why null? I ran `deadline end` when the experts finished early, and `sessionDeadline` skips ended deadlines.
+3. Why does wait not handle that? It was written for a deadline that runs to its end; `end` came later (Round 10) and
+   no test runs `end` while a `wait` sleeps.
+Source: check — `deadline wait` assumes its deadline is still open when it wakes.
+Root cause: the non-null assertion after the sleep; the deadline can be ended in between.
+Options:
+1. [tool] After the sleep, if the deadline was ended, print "<id> ended before its deadline" and exit 0; with a test
+   that ends a deadline while wait sleeps. evidence: this run's sequence (end at 13:48, the timer woke at 13:58).
+2. [rule] When a run ends early, stop its background timer before `deadline end`. evidence: the same sequence.
