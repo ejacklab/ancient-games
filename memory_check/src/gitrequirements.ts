@@ -142,9 +142,11 @@ function reasons(errors: readonly string[]): string {
   return `a git command failed, so this clause could not run (C2): ${first}${more}`;
 }
 
-/** A field that says "nothing here": an empty value, or the empty list the format's own examples use. */
+/** A field that says "nothing here": an empty value, or the empty list the format's own examples use. A `-` under
+ * the key is a list marker with nothing after it, which links nothing either (A4). */
 function linksNothing(value: string | undefined): boolean {
   const one = (value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  if (one === "-") return true;
   return one === "" || one === "[]" || one === "- none" || one === "none" || one === "(none)";
 }
 
@@ -222,7 +224,14 @@ function versionsOf(
   const commits = commitsOf(snapshot.root, snapshot.range, one.path, errors);
   const first = commits[0];
   const baseline =
-    first !== undefined && hasParent(snapshot.root, first, errors) ? textAt(snapshot.root, `${first}^`, one.path, errors) : null;
+    first === undefined
+      ? // The range holds no commit of this entry: its text is the same everywhere in the range, so the state the
+        // staged state is compared against is the one at the head of the range. Without it the staged state had no
+        // version before it and the change in it was never compared (C3).
+        textAt(snapshot.root, "HEAD", one.path, errors)
+      : hasParent(snapshot.root, first, errors)
+        ? textAt(snapshot.root, `${first}^`, one.path, errors)
+        : null;
   const versions: Version[] = [];
   for (const commit of commits) {
     const text = textAt(snapshot.root, commit, one.path, errors);

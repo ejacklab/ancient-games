@@ -1,0 +1,26 @@
+- 2026-10-18T04:55:00+08:00 · linus · start · codex
+- 2026-10-18T04:55:01+08:00 · fan-li · start · claude
+- 2026-10-18T04:55:01+08:00 · sun-tzu · start · dsh
+- 2026-10-18T04:55:01+08:00 · dario · start · claude
+- 2026-10-18T04:55:02+08:00 · dave · start · claude
+- 2026-10-18T04:57:17+08:00 · dario · done · claude exit 0
+- 2026-10-18T04:57:28+08:00 · check-dario · start · 
+- 2026-10-18T04:57:31+08:00 · check-dario · done · dario answer file checked, no FAIL dario lines
+- 2026-10-18T04:57:38+08:00 · linus · done · codex exit 0
+- 2026-10-18T04:57:48+08:00 · check-linus · start · 
+- 2026-10-18T04:57:52+08:00 · check-linus · done · linus check passed (no FAIL linus lines)
+- 2026-10-18T04:59:39+08:00 · sun-tzu · done · dsh exit 0
+- 2026-10-18T04:59:50+08:00 · check-sun-tzu · start · 
+- 2026-10-18T04:59:53+08:00 · check-sun-tzu · done · sun-tzu check passed, no sun-tzu FAIL lines
+- 2026-10-18T05:00:25+08:00 · fan-li · done · claude exit 0
+- 2026-10-18T05:00:37+08:00 · check-fan-li · start · 
+- 2026-10-18T05:00:39+08:00 · check-fan-li · done · fan-li passes the check; other experts reported no answer file (expected, folder holds fan-li only)
+- 2026-10-18T05:02:20+08:00 · dave · done · claude exit 0
+- 2026-10-18T05:02:31+08:00 · check-dave · start · 
+- 2026-10-18T05:02:33+08:00 · check-dave · done · dave answer passes check; no FAIL dave lines
+- 2026-10-18T05:02:43+08:00 · lao-tzu · start · opencode
+- 2026-10-18T05:04:28+08:00 · lao-tzu · done · opencode exit 0
+- 2026-10-18T05:04:39+08:00 · check-lao-tzu · start · 
+- 2026-10-18T05:04:42+08:00 · check-lao-tzu · done · lao-tzu answer file checked, no lao-tzu failures
+- 2026-10-18T05:04:54+08:00 · compare · start · 
+- 2026-10-18T05:07:41+08:00 · compare · done · compare.md written; D1 place, D3 keep-both agreed 6/6; D2 no majority (3 row-by-row, 2 file-switch, 1 full coverage); D4 (a) 4/6; D5 now 4/6 (2 conditional)

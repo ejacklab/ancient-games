@@ -1,0 +1,865 @@
+[0m
+> build · MiniMax-M3.1-Flash-Preview
+[0m
+I'll read the brief first.
+[0m→ [0mRead runs/20261018-finish-everything/briefs/r20b-code.md
+[0m
+[0m$ [0mwc -l .claude/skills/workflow-design/guard/SPEC.md .claude/skills/workflow-design/guard/src/hooks.ts .claude/skills/workflow-design/guard/src/cli.ts .claude/workflows/crossed-build-check.js .claude/skills/workflow-design/guard/test/round20b.test.ts runs/20261018-finish-everything/nodes/r20b-code.progress.md 2>&1
+949 .claude/skills/workflow-design/guard/SPEC.md
+   942 .claude/skills/workflow-design/guard/src/hooks.ts
+   727 .claude/skills/workflow-design/guard/src/cli.ts
+   244 .claude/workflows/crossed-build-check.js
+   124 .claude/skills/workflow-design/guard/test/round20b.test.ts
+wc: runs/20261018-finish-everything/nodes/r20b-code.progress.md: No such file or directory
+  2986 total
+[0m
+[0m→ [0mRead .claude/skills/workflow-design/guard/SPEC.md[90m [offset=820][0m
+[0m→ [0mRead .claude/skills/workflow-design/guard/test/round20b.test.ts
+[0m→ [0mRead tests/workflows/crossed_build_check_harness.mjs
+[0m→ [0mRead .claude/workflows/crossed-build-check.js
+[0m
+[0m$ [0mls runs/20261018-finish-everything/nodes/ | head -50; echo ---; ls .claude/skills/workflow-design/guard/
+ev-cleanup.progress.md
+ev-cleanup.red.txt
+ev-cleanup.result.md
+ev-code-a.opencode.log
+mc-findings.progress.md
+mc-fix-a.mcode.log
+mc-fix-a.progress.md
+mc-fix-a.result.md
+mc-reproduce-py.red.txt
+mc-reproduce-ts.red.txt
+mc-smoke-a.md
+owner-q.progress.md
+plan-review.progress.md
+r20-code-a.mcode.log
+r20-code-a.opencode.log
+r20-code.progress.md
+r20-code.result.md
+r20-cr1-quiet.red.txt
+r20-harness.red.txt
+r20-tests.red.txt
+r20.progress.md
+r20b-code-a.opencode.log
+r20b-harness.red.txt
+r20b-test-hashes.txt
+r20b-tests.red.txt
+r20b.progress.md
+---
+SPEC.md
+data
+node_modules
+package.json
+src
+test
+tsconfig.json
+[0m
+[0m$ [0mcat runs/20261018-finish-everything/nodes/r20b.progress.md; echo ===; cat runs/20261018-finish-everything/nodes/r20-code.result.md
+- 2026-10-18T03:17:03+08:00 · tests · start · CR1a DL5 XB2 XB3 tests
+- 2026-10-18T03:20:52+08:00 · tests · done · round20b.test.ts 5 red/1 not red; harness XB2/XB3 5 FAIL (exit 1); guard suite 1555 pass, 5 fail all round20b
+- 2026-10-18T03:21:17+08:00 · hashes · start · sha256 of round20b test and crossed harness
+- 2026-10-18T03:21:17+08:00 · hashes · done · wrote r20b-test-hashes.txt
+- 2026-10-18T03:21:33+08:00 · code-a · start · waiting for no opencode run, then opencode MiniMax-M3.1-Flash-Preview on briefs/r20b-code.md
+===
+status: done
+
+Round 20 of the guard SPEC is implemented: one deadline at a time in the CLI, the criteria step at the end of the
+session's deadline, and `args.timeout` in crossed-build-check; the full suite, the type check and the workflow harness
+all pass.
+
+## Pieces
+
+- `dl` (DL1–DL4)
+  - `.claude/skills/workflow-design/guard/src/deadline.ts`: `openDeadlines` (every never-ended deadline of a scope, newest
+    first), `deadlineById` (the deadline an id names, whatever its session or run), `deadlineByRun` (the newest open one
+    of a run, compared the way `deadline start --run` stores it: `path.relative(root, path.resolve(root, dir))`);
+    `deadlineStatus` now delegates to the new `statusOf`, so one chosen deadline can be reported on its own;
+    `endDeadline` delegates to the new `endOne`; `endedLine` prints `<id> ended <time>`.
+  - `.claude/skills/workflow-design/guard/src/cli.ts`, `deadlineCommand`: `--id`/`--run` resolve one deadline through
+    `named()`; no file or no open deadline of that run writes `no deadline <id>` / `no deadline for <DIR>` on stderr and
+    exits 2; an ended deadline prints `endedLine` and exits 0 for every verb; `status`/`wait` act on the chosen deadline
+    (`status` exit 1 when it is up, `wait` sleeps to its end and reports it); `end` with neither flag lists every open id
+    with its run on stderr and exits 2 when more than one is open, and ends the one when there is exactly one. The
+    no-flag `status`/`wait` paths are unchanged (DL4), including their exit codes and messages; the usage text names the
+    new flags.
+- `cr` (CR1)
+  - `.claude/skills/workflow-design/guard/src/hooks.ts`, `criteriaStep`: before it scores anything it reads the
+    session's own deadline (`deadlineStatus(root, session, now, false)` — DL4's choice) and, while that deadline is not
+    up, returns the context line
+    `harness-guard: criteria are scored when deadline <id> ends or is up (<n> min left)` as a Stop context, so it neither
+    blocks nor writes a criterion or late-criteria failure. Once the deadline is ended or up, or the session has none,
+    it runs exactly as before; every other step of the stop is untouched.
+- `xb` (XB1)
+  - `.claude/workflows/crossed-build-check.js`: `args.timeout` (whole seconds, 60–3600, default 580) is validated with
+    the other args, before any agent (`args.timeout must be a whole number of seconds from 60 to 3600`);
+    `engineRun` (write and review) and `testLimit` (fail first and head) carry it into every engine call and every test
+    command, and above 580 the command is started with `&` and the step waits for the process to end — `COMMON` item 3
+    says so for every step too.
+
+## Commands (last lines)
+
+- `cd .claude/skills/workflow-design/guard && bun test` → `Ran 1554 tests across 39 files. [16.23s]` (1554 pass, 0 fail)
+- `cd .claude/skills/workflow-design/guard && ./node_modules/.bin/tsgo --noEmit -p .` → no output, exit 0
+- `node tests/workflows/crossed_build_check_harness.mjs` → `all passed`
+
+The two Round 20 files on their own: `bun test test/round20-deadline.test.ts test/round20-criteria.test.ts` →
+`Ran 27 tests across 2 files. [2.60s]` (27 pass, 0 fail).
+
+## CONTRADICTS
+
+None.
+
+Notes, not contradictions: the SPEC does not say what `end`/`wait` do with an id or a run that names an *ended* deadline
+(DL1 only defines `status`), so they answer like `status` does — `<id> ended <time>`, exit 0, nothing written. C17 is
+test-side only (the tests' own fake `ps`), so no source change was needed for it; those tests pass.
+[0m
+[0m$ [0mcat > runs/20261018-finish-everything/nodes/r20b-code.progress.md <<'EOF'
+EOF
+for p in cr1a dl5 xb; do echo "- $(date -Iseconds) · $p · planned · Round 20 review fix" >> runs/20261018-finish-everything/nodes/r20b-code.progress.md; done
+cat runs/20261018-finish-everything/nodes/r20b-code.progress.md
+- 2026-10-18T03:22:14+08:00 · cr1a · planned · Round 20 review fix
+- 2026-10-18T03:22:14+08:00 · dl5 · planned · Round 20 review fix
+- 2026-10-18T03:22:14+08:00 · xb · planned · Round 20 review fix
+[0m
+[0m← [0mWrite runs/20261018-finish-everything/nodes/r20b-code.result.md
+Wrote file successfully.
+[0m
+Now let me look at the relevant source.
+[0m$ [0mgrep -n "criteriaStep" -A 80 .claude/skills/workflow-design/guard/src/hooks.ts | head -140
+588:  const criteria = criteriaStep(root, session, raised, env);
+589-  if (criteria !== null) return criteria;
+590-  return pathAsk(root, session, raised, env);
+591-}
+592-
+593-// ---- the score (round 6, K2) -------------------------------------------------------------------------------------
+594-
+595-// The failure checks the criteria step itself writes: they are not the work, so they never make criteria late.
+596-const CRITERION_CHECK = "criterion:";
+597-const LATE_CHECK = "R12.7-criteria-late";
+598-
+599-function byCriteriaStep(check: string): boolean {
+600-  return check.startsWith(CRITERION_CHECK) || check === LATE_CHECK;
+601-}
+602-
+603-// The criteria files this session touched, each once with the time of its first touch, as root-relative paths.
+604-function touchedCriteria(root: string, session: string): { file: string; first: number }[] {
+605-  const found: { file: string; first: number }[] = [];
+606-  for (const record of readJournal(root).records) {
+607-    if (record.kind !== "touched" || record.session !== session || !isCriteriaFile(record.path)) continue;
+608-    const file = path.relative(root, path.resolve(root, record.path));
+609-    const time = Date.parse(record.time);
+610-    const seen = found.find((entry) => entry.file === file);
+611-    if (seen === undefined) found.push({ file, first: time });
+612-    else if (time < seen.first) seen.first = time;
+613-  }
+614-  return found;
+615-}
+616-
+617-// The state of a file, so a block for it is given once per state: a short hash of its bytes, never its text.
+618-function fileState(file: string): string {
+619-  try {
+620-    return createHash("sha256").update(fs.readFileSync(file)).digest("hex").slice(0, 16);
+621-  } catch {
+622-    return "unreadable";
+623-  }
+624-}
+625-
+626-// One failure record the criteria step writes; its evidence is the criteria file itself.
+627-function criteriaFailure(root: string, session: string, env: HookEnv, file: string, check: string, expected: string, actual: string, reason: string): void {
+628-  appendFailure(root, {
+629-    kind: "failure",
+630-    id: newFailureId(),
+631-    time: env.now().toISOString(),
+632-    session,
+633-    found_by: "guard",
+634-    check,
+635-    input: path.basename(file),
+636-    expected,
+637-    actual,
+638-    engine: "none",
+639-    harness: HARNESS,
+640-    reason,
+641-    evidence: file,
+642-  });
+643-}
+644-
+645-// For each criteria file this session touched: a file that is unreadable, fails its checks or has unmarked items blocks
+646-// once per file state (rules and ids only, never item text); each item marked not met becomes a failure; criteria
+647-// first written after the work's first checked result become one late failure. New failures block like any other.
+648:function criteriaStep(root: string, session: string, raised: Set<string>, env: HookEnv): HookResult | null {
+649-  const files = touchedCriteria(root, session);
+650-  if (files.length === 0) return null;
+651-
+652-  // Round 20, CR1: while the session's deadline still runs, the criteria are scored at its end, not at every stop of
+653-  // work still going on. DL4's choice for the session: its newest running deadline; an ended or up one runs as before.
+654-  const clock = deadlineStatus(root, session, env.now(), false);
+655-  // Quiet, not a context line: Claude Code continues the turn on a Stop hook's context, so a line here woke a waiting
+656-  // agent at every stop (seen 2026-10-18 in run 20261018-finish-everything).
+657-  if (clock !== null && !clock.up) return QUIET;
+658-
+659-  const records = readJournal(root).records;
+660-  // What this session's journal already holds: a criterion's failure is written once per id and file (its evidence is
+661-  // the file: one session's C4 in one file never hides its C4 in another), a late one once per file.
+662-  const checks = new Set<string>();
+663-  const lateFiles = new Set<string>();
+664-  for (const record of records) {
+665-    if ((record.kind !== "failure" && record.kind !== "warning") || record.session !== session) continue;
+666-    if (record.kind === "failure") checks.add(`${record.check} ${record.evidence}`);
+667-    if (record.check === LATE_CHECK) lateFiles.add(record.evidence);
+668-  }
+669-  const workTimes = records
+670-    .filter((record) => record.session === session && (record.kind === "success" || (record.kind === "failure" && !byCriteriaStep(record.check))))
+671-    .map((record) => Date.parse(record.time))
+672-    .filter((time) => Number.isFinite(time));
+673-  const promptTimes = records
+674-    .filter((record) => record.session === session && record.kind === "prompt")
+675-    .map((record) => Date.parse(record.time))
+676-    .filter((time) => Number.isFinite(time));
+677-  // Round 8: the work a criteria file must precede is the work of its own request — what came after the last prompt
+678-  // before the file was first touched. A session with no prompt records reads from its start, as before.
+679-  const firstWorkOf = (touched: number): number | null => {
+680-    const start = Math.max(-Infinity, ...promptTimes.filter((time) => time <= touched));
+681-    const after = workTimes.filter((time) => time > start);
+682-    return after.length === 0 ? null : Math.min(...after);
+683-  };
+684-
+685-  const lines: string[] = [];
+686-  const states: string[] = [];
+687-  let wrote = false;
+688-
+689-  for (const { file, first } of files) {
+690-    const absolute = path.resolve(root, file);
+691-    // A criteria file this session touched and then deleted or renamed is not checked (as for registers, C9).
+692-    if (!fs.existsSync(absolute)) continue;
+693-
+694-    const firstWork = Number.isFinite(first) ? firstWorkOf(first) : null;
+695-    if (firstWork !== null && first > firstWork && !lateFiles.has(file)) {
+696-      // A timing pattern is a guess — a test run before the criteria may belong to something else (Round 9).
+697-      appendWarning(root, {
+698-        kind: "warning",
+699-        id: newWarningId(),
+700-        time: env.now().toISOString(),
+701-        session,
+702-        check: LATE_CHECK,
+703-        input: path.basename(file),
+704-        expected: "criteria written before the work",
+705-        actual: "criteria written after the request's first checked result",
+706-        engine: "none",
+707-        harness: HARNESS,
+708-        reason: "a checked result of this request came before the criteria file; the guard cannot tell whether it was this task's work",
+709-        evidence: file,
+710-      });
+711-      lateFiles.add(file);
+712-      wrote = true;
+713-    }
+714-
+715-    let loaded;
+716-    let problems: string[];
+717-    try {
+718-      loaded = loadCriteria(absolute);
+719-      const result = score(loaded);
+720-      problems = [
+721-        // K1's messages name items by id or position, never by their text.
+722-        ...fails(checkCriteria(loaded)).map((finding) => `${finding.rule} (${finding.message})`),
+723-        ...(result.unmarked.length > 0 ? [`unmarked: ${result.unmarked.join(", ")}`] : []),
+724-      ];
+725-    } catch {
+726-      loaded = null;
+727-      problems = ["R12.7-criteria-unreadable"];
+[0m
+[0m→ [0mRead .claude/skills/workflow-design/guard/src/hooks.ts[90m [offset=540, limit=55][0m
+[0m
+[0m$ [0mgrep -n "QUIET" .claude/skills/workflow-design/guard/src/*.ts | head -30; echo ===; grep -n "function pathAsk" -A 40 .claude/skills/workflow-design/guard/src/hooks.ts
+.claude/skills/workflow-design/guard/src/hooks.ts:25:const QUIET: HookResult = { exitCode: 0, stdout: "", stderr: "" };
+.claude/skills/workflow-design/guard/src/hooks.ts:50:  return { ...QUIET };
+.claude/skills/workflow-design/guard/src/hooks.ts:657:  if (clock !== null && !clock.up) return QUIET;
+===
+789:function pathAsk(root: string, session: string, raised: Set<string>, env: HookEnv): HookResult {
+790-  if (raised.has("path")) return quiet();
+791-  if (!readJournal(root).records.some((record) => record.kind === "success" && record.session === session)) return quiet();
+792-  const files = sessionPathFiles(root, session);
+793-  const answeredGreat = files.some((entry) => entry.great) ? greatAnswered(root) : new Set<string>();
+794-  const greatMissing = files.filter((entry) => entry.great && !answeredGreat.has(path.normalize(entry.file))).map((entry) => entry.file);
+795-  if (files.length > 0 && greatMissing.length === 0) return quiet();
+796-
+797-  const record: RaisedRecord = { kind: "raised", time: env.now().toISOString(), session, ids: ["path"] };
+798-  appendRecord(root, record);
+799-  const lines = [`harness-guard: record the path of this task — run \`bun ${guardDirFor(root)}/src/cli.ts path new --session ${session} --out runs/<run>/success-path.yaml\` (or .harness-guard/paths/<name>.yaml), fill steps, decisions and measures; for a similar task, name a parent and what you changed`];
+800-  if (greatMissing.length > 0) {
+801-    lines.push(`${greatMissing.join(", ")} claims a great success with no valid insight section; add one to an insight file: \`## great: <path file>\` with Comparison:, Cause: and Options: (1–3 numbered items, each starting with [rule], [check] or [tool] and holding evidence:).`);
+802-  }
+803-  return block(lines.join("\n"));
+804-}
+805-
+806-// ---- SessionStart ------------------------------------------------------------------------------------------------
+807-
+808-function handleSessionStart(payload: Record<string, unknown>, root: string): HookResult {
+809-  const session = sessionOf(payload);
+810-  const others = openFailures(root, null).filter((record) => record.session !== session);
+811-  if (others.length === 0) return quiet();
+812-  const ids = others.map((record) => record.id);
+813-  return context("SessionStart", `harness-guard: ${ids.length} failure(s) from other sessions in this repository are still unanswered: ${ids.join(", ")}. Raise an insight for each before you finish.`);
+814-}
+815-
+816-// ---- UserPromptSubmit (round 6, K2) -------------------------------------------------------------------------------
+817-
+818-// Before the work starts, the session is asked once to write the criteria it will be scored on: not when it has already
+819-// touched a criteria file, and not again once asked (a `raised` record with id "criteria"). The prompt is never read.
+820-function handleUserPromptSubmit(payload: Record<string, unknown>, root: string, env: HookEnv): HookResult {
+821-  const session = sessionOf(payload);
+822-  const prompt: PromptRecord = { kind: "prompt", time: env.now().toISOString(), session };
+823-  appendRecord(root, prompt);
+824-  const records = readJournal(root).records.filter((record) => record.session === session);
+825-  const asked = (id: string) => records.some((record) => record.kind === "raised" && record.ids.includes(id));
+826-  const lines: string[] = [];
+827-  const ids: string[] = [];
+828-  if (!records.some((record) => record.kind === "touched" && isCriteriaFile(record.path)) && !asked("criteria")) {
+829-    ids.push("criteria");
+[0m
+[0m$ [0mgrep -rn "deadline" .claude/skills/workflow-design/guard/test/round20-criteria.test.ts | head -30
+2:// open, not-up deadline of the session, the criteria step waits; once the deadline is ended or up, or with no deadline,
+9:import { endDeadline } from "../src/deadline.ts";
+45:  const deadline: Deadline = { id: "D-0000c0de", start: new Date(EPOCH).toISOString(), minutes: 10, run: "runs/task", session, ...overrides };
+46:  write(`.harness-guard/deadlines/${deadline.id}.json`, JSON.stringify(deadline));
+47:  return deadline;
+80:const deferred = (id: string, left: number) => `harness-guard: criteria are scored when deadline ${id} ends or is up (${left} min left)`;
+84:test("CR1: a Stop inside an open, not-up deadline is not blocked by unmarked criteria, writes no criteria failure, and prints nothing", () => {
+85:  const deadline = plant();
+90:  expect(result.stdout, deferred(deadline.id, 8)).toBe("");
+92:  // Every stop while the deadline runs: still not blocked, still no failure.
+96:  expect(again.stdout, deferred(deadline.id, 3)).toBe("");
+100:test("CR1: after the deadline is ended, the same stop is blocked as today", () => {
+101:  const deadline = plant();
+109:  expect(result.stdout).not.toContain(`deadline ${deadline.id} ends or is up`);
+112:test("CR1: when the deadline is up, the same stop is blocked as today", () => {
+121:test("CR1: a session with no deadline is blocked as today", () => {
+127:test("CR1: another session's open deadline does not hold this session's criteria step", () => {
+[0m
+[0m→ [0mRead .claude/skills/workflow-design/guard/test/round20-criteria.test.ts[90m [offset=55, limit=80][0m
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/guard/src/hooks.ts
+Index: /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/hooks.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/hooks.ts
++++ /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/hooks.ts
+@@ -651,11 +651,12 @@
+ 
+ // Round 20, CR1: while the session's deadline still runs, the criteria are scored at its end, not at every stop of
+ // work still going on. DL4's choice for the session: its newest running deadline; an ended or up one runs as before.
+ const clock = deadlineStatus(root, session, env.now(), false);
+-// Quiet, not a context line: Claude Code continues the turn on a Stop hook's context, so a line here woke a waiting
+-// agent at every stop (seen 2026-10-18 in run 20261018-finish-everything).
+-if (clock !== null && !clock.up) return QUIET;
++// No result at all (CR1a): only the criteria step waits, so the stop goes on to its next step (the path ask) exactly
++// as when the session touched no criteria file. Not a context line either: Claude Code continues the turn on a Stop
++// hook's context, so a line here woke a waiting agent at every stop (seen 2026-10-18 in run 20261018-finish-everything).
++if (clock !== null && !clock.up) return null;
+ 
+ const records = readJournal(root).records;
+ // What this session's journal already holds: a criterion's failure is written once per id and file (its evidence is
+ // the file: one session's C4 in one file never hides its C4 in another), a late one once per file.
+
+[0m
+[0m$ [0mcd .claude/skills/workflow-design/guard && bun test test/round20b.test.ts 2>&1 | tail -25
+117 |   const named = flag === "--id" ? ["--id", b.id] : flag === "--run" ? ["--run", "runs/a"] : [];
+118 |   const started = Date.now();
+119 |   const result = b.cli("deadline", "wait", ...named, "--mark", "50");
+                         ^
+error: spawnSync /home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe ETIMEDOUT
+      path: "/home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe",
+   syscall: "spawnSync /home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe",
+     errno: -110,
+ spawnargs: [
+  "/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts",
+  "deadline", "wait", "--run", "runs/a", "--mark", "50"
+],
+      code: "ETIMEDOUT"
+
+      at spawnSync (node:child_process:285:20)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20b.test.ts:119:20)
+
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20b.test.ts:120:24)
+(fail) DL5: deadline wait --run … --mark 50 exits 2 with the --mark message and does not wait [10053.93ms]
+
+ 4 pass
+ 2 fail
+ 48 expect() calls
+Ran 6 tests across 1 file. [20.16s]
+[0m
+[0m$ [0mgrep -n "mark" .claude/skills/workflow-design/guard/src/cli.ts | head -40
+58:  "  criteria score <file>           score a criteria file: met/total and the unmarked ids",
+206:    if (args.includes("--marks")) usageError("deadline start: --marks was removed with the percent marks; the clock shows after every call");
+273:    // --mark went with the 50/80/100% marks (run 20261017-workflows, experts-decide mark-q, accepted by EJ): asking for it
+275:    if (args.includes("--mark")) usageError("deadline wait: --mark was removed with the percent marks; wait runs to the deadline");
+612:  out(`unmarked: ${result.unmarked.length === 0 ? "none" : result.unmarked.join(", ")}`);
+613:  return findings.some((finding) => finding.severity === "fail") || result.unmarked.length > 0 ? FINDINGS : OK;
+[0m
+[0m→ [0mRead .claude/skills/workflow-design/guard/src/cli.ts[90m [limit=120, offset=230][0m
+[0m→ [0mRead .claude/skills/workflow-design/guard/src/cli.ts[90m [limit=40, offset=195][0m
+[0m
+[0m$ [0mgrep -rn "\-\-mark" .claude/skills/workflow-design/guard/test/*.ts | head -20
+.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:436:// COO, run 20261017-workflows (experts-decide, mark-q): --mark is removed with the marks; asking for it fails loudly.
+.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:437:test("deadline wait --mark is a usage error, never a silent wait to 100%", () => {
+.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:440:  const result = b.cli("deadline", "wait", "--mark", "50");
+.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:442:  expect(result.stderr).toContain("--mark was removed");
+.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:481:test("review 5: deadline start --marks is a usage error", () => {
+.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:482:  const result = box().cli("deadline", "start", "--minutes", "10", "--marks", "50,80,100");
+.claude/skills/workflow-design/guard/test/round10-deadline.test.ts:484:  expect(result.stderr).toContain("--marks was removed");
+.claude/skills/workflow-design/guard/test/round20b.test.ts:3:// DL5: `deadline wait --mark` is a usage error (exit 2) with --id or --run too, before anything waits.
+.claude/skills/workflow-design/guard/test/round20b.test.ts:115:test.each([["--id"], ["--run"], ["none"]])("DL5: deadline wait %s … --mark 50 exits 2 with the --mark message and does not wait", (flag: string) => {
+.claude/skills/workflow-design/guard/test/round20b.test.ts:119:  const result = b.cli("deadline", "wait", ...named, "--mark", "50");
+.claude/skills/workflow-design/guard/test/round20b.test.ts:123:  expect(result.stderr).toContain("--mark was removed");
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/guard/src/cli.ts
+Index: /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts
++++ /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts
+@@ -216,8 +216,11 @@
+     throw error;
+   }
+ }
+ if (verb !== "status" && verb !== "wait" && verb !== "end") return usageError("deadline: start --minutes N [--run DIR] | status | wait | end [--id D-xxxxxxxx | --run DIR]");
++// DL5: --mark went with the 50/80/100% marks (run 20261017-workflows, experts-decide mark-q, accepted by EJ): asking
++// for it fails loudly, before any deadline is resolved and before anything waits, with --id or --run as well.
++if (verb === "wait" && args.includes("--mark")) usageError("deadline wait: --mark was removed with the percent marks; wait runs to the deadline");
+ // Round 20, DL1 and DL2: --id and --run name the one deadline the verb acts on, whatever its session or run. With
+ // neither flag the verb keeps today's choice (DL4), and `end` refuses to guess between several open ones (DL3).
+ const named = (): { chosen: Deadline | null; missing: string | null } => {
+   const id = flagValue(args, "--id");
+
+[0m
+[0m← [0mEdit .claude/skills/workflow-design/guard/src/cli.ts
+Index: /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts
++++ /home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts
+@@ -272,11 +272,8 @@
+   out([status.line, ...status.workers.map((w) => `  ${w}`)].join("\n"));
+   return status.up ? FINDINGS : OK;
+ }
+ if (verb === "wait") {
+-  // --mark went with the 50/80/100% marks (run 20261017-workflows, experts-decide mark-q, accepted by EJ): asking for it
+-  // fails loudly, never waits silently to the deadline.
+-  if (args.includes("--mark")) usageError("deadline wait: --mark was removed with the percent marks; wait runs to the deadline");
+   const session = flagValue(args, "--session");
+   const status = deadlineStatus(root, session, new Date());
+   if (status === null) usageError("deadline wait: no deadline");
+   sleepUntil(status.deadline);
+
+[0m
+[0m$ [0mcd .claude/skills/workflow-design/guard && bun test test/round20b.test.ts 2>&1 | tail -8
+bun test v1.4.3 (c6da4a4d3)
+
+ 6 pass
+ 0 fail
+ 54 expect() calls
+Ran 6 tests across 1 file. [104.00ms]
+[0m
+Now XB2/XB3 in the workflow.
+[0m$ [0mnode tests/workflows/crossed_build_check_harness.mjs 2>&1 | tail -25
+ok   a test passing on base is reported as passed_on_base, not failed_first
+ok   a test passing on base is reported as passed_on_base, not failed_first -- the plant is caught (failed_first c1: c1 > a,c1 > b; passed_on_base: c1:c1 > b)
+ok   a time_up step stops the rest
+ok   a time_up step stops the rest -- the plant is caught (opencode: agents after time up: write:o1,write:o2,failfirst:o2,head:o2,review)
+ok   review starts after every test step
+ok   review starts after every test step -- the plant is caught (review started at event 0, a test step ended at 19)
+ok   good run -> every return field, 7 agents, not stopped
+ok   fail first is told the new files, the base commit and to remove its worktree
+ok   write runs the engine with </dev/null and a 580 s limit
+ok   review runs read-only
+ok   an engine that wrote no tests -> no later steps for it, problem named
+ok   XB1 default timeout 580 reaches every engine call and test command
+ok   XB1 default timeout 580 runs in the foreground
+ok   XB1 timeout 1200 reaches every engine call and test command
+ok   XB1 timeout 1200: every step is told to run its command in the background
+ok   XB1 timeout 30 is refused before any agent
+ok   XB1 timeout 4000 is refused before any agent
+ok   XB1 timeout "x" is refused before any agent
+FAIL XB2 timeout 900: every write, review, fail-first and head prompt starts its command as ( timeout 900 …; echo "exit $?" > ….exit ) & -- status undefined; 7 calls; without the form: write:c1, write:d1, failfirst:c1, failfirst:d1, head:c1, head:d1, review
+FAIL XB2 timeout 900: every prompt says a missing .exit file is a failed step -- no missing-.exit rule in: write:c1, write:d1, failfirst:c1, failfirst:d1, head:c1, head:d1, review
+FAIL XB3 timeout 120: fail-first and head prompts run "timeout 120 <test_cmd>" -- status undefined; 4 test steps; without "timeout 120 <test_cmd>": failfirst:c1, failfirst:d1, head:c1, head:d1
+FAIL XB3 the default: fail-first and head prompts run "timeout 580 <test_cmd>" -- status undefined; 4 test steps; without "timeout 580 <test_cmd>": failfirst:c1, failfirst:d1, head:c1, head:d1
+FAIL XB3 timeout 120: no prompt holds 600000 -- 600000 in: write:c1, write:d1, failfirst:c1, failfirst:d1, head:c1, head:d1, review
+
+5 FAILED
+[0m
+[0m$ [0mgrep -rn "600000\|crossed-build" tests/ --include=*.mjs --include=*.js --include=*.ts -l | head; echo ===; grep -rn "600000" .claude/workflows/*.js | head
+tests/workflows/crossed_build_check_harness.mjs
+===
+.claude/workflows/crossed-build-check.js:82:Run each long command with the Bash tool's timeout set to 600000 ms. Report what the commands printed and returned,
+.claude/workflows/evaluate-requirements.js:52:  const result = await agent(`Run exactly this command from the repository root, with a Bash timeout of 600000 ms (some steps take minutes), then report: ${command}`, {
+.claude/workflows/review-enhance.js:50:3. Run each long command with the Bash tool's timeout set to 600000 ms, and an engine call in the background with a
+[0m
+Now the workflow edits:
+[0m← [0mEdit .claude/workflows/crossed-build-check.js
+Index: /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
++++ /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+@@ -63,9 +63,19 @@
+ // step cannot hold the command in one Bash call (they are capped at 600 s), so the step runs it in the background and
+ // waits for it to end.
+ const BACKGROUND = TIMEOUT > 580
+ 
+-const COMMON = label => `
++// XB2 and XB3: the limit reaches the command itself, under `timeout <N>`, for an engine call and for a test command
++// alike. Above 580 the step starts the command in the background and reads the exit from <file>.exit, never from a
++// process it cannot see; a missing <file>.exit is a failed step, never a pass.
++const bgCommand = (file, command) => `( timeout ${TIMEOUT} ${command}; echo "exit $?" > ${file}.exit ) &`
++const fgCommand = (command) => `timeout ${TIMEOUT} ${command}`
++const runCommand = (file, command) => (BACKGROUND ? bgCommand(file, command) : fgCommand(command))
++// How much of the Bash tool's own limit one step's call may use: the command's own limit, rounded up, never the 600 s
++// cap by name (XB3).
++const toolMs = (TIMEOUT + 20) * 1000
++
++const COMMON = (label, file = '') => `
+ You are one step (${label}) of the crossed-build-check workflow in this repository; its root is your working folder.
+ Run folder: ${RUN}/. Another session also commits in this working tree: never \`git add\`, never commit, never
+ \`git stash\`, and change no file except the ones this step names.
+ 
+@@ -75,12 +85,13 @@
+ 2. Append one line to ${PROGRESS} with a shell \`echo ... >>\`:
+    \`- <output of date -Iseconds> · ${label} · start · <short note>\`
+    and one more when you finish, with \`done\` or \`fail\` in place of \`start\`.
+ 3.${BACKGROUND ? `
+-One Bash call is capped at 600 s, so run every long command of this step in the background: start it with \`&\` and wait
+-until the process is gone (at most ${TIMEOUT} s) before you report or read its output file. Never leave it running
++One Bash call is capped at 600 s, so run every long command of this step in the background: start it exactly in the form
++given below, then wait until ${file}.exit appears (at most ${TIMEOUT} s) and read the exit code from that file. A missing
++${file}.exit after ${TIMEOUT} s is a failed step: report it as failed, never as a pass. Never leave the process running
+ behind you.` : `
+-Run each long command with the Bash tool's timeout set to 600000 ms. Report what the commands printed and returned,
++Run each long command with the Bash tool's timeout set to ${toolMs} ms. Report what the commands printed and returned,
+ not what you expect them to.`}
+ `
+ 
+ const ask = brief => `"Read ${brief} and do what it says."`
+@@ -90,17 +101,12 @@
+   if (engine === 'codex') return `codex exec -m gpt-6.1-sol -c model_reasoning_effort=medium -s ${readOnly ? 'read-only' : 'workspace-write'} --skip-git-repo-check -o ${out} ${ask(brief)} </dev/null`
+   if (engine === 'dsh') return `dsh headless ${ask(brief)} </dev/null > ${out}`
+   return `claude -p --model claude-opus-5-5 ${ask(brief)} </dev/null > ${out}`
+ }
+-// An engine call under the limit, or the same call in the background, with the wait for it under it.
+-const engineRun = (engine, brief, out, readOnly) => BACKGROUND
+-  ? `    timeout ${TIMEOUT} ${engineCommand(engine, brief, out, readOnly)} &
+-    wait for it to end: poll until the process is gone (at most ${TIMEOUT} s) and only then read ${out} or its exit code.`
+-  : `    timeout ${TIMEOUT} ${engineCommand(engine, brief, out, readOnly)}`
+-// The same limit, in words, for a test command the step runs itself.
+-const testLimit = () => BACKGROUND
+-  ? `a ${TIMEOUT}-second limit in the background (start the command with \`&\`, then wait for it to end before you read its output)`
+-  : `a ${TIMEOUT}-second limit`
++// An engine call under the limit, or the same call in the background writing its exit to <file>.exit.
++const engineRun = (engine, brief, out, readOnly) => `    ${runCommand(out, engineCommand(engine, brief, out, readOnly))}`
++// XB3: a test command the step runs itself carries the same limit as an engine call, under `timeout <N>`.
++const testRun = (t, out) => runCommand(out, t.test_cmd)
+ 
+ const s = type => ({ type })
+ const strings = { type: 'array', items: { type: 'string' } }
+ const object = properties => ({ type: 'object', properties, required: Object.keys(properties) })
+
+[0m
+[0m← [0mEdit .claude/workflows/crossed-build-check.js
+Index: /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
++++ /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+@@ -130,9 +130,9 @@
+ const NAMES = 'Name each test as the test runner prints it (file and test name), the same way in every list.'
+ 
+ function writeStep(t) {
+   const out = resultFile(t.engine, t.id)
+-  return step(`${COMMON(`write:${t.id}`)}
++  return step(`${COMMON(`write:${t.id}`, out)}
+ Step: have ${t.engine} write the tests that ${t.brief} asks for. First read ${t.brief}: if it has no line starting
+ "## Lessons" (the node-brief template's Lessons section, the text of \`lessons for\`, or "none"), do not run anything;
+ return status "failed" with problem "the brief has no Lessons section". Otherwise run exactly this command from the
+ repository root:
+
+[0m
+[0m← [0mEdit .claude/workflows/crossed-build-check.js
+Index: /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
++++ /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+@@ -147,18 +147,18 @@
+ }
+ 
+ function failFirstStep(t, w) {
+   const out = `${NODES}/${t.id}.base.txt`
+-  return step(`${COMMON(`failfirst:${t.id}`)}
++  return step(`${COMMON(`failfirst:${t.id}`, out)}
+ Step: show that the new tests of brief ${t.id} fail on the base commit ${a.base}, before the build.
+ The new test files: ${w.test_files.join(', ')}.
+ 
+ 1. \`dir=$(mktemp -d /tmp/crossed-${t.id}-XXXXXX)\` and \`git worktree add --detach "$dir" ${a.base}\`.
+ 2. Copy into "$dir", at the same relative paths, only those new test files (create parent folders as needed).
+-3. From "$dir", with ${testLimit()}, run the brief's test command and save all its output to
++3. From "$dir", run the brief's test command under a ${TIMEOUT}-second limit and save all its output to
+    ${out} in the main repository (use its absolute path):
+ 
+-       ${t.test_cmd}
++       ${testRun(t, out)}
+ 
+ 4. Always remove the worktree at the end, even when a step failed: \`git worktree remove --force "$dir"\`.
+    Check with \`git worktree list\` that it is gone.
+ 
+
+[0m
+[0m← [0mEdit .claude/workflows/crossed-build-check.js
+Index: /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
++++ /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+@@ -169,13 +169,13 @@
+ }
+ 
+ function headStep(t) {
+   const out = `${NODES}/${t.id}.head.txt`
+-  return step(`${COMMON(`head:${t.id}`)}
+-Step: run brief ${t.id}'s tests on the current code. From the repository root, with ${testLimit()}, run this
+-command and save all its output to ${out}:
++  return step(`${COMMON(`head:${t.id}`, out)}
++Step: run brief ${t.id}'s tests on the current code. From the repository root, run this command under a
++${TIMEOUT}-second limit and save all its output to ${out}:
+ 
+-    ${t.test_cmd}
++    ${testRun(t, out)}
+ 
+ pass is true only when the command exits 0. failing: every test that failed or errored. ${NAMES}
+ output_file is ${out}. Return id "${t.id}".`,
+   { label: `head:${t.id}`, phase: 'Head', schema: HEAD_SCHEMA, ...CHEAP })
+
+[0m
+[0m← [0mEdit .claude/workflows/crossed-build-check.js
+Index: /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
++++ /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+@@ -182,9 +182,9 @@
+ }
+ 
+ function runReview() {
+   const out = resultFile(review.engine, 'review')
+-  return step(`${COMMON('review')}
++  return step(`${COMMON('review', out)}
+ Step: a read-only review on ${review.engine}. Run exactly this command from the repository root:
+ 
+     ${engineRun(review.engine, review.brief, out, true)}
+ 
+
+[0m
+[0m$ [0mnode tests/workflows/crossed_build_check_harness.mjs 2>&1 | tail -14
+ok   XB1 default timeout 580 reaches every engine call and test command
+ok   XB1 default timeout 580 runs in the foreground
+ok   XB1 timeout 1200 reaches every engine call and test command
+ok   XB1 timeout 1200: every step is told to run its command in the background
+ok   XB1 timeout 30 is refused before any agent
+ok   XB1 timeout 4000 is refused before any agent
+ok   XB1 timeout "x" is refused before any agent
+ok   XB2 timeout 900: every write, review, fail-first and head prompt starts its command as ( timeout 900 …; echo "exit $?" > ….exit ) &
+ok   XB2 timeout 900: every prompt says a missing .exit file is a failed step
+ok   XB3 timeout 120: fail-first and head prompts run "timeout 120 <test_cmd>"
+ok   XB3 the default: fail-first and head prompts run "timeout 580 <test_cmd>"
+ok   XB3 timeout 120: no prompt holds 600000
+
+all passed
+[0m
+All harness checks pass. Now the full suite and typecheck.
+[0m$ [0mcd .claude/skills/workflow-design/guard && bun test 2>&1 | tail -12; echo "=== tsgo ==="; cd .claude/skills/workflow-design/guard && ./node_modules/.bin/tsgo --noEmit -p . 2>&1 | tail -5; echo "tsgo exit $?"
+bun test v1.4.3 (c6da4a4d3)
+
+ 1560 pass
+ 0 fail
+ 8089 expect() calls
+Ran 1560 tests across 40 files. [14.48s]
+=== tsgo ===
+tsgo exit 1
+/bin/bash: line 1: cd: .claude/skills/workflow-design/guard: No such file or directory
+[0m
+[0m$ [0mcd .claude/skills/workflow-design/guard && ./node_modules/.bin/tsgo --noEmit -p . ; echo "tsgo exit $?"
+tsgo exit 0
+[0m
+[0m$ [0mcat >> runs/20261018-finish-everything/nodes/r20b-code.progress.md <<EOF
+- $(date -Iseconds) · cr1a · done · hooks.ts criteriaStep returns null while the session's deadline runs; round20b CR1a 3 pass
+- $(date -Iseconds) · dl5 · done · cli.ts deadlineCommand refuses wait --mark before any deadline is resolved; 3 pass
+- $(date -Iseconds) · xb · done · crossed-build-check.js bgCommand/testRun + missing-.exit rule; harness all passed
+EOF
+git status --short
+M .claude/skills/workflow-design/guard/SPEC.md
+ M .claude/skills/workflow-design/guard/src/cli.ts
+ M .claude/skills/workflow-design/guard/src/deadline.ts
+ M .claude/skills/workflow-design/guard/src/hooks.ts
+ M .claude/skills/workflow-design/guard/test/round3.test.ts
+ M .claude/workflows/crossed-build-check.js
+ M CLAUDE.md
+ M code_map/eval/contract.ts
+ M code_map/src/answer.ts
+ M code_map/src/cli.ts
+ M code_map/src/commands.ts
+ M code_map/src/links.ts
+ M code_map/src/nodes.ts
+ M code_map/src/project.ts
+ M docs/TASK_TYPES_LEDGER.md
+ M docs/code-graph/CODE_GRAPH.md
+ M runs/20261012-index-md-build/state.md
+ M runs/20261014-code-map-build/decisions.md
+ M runs/20261014-code-map-build/p3/snapshot.json
+ M runs/20261014-code-map-build/spec.md
+ M runs/20261014-code-map-build/state.md
+ M tests/workflows/crossed_build_check_harness.mjs
+?? .claude/skills/state-entry/
+?? .claude/skills/why-chain/
+?? .claude/skills/workflow-design/guard/test/round20-criteria.test.ts
+?? .claude/skills/workflow-design/guard/test/round20-deadline.test.ts
+?? .claude/skills/workflow-design/guard/test/round20b.test.ts
+?? TODO-2.0.md
+?? code_map/test/a6/
+?? code_map/test/batch/
+?? docs/code-graph/vision-statements/
+?? docs/research/20261011-agent-memory-graph-r2/
+?? docs/research/20261011-agent-memory-graph/
+?? docs/research/20261014-code-map/
+?? runs/20261011-agent-memory-graph-r2/
+?? runs/20261011-agent-memory-graph/
+?? runs/20261011-project-memory-engines/
+?? runs/20261012-caches-enhance/
+?? runs/20261012-caches-routing/cov/.coverage
+?? runs/20261013-code-graph-blueprint-eval/
+?? runs/20261013-four-experts-clean-up-the-code-graph/
+?? runs/20261013-four-experts-review-the-ancients-page-what/
+?? runs/20261013-four-experts-round-2-approve-the-merged/
+?? runs/20261013-four-experts-round-3-approve-the-final/
+?? runs/20261013-four-experts-two-open-decisions-in-the/
+?? runs/20261013-four-experts-write-a-skill-how-to/
+?? runs/20261013-requirements-evaluator/
+?? runs/20261013-requirements-relay/
+?? runs/20261014-call-chain-vision/
+?? runs/20261014-code-graph-fix-loop/
+?? runs/20261014-code-map-build/briefs/sixhour/
+?? runs/20261014-code-map-build/builds/a1-dsh/
+?? runs/20261014-code-map-build/builds/a1-opencode/
+?? runs/20261014-code-map-build/builds/a1r2-dsh/
+?? runs/20261014-code-map-build/builds/a1r3-opencode/
+?? runs/20261014-code-map-build/builds/a2r2-opencode/
+?? runs/20261014-code-map-build/builds/a6r1-opencode/
+?? runs/20261014-code-map-build/builds/base-6h-src/
+?? runs/20261014-code-map-build/builds/base-a1r1-src/
+?? runs/20261014-code-map-build/builds/batch-dsh/
+?? runs/20261014-code-map-build/builds/compare-dsh.err
+?? runs/20261014-code-map-build/builds/compare-dsh/
+?? runs/20261014-code-map-build/builds/compare-opencode.err
+?? runs/20261014-code-map-build/builds/compare-opencode/
+?? runs/20261014-code-map-build/builds/l1-opencode/
+?? runs/20261014-code-map-build/builds/merge-6h/
+?? runs/20261014-code-map-build/builds/merge-a1r2-l1/
+?? runs/20261014-code-map-build/builds/merged/
+?? runs/20261014-code-map-build/builds/probe-a5-ai.json
+?? runs/20261014-code-map-build/builds/probe-a5-session.json
+?? runs/20261014-code-map-build/builds/probe-a5-tool.json
+?? runs/20261014-code-map-build/builds/probe-a5.err
+?? runs/20261014-code-map-build/builds/probe-dsh-ai.json
+?? runs/20261014-code-map-build/builds/probe-dsh-session.json
+?? runs/20261014-code-map-build/builds/probe-dsh-tool.json
+?? runs/20261014-code-map-build/builds/probe-dsh.err
+?? runs/20261014-code-map-build/builds/probe-final-ai.json
+?? runs/20261014-code-map-build/builds/probe-final-session.json
+?? runs/20261014-code-map-build/builds/probe-final-tool.json
+?? runs/20261014-code-map-build/builds/probe-final.err
+?? runs/20261014-code-map-build/builds/probe-opencode-ai.json
+?? runs/20261014-code-map-build/builds/probe-opencode-session.json
+?? runs/20261014-code-map-build/builds/probe-opencode-tool.json
+?? runs/20261014-code-map-build/builds/probe-opencode.err
+?? runs/20261014-code-map-build/criteria-sixhour.yaml
+?? runs/20261014-code-map-build/evidence/6h-a6r1-build-opencode.log
+?? runs/20261014-code-map-build/evidence/6h-a6r1-build-opencode.log.when
+?? runs/20261014-code-map-build/evidence/6h-batch-build-dsh.err
+?? runs/20261014-code-map-build/evidence/6h-batch-build-dsh.log
+?? runs/20261014-code-map-build/evidence/6h-batch-speed/
+?? runs/20261014-code-map-build/evidence/p3-a1-build-dsh.err
+?? runs/20261014-code-map-build/evidence/p3-a1-build-opencode.log
+?? runs/20261014-code-map-build/evidence/p3-r2-build-a2.log
+?? runs/20261014-code-map-build/experts-sixhour/
+?? runs/20261014-code-map-build/nodes/a6-tests.progress.md
+?? runs/20261014-code-map-build/nodes/a6r1-build-opencode.progress.md
+?? runs/20261014-code-map-build/nodes/batch-build-dsh.progress.md
+?? runs/20261014-code-map-build/nodes/batch-tests.progress.md
+?? runs/20261014-code-map-build/nodes/experts-sixhour.progress.md
+?? runs/20261014-code-map-build/p3/A1+L1-a6h-r1/
+?? runs/20261014-code-map-build/p3/src-before-6h/
+?? runs/20261014-code-map-build/p4/6h/
+?? runs/20261014-code-map-build/p4/final/node_modules
+?? runs/20261014-code-map-build/p4/map-ai.json
+?? runs/20261014-code-map-build/p4/map-session.json
+?? runs/20261014-code-map-build/p4/map-tool.json
+?? runs/20261014-code-map-build/p4/node_modules
+?? runs/20261014-code-map-build/p5/r2/
+?? runs/20261014-code-map-build/p6/r2/
+?? runs/20261014-code-map-build/scripts/opencode_when_free.sh
+?? runs/20261014-code-map-build/sixhour-design.md
+?? runs/20261014-code-map-build/staging/a6-tests-run.log
+?? runs/20261014-code-map-build/staging/a6-tsgo.log
+?? runs/20261014-code-map-build/staging/batch-tests-run.log
+?? runs/20261014-code-map-build/staging/batch-tests-tsgo.log
+?? runs/20261014-code-map-build/staging/cm-copy-a1/
+?? runs/20261014-code-map-build/staging/cm-copy-a2n/
+?? runs/20261014-code-map-build/staging/cm-copy-a6/
+?? runs/20261014-code-map-build/staging/cm-copy-batch/
+?? runs/20261014-code-map-build/staging/cm-copy-l1/
+?? runs/20261014-code-map-build/staging/cm-copy-r3/
+?? runs/20261014-code-map-build/staging/cm-copy/
+?? runs/20261014-code-map-build/staging/test-a6/
+?? runs/20261014-code-map-build/staging/test-batch/
+?? runs/20261014-code-map-vision-relay/
+?? runs/20261014-code-mapping-research/
+?? runs/20261014-four-experts-question-for-the-four-experts/
+?? runs/20261014-four-experts-review-the-cleaned-code-map/
+?? runs/20261014-four-experts-review-the-draft-the-call/
+?? runs/20261014-opencode-code-map/
+?? runs/20261014-why-chain-hook/
+?? runs/20261015-long-session/r4-mutants.txt
+?? runs/20261015-long-session/run_r5.sh
+?? runs/20261015-long-session/runs-r2/
+?? runs/20261015-long-session/runs-r5/
+?? runs/20261015-long-session/runs/
+?? runs/20261015-ts-hybrid/evidence/n1b/
+?? runs/20261016-four-experts-what-counts-as-change/
+?? runs/20261017-agent-lessons/r12.2-stop.patch
+?? runs/20261017-agent-lessons/r12.3.patch
+?? runs/20261017-read-missing-false-hold/
+?? runs/20261018-finish-everything/
+?? runs/20261018-sot-finish/
+?? skills/workflow-design/guard/test/round20-criteria.test.ts
+?? skills/workflow-design/guard/test/round20-deadline.test.ts
+?? tools/.gitignore
+?? tools/bun.lock
+?? tools/package.json
+?? tools/tsconfig.base.json
+?? tools/why-chain-hook/
+[0m
+[0m← [0mWrite runs/20261018-finish-everything/nodes/r20b-code.result.md
+Wrote file successfully.
+[0m
+[0m$ [0mgrep -n "testLimit\|600000" .claude/workflows/crossed-build-check.js; cd .claude/skills/workflow-design/guard && bun test 2>&1 | tail -3; ./node_modules/.bin/tsgo --noEmit -p .; echo "tsgo exit $?"
+0 fail
+ 8089 expect() calls
+Ran 1560 tests across 40 files. [14.43s]
+tsgo exit 0
+[0m
+[0m$ [0mnode tests/workflows/crossed_build_check_harness.mjs 2>&1 | tail -7; echo "- $(date -Iseconds) · all · done · bun test 1560 pass, tsgo clean, harness all passed" >> runs/20261018-finish-everything/nodes/r20b-code.progress.md
+ok   XB2 timeout 900: every write, review, fail-first and head prompt starts its command as ( timeout 900 …; echo "exit $?" > ….exit ) &
+ok   XB2 timeout 900: every prompt says a missing .exit file is a failed step
+ok   XB3 timeout 120: fail-first and head prompts run "timeout 120 <test_cmd>"
+ok   XB3 the default: fail-first and head prompts run "timeout 580 <test_cmd>"
+ok   XB3 timeout 120: no prompt holds 600000
+
+all passed
+[0m
+Done. `bun test` 1560 pass / 0 fail, `tsgo --noEmit` clean, crossed-build harness `all passed`.
+
+- **CR1a** `hooks.ts:657` `criteriaStep` now returns `null` (not `QUIET`) while the session's deadline is open, so `handleStop` falls through to `pathAsk`.
+- **DL5** `cli.ts:220` the `wait --mark` usage error moved above `named()`, so `--id`/`--run` forms exit 2 before anything sleeps.
+- **XB2/XB3** `crossed-build-check.js`: `bgCommand`/`fgCommand`/`testRun` build `( timeout <N> <cmd>; echo "exit $?" > <file>.exit ) &` above 580 and `timeout <N> <cmd>` otherwise; `COMMON(label, file)` names the `.exit` file and the missing-exit-is-a-failure rule; the foreground Bash allowance is `(TIMEOUT+20)*1000` ms, never `600000`.
+
+Progress and result: `runs/20261018-finish-everything/nodes/r20b-code.progress.md`, `…/r20b-code.result.md` (`status: done`, CONTRADICTS: none). Nothing staged or committed.

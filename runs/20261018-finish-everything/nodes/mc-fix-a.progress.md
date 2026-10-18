@@ -1,0 +1,29 @@
+- 2026-10-18T02:39:32+08:00 · C2 · planned · staged deletion of all project-memory/ must fail K4.1, not "not applicable"
+- 2026-10-18T02:39:32+08:00 · C3 · planned · --since with no commit of the entry in range must still compare HEAD→staged for K4.3
+- 2026-10-18T02:39:32+08:00 · C4 · planned · a SessionStart hook command that opens a cache file must fail Rd1
+- 2026-10-18T02:39:32+08:00 · C5 · planned · Rd1 must read instruction files from the staged state, not the working tree
+- 2026-10-18T02:39:32+08:00 · C6 · planned · a memory_index.py kind/prefix warning must make W1.1a fail
+- 2026-10-18T02:39:32+08:00 · C7 · planned · unborn HEAD: check_index must still read the staging area (py)
+- 2026-10-18T02:39:32+08:00 · C8 · planned · SHA-256 repo: is_object_id must accept 64-char ids (py)
+- 2026-10-18T02:39:32+08:00 · C9 · planned · body thematic breaks must not count as a second header block (W6.1a)
+- 2026-10-18T02:39:32+08:00 · C11 · planned · a regular file in <home>/.claude/agent-memory/ is not a present folder (F1)
+- 2026-10-18T02:39:32+08:00 · C12 · planned · warning must name the entry file, from memory_index.py's bare names
+- 2026-10-18T02:39:32+08:00 · A2 · planned · over-limit and mismatch must both be reported (py)
+- 2026-10-18T02:39:32+08:00 · A4 · planned · empty indented bullet under superseded_by must fail K4.1
+- 2026-10-18T02:42:35+08:00 · C7 · start · check_index reads the staging area before the unborn-HEAD guard
+- 2026-10-18T02:43:07+08:00 · C7 · done · check_index reads the staging area on an unborn HEAD; 3 py suites 468 passed
+- 2026-10-18T02:43:07+08:00 · C8 · done · is_object_id accepts 40 and 64 hex characters
+- 2026-10-18T02:43:07+08:00 · A2 · done · check_index reports the over-limit failure beside a mismatch
+- 2026-10-18T02:46:34+08:00 · C2 · done · projectMemory also true when the staged diff removes project-memory/; K4.1 fails
+- 2026-10-18T02:46:34+08:00 · C3 · done · versionsOf baseline falls back to HEAD when the range holds no commit of the entry
+- 2026-10-18T02:46:34+08:00 · C4 · done · SessionStart hook commands of a harness settings file are read as session-start reads
+- 2026-10-18T02:46:34+08:00 · C5 · done · checkRd1 reads staged bytes via stagedFiles; working tree only when nothing is staged
+- 2026-10-18T02:46:34+08:00 · C6 · done · a W1.1a warning from memory_index.py is a break; every other warning stays a note
+- 2026-10-18T02:46:34+08:00 · C7 · done · (logged)
+- 2026-10-18T02:46:34+08:00 · C8 · done · (logged)
+- 2026-10-18T02:46:34+08:00 · C9 · done · headerDelimiters keeps only pairs whose lines between them hold fields
+- 2026-10-18T02:46:34+08:00 · C11 · done · agentMemory lists child folders only
+- 2026-10-18T02:46:34+08:00 · C12 · done · the warning names entry files from CheckRun.stagedEntries
+- 2026-10-18T02:46:34+08:00 · A2 · done · (logged)
+- 2026-10-18T02:46:34+08:00 · A4 · done · linksNothing reads a bare "-" as no link
+- 2026-10-18T02:46:34+08:00 · all · done · bun test 97 pass / 0 fail; pytest 468 passed; tsgo clean

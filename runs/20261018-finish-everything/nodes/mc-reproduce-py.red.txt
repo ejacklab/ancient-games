@@ -1,0 +1,103 @@
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+____________ test_C6_retired_entry_kind_prefix_mismatch_is_an_error ____________
+
+tmp_path = PosixPath('/tmp/pytest-of-smoke01/pytest-632/test_C6_retired_entry_kind_pre0')
+
+    def test_C6_retired_entry_kind_prefix_mismatch_is_an_error(tmp_path):
+        """C6 — W1.1a's fails-if has no status exemption: a retired D- entry with kind: fact must fail the check."""
+        repo = new_repo(tmp_path)
+        git(repo, "commit", "--allow-empty", "-m", "Initial test snapshot")
+        write_entry(repo, kind="fact", status="retired")
+        (repo / INDEX).write_bytes(EMPTY_INDEX)
+        git(repo, "add", "-A")
+        result = run_index(repo, "--check")
+        message = output(result)
+        assert "kind 'fact' does not match the D- file prefix" in message, message
+>       assert "kind 'fact' does not match the D- file prefix (warning)" not in message, message
+E       AssertionError: INDEX.md: 5/200 lines, 179/24000 bytes
+E         project-memory/INDEX.md in the staging area is up to date
+E         D-17-10-abc123-2026-a.md: kind 'fact' does not match the D- file prefix (warning)
+E         
+E       assert "kind 'fact'...ix (warning)" not in 'INDEX.md: 5... (warning)\n'
+E         
+E         "kind 'fact' does n...le prefix (warning)" is contained here:
+E           026-a.md: kind 'fact' does not match the D- file prefix (warning)
+
+tests/test_memory_index_review2.py:89: AssertionError
+_____________ test_C7_A1_unborn_head_still_checks_the_staging_area _____________
+
+tmp_path = PosixPath('/tmp/pytest-of-smoke01/pytest-632/test_C7_A1_unborn_head_still_c0')
+
+    def test_C7_A1_unborn_head_still_checks_the_staging_area(tmp_path):
+        """C7+A1 — before the first commit `git ls-files -s` works, so a staged entry with status: invalid must fail."""
+        repo = new_repo(tmp_path)
+        write_entry(repo, status="invalid")
+        (repo / INDEX).write_bytes(EMPTY_INDEX)
+        git(repo, "add", "-A")
+        unborn = subprocess.run(["git", "rev-parse", "--verify", "-q", "HEAD"], cwd=repo, env=isolated_env(),
+                                capture_output=True)
+        assert unborn.returncode != 0  # HEAD names no commit yet
+        assert "D-17-10-abc123-2026-a.md" in git(repo, "ls-files", "-s").stdout
+        result = run_index(repo, "--check")
+        message = output(result)
+>       assert "nothing to check" not in message, message
+E       AssertionError: nothing to check: HEAD names no commit yet, so the staging area holds no snapshot
+E         
+E       assert 'nothing to check' not in 'nothing to ...o snapshot\n'
+E         
+E         'nothing to check' is contained here:
+E           nothing to check: HEAD names no commit yet, so the staging area holds no snapshot
+E         ? ++++++++++++++++
+
+tests/test_memory_index_review2.py:105: AssertionError
+______________ test_C8_sha256_repository_staged_memory_is_checked ______________
+
+tmp_path = PosixPath('/tmp/pytest-of-smoke01/pytest-632/test_C8_sha256_repository_stag0')
+
+    def test_C8_sha256_repository_staged_memory_is_checked(tmp_path):
+        """C8 — in a SHA-256 repository a committed INDEX.md that says 'wrong' must fail, not look absent."""
+        repo = new_repo(tmp_path, "--object-format=sha256")
+        write_entry(repo)
+        (repo / INDEX).write_bytes(b"wrong\n")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-m", "Memory with a wrong index")
+        assert len(git(repo, "rev-parse", "HEAD").stdout.strip()) == 64
+        result = run_index(repo, "--check")
+        message = output(result)
+>       assert "nothing to check" not in message, message
+E       AssertionError: nothing to check: no project-memory/ in the staging area
+E         
+E       assert 'nothing to check' not in 'nothing to ...aging area\n'
+E         
+E         'nothing to check' is contained here:
+E         ? --
+E           nothing to check: no project-memory/ in the staging area
+E         ?   ++++++++++++++++++
+
+tests/test_memory_index_review2.py:120: AssertionError
+_______________ test_A2_stale_index_over_the_limit_reports_both ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-smoke01/pytest-632/test_A2_stale_index_over_the_l0')
+
+    def test_A2_stale_index_over_the_limit_reports_both(tmp_path):
+        """A2 — an over-limit rendered index with a stale staged INDEX.md must get the over-limit failure too."""
+        repo = new_repo(tmp_path)
+        git(repo, "commit", "--allow-empty", "-m", "Initial test snapshot")
+        write_entry(repo, claim="x" * 25_000)  # one line well over 24,000 bytes
+        (repo / INDEX).write_bytes(EMPTY_INDEX)  # stale: the entry is active and has no line
+        git(repo, "add", "-A")
+        result = run_index(repo, "--check")
+        message = output(result)
+        assert "does not match" in message, message.splitlines()[:2]  # the mismatch is still reported
+>       assert "over the limit" in message, message.splitlines()[:2]
+E       AssertionError: ['INDEX.md: 5/200 lines, 25226/24000 bytes', 'project-memory/INDEX.md in the staging area does not match what these entries build. To fix it: stage the entries, run `python3 tools/memory_index.py`, then `git add project-memory/INDEX.md`']
+E       assert 'over the limit' in 'INDEX.md: 5/200 lines, 25226/24000 bytes\nproject-memory/INDEX.md in the staging area does not match what these entri...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n'
+
+tests/test_memory_index_review2.py:135: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_memory_index_review2.py::test_C6_retired_entry_kind_prefix_mismatch_is_an_error
+FAILED tests/test_memory_index_review2.py::test_C7_A1_unborn_head_still_checks_the_staging_area
+FAILED tests/test_memory_index_review2.py::test_C8_sha256_repository_staged_memory_is_checked
+FAILED tests/test_memory_index_review2.py::test_A2_stale_index_over_the_limit_reports_both
+4 failed in 0.30s

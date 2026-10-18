@@ -563,7 +563,10 @@ def records(raw: bytes) -> list[tuple[str, str]]:
 
 
 def is_object_id(value: str) -> bool:
-    return len(value) == 40 and all(character in "0123456789abcdef" for character in value)
+    """Whether a field of a `ls-tree`/`ls-files` listing is an object id. Both hashes git can write are accepted:
+    a SHA-1 id is 40 characters and a SHA-256 one 64, and reading only the first made every file of a SHA-256
+    repository look absent (C8)."""
+    return len(value) in (40, 64) and all(character in "0123456789abcdef" for character in value)
 
 
 def cat_file_batch(repo: Path, shas: list[str]) -> dict[str, bytes]:
@@ -738,7 +741,10 @@ def write_atomically(path: Path, rendered: bytes) -> None:
 
 def check_index(repo: Path, rev: str | None) -> int:
     where = rev or "the staging area"
-    if head_is_unborn(repo):
+    # Only a revision is out of reach before the first commit: `git ls-files -s` reads the staging area with no
+    # commit at all, so the entries a `git add` has already made are checked (C7). Returning here read that staged
+    # memory as absent, and a planted break exited 0.
+    if rev and head_is_unborn(repo):
         print(f"nothing to check: HEAD names no commit yet, so {where} holds no snapshot")
         return 0
     if rev and not rev_is_commit(repo, rev):
@@ -764,13 +770,18 @@ def check_index(repo: Path, rev: str | None) -> int:
         return 1
     rendered = render_index(active_entries(entries))
     print_size(rendered, limits)
+    # The two index failures are reported together: an index that is stale *and* over the limit is both, and
+    # returning on the mismatch alone left the size limit unchecked until the index was rebuilt (A2).
+    failed = False
     if current != rendered:
         report(f"{INDEX_PATH} in {where} does not match what these entries build. To fix it: {HOW_TO_FIX}")
         print_diff(current or b"", rendered)
-        return 1
+        failed = True
     if over_limit(rendered, limits):
         report(f"{INDEX_PATH} in {where} is over the limit. Nothing is cut to fit: retire or merge entries "
                f"until it fits ({HOW_TO_FIX})")
+        failed = True
+    if failed:
         return 1
     print(f"{INDEX_PATH} in {where} is up to date")
     return 0

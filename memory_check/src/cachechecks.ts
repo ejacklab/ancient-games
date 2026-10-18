@@ -4,7 +4,7 @@
 // `project-memory/.cache/` itself (Rd1, R2).
 import { existsSync, readFileSync, readdirSync, type Dirent } from "node:fs";
 import path from "node:path";
-import { cacheIsIgnored, sessionStartFiles } from "./gitchecks.ts";
+import { cacheIsIgnored, sessionStartFiles, stagedFiles, type GitErrors } from "./gitchecks.ts";
 import type { ClauseOutcome } from "./gitrequirements.ts";
 
 const CACHE_REFERENCE = /(?:\bproject-memory\/)?\.cache\/[^\s`"')]*/;
@@ -49,31 +49,81 @@ function readLine(line: string): LineReading {
   };
 }
 
+/** The harness settings files whose `hooks` name their events: a hook is a session-start hook by where it sits. */
+const SETTINGS_FILES = new Set([".claude/settings.json", ".claude/settings.local.json"]);
+const SESSION_START_EVENT = /^session_?start$/i;
+
+/** Every `command` string under a value, however the hooks nest them. */
+function commandsUnder(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(commandsUnder);
+  if (value === null || typeof value !== "object") return [];
+  return Object.entries(value).flatMap(([key, one]) =>
+    key === "command" && typeof one === "string" ? [one] : commandsUnder(one),
+  );
+}
+
+/**
+ * The commands the SessionStart hooks of a harness settings file run. Such a command opens a cache file at the start
+ * of a session by being registered there: it says nothing about *when* it runs, so the line-by-line wording test
+ * cannot see it, and it was read as an on-demand read (C4, A3).
+ */
+function sessionStartHookCommands(text: string): string[] {
+  let document: unknown;
+  try {
+    document = JSON.parse(text);
+  } catch {
+    return []; // not JSON: the line scan above is the whole reading of it
+  }
+  const hooks = (document as { hooks?: unknown } | null)?.hooks;
+  if (hooks === null || typeof hooks !== "object") return [];
+  const commands: string[] = [];
+  for (const [event, entries] of Object.entries(hooks as Record<string, unknown>)) {
+    if (SESSION_START_EVENT.test(event)) commands.push(...commandsUnder(entries));
+  }
+  return commands;
+}
+
 /**
  * C6, the first version: of CACHES.md's Core requirements only B2.2 (the cache folder is ignored by git) and Rd1
  * (no start hook or instruction opens a cache file) are checked. Rd1's scan reads the session-start surface —
  * the harness settings, the git hooks, the instruction files — and never opens a file under
  * `project-memory/.cache/` itself (Rd1, R2). A session-start instruction the scan cannot decide is left to a
  * reviewer, not called a pass and not called a break (C2).
+ *
+ * C5: a file git knows is read from the staging area, the snapshot this run reports on — a staged instruction that
+ * the working tree already dropped is still what the commit says. A file in no staged version (an untracked one, a
+ * hook inside `.git/`) has no staged bytes at all, so its working-tree file is what the session reads, and the
+ * evidence says which of the two was read.
  */
-export function checkRd1(root: string): ClauseOutcome {
-  const files = sessionStartFiles(root).filter((file) => existsSync(file));
+export function checkRd1(root: string, errors: GitErrors): ClauseOutcome {
+  const files = sessionStartFiles(root);
+  const staged = stagedFiles(root, files.map((file) => path.relative(root, file)), errors);
   const scanned: string[] = [];
   const breaks: string[] = [];
   const unresolved: string[] = [];
   const unreadable: string[] = [];
   for (const file of files) {
-    let text = "";
-    try {
-      text = readFileSync(file, "utf8");
-    } catch (error) {
-      // E-1: a file the scan could not read is a clause it did not check, not a clause with nothing in it (C2).
-      const reason = error instanceof Error ? error.message : String(error);
-      scanned.push(`${file} (unreadable)`);
-      unreadable.push(`${file} (unreadable: ${reason})`);
-      continue;
+    const fromStage = staged.get(path.relative(root, file));
+    if (fromStage === undefined && !existsSync(file)) continue;
+    let text: string;
+    let from: string;
+    if (fromStage !== undefined) {
+      text = fromStage;
+      from = "the staged state";
+    } else {
+      from = "the working tree (in no staged version)";
+      try {
+        text = readFileSync(file, "utf8");
+      } catch (error) {
+        // E-1: a file the scan could not read is a clause it did not check, not a clause with nothing in it (C2).
+        const reason = error instanceof Error ? error.message : String(error);
+        scanned.push(`${file} (unreadable)`);
+        unreadable.push(`${file} (unreadable: ${reason})`);
+        continue;
+      }
     }
-    scanned.push(`${file}:1-${text.split("\n").length}`); // the lines the scan covered, so a pass names file and line (C2)
+    // the lines the scan covered, so a pass names file and line (C2)
+    scanned.push(`${file}, ${from}:1-${text.split("\n").length}`);
     text.split("\n").forEach((line, offset) => {
       if (!CACHE_REFERENCE.test(line)) return;
       const reading = readLine(line);
@@ -86,6 +136,16 @@ export function checkRd1(root: string): ClauseOutcome {
       unresolved.push(
         `${file}:${offset + 1} — "${line.trim()}"${reading.indirect ? " runs something that may open it" : ""}`,
       );
+    });
+    // A SessionStart hook runs at the start of a session by being registered as one, whatever its command says (C4).
+    if (!SETTINGS_FILES.has(path.relative(root, file))) continue;
+    sessionStartHookCommands(text).forEach((command, offset) => {
+      if (!CACHE_REFERENCE.test(command)) return;
+      const reading = readLine(command);
+      if (reading.negated) return; // a command that says never to open one does not open it
+      const where = `${file} — hooks.SessionStart[${offset}]: "${command.trim()}"`;
+      if (reading.opens && !reading.indirect) breaks.push(where);
+      else unresolved.push(`${where}${reading.indirect ? " runs something that may open it" : ""}`);
     });
   }
   const scannedNote = [`scanned: ${scanned.join(", ") || "nothing"}`];
@@ -112,7 +172,7 @@ export function checkRd1(root: string): ClauseOutcome {
   return {
     breaks: [],
     clean:
-      `${files.length} session-start file(s) scanned (${scanned.join(", ") || "none present"}): no line of any of ` +
+      `${scanned.length} session-start file(s) scanned (${scanned.join(", ") || "none present"}): no line of any of ` +
       "them opens a file under project-memory/.cache/ at the start of a session. A hook outside the repository is " +
       "not visible here.",
     couldNotRun: null,

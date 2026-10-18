@@ -899,3 +899,51 @@ Fails-if: two failure records for one group; a group failing in the baseline is 
   FAIL cases was FAIL in the baseline; a FAIL case the baseline did not fail makes it a failure. A case belongs to
   the group its id starts with (`B1-F1` → `B1`). On the six K2 verdicts against k1d this gives 6 failures, one per
   run but k2-2, the fault the evaluator itself missed (its calibration: 5 of 6).
+
+## Round 20 — one deadline at a time, criteria at the end, C17 alone (run 20261018-finish-everything)
+
+Found on 2026-10-17: `deadline end --session S` ended the newest open deadline, another run's; the criteria step
+blocked at a stop while the task's own workflows still ran ("true | false at the end, never while the work runs");
+the C17 tests fail whenever another session runs opencode.
+
+- **DL1 `--id D-xxxxxxxx`.** `deadline status | wait | end` with `--id` act on that deadline only, whatever its
+  session or run. An id with no deadline file: `no deadline <id>` on stderr, exit 2. `status --id` of an ended
+  deadline prints `<id> ended <time>` and exits 0.
+- **DL2 `--run DIR`.** `deadline status | wait | end` with `--run` act on the newest open deadline whose `run` is DIR
+  (compared as `deadline start --run` stores it, relative to the root). None: `no deadline for <DIR>`, exit 2.
+- **DL3 `end` never guesses.** `deadline end` with neither `--id` nor `--run`, when more than one deadline is open in
+  its scope (the `--session` given, or every session), ends none: it prints each open id with its run on stderr and
+  exits 2. With exactly one open, it ends that one, as before.
+- **DL4 Unchanged.** `status` and `wait` with neither flag keep today's choice (the session's newest running deadline).
+
+- **CR1 Criteria at the end.** At a `Stop`, while the session has an open deadline that is not up (DL4's choice for
+  the session), the criteria step does not block, writes no failure and prints nothing (amended 03:12: a context line
+  at `Stop` makes Claude Code continue the turn, so it woke a waiting agent at every stop). The step runs as before
+  once that deadline is ended or up, or when the session has none. Every other step of the stop is unchanged.
+
+- **C17 alone.** The C17 tests put a `ps` first on `PATH` that prints the real `ps` output with every other process's
+  `opencode run` line removed (the tests' own marked lines kept), so they pass while other sessions run opencode,
+  and they no longer refuse to run then.
+
+- **XB1 crossed-build-check `timeout`.** `args.timeout` (seconds, a whole number from 60 to 3600, default 580) is the
+  limit of every engine call and test command the workflow starts. Above 580 the step runs the command in the
+  background and waits for it to end, since one Bash call is capped at 600 s. Anything else is `args.timeout must be a
+  whole number of seconds from 60 to 3600`.
+
+Fails-if: `deadline end` with two open deadlines ends one without `--id` or `--run`; `--id` or `--run` acts on another
+deadline; a stop inside an open, not-up deadline is blocked by the criteria step or writes a criteria failure; a stop
+after the deadline ends skips the criteria step; a C17 test fails or refuses because another opencode runs; the
+`timeout` given does not reach every engine call and test command.
+
+**Round 20, after its review (03:15, four findings, each reproduced by the reviewer).**
+- **CR1a.** A deferred criteria step is no result at all: the stop goes on to its next step (the path ask) exactly as
+  when the session touched no criteria file. Only the criteria step waits for the deadline.
+- **DL5.** `deadline wait --mark` is a usage error (exit 2) with `--id` or `--run` too, before anything waits.
+- **XB2.** Above 580 s a step starts each command as `( timeout <N> <command>; echo "exit $?" > <file>.exit ) &` and
+  reads the exit from `<file>.exit` when it appears; a missing `.exit` file after the limit is a failed step, never a
+  pass.
+- **XB3.** Every test command the workflow starts (fail first, head) is run as `timeout <N> <test_cmd>`, as engine
+  calls are; no prompt tells a step to use the Bash tool's 600000 ms limit for a command when N is below 580.
+
+Fails-if: a deferred criteria step stops the path ask; `wait --id … --mark` waits; a background step reports an exit
+it could not read; a test command runs without `timeout <N>`.

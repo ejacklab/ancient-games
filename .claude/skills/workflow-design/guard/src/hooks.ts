@@ -649,6 +649,14 @@ function criteriaStep(root: string, session: string, raised: Set<string>, env: H
   const files = touchedCriteria(root, session);
   if (files.length === 0) return null;
 
+  // Round 20, CR1: while the session's deadline still runs, the criteria are scored at its end, not at every stop of
+  // work still going on. DL4's choice for the session: its newest running deadline; an ended or up one runs as before.
+  const clock = deadlineStatus(root, session, env.now(), false);
+  // No result at all (CR1a): only the criteria step waits, so the stop goes on to its next step (the path ask) exactly
+  // as when the session touched no criteria file. Not a context line either: Claude Code continues the turn on a Stop
+  // hook's context, so a line here woke a waiting agent at every stop (seen 2026-10-18 in run 20261018-finish-everything).
+  if (clock !== null && !clock.up) return null;
+
   const records = readJournal(root).records;
   // What this session's journal already holds: a criterion's failure is written once per id and file (its evidence is
   // the file: one session's C4 in one file never hides its C4 in another), a late one once per file.

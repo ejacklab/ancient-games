@@ -1,0 +1,41 @@
+# Linus Torvalds — Owner-only questions and harness memory
+
+## Answer
+
+**Q1: (a)** — send owner-only questions immediately because repeated incapable trials cannot produce evidence; during a time-boxed run, record expert advice and a reversible provisional decision for EJ immediately, changing this only when a defined trial can obtain decisive evidence. **Q2: (a), provisionally** — inventory Claude Code’s project-memory path as present or absent without applying the project’s entry-format rules to its different native structure; choose **(b)** if the source of truth makes that folder authoritative agent memory, or **(c)** if it is generated or disposable harness state outside the project contract.
+
+## How I decided
+
+1. **Q1—test whether testing can work first (my #13; my reading).** Named locations, project existence, and owner-set thresholds are examples where the missing information is not obtainable through a permitted trial.
+2. **Q1—require observable value from each trial (my #19; my reading).** Repeating an action that cannot change the answer is not verification; it is wasted workflow.
+3. **Q1—keep the provisional decision reversible (my #5 and my #7).** Work can continue with a clearly preliminary owner item because EJ may later accept, correct, or reject it.
+4. **Proposed change to the pattern (my reading, supported by my #13 and my #19):** add an answerability check before the three-trial rule. If no permitted trial can obtain the missing fact or authority, seek advice and record the provisional owner item immediately; otherwise use the existing trials.
+5. **Q2—classify memory by role rather than pathname (my #9; my reading).** A repository-specific store used by Claude Code is relevant agent memory even when its implementation path belongs to the harness.
+6. **Q2—separate discovery from conformance (my #10 and my reading).** Both stores should be normal declared targets, but native-format memory should not automatically inherit validation designed for the project’s different entry format.
+7. **Q2—do not decide from unchecked recall (my #2; my reading).** The brief gives no checked file, line, or command for the claimed presence, approximate file count, or schema; those details should not decide between the options until verified.
+8. **Q2—make the first change small and reversible (my #13, my #5, and my #19).** Add the native path to the inventory first and keep any later semantic-conformance policy as a separately testable change.
+9. **Q2—let the source-of-truth owner settle classification (my #4 and my #7).** Advice can select the safest provisional path, but authoritative or generated status is an owner/design fact, not something to infer from the folder name.
+
+## What I need to know
+
+- For each Q1 escalation, what exact fact or authority is inaccessible to every permitted trial, and can a named trial actually obtain it? If it can, that question should not be treated as owner-only.
+- Does the source of truth define agent memory as all repository-relevant memory Claude can load, or only the bespoke `<home>/.claude/agent-memory/<name>/` tree?
+- Is Claude Code’s native memory folder authoritative, generated from the project memory, or disposable?
+- What checked file/line or command verifies its actual structure and whether that structure satisfies the governing guidelines?
+
+## Costs and risks
+
+- **Q1(a)—more premature decisions:** A mistaken answerability classification could create a wrong provisional default. Mark every decision preliminary, preserve rollback, and do not let it silently become final—my #5 and my #7.
+- **Q1(a)—greater owner queue volume:** Questions that a trial could resolve will cost coordination time. Measure unnecessary escalations before expanding immediate routing—my #13 and my #18.
+- **Keeping three trials—latency without evidence:** Three failures do not make an owner-only question more knowable. Replace those attempts with the answerability gate rather than preserving the retry count—my #13 and my #19.
+- **Q2(a)—presence is not quality:** The inventory closes a visibility gap but will not detect stale, unsupported, or conflicting native memories. Treat those as unresolved until a scoped validation policy exists—my #2 and my #3.
+- **Q2(b)—false failures from format mismatch:** Applying the project’s entry rules to native files could generate noisy, misleading failures and hide the useful result—my #3 and my #16.
+- **Q2(c)—a continuing blind spot:** Omitting repository-relevant memory could allow Claude Code to use facts that memory-check never examines—my #9 and my #3.
+- **Every option adds maintenance:** Path, status, and validation behavior must be independently tested so one change cannot silently break another—my #13, my #18, and my #19.
+
+## How we would know I was right
+
+- Replay logged questions through the proposed routing rule and measure time to owner, futile trials avoided, unnecessary escalations, and later reversals of provisional decisions. The intended outcome is that genuinely inaccessible questions reach EJ on the first routing, while questions with a decisive trial remain with the workers.
+- Add inventory fixtures for canonical-present, canonical-absent, native-present, and native-absent cases. Under option **(a)**, every case must receive an independent status while native-format files produce no project-format violation.
+- Verify the native directory and schema with a recorded command or checked source line before expanding from inventory-only to semantic validation.
+- Keep a count of hidden findings, false alarms, stale native facts, and memory conflicts. Option **(a)** is right if it closes the visibility gap without inventing failures; the source-of-truth review will establish whether **(b)** or **(c)** should replace it.

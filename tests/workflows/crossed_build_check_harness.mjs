@@ -160,5 +160,70 @@ await check('review starts after every test step', async wf => {
   report('an engine that wrote no tests -> no later steps for it, problem named', !calls.some(c => c.label === 'failfirst:d1' || c.label === 'head:d1') && result.problems.some(p => p.includes('d1: the engine wrote no tests')), JSON.stringify(result))
 }
 
+// XB1 (guard SPEC Round 20): args.timeout is the limit of every engine call and test command; above 580 the step runs
+// the command in the background and waits for it. Engine calls: write and review; test commands: fail first and head.
+const isEngineStep = c => /^(write:|review$)/.test(c.label)
+{
+  const { calls } = await runCase(REAL, ARGS)
+  const missing = calls.filter(c => !(isEngineStep(c) ? c.prompt.includes('timeout 580 ') : c.prompt.includes('580')))
+  report('XB1 default timeout 580 reaches every engine call and test command', calls.length === 7 && !missing.length,
+    `${calls.length} calls; without 580: ${missing.map(c => c.label).join(', ')}`)
+  const bg = calls.filter(c => /background/i.test(c.prompt))
+  report('XB1 default timeout 580 runs in the foreground', !bg.length, `background in: ${bg.map(c => c.label).join(', ')}`)
+}
+{
+  const { result, calls } = await runCase(REAL, withArgs(x => { x.timeout = 1200 }))
+  const missing = calls.filter(c => !(isEngineStep(c) ? c.prompt.includes('timeout 1200 ') : c.prompt.includes('1200')))
+  const stale = calls.filter(c => c.prompt.includes('timeout 580') || c.prompt.includes('580-second'))
+  report('XB1 timeout 1200 reaches every engine call and test command', result.status !== 'error' && calls.length === 7 && !missing.length && !stale.length,
+    `status ${result.status} ${JSON.stringify(result.errors || [])}; ${calls.length} calls; without 1200: ${missing.map(c => c.label).join(', ')}; still 580: ${stale.map(c => c.label).join(', ')}`)
+  const fg = calls.filter(c => !/background/i.test(c.prompt))
+  report('XB1 timeout 1200: every step is told to run its command in the background', calls.length === 7 && !fg.length, `no background in: ${fg.map(c => c.label).join(', ')}`)
+}
+for (const bad of [30, 4000, 'x']) {
+  const r = await runCase(REAL, withArgs(x => { x.timeout = bad }))
+  const why = refusedBeforeAgents(r, 'args.timeout must be a whole number of seconds from 60 to 3600')
+  report(`XB1 timeout ${JSON.stringify(bad)} is refused before any agent`, why === '', why)
+}
+
+// XB2 (guard SPEC Round 20, after its review): above 580 s every step starts its command as
+// `( timeout <N> <command>; echo "exit $?" > <file>.exit ) &`, reads the exit from <file>.exit, and a missing .exit
+// file after the limit is a failed step, never a pass. Test steps start their brief's test_cmd that way.
+const isTestStep = c => /^(failfirst|head):/.test(c.label)
+const testCmdOf = c => ARGS.tests.find(t => t.id === c.label.split(':')[1]).test_cmd
+const missingExitIsFailure = p => /(\b(missing|absent)\b[^\n]{0,80}\.exit\b|\.exit\b[^\n]{0,80}\b(missing|absent|does not appear|did not appear|never appears)\b|\bno \S*\.exit\b)[\s\S]{0,200}\bfail/i.test(p)
+{
+  const { result, calls } = await runCase(REAL, withArgs(x => { x.timeout = 900 }))
+  const badForm = calls.filter(c => {
+    const head = isTestStep(c) ? `( timeout 900 ${testCmdOf(c)}` : '( timeout 900 '
+    const i1 = c.prompt.indexOf(head)
+    const i2 = i1 < 0 ? -1 : c.prompt.indexOf('echo "exit $?" >', i1)
+    const i3 = i2 < 0 ? -1 : c.prompt.indexOf('.exit ) &', i2)
+    return i3 < 0
+  })
+  report('XB2 timeout 900: every write, review, fail-first and head prompt starts its command as ( timeout 900 …; echo "exit $?" > ….exit ) &',
+    result.status !== 'error' && calls.length === 7 && !badForm.length,
+    `status ${result.status}; ${calls.length} calls; without the form: ${badForm.map(c => c.label).join(', ')}`)
+  const silent = calls.filter(c => !missingExitIsFailure(c.prompt))
+  report('XB2 timeout 900: every prompt says a missing .exit file is a failed step', calls.length === 7 && !silent.length,
+    `no missing-.exit rule in: ${silent.map(c => c.label).join(', ')}`)
+}
+
+// XB3: every test command (fail first, head) runs as `timeout <N> <test_cmd>`, as engine calls are; below 580 no prompt
+// tells a step to use the Bash tool's 600000 ms limit.
+for (const [label, fn, n] of [['timeout 120', x => { x.timeout = 120 }, 120], ['the default', () => {}, 580]]) {
+  const { result, calls } = await runCase(REAL, withArgs(fn))
+  const tests = calls.filter(isTestStep)
+  const bare = tests.filter(c => !c.prompt.includes(`timeout ${n} ${testCmdOf(c)}`))
+  report(`XB3 ${label}: fail-first and head prompts run "timeout ${n} <test_cmd>"`,
+    result.status !== 'error' && tests.length === 4 && !bare.length,
+    `status ${result.status}; ${tests.length} test steps; without "timeout ${n} <test_cmd>": ${bare.map(c => c.label).join(', ')}`)
+}
+{
+  const { calls } = await runCase(REAL, withArgs(x => { x.timeout = 120 }))
+  const told = calls.filter(c => c.prompt.includes('600000'))
+  report('XB3 timeout 120: no prompt holds 600000', calls.length === 7 && !told.length, `600000 in: ${told.map(c => c.label).join(', ')}`)
+}
+
 console.log(failures ? `\n${failures} FAILED` : '\nall passed')
 process.exit(failures ? 1 : 0)

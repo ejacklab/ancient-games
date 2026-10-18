@@ -1,0 +1,373 @@
+bun test v1.4.3 (c6da4a4d3)
+
+test/round20-deadline.test.ts:
+45 |   const b = box();
+46 |   b.plant(running("D-00000001", "2000-01-01T00:00:00.000Z", LONG, "other", "runs/a"));
+47 |   b.plant(running("D-00000002", "2001-01-01T00:00:00.000Z", 3 * LONG, "s", "runs/b"));
+48 |   const result = b.cli("deadline", "status", "--id", "D-00000001");
+49 |   expect(result.status).toBe(0);
+50 |   expect(result.stdout).toContain(`of ${LONG} min`);
+                             ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "of 100000000 min"
+Received: "used 13565918 of 300000000 min (4%), 286434082 left, deadline 08:00\n"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:50:25)
+(fail) DL1: status --id shows that deadline, though another session's and older than the session's own [47.87ms]
+58 | test("DL1: status --id of a deadline that is up says so with exit 1, while the newest one runs", () => {
+59 |   const b = box();
+60 |   b.plant(up("D-00000001", "2000-01-01T00:00:00.000Z", "s", null));
+61 |   b.plant(running("D-00000002", "2001-01-01T00:00:00.000Z", LONG, "s", null));
+62 |   const result = b.cli("deadline", "status", "--id", "D-00000001");
+63 |   expect(result.status).toBe(1);
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:63:25)
+(fail) DL1: status --id of a deadline that is up says so with exit 1, while the newest one runs [28.89ms]
+67 | test("DL1: wait --id waits on that deadline only: one that is up returns at once, though another runs for centuries", () => {
+68 |   const b = box();
+69 |   b.plant(up("D-00000001", "2000-01-01T00:00:00.000Z", "other", null));
+70 |   b.plant(running("D-00000002", "2001-01-01T00:00:00.000Z", LONG, "s", null));
+71 |   const result = b.cli("deadline", "wait", "--id", "D-00000001");
+72 |   expect(result.error).toBeUndefined(); // a wait on the running one would be killed by the 10 s timeout
+                            ^
+error: expect(received).toBeUndefined()
+
+Received: 66 | 
+67 | test("DL1: wait --id waits on that deadline only: one that is up returns at once, though another runs for centuries", () => {
+68 |   const b = box();
+69 |   b.plant(up("D-00000001", "2000-01-01T00:00:00.000Z", "other", null));
+70 |   b.plant(running("D-00000002", "2001-01-01T00:00:00.000Z", LONG, "s", null));
+71 |   const result = b.cli("deadline", "wait", "--id", "D-00000001");
+                        ^
+error: spawnSync /home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe ETIMEDOUT
+      path: "/home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe",
+   syscall: "spawnSync /home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe",
+     errno: -110,
+ spawnargs: [
+  "/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts",
+  "deadline", "wait", "--id", "D-00000001"
+],
+      code: "ETIMEDOUT"
+
+      at spawnSync (node:child_process:285:20)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:71:20)
+
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:72:24)
+(fail) DL1: wait --id waits on that deadline only: one that is up returns at once, though another runs for centuries [10053.71ms]
+79 |   b.plant(running("D-00000001", "2000-01-01T00:00:00.000Z", LONG, "other", "runs/a"));
+80 |   b.plant(running("D-00000002", "2001-01-01T00:00:00.000Z", LONG, "s", "runs/b"));
+81 |   b.plant(running("D-00000003", "2002-01-01T00:00:00.000Z", LONG, "s", "runs/a"));
+82 |   const result = b.cli("deadline", "end", "--id", "D-00000001");
+83 |   expect(result.status).toBe(0);
+84 |   expect(result.stdout).toContain("D-00000001 ended");
+                             ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "D-00000001 ended"
+Received: "D-00000003 ended\n"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:84:25)
+(fail) DL1: end --id ends that deadline only, whatever its session or run [35.89ms]
+90 | test.each([["status"], ["wait"], ["end"]])("DL1: %s --id with no deadline file says no deadline <id> and exits 2", (verb: string) => {
+91 |   const b = box();
+92 |   b.plant(running("D-00000001", "2000-01-01T00:00:00.000Z", LONG, "s", null));
+93 |   const result = b.cli("deadline", verb, "--id", "D-0000dead");
+94 |   expect(result.error).toBeUndefined();
+95 |   expect(result.status).toBe(2);
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:95:25)
+(fail) DL1: status --id with no deadline file says no deadline <id> and exits 2 [45.97ms]
+89 | 
+90 | test.each([["status"], ["wait"], ["end"]])("DL1: %s --id with no deadline file says no deadline <id> and exits 2", (verb: string) => {
+91 |   const b = box();
+92 |   b.plant(running("D-00000001", "2000-01-01T00:00:00.000Z", LONG, "s", null));
+93 |   const result = b.cli("deadline", verb, "--id", "D-0000dead");
+94 |   expect(result.error).toBeUndefined();
+                            ^
+error: expect(received).toBeUndefined()
+
+Received: 88 | });
+89 | 
+90 | test.each([["status"], ["wait"], ["end"]])("DL1: %s --id with no deadline file says no deadline <id> and exits 2", (verb: string) => {
+91 |   const b = box();
+92 |   b.plant(running("D-00000001", "2000-01-01T00:00:00.000Z", LONG, "s", null));
+93 |   const result = b.cli("deadline", verb, "--id", "D-0000dead");
+                        ^
+error: spawnSync /home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe ETIMEDOUT
+      path: "/home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe",
+   syscall: "spawnSync /home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe",
+     errno: -110,
+ spawnargs: [
+  "/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts",
+  "deadline", "wait", "--id", "D-0000dead"
+],
+      code: "ETIMEDOUT"
+
+      at spawnSync (node:child_process:285:20)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:93:20)
+
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:94:24)
+(fail) DL1: wait --id with no deadline file says no deadline <id> and exits 2 [10054.99ms]
+90 | test.each([["status"], ["wait"], ["end"]])("DL1: %s --id with no deadline file says no deadline <id> and exits 2", (verb: string) => {
+91 |   const b = box();
+92 |   b.plant(running("D-00000001", "2000-01-01T00:00:00.000Z", LONG, "s", null));
+93 |   const result = b.cli("deadline", verb, "--id", "D-0000dead");
+94 |   expect(result.error).toBeUndefined();
+95 |   expect(result.status).toBe(2);
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:95:25)
+(fail) DL1: end --id with no deadline file says no deadline <id> and exits 2 [31.10ms]
+ 99 | 
+100 | test("DL1: status --id of an ended deadline prints <id> ended <time> and exits 0", () => {
+101 |   const b = box();
+102 |   b.plant({ ...running("D-00000001", "2000-01-01T00:00:00.000Z", LONG, "s", null), ended: "2000-01-02T00:00:00.000Z" });
+103 |   const result = b.cli("deadline", "status", "--id", "D-00000001");
+104 |   expect(result.status).toBe(0);
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: 0
+Received: 2
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:104:25)
+(fail) DL1: status --id of an ended deadline prints <id> ended <time> and exits 0 [26.67ms]
+120 | 
+121 | test("DL2: status --run shows the newest open deadline whose run is DIR", () => {
+122 |   const b = runBox();
+123 |   const result = b.cli("deadline", "status", "--run", "runs/a");
+124 |   expect(result.status).toBe(0);
+125 |   expect(result.stdout).toContain(`of ${3 * LONG} min`);
+                              ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "of 300000000 min"
+Received: "used 12514718 of 200000000 min (6%), 187485282 left, deadline 21:20\n"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:125:25)
+(fail) DL2: status --run shows the newest open deadline whose run is DIR [27.92ms]
+129 | test("DL2: --run is compared as deadline start --run stores it, relative to the root", () => {
+130 |   const b = runBox();
+131 |   for (const dir of [path.join(b.root, "runs/a"), "./runs/a/"]) {
+132 |     const result = b.cli("deadline", "status", "--run", dir);
+133 |     expect(result.status).toBe(0);
+134 |     expect(result.stdout).toContain(`of ${3 * LONG} min`);
+                                ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "of 300000000 min"
+Received: "used 12514718 of 200000000 min (6%), 187485282 left, deadline 21:20\n"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:134:27)
+(fail) DL2: --run is compared as deadline start --run stores it, relative to the root [26.88ms]
+140 |   // starts after the one recorded now, so it is the newest of all
+141 |   b.plant(running("D-00000001", "2100-01-01T00:00:00.000Z", LONG, "s", "runs/other"));
+142 |   expect(b.cli("deadline", "start", "--minutes", "1000", "--run", "runs/task").status).toBe(0);
+143 |   const result = b.cli("deadline", "status", "--run", "runs/task");
+144 |   expect(result.status).toBe(0);
+145 |   expect(result.stdout).toContain("of 1000 min");
+                              ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "of 1000 min"
+Received: "used 0 of 100000000 min (0%), 138503042 left, deadline 10:40\n"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:145:25)
+(fail) DL2: a deadline recorded by deadline start --run is found by status --run with the same DIR [49.53ms]
+147 | 
+148 | test("DL2: end --run ends the newest open deadline of that run only", () => {
+149 |   const b = runBox();
+150 |   const result = b.cli("deadline", "end", "--run", "runs/a");
+151 |   expect(result.status).toBe(0);
+152 |   expect(result.stdout).toContain("D-00000002 ended");
+                              ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "D-00000002 ended"
+Received: "D-00000004 ended\n"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:152:25)
+(fail) DL2: end --run ends the newest open deadline of that run only [25.72ms]
+158 | test("DL2: wait --run waits on that run's deadline: one that is up returns at once, though another runs", () => {
+159 |   const b = box();
+160 |   b.plant(up("D-00000001", "2000-01-01T00:00:00.000Z", "s", "runs/a"));
+161 |   b.plant(running("D-00000002", "2001-01-01T00:00:00.000Z", LONG, "s", "runs/b"));
+162 |   const result = b.cli("deadline", "wait", "--run", "runs/a");
+163 |   expect(result.error).toBeUndefined();
+                             ^
+error: expect(received).toBeUndefined()
+
+Received: 157 | 
+158 | test("DL2: wait --run waits on that run's deadline: one that is up returns at once, though another runs", () => {
+159 |   const b = box();
+160 |   b.plant(up("D-00000001", "2000-01-01T00:00:00.000Z", "s", "runs/a"));
+161 |   b.plant(running("D-00000002", "2001-01-01T00:00:00.000Z", LONG, "s", "runs/b"));
+162 |   const result = b.cli("deadline", "wait", "--run", "runs/a");
+                         ^
+error: spawnSync /home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe ETIMEDOUT
+      path: "/home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe",
+   syscall: "spawnSync /home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe",
+     errno: -110,
+ spawnargs: [
+  "/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts",
+  "deadline", "wait", "--run", "runs/a"
+],
+      code: "ETIMEDOUT"
+
+      at spawnSync (node:child_process:285:20)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:162:20)
+
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:163:24)
+(fail) DL2: wait --run waits on that run's deadline: one that is up returns at once, though another runs [10005.05ms]
+168 | test.each([["status"], ["wait"], ["end"]])("DL2: %s --run with no open deadline of DIR says no deadline for <DIR> and exits 2", (verb: string) => {
+169 |   const b = runBox();
+170 |   b.plant({ ...running("D-00000005", "2004-01-01T00:00:00.000Z", LONG, "s", "runs/zzz"), ended: "2004-01-02T00:00:00.000Z" });
+171 |   const result = b.cli("deadline", verb, "--run", "runs/zzz");
+172 |   expect(result.error).toBeUndefined();
+173 |   expect(result.status).toBe(2);
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:173:25)
+(fail) DL2: status --run with no open deadline of DIR says no deadline for <DIR> and exits 2 [41.12ms]
+167 | 
+168 | test.each([["status"], ["wait"], ["end"]])("DL2: %s --run with no open deadline of DIR says no deadline for <DIR> and exits 2", (verb: string) => {
+169 |   const b = runBox();
+170 |   b.plant({ ...running("D-00000005", "2004-01-01T00:00:00.000Z", LONG, "s", "runs/zzz"), ended: "2004-01-02T00:00:00.000Z" });
+171 |   const result = b.cli("deadline", verb, "--run", "runs/zzz");
+172 |   expect(result.error).toBeUndefined();
+                             ^
+error: expect(received).toBeUndefined()
+
+Received: 166 | }, 15_000);
+167 | 
+168 | test.each([["status"], ["wait"], ["end"]])("DL2: %s --run with no open deadline of DIR says no deadline for <DIR> and exits 2", (verb: string) => {
+169 |   const b = runBox();
+170 |   b.plant({ ...running("D-00000005", "2004-01-01T00:00:00.000Z", LONG, "s", "runs/zzz"), ended: "2004-01-02T00:00:00.000Z" });
+171 |   const result = b.cli("deadline", verb, "--run", "runs/zzz");
+                         ^
+error: spawnSync /home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe ETIMEDOUT
+      path: "/home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe",
+   syscall: "spawnSync /home/smoke01/.npm-global/lib/node_modules/bun/bin/bun.exe",
+     errno: -110,
+ spawnargs: [
+  "/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/src/cli.ts",
+  "deadline", "wait", "--run", "runs/zzz"
+],
+      code: "ETIMEDOUT"
+
+      at spawnSync (node:child_process:285:20)
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:171:20)
+
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:172:24)
+(fail) DL2: wait --run with no open deadline of DIR says no deadline for <DIR> and exits 2 [10053.19ms]
+168 | test.each([["status"], ["wait"], ["end"]])("DL2: %s --run with no open deadline of DIR says no deadline for <DIR> and exits 2", (verb: string) => {
+169 |   const b = runBox();
+170 |   b.plant({ ...running("D-00000005", "2004-01-01T00:00:00.000Z", LONG, "s", "runs/zzz"), ended: "2004-01-02T00:00:00.000Z" });
+171 |   const result = b.cli("deadline", verb, "--run", "runs/zzz");
+172 |   expect(result.error).toBeUndefined();
+173 |   expect(result.status).toBe(2);
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:173:25)
+(fail) DL2: end --run with no open deadline of DIR says no deadline for <DIR> and exits 2 [31.53ms]
+180 | test("DL3: end with neither flag and two open deadlines ends none, lists each open id with its run, exits 2", () => {
+181 |   const b = box();
+182 |   b.plant(running("D-00000001", "2000-01-01T00:00:00.000Z", LONG, "s", "runs/a"));
+183 |   b.plant(running("D-00000002", "2001-01-01T00:00:00.000Z", LONG, "other", "runs/b"));
+184 |   const result = b.cli("deadline", "end");
+185 |   expect(result.status).toBe(2);
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:185:25)
+(fail) DL3: end with neither flag and two open deadlines ends none, lists each open id with its run, exits 2 [27.11ms]
+192 | test("DL3: end --session with two open deadlines in that session ends none and exits 2", () => {
+193 |   const b = box();
+194 |   b.plant(running("D-00000001", "2000-01-01T00:00:00.000Z", LONG, "s", "runs/a"));
+195 |   b.plant(running("D-00000002", "2001-01-01T00:00:00.000Z", LONG, "s", "runs/b"));
+196 |   const result = b.cli("deadline", "end", "--session", "s");
+197 |   expect(result.status).toBe(2);
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 0
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-deadline.test.ts:197:25)
+(fail) DL3: end --session with two open deadlines in that session ends none and exits 2 [27.82ms]
+
+test/round20-criteria.test.ts:
+82 | test("CR1: a Stop inside an open, not-up deadline is not blocked by unmarked criteria, writes no criteria failure, and gives the context line", () => {
+83 |   const deadline = plant();
+84 |   criteria();
+85 |   at(2);
+86 |   const result = stop();
+87 |   expect(decision(result)).not.toBe("block");
+                                    ^
+error: expect(received).not.toBe(expected)
+
+Expected: not "block"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-criteria.test.ts:87:32)
+(fail) CR1: a Stop inside an open, not-up deadline is not blocked by unmarked criteria, writes no criteria failure, and gives the context line [9.44ms]
+ 97 | 
+ 98 | test("CR1: after the deadline is ended, the same stop is blocked as today", () => {
+ 99 |   const deadline = plant();
+100 |   criteria();
+101 |   at(2);
+102 |   expect(decision(stop())).not.toBe("block");
+                                     ^
+error: expect(received).not.toBe(expected)
+
+Expected: not "block"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-criteria.test.ts:102:32)
+(fail) CR1: after the deadline is ended, the same stop is blocked as today [6.12ms]
+109 | 
+110 | test("CR1: when the deadline is up, the same stop is blocked as today", () => {
+111 |   plant();
+112 |   criteria();
+113 |   at(2);
+114 |   expect(decision(stop())).not.toBe("block");
+                                     ^
+error: expect(received).not.toBe(expected)
+
+Expected: not "block"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/.claude/skills/workflow-design/guard/test/round20-criteria.test.ts:114:32)
+(fail) CR1: when the deadline is up, the same stop is blocked as today [5.98ms]
+
+ 6 pass
+ 21 fail
+ 76 expect() calls
+Ran 27 tests across 2 files. [42.60s]

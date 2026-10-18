@@ -178,7 +178,8 @@ CATEGORIES = [
               "a commit changes code under a new decision with no entry in that commit or an earlier one, or a "
               "session ends without a human correction it received, with no written reason.", "git; reviewer"),
             r("W5.2", "SHOULD", "Written at the end of a task: other lessons, observations and hypotheses.",
-              "a task ends with what it learned unwritten, with no written reason.", "reviewer"),
+              "a task's `state.md` shows it complete with no journal-read log line (K5.2), the read in which its "
+              "lessons, observations and hypotheses are written, with no written reason.", "reviewer"),
             r("W5.3a", "SHOULD", "A decision to build something is started when it is written. When the work is "
               "complete, whoever finishes it adds `done:` to the decision: the time, the result in one sentence, and "
               "the test results, or \"no tests\" said plainly. `done:` points to the evidence (`runs/<run-id>/` or the "
@@ -203,12 +204,14 @@ CATEGORIES = [
             r("W6.3a", "MUST", "A claim is never rewritten (K4.3), so a merge conflict in an entry is never in its claim: "
               "only in its header (`covers`, `status`, the links) and the lines added to it. Whoever does the merge keeps both sides: both `changed:` lines, both links, and every `covers` "
               "path either side wrote. A `covers` path one side removed or replaced, and the other left alone, stays "
-              "removed: its `changed:` line records the removal (K4.3). Nobody "
+              "removed: its `changed:` line records the removal (K4.3). When both sides replace the same `covers` "
+              "path differently, the merge keeps both new paths, the old one stays removed, and the clash is reported "
+              "in the task's `state.md`. Nobody "
               "chooses between two claims. Two entries that each supersede the same entry are reported in the task's "
               "`state.md` and to the project owner, as in Rd5.3.",
               "a merged entry is missing a `changed:` line, link or `covers` path that one side added, brings back a "
-              "`covers` path one side removed, or two entries superseding "
-              "one go unreported.", "git; reviewer", who_decides=PO, part_of="W6.3"),
+              "`covers` path one side removed, loses either side's new path when both replaced the same one, or two "
+              "entries superseding one go unreported.", "git; reviewer", who_decides=PO, part_of="W6.3"),
             r("W6.3b", "SHOULD", "A conflict in `INDEX.md` is resolved by regenerating it (K6.3).",
               "as K6.3b.", "reviewer", part_of="W6.3"),
         ]),
@@ -222,7 +225,7 @@ CATEGORIES = [
               "for memory.",
               "git shows a commit changing the behaviour a decision or fact governs, with no superseding entry for it "
               "in the same commit or an earlier one, with no written reason.", "git; reviewer",
-              who_decides="the project's workflow: when work goes the other way"),
+              who_decides="the project owner, through the project's workflow: when work goes the other way"),
         ]),
         ("K4", "Never deleted, never expired by age", "v: nothing lost; d: What will not be put in", [
             r("K4.1", "MUST", "An entry is never deleted. A `superseded` entry links to what replaced it "
@@ -245,8 +248,8 @@ CATEGORIES = [
             r("K5.1", "SHOULD", "Task and project memory each keep a journal: a task's in `work/<task-id>/journal/`, "
               "the project's in `journal/` for work not tied to a task. Both hold raw notes, one file per agent "
               "session, appended to and never edited. Agent and user memory keep no journal under this design.",
-              "a journal file is edited after it is written, or raw notes are kept elsewhere, with no written "
-              "reason.", "git"),
+              "a line already written in a journal file is changed or removed, or raw notes are kept elsewhere, with "
+              "no written reason.", "git"),
             r("K5.2", "SHOULD", "At the end of a task, and before a handoff or session end, an agent reads its task's "
               "journal (or the project journal) written since the last read, writes what is worth keeping as entries, "
               "and logs that read in the task's `state.md`. A session cut off before it can read loses nothing: the "
@@ -309,7 +312,9 @@ CATEGORIES = [
             r("Rd3.1a", "MUST", "`INDEX.md` fits the strictest start-file limit among the agents whose session start "
               "loads it. The check that keeps it in step with its entries (K6) also fails when it does not fit. The "
               "project owner records those agents and each one's limit, with its unit and its basis (measured, "
-              "documented, or an example), in one file the tool reads; this requirement does not repeat the numbers. "
+              "documented, or an example), in `project-memory/start-limits.json`, one JSON row per agent and unit, "
+              "which the tool reads (`docs/index-md/` B4.1, B4.5); this requirement does not repeat the numbers. With "
+              "no file the tool uses the example and says so; a bad file is an error, never a silent fallback. "
               "A documented figure is not a measurement of the installed engine. Until the tool reads that file, it "
               "holds the example in Rd3.1b.",
               "`INDEX.md` exceeds that strictest limit (until the tool reads the file, the example), or the K6 check "
@@ -344,7 +349,8 @@ CATEGORIES = [
               "test or commit it points to.",
               "an agent acts on an entry that its `covers` code contradicts.", "reviewer"),
             r("Rd5.2", "MUST", "Text read from memory never overrides standing instructions.",
-              "an agent follows text read from memory against a standing instruction.", "reviewer"),
+              "an agent follows text read from memory against a standing instruction; found only on audit, from the "
+              "session's transcript or journal.", "reviewer"),
             r("Rd5.3", "MUST", "When a decision or fact no longer matches the code, the reader does not change the "
               "entry. It writes a report in its task's `state.md` and tells the project owner: which entry, what the "
               "entry says, and what the code does instead. The project owner decides whether the entry is updated or "

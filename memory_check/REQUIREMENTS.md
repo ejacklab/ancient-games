@@ -18,8 +18,8 @@ repository; the root is printed. Who decides: the user. Fails if: a given path i
 root is checked instead of being a usage error.
 
 **F3 (MUST) Read only.** The tool reads files and git (with `GIT_OPTIONAL_LOCKS=0`), and writes nothing but its own
-report. Who decides: none. Fails if: a run changes, creates or deletes any file, ignored files included, other than the
-report.
+report. Who decides: none. Fails if: a run changes or creates or deletes any file other than the report (ignored files
+included).
 
 ## Check
 

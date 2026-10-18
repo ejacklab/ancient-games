@@ -17,7 +17,7 @@ Only what the two guidelines require: each check is one requirement's `fails_if`
 id. A requirement whose check is a reviewer's judgement is listed as needing a reviewer, never passed or failed by the
 tool. The tool adds no rule of its own.
 
-## What it will never do
+**What it will never do:**
 
 - Change any memory, entry, index or cache: it only reads, and writes only its own report.
 - Say a requirement passes without the evidence that shows it.

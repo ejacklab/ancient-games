@@ -50,7 +50,7 @@ const FENCE = /^\s{0,3}(`{3,}|~{3,})/;
  * The lines that are exactly `---`, as line numbers. A line inside a fenced code block is the entry's own content —
  * a Markdown example of a header is not a second header (W6.1a), so fences are stepped over.
  */
-function headerDelimiters(lines: readonly string[]): number[] {
+function delimiterLines(lines: readonly string[]): number[] {
   const found: number[] = [];
   let fence = "";
   for (const [index, line] of lines.entries()) {
@@ -63,6 +63,26 @@ function headerDelimiters(lines: readonly string[]): number[] {
     }
     if (fence !== "") continue;
     if (line === "---") found.push(index);
+  }
+  return found;
+}
+
+/** A top-level `key:` line: what a header block is made of, and what a thematic break in the body is not. */
+function isFieldLine(line: string): boolean {
+  if (line.trim() === "" || /^\s/.test(line) || line.startsWith("- ")) return false;
+  return line.indexOf(":") > 0;
+}
+
+/** The header blocks the delimiters close: a pair of `---` lines holds one only when the lines between them are a
+ * header, so two thematic breaks in a body are content and not a second entry (C9). */
+function headerDelimiters(lines: readonly string[]): number[] {
+  const raw = delimiterLines(lines);
+  const found: number[] = [];
+  for (let index = 0; index + 1 < raw.length; index += 2) {
+    const open = raw[index]!;
+    const close = raw[index + 1]!;
+    if (!lines.slice(open + 1, close).some(isFieldLine)) break; // not a header, so no later pair is read as one
+    found.push(open, close);
   }
   return found;
 }

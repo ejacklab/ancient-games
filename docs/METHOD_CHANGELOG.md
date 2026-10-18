@@ -58,6 +58,7 @@ verbatim from the text they replaced.
 - 2026-10-14 — §4: the release note is kept, in the blueprint's `changelog.md`, written by the node whose work ships from the decisions' `done:` lines and the commits (EJ: *"yes want a release note"*); it was *proposed* and "when one is needed". The transition paragraph no longer names SEZA and `site/ancients` and says "its owner", not "EJ" (EJ: *"seza is another project, here we just use as an example"*).
 - 2026-10-17 — 3.8 item 14, the guard's time: it read *"a one-line clock after every tool call and a fuller block with the workers' progress at 50%, 80% and 100%, then time-up on every call"*; now the clock only, after every Bash or file-write call (the 2026-10-17 entry under Added).
 - 2026-10-17 — 3.8 item 14, when the report is written: it read *"stops at the last checkpoint that leaves time for the report"*; now the agent works until the time is up or the run times out, then stops trying and writes the report, as the time-up line already says ("stop trying, finish the report"). No wake is set before the deadline.
+- 2026-10-18 — R12.7 (docs/HARNESS_REQUIREMENTS.md), a leftover of R12.2's rewrite: it read *"Every criterion not met is a failure (R12.2)"*; now a criterion not met is logged as evidence for the evaluator, as R12.2 says, and its Fails-if reads "a criterion not met is not logged".
 
 ## Restructured
 

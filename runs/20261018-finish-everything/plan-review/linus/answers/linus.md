@@ -1,0 +1,52 @@
+# Linus Torvalds — review the 6-hour plan
+
+## Answer
+CHANGE
+
+1. **my #12 + my #5 — merge preflight**  
+   **Current words:** The master merge (item 1) cannot land while another session's uncommitted edit sits on a file the branch touches.  
+   **New words:** At phase 0, identify the other session's edit and have its owner commit it or move it to a preserved patch or worktree. Do not merge item 1 until one preflight check proves the edit is preserved and no uncommitted touched-file intersection remains.  
+   **Cost/risk:** A coordination pause; automatic resolution could destroy another session's work.
+
+2. **my #19 + my #11 + my #2 — known fixes before evaluation**  
+   **Current words:** Items 1–8 are fixes with a known check.  
+   **New words:** Run item 1 first, then run items 2–8 in dependency order, with one logical change per worker, a timestamped progress line, and the known check passing before the next dependent item starts.  
+   **Cost/risk:** Less parallelism, but fewer conflicts and wasted checks.
+
+3. **my #13 + my #5 + my #18 + my #7 — defer exploratory choices**  
+   **Current words:** Items 9–11 are design choices for the evaluator, each costing about 1M tokens to measure on a real run.  
+   **New words:** Defer items 9–11 beyond the six-hour run. If a named use case requires one, select exactly one, record why, run it once, and label its result provisional.  
+   **Cost/risk:** Saves about 3M tokens if all three are deferred, but loses the comparison between alternatives.
+
+4. **my #3 + my #18 + my #11 — one final evaluation**  
+   **Current words:** Item 12 runs the evaluator once (about 1M tokens).  
+   **New words:** Run item 12 once, after the required fixes among items 1–8 pass their known checks; record its outcome, timestamp, and token cost before beginning optional work.  
+   **Cost/risk:** Costs about 1M tokens; running it early produces a measurement of unfinished work.
+
+5. **my #13 + my #6 + my #11 — historical review only if useful**  
+   **Current words:** Item 13 is reading 42 old insight sections and marking each.  
+   **New words:** Defer item 13 unless a named use case requires its marks. If retained, assign it to a read-only worker, run it in parallel with independent fix work, write one timestamped line per section, and do not let it delay item 1 or item 12.  
+   **Cost/risk:** Delays historical synthesis and consumes agent attention even though it is not on the critical path.
+
+6. **my #4 + my #6 + my #14 + my #18 — realistic agent routing**  
+   **Current words:** Engines now: Codex is at 99% of its 5-hour window until about 04:00; opencode works but only one at a time; mcode works on small briefs; agy is read-only; dsh returned empty output on its last review; Claude subagents work.  
+   **New words:** Use one coordinator workflow with six bounded expert roles, not six simultaneous calls. Reserve Codex for critical work before about 04:00, serialize opencode, give mcode only bounded briefs, use agy for read-only review, keep dsh off the critical path after its empty result, and use Claude subagents for independent parallel work.  
+   **Cost/risk:** More routing overhead and less apparent parallelism, but no false capacity assumption.
+
+**Proposed change to the pattern — my #2 + my #9 + my #11; my reading**  
+   **Current words:** Work is divided into small pieces, each with its own check, and every worker writes a timestamped progress line per piece, so progress and time are seen while the work runs, not only at the end.  
+   **New words:** Keep work in small, timestamped pieces. Before each call, verify that required lessons have reached the agent, copy every outside source into the run folder and cite that copy, label every fact separately with its file:line or checking command, and make each criterion state an observable outcome rather than an unresolved mechanism.  
+   **Cost/risk:** Upfront copying and labeling take time, but prevent recalled facts, missing lessons, and false verification.
+
+## Why
+- Biggest risk: item 1 either waits forever or overwrites another session’s edit; the phase-0 preflight catches both (my #12, my #5, my reading).
+- The fixes must precede the single evaluation, or the evaluator measures unfinished behavior (my #3, my #18).
+- Running all three design experiments plus the evaluator spends about 4M tokens and defeats the six-hour objective (my #5, my #13, my #18).
+- The nominal six-expert plan overstates real parallelism; one coordinator must route work to engines that actually produce output (my #4, my #6, my #14).
+- Deferral leaves a real design uncertainty, so EJ must record that tradeoff rather than call it settled (my #7, my reading).
+
+## What I need to know
+- Can you paste `runs/20261018-finish-everything/plan.md`, or run this in a standard session with `mcode --mode standard` or `mcode exec --mode standard`, so I can verify its exact wording and dependencies?
+- What are the dependencies and known checks for items 2–8?
+- Are items 9–11 required inputs to item 12, and does any named use case require item 13 before the deadline?
+- Can the owning session preserve its uncommitted edit without touching the merge branch, and what is the hard stop if it cannot?
