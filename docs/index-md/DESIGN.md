@@ -44,7 +44,8 @@ another session; do not settle a requirement by building it.
      inline code span (r codex 8). It is accepted, since claims are plain sentences.
 5. **Validate** (B2.3–B2.5). Collect every problem and report them all.
    - **Errors, for every entry:** no header; empty `id`; `status` not one of active, superseded or retired; a
-     duplicate `id`; an `id` not in W1.1's form; a line starting `<<<<<<<` or `>>>>>>>`.
+     duplicate `id`; an `id` not in W1.1's form; a line starting `<<<<<<<` or `>>>>>>>`; a known credential (B2.8),
+     reported with its kind and line number, never its text.
    - **Errors, for active entries:** `kind` not one of the five; file prefix not matching `kind`
      (D decision, F fact, L lesson, O observation, H hypothesis); no `**Why:**` line; empty claim.
    - **Warnings:** anything else wrong in an inactive entry.
@@ -60,9 +61,14 @@ another session; do not settle a requirement by building it.
    ```
    - One line per active entry, in step-2 order. With none, the line `(no active entries)`.
    - UTF-8, LF, one final newline. No date, count or host.
-7. **Measure** (B4). Count the lines and UTF-8 bytes against `MAX_LINES` and `MAX_BYTES`, two constants at the top of
-   the script. Their comment cites Rd3.1 and says the values are the design's example until measured. Print
-   `INDEX.md: <lines>/<MAX_LINES> lines, <bytes>/<MAX_BYTES> bytes` on every run.
+7. **Measure** (B4). Read the limits (B4.1, B4.5): `project-memory/start-limits.json` from the same tree as the
+   entries — the working tree in write mode, the snapshot in check mode. A bad file is an error (step 5's rule:
+   print, write nothing, exit 1). With no file, use `MAX_LINES` and `MAX_BYTES`, two constants at the top of the
+   script, whose comment cites Rd3.1 and says the values are the design's example. For each unit the smallest row
+   applies; a unit with no row keeps the example. Count lines, UTF-8 bytes and, when a `characters` limit applies,
+   code points. Print `INDEX.md: <lines>/<l> lines, <bytes>/<b> bytes` (plus `, <characters>/<c> characters`) and
+   then `limits: project-memory/start-limits.json` or `limits: the design's example (no
+   project-memory/start-limits.json)`, on every run.
 
 **Write mode:** `python3 tools/memory_index.py`
 
