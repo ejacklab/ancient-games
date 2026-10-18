@@ -49,9 +49,10 @@ The tool `tools/memory_index.py` checks the id form and conflict markers (merged
    "change the entry first" against K4.3 "never rewrite a claim"; what work a failed MUST stops; Rd4.1 reads
    entries but its old check said decisions (now entries); Rd2's check against the link exception (now handled in
    Rd2.3b). Three are open product questions for EJ.
-5. **Review the COO's new wording** in the YAML (release notes, 2026-10-14): the five new `fails_if`, the W1.2 split,
-   the `who_decides` values.
-6. **No secret scanner exists** for W3.2's `check: secret scanner`. Build one, or accept reviewer only.
+5. ~~Review the COO's new wording~~ — done 2026-10-18 by the six experts (all CHANGE), run
+   `runs/20261018-sot-finish/` S2: K1.1, K5.1, Rd5.2, W5.2 changed; W1.2a, W6.1a stand (no majority).
+6. ~~No secret scanner exists~~ — built 2026-10-18: `tools/memory_index.py` fails a known credential's fixed-prefix
+   form (`docs/index-md/` B2.8), run `runs/20261018-sot-finish/` S4; the reviewer stays the check for the rest.
 7. **Ledger row** for run `20261014-memory-index-cleanup` in `docs/TASK_TYPES_LEDGER.md`, once the other session's
    uncommitted edits there are committed.
 8. ~~Cleanup~~ — done 2026-10-16 (EJ: *"yes remove the merged branches"*): branches `fix/index-id-and-markers` and
@@ -68,12 +69,11 @@ The tool `tools/memory_index.py` checks the id form and conflict markers (merged
     `runs/20261017-sot-item11/` (`nodes/p2.result.md`): a removed `covers` path stays removed; the kit carries the
     tool and `docs/index-md/`; the agents that count are those whose session start loads `INDEX.md`; the limits go in
     one file the tool reads, with unit and basis. Follow-ups are item 14.
-14. **From run 20261017-sot-item11** (no majority, or its own run):
-    - **The tool run:** `tools/memory_index.py` reads the project owner's limits file (Rd3.1a). Still to decide
-      there: where the file lives (design folder 2, `project-memory/` 3, the owner 1) and its format (YAML 4, JSON 2;
-      the tool is standard library only).
-    - When the interim example stops applying; what a merge does when both sides change the same `covers` path.
-    - Measure the start-file limits on the installed engines: later (4 of 6), first agy (3 of 6).
+14. **From run 20261017-sot-item11** — mostly done 2026-10-18, run `runs/20261018-sot-finish/`:
+    - ~~The tool run~~ — done: `project-memory/start-limits.json`, JSON, one row per agent and unit; merged and pushed.
+    - ~~When the example stops; both sides change one path~~ — decided (S1): per unit the smallest row, a unit with no
+      row keeps the example (the COO's pick, no majority); both new paths kept, old removed, reported (6/6).
+    - Measure the start-file limits on the installed engines: still later (S1 tied 3 to 3; item 11's 4 of 6 stands).
     - A request for `CACHES.md` (another design's document, not edited here): Qwen's index cap is 25,000 UTF-16
       code units, not bytes; agy's 12,000 characters comes only from a third-party page
       (`runs/20261017-sot-item11/research/experts.md`).
@@ -88,3 +88,13 @@ The tool `tools/memory_index.py` checks the id form and conflict markers (merged
       mejority sasys"*), run `runs/20261017-w36-worth-scripting/`: a page may stay when the script costs more than it
       saves, never for rarity alone; the writing agent compares at writing, in `state.md`; the project owner if
       contested.
+15. **From run 20261018-sot-finish** (`runs/20261018-sot-finish/report.md`), for EJ:
+    - Accept or overrule the run's provisional picks (each labelled in the release notes, 2026-10-18).
+    - Seen by the reviews, outside the spec: a credential in an entry's **file name**, or in a hand-edited stale
+      `INDEX.md` shown by `--check`'s diff, is still printed; a private key flattened onto one line is not caught;
+      with no `entries/` folder, write mode exits 0 before reading the limits file (O1); `memory_index.py` line 81
+      matches its own Anthropic form (O2).
+    - The acceptance file has no check-mode test for a folder at the limits path (a unit test covers it).
+    - The guard's `deadline start` claims every unclaimed deadline for the calling session, so two sessions starting
+      a deadline in the same minute take each other's (this run lost its clock to run `20261018-finish-everything`;
+      fixed here by hand in `.harness-guard/deadlines/`). That run's plan lists the guard fix ("deadline --id").
