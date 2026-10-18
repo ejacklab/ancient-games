@@ -947,3 +947,12 @@ after the deadline ends skips the criteria step; a C17 test fails or refuses bec
 
 Fails-if: a deferred criteria step stops the path ask; `wait --id … --mark` waits; a background step reports an exit
 it could not read; a test command runs without `timeout <N>`.
+
+**Round 20, after the Codex review (09:00; findings 4 and 5 of `runs/20261018-finish-everything/nodes/codex-review.md`).**
+- **XB4.** A test command is run as `timeout <N> bash -c '<test_cmd>'` (its single quotes written `'\''`), so the
+  limit bounds the whole command, not only its first part; XB2's background form wraps the same.
+- **C17b.** The C17 fake `ps` keeps a foreign `opencode run` line only when it holds the test's own marker; the CLI's
+  own line and its parent's are kept by pid (the fake `ps` is a child of the CLI, so they are `$PPID` and that pid's
+  parent), never by their text.
+
+Fails-if: a compound test command runs past `<N>`; a foreign `opencode run "second task"` line makes a C17 test fail.

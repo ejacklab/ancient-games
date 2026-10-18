@@ -188,14 +188,18 @@ for (const bad of [30, 4000, 'x']) {
 
 // XB2 (guard SPEC Round 20, after its review): above 580 s every step starts its command as
 // `( timeout <N> <command>; echo "exit $?" > <file>.exit ) &`, reads the exit from <file>.exit, and a missing .exit
-// file after the limit is a failed step, never a pass. Test steps start their brief's test_cmd that way.
+// file after the limit is a failed step, never a pass. Test steps start their brief's test_cmd that way, in XB4's
+// `bash -c '<test_cmd>'` form (XB4 replaces the bare `timeout <N> <test_cmd>`).
 const isTestStep = c => /^(failfirst|head):/.test(c.label)
 const testCmdOf = c => ARGS.tests.find(t => t.id === c.label.split(':')[1]).test_cmd
+// XB4: a test command as one single-quoted bash -c argument, its single quotes written '\''.
+const shQuote = text => `'${text.replace(/'/g, "'\\''")}'`
+const wrapped = (n, cmd) => `timeout ${n} bash -c ${shQuote(cmd)}`
 const missingExitIsFailure = p => /(\b(missing|absent)\b[^\n]{0,80}\.exit\b|\.exit\b[^\n]{0,80}\b(missing|absent|does not appear|did not appear|never appears)\b|\bno \S*\.exit\b)[\s\S]{0,200}\bfail/i.test(p)
 {
   const { result, calls } = await runCase(REAL, withArgs(x => { x.timeout = 900 }))
   const badForm = calls.filter(c => {
-    const head = isTestStep(c) ? `( timeout 900 ${testCmdOf(c)}` : '( timeout 900 '
+    const head = isTestStep(c) ? `( ${wrapped(900, testCmdOf(c))}` : '( timeout 900 '
     const i1 = c.prompt.indexOf(head)
     const i2 = i1 < 0 ? -1 : c.prompt.indexOf('echo "exit $?" >', i1)
     const i3 = i2 < 0 ? -1 : c.prompt.indexOf('.exit ) &', i2)
@@ -209,15 +213,31 @@ const missingExitIsFailure = p => /(\b(missing|absent)\b[^\n]{0,80}\.exit\b|\.ex
     `no missing-.exit rule in: ${silent.map(c => c.label).join(', ')}`)
 }
 
-// XB3: every test command (fail first, head) runs as `timeout <N> <test_cmd>`, as engine calls are; below 580 no prompt
-// tells a step to use the Bash tool's 600000 ms limit.
+// XB3: every test command (fail first, head) runs under `timeout <N>`, as engine calls are; below 580 no prompt
+// tells a step to use the Bash tool's 600000 ms limit. The form asserted is XB4's `timeout <N> bash -c '<test_cmd>'`,
+// which replaces XB3's bare `timeout <N> <test_cmd>`.
 for (const [label, fn, n] of [['timeout 120', x => { x.timeout = 120 }, 120], ['the default', () => {}, 580]]) {
   const { result, calls } = await runCase(REAL, withArgs(fn))
   const tests = calls.filter(isTestStep)
-  const bare = tests.filter(c => !c.prompt.includes(`timeout ${n} ${testCmdOf(c)}`))
-  report(`XB3 ${label}: fail-first and head prompts run "timeout ${n} <test_cmd>"`,
+  const bare = tests.filter(c => !c.prompt.includes(wrapped(n, testCmdOf(c))))
+  report(`XB3 ${label}: fail-first and head prompts run "timeout ${n} bash -c '<test_cmd>'"`,
     result.status !== 'error' && tests.length === 4 && !bare.length,
-    `status ${result.status}; ${tests.length} test steps; without "timeout ${n} <test_cmd>": ${bare.map(c => c.label).join(', ')}`)
+    `status ${result.status}; ${tests.length} test steps; without "timeout ${n} bash -c '<test_cmd>'": ${bare.map(c => c.label).join(', ')}`)
+}
+
+// XB4 (guard SPEC Round 20, after the Codex review): a test command runs as `timeout <N> bash -c '<test_cmd>'`, its
+// single quotes written '\'', so the limit bounds the whole command, not only its first part.
+for (const [label, cmd, expected] of [
+  ['a compound test_cmd "a && b"', 'a && b', "timeout 120 bash -c 'a && b'"],
+  ["a test_cmd with a single quote", "bun test -t 'x y' t.test.ts", "timeout 120 bash -c 'bun test -t '\\''x y'\\'' t.test.ts'"],
+]) {
+  const { result, calls } = await runCase(REAL, withArgs(x => { x.timeout = 120; for (const t of x.tests) t.test_cmd = cmd }))
+  const tests = calls.filter(isTestStep)
+  const without = tests.filter(c => !c.prompt.includes(expected))
+  const unbounded = tests.filter(c => c.prompt.includes(`timeout 120 ${cmd}`))
+  report(`XB4 timeout 120, ${label}: fail-first and head prompts hold ${expected}`,
+    result.status !== 'error' && tests.length === 4 && !without.length && !unbounded.length,
+    `status ${result.status}; ${tests.length} test steps; without it: ${without.map(c => c.label).join(', ')}; bare "timeout 120 ${cmd}": ${unbounded.map(c => c.label).join(', ')}`)
 }
 {
   const { calls } = await runCase(REAL, withArgs(x => { x.timeout = 120 }))

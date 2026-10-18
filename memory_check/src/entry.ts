@@ -73,16 +73,32 @@ function isFieldLine(line: string): boolean {
   return line.indexOf(":") > 0;
 }
 
-/** The header blocks the delimiters close: a pair of `---` lines holds one only when the lines between them are a
- * header, so two thematic breaks in a body are content and not a second entry (C9). */
+/** The key of a top-level `key: value` line. */
+function fieldKey(line: string): string {
+  return line.slice(0, line.indexOf(":")).trim();
+}
+
+/**
+ * The keys the header block is made of — the ones `tools/memory_index.py` reads there (`parse_header`,
+ * tools/memory_index.py:104). A pair of `---` lines holding one of them is a header block; a pair holding body
+ * prose with a colon in it (`Note: keep UTC timestamps.`) is a thematic break and not a second entry (C9, W6.1a).
+ */
+const HEADER_KEYS = new Set(["id", "kind", "status"]);
+
+/**
+ * The header blocks the delimiters close: a pair of `---` lines holds one only when the lines between them are a
+ * header, so two thematic breaks in a body are content and not a second entry (C9). A pair that closes no header is
+ * stepped over and the scan goes on: a later pair may still close one, and stopping there would miss a second entry
+ * (W6.1a).
+ */
 function headerDelimiters(lines: readonly string[]): number[] {
   const raw = delimiterLines(lines);
   const found: number[] = [];
   for (let index = 0; index + 1 < raw.length; index += 2) {
     const open = raw[index]!;
     const close = raw[index + 1]!;
-    if (!lines.slice(open + 1, close).some(isFieldLine)) break; // not a header, so no later pair is read as one
-    found.push(open, close);
+    const isHeader = lines.slice(open + 1, close).some((line) => isFieldLine(line) && HEADER_KEYS.has(fieldKey(line)));
+    if (isHeader) found.push(open, close);
   }
   return found;
 }
@@ -124,9 +140,16 @@ export function parseEntry(name: string, text: string): Entry {
       const key = line.slice(0, colon).trim();
       const value = unquote(line.slice(colon + 1).trim());
       current = { key, value, parts: value ? [value] : [], items: value ? [value] : [], line: index + 1 };
-      if (key === "id") idLines.push(index + 1);
     }
     close();
+  }
+  // W6.1a: every header block's `id:` line is one the file holds, not only the first block's, so a second block's
+  // `id:` line is the second entry.
+  for (let block = 0; block + 1 < fences.length; block += 2) {
+    for (let index = fences[block]! + 1; index < fences[block + 1]!; index++) {
+      const line = lines[index] ?? "";
+      if (isFieldLine(line) && fieldKey(line) === "id") idLines.push(index + 1);
+    }
   }
   const body = lines.slice(end >= 0 ? end + 1 : 0);
   let claim = "";

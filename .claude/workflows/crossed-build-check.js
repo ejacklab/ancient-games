@@ -104,8 +104,10 @@ function engineCommand(engine, brief, out, readOnly) {
 }
 // An engine call under the limit, or the same call in the background writing its exit to <file>.exit.
 const engineRun = (engine, brief, out, readOnly) => `    ${runCommand(out, engineCommand(engine, brief, out, readOnly))}`
-// XB3: a test command the step runs itself carries the same limit as an engine call, under `timeout <N>`.
-const testRun = (t, out) => runCommand(out, t.test_cmd)
+// XB4: a test command is run as `timeout <N> bash -c '<test_cmd>'`, its single quotes written '\'', so the limit
+// bounds the whole command and not only its first part of a compound one; XB2's background form wraps the same.
+const shQuote = text => `'${text.replace(/'/g, "'\\''")}'`
+const testRun = (t, out) => runCommand(out, `bash -c ${shQuote(t.test_cmd)}`)
 
 const s = type => ({ type })
 const strings = { type: 'array', items: { type: 'string' } }

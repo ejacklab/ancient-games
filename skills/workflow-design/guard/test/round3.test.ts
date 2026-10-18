@@ -835,8 +835,9 @@ describe("C16 (R7) doctor opencode reads a plugin file's text", () => {
 
 // These tests read the real process table through the CLI (the CLI has no injection point for `running`). They start
 // their own process; the CLI runs see it through a `ps` put first on PATH, which prints the real `ps` output with every
-// other process's `opencode run` line removed (lines holding the test's marker or "second task" are kept), so other
-// sessions' opencode runs neither change the result nor stop the tests (Round 20, C17 alone).
+// other process's `opencode run` line removed (lines holding the test's marker are kept, and the CLI's own line and its
+// parent's are kept by pid), so other sessions' opencode runs neither change the result nor stop the tests (Round 20,
+// C17 alone; C17b).
 describe("C17 (R9) the CLI drops only its own process and its parent from running", () => {
   const realPs = Bun.which("ps");
 
@@ -844,8 +845,10 @@ describe("C17 (R9) the CLI drops only its own process and its parent from runnin
     return execFileSync("ps", ["-eo", "args="], { encoding: "utf8" }).split("\n");
   }
 
-  // A `ps` in the test's temp folder: the real ps by absolute path, minus every `opencode run` line that holds neither
-  // this test's marker (the temp folder's name) nor "second task". Returns the env for the CLI runs.
+  // A `ps` in the test's temp folder: the real ps by absolute path, minus every `opencode run` line that does not hold
+  // this test's marker (the temp folder's name), except the CLI's own line and its parent's. The fake ps is a child of
+  // the CLI, so those are kept by pid: $PPID and that pid's parent (field 4 of /proc/$PPID/stat, read after the
+  // command name's closing parenthesis), never by their text (C17b). Returns the env for the CLI runs.
   function fakePsEnv(): NodeJS.ProcessEnv {
     if (realPs === null) throw new Error("C17 needs ps on PATH");
     const marker = path.basename(folder);
@@ -855,7 +858,11 @@ describe("C17 (R9) the CLI drops only its own process and its parent from runnin
     fs.writeFileSync(script, [
       "#!/bin/bash",
       "set -o pipefail",
-      `${JSON.stringify(realPs)} "$@" | awk -v marker=${JSON.stringify(marker)} '!/opencode[ \\t]+run/ || index($0, marker) || index($0, "second task")'`,
+      "self=$PPID",
+      "stat=$(cat /proc/$self/stat 2>/dev/null) || stat=''",
+      "read -ra after <<< \"${stat##*) }\"",
+      "parent=${after[1]:-0}",
+      `${JSON.stringify(realPs)} "$@" | awk -v marker=${JSON.stringify(marker)} -v self="$self" -v parent="$parent" '!/opencode[ \\t]+run/ || index($0, marker) || $1 == self || $1 == parent'`,
       "",
     ].join("\n"));
     fs.chmodSync(script, 0o755);

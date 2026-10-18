@@ -10,9 +10,10 @@ import type { StagedEntry } from "./gitchecks.ts";
 import type { CheckRun, RequirementResult, Verdict } from "./checks.ts";
 
 /** The file names in an evidence line, and nothing else of the entry: no claim, no body, no text. An entry file is
- *  named by the staged paths this run parsed, not by a pattern over the evidence: memory_index.py names an entry by
- *  its bare file name, and a name with a space or a non-ASCII character in it was cut short (C12, A5). */
-const FILE_NAME = /(project-memory\/INDEX\.md|AGENTS\.md)/g;
+ *  its bare file name, and a name with a space or a non-ASCII character in it was cut short (C12, A5). An entry path
+ *  the evidence itself holds is named too, whole to its `.md`: an entry a staged or committed deletion names is in no
+ *  staged state, so naming entries through the staged paths alone loses the file name R2 asks the warning to hold. */
+const FILE_NAME = /(project-memory\/INDEX\.md|AGENTS\.md|project-memory\/entries\/[^\s]*\.md)/g;
 
 /** What each id's failure is about, in words of the guideline rather than of the entry. */
 const CATEGORY: Record<string, string> = {

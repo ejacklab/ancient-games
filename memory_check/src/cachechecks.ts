@@ -141,8 +141,9 @@ export function checkRd1(root: string, errors: GitErrors): ClauseOutcome {
     if (!SETTINGS_FILES.has(path.relative(root, file))) continue;
     sessionStartHookCommands(text).forEach((command, offset) => {
       if (!CACHE_REFERENCE.test(command)) return;
+      // A command is not prose: its words are arguments, so the negation rule, which is for instructions, does not
+      // read one — `cat <cache> || echo not found` opens the cache and its "not found" is a fallback message.
       const reading = readLine(command);
-      if (reading.negated) return; // a command that says never to open one does not open it
       const where = `${file} — hooks.SessionStart[${offset}]: "${command.trim()}"`;
       if (reading.opens && !reading.indirect) breaks.push(where);
       else unresolved.push(`${where}${reading.indirect ? " runs something that may open it" : ""}`);
