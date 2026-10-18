@@ -17,6 +17,11 @@ accepts or overrules at the end.
   through the project's workflow" (6/6); K5.1's `fails_if` is a journal line already written being changed or
   removed (6/6); Rd5.2's check is found only on audit (4/6); W5.2's `fails_if` points at the K5.2 journal-read line
   (5/6 asked for a change; the words are the COO's, after 孫子). W1.2a and W6.1a stand (no majority).
+- **The tool reads the limits file and checks for credentials** (merged from `feat/index-limits-file`;
+  `docs/index-md/` B2.8, B4.1, B4.2, B4.5). `checks.secret scanner` now names the tool for W3.2's fixed-prefix forms;
+  the reviewer stays the check for everything else W3.2 covers. Rd3.1a/b no longer say "until the tool reads the
+  file". Built with tests written blind by Codex, code by opencode, 33 mutants (all but one killed by the acceptance
+  tests; that one by a unit test), and two blind reviews (the first found its planted defect).
 
 ## 2026-10-18
 

@@ -1,0 +1,532 @@
+diff --git a/tests/test_memory_index_unit.py b/tests/test_memory_index_unit.py
+index b5f1e42..096a57a 100644
+--- a/tests/test_memory_index_unit.py
++++ b/tests/test_memory_index_unit.py
+@@ -9,6 +9,7 @@ Imported by path, not by name: `tools/` is not a package and this test must not
+ from __future__ import annotations
+ 
+ import importlib.util
++import json
+ import os
+ import subprocess
+ import sys
+@@ -171,6 +172,80 @@ def test_an_untracked_entry_is_an_error_in_every_status():
+         assert "not known to git, git add it first" in entry.errors, status
+ 
+ 
++# --- known credentials (B2.8) -----------------------------------------------------------------------------------
++# Each value is the shortest text that matches its form, so `value[:-1]` is the one character too short.
++CREDENTIALS = [
++    ("aws key id", "AKIA" + "A2Z7" * 4),
++    ("aws key id", "ASIA" + "Z7A2" * 4),
++    ("github token", "ghp_" + "aZ09" * 9),
++    ("github token", "ghr_" + "z09A" * 9),
++    ("github token", "github_pat_" + "aZ09_" * 16 + "ab"),
++    ("gitlab token", "glpat-" + "aZ09-_" * 3 + "ab"),
++    ("slack token", "xoxb-1"),
++    ("slack token", "xoxp-7"),
++    ("slack token", "xoxe-3"),
++    ("anthropic key", "sk-ant-api03-"),
++    ("google api key", "AIza" + "aZ09-_" * 5 + "abcde"),
++]
++
++
++@pytest.mark.parametrize("kind,value", CREDENTIALS)
++def test_each_known_credential_form_is_named_by_its_kind(kind, value):
++    """B2.8 — the fixed-prefix forms are compiled once and named, so a report says what it found without saying it."""
++    assert memory_index.credential_kind(f"example: {value}") == kind
++
++
++@pytest.mark.parametrize("kind,value", CREDENTIALS)
++def test_a_value_one_character_short_is_not_a_credential(kind, value):
++    """B2.8 — there is no entropy rule and no waiver: only the exact fixed-prefix form is a credential."""
++    shortened = value[:-1]
++    assert memory_index.credential_kind(f"example: {shortened}") is None, shortened
++
++
++@pytest.mark.parametrize("prefix", ["AKIA", "ghp_", "github_pat_", "glpat-", "xoxb-", "AIza", "sk-ant-"])
++def test_a_mentioned_prefix_is_not_a_credential(prefix):
++    """B2.8 — documentation that names a prefix, and no key, is not a credential."""
++    assert memory_index.credential_kind(f"The {prefix} prefix is documented.") is None
++
++
++@pytest.mark.parametrize("status", ["active", "superseded", "retired"])
++def test_a_credential_is_an_error_in_every_status_without_its_text(status):
++    """B2.8 B2.5 — a retired entry holds a known credential like any other, and the report never quotes it."""
++    value = "ghp_" + "aZ09" * 9
++    raw = ENTRY_TEXT.replace("status: active", f"status: {status}").replace("Use code-point order.", f"Key: {value}")
++    entry = memory_index.parse_entry("D-one.md", raw)
++    assert entry.errors == [f"possible credential (github token) on line 6"], entry.errors
++    assert entry.warnings == []
++    assert value not in "".join(entry.errors)
++
++
++@pytest.mark.parametrize("body", ["A" * 64, "A" * 32 + "\n" + "B" * 32, "A" * 65])
++def test_a_private_key_body_of_64_characters_or_more_is_a_credential(body):
++    """B2.8 — the body between BEGIN and END is counted, over one line or wrapped over several."""
++    lines = ["-----BEGIN OPENSSH PRIVATE KEY-----", *body.split("\n"), "-----END OPENSSH PRIVATE KEY-----"]
++    assert memory_index.private_key_line(lines) == 1
++
++
++@pytest.mark.parametrize("body", ["", "A" * 63, "A" * 32 + "\n" + "B" * 31])
++def test_a_private_key_header_or_a_shorter_body_is_not_a_credential(body):
++    """B2.8 — a BEGIN line alone, and a body one character short, are documentation, not a key."""
++    lines = ["-----BEGIN RSA PRIVATE KEY-----", *body.split("\n"), "-----END RSA PRIVATE KEY-----"]
++    assert memory_index.private_key_line(lines) is None
++
++
++def test_a_private_key_body_without_its_end_line_is_not_a_credential():
++    """B2.8 — the form names an END line; a snippet that never reaches one is not yet a key body."""
++    assert memory_index.private_key_line(["-----BEGIN RSA PRIVATE KEY-----", "A" * 200]) is None
++
++
++def test_the_credential_line_is_the_begin_line_of_the_block():
++    """B2.8 — the report names the line a reader has to look at, which is where the block starts."""
++    raw = ENTRY_TEXT.replace("Use code-point order.", "-----BEGIN EC PRIVATE KEY-----\n" + "A" * 64
++                             + "\n-----END EC PRIVATE KEY-----")
++    entry = memory_index.parse_entry("D-one.md", raw)
++    assert entry.errors == ["possible credential (private key) on line 6"], entry.errors
++
++
+ def test_unborn_head_and_a_revision_naming_no_commit_are_told_apart(tmp_path, monkeypatch):
+     """C1.2 C1.3 — HEAD before the first commit is "nothing to check"; a revision that names no commit fails."""
+     for name in [name for name in os.environ if name.startswith("GIT_")]:
+@@ -240,6 +315,79 @@ def test_size_is_measured_in_lines_and_utf8_bytes():
+     )
+ 
+ 
++# --- the limits (B4.1 B4.2 B4.5) --------------------------------------------------------------------------------
++def limit_row(unit, limit, *, agent="test-agent", basis="measured", source="a unit test"):
++    return {"agent": agent, "unit": unit, "limit": limit, "basis": basis, "source": source}
++
++
++def limits_from(rows):
++    return memory_index.parse_limits(json.dumps({"limits": rows}).encode("utf-8"))
++
++
++def test_the_smallest_row_per_unit_applies_and_the_example_fills_the_gaps():
++    """B4.1 — one limit per unit, the smallest among its rows; a unit no row names keeps the example."""
++    limits = limits_from([
++        limit_row("lines", 120, agent="agy"), limit_row("lines", 90, agent="codex"),
++        limit_row("characters", 8_000), limit_row("bytes", 20_000, basis="documented"),
++    ])
++    assert (limits.lines, limits.bytes, limits.characters) == (90, 20_000, 8_000)
++    assert limits.from_file is True
++    assert limits.source_line == f"limits: {memory_index.LIMITS_PATH}"
++
++
++def test_the_example_limits_name_themselves_as_the_example():
++    """B4.2 — a run with no limits file says so, so a number is never mistaken for a measurement."""
++    limits = memory_index.example_limits()
++    assert (limits.lines, limits.bytes, limits.characters) == (200, 24_000, None)
++    assert limits.from_file is False
++    assert limits.source_line == "limits: the design's example (no project-memory/start-limits.json)"
++
++
++@pytest.mark.parametrize("raw", [
++    b"{not JSON", b"\xff", b"[]", b"null", b"{}", b'{"limits": []}', b'{"limits": {}}',
++    b'{"limits": "rows"}', b'{"limits": [null]}', b'{"limits": [[]]}',
++    b'{"limits": [{"agent": "a", "unit": "lines", "basis": "measured", "source": "s"}]}',
++    b'{"limits": [{"agent": "a", "unit": "tokens", "limit": 10, "basis": "measured", "source": "s"}]}',
++    b'{"limits": [{"agent": "a", "unit": "lines", "limit": 10, "basis": "guessed", "source": "s"}]}',
++    b'{"limits": [{"agent": "a", "unit": "lines", "limit": 0, "basis": "measured", "source": "s"}]}',
++    b'{"limits": [{"agent": "a", "unit": "lines", "limit": 1.0, "basis": "measured", "source": "s"}]}',
++    b'{"limits": [{"agent": "a", "unit": "lines", "limit": true, "basis": "measured", "source": "s"}]}',
++    b'{"limits": [{"agent": 1, "unit": "lines", "limit": 10, "basis": "measured", "source": "s"}]}',
++    b'{"limits": [' + json.dumps(limit_row("lines", 200)).encode() + b', "row"]}',
++])
++def test_an_unusable_limits_file_is_a_problem_not_a_fallback(raw):
++    """B4.5 — bad JSON, schema, type or value, in any row, stops the run; the example is never used silently."""
++    with pytest.raises(memory_index.LimitsError):
++        memory_index.parse_limits(raw)
++
++
++def test_a_characters_limit_is_measured_in_code_points():
++    """B4.2 — code points, not UTF-8 bytes: an accented claim has fewer characters than bytes."""
++    rendered = memory_index.render_index(
++        memory_index.active_entries(
++            [memory_index.parse_entry(
++                "F-é.md", "---\nid: 14-10-accent-2026\nkind: fact\nstatus: active\n---\nCafé.\n**Why:** r\n")]
++        )
++    )
++    limits = limits_from([limit_row("characters", 500)])
++    assert memory_index.size_report(rendered, limits) == (
++        f"INDEX.md: 5/200 lines, {len(rendered)}/24000 bytes, {len(rendered.decode('utf-8'))}/500 characters"
++    )
++    assert memory_index.over_limit(rendered, limits) is False
++    assert memory_index.over_limit(rendered, limits_from([limit_row("characters", 4)])) is True
++
++
++def test_print_size_prints_the_size_then_where_the_limits_came_from(capsys):
++    """B4.2 — one size line and one source line per run, in that order, whatever the limits are."""
++    rendered = memory_index.render_index([])
++    limits = limits_from([limit_row("characters", 500)])
++    memory_index.print_size(rendered, limits)
++    printed = capsys.readouterr().out.splitlines()
++    assert len(printed) == 2
++    assert printed[0] == memory_index.size_report(rendered, limits)
++    assert printed[1] == limits.source_line
++
++
+ # --- what counts as an entry ------------------------------------------------------------------------------------
+ def test_links_are_percent_encoded():
+     """B3.1 — a space, a `#` and a non-ASCII character must all resolve in the link."""
+diff --git a/tools/memory_index.py b/tools/memory_index.py
+index 5d5f3b1..62b8dce 100644
+--- a/tools/memory_index.py
++++ b/tools/memory_index.py
+@@ -18,6 +18,7 @@ from __future__ import annotations
+ 
+ import argparse
+ import difflib
++import json
+ import os
+ import re
+ import subprocess
+@@ -29,15 +30,21 @@ from pathlib import Path
+ 
+ # Rd3.1: INDEX.md must fit the strictest start-file limit of the agents that read it. These two numbers are the
+ # design's example, not a measurement: the agy row of the start-load limits table in docs/memory-system/CACHES.md
+-# gives "24,000 bytes per rule file" (and 12,000 characters in other reports, a conflict W-4 records). They stay
+-# examples until the readers' load paths are measured (B4.1). Nothing is ever cut to fit — over the limit, write
+-# mode still writes the whole file and check mode fails (B4.3).
++# gives "24,000 bytes per rule file" (and 12,000 characters in other reports, a conflict W-4 records). They are the
++# limits only while no `project-memory/start-limits.json` names the units; that file replaces them (B4.1). Nothing is
++# ever cut to fit — over the limit, write mode still writes the whole file and check mode fails (B4.3).
+ MAX_LINES = 200
+ MAX_BYTES = 24_000
+ 
+ MEMORY_DIR = "project-memory"
+ ENTRIES_DIR = "project-memory/entries"
+ INDEX_PATH = "project-memory/INDEX.md"
++# B4.1: where the owner records the real start-file limits of each agent. Read from the working tree in write mode
++# and from the snapshot in check mode, never from the other (B4.5).
++LIMITS_PATH = "project-memory/start-limits.json"
++LIMIT_UNITS = ("lines", "bytes", "characters")
++LIMIT_BASES = ("measured", "documented", "example")
++LIMIT_TEXT_FIELDS = ("agent", "unit", "basis", "source")
+ 
+ # The five kinds of W1.1. Runbooks (R-) were dropped by EJ on 2026-10-13; an R- file is not an entry (B1.1).
+ ENTRY_NAME = re.compile(r"[DFLOH]-[^/]+\.md")
+@@ -59,6 +66,25 @@ ID_FORM = re.compile(r"[0-9]{2}-[0-9]{2}-[0-9a-z]{6}-[0-9]{4}")
+ # also a Markdown heading underline.
+ CONFLICT_MARKERS = ("<<<<<<<", ">>>>>>>")
+ 
++# B2.8 (SoT W3.2): the known credentials, as fixed-prefix forms compiled once here. Only the kind and the line are
++# reported; the matched text is never printed. There is no entropy rule, no keyword rule and no waiver, so an example
++# key in an entry is shortened until it no longer matches. Everything else W3.2 covers stays the reviewer's.
++# The lookbehind keeps a prefix that merely ends a longer token (`XAKIA...`) out of it.
++CREDENTIAL_FORMS = (
++    ("aws key id", re.compile(r"(?<![A-Za-z0-9])(?:AKIA|ASIA|ABIA|ACCA)[A-Z2-7]{16}")),
++    ("github token", re.compile(r"(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9]{36}")),
++    ("github token", re.compile(r"(?<![A-Za-z0-9_])github_pat_[A-Za-z0-9_]{82}")),
++    ("gitlab token", re.compile(r"(?<![A-Za-z0-9_])glpat-[A-Za-z0-9_-]{20}")),
++    ("slack token", re.compile(r"(?<![A-Za-z0-9])xox[bpe]-[0-9]+")),
++    ("anthropic key", re.compile(r"(?<![A-Za-z0-9])sk-ant-api03-")),
++    ("google api key", re.compile(r"(?<![A-Za-z0-9])AIza[A-Za-z0-9_-]{35}")),
++)
++# The private-key form needs the body between the BEGIN and END lines, so it is counted, not matched: a BEGIN line
++# alone, or a body shorter than MIN_PRIVATE_KEY_BODY characters, is not a known credential (B2.8).
++PRIVATE_KEY_BEGIN = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----")
++PRIVATE_KEY_END = re.compile(r"-----END [A-Z0-9 ]*PRIVATE KEY-----")
++MIN_PRIVATE_KEY_BODY = 64
++
+ TITLE = "# Project memory index"
+ GENERATED_NOTE = (
+     "<!-- Generated by tools/memory_index.py from project-memory/entries/. "
+@@ -73,6 +99,10 @@ class GitError(Exception):
+     """A git command failed. The message is the one the user gets."""
+ 
+ 
++class LimitsError(Exception):
++    """The limits file is not usable. The message follows the file's path in the report (B4.5)."""
++
++
+ def report(text: str) -> None:
+     """Print a problem to stderr. stdout is flushed first, so a piped run (a hook, CI) reads in order."""
+     sys.stdout.flush()
+@@ -178,11 +208,52 @@ def flag_conflict_markers(entry: Entry, lines: list[str]) -> None:
+             entry.errors.append(f"unresolved conflict marker on line {number}: {line.strip()!r}")
+ 
+ 
++def credential_kind(line: str) -> str | None:
++    """The kind of known credential on one line, or None. The first form that matches is the kind reported."""
++    for kind, form in CREDENTIAL_FORMS:
++        if form.search(line):
++            return kind
++    return None
++
++
++def private_key_line(lines: list[str]) -> int | None:
++    """The line of the first `-----BEGIN … PRIVATE KEY-----` block whose body is 64 characters or more before its
++    `-----END` line, or None. The body is counted in characters, the newlines between the lines excluded."""
++    start: int | None = None
++    body = 0
++    for number, line in enumerate(lines, start=1):
++        if start is None:
++            if PRIVATE_KEY_BEGIN.fullmatch(line):
++                start, body = number, 0
++        elif PRIVATE_KEY_END.fullmatch(line):
++            if body >= MIN_PRIVATE_KEY_BODY:
++                return start
++            start = None
++        elif PRIVATE_KEY_BEGIN.fullmatch(line):
++            start, body = number, 0
++        else:
++            body += len(line)
++    return None
++
++
++def flag_credentials(entry: Entry, lines: list[str]) -> None:
++    """A known credential is an error in every status, in both modes, and is reported with its kind and line but
++    never with the matched text (B2.8). Nothing here is a warning: an old entry cannot hold one either (B2.5)."""
++    for number, line in enumerate(lines, start=1):
++        kind = credential_kind(line)
++        if kind:
++            entry.errors.append(f"possible credential ({kind}) on line {number}")
++    key_line = private_key_line(lines)
++    if key_line is not None:
++        entry.errors.append(f"possible credential (private key) on line {key_line}")
++
++
+ def parse_entry(name: str, text: str, *, tracked: bool = True) -> Entry:
+     """Parse one entry's text. CRLF becomes LF; never raises."""
+     entry = Entry(name=name, tracked=tracked)
+     lines = text.replace("\r\n", "\n").split("\n")
+     flag_conflict_markers(entry, lines)
++    flag_credentials(entry, lines)
+     fields, end, header_problem = parse_header(lines)
+     if header_problem:
+         entry.errors.append(header_problem)
+@@ -234,6 +305,91 @@ def flag_duplicate_ids(entries: list[Entry]) -> None:
+         seen.add(entry.entry_id)
+ 
+ 
++# --- the limits --------------------------------------------------------------------------------------------------
++
++
++@dataclass(frozen=True)
++class Limits:
++    """The limits that apply to the index: lines and bytes always, characters only when a row names them, plus
++    where they came from, which every run prints (B4.1, B4.2)."""
++
++    lines: int
++    bytes: int
++    characters: int | None = None
++    from_file: bool = False
++
++    @property
++    def source_line(self) -> str:
++        """The line under the size line that says whether the limits are recorded or the design's example (B4.2)."""
++        if self.from_file:
++            return f"limits: {LIMITS_PATH}"
++        return f"limits: the design's example (no {LIMITS_PATH})"
++
++
++def example_limits() -> Limits:
++    """MAX_LINES and MAX_BYTES, read when they are needed so a test can lower them; no characters limit."""
++    return Limits(lines=MAX_LINES, bytes=MAX_BYTES)
++
++
++def parse_limits(raw: bytes) -> Limits:
++    """The limits the file records: for each unit the smallest `limit` among its rows, and the design's example
++    for a unit no row names (B4.1). A file that is not UTF-8 JSON, is not an object with a non-empty `limits`
++    list, or holds a row missing a field, of the wrong type, or naming an unknown unit, basis or value, raises
++    LimitsError — the caller reports it and the script never falls back to the example silently (B4.5)."""
++    try:
++        text = raw.decode("utf-8")
++    except UnicodeDecodeError:
++        raise LimitsError("not valid UTF-8") from None
++    try:
++        document = json.loads(text)
++    except ValueError as error:
++        raise LimitsError(f"not valid JSON: {error}") from None
++    if not isinstance(document, dict):
++        raise LimitsError("the top level is not an object")
++    if "limits" not in document:
++        raise LimitsError("no 'limits' list")
++    rows = document["limits"]
++    if not isinstance(rows, list):
++        raise LimitsError("'limits' is not a list")
++    if not rows:
++        raise LimitsError("'limits' is an empty list")
++    smallest = {unit: None for unit in LIMIT_UNITS}
++    for number, row in enumerate(rows, start=1):
++        limit = read_limit_row(row, number)
++        unit = row["unit"]
++        if smallest[unit] is None or limit < smallest[unit]:
++            smallest[unit] = limit
++    return Limits(
++        lines=smallest["lines"] if smallest["lines"] is not None else MAX_LINES,
++        bytes=smallest["bytes"] if smallest["bytes"] is not None else MAX_BYTES,
++        characters=smallest["characters"],
++        from_file=True,
++    )
++
++
++def read_limit_row(row: object, number: int) -> int:
++    """Check one row of the limits file and return its `limit`. Raises LimitsError naming the row and the field,
++    so a bad row after a good one is still a problem (B4.5)."""
++    if not isinstance(row, dict):
++        raise LimitsError(f"row {number} is not an object")
++    for field in LIMIT_TEXT_FIELDS:
++        if field not in row:
++            raise LimitsError(f"row {number} has no {field!r}")
++        if not isinstance(row[field], str) or not row[field].strip():
++            raise LimitsError(f"row {number} has a {field!r} that is not text")
++    if "limit" not in row:
++        raise LimitsError(f"row {number} has no 'limit'")
++    if row["unit"] not in LIMIT_UNITS:
++        raise LimitsError(f"row {number} has an unknown unit {row['unit']!r} (not {' / '.join(LIMIT_UNITS)})")
++    if row["basis"] not in LIMIT_BASES:
++        raise LimitsError(f"row {number} has an unknown basis {row['basis']!r} (not {' / '.join(LIMIT_BASES)})")
++    # `bool` is an `int` in Python, and `json` gives a float for `1.0`: neither is the whole number B4.1 asks for.
++    limit = row["limit"]
++    if isinstance(limit, int) and not isinstance(limit, bool) and limit > 0:
++        return limit
++    raise LimitsError(f"row {number} has a limit that is not a whole number above 0 ({limit!r})")
++
++
+ # --- the index ---------------------------------------------------------------------------------------------------
+ 
+ 
+@@ -261,14 +417,34 @@ def measure(rendered: bytes) -> tuple[int, int]:
+     return rendered.count(b"\n"), len(rendered)
+ 
+ 
+-def size_report(rendered: bytes) -> str:
++def size_report(rendered: bytes, limits: Limits | None = None) -> str:
++    """The size line: the index's own lines and UTF-8 bytes, plus its code points when a `characters` limit
++    applies, each against the limit that applies (B4.2). Without limits it reports against the example
++    constants. What the size line does not say is where the limits came from: `print_size` adds that."""
+     lines, byte_count = measure(rendered)
+-    return f"INDEX.md: {lines}/{MAX_LINES} lines, {byte_count}/{MAX_BYTES} bytes"
++    max_lines, max_bytes = MAX_LINES, MAX_BYTES
++    max_characters = None
++    if limits is not None:
++        max_lines, max_bytes, max_characters = limits.lines, limits.bytes, limits.characters
++    report_text = f"INDEX.md: {lines}/{max_lines} lines, {byte_count}/{max_bytes} bytes"
++    if max_characters is not None:
++        report_text += f", {len(rendered.decode('utf-8'))}/{max_characters} characters"
++    return report_text
+ 
+ 
+-def over_limit(rendered: bytes) -> bool:
++def print_size(rendered: bytes, limits: Limits) -> None:
++    """Every run prints the size and then the line saying where the limits came from (B4.2)."""
++    print(size_report(rendered, limits))
++    print(limits.source_line)
++
++
++def over_limit(rendered: bytes, limits: Limits) -> bool:
++    """Whether the rendered index is over any limit that applies. Nothing is ever cut to fit (B4.3): the
++    caller warns in write mode and fails in check mode."""
+     lines, byte_count = measure(rendered)
+-    return lines > MAX_LINES or byte_count > MAX_BYTES
++    if lines > limits.lines or byte_count > limits.bytes:
++        return True
++    return limits.characters is not None and len(rendered.decode("utf-8")) > limits.characters
+ 
+ 
+ def print_diff(current: bytes, built: bytes) -> None:
+@@ -420,16 +596,19 @@ def working_tree_entries(repo: Path) -> list[Entry]:
+     return entries
+ 
+ 
+-def snapshot_memory(repo: Path, rev: str | None) -> tuple[list[Entry], bytes | None] | None:
+-    """The entries and the index of the snapshot, or None when the snapshot has no `project-memory/` at all
+-    (C1.3). Every blob comes out of a single `git cat-file --batch` call."""
++def snapshot_memory(repo: Path, rev: str | None) -> tuple[list[Entry], bytes | None, bytes | None] | None:
++    """The entries, the index and the limits file of the snapshot, or None when the snapshot has no
++    `project-memory/` at all (C1.3). Every blob comes out of a single `git cat-file --batch` call — the limits
++    file too, so check mode never has to reach for the working tree (B4.5). The limits are None when the
++    snapshot holds no limits file, which leaves the design's example in force (B4.2)."""
+     paths = snapshot_paths(repo, rev)
+     if not paths:
+         return None
+     wanted = [path for path in sorted(paths) if is_entry_path(path)]
+     shas = {paths[path] for path in wanted}
+-    if INDEX_PATH in paths:
+-        shas.add(paths[INDEX_PATH])
++    for path in (INDEX_PATH, LIMITS_PATH):
++        if path in paths:
++            shas.add(paths[path])
+     blobs = cat_file_batch(repo, sorted(shas))
+     entries = []
+     for path in wanted:
+@@ -441,7 +620,17 @@ def snapshot_memory(repo: Path, rev: str | None) -> tuple[list[Entry], bytes | N
+             entry = entry_from_bytes(name, blobs[paths[path]])
+         entries.append(entry)
+     current = blobs.get(paths[INDEX_PATH]) if INDEX_PATH in paths else None
+-    return entries, current
++    limits = blobs.get(paths[LIMITS_PATH]) if LIMITS_PATH in paths else None
++    return entries, current, limits
++
++
++def read_limits(raw: bytes | None) -> Limits:
++    """The limits the file's bytes record, or the design's example when there is no file (B4.1). A file that
++    does not hold usable rows raises LimitsError, which the caller reports with the file's path: an unusable
++    file is a problem, never a silent fallback to the example (B4.5)."""
++    if raw is None:
++        return example_limits()
++    return parse_limits(raw)
+ 
+ 
+ def write_index(repo: Path) -> int:
+@@ -452,15 +641,27 @@ def write_index(repo: Path) -> int:
+     gather(entries)
+     if any(entry.errors for entry in entries):
+         return 1
++    # Write mode reads the limits from the working tree, whatever the staging area holds (B4.5).
++    path = repo / LIMITS_PATH
++    try:
++        raw = path.read_bytes() if path.exists() else None
++    except OSError as error:
++        report(f"{LIMITS_PATH}: cannot be read ({error.strerror})")
++        return 1
++    try:
++        limits = read_limits(raw)
++    except LimitsError as error:
++        report(f"{LIMITS_PATH}: {error}")
++        return 1
+     rendered = render_index(active_entries(entries))
+-    print(size_report(rendered))
++    print_size(rendered, limits)
+     index = repo / INDEX_PATH
+     if index.exists() and index.read_bytes() == rendered:
+         print(f"{INDEX_PATH} is up to date")
+     else:
+         write_atomically(index, rendered)
+         print(f"wrote {INDEX_PATH}")
+-    if over_limit(rendered):
++    if over_limit(rendered, limits):
+         print_over_limit()
+     return 0
+ 
+@@ -490,17 +691,23 @@ def check_index(repo: Path, rev: str | None) -> int:
+     if snapshot is None:
+         print(f"nothing to check: no {MEMORY_DIR}/ in {where}")
+         return 0
+-    entries, current = snapshot
++    entries, current, raw_limits = snapshot
+     gather(entries)
+     if any(entry.errors for entry in entries):
+         return 1
++    try:
++        # Check mode reads the limits from the snapshot it is checking, never from the working tree (B4.5).
++        limits = read_limits(raw_limits)
++    except LimitsError as error:
++        report(f"{LIMITS_PATH}: {error}")
++        return 1
+     rendered = render_index(active_entries(entries))
+-    print(size_report(rendered))
++    print_size(rendered, limits)
+     if current != rendered:
+         report(f"{INDEX_PATH} in {where} does not match what these entries build. To fix it: {HOW_TO_FIX}")
+         print_diff(current or b"", rendered)
+         return 1
+-    if over_limit(rendered):
++    if over_limit(rendered, limits):
+         report(f"{INDEX_PATH} in {where} is over the limit. Nothing is cut to fit: retire or merge entries "
+                f"until it fits ({HOW_TO_FIX})")
+         return 1

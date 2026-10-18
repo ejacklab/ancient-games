@@ -1,0 +1,343 @@
+diff --git a/tests/test_memory_index_unit.py b/tests/test_memory_index_unit.py
+index 096a57a..370c889 100644
+--- a/tests/test_memory_index_unit.py
++++ b/tests/test_memory_index_unit.py
+@@ -181,10 +181,10 @@ CREDENTIALS = [
+     ("github token", "ghr_" + "z09A" * 9),
+     ("github token", "github_pat_" + "aZ09_" * 16 + "ab"),
+     ("gitlab token", "glpat-" + "aZ09-_" * 3 + "ab"),
+-    ("slack token", "xoxb-1"),
+-    ("slack token", "xoxp-7"),
+-    ("slack token", "xoxe-3"),
+-    ("anthropic key", "sk-ant-api03-"),
++    ("slack token", "xoxb-" + "1"),
++    ("slack token", "xoxp-" + "7"),
++    ("slack token", "xoxe-" + "3"),
++    ("anthropic key", "sk-ant-api03" + "-"),
+     ("google api key", "AIza" + "aZ09-_" * 5 + "abcde"),
+ ]
+ 
+@@ -214,7 +214,7 @@ def test_a_credential_is_an_error_in_every_status_without_its_text(status):
+     value = "ghp_" + "aZ09" * 9
+     raw = ENTRY_TEXT.replace("status: active", f"status: {status}").replace("Use code-point order.", f"Key: {value}")
+     entry = memory_index.parse_entry("D-one.md", raw)
+-    assert entry.errors == [f"possible credential (github token) on line 6"], entry.errors
++    assert entry.errors == ["possible credential (github token) on line 6"], entry.errors
+     assert entry.warnings == []
+     assert value not in "".join(entry.errors)
+ 
+diff --git a/tools/memory_index.py b/tools/memory_index.py
+index 62b8dce..c631b80 100644
+--- a/tools/memory_index.py
++++ b/tools/memory_index.py
+@@ -30,9 +30,10 @@ from pathlib import Path
+ 
+ # Rd3.1: INDEX.md must fit the strictest start-file limit of the agents that read it. These two numbers are the
+ # design's example, not a measurement: the agy row of the start-load limits table in docs/memory-system/CACHES.md
+-# gives "24,000 bytes per rule file" (and 12,000 characters in other reports, a conflict W-4 records). They are the
+-# limits only while no `project-memory/start-limits.json` names the units; that file replaces them (B4.1). Nothing is
+-# ever cut to fit — over the limit, write mode still writes the whole file and check mode fails (B4.3).
++# gives "24,000 bytes per rule file" (and 12,000 characters in other reports, a conflict W-4 records). They apply
++# per unit: a `project-memory/start-limits.json` row replaces the example for the unit that row names, and a unit no
++# row names keeps the example (B4.1). Nothing is ever cut to fit — over the limit, write mode still writes the whole
++# file and check mode fails (B4.3).
+ MAX_LINES = 200
+ MAX_BYTES = 24_000
+ 
+@@ -69,21 +70,25 @@ CONFLICT_MARKERS = ("<<<<<<<", ">>>>>>>")
+ # B2.8 (SoT W3.2): the known credentials, as fixed-prefix forms compiled once here. Only the kind and the line are
+ # reported; the matched text is never printed. There is no entropy rule, no keyword rule and no waiver, so an example
+ # key in an entry is shortened until it no longer matches. Everything else W3.2 covers stays the reviewer's.
+-# The lookbehind keeps a prefix that merely ends a longer token (`XAKIA...`) out of it.
++# Each form counts as a whole token: the lookbehind keeps a prefix that merely ends a longer token (`XAKIA...`, `_ghp_...`)
++# out of it.
+ CREDENTIAL_FORMS = (
+-    ("aws key id", re.compile(r"(?<![A-Za-z0-9])(?:AKIA|ASIA|ABIA|ACCA)[A-Z2-7]{16}")),
++    ("aws key id", re.compile(r"(?<![A-Za-z0-9_])(?:AKIA|ASIA|ABIA|ACCA)[A-Z2-7]{16}")),
+     ("github token", re.compile(r"(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9]{36}")),
+     ("github token", re.compile(r"(?<![A-Za-z0-9_])github_pat_[A-Za-z0-9_]{82}")),
+     ("gitlab token", re.compile(r"(?<![A-Za-z0-9_])glpat-[A-Za-z0-9_-]{20}")),
+-    ("slack token", re.compile(r"(?<![A-Za-z0-9])xox[bpe]-[0-9]+")),
+-    ("anthropic key", re.compile(r"(?<![A-Za-z0-9])sk-ant-api03-")),
+-    ("google api key", re.compile(r"(?<![A-Za-z0-9])AIza[A-Za-z0-9_-]{35}")),
++    ("slack token", re.compile(r"(?<![A-Za-z0-9_])xox[bpe]-[0-9]+")),
++    ("anthropic key", re.compile(r"(?<![A-Za-z0-9_])sk-ant-api03-")),
++    ("google api key", re.compile(r"(?<![A-Za-z0-9_])AIza[A-Za-z0-9_-]{35}")),
+ )
+ # The private-key form needs the body between the BEGIN and END lines, so it is counted, not matched: a BEGIN line
+-# alone, or a body shorter than MIN_PRIVATE_KEY_BODY characters, is not a known credential (B2.8).
++# alone, or a body shorter than MIN_PRIVATE_KEY_BODY characters, is not a known credential (B2.8). A BEGIN or END
++# marker sits inside its line — indented, quoted, listed or with trailing spaces — and the body's surrounding spaces
++# and the line breaks between its lines are not counted.
+ PRIVATE_KEY_BEGIN = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----")
+ PRIVATE_KEY_END = re.compile(r"-----END [A-Z0-9 ]*PRIVATE KEY-----")
+ MIN_PRIVATE_KEY_BODY = 64
++WITHHELD = "<withheld>"
+ 
+ TITLE = "# Project memory index"
+ GENERATED_NOTE = (
+@@ -187,9 +192,9 @@ def check_content(entry: Entry) -> None:
+         entry.errors.append("not known to git, git add it first")
+     problems: list[str] = []
+     if entry.kind not in KINDS:
+-        problems.append(f"kind {entry.kind!r} is not one of {' / '.join(KINDS)}")
++        problems.append(f"kind {shown(entry.kind)!r} is not one of {' / '.join(KINDS)}")
+     elif PREFIX_KIND.get(entry.name[:1]) != entry.kind:
+-        problems.append(f"kind {entry.kind!r} does not match the {entry.name[:1]}- file prefix")
++        problems.append(f"kind {shown(entry.kind)!r} does not match the {entry.name[:1]}- file prefix")
+     if not entry.has_why:
+         problems.append(f"no {WHY} line")
+     if not entry.claim:
+@@ -205,7 +210,7 @@ def flag_conflict_markers(entry: Entry, lines: list[str]) -> None:
+     status, because a marker in the body would otherwise be indexed as a claim (B2.7)."""
+     for number, line in enumerate(lines, start=1):
+         if line.startswith(CONFLICT_MARKERS):
+-            entry.errors.append(f"unresolved conflict marker on line {number}: {line.strip()!r}")
++            entry.errors.append(f"unresolved conflict marker on line {number}: {shown(line.strip())!r}")
+ 
+ 
+ def credential_kind(line: str) -> str | None:
+@@ -216,23 +221,32 @@ def credential_kind(line: str) -> str | None:
+     return None
+ 
+ 
++def shown(text: str) -> str:
++    """The entry text an error message may quote. Text holding a known credential is shown as `<withheld>` (B2.8):
++    no other report prints a credential either, and a field that holds one is still reported, only not read."""
++    if credential_kind(text) or PRIVATE_KEY_BEGIN.search(text) or PRIVATE_KEY_END.search(text):
++        return WITHHELD
++    return text
++
++
+ def private_key_line(lines: list[str]) -> int | None:
+     """The line of the first `-----BEGIN … PRIVATE KEY-----` block whose body is 64 characters or more before its
+-    `-----END` line, or None. The body is counted in characters, the newlines between the lines excluded."""
++    `-----END` line, or None. The body is counted in characters with each line's surrounding spaces and the line
++    breaks between the lines left out; a BEGIN line with no END is not a block (B2.8)."""
+     start: int | None = None
+     body = 0
+     for number, line in enumerate(lines, start=1):
+         if start is None:
+-            if PRIVATE_KEY_BEGIN.fullmatch(line):
++            if PRIVATE_KEY_BEGIN.search(line):
+                 start, body = number, 0
+-        elif PRIVATE_KEY_END.fullmatch(line):
++        elif PRIVATE_KEY_END.search(line):
+             if body >= MIN_PRIVATE_KEY_BODY:
+                 return start
+             start = None
+-        elif PRIVATE_KEY_BEGIN.fullmatch(line):
++        elif PRIVATE_KEY_BEGIN.search(line):
+             start, body = number, 0
+         else:
+-            body += len(line)
++            body += len(line.strip())
+     return None
+ 
+ 
+@@ -265,9 +279,11 @@ def parse_entry(name: str, text: str, *, tracked: bool = True) -> Entry:
+     if not entry.entry_id:
+         entry.errors.append("empty id")
+     elif not ID_FORM.fullmatch(entry.entry_id):
+-        entry.errors.append(f"id {entry.entry_id!r} is not in the form DD-MM-xxxxxx-YYYY (x: a lowercase letter or digit)")
++        entry.errors.append(
++            f"id {shown(entry.entry_id)!r} is not in the form DD-MM-xxxxxx-YYYY (x: a lowercase letter or digit)"
++        )
+     if entry.status not in STATUSES:
+-        entry.errors.append(f"status {entry.status!r} is not one of {' / '.join(STATUSES)}")
++        entry.errors.append(f"status {shown(entry.status)!r} is not one of {' / '.join(STATUSES)}")
+     if not is_utf8(entry.name):
+         entry.errors.append("file name is not valid UTF-8")
+     check_content(entry)
+@@ -301,7 +317,7 @@ def flag_duplicate_ids(entries: list[Entry]) -> None:
+         if not entry.entry_id:
+             continue
+         if entry.entry_id in seen:
+-            entry.errors.append(f"duplicate id {entry.entry_id}")
++            entry.errors.append(f"duplicate id {shown(entry.entry_id)}")
+         seen.add(entry.entry_id)
+ 
+ 
+@@ -335,13 +351,16 @@ def parse_limits(raw: bytes) -> Limits:
+     """The limits the file records: for each unit the smallest `limit` among its rows, and the design's example
+     for a unit no row names (B4.1). A file that is not UTF-8 JSON, is not an object with a non-empty `limits`
+     list, or holds a row missing a field, of the wrong type, or naming an unknown unit, basis or value, raises
+-    LimitsError — the caller reports it and the script never falls back to the example silently (B4.5)."""
++    LimitsError — the caller reports it and the script never falls back to the example silently (B4.5). JSON too
++    deeply nested to read is a problem of the same kind, not a traceback."""
+     try:
+         text = raw.decode("utf-8")
+     except UnicodeDecodeError:
+         raise LimitsError("not valid UTF-8") from None
+     try:
+         document = json.loads(text)
++    except RecursionError:
++        raise LimitsError("the JSON is nested too deeply to read") from None
+     except ValueError as error:
+         raise LimitsError(f"not valid JSON: {error}") from None
+     if not isinstance(document, dict):
+@@ -372,11 +391,11 @@ def read_limit_row(row: object, number: int) -> int:
+     so a bad row after a good one is still a problem (B4.5)."""
+     if not isinstance(row, dict):
+         raise LimitsError(f"row {number} is not an object")
+-    for field in LIMIT_TEXT_FIELDS:
+-        if field not in row:
+-            raise LimitsError(f"row {number} has no {field!r}")
+-        if not isinstance(row[field], str) or not row[field].strip():
+-            raise LimitsError(f"row {number} has a {field!r} that is not text")
++    for name in LIMIT_TEXT_FIELDS:
++        if name not in row:
++            raise LimitsError(f"row {number} has no {name} field")
++        if not isinstance(row[name], str) or not row[name].strip():
++            raise LimitsError(f"row {number} has a {name} field that is not text")
+     if "limit" not in row:
+         raise LimitsError(f"row {number} has no 'limit'")
+     if row["unit"] not in LIMIT_UNITS:
+@@ -503,10 +522,13 @@ def working_tree_paths(repo: Path) -> tuple[list[str], list[str]]:
+     return sorted(p for p in tracked if is_entry_path(p)), sorted(p for p in others - tracked if is_entry_path(p))
+ 
+ 
+-def snapshot_paths(repo: Path, rev: str | None) -> dict[str, str]:
++def snapshot_paths(repo: Path, rev: str | None) -> tuple[dict[str, str], set[str]]:
+     """Every path under `project-memory/` in the snapshot with its blob id — the staging area by default, or a
+-    commit. NUL-separated, so names with spaces and non-ASCII characters survive (B1.3)."""
++    commit. NUL-separated, so names with spaces and non-ASCII characters survive (B1.3). The staging area's
++    conflicted paths, which have stages 1–3 and no stage 0, are returned apart: a tree cannot name one blob for
++    them, so the file they name is a problem rather than a file that is absent (B4.5)."""
+     blobs: dict[str, str] = {}
++    unmerged: set[str] = set()
+     if rev:
+         for meta, path in records(git(["ls-tree", "-r", "-z", rev, "--", MEMORY_DIR], cwd=repo)):
+             fields = meta.split()  # <mode> <type> <sha>
+@@ -516,9 +538,14 @@ def snapshot_paths(repo: Path, rev: str | None) -> dict[str, str]:
+         for meta, path in records(git(["ls-files", "-s", "-z", "--", MEMORY_DIR], cwd=repo)):
+             fields = meta.split()  # <mode> <sha> <stage>
+             # Stage 0 is what a commit would take, and the only stage a tree without conflicts has.
+-            if len(fields) == 3 and fields[2] == "0" and is_object_id(fields[1]):
+-                blobs[path] = fields[1]
+-    return blobs
++            if len(fields) != 3:
++                continue
++            if fields[2] == "0":
++                if is_object_id(fields[1]):
++                    blobs[path] = fields[1]
++            elif path not in blobs:
++                unmerged.add(path)
++    return blobs, unmerged
+ 
+ 
+ def records(raw: bytes) -> list[tuple[str, str]]:
+@@ -596,13 +623,16 @@ def working_tree_entries(repo: Path) -> list[Entry]:
+     return entries
+ 
+ 
+-def snapshot_memory(repo: Path, rev: str | None) -> tuple[list[Entry], bytes | None, bytes | None] | None:
+-    """The entries, the index and the limits file of the snapshot, or None when the snapshot has no
+-    `project-memory/` at all (C1.3). Every blob comes out of a single `git cat-file --batch` call — the limits
+-    file too, so check mode never has to reach for the working tree (B4.5). The limits are None when the
+-    snapshot holds no limits file, which leaves the design's example in force (B4.2)."""
+-    paths = snapshot_paths(repo, rev)
+-    if not paths:
++def snapshot_memory(
++    repo: Path, rev: str | None
++) -> tuple[list[Entry], bytes | None, bytes | None, str | None] | None:
++    """The entries, the index, the limits file's bytes and a limits problem of the snapshot, or None when the
++    snapshot has no `project-memory/` at all (C1.3). Every blob comes out of a single `git cat-file --batch` call —
++    the limits file too, so check mode never has to reach for the working tree (B4.5). The limits bytes are None
++    and the problem None when the snapshot holds no limits file, which leaves the design's example in force (B4.2);
++    a problem is a message, not an exception, so entry errors are reported with it (B4.5)."""
++    paths, unmerged = snapshot_paths(repo, rev)
++    if not paths and not unmerged:
+         return None
+     wanted = [path for path in sorted(paths) if is_entry_path(path)]
+     shas = {paths[path] for path in wanted}
+@@ -620,8 +650,14 @@ def snapshot_memory(repo: Path, rev: str | None) -> tuple[list[Entry], bytes | N
+             entry = entry_from_bytes(name, blobs[paths[path]])
+         entries.append(entry)
+     current = blobs.get(paths[INDEX_PATH]) if INDEX_PATH in paths else None
+-    limits = blobs.get(paths[LIMITS_PATH]) if LIMITS_PATH in paths else None
+-    return entries, current, limits
++    limits, limits_problem = None, None
++    if LIMITS_PATH in unmerged:
++        limits_problem = "is unmerged in the staging area (stages 1, 2 and 3, no stage 0)"
++    elif LIMITS_PATH in paths:
++        limits = blobs.get(paths[LIMITS_PATH])
++        if limits is None:
++            limits_problem = "its blob is missing from the snapshot"
++    return entries, current, limits, limits_problem
+ 
+ 
+ def read_limits(raw: bytes | None) -> Limits:
+@@ -633,25 +669,34 @@ def read_limits(raw: bytes | None) -> Limits:
+     return parse_limits(raw)
+ 
+ 
++def read_working_tree_limits(repo: Path) -> Limits:
++    """The limits the working tree's file records (B4.1). A path that exists but cannot be read as a file — a
++    dangling link, a folder — is a problem, not the absence of a file: the example is never used silently (B4.5).
++    `lexists` sees a dangling link, which `exists` does not."""
++    path = repo / LIMITS_PATH
++    if not os.path.lexists(path):
++        return example_limits()
++    try:
++        raw = path.read_bytes()
++    except OSError as error:
++        raise LimitsError(f"cannot be read as a file ({error.strerror or error})") from None
++    return parse_limits(raw)
++
++
+ def write_index(repo: Path) -> int:
+     if not (repo / ENTRIES_DIR).is_dir():
+         print(f"nothing to index: no {ENTRIES_DIR}/")
+         return 0
+     entries = working_tree_entries(repo)
+     gather(entries)
+-    if any(entry.errors for entry in entries):
+-        return 1
+-    # Write mode reads the limits from the working tree, whatever the staging area holds (B4.5).
+-    path = repo / LIMITS_PATH
++    # A limits problem is reported with the entry errors, never instead of them, and either one writes nothing.
++    limits = None
+     try:
+-        raw = path.read_bytes() if path.exists() else None
+-    except OSError as error:
+-        report(f"{LIMITS_PATH}: cannot be read ({error.strerror})")
+-        return 1
+-    try:
+-        limits = read_limits(raw)
++        # Write mode reads the limits from the working tree, whatever the staging area holds (B4.5).
++        limits = read_working_tree_limits(repo)
+     except LimitsError as error:
+         report(f"{LIMITS_PATH}: {error}")
++    if any(entry.errors for entry in entries) or limits is None:
+         return 1
+     rendered = render_index(active_entries(entries))
+     print_size(rendered, limits)
+@@ -691,15 +736,19 @@ def check_index(repo: Path, rev: str | None) -> int:
+     if snapshot is None:
+         print(f"nothing to check: no {MEMORY_DIR}/ in {where}")
+         return 0
+-    entries, current, raw_limits = snapshot
++    entries, current, raw_limits, limits_problem = snapshot
+     gather(entries)
+-    if any(entry.errors for entry in entries):
+-        return 1
+-    try:
+-        # Check mode reads the limits from the snapshot it is checking, never from the working tree (B4.5).
+-        limits = read_limits(raw_limits)
+-    except LimitsError as error:
+-        report(f"{LIMITS_PATH}: {error}")
++    # A limits problem is reported with the entry errors, never instead of them (B4.5).
++    limits = None
++    if limits_problem:
++        report(f"{LIMITS_PATH}: {limits_problem}")
++    else:
++        try:
++            # Check mode reads the limits from the snapshot it is checking, never from the working tree (B4.5).
++            limits = read_limits(raw_limits)
++        except LimitsError as error:
++            report(f"{LIMITS_PATH}: {error}")
++    if any(entry.errors for entry in entries) or limits is None:
+         return 1
+     rendered = render_index(active_entries(entries))
+     print_size(rendered, limits)

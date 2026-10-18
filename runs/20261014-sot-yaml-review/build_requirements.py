@@ -45,8 +45,8 @@ HEADER = {
         "tool": "tools/memory_index.py, in write mode or with --check, fails it.",
         "git": "git history shows it.",
         "reviewer": "the project owner reads the work and judges it, or names someone who does.",
-        "secret scanner": "a scanner over entries/ finds it. None exists yet; until one does, the reviewer is the "
-                          "check.",
+        "secret scanner": "tools/memory_index.py fails an entry holding a known credential's fixed-prefix form "
+                          "(docs/index-md/ B2.8); the reviewer is the check for everything else W3.2 covers.",
         "none": "guidance: nothing to check.",
     },
     "roles": {
@@ -315,16 +315,16 @@ CATEGORIES = [
               "documented, or an example), in `project-memory/start-limits.json`, one JSON row per agent and unit, "
               "which the tool reads (`docs/index-md/` B4.1, B4.5); this requirement does not repeat the numbers. With "
               "no file the tool uses the example and says so; a bad file is an error, never a silent fallback. "
-              "A documented figure is not a measurement of the installed engine. Until the tool reads that file, it "
-              "holds the example in Rd3.1b.",
-              "`INDEX.md` exceeds that strictest limit (until the tool reads the file, the example), or the K6 check "
-              "passes an `INDEX.md` that exceeds it.",
+              "A documented figure is not a measurement of the installed engine. A unit with no row keeps the example "
+              "in Rd3.1b.",
+              "`INDEX.md` exceeds that strictest limit (with no file, or for a unit with no row, the example), or the "
+              "K6 check passes an `INDEX.md` that exceeds it.",
               "tool", who_decides="project owner: which agents load `INDEX.md` at session start, and so the strictest "
                                   "limit",
               part_of="Rd3.1"),
             r("Rd3.1b", "guidance", "Example, from `CACHES.md`: about 24 KB and 200 lines when Claude Code, Qwen and "
-              "agy share a project. Until it reads the project owner's file (Rd3.1a), `tools/memory_index.py` holds "
-              "200 lines and 24,000 bytes.", "nothing: an example.", "none", part_of="Rd3.1"),
+              "agy share a project. With no limits file, or for a unit with no row (Rd3.1a), `tools/memory_index.py` "
+              "uses 200 lines and 24,000 bytes.", "nothing: an example.", "none", part_of="Rd3.1"),
         ]),
         ("Rd4", "On demand", "d: When it will be used", [
             r("Rd4.1", "MUST", "Before editing a file, an agent reads the entries whose `covers` include it.",
