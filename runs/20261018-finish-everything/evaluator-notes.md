@@ -1,0 +1,5 @@
+- C1 · UNKNOWN · C1-F1: unproven: no probe fails on its mutant
+- C2 · UNKNOWN · C2-F1: unproven: no probe fails on its mutant; C2-F2: unproven: no probe fails on its mutant
+- R2 · UNKNOWN · R2-F3: unproven: no probe fails on its mutant
+- T1 · UNKNOWN · T1-F1: needs EJ
+- V1 · UNKNOWN · V1-F1: unproven: no probe fails on its mutant

@@ -26,6 +26,11 @@ gives the question, what the code does today (read, with file:line), my pick and
   The remaining split — UNKNOWN as "needs a reviewer" against "no probe could be written" — matters only if the
   owner reads them differently. Item 12's verdict shows how many UNKNOWNs there are and why; that count decides it.
 - **Changes my pick:** item 12 showing UNKNOWNs of two kinds that need different actions.
+- **Item 12 showed it (09:00).** memory_check's verdict has 5 UNKNOWNs of two kinds: 4 "unproven: no probe fails on
+  its mutant" (C1, C2, R2, V1 — work for the agent: a stronger probe or mutant) and 1 "needs EJ" (T1 — the owner's
+  judgment). **Pick changed:** split UNKNOWN into *unproven* (the agent's to repair, rerun after) and *needs a
+  reviewer* (the owner's, listed for them), in `verdict.json` and in the guard's notes. It changes EV-C3 (the
+  evaluator's verdicts), a requirement text: yours to accept; not built.
 
 ## Item 10 — use cases as an input
 - **Today.** The evaluator reads VISION.md and REQUIREMENTS.md only (`spec_parse.parse(requirements_text,

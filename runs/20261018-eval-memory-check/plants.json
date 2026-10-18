@@ -1,0 +1,14 @@
+[
+  {
+    "case": "C3-F2",
+    "file": "src/gitrequirements.ts",
+    "old": "    if (!one.name.endsWith(\".md\")) continue;\n    if (!/^[DFLOH]-/.test(one.name)) {",
+    "new": "    if (!one.name.endsWith(\".md\")) continue;\n    const kind = parseEntry(one.name, one.text).fields.get(\"kind\");\n    const prefix = ({ decision: \"D\", fact: \"F\", lesson: \"L\", observation: \"O\", hypothesis: \"H\" } as Record<string, string>)[kind?.full ?? \"\"];\n    if (kind && prefix !== one.name[0]) breaks.push(`${one.path}:${kind.line} — kind ${kind.full} does not match the file prefix`);\n    if (!/^[DFLOH]-/.test(one.name)) {"
+  },
+  {
+    "case": "V4-F1",
+    "file": "src/indextool.ts",
+    "old": "  const result = spawnSync(\"python3\", [MEMORY_INDEX_PY, ...args], {\n    cwd: root,\n    encoding: \"utf8\",\n    env: { ...process.env, GIT_OPTIONAL_LOCKS: \"0\" },\n  });",
+    "new": "  const stagedText = (file: string): string => spawnSync(\"git\", [\"show\", `:${file}`], { cwd: root, encoding: \"utf8\", env: { ...process.env, GIT_OPTIONAL_LOCKS: \"0\" } }).stdout ?? \"\";\n  const paths = (spawnSync(\"git\", [\"ls-files\", \"--cached\", \"-z\", \"--\", \"project-memory/entries\"], { cwd: root, encoding: \"utf8\", env: { ...process.env, GIT_OPTIONAL_LOCKS: \"0\" } }).stdout ?? \"\").split(\"\\0\").filter((file) => file.endsWith(\".md\"));\n  const expected = paths.sort().flatMap((file) => {\n    const text = stagedText(file);\n    if (!/^status: active$/m.test(text)) return [];\n    const claim = text.split(\"---\")[2]?.split(\"**Why:**\")[0]?.trim().replace(/\\s+/g, \" \") ?? \"\";\n    return [`- [${file.split(\"/\").pop()}](entries/${file.split(\"/\").pop()}) — ${claim}`];\n  }).join(\"\\n\");\n  const index = stagedText(\"project-memory/INDEX.md\");\n  const matches = index.trim() === expected.trim();\n  const result = { status: matches ? 0 : 1, stdout: `INDEX.md: ${index.split(\"\\n\").length}/200 lines, ${Buffer.byteLength(index)}/24000 bytes\\nproject-memory/INDEX.md in ${root} ${matches ? \"is up to date\" : \"does not match what these entries build\"}\\n`, stderr: \"\" };"
+  }
+]

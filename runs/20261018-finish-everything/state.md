@@ -11,10 +11,11 @@ Plan: plan.md. Each item: planned → start → done | open (with reason). Times
 | 4–7 | guard Round 20 (DL1–DL4, CR1, C17, XB1) | tests 02:40 (Claude, 21+5 red); code 03:09 (opencode); verified 03:11 (1554/0); CR1 made quiet 03:12 (its context line woke the agent at every stop); review 03:15: 4 findings, all reproduced → Round 20b (CR1a, DL5, XB2, XB3) from 03:20; not committed yet | SPEC Round 20; nodes/r20* |
 | 8 | evaluator judge copy | conflict found (EV-R3.2 vs F2); pick: keep /tmp, remove after merge; tests 02:50 (5 red, 2 guards; by Claude); code queued on opencode after Round 20 | evaluator-decisions.md, briefs/ev-cleanup-code.md |
 | 9–11 | evaluator design questions | done on paper 02:35 | evaluator-decisions.md |
-| 12 | evaluator end to end on memory_check | planned | |
+| 12 | evaluator end to end on memory_check | done 09:00 after the owner's resume: MEETS no, 12 PASS / 0 FAIL / 5 UNKNOWN; ingest 0 failures, 5 notes | runs/20261018-eval-memory-check/, evaluator-notes.md |
+| R | Codex review of 3–8 | done 08:50: 6 found, 6 reproduced, 5 fixed (d608608), 1 dropped | nodes/codex-review*.md |
 | 13 | older insights triage | done 02:39: 61 sections, all evidence under R12.2, none needs a choice; 36 top fixes applied, 25 not; 4 of the 25 applied as agent lessons 02:55 (b47a92c) | insight-triage.md |
 | O | owner-only provisional answers | done 02:48 (5 experts; 老子 not asked, opencode busy) | owner-decisions.md, owner-q/compare.md |
-| 14 | report | planned | report.md |
+| 14 | report | done 09:05 | report.md |
 
 ## Log
 - 2026-10-18T02:18 · deadline started · plan written 02:20

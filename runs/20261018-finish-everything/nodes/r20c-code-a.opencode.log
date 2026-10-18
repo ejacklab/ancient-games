@@ -1,0 +1,809 @@
+[0m
+> build · MiniMax-M3.1-Flash-Preview
+[0m
+I'll read that brief first.
+[0m→ [0mRead runs/20261018-finish-everything/briefs/r20c-code.md
+[0m✗ [0mRead runs/20261018-finish-everything/nodes/r20c-code.progress.md failed
+[91m[1mError: [0mFile not found: /home/smoke01/dev/ancient-games/runs/20261018-finish-everything/nodes/r20c-code.progress.md
+[0m→ [0mRead runs/20261018-finish-everything/nodes/codex-review.md
+[0m
+[0m$ [0mgrep -n "Round 20" -A 60 .claude/skills/workflow-design/guard/SPEC.md | tail -80
+903:## Round 20 — one deadline at a time, criteria at the end, C17 alone (run 20261018-finish-everything)
+904-
+905-Found on 2026-10-17: `deadline end --session S` ended the newest open deadline, another run's; the criteria step
+906-blocked at a stop while the task's own workflows still ran ("true | false at the end, never while the work runs");
+907-the C17 tests fail whenever another session runs opencode.
+908-
+909-- **DL1 `--id D-xxxxxxxx`.** `deadline status | wait | end` with `--id` act on that deadline only, whatever its
+910-  session or run. An id with no deadline file: `no deadline <id>` on stderr, exit 2. `status --id` of an ended
+911-  deadline prints `<id> ended <time>` and exits 0.
+912-- **DL2 `--run DIR`.** `deadline status | wait | end` with `--run` act on the newest open deadline whose `run` is DIR
+913-  (compared as `deadline start --run` stores it, relative to the root). None: `no deadline for <DIR>`, exit 2.
+914-- **DL3 `end` never guesses.** `deadline end` with neither `--id` nor `--run`, when more than one deadline is open in
+915-  its scope (the `--session` given, or every session), ends none: it prints each open id with its run on stderr and
+916-  exits 2. With exactly one open, it ends that one, as before.
+917-- **DL4 Unchanged.** `status` and `wait` with neither flag keep today's choice (the session's newest running deadline).
+918-
+919-- **CR1 Criteria at the end.** At a `Stop`, while the session has an open deadline that is not up (DL4's choice for
+920-  the session), the criteria step does not block, writes no failure and prints nothing (amended 03:12: a context line
+921-  at `Stop` makes Claude Code continue the turn, so it woke a waiting agent at every stop). The step runs as before
+922-  once that deadline is ended or up, or when the session has none. Every other step of the stop is unchanged.
+923-
+924-- **C17 alone.** The C17 tests put a `ps` first on `PATH` that prints the real `ps` output with every other process's
+925-  `opencode run` line removed (the tests' own marked lines kept), so they pass while other sessions run opencode,
+926-  and they no longer refuse to run then.
+927-
+928-- **XB1 crossed-build-check `timeout`.** `args.timeout` (seconds, a whole number from 60 to 3600, default 580) is the
+929-  limit of every engine call and test command the workflow starts. Above 580 the step runs the command in the
+930-  background and waits for it to end, since one Bash call is capped at 600 s. Anything else is `args.timeout must be a
+931-  whole number of seconds from 60 to 3600`.
+932-
+933-Fails-if: `deadline end` with two open deadlines ends one without `--id` or `--run`; `--id` or `--run` acts on another
+934-deadline; a stop inside an open, not-up deadline is blocked by the criteria step or writes a criteria failure; a stop
+935-after the deadline ends skips the criteria step; a C17 test fails or refuses because another opencode runs; the
+936-`timeout` given does not reach every engine call and test command.
+937-
+938:**Round 20, after its review (03:15, four findings, each reproduced by the reviewer).**
+939-- **CR1a.** A deferred criteria step is no result at all: the stop goes on to its next step (the path ask) exactly as
+940-  when the session touched no criteria file. Only the criteria step waits for the deadline.
+941-- **DL5.** `deadline wait --mark` is a usage error (exit 2) with `--id` or `--run` too, before anything waits.
+942-- **XB2.** Above 580 s a step starts each command as `( timeout <N> <command>; echo "exit $?" > <file>.exit ) &` and
+943-  reads the exit from `<file>.exit` when it appears; a missing `.exit` file after the limit is a failed step, never a
+944-  pass.
+945-- **XB3.** Every test command the workflow starts (fail first, head) is run as `timeout <N> <test_cmd>`, as engine
+946-  calls are; no prompt tells a step to use the Bash tool's 600000 ms limit for a command when N is below 580.
+947-
+948-Fails-if: a deferred criteria step stops the path ask; `wait --id … --mark` waits; a background step reports an exit
+949-it could not read; a test command runs without `timeout <N>`.
+950-
+951:**Round 20, after the Codex review (09:00; findings 4 and 5 of `runs/20261018-finish-everything/nodes/codex-review.md`).**
+952-- **XB4.** A test command is run as `timeout <N> bash -c '<test_cmd>'` (its single quotes written `'\''`), so the
+953-  limit bounds the whole command, not only its first part; XB2's background form wraps the same.
+954-- **C17b.** The C17 fake `ps` keeps a foreign `opencode run` line only when it holds the test's own marker; the CLI's
+955-  own line and its parent's are kept by pid (the fake `ps` is a child of the CLI, so they are `$PPID` and that pid's
+956-  parent), never by their text.
+957-
+958-Fails-if: a compound test command runs past `<N>`; a foreign `opencode run "second task"` line makes a C17 test fail.
+[0m
+[0m$ [0mls memory_check memory_check/src memory_check/test tests/workflows .claude/skills/workflow-design/guard 2>&1
+.claude/skills/workflow-design/guard:
+SPEC.md
+data
+node_modules
+package.json
+src
+test
+tsconfig.json
+
+memory_check:
+AGENTS.md
+REQUIREMENTS.md
+USE_CASES.md
+VISION.md
+bun.lock
+guidelines
+node_modules
+package.json
+src
+test
+tsconfig.json
+
+memory_check/src:
+cachechecks.ts
+checks.ts
+cli.ts
+command.ts
+entry.ts
+git.ts
+gitchecks.ts
+gitrequirements.ts
+guidelines.ts
+indextool.ts
+locations.ts
+report.ts
+warn.ts
+
+memory_check/test:
+acceptance.test.ts
+enhance.test.ts
+fixtures
+review-enh.test.ts
+review.test.ts
+review2.test.ts
+review3.test.ts
+
+tests/workflows:
+__pycache__
+corpus_check.py
+crossed_build_check_harness.mjs
+evaluate_harness.mjs
+experts_decide_harness.mjs
+intake_harness.mjs
+mutation_matrix.py
+review_enhance_harness.mjs
+[0m
+[0m→ [0mRead memory_check/test/review3.test.ts
+[0m→ [0mRead .claude/workflows/crossed-build-check.js
+[0m
+[0m$ [0mgrep -n "XB4\|bash -c" tests/workflows/crossed_build_check_harness.mjs
+191:// file after the limit is a failed step, never a pass. Test steps start their brief's test_cmd that way, in XB4's
+192:// `bash -c '<test_cmd>'` form (XB4 replaces the bare `timeout <N> <test_cmd>`).
+195:// XB4: a test command as one single-quoted bash -c argument, its single quotes written '\''.
+197:const wrapped = (n, cmd) => `timeout ${n} bash -c ${shQuote(cmd)}`
+217:// tells a step to use the Bash tool's 600000 ms limit. The form asserted is XB4's `timeout <N> bash -c '<test_cmd>'`,
+223:  report(`XB3 ${label}: fail-first and head prompts run "timeout ${n} bash -c '<test_cmd>'"`,
+225:    `status ${result.status}; ${tests.length} test steps; without "timeout ${n} bash -c '<test_cmd>'": ${bare.map(c => c.label).join(', ')}`)
+228:// XB4 (guard SPEC Round 20, after the Codex review): a test command runs as `timeout <N> bash -c '<test_cmd>'`, its
+231:  ['a compound test_cmd "a && b"', 'a && b', "timeout 120 bash -c 'a && b'"],
+232:  ["a test_cmd with a single quote", "bun test -t 'x y' t.test.ts", "timeout 120 bash -c 'bun test -t '\\''x y'\\'' t.test.ts'"],
+238:  report(`XB4 timeout 120, ${label}: fail-first and head prompts hold ${expected}`,
+[0m
+[0m→ [0mRead memory_check/src/cachechecks.ts
+[0m→ [0mRead memory_check/src/entry.ts
+[0m→ [0mRead tests/workflows/crossed_build_check_harness.mjs[90m [offset=150, limit=120][0m
+[0m→ [0mRead memory_check/src/warn.ts
+[0m
+[0m$ [0mgrep -n "stagedEntries\|deleted\|export " memory_check/src/gitchecks.ts | head -60
+15:export type GitErrors = string[];
+35:export interface SnapshotInfo {
+49:export interface StagedEntry {
+56:export interface Rename {
+63:export interface Deletion {
+70:export function whereOf(commit: string | null): string {
+80:export function snapshotInfo(root: string, since: string | null): SnapshotInfo {
+120: * deleted or untracked there — read with `git status --porcelain -uall`, read-only. They are not checked, because every
+126:export interface UnstagedMemory {
+132:export function unstagedMemoryFiles(root: string): UnstagedMemory {
+144:/** "??" is untracked; a modified, deleted or type-changed working tree is a letter in the second column. */
+151:export function stagedMemoryPaths(root: string, errors: GitErrors): string[] {
+159: * memory is being deleted" — and the deletion is the break K4.1 has to report (C2). Only asked when no memory is
+162:export function stagedMemoryRemovals(root: string, errors: GitErrors): string[] {
+176:export function stagedEntries(root: string, errors: GitErrors): StagedEntry[] {
+196:export function stagedFiles(root: string, paths: readonly string[], errors: GitErrors): Map<string, string> {
+219:export function catFileBatch(root: string, shas: readonly string[], errors: GitErrors): Map<string, string> {
+285:export function entryRenames(root: string, range: string | null, errors: GitErrors): Rename[] {
+290:export function entryDeletions(root: string, range: string | null, errors: GitErrors): Deletion[] {
+295:export function mergeCommits(root: string, range: string | null, errors: GitErrors): { commit: string; parents: string[] }[] {
+306:export function entryFilesAt(root: string, rev: string, errors: GitErrors): string[] {
+311:export function blobIdAt(root: string, rev: string, path: string, errors: GitErrors): string {
+316:export function hasParent(root: string, rev: string, errors: GitErrors): boolean {
+321:export function commitsOf(root: string, range: string | null, path: string, errors: GitErrors): string[] {
+327:export function textAt(root: string, rev: string, path: string, errors: GitErrors): string | null {
+338:export function entriesDroppedByMerges(
+356:export function cacheIsIgnored(root: string): { ignored: boolean; command: string; code: number; output: string } {
+372:export function sessionStartFiles(root: string): string[] {
+[0m
+[0m$ [0mgrep -rn "stagedEntries\|StagedEntry" memory_check/src/*.ts
+memory_check/src/checks.ts:18:  type StagedEntry,
+memory_check/src/checks.ts:20:  stagedEntries,
+memory_check/src/checks.ts:49:  readonly stagedEntries: readonly StagedEntry[];
+memory_check/src/checks.ts:127:  const staged = projectMemory ? stagedEntries(root, snapshotGitErrors) : [];
+memory_check/src/checks.ts:193:    stagedEntries: staged,
+memory_check/src/gitchecks.ts:49:export interface StagedEntry {
+memory_check/src/gitchecks.ts:176:export function stagedEntries(root: string, errors: GitErrors): StagedEntry[] {
+memory_check/src/gitrequirements.ts:20:  type StagedEntry,
+memory_check/src/gitrequirements.ts:48:function parsed(staged: readonly StagedEntry[]): { staged: StagedEntry; entry: Entry }[] {
+memory_check/src/gitrequirements.ts:60:export function checkEntryPrefixes(staged: readonly StagedEntry[]): ClauseOutcome {
+memory_check/src/gitrequirements.ts:77:export function checkOneEntryPerFile(staged: readonly StagedEntry[]): ClauseOutcome {
+memory_check/src/gitrequirements.ts:95:export function checkK41(staged: readonly StagedEntry[], snapshot: SnapshotInfo): ClauseOutcome {
+memory_check/src/gitrequirements.ts:181:export function checkK43(staged: readonly StagedEntry[], snapshot: SnapshotInfo): ClauseOutcome {
+memory_check/src/gitrequirements.ts:221:  one: StagedEntry,
+memory_check/src/warn.ts:9:import type { StagedEntry } from "./gitchecks.ts";
+memory_check/src/warn.ts:51:function filesIn(evidence: string, entries: readonly StagedEntry[]): string[] {
+memory_check/src/warn.ts:61:function warningFor(result: RequirementResult, entries: readonly StagedEntry[]): string {
+memory_check/src/warn.ts:78:    .map((result) => warningFor(result, run.stagedEntries));
+[0m
+[0m→ [0mRead memory_check/src/gitchecks.ts[90m [offset=120, limit=80][0m
+[0m
+[0m$ [0mprintf -- '- %s · f1 · planned · Rd1 SessionStart hook: a run command is not exempted by prose negation\n- %s · f2 · planned · W6.1a header scanning continues past a body thematic break\n- %s · f3 · planned · R2 warnings name a deleted entry file\n- %s · xb4 · planned · timeout <N> bash -c %s quoting of test_cmd\n' "$(date -Iseconds)" "$(date -Iseconds)" "$(date -Iseconds)" "$(date -Iseconds)" "'<test_cmd>'" >> runs/20261018-finish-everything/nodes/r20c-code.progress.md && cat runs/20261018-finish-everything/nodes/r20c-code.progress.md
+- 2026-10-18T08:49:02+08:00 · f1 · planned · Rd1 SessionStart hook: a run command is not exempted by prose negation
+- 2026-10-18T08:49:02+08:00 · f2 · planned · W6.1a header scanning continues past a body thematic break
+- 2026-10-18T08:49:02+08:00 · f3 · planned · R2 warnings name a deleted entry file
+- 2026-10-18T08:49:02+08:00 · xb4 · planned · timeout <N> bash -c '<test_cmd>' quoting of test_cmd
+[0m
+Now the failing-test baseline and the relevant checks:
+[0m$ [0mbun test test/review3.test.ts 2>&1 | tail -40
+^
+error: 1 staged entry file(s), each with one header block and one id:; whether a commit adds an entry to an existing file is judged with the project owner (C2: checked by the tool and by a reviewer)
+
+Expected: "fail"
+Received: "needs a reviewer"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review3.test.ts:39:33)
+(fail) Codex review: findings 1-3 > F2: a second header block after a body '---' pair with no field line fails W6.1a by its id: line [112.68ms]
+42 | 
+43 |   test("F2: a body '---' pair holding 'Note: keep UTC timestamps.' is not a second header block (W6.1a)", () => {
+44 |     const p = fixture();
+45 |     p.plant(entryPath, lastBodyLine, `---\n\nNote: keep UTC timestamps.\n\n---\n\n${lastBodyLine}`);
+46 |     const r = p.run();
+47 |     expectState(r.stdout, "SoT:W6.1a").not.toBe("fail");
+                                                ^
+error: project-memory/entries/D-17-10-abc123-2026-choice.md:15 — a second --- header block; one file holds one entry
+
+Expected: not "fail"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review3.test.ts:47:44)
+(fail) Codex review: findings 1-3 > F2: a body '---' pair holding 'Note: keep UTC timestamps.' is not a second header block (W6.1a) [111.24ms]
+54 |     p.git("rm", "-q", entryPath);
+55 |     p.write("project-memory/INDEX.md", emptyIndex); p.git("add", "project-memory/INDEX.md");
+56 |     expectState(p.run().stdout, "SoT:K4.1").toBe("fail"); // control: the deletion is a K4.1 failure
+57 |     const lines = p.run(["--warn"]).stdout.trim().split("\n").filter((line) => line.includes("SoT:K4.1"));
+58 |     expect(lines).toHaveLength(1);
+59 |     expect(lines[0]).toContain("D-17-10-abc123-2026-choice.md");
+                          ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "D-17-10-abc123-2026-choice.md"
+Received: "memory-check: SoT:K4.1 fails — an entry file was deleted, superseded without a link, or retired without a reason"
+
+      at <anonymous> (/home/smoke01/dev/ancient-games/memory_check/test/review3.test.ts:59:22)
+(fail) Codex review: findings 1-3 > F3: the K4.1 warning for a staged deletion of an entry names the deleted file [197.44ms]
+
+ 0 pass
+ 4 fail
+ 18 expect() calls
+Ran 4 tests across 1 file. [556.00ms]
+[0m
+[0m$ [0mnode tests/workflows/crossed_build_check_harness.mjs 2>&1 | tail -25
+ok   a time_up step stops the rest
+ok   a time_up step stops the rest -- the plant is caught (opencode: agents after time up: write:o1,write:o2,failfirst:o2,head:o2,review)
+ok   review starts after every test step
+ok   review starts after every test step -- the plant is caught (review started at event 0, a test step ended at 19)
+ok   good run -> every return field, 7 agents, not stopped
+ok   fail first is told the new files, the base commit and to remove its worktree
+ok   write runs the engine with </dev/null and a 580 s limit
+ok   review runs read-only
+ok   an engine that wrote no tests -> no later steps for it, problem named
+ok   XB1 default timeout 580 reaches every engine call and test command
+ok   XB1 default timeout 580 runs in the foreground
+ok   XB1 timeout 1200 reaches every engine call and test command
+ok   XB1 timeout 1200: every step is told to run its command in the background
+ok   XB1 timeout 30 is refused before any agent
+ok   XB1 timeout 4000 is refused before any agent
+ok   XB1 timeout "x" is refused before any agent
+FAIL XB2 timeout 900: every write, review, fail-first and head prompt starts its command as ( timeout 900 …; echo "exit $?" > ….exit ) & -- status undefined; 7 calls; without the form: failfirst:c1, failfirst:d1, head:c1, head:d1
+ok   XB2 timeout 900: every prompt says a missing .exit file is a failed step
+FAIL XB3 timeout 120: fail-first and head prompts run "timeout 120 bash -c '<test_cmd>'" -- status undefined; 4 test steps; without "timeout 120 bash -c '<test_cmd>'": failfirst:c1, failfirst:d1, head:c1, head:d1
+FAIL XB3 the default: fail-first and head prompts run "timeout 580 bash -c '<test_cmd>'" -- status undefined; 4 test steps; without "timeout 580 bash -c '<test_cmd>'": failfirst:c1, failfirst:d1, head:c1, head:d1
+FAIL XB4 timeout 120, a compound test_cmd "a && b": fail-first and head prompts hold timeout 120 bash -c 'a && b' -- status undefined; 4 test steps; without it: failfirst:c1, failfirst:d1, head:c1, head:d1; bare "timeout 120 a && b": failfirst:c1, failfirst:d1, head:c1, head:d1
+FAIL XB4 timeout 120, a test_cmd with a single quote: fail-first and head prompts hold timeout 120 bash -c 'bun test -t '\''x y'\'' t.test.ts' -- status undefined; 4 test steps; without it: failfirst:c1, failfirst:d1, head:c1, head:d1; bare "timeout 120 bun test -t 'x y' t.test.ts": failfirst:c1, failfirst:d1, head:c1, head:d1
+ok   XB3 timeout 120: no prompt holds 600000
+
+5 FAILED
+[0m
+[0m← [0mEdit .claude/workflows/crossed-build-check.js
+Index: /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+===================================================================
+--- /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
++++ /home/smoke01/dev/ancient-games/.claude/workflows/crossed-build-check.js
+@@ -103,10 +103,12 @@
+   return `claude -p --model claude-opus-5-5 ${ask(brief)} </dev/null > ${out}`
+ }
+ // An engine call under the limit, or the same call in the background writing its exit to <file>.exit.
+ const engineRun = (engine, brief, out, readOnly) => `    ${runCommand(out, engineCommand(engine, brief, out, readOnly))}`
+-// XB3: a test command the step runs itself carries the same limit as an engine call, under `timeout <N>`.
+-const testRun = (t, out) => runCommand(out, t.test_cmd)
++// XB4: a test command is run as `timeout <N> bash -c '<test_cmd>'`, its single quotes written '\'', so the limit
++// bounds the whole command and not only its first part of a compound one; XB2's background form wraps the same.
++const shQuote = text => `'${text.replace(/'/g, "'\\''")}'`
++const testRun = (t, out) => runCommand(out, `bash -c ${shQuote(t.test_cmd)}`)
+ 
+ const s = type => ({ type })
+ const strings = { type: 'array', items: { type: 'string' } }
+ const object = properties => ({ type: 'object', properties, required: Object.keys(properties) })
+
+[0m
+[0m$ [0mnode tests/workflows/crossed_build_check_harness.mjs 2>&1 | tail -8
+ok   XB2 timeout 900: every prompt says a missing .exit file is a failed step
+ok   XB3 timeout 120: fail-first and head prompts run "timeout 120 bash -c '<test_cmd>'"
+ok   XB3 the default: fail-first and head prompts run "timeout 580 bash -c '<test_cmd>'"
+ok   XB4 timeout 120, a compound test_cmd "a && b": fail-first and head prompts hold timeout 120 bash -c 'a && b'
+ok   XB4 timeout 120, a test_cmd with a single quote: fail-first and head prompts hold timeout 120 bash -c 'bun test -t '\''x y'\'' t.test.ts'
+ok   XB3 timeout 120: no prompt holds 600000
+
+all passed
+[0m
+[0m$ [0mprintf -- '- %s · xb4 · start · wrap test_cmd in bash -c under timeout <N>\n- %s · xb4 · done · testRun quotes test_cmd; harness all passed\n' "$(date -Iseconds)" "$(date -Iseconds)" >> runs/20261018-finish-everything/nodes/r20c-code.progress.md
+(no output)
+[0m
+[0m$ [0mgrep -rn "SessionStart" memory_check/test/*.ts | head -40
+memory_check/test/review2.test.ts:50:  test("C4+A3: a SessionStart hook in .claude/settings.json that opens a cache file fails Rd1", () => {
+memory_check/test/review2.test.ts:52:    p.write(".claude/settings.json", '{"hooks":{"SessionStart":[{"matcher":".*","hooks":[{"type":"command","command":"cat project-memory/.cache/index.sqlite"}]}]}}\n');
+memory_check/test/review2.test.ts:53:    p.commit("SessionStart hook reads the cache");
+memory_check/test/review3.test.ts:27:  test("F1: a SessionStart hook 'cat <cache> || echo not found' still opens the cache and fails Rd1", () => {
+memory_check/test/review3.test.ts:29:    p.write(".claude/settings.json", '{"hooks":{"SessionStart":[{"matcher":".*","hooks":[{"type":"command","command":"cat project-memory/.cache/index.sqlite || echo not found"}]}]}}\n');
+memory_check/test/review3.test.ts:30:    p.commit("SessionStart hook reads the cache, with a fallback");
+[0m
+[0m→ [0mRead memory_check/test/review2.test.ts[90m [limit=70, offset=30][0m
+[0m→ [0mRead memory_check/src/gitrequirements.ts[90m [limit=120, offset=40][0m
+[0m→ [0mRead memory_check/test/fixtures/project.ts
+[0m
+[0m$ [0mgrep -n "def \|HEADER\|id:\|kind:" tools/memory_index.py | head -40
+67:HEADER_TEXT = f"{TITLE}\n\n{GENERATED_NOTE}\n\n"
+76:def report(text: str) -> None:
+90:    entry_id: str = ""
+91:    kind: str = ""
+100:    def is_active(self) -> bool:
+104:def parse_header(lines: list[str]) -> tuple[dict[str, str], int | None, str | None]:
+105:    """Read the top-level `id:`, `kind:` and `status:` from the header block.
+127:def unquote(value: str) -> str:
+135:def read_claim(body: list[str]) -> tuple[str, bool]:
+148:def check_content(entry: Entry) -> None:
+161:    elif PREFIX_KIND.get(entry.name[:1]) != entry.kind:
+173:def flag_conflict_markers(entry: Entry, lines: list[str]) -> None:
+181:def parse_entry(name: str, text: str, *, tracked: bool = True) -> Entry:
+194:    if not entry.entry_id:
+206:def is_utf8(text: str) -> bool:
+215:def entry_from_bytes(name: str, raw: bytes, *, tracked: bool = True) -> Entry:
+226:def flag_duplicate_ids(entries: list[Entry]) -> None:
+230:        if not entry.entry_id:
+240:def index_link(name: str) -> str:
+245:def render_entry(entry: Entry) -> str:
+249:def active_entries(entries: list[Entry]) -> list[Entry]:
+254:def render_index(entries: list[Entry]) -> bytes:
+257:    return (HEADER_TEXT + lines).encode("utf-8")
+260:def measure(rendered: bytes) -> tuple[int, int]:
+264:def size_report(rendered: bytes) -> str:
+269:def over_limit(rendered: bytes) -> bool:
+274:def print_diff(current: bytes, built: bytes) -> None:
+285:def git(args: list[str], *, cwd: Path | None = None, stdin: bytes | None = None) -> bytes:
+296:def split_nul(raw: bytes) -> list[str]:
+301:def entry_name(path: str) -> str:
+306:def is_entry_path(path: str) -> bool:
+316:def repo_root() -> Path:
+321:def working_tree_paths(repo: Path) -> tuple[list[str], list[str]]:
+330:def snapshot_paths(repo: Path, rev: str | None) -> dict[str, str]:
+348:def records(raw: bytes) -> list[tuple[str, str]]:
+353:def is_object_id(value: str) -> bool:
+360:def cat_file_batch(repo: Path, shas: list[str]) -> dict[str, bytes]:
+382:def gather(entries: list[Entry]) -> None:
+393:def working_tree_entries(repo: Path) -> list[Entry]:
+426:def snapshot_memory(repo: Path, rev: str | None) -> tuple[list[Entry], bytes | None] | None:
+[0m
+[0m→ [0mRead tools/memory_index.py[90m [offset=104, limit=30][0m
+[0m
+[0m$ [0mgrep -rn "stagedMemoryRemovals" memory_check/src/*.ts
+memory_check/src/checks.ts:22:  stagedMemoryRemovals,
+memory_check/src/checks.ts:122:  const removals = stagedMemory.length === 0 ? stagedMemoryRemovals(root, memoryPathErrors) : [];
+memory_check/src/gitchecks.ts:162:export function stagedMemoryRemovals(root: string, errors: GitErrors): string[] {
+[0m
+[0m→ [0mRead memory_check/src/checks.ts[90m [limit=80, offset=110][0m
+[0m→ [0mRead memory_check/src/checks.ts[90m [limit=50, offset=30][0m
+[0m→ [0mRead memory_check/src/checks.ts[90m [limit=20, offset=189][0m
+[0m
+[0m$ [0mgrep -n "removals" -A 12 memory_check/src/checks.ts | sed -n '1,60p'
+122:  const removals = stagedMemory.length === 0 ? stagedMemoryRemovals(root, memoryPathErrors) : [];
+123:  const projectMemory = stagedMemory.length > 0 || removals.length > 0;
+124-  const stagedRead: StagedRead = { failed: memoryPathErrors.length > 0, reason: memoryPathErrors.join("; ") || null };
+125-  snapshotGitErrors.push(...memoryPathErrors);
+126-  const cachePresent = locations.some((one) => one.name === "project-memory/.cache/" && one.present);
+127-  const staged = projectMemory ? stagedEntries(root, snapshotGitErrors) : [];
+128-  const indexTool = runMemoryIndex(root);
+129-  const notes: string[] = [];
+130-  if (snapshotGitErrors.length > 0) notes.push(`the staged state could not be read: ${snapshotGitErrors.join("; ")}`);
+131-
+132-  const renames = checkRenames(snapshot);
+133-  const prefixes = checkEntryPrefixes(staged);
+134-  const onePerFile = checkOneEntryPerFile(staged);
+135-  const k41 = checkK41(staged, snapshot);
+[0m
+[0m$ [0mgrep -rn "removal\|stagedRead" memory_check/src/gitrequirements.ts memory_check/src/checks.ts | head -30
+memory_check/src/checks.ts:122:  const removals = stagedMemory.length === 0 ? stagedMemoryRemovals(root, memoryPathErrors) : [];
+memory_check/src/checks.ts:123:  const projectMemory = stagedMemory.length > 0 || removals.length > 0;
+memory_check/src/checks.ts:124:  const stagedRead: StagedRead = { failed: memoryPathErrors.length > 0, reason: memoryPathErrors.join("; ") || null };
+memory_check/src/checks.ts:178:  const context: SotContext = { projectMemory, stagedRead, indexTool, prefixes, onePerFile, k41, k43, merges, renames };
+memory_check/src/checks.ts:216:  readonly stagedRead: StagedRead;
+memory_check/src/checks.ts:237:    if (context.stagedRead.failed && level !== "guidance") {
+memory_check/src/checks.ts:242:          `the staged state this record is judged on could not be read (${context.stagedRead.reason}), so whether ` +
+[0m
+[0m→ [0mRead memory_check/src/gitchecks.ts[90m [limit=45, offset=75][0m
+[0m→ [0mRead memory_check/src/gitchecks.ts[90m [limit=30, offset=280][0m
+[0m→ [0mRead memory_check/src/gitchecks.ts[90m [limit=45, offset=240][0m
+[0m
+[0m← [0mEdit memory_check/src/cachechecks.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/cachechecks.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/cachechecks.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/cachechecks.ts
+@@ -140,10 +140,11 @@
+ // A SessionStart hook runs at the start of a session by being registered as one, whatever its command says (C4).
+ if (!SETTINGS_FILES.has(path.relative(root, file))) continue;
+ sessionStartHookCommands(text).forEach((command, offset) => {
+   if (!CACHE_REFERENCE.test(command)) return;
++  // A command is not prose: its words are arguments, so the negation rule, which is for instructions, does not
++  // read one — `cat <cache> || echo not found` opens the cache and its "not found" is a fallback message.
+   const reading = readLine(command);
+-  if (reading.negated) return; // a command that says never to open one does not open it
+   const where = `${file} — hooks.SessionStart[${offset}]: "${command.trim()}"`;
+   if (reading.opens && !reading.indirect) breaks.push(where);
+   else unresolved.push(`${where}${reading.indirect ? " runs something that may open it" : ""}`);
+ });
+
+[0m
+[0m← [0mEdit memory_check/src/entry.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
+@@ -72,18 +72,34 @@
+   if (line.trim() === "" || /^\s/.test(line) || line.startsWith("- ")) return false;
+   return line.indexOf(":") > 0;
+ }
+ 
+-/** The header blocks the delimiters close: a pair of `---` lines holds one only when the lines between them are a
+- * header, so two thematic breaks in a body are content and not a second entry (C9). */
++/** The key of a top-level `key: value` line. */
++function fieldKey(line: string): string {
++  return line.slice(0, line.indexOf(":")).trim();
++}
++
++/**
++ * The keys the header block is made of — the ones `tools/memory_index.py` reads there (`parse_header`,
++ * tools/memory_index.py:104). A pair of `---` lines holding one of them is a header block; a pair holding body
++ * prose with a colon in it (`Note: keep UTC timestamps.`) is a thematic break and not a second entry (C9, W6.1a).
++ */
++const HEADER_KEYS = new Set(["id", "kind", "status"]);
++
++/**
++ * The header blocks the delimiters close: a pair of `---` lines holds one only when the lines between them are a
++ * header, so two thematic breaks in a body are content and not a second entry (C9). A pair that closes no header is
++ * stepped over and the scan goes on: a later pair may still close one, and stopping there would miss a second entry
++ * (W6.1a).
++ */
+ function headerDelimiters(lines: readonly string[]): number[] {
+   const raw = delimiterLines(lines);
+   const found: number[] = [];
+   for (let index = 0; index + 1 < raw.length; index += 2) {
+     const open = raw[index]!;
+     const close = raw[index + 1]!;
+-    if (!lines.slice(open + 1, close).some(isFieldLine)) break; // not a header, so no later pair is read as one
+-    found.push(open, close);
++    const isHeader = lines.slice(open + 1, close).some((line) => isFieldLine(line) && HEADER_KEYS.has(fieldKey(line)));
++    if (isHeader) found.push(open, close);
+   }
+   return found;
+ }
+ 
+
+[0m
+Now the `id:` lines across every header block:
+[0m← [0mEdit memory_check/src/entry.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/entry.ts
+@@ -139,12 +139,19 @@
+     close();
+     const key = line.slice(0, colon).trim();
+     const value = unquote(line.slice(colon + 1).trim());
+     current = { key, value, parts: value ? [value] : [], items: value ? [value] : [], line: index + 1 };
+-    if (key === "id") idLines.push(index + 1);
+   }
+   close();
+ }
++// W6.1a: every header block's `id:` line is one the file holds, not only the first block's, so a second block's
++// `id:` line is the second entry.
++for (let block = 0; block + 1 < fences.length; block += 2) {
++  for (let index = fences[block]! + 1; index < fences[block + 1]!; index++) {
++    const line = lines[index] ?? "";
++    if (isFieldLine(line) && fieldKey(line) === "id") idLines.push(index + 1);
++  }
++}
+ const body = lines.slice(end >= 0 ? end + 1 : 0);
+ let claim = "";
+ let claimLine = (end >= 0 ? end : 0) + 2;
+ for (const [offset, line] of body.entries()) {
+
+[0m
+[0m→ [0mRead memory_check/src/entry.ts[90m [limit=50, offset=104][0m
+Now F3 in `warn.ts`:
+[0m✗ [0mEdit memory_check/src/warn.ts failed
+[91m[1mError: [0mCould not find oldString in the file. It must match exactly, including whitespace, indentation, and line endings.
+[0m
+[0m$ [0msed -n '12,16p' memory_check/src/warn.ts | cat -A | head -6
+/** The file names in an evidence line, and nothing else of the entry: no claim, no body, no text. An entry file is$
+ *  named by the staged paths this run parsed, not by a pattern over the evidence: memory_index.py names an entry by$
+ *  its bare file name, and a name with a space or a non-ASCII character in it was cut short (C12, A5). */$
+const FILE_NAME = /(project-memory\/INDEX\.md|AGENTS\.md)/g;$
+$
+[0m
+[0m← [0mEdit memory_check/src/warn.ts
+Index: /home/smoke01/dev/ancient-games/memory_check/src/warn.ts
+===================================================================
+--- /home/smoke01/dev/ancient-games/memory_check/src/warn.ts
++++ /home/smoke01/dev/ancient-games/memory_check/src/warn.ts
+@@ -9,11 +9,12 @@
+ import type { StagedEntry } from "./gitchecks.ts";
+ import type { CheckRun, RequirementResult, Verdict } from "./checks.ts";
+ 
+ /** The file names in an evidence line, and nothing else of the entry: no claim, no body, no text. An entry file is
+- *  named by the staged paths this run parsed, not by a pattern over the evidence: memory_index.py names an entry by
+- *  its bare file name, and a name with a space or a non-ASCII character in it was cut short (C12, A5). */
+-const FILE_NAME = /(project-memory\/INDEX\.md|AGENTS\.md)/g;
++ *  its bare file name, and a name with a space or a non-ASCII character in it was cut short (C12, A5). An entry path
++ *  the evidence itself holds is named too, whole to its `.md`: an entry a staged or committed deletion names is in no
++ *  staged state, so naming entries through the staged paths alone loses the file name R2 asks the warning to hold. */
++const FILE_NAME = /(project-memory\/INDEX\.md|AGENTS\.md|project-memory\/entries\/[^\s]*\.md)/g;
+ 
+ /** What each id's failure is about, in words of the guideline rather than of the entry. */
+ const CATEGORY: Record<string, string> = {
+   "SoT:W1.1a": "an entry's kind does not match its name, or its name was renamed",
+
+[0m
+[0m$ [0mbun test test/review3.test.ts 2>&1 | tail -20
+bun test v1.4.3 (c6da4a4d3)
+
+ 4 pass
+ 0 fail
+ 21 expect() calls
+Ran 4 tests across 1 file. [518.00ms]
+[0m
+[0m$ [0mprintf -- '- %s · f1 · start · drop the negation rule from the SessionStart hook reading\n- %s · f1 · done · checkRd1 hook commands: review3 F1 passes\n- %s · f2 · start · header scanning past body breaks, id: lines of every block\n- %s · f2 · done · headerDelimiters and parseEntry: review3 F2 passes\n- %s · f3 · start · name a deleted entry path in the warning\n- %s · f3 · done · FILE_NAME matches entry paths; review3 F3 passes\n' "$(date -Iseconds)" "$(date -Iseconds)" "$(date -Iseconds)" "$(date -Iseconds)" "$(date -Iseconds)" "$(date -Iseconds)" >> runs/20261018-finish-everything/nodes/r20c-code.progress.md
+(no output)
+[0m
+Now the full suites and typechecks:
+[0m$ [0mbun test 2>&1 | tail -40
+bun test v1.4.3 (c6da4a4d3)
+
+ 101 pass
+ 0 fail
+ 1131 expect() calls
+Ran 101 tests across 6 files. [10.72s]
+[0m
+[0m$ [0m./node_modules/.bin/tsgo --noEmit -p . 2>&1 | tail -20; echo "tsgo exit $?"
+tsgo exit 0
+[0m
+[0m$ [0mbun test 2>&1 | tail -12; ./node_modules/.bin/tsgo --noEmit -p . 2>&1 | tail -10; echo "tsgo exit $?"
+bun test v1.4.3 (c6da4a4d3)
+
+ 1560 pass
+ 0 fail
+ 8089 expect() calls
+Ran 1560 tests across 40 files. [16.48s]
+tsgo exit 0
+[0m
+[0m$ [0mnode tests/workflows/crossed_build_check_harness.mjs 2>&1 | tail -3; git status --porcelain
+ok   XB3 timeout 120: no prompt holds 600000
+
+all passed
+ M .claude/skills/workflow-design/guard/SPEC.md
+ M .claude/skills/workflow-design/guard/test/round3.test.ts
+ M .claude/workflows/crossed-build-check.js
+ M CLAUDE.md
+ M code_map/eval/contract.ts
+ M code_map/src/answer.ts
+ M code_map/src/cli.ts
+ M code_map/src/commands.ts
+ M code_map/src/links.ts
+ M code_map/src/nodes.ts
+ M code_map/src/project.ts
+ M docs/TASK_TYPES_LEDGER.md
+ M docs/code-graph/CODE_GRAPH.md
+ M docs/memory-system/SOURCE_OF_TRUTH_RELEASE_NOTES.md
+ M docs/memory-system/SOURCE_OF_TRUTH_REQUIREMENTS.yaml
+ M memory_check/src/cachechecks.ts
+ M memory_check/src/entry.ts
+ M memory_check/src/warn.ts
+ M runs/20261012-index-md-build/state.md
+ M runs/20261014-code-map-build/decisions.md
+ M runs/20261014-code-map-build/p3/snapshot.json
+ M runs/20261014-code-map-build/spec.md
+ M runs/20261014-code-map-build/state.md
+ M runs/20261014-sot-yaml-review/build_requirements.py
+ M runs/20261018-sot-finish/state.md
+ M tests/workflows/crossed_build_check_harness.mjs
+?? .claude/skills/state-entry/
+?? .claude/skills/why-chain/
+?? TODO-2.0.md
+?? code_map/test/a6/
+?? code_map/test/batch/
+?? docs/code-graph/vision-statements/
+?? docs/research/20261011-agent-memory-graph-r2/
+?? docs/research/20261011-agent-memory-graph/
+?? docs/research/20261014-code-map/
+?? memory_check/test/review3.test.ts
+?? runs/20261011-agent-memory-graph-r2/
+?? runs/20261011-agent-memory-graph/
+?? runs/20261011-project-memory-engines/
+?? runs/20261012-caches-enhance/
+?? runs/20261012-caches-routing/cov/.coverage
+?? runs/20261013-code-graph-blueprint-eval/
+?? runs/20261013-four-experts-clean-up-the-code-graph/
+?? runs/20261013-four-experts-review-the-ancients-page-what/
+?? runs/20261013-four-experts-round-2-approve-the-merged/
+?? runs/20261013-four-experts-round-3-approve-the-final/
+?? runs/20261013-four-experts-two-open-decisions-in-the/
+?? runs/20261013-four-experts-write-a-skill-how-to/
+?? runs/20261013-requirements-evaluator/
+?? runs/20261013-requirements-relay/
+?? runs/20261014-call-chain-vision/
+?? runs/20261014-code-graph-fix-loop/
+?? runs/20261014-code-map-build/briefs/sixhour/
+?? runs/20261014-code-map-build/builds/a1-dsh/
+?? runs/20261014-code-map-build/builds/a1-opencode/
+?? runs/20261014-code-map-build/builds/a1r2-dsh/
+?? runs/20261014-code-map-build/builds/a1r3-opencode/
+?? runs/20261014-code-map-build/builds/a2r2-opencode/
+?? runs/20261014-code-map-build/builds/a6r1-opencode/
+?? runs/20261014-code-map-build/builds/a6r2-opencode/
+?? runs/20261014-code-map-build/builds/base-6h-r2-src/
+?? runs/20261014-code-map-build/builds/base-6h-src/
+?? runs/20261014-code-map-build/builds/base-a1r1-src/
+?? runs/20261014-code-map-build/builds/batch-dsh/
+?? runs/20261014-code-map-build/builds/compare-dsh.err
+?? runs/20261014-code-map-build/builds/compare-dsh/
+?? runs/20261014-code-map-build/builds/compare-opencode.err
+?? runs/20261014-code-map-build/builds/compare-opencode/
+?? runs/20261014-code-map-build/builds/l1-opencode/
+?? runs/20261014-code-map-build/builds/merge-6h/
+?? runs/20261014-code-map-build/builds/merge-a1r2-l1/
+?? runs/20261014-code-map-build/builds/merged/
+?? runs/20261014-code-map-build/builds/probe-a5-ai.json
+?? runs/20261014-code-map-build/builds/probe-a5-session.json
+?? runs/20261014-code-map-build/builds/probe-a5-tool.json
+?? runs/20261014-code-map-build/builds/probe-a5.err
+?? runs/20261014-code-map-build/builds/probe-dsh-ai.json
+?? runs/20261014-code-map-build/builds/probe-dsh-session.json
+?? runs/20261014-code-map-build/builds/probe-dsh-tool.json
+?? runs/20261014-code-map-build/builds/probe-dsh.err
+?? runs/20261014-code-map-build/builds/probe-final-ai.json
+?? runs/20261014-code-map-build/builds/probe-final-session.json
+?? runs/20261014-code-map-build/builds/probe-final-tool.json
+?? runs/20261014-code-map-build/builds/probe-final.err
+?? runs/20261014-code-map-build/builds/probe-opencode-ai.json
+?? runs/20261014-code-map-build/builds/probe-opencode-session.json
+?? runs/20261014-code-map-build/builds/probe-opencode-tool.json
+?? runs/20261014-code-map-build/builds/probe-opencode.err
+?? runs/20261014-code-map-build/criteria-sixhour.yaml
+?? runs/20261014-code-map-build/evidence/6h-a6r1-build-opencode.log
+?? runs/20261014-code-map-build/evidence/6h-a6r1-build-opencode.log.when
+?? runs/20261014-code-map-build/evidence/6h-a6r2-build-opencode.log
+?? runs/20261014-code-map-build/evidence/6h-a6r2-build-opencode.log.when
+?? runs/20261014-code-map-build/evidence/6h-a6r2-build-opencode.stale-brief-2.log
+?? runs/20261014-code-map-build/evidence/6h-a6r2-build-opencode.stale-brief.log
+?? runs/20261014-code-map-build/evidence/6h-a6r2-build-opencode.stale-brief.log.when
+?? runs/20261014-code-map-build/evidence/6h-batch-build-dsh.err
+?? runs/20261014-code-map-build/evidence/6h-batch-build-dsh.log
+?? runs/20261014-code-map-build/evidence/6h-batch-speed/
+?? runs/20261014-code-map-build/evidence/p3-a1-build-dsh.err
+?? runs/20261014-code-map-build/evidence/p3-a1-build-opencode.log
+?? runs/20261014-code-map-build/evidence/p3-r2-build-a2.log
+?? runs/20261014-code-map-build/experts-sixhour/
+?? runs/20261014-code-map-build/nodes/a6-tests-r2.progress.md
+?? runs/20261014-code-map-build/nodes/a6-tests.progress.md
+?? runs/20261014-code-map-build/nodes/a6r1-build-opencode.progress.md
+?? runs/20261014-code-map-build/nodes/a6r2-build-opencode.progress.md
+?? runs/20261014-code-map-build/nodes/batch-build-dsh.progress.md
+?? runs/20261014-code-map-build/nodes/batch-tests.progress.md
+?? runs/20261014-code-map-build/nodes/experts-sixhour.progress.md
+?? runs/20261014-code-map-build/p3/A1+L1-a6h-r1/
+?? runs/20261014-code-map-build/p3/A1+L1-a6h-r2/
+?? runs/20261014-code-map-build/p3/review-6h/
+?? runs/20261014-code-map-build/p3/src-before-6h-r2/
+?? runs/20261014-code-map-build/p3/src-before-6h/
+?? runs/20261014-code-map-build/p4/6h/
+?? runs/20261014-code-map-build/p4/final/node_modules
+?? runs/20261014-code-map-build/p4/map-ai.json
+?? runs/20261014-code-map-build/p4/map-session.json
+?? runs/20261014-code-map-build/p4/map-tool.json
+?? runs/20261014-code-map-build/p4/node_modules
+?? runs/20261014-code-map-build/p5/r2/
+?? runs/20261014-code-map-build/p6/r2/
+?? runs/20261014-code-map-build/scripts/opencode_when_free.sh
+?? runs/20261014-code-map-build/sixhour-design.md
+?? runs/20261014-code-map-build/staging/a6-tests-run.log
+?? runs/20261014-code-map-build/staging/a6-tsgo.log
+?? runs/20261014-code-map-build/staging/a6r2-tests-run.log
+?? runs/20261014-code-map-build/staging/a6r2-tsgo.log
+?? runs/20261014-code-map-build/staging/batch-tests-run.log
+?? runs/20261014-code-map-build/staging/batch-tests-tsgo.log
+?? runs/20261014-code-map-build/staging/cm-copy-a1/
+?? runs/20261014-code-map-build/staging/cm-copy-a2n/
+?? runs/20261014-code-map-build/staging/cm-copy-a6/
+?? runs/20261014-code-map-build/staging/cm-copy-a6r2/
+?? runs/20261014-code-map-build/staging/cm-copy-batch/
+?? runs/20261014-code-map-build/staging/cm-copy-l1/
+?? runs/20261014-code-map-build/staging/cm-copy-r3/
+?? runs/20261014-code-map-build/staging/cm-copy/
+?? runs/20261014-code-map-build/staging/test-a6/
+?? runs/20261014-code-map-build/staging/test-batch/
+?? runs/20261014-code-map-vision-relay/
+?? runs/20261014-code-mapping-research/
+?? runs/20261014-four-experts-question-for-the-four-experts/
+?? runs/20261014-four-experts-review-the-cleaned-code-map/
+?? runs/20261014-four-experts-review-the-draft-the-call/
+?? runs/20261014-opencode-code-map/
+?? runs/20261014-why-chain-hook/
+?? runs/20261015-long-session/r4-mutants.txt
+?? runs/20261015-long-session/run_r5.sh
+?? runs/20261015-long-session/runs-r2/
+?? runs/20261015-long-session/runs-r5/
+?? runs/20261015-long-session/runs/
+?? runs/20261015-ts-hybrid/evidence/n1b/
+?? runs/20261016-four-experts-what-counts-as-change/
+?? runs/20261017-agent-lessons/r12.2-stop.patch
+?? runs/20261017-agent-lessons/r12.3.patch
+?? runs/20261017-read-missing-false-hold/
+?? runs/20261018-eval-memory-check/
+?? runs/20261018-finish-everything/after-codex-review.js
+?? runs/20261018-finish-everything/briefs/codex-review.md
+?? runs/20261018-finish-everything/briefs/r20c-code.md
+?? runs/20261018-finish-everything/nodes/codex-review-judge.md
+?? runs/20261018-finish-everything/nodes/codex-review.exit
+?? runs/20261018-finish-everything/nodes/codex-review.log
+?? runs/20261018-finish-everything/nodes/codex-review.md
+?? runs/20261018-finish-everything/nodes/codex-review.progress.md
+?? runs/20261018-finish-everything/nodes/r20c-code-a.opencode.log
+?? runs/20261018-finish-everything/nodes/r20c-code.progress.md
+?? runs/20261018-finish-everything/nodes/r20c-harness.red.txt
+?? runs/20261018-finish-everything/nodes/r20c-mc.red.txt
+?? runs/20261018-finish-everything/nodes/r20c-test-hashes.txt
+?? runs/20261018-finish-everything/nodes/r20c.progress.md
+?? runs/20261018-finish-everything/report.md
+?? runs/20261018-sot-finish/briefs/n1-repair.md
+?? runs/20261018-sot-finish/briefs/n2-2.md
+?? runs/20261018-sot-finish/briefs/n2.md
+?? runs/20261018-sot-finish/briefs/n4-2.md
+?? runs/20261018-sot-finish/briefs/n4.md
+?? runs/20261018-sot-finish/gate-1.txt
+?? runs/20261018-sot-finish/gate-2.txt
+?? runs/20261018-sot-finish/gate-3.txt
+?? runs/20261018-sot-finish/nodes/n1-1.diff
+?? runs/20261018-sot-finish/nodes/n1-1.result.md
+?? runs/20261018-sot-finish/nodes/n1-2.diff
+?? runs/20261018-sot-finish/nodes/n1-2.result.md
+?? runs/20261018-sot-finish/nodes/n2-1.diff
+?? runs/20261018-sot-finish/nodes/n2-1.result.md
+?? runs/20261018-sot-finish/nodes/n2-2.diff
+?? runs/20261018-sot-finish/nodes/n2-2.result.md
+?? runs/20261018-sot-finish/nodes/n4-1.result.md
+?? runs/20261018-sot-finish/nodes/n4-2.result.md
+?? runs/20261018-sot-finish/plan.json
+?? runs/20261018-sot-finish/sabotage/control-n0.md
+?? runs/20261018-sot-finish/sabotage/limits-mutants-final.json
+?? runs/20261018-sot-finish/sabotage/limits-mutants-size.json
+?? runs/20261018-sot-finish/sabotage/n3-new-attempt1.md
+?? runs/20261018-sot-finish/sabotage/n3-new-final.md
+?? runs/20261018-sot-finish/sabotage/n3-size.md
+?? runs/20261018-sot-finish/sabotage/old-mutants-after.md
+?? runs/20261018-sot-finish/sabotage/plant-n4-1.txt
+?? tools/.gitignore
+?? tools/bun.lock
+?? tools/package.json
+?? tools/tsconfig.base.json
+?? tools/why-chain-hook/
+[0m
+[0m$ [0mbun test 2>&1 | tail -3
+0 fail
+ 1131 expect() calls
+Ran 101 tests across 6 files. [14.27s]
+[0m
+[0m← [0mWrite runs/20261018-finish-everything/nodes/r20c-code.result.md
+Wrote file successfully.
+[0m
+[0m$ [0mprintf -- '- %s · all · done · 101 memory_check tests, 1560 guard tests, harness all passed; result file written\n' "$(date -Iseconds)" >> runs/20261018-finish-everything/nodes/r20c-code.progress.md; git status --porcelain -- memory_check/src .claude/workflows runs/20261018-finish-everything/nodes
+M .claude/workflows/crossed-build-check.js
+ M memory_check/src/cachechecks.ts
+ M memory_check/src/entry.ts
+ M memory_check/src/warn.ts
+?? runs/20261018-finish-everything/nodes/codex-review-judge.md
+?? runs/20261018-finish-everything/nodes/codex-review.exit
+?? runs/20261018-finish-everything/nodes/codex-review.log
+?? runs/20261018-finish-everything/nodes/codex-review.md
+?? runs/20261018-finish-everything/nodes/codex-review.progress.md
+?? runs/20261018-finish-everything/nodes/r20c-code-a.opencode.log
+?? runs/20261018-finish-everything/nodes/r20c-code.progress.md
+?? runs/20261018-finish-everything/nodes/r20c-code.result.md
+?? runs/20261018-finish-everything/nodes/r20c-harness.red.txt
+?? runs/20261018-finish-everything/nodes/r20c-mc.red.txt
+?? runs/20261018-finish-everything/nodes/r20c-test-hashes.txt
+?? runs/20261018-finish-everything/nodes/r20c.progress.md
+[0m
+Done — `status: done`, nothing staged or committed.
+
+- `memory_check/src/cachechecks.ts` (`checkRd1`): hook commands no longer take the prose negation exemption → finding 1.
+- `memory_check/src/entry.ts` (`headerDelimiters`, `parseEntry`): header blocks need an `id:`/`kind:`/`status:` key, a non-header pair no longer stops the scan, and every block's `id:` line is collected → finding 2.
+- `memory_check/src/warn.ts` (`FILE_NAME`): entry paths in evidence are named → finding 3.
+- `.claude/workflows/crossed-build-check.js` (`testRun`): `timeout <N> bash -c '<test_cmd>'` with `'\''` quoting → XB4.
+
+`bun test` 101 pass / guard 1560 pass, both `tsgo` clean, harness all passed. Result and progress files: `runs/20261018-finish-everything/nodes/r20c-code.{result,progress}.md`.

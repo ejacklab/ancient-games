@@ -1,0 +1,13 @@
+- 2026-10-18T08:49:02+08:00 · f1 · planned · Rd1 SessionStart hook: a run command is not exempted by prose negation
+- 2026-10-18T08:49:02+08:00 · f2 · planned · W6.1a header scanning continues past a body thematic break
+- 2026-10-18T08:49:02+08:00 · f3 · planned · R2 warnings name a deleted entry file
+- 2026-10-18T08:49:02+08:00 · xb4 · planned · timeout <N> bash -c '<test_cmd>' quoting of test_cmd
+- 2026-10-18T08:49:12+08:00 · xb4 · start · wrap test_cmd in bash -c under timeout <N>
+- 2026-10-18T08:49:12+08:00 · xb4 · done · testRun quotes test_cmd; harness all passed
+- 2026-10-18T08:50:24+08:00 · f1 · start · drop the negation rule from the SessionStart hook reading
+- 2026-10-18T08:50:24+08:00 · f1 · done · checkRd1 hook commands: review3 F1 passes
+- 2026-10-18T08:50:24+08:00 · f2 · start · header scanning past body breaks, id: lines of every block
+- 2026-10-18T08:50:24+08:00 · f2 · done · headerDelimiters and parseEntry: review3 F2 passes
+- 2026-10-18T08:50:24+08:00 · f3 · start · name a deleted entry path in the warning
+- 2026-10-18T08:50:24+08:00 · f3 · done · FILE_NAME matches entry paths; review3 F3 passes
+- 2026-10-18T08:51:19+08:00 · all · done · 101 memory_check tests, 1560 guard tests, harness all passed; result file written
